@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "ShardingFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -35,6 +36,8 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
 #endif
+
+#include <array>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -91,9 +94,10 @@ void ShardingFeature::prepare() {
   // note: these standins will actually not do any sharding, but always
   // throw an exception telling the user that the selected sharding
   // strategy is only available in the Enterprise Edition
-  for (auto const& name : std::vector<std::string>{
-           "enterprise-smart-edge-compat", "enterprise-hash-smart-edge"}) {
-    registerFactory(name, [name](ShardingInfo* sharding) {
+  for (auto const& name : std::array<std::string, 3>{
+           "enterprise-smart-edge-compat", "enterprise-hash-smart-edge",
+           "enterprise-hex-smart-vertex"}) {
+    registerFactory(name, [&name](ShardingInfo* sharding) {
       return std::make_unique<ShardingStrategyOnlyInEnterprise>(name);
     });
   }
@@ -116,8 +120,8 @@ void ShardingFeature::registerFactory(
 
   if (!_factories.emplace(name, creator).second) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("sharding factory function '") + name +
-                                "' already registered");
+        TRI_ERROR_INTERNAL, absl::StrCat("sharding factory function '", name,
+                                         "' already registered"));
   }
 }
 
@@ -129,18 +133,12 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
   }
 
   std::string name;
-
-  if (!ServerState::instance()->isRunningInCluster()) {
-    // not running in cluster... so no sharding
-    name = ShardingStrategyNone::NAME;
+  // determine the correct method for sharding
+  VPackSlice s = slice.get("shardingStrategy");
+  if (s.isString()) {
+    name = s.copyString();
   } else {
-    // running in cluster... determine the correct method for sharding
-    VPackSlice s = slice.get("shardingStrategy");
-    if (s.isString()) {
-      name = s.copyString();
-    } else {
-      name = getDefaultShardingStrategy(sharding);
-    }
+    name = getDefaultShardingStrategy(sharding);
   }
 
   return create(name, sharding);
@@ -148,22 +146,33 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(
 
 std::string ShardingFeature::getDefaultShardingStrategy(
     ShardingInfo const* sharding) const {
-  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   // TODO change these to use better algorithms when we no longer
   //      need to support collections created before 3.4
 
   // before 3.4, there were only hard-coded sharding strategies
-
-  // no sharding strategy found in collection meta data
 #ifdef USE_ENTERPRISE
   if (sharding->collection()->isSmart() &&
       sharding->collection()->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
+    // no sharding strategy found in collection meta data
+    // On SingleServer we can safely go to the new Sharding Strategy
+    if (ServerState::instance()->isSingleServer()) {
+      return ShardingStrategyEnterpriseHashSmartEdge::NAME;
+    }
     return ShardingStrategyEnterpriseSmartEdgeCompat::NAME;
   }
-
+  // no sharding strategy found in collection meta data
+  // On SingleServer we can safely go to the new Sharding Strategy
+  if (ServerState::instance()->isSingleServer()) {
+    return ShardingStrategyHash::NAME;
+  }
   return ShardingStrategyEnterpriseCompat::NAME;
 #else
+  // no sharding strategy found in collection meta data
+  // On SingleServer we can safely go to the new Sharding Strategy
+  if (ServerState::instance()->isSingleServer()) {
+    return ShardingStrategyHash::NAME;
+  }
   return ShardingStrategyCommunityCompat::NAME;
 #endif
 }
@@ -173,9 +182,18 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::create(
   auto it = _factories.find(name);
 
   if (it == _factories.end()) {
+    std::string_view hint;
+#ifndef USE_ENTERPRISE
+    if (name.find("enterprise") != std::string::npos) {
+      hint =
+          " - sharding strategy is only available in the Enterprise "
+          "Edition of ArangoDB";
+    }
+#endif
+
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("unknown sharding type '") + name + "'");
+        absl::StrCat("unknown sharding type '", name, "'", hint));
   }
 
   // now create a sharding strategy instance

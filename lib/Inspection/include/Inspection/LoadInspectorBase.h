@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,6 +32,7 @@
 #include <variant>
 
 #include "Inspection/InspectorBase.h"
+#include "Inspection/Factory.h"
 
 namespace arangodb::inspection {
 
@@ -155,7 +156,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
   Status applyFields(Args&&... args) {
     FieldsMap fields;
     this->self().doProcessObject([&](std::string_view key, ValueType value) {
-      fields.emplace(key, std::make_pair(value, false));
+      fields.emplace(key, std::make_pair(std::move(value), false));
       return Status::Success{};
     });
 
@@ -206,7 +207,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
                       Args&&... args) {
     if constexpr (Arg::isInlineType) {
       if (this->self().template shouldTryType<typename Arg::Type>(type)) {
-        typename Arg::Type v;
+        auto v = Factory<typename Arg::Type>::make_value();
         auto res = this->apply(v);
         if (res.ok()) {
           variant.value = std::move(v);
@@ -230,7 +231,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
                              Args&&... args) {
     auto loadVariant = [&]() -> Status {
       std::string_view type;
-      ValueType data{};
+      auto data = Factory<ValueType>::make_value();
       auto res = this->self().parseVariantInformation(type, data, variant);
       if (!res.ok()) {
         return res;
@@ -379,10 +380,10 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
                   "All inline types must be listed at the beginning of the "
                   "alternatives list");
     if (arg.tag == tag) {
-      typename Arg::Type v;
+      auto v = Factory<typename Arg::Type>::make_value();
       auto res = parse(v);
       if (res.ok()) {
-        result = v;
+        result = std::move(v);
       } else if constexpr (!std::is_same_v<FieldNameFn, std::monostate>) {
         return {std::move(res), fieldName(arg), Status::AttributeTag{}};
       }
@@ -403,7 +404,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
     return this->self().doProcessObject(
         [&](std::string_view key, ValueType value) -> Status {
           auto ff = this->make(value);
-          typename T::mapped_type val;
+          auto val = Factory<typename T::mapped_type>::make_value();
           if (auto res = process(ff, val); !res.ok()) {
             return {std::move(res), "'" + std::string(key) + "'",
                     Status::ArrayTag{}};
@@ -419,7 +420,7 @@ struct LoadInspectorBase : InspectorBase<Derived, Context> {
     std::size_t idx = 0;
     return this->self().doProcessList([&](auto value) -> Status {
       auto ff = this->self().make(value);
-      typename T::value_type val;
+      auto val = Factory<typename T::value_type>::make_value();
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
       }

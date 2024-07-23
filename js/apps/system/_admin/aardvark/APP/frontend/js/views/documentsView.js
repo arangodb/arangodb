@@ -1,7 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, JSONEditor */
-/* global numeral */
+/* global frontendConfig, templateEngine */
 
 (function () {
   'use strict';
@@ -76,6 +73,7 @@
           self.renderNotFound(this.collection.collectionID);
         } else {
           this.type = type;
+          $(`.upload-info.${this.type}`).show();
           if (responseData) {
             this.collectionName = responseData.name;
           } else {
@@ -234,11 +232,11 @@
     },
 
     startDownload: function () {
-      var query = this.collection.buildDownloadDocumentQuery();
+      var queryBody = this.collection.buildDownloadDocumentQuery();
 
-      if (query !== '' || query !== undefined || query !== null) {
-        var url = 'query/result/download/' + encodeURIComponent(arangoHelper.toBinary(JSON.stringify(query)));
-        arangoHelper.download(url);
+      if (queryBody !== '' || queryBody !== undefined || queryBody !== null) {
+        var url = 'query/result/download';
+        arangoHelper.downloadQuery(url, queryBody);
       } else {
         arangoHelper.arangoError('Document error', 'could not download documents');
       }
@@ -1183,28 +1181,50 @@
 
     renderPaginationElements: function () {
       this.renderPagination();
-      var total = $('#totalDocuments');
+      const recalculateButton = $(
+        '<a id="recalculateButton" title="Recalculate count"><i class="fa fa-refresh"></i></a>'
+      );
+
+      recalculateButton.click(() => {
+        this.collection.recalculateCount((error, data) => {
+          if(!error){
+            this.collection.setTotal(data.count);
+            this.rerender();
+            return;
+          }
+
+          arangoHelper.arangoError('Error', 'Could not recalculate count');
+        });
+      });
+
+      var total = $("#totalDocuments");
       if (total.length === 0) {
-        $('#documentsToolbarFL').append(
+        $("#documentsToolbarFL").append(
           '<a id="totalDocuments" class="totalDocuments"></a>'
         );
-        total = $('#totalDocuments');
+        total = $("#totalDocuments");
       }
-      if (this.type === 'document') {
-        total.html(numeral(this.collection.getTotal()).format('0,0') + ' doc(s)');
+      if (this.type === "document") {
+        total.html(
+          numeral(this.collection.getTotal()).format("0,0") + " doc(s)"
+        );
+        total.append(recalculateButton);
       }
-      if (this.type === 'edge') {
-        total.html(numeral(this.collection.getTotal()).format('0,0') + ' edge(s)');
+      if (this.type === "edge") {
+        total.html(
+          numeral(this.collection.getTotal()).format("0,0") + " edge(s)"
+        );
+        total.append(recalculateButton);
       }
       if (this.collection.getTotal() > this.collection.MAX_SORT) {
-        $('#docsSort').attr('disabled', true);
-        $('#docsSort').attr('placeholder', 'Sort limit reached (docs count)');
+        $("#docsSort").attr("disabled", true);
+        $("#docsSort").attr("placeholder", "Sort limit reached (docs count)");
       } else {
-        $('#docsSort').attr('disabled', false);
-        $('#docsSort').attr('placeholder', 'Sort by attribute');
+        $("#docsSort").attr("disabled", false);
+        $("#docsSort").attr("placeholder", "Sort by attribute");
       }
     },
-
+    
     breadcrumb: function () {
       var self = this;
 

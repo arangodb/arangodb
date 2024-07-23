@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -71,8 +72,9 @@ class SingleServerProviderTest : public ::testing::Test {
   aql::AstNode* _varNode{nullptr};
   aql::Projections _vertexProjections{};
   aql::Projections _edgeProjections{};
-
-  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+  ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor> alloc =
+      {_resourceMonitor};
+  MonitoredCollectionToShardMap _emptyShardMap{alloc};
 
   // can be used for further testing to generate a expression
   // std::string stringToMatch = "0-1";

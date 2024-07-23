@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,6 +29,7 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "GeneralServer/Acceptor.h"
@@ -36,7 +37,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Metrics/GaugeBuilder.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -81,7 +81,7 @@ Scheduler::Scheduler(ArangodServer& server)
 Scheduler::~Scheduler() = default;
 
 bool Scheduler::start() {
-  _cronThread.reset(new SchedulerCronThread(_server, *this));
+  _cronThread = std::make_unique<SchedulerCronThread>(_server, *this);
   return _cronThread->start();
 }
 
@@ -160,29 +160,42 @@ void Scheduler::runCronThread() {
 
 Scheduler::WorkHandle Scheduler::queueDelayed(
     std::string_view name, RequestLane lane, clock::duration delay,
-    fu2::unique_function<void(bool cancelled)> handler) noexcept {
-  TRI_ASSERT(!isStopping());
+    fu2::unique_function<void(bool cancelled)> handler) noexcept try {
+  std::shared_ptr<DelayedWorkItem> item;
 
-  if (delay < std::chrono::milliseconds(1)) {
-    // execute directly
-    queue(lane, [handler = std::move(handler)]() mutable { handler(false); });
+  try {
+    TRI_IF_FAILURE("Scheduler::queueDelayedFail1") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    item =
+        std::make_shared<DelayedWorkItem>(name, std::move(handler), lane, this);
+  } catch (...) {
     return nullptr;
   }
 
-  auto item =
-      std::make_shared<DelayedWorkItem>(name, std::move(handler), lane, this);
   {
-    std::unique_lock<std::mutex> guard(_cronQueueMutex);
-    _cronQueue.emplace(clock::now() + delay, item);
+    try {
+      TRI_IF_FAILURE("Scheduler::queueDelayedFail2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      std::unique_lock<std::mutex> guard(_cronQueueMutex);
+      _cronQueue.emplace(clock::now() + delay, item);
+    } catch (...) {
+      // if emplacing throws, we can cancel the item directly
+      item->cancel();
+      return nullptr;
+    }
 
     if (delay < std::chrono::milliseconds(50)) {
-      guard.unlock();
       // wakeup thread
       _croncv.notify_one();
     }
   }
 
   return item;
+} catch (...) {
+  return nullptr;
 }
 
 /*

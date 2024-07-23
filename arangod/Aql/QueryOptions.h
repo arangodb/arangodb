@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,15 +23,17 @@
 
 #pragma once
 
+#include "Aql/ProfileLevel.h"
+#include "Aql/types.h"
+#include "Cluster/Utils/ShardID.h"
+#include "Transaction/Options.h"
+
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <unordered_set>
 #include <vector>
-
-#include "Aql/ProfileLevel.h"
-#include "Aql/types.h"
-#include "Basics/Common.h"
-#include "Transaction/Options.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -48,6 +50,8 @@ struct QueryOptions {
   QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
 
+  enum JoinStrategyType : uint8_t { kDefault, kGeneric };
+
   void fromVelocyPack(velocypack::Slice slice);
   void toVelocyPack(velocypack::Builder& builder,
                     bool disableOptimizerRules) const;
@@ -63,9 +67,12 @@ struct QueryOptions {
   size_t spillOverThresholdNumRows;
   size_t spillOverThresholdMemoryUsage;
   size_t maxDNFConditionMembers;
-  double maxRuntime;  // query has to execute within the given time or will be
-                      // killed
+  // query has to execute within the given time or will be killed
+  double maxRuntime;
+
+#ifdef USE_ENTERPRISE
   std::chrono::duration<double> satelliteSyncWait;
+#endif
 
   double ttl;  // time until query cursor expires - avoids coursors to
                // stick around for ever if client does not collect the data
@@ -92,7 +99,13 @@ struct QueryOptions {
   bool count;
   // skips audit logging - used only internally
   bool skipAudit;
+  // whether or not the optimizer result should be cached
+  bool optimizePlanForCaching;
+
   ExplainRegisterPlan explainRegisters;
+
+  /// @brief desired join strategy used by the JoinNode (if available)
+  JoinStrategyType desiredJoinStrategy;
 
   /// @brief shard key attribute value used to push a query down
   /// to a single server
@@ -102,7 +115,7 @@ struct QueryOptions {
   std::vector<std::string> optimizerRules;
 
   /// @brief manual restriction to certain shards
-  std::unordered_set<std::string> restrictToShards;
+  std::unordered_set<ShardID> restrictToShards;
 
 #ifdef USE_ENTERPRISE
   // TODO: remove as soon as we have cluster wide transactions

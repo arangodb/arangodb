@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,7 +32,6 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ProfileLevel.h"
@@ -43,6 +42,7 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateCollection.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
@@ -52,7 +52,9 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
+#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "IResearch/AgencyMock.h"
@@ -67,8 +69,11 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/PreparedResponseConnectionPool.h"
+#include "Mocks/StorageEngineMock.h"
 #include "Network/NetworkFeature.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -85,20 +90,24 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Servers.h"
 #include "Sharding/ShardingFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "TemplateSpecializer.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "V8/V8SecurityFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#endif
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/License/LicenseFeature.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
@@ -127,7 +136,12 @@ struct HttpEndpointProviderMock final : public HttpEndpointProvider {
 
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<GreetingsFeaturePhase>(false, std::false_type{});
-  server.addFeature<metrics::MetricsFeature>(false);
+  server.addFeature<metrics::MetricsFeature>(
+      false, LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
+      LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   server.addFeature<SharedPRNGFeature>(false);
   server.addFeature<SoftShutdownFeature>(false);
   // We do not need any further features from this phase
@@ -154,7 +168,6 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
-  server.addFeature<LdapFeature>(false);
   server.addFeature<LicenseFeature>(false);
   server.addFeature<EncryptionFeature>(false);
 #endif
@@ -164,6 +177,9 @@ static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
   server.addFeature<ClusterFeaturePhase>(false);
   server.addFeature<ClusterFeature>(false);
+  // set default replication factor to 1 for tests. otherwise the default value
+  // is 0, which will lead to follow up errors if it is not corrected later.
+  server.getFeature<ClusterFeature>().defaultReplicationFactor(1);
 
   // fake the exit code with which unresolved futures are returned on
   // shutdown. if we don't do this lots of places in ClusterInfo will
@@ -180,15 +196,19 @@ static void SetupCommunicationFeaturePhase(MockServer& server) {
 
 static void SetupV8Phase(MockServer& server) {
   SetupCommunicationFeaturePhase(server);
+#ifdef USE_V8
   server.addFeature<V8FeaturePhase>(false);
-  server.addFeature<V8DealerFeature>(false);
+  server.addFeature<V8DealerFeature>(
+      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<V8SecurityFeature>(false);
+#endif
 }
 
 static void SetupAqlPhase(MockServer& server) {
   SetupV8Phase(server);
   server.addFeature<AqlFeaturePhase>(false);
-  server.addFeature<QueryRegistryFeature>(false);
+  server.addFeature<QueryRegistryFeature>(
+      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<TemporaryStorageFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
@@ -211,7 +231,8 @@ static void SetupAqlPhase(MockServer& server) {
 MockServer::MockServer(ServerState::RoleEnum myRole, bool injectClusterIndexes)
     : _server(std::make_shared<options::ProgramOptions>("", "", "", nullptr),
               nullptr),
-      _engine(_server, injectClusterIndexes),
+      _engine(
+          std::make_unique<StorageEngineMock>(_server, injectClusterIndexes)),
       _oldRebootId(0),
       _started(false) {
   _oldRole = ServerState::instance()->getRole();
@@ -256,7 +277,7 @@ void MockServer::startFeatures() {
   _server.setupDependencies(false);
   auto orderedFeatures = _server.getOrderedFeatures();
 
-  _server.getFeature<EngineSelectorFeature>().setEngineTesting(&_engine);
+  _server.getFeature<EngineSelectorFeature>().setEngineTesting(_engine.get());
 
   if (_server.hasFeature<SchedulerFeature>()) {
     auto& sched = _server.getFeature<SchedulerFeature>();
@@ -316,6 +337,13 @@ void MockServer::startFeatures() {
     TRI_CreateDirectory(_testFilesystemPath.c_str(), systemError,
                         systemErrorStr);
   }
+}
+
+auto MockClusterServer::genUniqId() const -> std::uint64_t {
+  // We must use a consistent unique ID generation. Sadly, several IResearch
+  // tests have hard-coded IDs which are expected to be generated by
+  // TRI_NewTickServer().
+  return TRI_NewTickServer();
 }
 
 void MockServer::stopFeatures() {
@@ -380,7 +408,11 @@ MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(
+      true, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
 
   if (start) {
     MockV8Server::startFeatures();
@@ -389,9 +421,7 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
 
 MockV8Server::~MockV8Server() {
   if (_server.hasFeature<ClusterFeature>()) {
-    _server.getFeature<ClusterFeature>().clusterInfo().shutdownSyncers();
-    _server.getFeature<ClusterFeature>().clusterInfo().waitForSyncersToStop();
-    _server.getFeature<ClusterFeature>().shutdownAgencyCache();
+    _server.getFeature<ClusterFeature>().shutdown();
   }
 }
 
@@ -406,9 +436,7 @@ MockAqlServer::MockAqlServer(bool start) : MockServer() {
 
 MockAqlServer::~MockAqlServer() {
   if (_server.hasFeature<ClusterFeature>()) {
-    _server.getFeature<ClusterFeature>().clusterInfo().shutdownSyncers();
-    _server.getFeature<ClusterFeature>().clusterInfo().waitForSyncersToStop();
-    _server.getFeature<ClusterFeature>().shutdownAgencyCache();
+    _server.getFeature<ClusterFeature>().shutdown();
   }
   AqlFeature(_server).stop();  // unset singleton instance
 }
@@ -417,13 +445,21 @@ std::shared_ptr<transaction::Methods> MockAqlServer::createFakeTransaction()
     const {
   std::vector<std::string> noCollections{};
   transaction::Options opts;
-  auto ctx = transaction::StandaloneContext::Create(getSystemDatabase());
+  auto ctx = transaction::StandaloneContext::create(
+      getSystemDatabase(), transaction::OperationOriginTestCase{});
   return std::make_shared<transaction::Methods>(
       ctx, noCollections, noCollections, noCollections, opts);
 }
 
 std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
     bool activateTracing, std::string queryString,
+    std::function<void(aql::Query&)> callback) const {
+  return createFakeQuery(SchedulerFeature::SCHEDULER, activateTracing,
+                         queryString, callback);
+}
+
+std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
+    Scheduler* scheduler, bool activateTracing, std::string queryString,
     std::function<void(aql::Query&)> callback) const {
   VPackBuilder queryOptions;
   queryOptions.openObject();
@@ -436,19 +472,25 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
   }
 
   auto query = aql::Query::create(
-      transaction::StandaloneContext::Create(getSystemDatabase()),
+      transaction::StandaloneContext::create(
+          getSystemDatabase(), transaction::OperationOriginTestCase{}),
       aql::QueryString(queryString), nullptr,
-      aql::QueryOptions(queryOptions.slice()));
+      aql::QueryOptions(queryOptions.slice()), scheduler);
   callback(*query);
-  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   return query;
 }
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
   SetupV8Phase(*this);
-  addFeature<QueryRegistryFeature>(false);
-  addFeature<NetworkFeature>(false);
+  addFeature<QueryRegistryFeature>(
+      false, getFeature<arangodb::metrics::MetricsFeature>());
+  addFeature<NetworkFeature>(
+      true, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
   if (start) {
     MockRestServer::startFeatures();
   }
@@ -467,22 +509,21 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
         _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
         _commitIndex};  // apply logs
-  }
-  {
-    std::lock_guard g(_callbacksLock);
-    for (auto const& trx : VPackArrayIterator(trxs)) {
-      handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
-    }
     {
-      std::lock_guard g(_storeLock);
-      for (auto const& i : pc) {
-        _planChanges.emplace(_commitIndex, i);
-      }
-      for (auto const& i : cc) {
-        _currentChanges.emplace(_commitIndex, i);
+      std::lock_guard g(_callbacksLock);
+      for (auto const& trx : VPackArrayIterator(trxs)) {
+        handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
       }
     }
+    for (auto const& i : pc) {
+      _planChanges.emplace(_commitIndex, i);
+    }
+    for (auto const& i : cc) {
+      _currentChanges.emplace(_commitIndex, i);
+    }
   }
+
+  triggerWaiting(_commitIndex);
   invokeCallbacks(toCall);
   return res;
 }
@@ -503,31 +544,33 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 
   addFeature<UpgradeFeature>(false, &_dummy, std::vector<size_t>{});
   addFeature<ServerSecurityFeature>(false);
+  addFeature<replication2::replicated_state::ReplicatedStateAppFeature>(false);
+  addFeature<ReplicatedLogFeature>(false);
 
-  network::ConnectionPool::Config config(
-      _server.getFeature<metrics::MetricsFeature>());
+  network::ConnectionPool::Config config;
+  config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      _server.getFeature<metrics::MetricsFeature>(), "network-mock");
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
-  addFeature<NetworkFeature>(true, config);
+  addFeature<NetworkFeature>(
+      true, _server.getFeature<metrics::MetricsFeature>(), config);
 }
 
 MockClusterServer::~MockClusterServer() {
-  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
-  ci.shutdownSyncers();
-  ci.waitForSyncersToStop();
-  _server.getFeature<ClusterFeature>().shutdownAgencyCache();
+  _server.getFeature<ClusterFeature>().shutdown();
 }
 
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
 
-  network::ConnectionPool::Config poolConfig(
-      _server.getFeature<metrics::MetricsFeature>());
+  network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &getFeature<ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
+  poolConfig.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      _server.getFeature<metrics::MetricsFeature>(), "mock");
 
   if (_useAgencyMockPool) {
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(_server, poolConfig);
@@ -550,7 +593,7 @@ void MockClusterServer::startFeatures() {
   ServerState::instance()->setRebootId(RebootId{1});
 
   // register factories & normalizers
-  auto& indexFactory = const_cast<IndexFactory&>(_engine.indexFactory());
+  auto& indexFactory = const_cast<IndexFactory&>(_engine->indexFactory());
   auto& factory =
       getFeature<iresearch::IResearchFeature>().factory<ClusterEngine>();
   indexFactory.emplace(
@@ -572,11 +615,12 @@ std::shared_ptr<aql::Query> MockClusterServer::createFakeQuery(
   }
 
   auto query = aql::Query::create(
-      transaction::StandaloneContext::Create(getSystemDatabase()),
+      transaction::StandaloneContext::create(
+          getSystemDatabase(), transaction::OperationOriginTestCase{}),
       aql::QueryString(queryString), nullptr,
       aql::QueryOptions(queryOptions.slice()));
   callback(*query);
-  query->prepareQuery(aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   return query;
 }
@@ -602,7 +646,7 @@ consensus::index_t MockClusterServer::agencyTrx(std::string const& key,
 }
 
 void MockClusterServer::agencyCreateDatabase(std::string const& name) {
-  TemplateSpecializer ts(name);
+  TemplateSpecializer ts(name, [&]() { return genUniqId(); });
   std::string st = ts.specialize(plan_dbs_string);
 
   agencyTrx("/arango/Plan/Databases/" + name, st);
@@ -621,7 +665,7 @@ void MockClusterServer::agencyCreateDatabase(std::string const& name) {
 }
 
 void MockClusterServer::agencyCreateCollections(std::string const& name) {
-  TemplateSpecializer ts(name);
+  TemplateSpecializer ts(name, [&]() { return genUniqId(); });
   std::string st = ts.specialize(plan_colls_string);
   agencyTrx("/arango/Plan/Collections/" + name, st);
   st = ts.specialize(current_colls_string);
@@ -899,7 +943,7 @@ void MockDBServer::createShard(std::string const& dbName,
       bool created = false;
       auto const idx = velocypack::Parser::fromJson(
           R"({"id":"1","type":"edge","name":"edge_from","fields":["_from"],"unique":false,"sparse":false})");
-      col->createIndex(idx->slice(), created);
+      col->createIndex(idx->slice(), created).waitAndGet();
       TRI_ASSERT(created);
     }
 
@@ -907,7 +951,7 @@ void MockDBServer::createShard(std::string const& dbName,
       bool created = false;
       auto const idx = velocypack::Parser::fromJson(
           R"({"id":"2","type":"edge","name":"edge_to","fields":["_to"],"unique":false,"sparse":false})");
-      col->createIndex(idx->slice(), created);
+      col->createIndex(idx->slice(), created).waitAndGet();
       TRI_ASSERT(created);
     }
   }
@@ -978,6 +1022,10 @@ network::ConnectionPool* MockCoordinator::getPool() { return _pool.get(); }
 
 MockRestAqlServer::MockRestAqlServer() {
   SetupAqlPhase(*this);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(
+      true, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
   MockRestAqlServer::startFeatures();
 }

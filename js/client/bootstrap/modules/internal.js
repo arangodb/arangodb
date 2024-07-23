@@ -1,35 +1,33 @@
 /* jshint -W051:true */
 /* eslint-disable */
+/* global arango */
 ;(function () {
   'use strict'
   /* eslint-enable */
 
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief module "internal"
-  // /
-  // / @file
-  // /
-  // / DISCLAIMER
-  // /
-  // / Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-  // /
-  // / Licensed under the Apache License, Version 2.0 (the "License")
-  // / you may not use this file except in compliance with the License.
-  // / You may obtain a copy of the License at
-  // /
-  // /     http://www.apache.org/licenses/LICENSE-2.0
-  // /
-  // / Unless required by applicable law or agreed to in writing, software
-  // / distributed under the License is distributed on an "AS IS" BASIS,
-  // / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  // / See the License for the specific language governing permissions and
-  // / limitations under the License.
-  // /
-  // / Copyright holder is triAGENS GmbH, Cologne, Germany
-  // /
-  // / @author Dr. Frank Celler
-  // / @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
-  // //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
   var exports = require('internal');
 
@@ -129,13 +127,18 @@
     return 'http' + endpoint.substr(pos);
   };
   
-  exports.debugClearFailAt = function(failAt) {
+  exports.debugClearFailAt = function(failAt, jwtBearerToken) {
     const request = require('@arangodb/request');
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     instanceInfo.arangods.forEach((a) => {
-      let res = request.delete({
-        url: endpointToURL(a.endpoint) + '/_admin/debug/failat' + (failAt === undefined ? '' : '/' + failAt),
-        body: ""});
+      const req = {
+        url: endpointToURL(a.endpoint) + '/_admin/debug/failat/' + (failAt === undefined ? '' : '/' + failAt),
+        body: ""
+      };
+      if (jwtBearerToken) {
+        req.auth = { bearer: jwtBearerToken };
+      }
+      let res = request.delete(req);
       if (res.status !== 200) {
         throw "Error removing failure point";
       }
@@ -145,22 +148,23 @@
   // On server side the API with failurePointName is called removeFailAt
   exports.debugRemoveFailAt = exports.debugClearFailAt;
   
-  exports.debugSetFailAt = function(failAt) {
+  exports.debugSetFailAt = function(failAt, jwtBearerToken) {
     const request = require('@arangodb/request');
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     instanceInfo.arangods.forEach((a) => {
-      let res = request.put({
+      const req = {
         url: endpointToURL(a.endpoint) + '/_admin/debug/failat/' + failAt,
-        body: ""});
+        body: ""
+      };
+      if (jwtBearerToken) {
+        req.auth = { bearer: jwtBearerToken };
+      }
+      let res = request.put(req);
+
       if (res.status !== 200) {
         throw "Error setting failure point";
       }
     });
-  };
-  
-  exports.debugTerminate = function() {
-    // NOOP. Terminate should be executed
-    // by tests framework not by client
   };
   
   exports.debugTerminateInstance = function(endpoint) {
@@ -170,18 +174,21 @@
       body: ""
     });
   };
+
+  exports.debugTerminate = function(endpoint) {
+    return exports.debugTerminateInstance(endpoint);
+  };
+  
   
   exports.debugCanUseFailAt = function() {
-    const request = require('@arangodb/request');
-    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
-    let res = request.get({
-      url: endpointToURL(instanceInfo.arangods[0].endpoint) + '/_admin/debug/failat',
-      body: ""
-    });
-    if (res.status !== 200) {
+    const res = arango.GET_RAW("_admin/debug/failat");
+    if (res.code !== 200) {
+      if (res.code === 401) {
+        throw `Error asking for failure point.`;
+      }
       return false;
     }
-    return res.body === "true";
+    return res.parsedBody === true;
   };
   
   // //////////////////////////////////////////////////////////////////////////////

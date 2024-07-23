@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,8 +44,16 @@ class Methods;
 }  // namespace transaction
 namespace iresearch {
 
-using ViewSegment =
-    std::tuple<DataSourceId, irs::SubReader const*, StorageSnapshot const&>;
+struct ViewSegment {
+  explicit ViewSegment(LogicalCollection const& collection,
+                       StorageSnapshot const& snapshot,
+                       irs::SubReader const& segment) noexcept
+      : collection{&collection}, snapshot{&snapshot}, segment{&segment} {}
+
+  LogicalCollection const* collection;
+  StorageSnapshot const* snapshot;
+  irs::SubReader const* segment;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a snapshot representation of the view with ability to query for cid
@@ -57,10 +65,10 @@ class ViewSnapshot : public irs::IndexReader {
   using ImmutablePartCache =
       std::map<aql::AstNode const*, irs::proxy_filter::cache_ptr>;
 
-  /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
-  [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
+  uint64_t CountMappedMemory() const final { return 0; }
 
-  [[nodiscard]] virtual ImmutablePartCache& immutablePartCache() noexcept = 0;
+  [[nodiscard]] virtual LogicalCollection const& collection(
+      std::size_t i) const noexcept = 0;
 
   [[nodiscard]] virtual StorageSnapshot const& snapshot(
       std::size_t i) const noexcept = 0;

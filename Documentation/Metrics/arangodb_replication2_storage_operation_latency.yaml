@@ -1,0 +1,12 @@
+name: arangodb_replication2_storage_operation_latency
+introducedIn: "3.10.0"
+help: |
+  Histogram containing the latency of storage operations.
+unit: us
+type: histogram
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Histogram containing the latency of storage operations.

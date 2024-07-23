@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -276,6 +276,56 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
     EXPECT_EQ(node.count, 0);
     EXPECT_EQ(node.hash, 0);
   }
+}
+
+TEST(MerkleTreeTest, test_insert_and_remove) {
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
+      t(6, 0, 1ULL << 18);
+
+  std::vector<std::uint64_t> keys = {100, 193295, 2958836, 959302056027,
+                                     29994232};
+  t.insert(keys);
+  EXPECT_EQ(5, t.count());
+  EXPECT_EQ(10532320421211682024ULL, t.rootValue());
+
+  keys = {100, 193295, 2958836, 959302056027, 29994232};
+  t.remove(keys);
+  EXPECT_EQ(0, t.count());
+  EXPECT_EQ(0, t.rootValue());
+}
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST(MerkleTreeTest, test_insert_and_rollback) {
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
+      t(6, 0, 1ULL << 18);
+
+  std::vector<std::uint64_t> keys = {100, 193295, 2958836, 959302056027,
+                                     29994232};
+  t.insert(keys);
+  EXPECT_EQ(5, t.count());
+  EXPECT_EQ(10532320421211682024ULL, t.rootValue());
+
+  keys.clear();
+  keys = {100, 193295, 2958836, 959302056027, 29994232, 100};
+  EXPECT_THROW(t.removeUnsorted(keys), std::invalid_argument);
+
+  EXPECT_EQ(5, t.count());
+  EXPECT_EQ(10532320421211682024ULL, t.rootValue());
+}
+#endif
+
+TEST(MerkleTreeTest, test_remove_out_of_range) {
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
+      t(6, 0, 1ULL << 18);
+
+  t.insert(123);
+  EXPECT_EQ(1, t.count());
+  EXPECT_EQ(10276731894227909406ULL, t.rootValue());
+
+  EXPECT_THROW(t.remove(12345678901234567890ULL), std::out_of_range);
+
+  EXPECT_EQ(1, t.count());
+  EXPECT_EQ(10276731894227909406ULL, t.rootValue());
 }
 
 TEST_F(InternalMerkleTreeTest, test_grow) {

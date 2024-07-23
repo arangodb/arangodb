@@ -2,19 +2,16 @@
 /*global ArangoClusterInfo */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoCollection
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2011-2013 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Dr. Frank Celler
 // / @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
@@ -93,10 +90,6 @@ ArangoCollection.prototype.shards = function (detailed) {
   });
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionToArray
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.toArray = function () {
   var cluster = require('@arangodb/cluster');
 
@@ -160,33 +153,17 @@ ArangoCollection.prototype.index = function (id) {
   throw err;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionEdgesAll
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.edges = function (vertex) {
   return this.EDGES(vertex);
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionEdgesInbound
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.inEdges = function (vertex) {
   return this.INEDGES(vertex);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionEdgesOutbound
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.outEdges = function (vertex) {
   return this.OUTEDGES(vertex);
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock documentsCollectionAny
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.any = function () {
   var cluster = require('@arangodb/cluster');
@@ -205,10 +182,6 @@ ArangoCollection.prototype.any = function () {
 
   return this.ANY();
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionFirstExample
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.firstExample = function (example) {
   var e;
@@ -431,10 +404,6 @@ ArangoCollection.prototype.lookupSkiplist = function () {
     fields: Array.prototype.slice.call(arguments)
   });
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock lookUpFulltextIndex
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {
   'use strict';

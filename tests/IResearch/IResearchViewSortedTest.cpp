@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,9 +39,9 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
@@ -68,13 +68,11 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#ifdef USE_V8
 #include "V8/v8-globals.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -103,7 +101,7 @@ class IResearchViewSortedTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -119,7 +117,7 @@ class IResearchViewSortedTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -224,8 +222,9 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
@@ -529,8 +528,9 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 

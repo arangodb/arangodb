@@ -1,3 +1,4 @@
+import { Box } from "@chakra-ui/react";
 import React, { useState } from "react";
 import ReactSplit, {
   ChildrenPattern,
@@ -28,5 +29,25 @@ export const Split = (
       }}
       {...rest}
     />
+  );
+};
+
+export const SplitDivider = ({
+  gutterProps
+}: {
+  gutterProps: {
+    onMouseDown: (e: unknown) => void;
+    onTouchStart: (e: unknown) => void;
+  };
+}) => {
+  return (
+    <Box
+      gridRow="1/-1"
+      backgroundColor="gray.300"
+      cursor="col-resize"
+      gridColumn="2"
+      position="relative"
+      {...gutterProps}
+    ></Box>
   );
 };

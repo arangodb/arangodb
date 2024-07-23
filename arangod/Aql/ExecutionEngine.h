@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,27 +23,26 @@
 
 #pragma once
 
+#include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/CallbackGuard.h"
 #include "Containers/SmallVector.h"
 
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlCallStack;
 class AqlItemBlock;
 class AqlItemBlockManager;
+class BindParameters;
 class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
@@ -57,20 +56,24 @@ class SharedQueryState;
 
 class ExecutionEngine {
  public:
+  ExecutionEngine(ExecutionEngine const&) = delete;
+  ExecutionEngine& operator=(ExecutionEngine const&) = delete;
+
   /// @brief create the engine
   ExecutionEngine(EngineId eId, QueryContext& query,
                   AqlItemBlockManager& itemBlockManager,
-                  SerializationFormat format,
                   std::shared_ptr<SharedQueryState> sharedState = nullptr);
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();
 
- public:
+  void leaseAsyncPrefetchSlots(size_t value);
+
+  size_t asyncPrefetchSlotsLeased() const noexcept;
+
   // @brief create an execution engine from a plan
   static void instantiateFromPlan(Query& query, ExecutionPlan& plan,
-                                  bool planRegisters,
-                                  SerializationFormat format);
+                                  bool planRegisters);
 
   /// @brief Prepares execution blocks for executing provided plan
   /// @param plan plan to execute, should be without cluster nodes. Only local
@@ -91,7 +94,7 @@ class ExecutionEngine {
   /// @brief get the query
   QueryContext& getQuery() const;
 
-  std::shared_ptr<SharedQueryState> sharedState() const { return _sharedState; }
+  std::shared_ptr<SharedQueryState> const& sharedState() const;
 
   /// @brief initializeCursor, could be called multiple times
   std::pair<ExecutionState, Result> initializeCursor(
@@ -102,12 +105,6 @@ class ExecutionEngine {
 
   auto executeForClient(AqlCallStack const& stack, std::string const& clientId)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
-
-  /// @brief getSome
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost);
-
-  /// @brief skipSome
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
   /// @brief whether or not initializeCursor was called
   bool initializeCursorCalled() const;
@@ -156,9 +153,10 @@ class ExecutionEngine {
   void setupEngineRoot(ExecutionBlock& planRoot);
 
   static void initializeConstValueBlock(ExecutionPlan& plan,
+                                        BindParameters const& bindParameters,
                                         AqlItemBlockManager& mgr);
 
-  const EngineId _engineId;
+  EngineId const _engineId;
 
   /// @brief a pointer to the query
   QueryContext& _query;
@@ -182,6 +180,10 @@ class ExecutionEngine {
 
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
+
+  AsyncPrefetchSlotsManager& _asyncPrefetchSlotsManager;
+
+  AsyncPrefetchSlotsReservation _asyncPrefetchSlotsReservation;
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql

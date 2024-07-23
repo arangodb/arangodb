@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,11 +27,14 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Logger/LogContextKeys.h"
 #include "Network/NetworkFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "RestServer/DatabaseFeature.h"
 
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachineFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
@@ -41,21 +44,20 @@ using namespace arangodb::replication2::replicated_state::document;
 void DocumentStateMachineFeature::prepare() {
   bool const enabled = ServerState::instance()->isDBServer();
   setEnabled(enabled);
-}
 
-void DocumentStateMachineFeature::start() {
   ArangodServer& s = server();
   auto& replicatedStateFeature = s.getFeature<ReplicatedStateAppFeature>();
   auto& networkFeature = s.getFeature<NetworkFeature>();
-  auto& clusterFeature = s.getFeature<ClusterFeature>();
   auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
-  auto& databaseFeature = s.getFeature<DatabaseFeature>();
+  auto defaultLoggerContext =
+      LoggerContext(Logger::REPLICATED_STATE)
+          .with<logContextKeyStateImpl>(DocumentState::NAME);
 
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
       std::make_shared<DocumentStateHandlersFactory>(
-          s, clusterFeature.agencyCache(), networkFeature.pool(),
-          maintenanceFeature, databaseFeature),
+          networkFeature.pool(), maintenanceFeature,
+          std::move(defaultLoggerContext)),
       *transaction::ManagerFeature::manager());
 }
 

@@ -2,18 +2,16 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -76,19 +74,11 @@ function error_handlingSuite () {
       let cmd = "/_api/document//123456";
       let doc = arango.DELETE_RAW(cmd);
       
-      if (arango.protocol() === 'vst') {
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code, doc);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-        assertEqual(doc.headers['content-type'], contentType);
-      } else {
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code, doc);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-      }
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code, doc);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
     },
 
     test_returns_an_error_if_collection_identifier_is_unknown: function() {

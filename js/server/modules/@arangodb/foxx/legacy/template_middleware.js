@@ -1,19 +1,16 @@
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Foxx Template Middleware
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2013 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +18,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Lucas Dohmen
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
@@ -30,52 +27,12 @@
 var db = require('@arangodb').db,
   _ = require('lodash');
 
-// //////////////////////////////////////////////////////////////////////////////
-  // / @start Docu Block JSF_foxx_TemplateMiddleware_initializer
-  // /
-  // / Initialize with the name of a collection or a collection and optionally
-  // / a set of helper functions.
-  // / Then use *before* to attach the initialized middleware to your Foxx.Controller
-  // /
-  // / @EXAMPLES
-  // /
-  // / ```js
-  // / templateMiddleware = new TemplateMiddleware("templates", {
-  // /   uppercase: function (x) { return x.toUpperCase(); }
-  // / })
-  // / // or without helpers:
-  // / //templateMiddleware = new TemplateMiddleware("templates")
-  // /
-  // / app.before(templateMiddleware)
-  // / ```
-  // / @end Docu Block
-  // //////////////////////////////////////////////////////////////////////////////
-
 function TemplateMiddleware (templateCollection, helper) {
   var middleware = function (request, response) {
     var responseFunctions,
       _ = require('lodash');
 
     responseFunctions = {
-
-      // //////////////////////////////////////////////////////////////////////////////
-      // / @start Docu Block JSF_foxx_TemplateMiddleware_response_render
-      // /
-      // / `response.render(templatePath, data)`
-      // /
-      // / When the TemplateMiddleware is included, you will have access to the
-      // / *render* function on the response object.
-      // / If you call render, Controller will look into the this collection and
-      // / search by the path attribute.  It will then render the template with the
-      // / given data.
-      // /
-      // / @EXAMPLES
-      // /
-      // / ```js
-      // / response.render("high/way", {username: 'Application'})
-      // / ```
-      // / @end Docu Block
-      // //////////////////////////////////////////////////////////////////////////////
 
       render: function (templatePath, data) {
         var template;

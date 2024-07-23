@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,15 +26,18 @@
 
 #include "gtest/gtest.h"
 
-#include "../Mocks/Servers.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
+#include "Mocks/IResearchLinkMock.h"
+#include "Mocks/PhysicalCollectionMock.h"
+
 #include "Agency/Store.h"
-#include "AgencyMock.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/files.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -49,6 +52,7 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -66,6 +70,8 @@
 class IResearchViewDBServerTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockDBServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   IResearchViewDBServerTest() : server("PRMR_0001") {}
 
@@ -139,7 +145,8 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
 
     // ensure we have shard view in vocbase
     bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
+    auto index =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -182,7 +189,8 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
 
     // ensure we have shard view in vocbase
     bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
+    auto index =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -231,7 +239,8 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
 
   // ensure we have shard view in vocbase
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_FALSE(!index);
   auto link =
       std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
@@ -312,7 +321,8 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
   EXPECT_NE(nullptr, impl);
 
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_FALSE(!index);
   auto link =
       std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
@@ -453,7 +463,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     ASSERT_FALSE(!viewImpl);
 
     bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
+    auto index =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -461,7 +472,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     ASSERT_FALSE(!link);
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
@@ -499,7 +511,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     ASSERT_FALSE(!viewImpl);
 
     bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
+    auto index =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -512,8 +525,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-          std::vector<std::string>{logicalCollection->name()}, EMPTY,
+          arangodb::transaction::StandaloneContext::create(
+              *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
           arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
@@ -528,7 +542,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
@@ -570,13 +585,14 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     EXPECT_FALSE(!viewImpl);
     arangodb::Result res = logicalview->properties(links->slice(), true, true);
     EXPECT_TRUE(res.ok());
-    EXPECT_FALSE(logicalCollection->getIndexes().empty());
+    EXPECT_FALSE(logicalCollection->getPhysical()->getAllIndexes().empty());
 
     // fill with test data
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-          collections, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, collections, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       arangodb::OperationOptions options;
@@ -593,8 +609,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     arangodb::transaction::Options trxOptions;
 
     arangodb::transaction::Methods trx0(
-        arangodb::transaction::StandaloneContext::Create(*vocbase), collections,
-        EMPTY, EMPTY, trxOptions);
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        collections, EMPTY, EMPTY, trxOptions);
     EXPECT_TRUE(trx0.begin().ok());
     auto const cid0 = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links01, links02, links03;
@@ -622,8 +639,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     // add more data
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-          collections, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, collections, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       arangodb::OperationOptions options;
@@ -642,8 +660,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 
     // new reader sees new data
     arangodb::transaction::Methods trx1(
-        arangodb::transaction::StandaloneContext::Create(*vocbase), collections,
-        EMPTY, EMPTY, trxOptions);
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        collections, EMPTY, EMPTY, trxOptions);
     EXPECT_TRUE(trx1.begin().ok());
     auto const cid1 = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links1;
@@ -689,7 +708,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
 
-    arangodb::aql::Variable variable("testVariable", 0, false);
+    arangodb::aql::Variable variable("testVariable", 0, false, resourceMonitor);
 
     // test insert + query
     for (size_t i = 1; i < 200; ++i) {
@@ -698,8 +717,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         auto doc = arangodb::velocypack::Parser::fromJson(
             std::string("{ \"seq\": ") + std::to_string(i) + " }");
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-            std::vector<std::string>{logicalCollection->name()}, EMPTY,
+            arangodb::transaction::StandaloneContext::create(
+                *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
             options);
 
         EXPECT_TRUE(trx.begin().ok());
@@ -712,7 +732,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
       // query
       {
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(*vocbase),
+            arangodb::transaction::StandaloneContext::create(
+                *vocbase, arangodb::transaction::OperationOriginTestCase{}),
             std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
             arangodb::transaction::Options{});
         EXPECT_TRUE(trx.begin().ok());
@@ -759,8 +780,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -774,8 +796,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -822,8 +845,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -837,8 +861,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -867,7 +892,9 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::List);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
     auto slice = builder.slice();
     EXPECT_EQ(4U, slice.length());
@@ -1025,7 +1052,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   ASSERT_NE(nullptr, viewImpl);
 
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_FALSE(!index);
   auto link =
       std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
@@ -1037,8 +1065,9 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     arangodb::iresearch::IResearchLinkMeta meta;
     meta._includeAllFields = true;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-        std::vector<std::string>{logicalCollection->name()}, EMPTY,
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
@@ -1049,7 +1078,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   // no snapshot in TransactionState (force == false, waitForSync = false)
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
@@ -1069,7 +1099,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   // no snapshot in TransactionState (force == true, waitForSync = false)
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
@@ -1097,7 +1128,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     arangodb::transaction::Options opts;
     opts.waitForSync = true;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         opts);
     EXPECT_TRUE(trx.begin().ok());
@@ -1118,7 +1150,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   {
     arangodb::transaction::Options opts;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         opts);
     EXPECT_TRUE(trx.begin().ok());
@@ -1463,7 +1496,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     EXPECT_NE(nullptr, impl);
 
     bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
+    auto index =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -1618,7 +1652,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     EXPECT_NE(nullptr, impl);
 
     bool created;
-    auto index = logicalCollection1->createIndex(linkJson->slice(), created);
+    auto index = logicalCollection1->createIndex(linkJson->slice(), created)
+                     .waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(

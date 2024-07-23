@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,11 +29,13 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
-#include <velocypack/Collection.h>
+#include <absl/strings/str_cat.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <array>
 #include <iostream>
-#include <map>
 #include <string_view>
 
 using namespace arangodb;
@@ -41,17 +43,18 @@ using namespace arangodb::aql;
 
 auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   if (ADB_UNLIKELY(!slice.isObject())) {
-    using namespace std::string_literals;
-    return Result(TRI_ERROR_TYPE_ERROR,
-                  "When deserializating AqlCall: Expected object, got "s +
-                      slice.typeName());
+    return Result(
+        TRI_ERROR_TYPE_ERROR,
+        absl::StrCat("When deserializing AqlCall: Expected object, got ",
+                     slice.typeName()));
   }
 
-  auto expectedPropertiesFound = std::map<std::string_view, bool>{};
-  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteLimit, false);
-  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteLimitType, false);
-  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteFullCount, false);
-  expectedPropertiesFound.emplace(StaticStrings::AqlRemoteOffset, false);
+  auto expectedPropertiesFound =
+      std::array<std::pair<std::string_view, bool>, 4>{
+          {{StaticStrings::AqlRemoteLimit, false},
+           {StaticStrings::AqlRemoteLimitType, false},
+           {StaticStrings::AqlRemoteFullCount, false},
+           {StaticStrings::AqlRemoteOffset, false}}};
 
   auto limit = AqlCall::Limit{};
   auto limitType = std::optional<AqlCall::LimitType>{};
@@ -60,32 +63,30 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
 
   auto const readLimit =
       [](velocypack::Slice slice) -> ResultT<AqlCall::Limit> {
-    auto const type = slice.type();
-    if (type == velocypack::ValueType::String &&
+    if (slice.isString() &&
         slice.isEqualString(StaticStrings::AqlRemoteInfinity)) {
       return AqlCall::Limit{AqlCall::Infinity{}};
-    } else if (slice.isInteger()) {
+    }
+    if (slice.isInteger()) {
       try {
         return AqlCall::Limit{slice.getNumber<std::size_t>()};
       } catch (velocypack::Exception const& ex) {
-        auto message = std::string{"When deserializating AqlCall: "};
-        message += "When reading limit: ";
-        message += ex.what();
-        return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+        return Result(
+            TRI_ERROR_TYPE_ERROR,
+            absl::StrCat("When deserializing AqlCall: When reading limit: ",
+                         ex.what()));
       }
-    } else {
-      auto message = std::string{"When deserializating AqlCall: "};
-      message += "When reading limit: ";
-      if (slice.isString()) {
-        message += "Unexpected value '";
-        message += slice.stringView();
-        message += "'";
-      } else {
-        message += "Unexpected type ";
-        message += slice.typeName();
-      }
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }
+    if (slice.isString()) {
+      return Result(TRI_ERROR_TYPE_ERROR,
+                    absl::StrCat("When deserializing AqlCall: When reading "
+                                 "limit: Unexpected value '",
+                                 slice.stringView(), "'"));
+    }
+    return Result(TRI_ERROR_TYPE_ERROR,
+                  absl::StrCat("When deserializing AqlCall: When reading "
+                               "limit: Unexpected type ",
+                               slice.typeName()));
   };
 
   auto const readLimitType = [](velocypack::Slice slice)
@@ -94,34 +95,33 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
       return {std::nullopt};
     }
     if (ADB_UNLIKELY(!slice.isString())) {
-      auto message = std::string{
-          "When deserializating AqlCall: When reading limitType: "
-          "Unexpected type "};
-      message += slice.typeName();
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      return Result(
+          TRI_ERROR_TYPE_ERROR,
+          absl::StrCat("When deserializing AqlCall: When reading limitType: "
+                       "Unexpected type ",
+                       slice.typeName()));
     }
     auto value = slice.stringView();
     if (value == StaticStrings::AqlRemoteLimitTypeSoft) {
       return {AqlCall::LimitType::SOFT};
-    } else if (value == StaticStrings::AqlRemoteLimitTypeHard) {
-      return {AqlCall::LimitType::HARD};
-    } else {
-      auto message = std::string{
-          "When deserializating AqlCall: When reading limitType: "
-          "Unexpected value '"};
-      message += value;
-      message += "'";
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
     }
+    if (value == StaticStrings::AqlRemoteLimitTypeHard) {
+      return {AqlCall::LimitType::HARD};
+    }
+    return Result(
+        TRI_ERROR_TYPE_ERROR,
+        absl::StrCat("When deserializing AqlCall: When reading limitType: "
+                     "Unexpected value '",
+                     value, "'"));
   };
 
   auto const readFullCount = [](velocypack::Slice slice) -> ResultT<bool> {
     if (ADB_UNLIKELY(!slice.isBool())) {
-      auto message = std::string{
-          "When deserializating AqlCall: When reading fullCount: "
-          "Unexpected type "};
-      message += slice.typeName();
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      return Result(
+          TRI_ERROR_TYPE_ERROR,
+          absl::StrCat("When deserializing AqlCall: When reading fullCount: "
+                       "Unexpected type ",
+                       slice.typeName()));
     }
     return slice.getBool();
   };
@@ -129,37 +129,35 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   auto const readOffset =
       [](velocypack::Slice slice) -> ResultT<decltype(offset)> {
     if (!slice.isInteger()) {
-      auto message = std::string{
-          "When deserializating AqlCall: When reading offset: "
-          "Unexpected type "};
-      message += slice.typeName();
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      return Result(
+          TRI_ERROR_TYPE_ERROR,
+          absl::StrCat("When deserializing AqlCall: When reading offset: "
+                       "Unexpected type ",
+                       slice.typeName()));
     }
     try {
       return slice.getNumber<decltype(offset)>();
     } catch (velocypack::Exception const& ex) {
-      auto message =
-          std::string{"When deserializating AqlCall: When reading offset: "};
-      message += ex.what();
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      return Result(
+          TRI_ERROR_TYPE_ERROR,
+          absl::StrCat("When deserializing AqlCall: When reading offset: ",
+                       ex.what()));
     }
   };
 
-  for (auto const it : velocypack::ObjectIterator(slice)) {
-    auto const keySlice = it.key;
+  for (auto it :
+       velocypack::ObjectIterator(slice, /*useSequentialIteration*/ true)) {
+    auto keySlice = it.key;
     if (ADB_UNLIKELY(!keySlice.isString())) {
       return Result(TRI_ERROR_TYPE_ERROR,
-                    "When deserializating AqlCall: Key is not a string");
+                    "When deserializing AqlCall: Key is not a string");
     }
-    auto const key = keySlice.stringView();
+    auto key = keySlice.stringView();
 
-    if (auto propIt = expectedPropertiesFound.find(key);
+    if (auto propIt = std::find_if(
+            expectedPropertiesFound.begin(), expectedPropertiesFound.end(),
+            [&key](auto const& epf) { return epf.first == key; });
         ADB_LIKELY(propIt != expectedPropertiesFound.end())) {
-      if (ADB_UNLIKELY(propIt->second)) {
-        return Result(
-            TRI_ERROR_TYPE_ERROR,
-            "When deserializating AqlCall: Encountered duplicate key");
-      }
       propIt->second = true;
     }
 
@@ -189,7 +187,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
       offset = maybeOffset.get();
     } else {
       LOG_TOPIC("404b0", WARN, Logger::AQL)
-          << "When deserializating AqlCall: Encountered unexpected key " << key;
+          << "When deserializing AqlCall: Encountered unexpected key " << key;
       // If you run into this assertion during rolling upgrades after adding a
       // new attribute, remove it in the older version.
       TRI_ASSERT(false);
@@ -198,9 +196,9 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
 
   for (auto const& it : expectedPropertiesFound) {
     if (ADB_UNLIKELY(!it.second)) {
-      auto message = std::string{"When deserializating AqlCall: missing key "};
-      message += it.first;
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      return Result(
+          TRI_ERROR_TYPE_ERROR,
+          absl::StrCat("When deserializing AqlCall: missing key ", it.first));
     }
   }
 
@@ -218,7 +216,7 @@ auto AqlCall::fromVelocyPack(velocypack::Slice slice) -> ResultT<AqlCall> {
   } else if (ADB_UNLIKELY(!std::holds_alternative<Infinity>(limit))) {
     return Result(
         TRI_ERROR_TYPE_ERROR,
-        "When deserializating AqlCall: limit set, but limitType is missing.");
+        "When deserializing AqlCall: limit set, but limitType is missing");
   }
 
   call.offset = offset;
@@ -251,20 +249,19 @@ void AqlCall::toVelocyPack(velocypack::Builder& builder) const {
   auto const limitTypeValue = std::invoke([&]() {
     if (!limitType.has_value()) {
       return Value(ValueType::Null);
-    } else {
-      switch (limitType.value()) {
-        case LimitType::SOFT:
-          return Value(StaticStrings::AqlRemoteLimitTypeSoft);
-        case LimitType::HARD:
-          return Value(StaticStrings::AqlRemoteLimitTypeHard);
-      }
-      // unreachable
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
+    switch (limitType.value()) {
+      case LimitType::SOFT:
+        return Value(StaticStrings::AqlRemoteLimitTypeSoft);
+      case LimitType::HARD:
+        return Value(StaticStrings::AqlRemoteLimitTypeHard);
+    }
+    // unreachable
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   });
 
-  builder.openObject();
+  builder.openObject(/*unindexed*/ true);
   builder.add(StaticStrings::AqlRemoteLimit, limitValue);
   builder.add(StaticStrings::AqlRemoteLimitType, limitTypeValue);
   builder.add(StaticStrings::AqlRemoteFullCount, Value(fullCount));

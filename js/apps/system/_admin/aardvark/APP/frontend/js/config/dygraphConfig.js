@@ -1,5 +1,3 @@
-/*global _, Dygraph, window, document */
-
 (function () {
   "use strict";
   window.dygraphConfig = {

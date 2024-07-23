@@ -162,7 +162,7 @@ function make_line(n, field, \
 # Process the input line LINE and save it for later output.
 
 function process_input_line(line, \
-			    f, field, end, i, n, r, startdef, \
+			    f, field, end, n, outline, r, \
 			    linkline, ruleline, zoneline)
 {
   # Remove comments, normalize spaces, and append a space to each line.
@@ -199,8 +199,10 @@ function process_input_line(line, \
   }
 
   # Abbreviate "max", "min", "only" and month names.
-  gsub(/ max /, " ma ", line)
-  gsub(/ min /, " mi ", line)
+  # Although "max" and "min" can both be abbreviated to just "m",
+  # the longer forms "ma" and "mi" are needed with zic 2023d and earlier.
+  gsub(/ max /, dataform == "vanguard" ? " m " : " ma ", line)
+  gsub(/ min /, dataform == "vanguard" ? " m " : " mi ", line)
   gsub(/ only /, " o ", line)
   gsub(/ Jan /, " Ja ", line)
   gsub(/ Feb /, " F ", line)
@@ -234,66 +236,96 @@ function process_input_line(line, \
     rule_used[r] = 1
   }
 
-  # If this zone supersedes an earlier one, delete the earlier one
-  # from the saved output lines.
-  startdef = ""
   if (zoneline)
     zonename = startdef = field[2]
   else if (linkline)
     zonename = startdef = field[3]
   else if (ruleline)
     zonename = ""
-  if (startdef) {
-    i = zonedef[startdef]
-    if (i) {
-      do
-	output_line[i - 1] = ""
-      while (output_line[i++] ~ /^[-+0-9]/);
-    }
-  }
-  zonedef[zonename] = nout + 1
 
-  # Save the line for later output.
-  output_line[nout++] = make_line(n, field)
+  # Save the information for later output.
+  outline = make_line(n, field)
+  if (ruleline)
+    rule_output_line[nrule_out++] = outline
+  else if (linkline) {
+    # In vanguard format with Gawk, links are output sorted by destination.
+    if (dataform == "vanguard" && PROCINFO["version"])
+      linkdef[zonename] = field[2]
+    else
+      link_output_line[nlink_out++] = outline
+  }else
+    zonedef[zonename] = (zoneline ? "" : zonedef[zonename] "\n") outline
 }
 
 function omit_unused_rules( \
 			   i, field)
 {
-  for (i = 0; i < nout; i++) {
-    split(output_line[i], field)
-    if (field[1] == "R" && !rule_used[field[2]]) {
-      output_line[i] = ""
-    }
+  for (i = 0; i < nrule_out; i++) {
+    split(rule_output_line[i], field)
+    if (!rule_used[field[2]])
+      rule_output_line[i] = ""
   }
 }
 
 function abbreviate_rule_names( \
-			       abbr, f, field, i, n, r)
+			       abbr, f, field, i, n, newdef, newline, r, \
+			       zoneline, zonelines, zonename)
 {
-  for (i = 0; i < nout; i++) {
-    n = split(output_line[i], field)
+  for (i = 0; i < nrule_out; i++) {
+    n = split(rule_output_line[i], field)
     if (n) {
-      f = field[1] == "Z" ? 4 : field[1] == "L" ? 0 : 2
-      r = field[f]
+      r = field[2]
       if (r ~ /^[^-+0-9]/) {
 	abbr = rule[r]
 	if (!abbr) {
 	  rule[r] = abbr = gen_rule_name(r)
 	}
-	field[f] = abbr
-	output_line[i] = make_line(n, field)
+	field[2] = abbr
+	rule_output_line[i] = make_line(n, field)
       }
     }
+  }
+  for (zonename in zonedef) {
+    zonelines = split(zonedef[zonename], zoneline, /\n/)
+    newdef = ""
+    for (i = 1; i <= zonelines; i++) {
+      newline = zoneline[i]
+      n = split(newline, field)
+      f = i == 1 ? 4 : 2
+      r = rule[field[f]]
+      if (r) {
+	field[f] = r
+	newline = make_line(n, field)
+      }
+      newdef = (newdef ? newdef "\n" : "") newline
+    }
+    zonedef[zonename] = newdef
   }
 }
 
 function output_saved_lines( \
-			    i)
+			    i, zonename)
 {
-  for (i = 0; i < nout; i++)
-    if (output_line[i])
-      print output_line[i]
+  for (i = 0; i < nrule_out; i++)
+    if (rule_output_line[i])
+      print rule_output_line[i]
+
+  # When using gawk, output zones sorted by name.
+  # This makes the output a bit more compressible.
+  PROCINFO["sorted_in"] = "@ind_str_asc"
+  for (zonename in zonedef)
+    print zonedef[zonename]
+
+  if (nlink_out)
+    for (i = 0; i < nlink_out; i++)
+      print link_output_line[i]
+  else {
+    # When using gawk, output links sorted by destination.
+    # This also helps compressibility a bit.
+    PROCINFO["sorted_in"] = "@val_type_asc"
+    for (zonename in linkdef)
+      printf "L %s %s\n", linkdef[zonename], zonename
+  }
 }
 
 BEGIN {

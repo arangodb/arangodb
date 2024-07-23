@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,10 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
 #include "v8-views.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -47,9 +51,12 @@
 
 #include <velocypack/Collection.h>
 
-namespace {
+#include <string_view>
 
+namespace {
 using namespace arangodb;
+
+constexpr std::string_view moduleName("views management");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return the specified vocbase is granted 'level' access
@@ -219,9 +226,12 @@ static void JS_CreateViewVocbase(
   try {
     // First refresh our analyzers cache to see all latest changes in analyzers
     TRI_GET_SERVER_GLOBALS(ArangodServer);
-    auto res = v8g->server()
-                   .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                   .loadAvailableAnalyzers(vocbase.name());
+    auto res =
+        v8g->server()
+            .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+            .loadAvailableAnalyzers(
+                vocbase.name(),
+                arangodb::transaction::OperationOriginREST{::moduleName});
 
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -642,9 +652,12 @@ static void JS_PropertiesViewVocbase(
 
     auto& vocbase = GetContextVocBase(isolate);
     TRI_GET_SERVER_GLOBALS(ArangodServer);
-    auto res = v8g->server()
-                   .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                   .loadAvailableAnalyzers(vocbase.name());
+    auto res =
+        v8g->server()
+            .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+            .loadAvailableAnalyzers(
+                vocbase.name(),
+                arangodb::transaction::OperationOriginREST{::moduleName});
 
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);

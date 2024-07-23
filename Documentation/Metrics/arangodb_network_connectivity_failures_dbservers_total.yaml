@@ -1,0 +1,31 @@
+name: arangodb_network_connectivity_failures_dbservers_total
+introducedIn: "3.11.4"
+help: |
+  Number of failed connectivity check requests sent to DB-Servers.
+unit: number
+type: counter
+category: Network
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+description: |
+  Number of failed connectivity check requests sent by this instance
+  to DB-Server.
+  The metric will be increased if a cluster-internal connection to a
+  DB-Server cannot be established within 10 seconds. In this case the
+  instance will also log a warning.
+  Connectivity checks run with a configurable frequency, adjustable via
+  the `--cluster.connectivity-check-interval` startup option.
+
+troubleshoot: |
+  If this metric keeps increasing permanently or for longer periods, there
+  are likely network connectivity issues or misconfigurations, which can
+  prevent the instance from connecting to every DB-Server in the cluster
+  (potentially connecting to itself). In this case it is advised to check
+  the connectivity manually, and ensure that the instance can make connections
+  to all DB-Servers, potentially including itself.
+
+  If there are temporary network glitches or instance restarts, this metric
+  can also increase. But increases should stop once the network has stabilized
+  and/or instances have restarted successfully.

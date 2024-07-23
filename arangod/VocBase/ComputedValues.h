@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,6 +31,7 @@
 #include "Basics/ResultT.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
+#include "Transaction/OperationOrigin.h"
 
 #include <cstdint>
 #include <span>
@@ -82,15 +83,15 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
 
   void setName(std::string_view name) noexcept { _name = name; }
 
-  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
-                                       bool caseInsensitive) override;
+  icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
+                                             bool caseInsensitive) override;
 
-  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
-                                      bool caseInsensitive) override;
+  icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
+                                            bool caseInsensitive) override;
 
-  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
-                                       velocypack::Options const* opts,
-                                       bool& isEmptyExpression) override;
+  icu_64_64::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
+                                             velocypack::Options const* opts,
+                                             bool& isEmptyExpression) override;
 
   ValidatorBase* buildValidator(velocypack::Slice params) override;
 
@@ -131,6 +132,7 @@ class ComputedValues {
    public:
     ComputedValue(TRI_vocbase_t& vocbase, std::string_view name,
                   std::string_view expressionString,
+                  transaction::OperationOrigin operationOrigin,
                   ComputeValuesOn mustComputeOn, bool overwrite,
                   bool failOnWarning, bool keepNull);
     ComputedValue(ComputedValue const&) = delete;
@@ -167,9 +169,12 @@ class ComputedValues {
   };
 
  public:
+  static constexpr std::string_view moduleName = "computed values validation";
+
   explicit ComputedValues(TRI_vocbase_t& vocbase,
                           std::span<std::string const> shardKeys,
-                          velocypack::Slice params);
+                          velocypack::Slice params,
+                          transaction::OperationOrigin operationOrigin);
   ComputedValues(ComputedValues const&) = delete;
   ComputedValues& operator=(ComputedValues const&) = delete;
   ~ComputedValues();
@@ -188,7 +193,8 @@ class ComputedValues {
 
   static ResultT<std::shared_ptr<ComputedValues>> buildInstance(
       TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
-      velocypack::Slice computedValues);
+      velocypack::Slice computedValues,
+      transaction::OperationOrigin operationOrigin);
 
  private:
   void mergeComputedAttributes(
@@ -200,7 +206,8 @@ class ComputedValues {
 
   Result buildDefinitions(TRI_vocbase_t& vocbase,
                           std::span<std::string const> shardKeys,
-                          velocypack::Slice params);
+                          velocypack::Slice params,
+                          transaction::OperationOrigin operationOrigin);
 
   // individual instructions for computed values
   std::vector<ComputedValue> _values;

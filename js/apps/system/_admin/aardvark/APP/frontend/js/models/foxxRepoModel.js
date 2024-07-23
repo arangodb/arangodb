@@ -1,6 +1,3 @@
-/* jshint browser: true */
-/* eslint-env browser */
-/* global Backbone */
 (function () {
   'use strict';
 

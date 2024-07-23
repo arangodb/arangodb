@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -54,23 +54,17 @@ class ReadLocker;
 namespace auth {
 class Handler;
 
-typedef std::unordered_map<std::string, auth::User> UserMap;
+using UserMap = std::unordered_map<std::string, auth::User>;
 
 /// UserManager is the sole point of access for users and permissions
-/// stored in `_system/_users` as well as in external authentication
-/// systems like LDAP. The permissions are cached locally if possible,
+/// stored in `_system/_users`. The permissions are cached locally if possible,
 /// to avoid unnecessary disk access. An instance of this should only
 /// exist on coordinators and single servers.
 class UserManager {
  public:
   explicit UserManager(ArangodServer&);
-#ifdef USE_ENTERPRISE
-  explicit UserManager(ArangodServer&,
-                       std::unique_ptr<arangodb::auth::Handler>);
-#endif
   ~UserManager() = default;
 
- public:
   typedef std::function<Result(auth::User&)> UserCallback;
   typedef std::function<Result(auth::User const&)> ConstUserCallback;
 
@@ -94,7 +88,7 @@ class UserManager {
   void createRootUser();
 
   velocypack::Builder allUsers();
-  /// Add user from arangodb, do not use for LDAP  users
+  /// Add user from arangodb
   Result storeUser(bool replace, std::string const& user,
                    std::string const& pass, bool active,
                    velocypack::Slice extras);
@@ -117,21 +111,12 @@ class UserManager {
   /// Convenience method to check a password
   bool checkPassword(std::string const& username, std::string const& password);
 
-  /// Convenience method to refresh user rights
-  /// returns true if the user was actually refreshed and the caller may
-  /// need to update its own caches
-#ifdef USE_ENTERPRISE
-  bool refreshUser(std::string const& username);
-#else
-  inline bool refreshUser(std::string const& username) { return false; }
-#endif
-
   auth::Level databaseAuthLevel(std::string const& username,
                                 std::string const& dbname,
                                 bool configured = false);
   auth::Level collectionAuthLevel(std::string const& username,
                                   std::string const& dbname,
-                                  std::string const& coll,
+                                  std::string_view coll,
                                   bool configured = false);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -140,28 +125,12 @@ class UserManager {
   void setAuthInfo(auth::UserMap const& userEntryMap);
 #endif
 
-#ifdef USE_ENTERPRISE
-
-  /// @brief apply roles to all users in cache
-  void applyRolesToAllUsers();
-  /// @brief apply roles to user, must lock _userCacheLock
-  void applyRoles(auth::User&) const;
-
-  /// @brief Check authorization with external system
-  /// @param userCached is the user cached locally
-  /// @param a read guard which may need to be released
-  bool checkPasswordExt(std::string const& username,
-                        std::string const& password, bool userCached,
-                        basics::ReadLocker<basics::ReadWriteLock>& readGuard);
-#endif
-
  private:
   /// @brief load users and permissions from local database
   void loadFromDB();
   /// @brief store or replace user object
   Result storeUserInternal(auth::User const& user, bool replace);
 
- private:
   /// underlying application server
   ArangodServer& _server;
 
@@ -175,13 +144,10 @@ class UserManager {
   /// @brief used to update caches
   std::atomic<uint64_t> _globalVersion;
   std::atomic<uint64_t> _internalVersion;
+  std::atomic<bool> _usersInitialized;
 
   /// Caches permissions and other user info
   UserMap _userCache;
-#ifdef USE_ENTERPRISE
-  /// iterface to external authentication systems like LDAP
-  std::unique_ptr<arangodb::auth::Handler> _authHandler;
-#endif
 };
 }  // namespace auth
 }  // namespace arangodb

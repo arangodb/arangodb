@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2022 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,10 +28,6 @@
 const functionsDocumentation = {
   'rta_makedata': 'Release Testautomation Makedata / Checkdata framework'
 };
-const optionsDocumentation = [
-  '   - `rtasource`: directory of the release test automation',
-  '   - `makedata_args`: list of arguments ala --makedata_args:bigDoc true'
-];
 
 const internal = require('internal');
 
@@ -42,8 +38,8 @@ const statusExternal = internal.statusExternal;
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
-const toArgv = require('internal').toArgv;
 const pu = require('@arangodb/testutils/process-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
@@ -89,13 +85,7 @@ function makeDataWrapper (options) {
       return true;
     }
     runOneTest(file) {
-      let res = {'total':0, 'duration':0.0, 'status':true};
-      let tests = [
-        fs.join(this.options.rtasource, 'test_data', 'makedata.js'),
-        fs.join(this.options.rtasource, 'test_data', 'checkdata.js'),
-        fs.join(this.options.rtasource, 'test_data', 'checkdata.js'),
-        fs.join(this.options.rtasource, 'test_data', 'cleardata.js'),
-      ];
+      let res = {'total':0, 'duration':0.0, 'status':true, message: '', 'failed': 0};
       let messages = [
         "initially create the test data",
         "revalidate the test data for the first time",
@@ -104,40 +94,17 @@ function makeDataWrapper (options) {
       ];
       let count = 0;
       let counters = { nonAgenciesCount: 1};
-      tests.forEach(file => {
-        print('\n' + (new Date()).toISOString() + GREEN + " [============] Makedata : Trying " + file + '\n ' + messages[count] + ' ... ' + count, RESET);
+      [
+        0, // makedata
+        1, // checkdata
+        1, // checkdata (with resillience test - instances stopped)
+        2  // clear data
+      ].forEach(testCount => {
+        let moreargv = [];
         count += 1;
-        let args = pu.makeArgs.arangosh(this.options);
-        args['server.endpoint'] = this.instanceManager.findEndpoint();
-        args['javascript.execute'] = file;
-        if (this.options.forceJson) {
-          args['server.force-json'] = true;
-        }
-        args['log.level'] = ['warning', 'httpclient=debug', 'V8=debug'];
-        if (this.addArgs !== undefined) {
-          args = Object.assign(args, this.addArgs);
-        }
-        let argv = toArgv(args);
-        argv = argv.concat(['--',
-                            '--minReplicationFactor', '2',
-                            '--progress', 'true',
-                            '--oldVersion', db._version()
-                           ]);
-        if (this.options.hasOwnProperty('makedata_args')) {
-          argv = argv.concat(toArgv(this.options['makedata_args']));
-        }
         if (this.options.cluster) {
           if (count === 2) {
-            args['javascript.execute'] = fs.join(this.options.rtasource, 'test_data','run_in_arangosh.js');
-            let myargs = toArgv(args).concat([
-              '--javascript.module-directory',
-              fs.join(this.options.rtasource, 'test_data'),
-              '--',
-              fs.join(this.options.rtasource, 'test_data', 'tests', 'js', 'server', 'cluster', 'wait_for_shards_in_sync.js'),
-              '--args',
-              'true'
-            ]);
-            let rc = pu.executeAndWait(pu.ARANGOSH_BIN, myargs, this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
+            ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
           }
 
           if (count === 3) {
@@ -150,18 +117,25 @@ function makeDataWrapper (options) {
                   ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
             stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
             stoppedDbServerInstance.waitForExit();
-            argv = argv.concat([ '--disabledDbserverUUID', stoppedDbServerInstance.id]);
+            moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
+            if (this.options.replicationVersion === 2 || this.options.replicationVersion === "2") {
+              this.instanceManager.removeServerFromAgency(stoppedDbServerInstance.id);
+            }
           }
         }
+        let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
-        if (this.options.extremeVerbosity !== 'silence') {
-          print(argv);
+        let rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
+        if (!rc.status) {
+          let rx = new RegExp(/\\n/g);
+          res.message += file + ':\n' + fs.read(logFile).replace(rx, '\n');
+          res.status = false;
+          res.failed += 1;
+        } else {
+          fs.remove(logFile);
         }
-        let rc = pu.executeAndWait(pu.ARANGOSH_BIN, argv, this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
         res.total++;
         res.duration += rc.duration;
-        res.status &= rc.status;
-
         if ((this.options.cluster) && (count === 3)) {
           print('relaunching dbserver');
           stoppedDbServerInstance.restartOneInstance({});
@@ -185,7 +159,7 @@ function makeDataWrapper (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
-  opts['rtasource'] = fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata'));
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, {
+    'rta_makedata': 'Release Testautomation Makedata / Checkdata framework'
+  });
 };

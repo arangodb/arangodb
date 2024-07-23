@@ -13,7 +13,7 @@ exposedBy:
   - agent
   - single
 description: |
-  This counter reflects the total number of **asynchronous** HTTP (or VST)
+  This counter reflects the total number of **asynchronous** HTTP
   requests which have hit this particular instance of `arangod`. Asynchronous
   refers to the fact that the response is not sent with the HTTP response,
   but is rather queried separately using the `/_api/jobs` API.

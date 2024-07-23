@@ -1,4 +1,5 @@
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { notifySuccess } from "../../../utils/notifications";
 
 export const useDeleteIndex = ({ collectionId }: { collectionId: string }) => {
   const onDeleteIndex = ({
@@ -34,9 +35,7 @@ const handleSuccess = ({
     desc: "Removing Index",
     collection: collectionId
   });
-  window.arangoHelper.arangoNotification(
-    `Index deletion in progress (ID: ${id}`
-  );
+  notifySuccess(`Index deletion in progress (ID: ${id})`);
   onSuccess();
 };
 const postDeleteIndex = async ({
@@ -49,7 +48,7 @@ const postDeleteIndex = async ({
   onSuccess: () => void;
 }) => {
   window.arangoHelper.checkDatabasePermissions(
-    function() {
+    function () {
       window.arangoHelper.arangoError(
         "You do not have the permissions to delete indexes in this database."
       );
@@ -74,7 +73,6 @@ const postDeleteIndex = async ({
       } catch {
         handleError();
       }
-    
     }
   );
 };

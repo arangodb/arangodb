@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,6 +36,7 @@
 
 #include "Inspection/Access.h"
 #include "Inspection/Format.h"
+#include "Inspection/Transformers.h"
 #include "Inspection/Types.h"
 
 namespace {
@@ -114,6 +115,16 @@ auto inspect(Inspector& f, Map& x) {
   return f.object(x).fields(f.field("map", x.map),
                             f.field("unordered", x.unordered));
 }
+
+struct TransformedMap {
+  std::map<int, Container> map;
+
+  friend inline auto inspect(auto& f, TransformedMap& x) {
+    return f.object(x).fields(
+        f.field("map", x.map)
+            .transformWith(arangodb::inspection::mapToListTransformer(x.map)));
+  }
+};
 
 struct Set {
   std::set<Container> set;
@@ -371,6 +382,21 @@ auto inspect(Inspector& f, AnEmptyObject& x) {
   return f.object(x).fields();
 }
 
+struct NonDefaultConstructibleIntLike {
+  NonDefaultConstructibleIntLike() = delete;
+  explicit NonDefaultConstructibleIntLike(std::uint64_t value) : value(value) {}
+
+  friend auto operator==(NonDefaultConstructibleIntLike,
+                         NonDefaultConstructibleIntLike) -> bool = default;
+
+  std::uint64_t value{};
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, NonDefaultConstructibleIntLike& x) {
+  return f.apply(x.value);
+}
+
 }  // namespace
 
 template<>
@@ -384,9 +410,17 @@ struct Access<Specialization> : AccessBase<Specialization> {
     return f.object(x).fields(f.field("i", x.i), f.field("s", x.s));
   }
 };
+
 template<>
 struct Access<AnEnumClass>
     : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
+template<>
+struct Factory<NonDefaultConstructibleIntLike>
+    : BaseFactory<NonDefaultConstructibleIntLike> {
+  static auto make_value() -> NonDefaultConstructibleIntLike {
+    return NonDefaultConstructibleIntLike(0);
+  }
+};
 }  // namespace arangodb::inspection
 
 namespace {
@@ -549,6 +583,28 @@ auto inspect(Inspector& f, InlineVariant& x) {
   return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
                             f.field("c", x.c), f.field("d", x.d),
                             f.field("e", x.e));
+}
+
+struct InlineVariantWithNonDefaultConstructible
+    : std::variant<std::string, NonDefaultConstructibleIntLike> {};
+
+template<class Inspector>
+auto inspect(Inspector& f, InlineVariantWithNonDefaultConstructible& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).unqualified().alternatives(
+      insp::inlineType<std::string>(),
+      insp::inlineType<NonDefaultConstructibleIntLike>());
+}
+
+struct QualifiedVariantWithNonDefaultConstructible
+    : std::variant<std::string, NonDefaultConstructibleIntLike> {};
+
+template<class Inspector>
+auto inspect(Inspector& f, QualifiedVariantWithNonDefaultConstructible& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).qualified("t", "v").alternatives(
+      insp::inlineType<std::string>(),
+      insp::type<NonDefaultConstructibleIntLike>("nondc_type"));
 }
 
 enum class MyStringEnum {

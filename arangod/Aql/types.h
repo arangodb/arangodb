@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,9 +27,9 @@
 #include "Aql/RegisterId.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterTypes.h"
+#include "Containers/HashSetFwd.h"
 
-#include <Containers/HashSetFwd.h>
-
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
@@ -37,14 +37,12 @@
 #include <unordered_map>
 #include <vector>
 
-namespace boost {
-namespace container {
+namespace boost::container {
 template<class T>
 class new_allocator;
 template<class Key, class Compare, class AllocatorOrContainer>
 class flat_set;
-}  // namespace container
-}  // namespace boost
+}  // namespace boost::container
 
 namespace arangodb {
 
@@ -61,8 +59,8 @@ struct Collection;
 using VariableId = uint32_t;
 
 /// @brief type of a query id
-typedef uint64_t QueryId;
-typedef uint64_t EngineId;
+using QueryId = uint64_t;
+using EngineId = uint64_t;
 
 // Map RemoteID->ServerID->[SnippetId]
 using MapRemoteToSnippet = std::unordered_map<
@@ -99,6 +97,9 @@ using RegIdOrderedSetStack = std::vector<RegIdOrderedSet>;
 using RegIdFlatSet = containers::flat_set<RegisterId>;
 using RegIdFlatSetStack = std::vector<containers::flat_set<RegisterId>>;
 
+using BindParameterVariableMapping =
+    absl::flat_hash_map<std::string, Variable const*>;
+
 }  // namespace aql
 
 namespace traverser {
@@ -107,6 +108,6 @@ class BaseEngine;
 using GraphEngineList = std::vector<std::unique_ptr<BaseEngine>>;
 }  // namespace traverser
 
-enum class ExplainRegisterPlan { No = 0, Yes };
+enum class ExplainRegisterPlan : uint8_t { No = 0, Yes };
 
 }  // namespace arangodb

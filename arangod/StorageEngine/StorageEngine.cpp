@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,7 +28,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/PersistedStateInfo.h"
+#include "Replication2/Storage/IStorageEngineMethods.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -60,7 +61,11 @@ void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
 
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {
-  return std::make_unique<TRI_vocbase_t>(std::move(info));
+  DatabaseFeature& databaseFeature =
+      info.server().getFeature<DatabaseFeature>();
+  return std::make_unique<TRI_vocbase_t>(std::move(info),
+                                         databaseFeature.versionTracker(),
+                                         databaseFeature.extendedNames());
 }
 
 Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
@@ -93,9 +98,8 @@ IndexFactory const& StorageEngine::indexFactory() const {
 void StorageEngine::getCapabilities(velocypack::Builder& builder) const {
   builder.openObject();
   builder.add("name", velocypack::Value(typeName()));
+
   builder.add("supports", velocypack::Value(VPackValueType::Object));
-  // legacy attribute, always false since 3.7.
-  builder.add("dfdb", velocypack::Value(false));
 
   builder.add("indexes", velocypack::Value(VPackValueType::Array));
   for (auto const& it : indexFactory().supportedIndexes()) {
@@ -120,7 +124,9 @@ void StorageEngine::getStatistics(velocypack::Builder& builder) const {
   builder.close();
 }
 
-void StorageEngine::getStatistics(std::string& result) const {}
+void StorageEngine::toPrometheus(std::string& /*result*/,
+                                 std::string_view /*globals*/,
+                                 bool /*ensureWhitespace*/) const {}
 
 void StorageEngine::registerCollection(
     TRI_vocbase_t& vocbase,
@@ -136,8 +142,7 @@ void StorageEngine::registerView(
 
 void StorageEngine::registerReplicatedState(
     TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    std::unique_ptr<
-        arangodb::replication2::replicated_state::IStorageEngineMethods>
+    std::unique_ptr<arangodb::replication2::storage::IStorageEngineMethods>
         methods) {
   vocbase.registerReplicatedState(id, std::move(methods));
 }
@@ -146,6 +151,8 @@ std::string_view StorageEngine::typeName() const { return _typeName; }
 
 void StorageEngine::addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
+#ifdef USE_V8
 void StorageEngine::addV8Functions() {}
+#endif
 
 void StorageEngine::addRestHandlers(rest::RestHandlerFactory& handlerFactory) {}

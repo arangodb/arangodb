@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
 #include "Basics/Endian.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "IResearch/Misc.h"
 
 #include <velocypack/Slice.h>
@@ -35,49 +36,50 @@
 #include <vector>
 
 namespace v8 {
+
 template<class T>
 class Local;
 template<class T>
 using Handle = Local<T>;
 class Value;
 class Isolate;
-}  // namespace v8
-namespace arangodb {
-namespace aql {
-class SharedAqlItemBlockPtr;
-struct Range;
-}  // namespace aql
-namespace velocypack {
-template<typename T>
-class Buffer;
-class Builder;
-struct Options;
-}  // namespace velocypack
-}  // namespace arangodb
 
+}  // namespace v8
 namespace arangodb {
 
 class CollectionNameResolver;
 
-namespace transaction {
-class Methods;
-}
+namespace velocypack {
 
+template<typename T>
+class Buffer;
+class Builder;
+struct Options;
+
+}  // namespace velocypack
+namespace transaction {
+
+class Methods;
+
+}  // namespace transaction
 namespace aql {
+
+class SharedAqlItemBlockPtr;
+struct Range;
 class AqlItemBlock;
 
 // no-op struct used only internally to indicate that we want
 // to copy the data behind the slice
 struct AqlValueHintSliceCopy {
-  explicit AqlValueHintSliceCopy(arangodb::velocypack::Slice s) noexcept;
-  arangodb::velocypack::Slice slice;
+  explicit AqlValueHintSliceCopy(velocypack::Slice s) noexcept : slice{s} {}
+  velocypack::Slice slice;
 };
 
 // no-op struct used only internally to indicate that we want
 // to NOT copy the slice data
 struct AqlValueHintSliceNoCopy {
-  explicit AqlValueHintSliceNoCopy(arangodb::velocypack::Slice s) noexcept;
-  arangodb::velocypack::Slice slice;
+  explicit AqlValueHintSliceNoCopy(velocypack::Slice s) noexcept : slice{s} {}
+  velocypack::Slice slice;
 };
 
 struct AqlValueHintNone {
@@ -89,28 +91,23 @@ struct AqlValueHintNull {
 };
 
 struct AqlValueHintBool {
-  explicit AqlValueHintBool(bool v) noexcept;
-  bool const value;
-};
-
-struct AqlValueHintZero {
-  constexpr AqlValueHintZero() noexcept = default;
+  explicit AqlValueHintBool(bool v) noexcept : value{v} {}
+  bool value;
 };
 
 struct AqlValueHintDouble {
-  explicit AqlValueHintDouble(double v) noexcept;
-  double const value;
+  explicit AqlValueHintDouble(double v) noexcept : value{v} {}
+  double value;
 };
 
 struct AqlValueHintInt {
-  explicit AqlValueHintInt(int64_t v) noexcept;
-  explicit AqlValueHintInt(int v) noexcept;
-  int64_t const value;
+  explicit AqlValueHintInt(int64_t v) noexcept : value{v} {}
+  int64_t value;
 };
 
 struct AqlValueHintUInt {
-  explicit AqlValueHintUInt(uint64_t v) noexcept;
-  uint64_t const value;
+  explicit AqlValueHintUInt(uint64_t v) noexcept : value{v} {}
+  uint64_t value;
 };
 
 struct AqlValueHintEmptyArray {
@@ -121,21 +118,24 @@ struct AqlValueHintEmptyObject {
   constexpr AqlValueHintEmptyObject() noexcept = default;
 };
 
+using DocumentData = std::unique_ptr<std::string>;
+
 struct AqlValue final {
-  friend struct std::hash<arangodb::aql::AqlValue>;
-  friend struct std::equal_to<arangodb::aql::AqlValue>;
+  friend struct std::hash<aql::AqlValue>;
+  friend struct std::equal_to<aql::AqlValue>;
 
  public:
   /// @brief AqlValueType, indicates what sort of value we have
   enum AqlValueType : uint8_t {
-    VPACK_INLINE = 0,     // contains vpack data, inline
-    VPACK_SLICE_POINTER,  // contains a pointer to a vpack document, memory is
-                          // not managed!
-    VPACK_MANAGED_SLICE,  // contains vpack, via pointer to a managed uint8_t
-                          // slice, allocated by new[] or malloc()
+    VPACK_INLINE = 0,      // contains vpack data, inline
+    VPACK_SLICE_POINTER,   // contains a pointer to a vpack document,
+                           // memory is not managed!
+    VPACK_MANAGED_SLICE,   // contains vpack, via pointer to a managed uint8_t
+                           // slice, allocated by new[] or malloc()
+    VPACK_MANAGED_STRING,  // contains vpack in std::string*,
+                           // std::string always bigger than 15 bytes,
+                           // std::string* allocated via new
     RANGE,  // a pointer to a range remembering lower and upper bound, managed
-    VPACK_INLINE_INT48,   // contains vpack data, inline and unpacked 48bit
-                          // stored as 64bit int number value (system endianess)
     VPACK_INLINE_INT64,   // contains vpack data, inline and unpacked 64bit int
                           // number value (in little-endian)
     VPACK_INLINE_UINT64,  // contains vpack data, inline and unpacked 64bit uint
@@ -144,10 +144,10 @@ struct AqlValue final {
                           // double number value (in little-endian)
   };
 
-  static_assert(iresearch::adjacencyChecker<AqlValueType>::checkAdjacency<
-                    VPACK_INLINE_DOUBLE, VPACK_INLINE_UINT64,
-                    VPACK_INLINE_INT64, VPACK_INLINE_INT48>(),
-                "Values are not adjacent");
+  static_assert(
+      iresearch::adjacencyChecker<AqlValueType>::checkAdjacency<
+          VPACK_INLINE_DOUBLE, VPACK_INLINE_UINT64, VPACK_INLINE_INT64>(),
+      "Values are not adjacent");
 
   // clang-format off
   /// @brief Holds the actual data for this AqlValue
@@ -177,14 +177,13 @@ struct AqlValue final {
   /// PD - pointer data
   /// MO - memory origin
   /// ML - managed slice length
-  /// ID - isDocument flag
   /// XX - unused
   /// | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14 | 15 | Bytes
-  /// | AT | ID | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_SLICE_POINTER
+  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_SLICE_POINTER
   /// | AT | MO | ML | ML | ML | ML | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_MANAGED_SLICE
+  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_MANAGED_STRING
   /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | RANGE
   /// | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | VPACK_INLINE
-  /// | AT | ST | SD | SD | SD | SD | SD | SD | ND | ND | ND | ND | ND | ND | ND | ND | VPACK_48BIT_INLINE_INT
   /// | AT | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD | VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
   // clang-format on
  private:
@@ -219,19 +218,31 @@ struct AqlValue final {
 
       uint64_t lengthOrigin;  // First byte is AqlValue type. Second -  Memory
                               // origin. Other 6 bytes  - length
-      uint8_t* managedPointer;
+      uint8_t* pointer;
     } managedSliceMeta;
     static_assert(sizeof(managedSliceMeta) == 16,
                   "VPACK_MANAGED_SLICE layout is not 16 bytes!");
 
+    // VPACK_MANAGED_STRING
+    struct {
+      velocypack::Slice toSlice() const {
+        return velocypack::Slice{
+            reinterpret_cast<uint8_t const*>(pointer->data())};
+      }
+      size_t getLength() const { return pointer->size(); }
+
+      uint8_t padding[8];
+      std::string const* pointer;
+    } managedStringMeta;
+    static_assert(sizeof(managedStringMeta) == 16,
+                  "VPACK_MANAGED_STRING layout is not 16 bytes!");
+
     // VPACK_SLICE_POINTER
     struct {
-      uint8_t padding;
-      uint8_t isManagedDoc;
-      uint8_t padding2[6];
+      uint8_t padding[8];
       uint8_t const* pointer;
-    } pointerMeta;
-    static_assert(sizeof(pointerMeta) == 16,
+    } slicePointerMeta;
+    static_assert(sizeof(slicePointerMeta) == 16,
                   "VPACK_SLICE_POINTER layout is not 16 bytes!");
 
     // VPACK_INLINE
@@ -239,22 +250,6 @@ struct AqlValue final {
       uint8_t padding;
       uint8_t slice[15];
     } inlineSliceMeta;
-
-    // VPACK_INLINE_INT48
-    struct {
-      union {
-        struct {
-          uint8_t padding;
-          uint8_t slice[7];
-        } slice;
-        struct {
-          uint8_t padding[8];
-          int64_t val;
-        } int48;
-      } data;
-    } shortNumberMeta;
-    static_assert(sizeof(shortNumberMeta) == 16,
-                  "VPACK_INLINE_INT48 layout is not 16 bytes!");
 
     // VPACK_INLINE_INT64
     // VPACK_INLINE_UINT64
@@ -291,19 +286,19 @@ struct AqlValue final {
   // note: this is the default constructor and should be as cheap as possible
   AqlValue() noexcept;
 
+  explicit AqlValue(DocumentData& data) noexcept;
+
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer) noexcept;
 
   // construct from another AqlValue and a new data pointer, not copying!
-  explicit AqlValue(AqlValue const& other, void* data) noexcept;
+  explicit AqlValue(AqlValue const& other, void const* data) noexcept;
 
   explicit AqlValue(AqlValueHintNone) noexcept;
 
   explicit AqlValue(AqlValueHintNull) noexcept;
 
   explicit AqlValue(AqlValueHintBool v) noexcept;
-
-  explicit AqlValue(AqlValueHintZero) noexcept;
 
   // construct from a double value
   explicit AqlValue(AqlValueHintDouble v) noexcept;
@@ -314,9 +309,6 @@ struct AqlValue final {
   // construct from a uint64 value
   explicit AqlValue(AqlValueHintUInt v) noexcept;
 
-  // construct from char* and length, copying the string
-  [[deprecated]] AqlValue(char const* value, size_t length);
-
   // construct from std::string
   explicit AqlValue(std::string_view value);
 
@@ -325,7 +317,7 @@ struct AqlValue final {
   explicit AqlValue(AqlValueHintEmptyObject) noexcept;
 
   // construct from Buffer, potentially taking over its ownership
-  explicit AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer);
+  explicit AqlValue(velocypack::Buffer<uint8_t>&& buffer);
 
   // construct from slice data, not copying!
   explicit AqlValue(AqlValueHintSliceNoCopy v) noexcept;
@@ -334,11 +326,10 @@ struct AqlValue final {
   explicit AqlValue(AqlValueHintSliceCopy v);
 
   // construct from Slice, copying contents
-  explicit AqlValue(arangodb::velocypack::Slice slice);
+  explicit AqlValue(velocypack::Slice slice);
 
   // construct from Slice and length, copying contents
-  AqlValue(arangodb::velocypack::Slice slice,
-           arangodb::velocypack::ValueLength length);
+  AqlValue(velocypack::Slice slice, velocypack::ValueLength length);
 
   // construct range type
   AqlValue(int64_t low, int64_t high);
@@ -361,9 +352,6 @@ struct AqlValue final {
 
   /// @brief whether or not the value is a pointer
   bool isPointer() const noexcept;
-
-  /// @brief whether or not the value is an external manager document
-  bool isManagedDocument() const noexcept;
 
   /// @brief whether or not the value is a range
   bool isRange() const noexcept;
@@ -433,29 +421,30 @@ struct AqlValue final {
 
   /// @brief return the pointer to the underlying AqlValue.
   /// only supported for AqlValue types with dynamic memory management
-  void* data() const noexcept;
+  void const* data() const noexcept;
 
   /// @brief return the range value
   Range const* range() const;
 
   /// @brief construct a V8 value as input for the expression execution in V8
+#ifdef USE_V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate,
-                             arangodb::velocypack::Options const*) const;
+                             velocypack::Options const*) const;
+#endif
 
   /// @brief materializes a value into the builder
-  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&,
-                    bool resolveExternals, bool allowUnindexed) const;
+  void toVelocyPack(velocypack::Options const*, velocypack::Builder&,
+                    bool allowUnindexed) const;
 
   /// @brief materialize a value into a new one. this expands ranges
-  AqlValue materialize(velocypack::Options const*, bool& hasCopied,
-                       bool resolveExternals) const;
+  AqlValue materialize(velocypack::Options const*, bool& hasCopied) const;
 
   /// @brief return the slice for the value
   /// this will throw if the value type is not VPACK_SLICE_POINTER,
   /// VPACK_INLINE, VPACK_MANAGED_SLICE
-  arangodb::velocypack::Slice slice() const;
+  velocypack::Slice slice() const;
 
-  arangodb::velocypack::Slice slice(AqlValueType type) const;
+  velocypack::Slice slice(AqlValueType type) const;
 
   /// @brief clone a value
   AqlValue clone() const;
@@ -473,25 +462,20 @@ struct AqlValue final {
   static int Compare(velocypack::Options const*, AqlValue const& left,
                      AqlValue const& right, bool useUtf8);
 
-  /// @brief Returns the type of this value. If true it uses an external pointer
-  /// if false it uses the internal data structure.
-  /// Do not move it to cpp file as MSVC does not inline it.
+  /// @brief Returns the type of this value
   AqlValueType type() const noexcept {
     return static_cast<AqlValueType>(_data.aqlValueType);
   }
 
  private:
-  /// @brief initializes value from a slice
-  void initFromSlice(arangodb::velocypack::Slice slice);
-
   /// @brief initializes value from a slice, when the length is already known
-  void initFromSlice(arangodb::velocypack::Slice slice,
-                     arangodb::velocypack::ValueLength length);
+  void initFromSlice(velocypack::Slice slice, velocypack::ValueLength length);
+  void initFromUint(uint64_t v);
+  void initFromInt(int64_t v);
 
   /// @brief sets the value type
   void setType(AqlValueType type) noexcept;
 
-  template<bool isManagedDoc>
   void setPointer(uint8_t const* pointer) noexcept;
 
   /// @brief return the memory origin type for values of type
@@ -500,23 +484,16 @@ struct AqlValue final {
 
   /// @brief store meta information for values of type VPACK_MANAGED_SLICE
   void setManagedSliceData(MemoryOriginType mot,
-                           arangodb::velocypack::ValueLength length);
+                           velocypack::ValueLength length);
 };
 
-// Check that the defaulted constructors, destructor and assignment
-// operators are all noexcept:
-// AqlValue(AqlValue&&)
-static_assert(noexcept(AqlValue(std::declval<AqlValue>())));
-// AqlValue(AqlValue const&)
-static_assert(
-    noexcept(AqlValue(static_cast<AqlValue const&>(std::declval<AqlValue>()))));
-// AqlValue& operator=(AqlValue&&)
-static_assert(noexcept(std::declval<AqlValue>() = std::declval<AqlValue>()));
-// AqlValue& operator=(AqlValue const&)
-static_assert(noexcept(std::declval<AqlValue>() = static_cast<AqlValue const&>(
-                           std::declval<AqlValue>())));
-// ~AqlValue()
-static_assert(noexcept(std::declval<AqlValue>().~AqlValue()));
+static_assert(std::is_trivially_copy_constructible_v<AqlValue>);
+static_assert(std::is_trivially_move_constructible_v<AqlValue>);
+static_assert(std::is_trivially_copy_assignable_v<AqlValue>);
+static_assert(std::is_trivially_move_assignable_v<AqlValue>);
+static_assert(std::is_trivially_destructible_v<AqlValue>);
+static_assert(std::is_standard_layout_v<AqlValue>);
+static_assert(sizeof(AqlValue) == 16);
 
 class AqlValueGuard {
  public:
@@ -526,19 +503,21 @@ class AqlValueGuard {
   AqlValueGuard(AqlValueGuard&&) = delete;
   AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
-  AqlValueGuard(AqlValue& value, bool destroy) noexcept;
-  ~AqlValueGuard() noexcept;
+  AqlValueGuard(AqlValue& value, bool destroy) noexcept
+      : _value{value}, _destroy{destroy} {}
+  ~AqlValueGuard() noexcept {
+    if (_destroy) {
+      _value.destroy();
+    }
+  }
 
-  void steal() noexcept;
-  AqlValue& value() noexcept;
+  void steal() noexcept { _destroy = false; }
+  AqlValue& value() noexcept { return _value; }
 
  private:
   AqlValue& _value;
   bool _destroy;
 };
 
-static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
-
 }  // namespace aql
-
 }  // namespace arangodb

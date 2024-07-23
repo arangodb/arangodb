@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,10 +23,8 @@
 
 #pragma once
 
-#include "Basics/asio_ns.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SupervisedScheduler.h"
 #include "RestServer/arangod.h"
+#include "Scheduler/Scheduler.h"
 
 #include <functional>
 #include <memory>
@@ -37,9 +35,9 @@ class SchedulerFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Scheduler"; }
 
-  static SupervisedScheduler* SCHEDULER;
+  static Scheduler* SCHEDULER;
 
-  explicit SchedulerFeature(Server& server);
+  SchedulerFeature(Server& server, metrics::MetricsFeature& metrics);
   ~SchedulerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -69,15 +67,13 @@ class SchedulerFeature final : public ArangodFeature {
   uint64_t _fifo3Size = 4096;
   double _ongoingLowPriorityMultiplier = 4.0;
   double _unavailabilityQueueFillGrade = 0.75;
+  std::string _schedulerType = "supervised";
 
   std::unique_ptr<Scheduler> _scheduler;
+  metrics::MetricsFeature& _metricsFeature;
 
-  std::function<void(asio_ns::error_code const&, int)> _signalHandler;
-  std::function<void(asio_ns::error_code const&, int)> _exitHandler;
-  std::shared_ptr<asio_ns::signal_set> _exitSignals;
-
-  std::function<void(asio_ns::error_code const&, int)> _hangupHandler;
-  std::shared_ptr<asio_ns::signal_set> _hangupSignals;
+  struct AsioHandler;
+  std::unique_ptr<AsioHandler> _asioHandler;
 };
 
 }  // namespace arangodb

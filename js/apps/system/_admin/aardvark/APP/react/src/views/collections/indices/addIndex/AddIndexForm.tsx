@@ -1,25 +1,23 @@
 import { Box, FormLabel } from "@chakra-ui/react";
 import React, { useState } from "react";
 import SingleSelect from "../../../../components/select/SingleSelect";
+import { CollectionIndex } from "../CollectionIndex.types";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
-import { IndexType } from "../useFetchIndices";
 import { FulltextIndexForm } from "./FulltextIndexForm";
 import { GeoIndexForm } from "./GeoIndexForm";
 import { IndexInfoTooltip } from "./IndexInfoTooltip";
 import { InvertedIndexFormWrap } from "./invertedIndex/InvertedIndexFormWrap";
+import { MDIIndexForm } from "./MDIIndexForm";
+import { MDIPrefixedIndexForm } from "./MDIPrefixedIndexForm";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
-import { ZKDIndexForm } from "./ZKDIndexForm";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
-  const [indexType, setIndexType] = useState<IndexType>(
+  const [indexType, setIndexType] = useState<CollectionIndex["type"]>(
     indexTypeOptions[0].value
   );
   let tooltipText = "Type of index to create.";
-  if (!indexTypeOptions?.find(option => option.value === "hash")) {
-    tooltipText = `${tooltipText} Please note that for the RocksDB engine the index types "hash", "skiplist" and "persistent" are identical, so that they are not offered separately here.`;
-  }
   return (
     <Box width="100%" paddingY="4" height="full" background="white">
       <Box fontSize={"lg"} paddingX="10">
@@ -32,7 +30,7 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
         columnGap="3"
         maxWidth="800px"
         marginTop="4"
-        paddingRight="8"
+        paddingRight="16"
         paddingLeft="10"
       >
         <FormLabel htmlFor="type">Type</FormLabel>
@@ -41,7 +39,7 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
           defaultValue={indexTypeOptions[0]}
           options={indexTypeOptions}
           onChange={value => {
-            setIndexType(value?.value as IndexType);
+            setIndexType(value?.value as CollectionIndex["type"]);
           }}
         />
         <IndexInfoTooltip label={tooltipText} />
@@ -57,7 +55,7 @@ const IndexTypeForm = ({
   type,
   onClose
 }: {
-  type: IndexType;
+  type: CollectionIndex["type"];
   onClose: () => void;
 }) => {
   if (type === "inverted") {
@@ -75,8 +73,11 @@ const IndexTypeForm = ({
   if (type === "geo") {
     return <GeoIndexForm onClose={onClose} />;
   }
-  if (type === "zkd") {
-    return <ZKDIndexForm onClose={onClose} />;
+  if (type === "mdi") {
+    return <MDIIndexForm onClose={onClose} />;
+  }
+  if (type === "mdi-prefixed") {
+    return <MDIPrefixedIndexForm onClose={onClose} />;
   }
   return <></>;
 };

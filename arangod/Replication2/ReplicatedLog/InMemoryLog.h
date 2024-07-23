@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,30 +25,24 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
+#include "Replication2/ReplicatedLog/LogEntryView.h"
 
 #include <Containers/ImmerMemoryPolicy.h>
 #include <velocypack/Builder.h>
 
+#include <initializer_list>
 #include <optional>
 
-#if (_MSC_VER >= 1)
-// suppress warnings:
-#pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
-// data
-#pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
-// intended?)
-#pragma warning(disable : 4334)
-#endif
 #include <immer/flex_vector.hpp>
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
+
+namespace arangodb::replication2::storage {
+struct IStorageEngineMethods;
+}
 
 namespace arangodb::replication2::replicated_log {
-struct LogCore;
+struct TermIndexMapping;
 class ReplicatedLogIterator;
 
 /**
@@ -63,7 +57,7 @@ struct InMemoryLog {
   using log_type_t =
       ::immer::flex_vector<T, arangodb::immer::arango_memory_policy>;
   using log_type = log_type_t<InMemoryLogEntry>;
-  using log_type_persisted = log_type_t<PersistingLogEntry>;
+  using log_type_persisted = log_type_t<LogEntry>;
 
  private:
   log_type _log{};
@@ -72,6 +66,7 @@ struct InMemoryLog {
  public:
   InMemoryLog() = default;
   explicit InMemoryLog(log_type log);
+  explicit InMemoryLog(LogIndex first);
 
   InMemoryLog(InMemoryLog&& other) noexcept;
   InMemoryLog(InMemoryLog const&) = default;
@@ -109,40 +104,42 @@ struct InMemoryLog {
 
   void appendInPlace(LoggerContext const& logContext, InMemoryLogEntry entry);
 
-  [[nodiscard]] auto append(LoggerContext const& logContext,
-                            log_type entries) const -> InMemoryLog;
-  [[nodiscard]] auto append(LoggerContext const& logContext,
-                            log_type_persisted const& entries) const
+  [[nodiscard]] auto append(
+      std::initializer_list<InMemoryLogEntry> entries) const -> InMemoryLog;
+  [[nodiscard]] auto append(InMemoryLog const& entries) const -> InMemoryLog;
+  [[nodiscard]] auto append(log_type entries) const -> InMemoryLog;
+  [[nodiscard]] auto append(log_type_persisted const& entries) const
       -> InMemoryLog;
 
   [[nodiscard]] auto getIteratorFrom(LogIndex fromIdx) const
-      -> std::unique_ptr<LogIterator>;
-  [[nodiscard]] auto getInternalIteratorFrom(LogIndex fromIdx) const
-      -> std::unique_ptr<PersistedLogIterator>;
+      -> std::unique_ptr<LogViewIterator>;
   [[nodiscard]] auto getRangeIteratorFrom(LogIndex fromIdx) const
-      -> std::unique_ptr<LogRangeIterator>;
-  [[nodiscard]] auto getInternalIteratorRange(LogIndex fromIdx,
-                                              LogIndex toIdx) const
-      -> std::unique_ptr<PersistedLogIterator>;
+      -> std::unique_ptr<LogViewRangeIterator>;
+  [[nodiscard]] auto getLogIterator() const -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getMemtryIteratorFrom(LogIndex fromIdx) const
-      -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
+      -> std::unique_ptr<InMemoryLogIterator>;
   [[nodiscard]] auto getMemtryIteratorRange(LogIndex fromIdx,
                                             LogIndex toIdx) const
-      -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
+      -> std::unique_ptr<InMemoryLogIterator>;
+  [[nodiscard]] auto getMemtryIteratorRange(LogRange) const
+      -> std::unique_ptr<InMemoryLogIterator>;
   // get an iterator for range [from, to).
   [[nodiscard]] auto getIteratorRange(LogIndex fromIdx, LogIndex toIdx) const
-      -> std::unique_ptr<LogRangeIterator>;
+      -> std::unique_ptr<LogViewRangeIterator>;
+  [[nodiscard]] auto getIteratorRange(LogRange bounds) const
+      -> std::unique_ptr<LogViewRangeIterator>;
 
   [[nodiscard]] auto takeSnapshotUpToAndIncluding(LogIndex until) const
       -> InMemoryLog;
+  [[nodiscard]] auto removeBack(LogIndex start) const -> InMemoryLog;
+  [[nodiscard]] auto removeFront(LogIndex stop) const -> InMemoryLog;
 
   [[nodiscard]] auto copyFlexVector() const -> log_type;
+  [[nodiscard]] auto computeTermIndexMap() const -> TermIndexMapping;
 
   // helpful for debugging
   [[nodiscard]] static auto dump(log_type const& log) -> std::string;
   [[nodiscard]] auto dump() const -> std::string;
-
-  [[nodiscard]] static auto loadFromLogCore(LogCore const&) -> InMemoryLog;
 
  protected:
   explicit InMemoryLog(log_type log, LogIndex first);

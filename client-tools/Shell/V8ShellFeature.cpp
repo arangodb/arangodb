@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,8 +26,9 @@
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
+#include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -37,7 +38,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
-#include "Basics/terminal-utils.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -311,9 +311,19 @@ void V8ShellFeature::copyInstallationFiles() {
       FileUtils::buildFilename("js", "node", "node_modules");
   std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename(
       "js", versionAppendix, "node", "node_modules");
+  std::string const jsAppsPath = FileUtils::buildFilename("js", "apps");
+  std::string const jsActionsPath = FileUtils::buildFilename("js", "actions");
+  std::string const jsServerModulesPath =
+      FileUtils::buildFilename("js", "server");
   std::regex const binRegex("[/\\\\]\\.bin[/\\\\]", std::regex::ECMAScript);
 
-  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned,
+  auto filterPath = [](std::string_view normalizedPath,
+                       std::string_view filterPath) -> bool {
+    return !filterPath.empty() && normalizedPath.ends_with(filterPath);
+  };
+
+  auto filter = [&filterPath, &nodeModulesPath, &nodeModulesPathVersioned,
+                 &jsAppsPath, &jsActionsPath, &jsServerModulesPath,
                  &binRegex](std::string const& filename) -> bool {
     if (std::regex_search(filename, binRegex)) {
       // don't copy files in .bin
@@ -322,15 +332,11 @@ void V8ShellFeature::copyInstallationFiles() {
 
     std::string normalized = filename;
     FileUtils::normalizePath(normalized);
-    if ((!nodeModulesPath.empty() &&
-         normalized.size() >= nodeModulesPath.size() &&
-         normalized.substr(normalized.size() - nodeModulesPath.size(),
-                           nodeModulesPath.size()) == nodeModulesPath) ||
-        (!nodeModulesPathVersioned.empty() &&
-         normalized.size() >= nodeModulesPathVersioned.size() &&
-         normalized.substr(normalized.size() - nodeModulesPathVersioned.size(),
-                           nodeModulesPathVersioned.size()) ==
-             nodeModulesPathVersioned)) {
+    if (filterPath(normalized, nodeModulesPath) ||
+        filterPath(normalized, nodeModulesPathVersioned) ||
+        filterPath(normalized, jsAppsPath) ||
+        filterPath(normalized, jsActionsPath) ||
+        filterPath(normalized, jsServerModulesPath)) {
       // filter it out!
       return true;
     }
@@ -387,6 +393,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         << "Copyright (c) ArangoDB GmbH";
 
       console.printLine(s.str());
+      console.printLine(LGPLNotice);
       console.printLine("");
 
       console.printWelcomeInfo();
@@ -504,9 +511,6 @@ ErrorCode V8ShellFeature::runShell(
 
   v8LineEditor.open(console.autoComplete());
 
-  v8::Local<v8::String> name(
-      TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME));
-
   uint64_t nrCommands = 0;
 
   ClientFeature* client = nullptr;
@@ -559,7 +563,7 @@ ErrorCode V8ShellFeature::runShell(
     double t1 = TRI_microtime();
 
     v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(
-        _isolate, context, TRI_V8_STD_STRING(_isolate, input), name, true);
+        _isolate, input, TRI_V8_SHELL_COMMAND_NAME, true);
 
     lastDuration = TRI_microtime() - t1;
 
@@ -799,9 +803,8 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
   for (auto const& script : strings) {
     v8::TryCatch tryCatch(_isolate);
 
-    v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(
-        _isolate, context, TRI_V8_STD_STRING(_isolate, script),
-        TRI_V8_ASCII_STRING(_isolate, "(command-line)"), false);
+    v8::Handle<v8::Value> result =
+        TRI_ExecuteJavaScriptString(_isolate, script, "(command-line)", false);
 
     if (tryCatch.HasCaught()) {
       std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
@@ -821,73 +824,6 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
 
   ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
   console.flushLog();
-
-  return ok;
-}
-
-bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
-  auto isolate = _isolate;
-  v8::Locker locker{_isolate};
-
-  v8::Isolate::Scope isolate_scope(_isolate);
-  v8::HandleScope handle_scope(_isolate);
-
-  v8::Local<v8::Context> context =
-      v8::Local<v8::Context>::New(_isolate, _context);
-
-  v8::Context::Scope context_scope{context};
-
-  setup(context, false, {});
-
-  bool ok = true;
-
-  // set-up jslint files array
-  v8::Handle<v8::Array> sysTestFiles = v8::Array::New(_isolate);
-
-  uint32_t i = 0;
-  for (auto& file : files) {
-    if (!FileUtils::exists(file)) {
-      LOG_TOPIC("4f748", ERR, arangodb::Logger::FIXME)
-          << "error: JavaScript file not found: '" << file << "'";
-      ok = false;
-      continue;
-    }
-
-    sysTestFiles->Set(context, i, TRI_V8_STD_STRING(_isolate, file))
-        .FromMaybe(false);
-    ++i;
-  }
-
-  context->Global()
-      ->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"),
-            sysTestFiles)
-      .FromMaybe(false);
-
-  context->Global()
-      ->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
-            v8::True(_isolate))
-      .FromMaybe(false);
-
-  // run tests
-  auto input = TRI_V8_ASCII_STRING(
-      _isolate, "require(\"jslint\").runCommandLineTests({});");
-
-  auto name = TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME);
-
-  v8::TryCatch tryCatch(isolate);
-  TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
-
-  if (tryCatch.HasCaught()) {
-    LOG_TOPIC("25acc", ERR, arangodb::Logger::FIXME)
-        << TRI_StringifyV8Exception(_isolate, &tryCatch);
-    ok = false;
-  } else {
-    bool res = TRI_ObjectToBoolean(
-        isolate, TRI_GetProperty(context, isolate, context->Global(),
-                                 "SYS_UNIT_TESTS_RESULT"));
-
-    ok = ok && res;
-  }
 
   return ok;
 }
@@ -943,13 +879,10 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
       .FromMaybe(false);
 
   // run tests
-  auto input = TRI_V8_ASCII_STRING(
-      _isolate, "require(\"@arangodb/testrunner\").runCommandLineTests();");
-
-  auto name = TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME);
-
   v8::TryCatch tryCatch(isolate);
-  TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
+  TRI_ExecuteJavaScriptString(
+      _isolate, "require(\"@arangodb/testrunner\").runCommandLineTests();",
+      TRI_V8_SHELL_COMMAND_NAME, true);
 
   if (tryCatch.HasCaught()) {
     std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
@@ -1316,17 +1249,11 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
       _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_UNIT_TESTS"),
       v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::UNIT_TESTS));
 
-  TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_JS_LINT"),
-      v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::JSLINT));
-
   TRI_AddGlobalFunctionVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_EXIT"), JS_Exit);
 }
 
 void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
-  auto context = _isolate->GetCurrentContext();
-
   JSLoader loader;
   loader.setDirectory(_startupDirectory);
 
@@ -1356,7 +1283,7 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   files.push_back("client/" + _clientModule);  // needs internal
 
   for (auto const& file : files) {
-    switch (loader.loadScript(_isolate, context, file, nullptr)) {
+    switch (loader.loadScript(_isolate, file, nullptr)) {
       case JSLoader::eSuccess:
         LOG_TOPIC("edc8d", TRACE, arangodb::Logger::FIXME)
             << "loaded JavaScript file '" << file << "'";

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -64,6 +64,11 @@ class PathValidatorOptions {
   void setAllVerticesExpression(std::unique_ptr<aql::Expression> expression);
 
   /**
+   * @brief Set the expression that needs to hold true ALL edges on a path.
+   */
+  void setAllEdgesExpression(std::unique_ptr<aql::Expression> expression);
+
+  /**
    * @brief Set the expression that needs to hold true for the vertex on the
    * given depth. NOTE: This will overrule the ALL vertex expression, so make
    * sure this expression contains everything the ALL expression covers.
@@ -113,9 +118,10 @@ class PathValidatorOptions {
   /**
    * @brief Get the Expression a vertex needs to hold if defined on the given
    * depth. It may return a nullptr if all vertices are valid.
-   * Caller does NOT take responsibilty. Do not delete this pointer.
+   * Caller does NOT take responsibility. Do not delete this pointer.
    */
   aql::Expression* getVertexExpression(uint64_t depth) const;
+  aql::Expression* getEdgeExpression() const;
 
   void addAllowedVertexCollection(std::string const& collectionName);
 
@@ -146,6 +152,7 @@ class PathValidatorOptions {
  private:
   // Vertex expression section
   std::shared_ptr<aql::Expression> _allVerticesExpression;
+  std::shared_ptr<aql::Expression> _allEdgesExpression;
   containers::FlatHashMap<uint64_t, std::shared_ptr<aql::Expression>>
       _vertexExpressionOnDepth;
   std::vector<std::string> _allowedVertexCollections;

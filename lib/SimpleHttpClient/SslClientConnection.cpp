@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,10 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cerrno>
+#include <chrono>
 #include <cstring>
 #include <string>
+#include <string_view>
 
-#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
@@ -33,9 +34,7 @@
 #include <WinSock2.h>
 #endif
 
-#if defined(__linux__) || defined(__APPLE__)
 #include <fcntl.h>
-#endif
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>
 #ifndef OPENSSL_VERSION_NUMBER
@@ -59,19 +58,10 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Ssl/ssl-helper.h"
-#include <chrono>
 
 #undef TRACE_SSL_CONNECTIONS
 
-#ifdef _WIN32
-#define STR_ERROR()                                                  \
-  windowsErrorBuf;                                                   \
-  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0, \
-                windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
-  errno = GetLastError();
-#else
 #define STR_ERROR() strerror(errno)
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -80,7 +70,7 @@ using namespace arangodb::httpclient;
 namespace {
 
 #ifdef TRACE_SSL_CONNECTIONS
-static char const* tlsTypeName(int type) {
+static std::string_view tlsTypeName(int type) {
   switch (type) {
 #ifdef SSL3_RT_HEADER
     case SSL3_RT_HEADER:
@@ -94,6 +84,8 @@ static char const* tlsTypeName(int type) {
       return "TLS handshake";
     case SSL3_RT_APPLICATION_DATA:
       return "TLS app data";
+    case SSL3_RT_INNER_CONTENT_TYPE:
+      return "TLS inner content type";
     default:
       return "TLS Unknown";
   }
@@ -164,7 +156,7 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
   // enable this for tracing SSL connections
   if (sslVersion) {
     sslVersion >>= 8; /* check the upper 8 bits only below */
-    char const* tlsRtName;
+    std::string_view tlsRtName;
     if (sslVersion == SSL3_VERSION_MAJOR && contentType)
       tlsRtName = tlsTypeName(contentType);
     else
@@ -193,7 +185,9 @@ SslClientConnection::SslClientConnection(
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol),
-      _socketFlags(0) {
+      _socketFlags(0),
+      _verifyDepth(10),
+      _verifyCertificates(false) {
   init(sslProtocol);
 }
 
@@ -206,7 +200,8 @@ SslClientConnection::SslClientConnection(
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol),
-      _socketFlags(0) {
+      _socketFlags(0),
+      _verifyCertificates(false) {
   init(sslProtocol);
 }
 
@@ -363,7 +358,15 @@ bool SslClientConnection::connectSocket() {
     return false;
   }
 
-  SSL_set_verify(_ssl, SSL_VERIFY_NONE, nullptr);
+  if (_verifyCertificates) {
+    SSL_set_verify(_ssl, SSL_VERIFY_PEER, nullptr);
+    SSL_set_verify_depth(_ssl, _verifyDepth);
+
+    SSL_CTX_set_default_verify_paths(_ctx);
+    SSL_CTX_set_default_verify_dir(_ctx);
+  } else {
+    SSL_set_verify(_ssl, SSL_VERIFY_NONE, nullptr);
+  }
 
   ERR_clear_error();
 
@@ -413,6 +416,8 @@ bool SslClientConnection::connectSocket() {
     /* Gets the earliest error code from the
        thread's error queue and removes the entry. */
     unsigned long lastError = ERR_get_error();
+
+    _errorDetails.append(ERR_error_string(lastError, nullptr)).append(" - ");
 
     if (errorDetail == SSL_ERROR_SYSCALL && lastError == 0) {
       if (ret == 0) {
@@ -490,9 +495,6 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
                                                 size_t* bytesWritten) {
   TRI_ASSERT(bytesWritten != nullptr);
 
-#ifdef _WIN32
-  char windowsErrorBuf[256];
-#endif
   *bytesWritten = 0;
 
   if (_ssl == nullptr) {
@@ -551,10 +553,6 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
 
 bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
                                                bool& connectionClosed) {
-#ifdef _WIN32
-  char windowsErrorBuf[256];
-#endif
-
   connectionClosed = true;
   if (_ssl == nullptr) {
     return false;
@@ -645,7 +643,6 @@ bool SslClientConnection::readable() {
 }
 
 bool SslClientConnection::setSocketToNonBlocking() {
-#if defined(__linux__) || defined(__APPLE__)
   _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
   if (_socketFlags == -1) {
     _errorDetails = "Socket file descriptor read returned with error " +
@@ -657,33 +654,16 @@ bool SslClientConnection::setSocketToNonBlocking() {
                     std::to_string(errno);
     return false;
   }
-#else
-  u_long nonBlocking = 1;
-  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, &nonBlocking) != 0) {
-    _errorDetails = "Attempt to create non-blocking socket generated error " +
-                    std::to_string(WSAGetLastError());
-    return false;
-  }
-#endif
   return true;
 }
 
 bool SslClientConnection::cleanUpSocketFlags() {
   TRI_ASSERT(_isSocketNonBlocking);
-#if defined(__linux__) || defined(__APPLE__)
   if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK) ==
       -1) {
     _errorDetails = "Attempt to make socket blocking generated error " +
                     std::to_string(errno);
     return false;
   }
-#else
-  u_long nonBlocking = 0;
-  if (ioctlsocket(_socket.fileDescriptor, FIONBIO, &nonBlocking) != 0) {
-    _errorDetails = "Attempt to make socket blocking generated error " +
-                    std::to_string(WSAGetLastError());
-    return false;
-  }
-#endif
   return true;
 }

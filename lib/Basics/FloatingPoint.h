@@ -36,8 +36,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <float.h>
 #include <limits>
 
@@ -85,13 +83,8 @@ class TypeWithSize<4> {
 template<>
 class TypeWithSize<8> {
  public:
-#ifdef _WIN32
-  typedef __int64 Int;
-  typedef unsigned __int64 UInt;
-#else
   typedef long long Int;            // NOLINT
   typedef unsigned long long UInt;  // NOLINT
-#endif
 };
 
 // This template class represents an IEEE floating-point number
@@ -274,11 +267,11 @@ class FloatingPoint {
 // We cannot use std::numeric_limits<T>::max() as it clashes with the max()
 // macro defined by <windows.h>.
 template<>
-inline float FloatingPoint<float>::Max() {
+[[maybe_unused]] inline float FloatingPoint<float>::Max() {
   return FLT_MAX;
 }
 template<>
-inline double FloatingPoint<double>::Max() {
+[[maybe_unused]] inline double FloatingPoint<double>::Max() {
   return DBL_MAX;
 }
 

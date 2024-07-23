@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -172,6 +172,27 @@ TEST_F(VPackSaveInspectorTest, store_map) {
   EXPECT_EQ(m.unordered["5"], obj["5"].getInt());
 }
 
+TEST_F(VPackSaveInspectorTest, store_transformed_map) {
+  TransformedMap m{.map = {{1, {1}}, {2, {2}}, {3, {3}}}};
+  auto result = inspector.apply(m);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  auto obj = slice["map"];
+  ASSERT_TRUE(obj.isArray());
+  ASSERT_EQ(3u, obj.length());
+
+  EXPECT_EQ(1, obj[0]["key"].getInt());
+  EXPECT_EQ(m.map[1].i.value, obj[0]["value"]["i"].getInt());
+
+  EXPECT_EQ(2, obj[1]["key"].getInt());
+  EXPECT_EQ(m.map[2].i.value, obj[1]["value"]["i"].getInt());
+
+  EXPECT_EQ(3, obj[2]["key"].getInt());
+  EXPECT_EQ(m.map[3].i.value, obj[2]["value"]["i"].getInt());
+}
+
 TEST_F(VPackSaveInspectorTest, store_set) {
   static_assert(
       inspection::detail::HasInspectOverload<Set, VPackSaveInspector>::value);
@@ -308,6 +329,70 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
   // x and y have fallbacks, so we need to serialize them explicitly as null
   EXPECT_TRUE(slice["x"].isNull());
   EXPECT_TRUE(slice["y"].isNull());
+}
+
+TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_vec) {
+  auto vec = std::vector<NonDefaultConstructibleIntLike>{
+      NonDefaultConstructibleIntLike{42}};
+  auto result = inspector.apply(vec);
+  EXPECT_TRUE(result.ok());
+  ASSERT_TRUE(builder.slice().isArray());
+  EXPECT_EQ(vec[0].value, builder.slice().at(0).getInt());
+}
+
+TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_map) {
+  auto vec = std::map<std::string, NonDefaultConstructibleIntLike>{
+      {"foo", NonDefaultConstructibleIntLike{42}}};
+  auto result = inspector.apply(vec);
+  EXPECT_TRUE(result.ok());
+  ASSERT_TRUE(builder.slice().isObject());
+  EXPECT_EQ(vec.at("foo").value, builder.slice().get("foo").getInt());
+}
+
+TEST_F(VPackSaveInspectorTest, store_non_default_constructible_type_optional) {
+  auto x = std::optional<NonDefaultConstructibleIntLike>{
+      NonDefaultConstructibleIntLike{42}};
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x.value().value, builder.slice().getInt());
+}
+
+TEST_F(VPackSaveInspectorTest,
+       store_non_default_constructible_type_unique_ptr) {
+  auto x = std::make_unique<NonDefaultConstructibleIntLike>(
+      NonDefaultConstructibleIntLike{42});
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x->value, builder.slice().getInt());
+}
+
+TEST_F(VPackSaveInspectorTest,
+       store_non_default_constructible_type_shared_ptr) {
+  auto x = std::make_shared<NonDefaultConstructibleIntLike>(
+      NonDefaultConstructibleIntLike{42});
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x->value, builder.slice().getInt());
+}
+
+TEST_F(VPackSaveInspectorTest,
+       store_non_default_constructible_type_inline_variant) {
+  auto v = InlineVariantWithNonDefaultConstructible{
+      NonDefaultConstructibleIntLike{42}};
+  auto result = inspector.apply(v);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(std::get<1>(v).value, builder.slice().getInt());
+}
+
+TEST_F(VPackSaveInspectorTest,
+       store_non_default_constructible_type_qualified_variant) {
+  auto v = QualifiedVariantWithNonDefaultConstructible{
+      NonDefaultConstructibleIntLike{42}};
+  auto result = inspector.apply(v);
+  EXPECT_TRUE(result.ok());
+  ASSERT_TRUE(builder.slice().isObject());
+  EXPECT_EQ("nondc_type", builder.slice().get("t").stringView());
+  EXPECT_EQ(std::get<1>(v).value, builder.slice().get("v").getInt());
 }
 
 TEST_F(VPackSaveInspectorTest, store_object_with_fallbacks) {
@@ -586,6 +671,30 @@ TEST_F(VPackSaveInspectorTest, store_embedded_fields) {
   EXPECT_EQ(n.inner.i, slice["i"].getInt());
   EXPECT_EQ(n.inner.s, slice["s"].copyString());
   EXPECT_EQ(n.b, slice["b"].getInt());
+}
+
+struct EmbeddedTemporary {
+  friend inline auto inspect(auto& f, EmbeddedTemporary& x) {
+    return f.object(x).fields(f.field("a", 42),
+                              f.field("b", std::string("foobar")));
+  }
+};
+struct NestedEmbeddedTemporary {
+  friend inline auto inspect(auto& f, NestedEmbeddedTemporary& x) {
+    EmbeddedTemporary temp{};
+    return f.object(x).fields(f.embedFields(temp));
+  }
+};
+
+TEST_F(VPackSaveInspectorTest, store_embedded_temporary_fields) {
+  NestedEmbeddedTemporary const n{};
+  auto result = inspector.apply(n);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(42, slice["a"].getInt());
+  EXPECT_EQ("foobar", slice["b"].copyString());
 }
 
 TEST(VPackSaveInspectorContext, serialize_with_context) {

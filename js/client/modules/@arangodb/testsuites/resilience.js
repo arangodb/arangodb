@@ -2,28 +2,28 @@
 /* global */
 'use strict';
 
-// /////////////////////////////////////////////////////////////////////////////
-// DISCLAIMER
-// 
-// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
-// Copyright 2014 triagens GmbH, Cologne, Germany
-// 
-// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//     http://www.apache.org/licenses/LICENSE-2.0
-// 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// 
-// Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
-// @author Max Neunhoeffer
-// /////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
   'resilience_move': 'resilience "move" tests',
@@ -36,26 +36,22 @@ const functionsDocumentation = {
   'resilience_sharddist': 'resilience "sharddist" tests',
   'resilience_analyzers': 'resilience analyzers tests',
   'client_resilience': 'client resilience tests',
-  'active_failover': 'active failover tests'
 };
 const optionsDocumentation = [
 ];
 
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const _ = require('lodash');
 
 const testPaths = {
-  'resilience_move': [tu.pathForTesting('server/resilience/move')],
-  'resilience_move_view': [tu.pathForTesting('server/resilience/move-view')],
-  'resilience_repair': [tu.pathForTesting('server/resilience/repair')],
-  'resilience_failover': [tu.pathForTesting('server/resilience/failover')],
-  'resilience_failover_failure': [tu.pathForTesting('server/resilience/failover-failure')],
-  'resilience_failover_view': [tu.pathForTesting('server/resilience/failover-view')],
-  'resilience_transactions': [tu.pathForTesting('server/resilience/transactions')],
-  'resilience_sharddist': [tu.pathForTesting('server/resilience/sharddist')],
-  'resilience_analyzers': [tu.pathForTesting('server/resilience/analyzers')],
-  'client_resilience': [tu.pathForTesting('client/resilience')],
-  'active_failover': [tu.pathForTesting('client/active-failover')]
+  'resilience_move': [tu.pathForTesting('client/resilience/move')],
+  'resilience_failover': [tu.pathForTesting('client/resilience/failover')],
+  'resilience_failover_failure': [tu.pathForTesting('client/resilience/failover-failure')],
+  'resilience_failover_view': [tu.pathForTesting('client/resilience/failover-view')],
+  'resilience_transactions': [tu.pathForTesting('client/resilience/transactions')],
+  'resilience_sharddist': [tu.pathForTesting('client/resilience/sharddist')],
+  'resilience_analyzers': [tu.pathForTesting('client/resilience/analyzers')],
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -81,7 +77,7 @@ var _resilience = function(path, enableAliveMonitor) {
     }
     let testCases = tu.scanTestPaths(testPaths[path], localOptions);
     testCases = tu.splitBuckets(options, testCases);
-    let rc = new tu.runOnArangodRunner(localOptions, suiteName, {
+    let rc = new trs.runInArangoshRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
@@ -114,40 +110,11 @@ function clientResilience (options) {
 
   let testCases = tu.scanTestPaths(testPaths.client_resilience, localOptions);
   testCases = tu.splitBuckets(options, testCases);
-  let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience', {
+  let rc = new trs.runInArangoshRunner(localOptions, 'client_resilience', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
     'javascript.allow-admin-execute': 'true',
   }).run(testCases);
-  options.cleanup = options.cleanup && localOptions.cleanup;
-  return rc;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: active failover
-// //////////////////////////////////////////////////////////////////////////////
-
-function activeFailover (options) {
-  if (options.cluster) {
-    return {
-      'active_failover': {
-        'status': true,
-        'message': 'skipped because of cluster',
-        'skipped': true
-      }
-    };
-  }
-  let localOptions = _.clone(options);
-  localOptions.activefailover = true;
-  localOptions.singles = 4;
-  localOptions.disableMonitor = true;
-  localOptions.Agency = true;
-  let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
-  let rc = new tu.runLocalInArangoshRunner(localOptions, 'active_failover',  Object.assign({}, {
-      'javascript.allow-external-process-control': 'true',
-      'javascript.allow-port-testing': 'true',
-      'javascript.allow-admin-execute': 'true',
-    }, tu.testServerAuthInfo)).run(testCases);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }
@@ -164,7 +131,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['resilience_sharddist'] = resilienceSharddist;
   testFns['resilience_analyzers'] = resilienceAnalyzers;
   testFns['client_resilience'] = clientResilience;
-  testFns['active_failover'] = activeFailover;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,13 +46,7 @@ struct ExpressionCompilationContext {
     return ast == rhs.ast && node == rhs.node;
   }
 
-  bool operator!=(ExpressionCompilationContext const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   explicit operator bool() const noexcept { return ast && node; }
-
-  size_t hash() const noexcept;
 
   aql::Ast* ast{};
   std::shared_ptr<aql::AstNode> node{};
@@ -77,7 +71,7 @@ struct ExpressionExecutionContext final : irs::attribute {
 };
 
 // User-side filter based on arbitrary ArangoDB `Expression`.
-class ByExpression final : public irs::filter {
+class ByExpression final : public irs::FilterWithBoost {
  public:
   static const std::string_view type_name() noexcept {
     return "arangodb::iresearch::ByExpression";
@@ -94,14 +88,8 @@ class ByExpression final : public irs::filter {
     return irs::type<ByExpression>::id();
   }
 
-  using irs::filter::prepare;
-
   irs::filter::prepared::ptr prepare(
-      irs::IndexReader const& index, irs::Scorers const& order,
-      irs::score_t filter_boost,
-      irs::attribute_provider const* ctx) const final;
-
-  size_t hash() const noexcept final;
+      irs::PrepareContext const& ctx) const final;
 
   ExpressionCompilationContext const& context() const noexcept { return _ctx; }
 

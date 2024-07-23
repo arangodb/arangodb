@@ -29,7 +29,6 @@
 
 #include "H1Connection.h"
 #include "H2Connection.h"
-#include "VstConnection.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Create an connection and start opening it.
@@ -37,7 +36,6 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
   std::shared_ptr<Connection> result;
 
   if (_conf._protocolType == ProtocolType::Http) {
-    // throw std::logic_error("http in vst test");
     FUERTE_LOG_DEBUG << "fuerte - creating http 1.1 connection\n";
     if (_conf._socketType == SocketType::Tcp) {
       result =
@@ -67,21 +65,6 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
           std::make_shared<http::H2Connection<SocketType::Unix>>(loop, _conf);
     }
 #endif
-  } else if (_conf._protocolType == ProtocolType::Vst) {
-    FUERTE_LOG_DEBUG << "fuerte - creating velocystream connection\n";
-    if (_conf._socketType == SocketType::Tcp) {
-      result =
-          std::make_shared<vst::VstConnection<SocketType::Tcp>>(loop, _conf);
-    } else if (_conf._socketType == SocketType::Ssl) {
-      result =
-          std::make_shared<vst::VstConnection<SocketType::Ssl>>(loop, _conf);
-    }
-#ifdef ASIO_HAS_LOCAL_SOCKETS
-    else if (_conf._socketType == SocketType::Unix) {
-      result =
-          std::make_shared<vst::VstConnection<SocketType::Unix>>(loop, _conf);
-    }
-#endif
   }
   if (!result) {
     throw std::logic_error("unsupported socket or protocol type");
@@ -94,7 +77,7 @@ void parseSchema(std::string const& schema,
                  detail::ConnectionConfiguration& conf) {
   // non exthausive list of supported url schemas
   // "http+tcp://", "http+ssl://", "tcp://", "ssl://", "unix://", "http+unix://"
-  // "vsts://", "vst://", "http://", "https://", "vst+unix://", "vst+tcp://"
+  // "http://", "https://"
   std::string_view proto(schema.data(), schema.length());
   std::string::size_type pos = schema.find('+');
   if (pos != std::string::npos && pos + 1 < proto.length()) {
@@ -112,22 +95,14 @@ void parseSchema(std::string const& schema,
                                std::string(proto));
     }
 
-    if (proto == "vst") {
-      conf._protocolType = ProtocolType::Vst;
-    } else if (proto == "http") {
+    if (proto == "http") {
       conf._protocolType = ProtocolType::Http;
     } else if (proto == "h2" || proto == "http2") {
       conf._protocolType = ProtocolType::Http2;
     }
 
   } else {  // got only protocol
-    if (proto == "vst") {
-      conf._socketType = SocketType::Tcp;
-      conf._protocolType = ProtocolType::Vst;
-    } else if (proto == "vsts") {
-      conf._socketType = SocketType::Ssl;
-      conf._protocolType = ProtocolType::Vst;
-    } else if (proto == "http" || proto == "tcp") {
+    if (proto == "http" || proto == "tcp") {
       conf._socketType = SocketType::Tcp;
       conf._protocolType = ProtocolType::Http;
     } else if (proto == "https" || proto == "ssl") {
@@ -233,8 +208,6 @@ std::string ConnectionBuilder::normalizedEndpoint() const {
   std::string endpoint;
   if (ProtocolType::Http == _conf._protocolType) {
     endpoint.append("http+");
-  } else if (ProtocolType::Vst == _conf._protocolType) {
-    endpoint.append("vst+");
   }
 
   if (SocketType::Tcp == _conf._socketType) {

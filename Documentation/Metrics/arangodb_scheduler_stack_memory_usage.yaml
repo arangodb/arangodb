@@ -1,0 +1,16 @@
+name: arangodb_scheduler_stack_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Approximate stack memory usage of worker threads.
+unit: bytes
+type: gauge
+category: Scheduler
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Approximate stack memory usage of worker threads.
+  Currently a hard-coded default value of 4MB is assumed per worker thread.

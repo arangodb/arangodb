@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,25 @@
 ///
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "VelocyPackHelper.h"
+
+#include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
+#include "Basics/memory.h"
+#include "Basics/operating-system.h"
+#include "Basics/system-compiler.h"
+#include "Logger/LogMacros.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include <fcntl.h>
 #include <string.h>
@@ -38,26 +57,6 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
-
-#include "Basics/operating-system.h"
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#include "VelocyPackHelper.h"
-
-#include "Basics/Exceptions.h"
-#include "Basics/NumberUtils.h"
-#include "Basics/ScopeGuard.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/error.h"
-#include "Basics/files.h"
-#include "Basics/memory.h"
-#include "Basics/system-compiler.h"
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
@@ -302,17 +301,17 @@ bool VelocyPackHelper::AttributeSorterBinaryStringView::operator()(
   return false;
 }
 
-size_t VelocyPackHelper::VPackHash::operator()(VPackSlice const& slice) const {
+size_t VelocyPackHelper::VPackHash::operator()(VPackSlice slice) const {
   return static_cast<size_t>(slice.normalizedHash());
 }
 
 size_t VelocyPackHelper::VPackStringHash::operator()(
-    VPackSlice const& slice) const noexcept {
+    VPackSlice slice) const noexcept {
   return static_cast<size_t>(slice.hashString());
 }
 
-bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
-                                              VPackSlice const& rhs) const {
+bool VelocyPackHelper::VPackEqual::operator()(VPackSlice lhs,
+                                              VPackSlice rhs) const {
   return VelocyPackHelper::equal(lhs, rhs, false, _options);
 }
 
@@ -327,7 +326,7 @@ again:
 }
 
 bool VelocyPackHelper::VPackStringEqual::operator()(
-    VPackSlice const& lhs, VPackSlice const& rhs) const noexcept {
+    VPackSlice lhs, VPackSlice rhs) const noexcept {
   auto const lh = lhs.head();
   auto const rh = rhs.head();
 
@@ -415,51 +414,36 @@ int VelocyPackHelper::compareStringValues(char const* left, VPackValueLength nl,
 
 /// @brief returns a string sub-element, or throws if <name> does not exist
 /// or it is not a string
-std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
-                                                     char const* name) {
+std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice slice,
+                                                     std::string_view name) {
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
-    std::string msg =
-        "The attribute '" + std::string(name) + "' was not found.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("attribute '", name, "' was not found"));
   }
-  VPackSlice const sub = slice.get(name);
+  VPackSlice sub = slice.get(name);
   if (!sub.isString()) {
-    std::string msg =
-        "The attribute '" + std::string(name) + "' is not a string.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("attribute '", name, "' is not a string"));
   }
   return sub.copyString();
 }
 
-/// @brief returns a string sub-element, or throws if <name> does not exist
-/// or it is not a string
-std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
-                                                     std::string const& name) {
+void VelocyPackHelper::ensureStringValue(VPackSlice slice,
+                                         std::string_view name) {
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
-    std::string msg = "The attribute '" + name + "' was not found.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("attribute '", name, "' was not found"));
   }
-  VPackSlice const sub = slice.get(name);
+  VPackSlice sub = slice.get(name);
   if (!sub.isString()) {
-    std::string msg = "The attribute '" + name + "' is not a string.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
-  }
-  return sub.copyString();
-}
-
-void VelocyPackHelper::ensureStringValue(VPackSlice const& slice,
-                                         std::string const& name) {
-  TRI_ASSERT(slice.isObject());
-  if (!slice.hasKey(name)) {
-    std::string msg = "The attribute '" + name + "' was not found.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
-  }
-  VPackSlice const sub = slice.get(name);
-  if (!sub.isString()) {
-    std::string msg = "The attribute '" + name + "' is not a string.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("attribute '", name, "' is not a string"));
   }
 }
 
@@ -605,7 +589,6 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     return false;
   }
 
-#ifndef _WIN32
   if (syncFile) {
     // also sync target directory
     std::string const dir = TRI_Dirname(filename);
@@ -631,7 +614,6 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
       }
     }
   }
-#endif
 
   return true;
 }
@@ -780,21 +762,25 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
   }
 }
 
-bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals,
-                                         bool checkCustom) {
+bool VelocyPackHelper::hasNonClientTypes(velocypack::Slice input) {
   if (input.isExternal()) {
-    return checkExternals;
+    return true;
   } else if (input.isCustom()) {
-    return checkCustom;
+    return true;
   } else if (input.isObject()) {
-    for (auto it : VPackObjectIterator(input, true)) {
-      if (hasNonClientTypes(it.value, checkExternals, checkCustom)) {
+    auto it = VPackObjectIterator(input, true);
+    while (it.valid()) {
+      if (!it.key(/*translate*/ false).isString()) {
         return true;
       }
+      if (hasNonClientTypes(it.value())) {
+        return true;
+      }
+      it.next();
     }
   } else if (input.isArray()) {
-    for (VPackSlice it : VPackArrayIterator(input)) {
-      if (hasNonClientTypes(it, checkExternals, checkCustom)) {
+    for (auto it : VPackArrayIterator(input)) {
+      if (hasNonClientTypes(it)) {
         return true;
       }
     }
@@ -802,40 +788,34 @@ bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals,
   return false;
 }
 
-void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input, VPackSlice base,
-                                              VPackBuilder& output,
-                                              VPackOptions const* options,
-                                              bool sanitizeExternals,
-                                              bool sanitizeCustom,
-                                              bool allowUnindexed) {
-  if (sanitizeExternals && input.isExternal()) {
+void VelocyPackHelper::sanitizeNonClientTypes(
+    velocypack::Slice input, velocypack::Slice base,
+    velocypack::Builder& output, velocypack::Options const& options,
+    bool allowUnindexed) {
+  if (input.isExternal()) {
     // recursively resolve externals
     sanitizeNonClientTypes(input.resolveExternal(), base, output, options,
-                           sanitizeExternals, sanitizeCustom, allowUnindexed);
-  } else if (sanitizeCustom && input.isCustom()) {
-    if (options == nullptr || options->customTypeHandler == nullptr) {
+                           allowUnindexed);
+  } else if (input.isCustom()) {
+    if (options.customTypeHandler == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           "cannot sanitize vpack without custom type handler");
     }
     std::string custom =
-        options->customTypeHandler->toString(input, options, base);
+        options.customTypeHandler->toString(input, &options, base);
     output.add(VPackValue(custom));
   } else if (input.isObject()) {
     output.openObject(allowUnindexed);
     for (auto it : VPackObjectIterator(input, true)) {
-      VPackValueLength l;
-      char const* p = it.key.getString(l);
-      output.add(VPackValuePair(p, l, VPackValueType::String));
-      sanitizeNonClientTypes(it.value, input, output, options,
-                             sanitizeExternals, sanitizeCustom, allowUnindexed);
+      output.add(VPackValue(it.key.stringView()));
+      sanitizeNonClientTypes(it.value, input, output, options, allowUnindexed);
     }
     output.close();
   } else if (input.isArray()) {
     output.openArray(allowUnindexed);
-    for (VPackSlice it : VPackArrayIterator(input)) {
-      sanitizeNonClientTypes(it, input, output, options, sanitizeExternals,
-                             sanitizeCustom, allowUnindexed);
+    for (auto it : VPackArrayIterator(input)) {
+      sanitizeNonClientTypes(it, input, output, options, allowUnindexed);
     }
     output.close();
   } else {

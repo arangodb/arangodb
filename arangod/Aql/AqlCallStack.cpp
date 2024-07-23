@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@
 
 #include "AqlCallStack.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -34,8 +35,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+AqlCallStack::AqlCallStack(AqlCallStack::Empty) {}
+
 AqlCallStack::AqlCallStack(AqlCallList call) : _operations{{std::move(call)}} {}
 
+// only used in tests
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
     : _operations{other._operations} {
   // We can only use this constructor on relevant levels
@@ -45,6 +51,7 @@ AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
   validateNoCallHasSkippedRows();
 #endif
 }
+#endif
 
 AqlCallStack::AqlCallStack(std::vector<AqlCallList>&& operations) noexcept
     : _operations(std::move(operations)) {
@@ -68,7 +75,18 @@ auto AqlCallStack::popCall() -> AqlCallList {
   return call;
 }
 
-auto AqlCallStack::peek() const -> AqlCall const& {
+void AqlCallStack::popDepthsLowerThan(size_t depth) {
+  TRI_ASSERT(!_operations.empty());
+  TRI_ASSERT(depth <= _operations.size());
+  for (auto i = _operations.size() - depth; i < _operations.size(); ++i) {
+    auto& operation = _operations[i];
+    if (operation.hasMoreCalls()) {
+      std::ignore = operation.popNextCall();
+    }
+  }
+}
+
+auto AqlCallStack::peek() const noexcept -> AqlCall const& {
   TRI_ASSERT(!_operations.empty());
   return _operations.back().peekNextCall();
 }
@@ -84,10 +102,10 @@ void AqlCallStack::pushCall(AqlCallList const& call) {
 auto AqlCallStack::fromVelocyPack(velocypack::Slice slice)
     -> ResultT<AqlCallStack> {
   if (ADB_UNLIKELY(!slice.isArray())) {
-    using namespace std::string_literals;
-    return Result(TRI_ERROR_TYPE_ERROR,
-                  "When deserializing AqlCallStack: expected array, got "s +
-                      slice.typeName());
+    return Result(
+        TRI_ERROR_TYPE_ERROR,
+        absl::StrCat("When deserializing AqlCallStack: expected array, got ",
+                     slice.typeName()));
   }
   if (ADB_UNLIKELY(slice.isEmptyArray())) {
     return Result(TRI_ERROR_TYPE_ERROR,
@@ -100,11 +118,10 @@ auto AqlCallStack::fromVelocyPack(velocypack::Slice slice)
     auto maybeAqlCall = AqlCallList::fromVelocyPack(entry);
 
     if (ADB_UNLIKELY(maybeAqlCall.fail())) {
-      auto message = std::string{"When deserializing AqlCallStack: entry "};
-      message += std::to_string(stack.size());
-      message += ": ";
-      message += std::move(maybeAqlCall).errorMessage();
-      return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
+      return Result(
+          TRI_ERROR_TYPE_ERROR,
+          absl::StrCat("When deserializing AqlCallStack: entry ", stack.size(),
+                       ": ", std::move(maybeAqlCall).errorMessage()));
     }
 
     stack.emplace_back(std::move(maybeAqlCall.get()));
@@ -197,7 +214,7 @@ auto AqlCallStack::getCallAtDepth(size_t depth) const -> AqlCall const& {
   // depth 0 is back of vector
   TRI_ASSERT(_operations.size() > depth);
   // Take the depth-most from top of the vector.
-  auto& callList = _operations.at(_operations.size() - 1 - depth);
+  auto const& callList = _operations.at(_operations.size() - 1 - depth);
   return callList.peekNextCall();
 }
 
@@ -231,3 +248,13 @@ auto AqlCallStack::requestLessDataThan(AqlCallStack const& other) const noexcept
   }
   return true;
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// For tests
+AqlCallStack::AqlCallStack(std::initializer_list<AqlCallList> calls)
+    : _operations{std::move(calls)} {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  validateNoCallHasSkippedRows();
+#endif
+}
+#endif

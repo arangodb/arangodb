@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,8 +21,6 @@
 /// @author Jan Steemann
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
-#include "Basics/Common.h"
 
 #include "gtest/gtest.h"
 
@@ -571,9 +569,9 @@ TEST_F(RocksDBKeyBoundsTestLittleEndian, test_hash_index) {
 
   // prefix is just object id
   auto cmp = std::make_unique<RocksDBVPackComparator>();
-  EXPECT_LT(cmp->Compare(prefixBegin, prefixEnd), 0);
+  EXPECT_EQ(cmp->Compare(prefixBegin, prefixEnd), 0);
   EXPECT_LT(cmp->Compare(prefixBegin, key1.string()), 0);
-  EXPECT_GT(cmp->Compare(prefixEnd, key1.string()), 0);
+  EXPECT_GT(cmp->Compare(bounds.end(), key1.string()), 0);
 
   EXPECT_LT(cmp->Compare(key1.string(), key2.string()), 0);
   EXPECT_LT(cmp->Compare(key2.string(), key3.string()), 0);

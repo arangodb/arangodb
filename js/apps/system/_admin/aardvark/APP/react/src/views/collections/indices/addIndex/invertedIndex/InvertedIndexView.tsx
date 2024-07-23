@@ -1,5 +1,5 @@
+import { Index } from "arangojs/indexes";
 import React from "react";
-import { IndexRowType } from "../../useFetchIndices";
 import { InvertedIndexForm } from "./InvertedIndexFormWrap";
 import {
   InvertedIndexValuesType,
@@ -11,7 +11,7 @@ export const InvertedIndexView = ({
   indexRow
 }: {
   onClose: () => void;
-  indexRow: IndexRowType;
+  indexRow: Index;
 }) => {
   const { schema, fields } = useInvertedIndexFieldsData();
   return (

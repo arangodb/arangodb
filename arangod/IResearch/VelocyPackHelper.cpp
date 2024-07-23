@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,7 +36,7 @@ namespace iresearch {
 namespace {
 template<typename T>
 velocypack::Builder& addRef(velocypack::Builder& builder,
-                            std::basic_string_view<T> value) {
+                            irs::basic_string_view<T> value) {
   // store nulls verbatim
   if (irs::IsNull(value)) {
     builder.add(                                        // add value
@@ -51,16 +51,15 @@ velocypack::Builder& addRef(velocypack::Builder& builder,
 
 template<typename T>
 velocypack::Builder& addRef(velocypack::Builder& builder, std::string_view key,
-                            std::basic_string_view<T> value) {
+                            irs::basic_string_view<T> value) {
   // Builder uses memcpy(...) which cannot handle nullptr
   TRI_ASSERT(!irs::IsNull(key));
 
   // store nulls verbatim
   if (irs::IsNull(value)) {
-    builder.add(key.data(), key.size(),
-                velocypack::Value(velocypack::ValueType::Null));
+    builder.add(key, velocypack::Value(velocypack::ValueType::Null));
   } else {
-    builder.add(key.data(), key.size(), toValuePair(value));
+    builder.add(key, toValuePair(value));
   }
 
   return builder;
@@ -180,7 +179,7 @@ bool mergeSliceSkipKeys(
     auto attr = key.stringView();
 
     if (acceptor(attr)) {
-      builder.add(attr.data(), attr.size(), value);
+      builder.add(attr, value);
     }
   }
 

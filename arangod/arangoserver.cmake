@@ -1,7 +1,7 @@
 add_library(arangoserver STATIC
   Actions/ActionFeature.cpp
-  Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Actions/RestActionHandler.cpp
   Auth/Common.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
@@ -28,7 +28,6 @@ add_library(arangoserver STATIC
   Cluster/DropDatabase.cpp
   Cluster/DropIndex.cpp
   Cluster/EnsureIndex.cpp
-  Cluster/FailureOracleFeature.cpp
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/Maintenance.cpp
@@ -52,11 +51,10 @@ add_library(arangoserver STATIC
   FeaturePhases/ClusterFeaturePhase.cpp
   FeaturePhases/DatabaseFeaturePhase.cpp
   FeaturePhases/FinalFeaturePhase.cpp
-  FeaturePhases/FoxxFeaturePhase.cpp
   FeaturePhases/ServerFeaturePhase.cpp
-  FeaturePhases/V8FeaturePhase.cpp
   GeneralServer/Acceptor.cpp
   GeneralServer/AcceptorTcp.cpp
+  GeneralServer/AcceptorUnixDomain.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
   GeneralServer/CommTask.cpp
@@ -71,16 +69,12 @@ add_library(arangoserver STATIC
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/SslServerFeature.cpp
-  GeneralServer/VstCommTask.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
-  RestHandler/RestAdminExecuteHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
-  RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
-  RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
@@ -90,6 +84,7 @@ add_library(arangoserver STATIC
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDocumentHandler.cpp
+  RestHandler/RestDumpHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
@@ -97,7 +92,11 @@ add_library(arangoserver STATIC
   RestHandler/RestImportHandler.cpp
   RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
+  RestHandler/RestKeyGeneratorsHandler.cpp
   RestHandler/RestLicenseHandler.cpp
+  RestHandler/RestOptionsBaseHandler.cpp
+  RestHandler/RestOptionsDescriptionHandler.cpp
+  RestHandler/RestOptionsHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestShutdownHandler.cpp
@@ -107,7 +106,6 @@ add_library(arangoserver STATIC
   RestHandler/RestSupervisionStateHandler.cpp
   RestHandler/RestSupportInfoHandler.cpp
   RestHandler/RestSystemReportHandler.cpp
-  RestHandler/RestTasksHandler.cpp
   RestHandler/RestTelemetricsHandler.cpp
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
@@ -121,17 +119,16 @@ add_library(arangoserver STATIC
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
-  RestServer/ConsoleFeature.cpp
-  RestServer/ConsoleThread.cpp
   RestServer/CpuUsageFeature.cpp
+  RestServer/DaemonFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
+  RestServer/DumpLimitsFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/EnvironmentFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FlushFeature.cpp
   RestServer/FortuneFeature.cpp
-  RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
   RestServer/IOHeartbeatThread.cpp
   RestServer/LanguageCheckFeature.cpp
@@ -139,13 +136,13 @@ add_library(arangoserver STATIC
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp
   RestServer/NonceFeature.cpp
-  RestServer/QueryRegistryFeature.cpp
   RestServer/PrivilegeFeature.cpp
-  RestServer/ScriptFeature.cpp
+  RestServer/QueryRegistryFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
+  RestServer/SupervisorFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
@@ -153,9 +150,15 @@ add_library(arangoserver STATIC
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
+  Scheduler/LockfreeThreadPool.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
+  Scheduler/SchedulerMetrics.cpp
+  Scheduler/SimpleThreadPool.cpp
   Scheduler/SupervisedScheduler.cpp
+  Scheduler/ThreadPoolScheduler.cpp
+  Scheduler/ThreadPoolScheduler.cpp
+  Scheduler/WorkStealingThreadPool.cpp
   Sharding/ShardDistributionReporter.cpp
   Sharding/ShardingFeature.cpp
   Sharding/ShardingInfo.cpp
@@ -172,9 +175,11 @@ add_library(arangoserver STATIC
   Transaction/Context.cpp
   Transaction/CountCache.cpp
   Transaction/Helpers.cpp
+  Transaction/Hints.cpp
+  Transaction/History.cpp
   Transaction/IndexesSnapshot.cpp
-  Transaction/Manager.cpp
   Transaction/ManagedContext.cpp
+  Transaction/Manager.cpp
   Transaction/ManagerFeature.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
@@ -182,14 +187,18 @@ add_library(arangoserver STATIC
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp)
-if (MSVC)
+if (USE_V8) 
   target_sources(arangoserver PRIVATE
-    RestServer/WindowsServiceFeature.cpp)
-else()
-  target_sources(arangoserver PRIVATE
-    GeneralServer/AcceptorUnixDomain.cpp
-    RestServer/DaemonFeature.cpp
-    RestServer/SupervisorFeature.cpp)
+    FeaturePhases/FoxxFeaturePhase.cpp
+    FeaturePhases/V8FeaturePhase.cpp
+    RestHandler/RestAdminExecuteHandler.cpp
+    RestHandler/RestAdminRoutingHandler.cpp
+    RestHandler/RestAqlUserFunctionsHandler.cpp
+    RestHandler/RestTasksHandler.cpp
+    RestServer/ConsoleFeature.cpp
+    RestServer/ConsoleThread.cpp
+    RestServer/FrontendFeature.cpp
+    RestServer/ScriptFeature.cpp)
 endif()
 if (USE_MAINTAINER_MODE)
   target_sources(arangoserver PRIVATE
@@ -210,16 +219,18 @@ target_link_libraries(arangoserver
   arango_iresearch
   arango_metrics
   arango_network
-  arango_pregel
   arango_replication
   arango_storage_engine
   arango_utils
-  arango_v8server
   arango_vocbase
   boost_boost
   ${MSVC_LIBS})
 if (MSVC)
   target_link_libraries(arangoserver Bcrypt.lib)
+endif()
+
+if (USE_V8)
+  target_link_libraries(arangoserver arango_v8server)
 endif()
 
 target_include_directories(arangoserver PRIVATE

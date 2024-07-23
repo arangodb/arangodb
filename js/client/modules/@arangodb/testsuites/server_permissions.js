@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,6 +33,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 
 const toArgv = internal.toArgv;
@@ -61,7 +62,7 @@ const testPaths = {
   'server_parameters': [tu.pathForTesting('client/server_parameters')]
 };
 
-class permissionsRunner extends tu.runLocalInArangoshRunner {
+class permissionsRunner extends trs.runLocalInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "permissionsRunner";
@@ -284,6 +285,7 @@ function server_permissions(options) {
 function server_parameters(options) {
   let testCases = tu.scanTestPaths(testPaths.server_parameters, options);
   testCases = tu.splitBuckets(options, testCases);
+  require('internal').env.OPTIONS=JSON.stringify(options);
   return new permissionsRunner(options, "server_parameters").run(testCases);
 }
 
@@ -326,7 +328,7 @@ function server_secrets(options) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./etc/testing/tls.keyfile";
   }
-  let rc = new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
   if (rc.status && options.cleanup) {
     fs.removeDirectoryRecursive(keyfileDir, true);
     fs.removeDirectoryRecursive(secretsDir, true);
@@ -340,5 +342,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['server_parameters'] = server_parameters;
   testFns['server_secrets'] = server_secrets;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

@@ -3,28 +3,28 @@
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// DISCLAIMER
-//
-// Copyright 2010-2013 triAGENS GmbH, Cologne, Germany
-// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// @author Michael Hackstein
-// @author Heiko Kernbach
-// @author Alan Plum
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Heiko Kernbach
+// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');
@@ -70,12 +70,8 @@ router.get('/config.js', function (req, res) {
   const scriptName = req.get('x-script-name');
   const basePath = req.trustProxy && scriptName || '';
   const isEnterprise = internal.isEnterprise();
-  let ldapEnabled = false;
-  if (isEnterprise) {
-    if (internal.ldapEnabled()) {
-      ldapEnabled = true;
-    }
-  }
+  // hard-coded to false since 3.12
+  const ldapEnabled = false;
   res.send(
     `var frontendConfig = ${JSON.stringify({
       basePath: basePath,
@@ -96,7 +92,6 @@ router.get('/config.js', function (req, res) {
       maxReplicationFactor: internal.maxReplicationFactor,
       defaultReplicationFactor: internal.defaultReplicationFactor,
       maxNumberOfShards: internal.maxNumberOfShards,
-      maxNumberOfMoveShards: internal.maxNumberOfMoveShards,
       extendedNames: internal.extendedNames,
       forceOneShard: internal.forceOneShard,
       sessionTimeout: internal.sessionTimeout,
@@ -142,6 +137,7 @@ router.get('/api/*', module.context.apiDocumentation({
 authRouter.post('/query/profile', function (req, res) {
   const bindVars = req.body.bindVars;
   const query = req.body.query;
+  const options = req.body.options || {};
   let msg = null;
 
   try {
@@ -149,6 +145,7 @@ authRouter.post('/query/profile', function (req, res) {
       query,
       bindVars: bindVars || {},
       options: {
+        ...options,
         colors: false,
         profile: 2
       }
@@ -161,7 +158,8 @@ authRouter.post('/query/profile', function (req, res) {
 })
 .body(joi.object({
   query: joi.string().required(),
-  bindVars: joi.object().optional()
+  bindVars: joi.object().optional(),
+  options: joi.object().optional()
 }).required(), 'Query and bindVars to profile.')
 .summary('Explains a query')
 .description(dd`
@@ -172,6 +170,7 @@ authRouter.post('/query/explain', function (req, res) {
   const bindVars = req.body.bindVars || {};
   const query = req.body.query;
   const id = req.body.id;
+  const options = req.body.options || {};
   let msg = null;
 
   try {
@@ -179,7 +178,7 @@ authRouter.post('/query/explain', function (req, res) {
       query: query,
       bindVars: bindVars,
       id: id
-    }, {colors: false}, false);
+    }, {...options, colors: false}, false);
   } catch (e) {
     res.throw('bad request', e.message, {cause: e});
   }
@@ -189,6 +188,7 @@ authRouter.post('/query/explain', function (req, res) {
 .body(joi.object({
   query: joi.string().required(),
   bindVars: joi.object().optional(),
+  options: joi.object().optional(),
   batchSize: joi.number().optional(),
   id: joi.string().optional()
 }).required(), 'Query and bindVars to explain.')
@@ -278,7 +278,8 @@ authRouter.post('/query/upload/:user', function (req, res) {
 .body(joi.array().items(joi.object({
   name: joi.string().required(),
   parameter: joi.any().optional(),
-  value: joi.any().optional()
+  value: joi.any().optional(),
+  created_at: joi.any().optional()
 }).required()).required(), 'User query array to import.')
 .error('not found', 'User does not exist.')
 .summary('Upload user queries')
@@ -309,34 +310,17 @@ authRouter.get('/query/download/:user', function (req, res) {
   Download and export all queries from the given username.
 `);
 
-authRouter.get('/query/result/download/:query', function (req, res) {
-  const fromBinary = (binary) => {
-    const bytes = Uint8Array.from({ length: binary.length }, (element, index) =>
-      binary.charCodeAt(index)
-    );
-    const charCodes = new Uint16Array(bytes.buffer);
-
-    let result = "";
-    charCodes.forEach((char) => {
-      result += String.fromCharCode(char);
-    });
-    return result;
-  };
-
-  let query;
-  try {
-    query = fromBinary(req.pathParams.query);
-    query = JSON.parse(query);
-  } catch (e) {
-    res.throw('bad request', e.message, {cause: e});
-  }
-
-  const result = db._query(query.query, query.bindVars).toArray();
-  const namePart = `${db._name()}`.replace(/[^-_a-z0-9]/gi, "_");
-  res.attachment(`results-${namePart}.json`);
-  res.json(result);
+authRouter.post('/query/result/download', function (req, res) {
+   const result = db._query(req.body.query, req.body.bindVars).toArray();
+   const namePart = `${db._name()}`.replace(/[^-_a-z0-9]/gi, "_");
+   res.attachment(`results-${namePart}.json`);
+   res.json(result);
+ })
+.body(joi.object({
+  query: joi.string().required(),
+  bindVars: joi.object().optional()
 })
-.pathParam('query', joi.string().required(), 'Base64 encoded query.')
+.required(), 'Query and bindVars to download.')
 .error('bad request', 'The query is invalid or malformed.')
 .summary('Download the result of a query')
 .description(dd`
@@ -459,7 +443,6 @@ authRouter.get('/job', function (req, res) {
 //    0: No active replication found.
 //    1: Replication per Database found.
 //    2: Replication per Server found.
-//    3: Active-Failover replication found.
 authRouter.get('/replication/mode', function (req, res) {
   // this method is only allowed from within the _system database
   if (req.database !== '_system') {
@@ -482,11 +465,7 @@ authRouter.get('/replication/mode', function (req, res) {
 
   let mode = 0;
   let role = null;
-  // active failover
-  if (endpoints.statusCode === 200 && endpoints.json.endpoints.length) {
-    mode = 3;
-    role = 'leader';
-  } else {
+  {
     // check if global applier (ga) is running
     // if that is true, this node is replicating from another arangodb instance
     // (all databases)
@@ -1301,39 +1280,75 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
     var sizeCategory;
     var nodeObj;
     var notFoundString = "(attribute not found)";
+
+    const truncate = (str, n) => {
+      return (str.length > n) ? str.slice(0, n-1) + '...' : str;
+    };
     
     const generateNodeObject = (node) => {
       nodeNames[node._id] = true;
+      var label = "";
+      var tooltipText = "";
 
       if (config.nodeLabel) {
-        if (config.nodeLabel.indexOf('.') > -1) {
-          nodeLabel = getAttributeByKey(node, config.nodeLabel);
-          if (nodeLabel === undefined || nodeLabel === '') {
-            nodeLabel = node._id;
-          }
-        } else {
-          if (node[config.nodeLabel] !== undefined) {
-            if (typeof node[config.nodeLabel] === 'string') {
-              nodeLabel = node[config.nodeLabel];
+        var nodeLabelArr = config.nodeLabel.trim().split(" ");
+        // in case multiple node labels are given
+        if (nodeLabelArr.length > 1) {
+          _.each(nodeLabelArr, function (attr) {
+
+            var attrVal = getAttributeByKey(node, attr);
+            if (attrVal !== undefined) {
+              if (typeof attrVal === 'string') {
+                tooltipText += attr + ": " + attrVal + "\n";
+              } else {
+                // in case we do not have a string here, we need to stringify it
+                // otherwise we might end up sending not displayable values.
+                tooltipText += attr + ": " + JSON.stringify(attrVal) + "\n";
+              }
             } else {
-              // in case we do not have a string here, we need to stringify it
-              // otherwise we might end up sending not displayable values.
-              nodeLabel = JSON.stringify(node[config.nodeLabel]);
+              label += attr + ": " + notFoundString;
+              tooltipText += attr + ": " + notFoundString + "\n";
+            }
+            
+          });
+          // in case of multiple node labels just display the first one in the graph
+          // and the others in the tooltip
+          var firstAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
+          if (firstAttrVal !== undefined) {
+            if (typeof firstAttrVal === 'string') {
+              label = nodeLabelArr[0] + ": " + truncate(firstAttrVal, 16) + " ...";
+            } else {
+              label = nodeLabelArr[0] + ": " + truncate(JSON.stringify(firstAttrVal), 16) + " ...";
             }
           } else {
-            // in case the document does not have the nodeLabel in it, return fallback string
-            nodeLabel = notFoundString;
+            label = nodeLabelArr[0] + ": " + notFoundString + " ...";
+          }
+        } else {
+          // in case of single node attribute given
+          var singleAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
+          if (singleAttrVal !== undefined) {
+            if (typeof singleAttrVal === 'string') {
+              label = nodeLabelArr[0] + ": " + truncate(singleAttrVal, 16);
+              tooltipText = nodeLabelArr[0] + ": " + singleAttrVal;
+            } else {
+              label = nodeLabelArr[0] + ": " + truncate(JSON.stringify(singleAttrVal), 16);
+              tooltipText = nodeLabelArr[0] + ": " + truncate(JSON.stringify(singleAttrVal), 16);
+            }
+          } else {
+            label = nodeLabelArr[0] + ": " + notFoundString;
+            tooltipText = nodeLabelArr[0] + ": " + notFoundString;
           }
         }
       } else {
-        nodeLabel = node._key || node._id;
+        label = node._key || node._id;
+        tooltipText = node._key || node._id;
       }
 
       if (config.nodeLabelByCollection === 'true') {
-        nodeLabel += ' - ' + node._id.split('/')[0];
+        label += ' - ' + node._id.split('/')[0];
       }
-      if (typeof nodeLabel === 'number') {
-        nodeLabel = JSON.stringify(nodeLabel);
+      if (typeof label === 'number') {
+        label = JSON.stringify(label);
       }
       let sizeAttributeFound;
       if (config.nodeSize && config.nodeSizeByEdges === 'false') {
@@ -1359,17 +1374,19 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
         
       nodeObj = {
         id: node._id,
-        label: nodeLabel,
+        label: label,
         size: nodeSize || 20,
         value: nodeSize || 20,
         sizeCategory: sizeCategory || '',
         shape: "dot",
         color: calculatedNodeColor,
         font: {
+          multi: 'html',
           strokeWidth: 2,
           strokeColor: '#ffffff',
           vadjust: -7
         },
+        title: tooltipText,
         sizeAttributeFound
       };
 
@@ -1643,7 +1660,7 @@ authRouter.get('/graphs-v2/:name', function (req, res) {
         bindToWindow: false
       },
       multiselect: false,
-      navigationButtons: true,
+      navigationButtons: false,
       selectable: true,
       selectConnectedEdges: false,
       tooltipDelay: 300,

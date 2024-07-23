@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,9 +35,10 @@ namespace arangodb {
 /// @brief just also stores the context
 class VocbaseContext final : public arangodb::ExecContext {
  public:
-  virtual ~VocbaseContext();
+  ~VocbaseContext();
 
-  static VocbaseContext* create(GeneralRequest& req, TRI_vocbase_t& vocbase);
+  static std::shared_ptr<VocbaseContext> create(GeneralRequest& req,
+                                                TRI_vocbase_t& vocbase);
   TEST_VIRTUAL TRI_vocbase_t& vocbase() const { return _vocbase; }
 
   /// @brief upgrade to internal superuser
@@ -47,15 +48,15 @@ class VocbaseContext final : public arangodb::ExecContext {
   void forceReadOnly();
 
 #ifdef USE_ENTERPRISE
-  virtual std::string clientAddress() const override {
+  std::string clientAddress() const override {
     return _request.connectionInfo().fullClient();
   }
-  virtual std::string requestUrl() const override { return _request.fullUrl(); }
-  virtual std::string authMethod() const override;
+  std::string requestUrl() const override { return _request.fullUrl(); }
+  std::string authMethod() const override;
 #endif
 
   /// @brief tells you if this execution was canceled
-  virtual bool isCanceled() const override {
+  bool isCanceled() const override {
     return _canceled.load(std::memory_order_relaxed);
   }
 
@@ -71,7 +72,10 @@ class VocbaseContext final : public arangodb::ExecContext {
   /// should be used to indicate a canceled request / thread
   std::atomic<bool> _canceled;
 
-  VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
+  class ConstructorToken {};
+
+ public:
+  VocbaseContext(ConstructorToken, GeneralRequest& req, TRI_vocbase_t& vocbase,
                  ExecContext::Type type, auth::Level systemLevel,
                  auth::Level dbLevel, bool isAdminUser);
   VocbaseContext(VocbaseContext const&) = delete;

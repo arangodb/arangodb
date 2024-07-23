@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
 
 #include <set>
@@ -43,7 +44,7 @@ class TraverserEngineShardLists {
   TraverserEngineShardLists(
       GraphNode const*, ServerID const& server,
       containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
-      QueryContext& query);
+      QueryContext const& query);
 
   ~TraverserEngineShardLists() = default;
 
@@ -60,7 +61,7 @@ class TraverserEngineShardLists {
   std::vector<ShardID> getAllLocalShards(
       containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
       ServerID const& server,
-      std::shared_ptr<std::vector<std::string>> const& shardIds,
+      std::shared_ptr<std::vector<ShardID> const> const& shardIds,
       bool allowReadFromFollower);
 
  private:

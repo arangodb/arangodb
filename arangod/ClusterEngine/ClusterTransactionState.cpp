@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,7 +31,6 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterTransactionCollection.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -50,8 +49,11 @@ using namespace arangodb;
 /// @brief transaction type
 ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : TransactionState(vocbase, tid, options), _numIntermediateCommits(0) {
+    transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin)
+    : TransactionState(vocbase, tid, options, operationOrigin),
+      _numIntermediateCommits(0) {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before
   // transaction is started and during validateAndOptimize some simple
@@ -63,8 +65,11 @@ ClusterTransactionState::ClusterTransactionState(
                               .getQueryAnalyzersRevision(vocbase.name()));
 }
 
+ClusterTransactionState::~ClusterTransactionState() = default;
+
 /// @brief start a transaction
-Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
+futures::Future<Result> ClusterTransactionState::beginTransaction(
+    transaction::Hints hints) {
   LOG_TRX("03dec", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
@@ -82,9 +87,9 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsAborted;
   });
 
-  Result res = useCollections();
+  Result res = co_await useCollections();
   if (res.fail()) {  // something is wrong
-    return res;
+    co_return res;
   }
 
   // all valid
@@ -99,35 +104,24 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsStarted;
   }
 
-  transaction::ManagerFeature::manager()->registerTransaction(
-      id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
-  setRegistered();
-  if (AccessMode::isWriteOrExclusive(this->_type) &&
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+
+  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
+                                           isFollowerTransaction());
+
+  if (AccessMode::isWriteOrExclusive(_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    // cppcheck-suppress ignoredReturnValue
     TRI_ASSERT(isCoordinator());
 
     ClusterTrxMethods::SortedServersSet leaders{};
     allCollections([&](TransactionCollection& c) {
-      if (c.collection()->isSmartEdgeCollection()) {
-        CollectionNameResolver resolver{_vocbase};
-        for (auto const& real : c.collection()->realNames()) {
-          auto realCol = resolver.getCollection(real);
-          TRI_ASSERT(realCol != nullptr);
-          auto shardIds = realCol->shardIds();
-          for (auto const& pair : *shardIds) {
-            std::vector<arangodb::ShardID> const& servers = pair.second;
-            if (!servers.empty()) {
-              leaders.emplace(servers[0]);
-            }
-          }
-        }
-      } else {
-        auto shardIds = c.collection()->shardIds();
-        for (auto const& pair : *shardIds) {
-          std::vector<arangodb::ShardID> const& servers = pair.second;
-          if (!servers.empty()) {
-            leaders.emplace(servers[0]);
-          }
+      auto shardIds = c.collection()->shardIds();
+      for (auto const& pair : *shardIds) {
+        std::vector<arangodb::ServerID> const& servers = pair.second;
+        if (!servers.empty()) {
+          leaders.emplace(servers[0]);
         }
       }
       return true;  // continue
@@ -136,17 +130,17 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // if there is only one server we may defer the lazy locking
     // until the first actual operation (should save one request)
     if (leaders.size() > 1) {
-      res = ClusterTrxMethods::beginTransactionOnLeaders(
-                *this, leaders, transaction::MethodsApi::Synchronous)
-                .get();
+      res = co_await ClusterTrxMethods::beginTransactionOnLeaders(
+          shared_from_this(), std::move(leaders),
+          transaction::MethodsApi::Asynchronous);
       if (res.fail()) {  // something is wrong
-        return res;
+        co_return res;
       }
     }
   }
 
   cleanup.cancel();
-  return res;
+  co_return res;
 }
 
 /// @brief commit a transaction

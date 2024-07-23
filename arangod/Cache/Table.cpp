@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -58,7 +58,7 @@ void Table::GenericBucket::clear() {
   _state.lock(std::numeric_limits<std::uint64_t>::max(),
               [this]() noexcept -> void {
                 _state.clear();
-                for (size_t i = 0; i < paddingSize; i++) {
+                for (size_t i = 0; i < kPaddingSize; i++) {
                   _padding[i] = static_cast<std::uint8_t>(0);
                 }
                 _state.unlock();
@@ -180,22 +180,27 @@ void Table::BucketLocker::steal(Table::BucketLocker&& other) noexcept {
   other._locked = false;
 }
 
-Table::Table(std::uint32_t logSize)
-    : _lock(),
+Table::Table(std::uint32_t logSize, Manager* manager)
+    : _logSize(std::min(logSize, kMaxLogSize)),
       _disabled(true),
       _evictions(false),
-      _logSize(std::min(logSize, kMaxLogSize)),
       _size(static_cast<std::uint64_t>(1) << _logSize),
-      _shift(32 - _logSize),
+      _shift(kMaxLogSize - _logSize),
       _mask(static_cast<std::uint32_t>((_size - 1) << _shift)),
-      _buffer(new std::uint8_t[(_size * BUCKET_SIZE) + Table::padding]),
+      _buffer(std::make_unique<std::uint8_t[]>((_size * kBucketSizeInBytes) +
+                                               kPadding)),
       _buckets(reinterpret_cast<GenericBucket*>(
-          reinterpret_cast<std::uint64_t>((_buffer.get() + (BUCKET_SIZE - 1))) &
-          ~(static_cast<std::uint64_t>(BUCKET_SIZE - 1)))),
-      _auxiliary(nullptr),
+          reinterpret_cast<std::uint64_t>(
+              (_buffer.get() + (kBucketSizeInBytes - 1))) &
+          ~(static_cast<std::uint64_t>(kBucketSizeInBytes - 1)))),
+      _manager(manager),
       _bucketClearer(defaultClearer),
       _slotsTotal(_size),
       _slotsUsed(static_cast<std::uint64_t>(0)) {
+  TRI_ASSERT(_logSize <= kMaxLogSize);
+  TRI_ASSERT(_size == (std::uint64_t(1) << _logSize));
+  TRI_ASSERT(_size <= std::numeric_limits<std::uint32_t>::max());
+
   for (std::size_t i = 0; i < _size; i++) {
     // use placement new in order to properly initialize the bucket
     new (_buckets + i) GenericBucket();
@@ -304,6 +309,7 @@ void Table::setTypeSpecifics(BucketClearer clearer,
                              std::size_t slotsPerBucket) {
   _bucketClearer = clearer;
   _slotsTotal = _size * static_cast<std::uint64_t>(slotsPerBucket);
+  TRI_ASSERT(_slotsTotal > 0);
 }
 
 void Table::clear() {
@@ -339,7 +345,7 @@ bool Table::isEnabled(std::uint64_t maxTries) noexcept {
 bool Table::slotFilled() noexcept {
   size_t i = _slotsUsed.fetch_add(1, std::memory_order_acq_rel);
   return ((static_cast<double>(i + 1) / static_cast<double>(_slotsTotal)) >
-          Table::idealUpperRatio);
+          _manager->idealUpperFillRatio());
 }
 
 void Table::slotsFilled(std::uint64_t numSlots) noexcept {
@@ -350,7 +356,7 @@ bool Table::slotEmptied() noexcept {
   size_t i = _slotsUsed.fetch_sub(1, std::memory_order_acq_rel);
   TRI_ASSERT(i > 0);
   return (((static_cast<double>(i - 1) / static_cast<double>(_slotsTotal)) <
-           Table::idealLowerRatio) &&
+           _manager->idealLowerFillRatio()) &&
           (_logSize > Table::kMinLogSize));
 }
 
@@ -378,10 +384,11 @@ std::uint32_t Table::idealSize() noexcept {
   std::uint64_t slotsUsed = _slotsUsed.load(std::memory_order_relaxed);
 
   return (((static_cast<double>(slotsUsed) / static_cast<double>(_slotsTotal)) >
-           Table::idealUpperRatio)
+           _manager->idealUpperFillRatio())
               ? (logSize() + 1)
               : (((static_cast<double>(slotsUsed) /
-                   static_cast<double>(_slotsTotal)) < Table::idealLowerRatio)
+                   static_cast<double>(_slotsTotal)) <
+                  _manager->idealLowerFillRatio())
                      ? (logSize() - 1)
                      : logSize()));
 }

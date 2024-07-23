@@ -88,7 +88,8 @@ var isoSentinel = 'utf8=%26%2310003%3B'; // encodeURIComponent('&#10003;')
 var charsetSentinel = 'utf8=%E2%9C%93'; // encodeURIComponent('✓')
 
 var parseValues = function parseQueryStringValues(str, options) {
-    var obj = {};
+    var obj = { __proto__: null };
+
     var cleanStr = options.ignoreQueryPrefix ? str.replace(/^\?/, '') : str;
     var limit = options.parameterLimit === Infinity ? undefined : options.parameterLimit;
     var parts = cleanStr.split(options.delimiter, limit);
@@ -323,7 +324,6 @@ var arrayPrefixGenerators = {
 };
 
 var isArray = Array.isArray;
-var split = String.prototype.split;
 var push = Array.prototype.push;
 var pushToArray = function (arr, valueOrArray) {
     push.apply(arr, isArray(valueOrArray) ? valueOrArray : [valueOrArray]);
@@ -425,14 +425,6 @@ var stringify = function stringify(
     if (isNonNullishPrimitive(obj) || utils.isBuffer(obj)) {
         if (encoder) {
             var keyValue = encodeValuesOnly ? prefix : encoder(prefix, defaults.encoder, charset, 'key', format);
-            if (generateArrayPrefix === 'comma' && encodeValuesOnly) {
-                var valuesArray = split.call(String(obj), ',');
-                var valuesJoined = '';
-                for (var i = 0; i < valuesArray.length; ++i) {
-                    valuesJoined += (i === 0 ? '' : ',') + formatter(encoder(valuesArray[i], defaults.encoder, charset, 'value', format));
-                }
-                return [formatter(keyValue) + (commaRoundTrip && isArray(obj) && valuesArray.length === 1 ? '[]' : '') + '=' + valuesJoined];
-            }
             return [formatter(keyValue) + '=' + formatter(encoder(obj, defaults.encoder, charset, 'value', format))];
         }
         return [formatter(prefix) + '=' + formatter(String(obj))];
@@ -447,6 +439,9 @@ var stringify = function stringify(
     var objKeys;
     if (generateArrayPrefix === 'comma' && isArray(obj)) {
         // we need to join elements in
+        if (encodeValuesOnly && encoder) {
+            obj = utils.maybeMap(obj, encoder);
+        }
         objKeys = [{ value: obj.length > 0 ? obj.join(',') || null : void undefined }];
     } else if (isArray(filter)) {
         objKeys = filter;
@@ -479,7 +474,7 @@ var stringify = function stringify(
             commaRoundTrip,
             strictNullHandling,
             skipNulls,
-            encoder,
+            generateArrayPrefix === 'comma' && encodeValuesOnly && isArray(obj) ? null : encoder,
             filter,
             sort,
             allowDots,
@@ -629,7 +624,7 @@ module.exports = function (object, opts) {
     return joined.length > 0 ? prefix + joined : '';
 };
 
-},{"./formats":1,"./utils":5,"side-channel":16}],5:[function(require,module,exports){
+},{"./formats":1,"./utils":5,"side-channel":17}],5:[function(require,module,exports){
 'use strict';
 
 var formats = require('./formats');
@@ -1058,18 +1053,23 @@ var ThrowTypeError = $gOPD
 	: throwTypeError;
 
 var hasSymbols = require('has-symbols')();
+var hasProto = require('has-proto')();
 
-var getProto = Object.getPrototypeOf || function (x) { return x.__proto__; }; // eslint-disable-line no-proto
+var getProto = Object.getPrototypeOf || (
+	hasProto
+		? function (x) { return x.__proto__; } // eslint-disable-line no-proto
+		: null
+);
 
 var needsEval = {};
 
-var TypedArray = typeof Uint8Array === 'undefined' ? undefined : getProto(Uint8Array);
+var TypedArray = typeof Uint8Array === 'undefined' || !getProto ? undefined : getProto(Uint8Array);
 
 var INTRINSICS = {
 	'%AggregateError%': typeof AggregateError === 'undefined' ? undefined : AggregateError,
 	'%Array%': Array,
 	'%ArrayBuffer%': typeof ArrayBuffer === 'undefined' ? undefined : ArrayBuffer,
-	'%ArrayIteratorPrototype%': hasSymbols ? getProto([][Symbol.iterator]()) : undefined,
+	'%ArrayIteratorPrototype%': hasSymbols && getProto ? getProto([][Symbol.iterator]()) : undefined,
 	'%AsyncFromSyncIteratorPrototype%': undefined,
 	'%AsyncFunction%': needsEval,
 	'%AsyncGenerator%': needsEval,
@@ -1077,6 +1077,8 @@ var INTRINSICS = {
 	'%AsyncIteratorPrototype%': needsEval,
 	'%Atomics%': typeof Atomics === 'undefined' ? undefined : Atomics,
 	'%BigInt%': typeof BigInt === 'undefined' ? undefined : BigInt,
+	'%BigInt64Array%': typeof BigInt64Array === 'undefined' ? undefined : BigInt64Array,
+	'%BigUint64Array%': typeof BigUint64Array === 'undefined' ? undefined : BigUint64Array,
 	'%Boolean%': Boolean,
 	'%DataView%': typeof DataView === 'undefined' ? undefined : DataView,
 	'%Date%': Date,
@@ -1097,10 +1099,10 @@ var INTRINSICS = {
 	'%Int32Array%': typeof Int32Array === 'undefined' ? undefined : Int32Array,
 	'%isFinite%': isFinite,
 	'%isNaN%': isNaN,
-	'%IteratorPrototype%': hasSymbols ? getProto(getProto([][Symbol.iterator]())) : undefined,
+	'%IteratorPrototype%': hasSymbols && getProto ? getProto(getProto([][Symbol.iterator]())) : undefined,
 	'%JSON%': typeof JSON === 'object' ? JSON : undefined,
 	'%Map%': typeof Map === 'undefined' ? undefined : Map,
-	'%MapIteratorPrototype%': typeof Map === 'undefined' || !hasSymbols ? undefined : getProto(new Map()[Symbol.iterator]()),
+	'%MapIteratorPrototype%': typeof Map === 'undefined' || !hasSymbols || !getProto ? undefined : getProto(new Map()[Symbol.iterator]()),
 	'%Math%': Math,
 	'%Number%': Number,
 	'%Object%': Object,
@@ -1113,10 +1115,10 @@ var INTRINSICS = {
 	'%Reflect%': typeof Reflect === 'undefined' ? undefined : Reflect,
 	'%RegExp%': RegExp,
 	'%Set%': typeof Set === 'undefined' ? undefined : Set,
-	'%SetIteratorPrototype%': typeof Set === 'undefined' || !hasSymbols ? undefined : getProto(new Set()[Symbol.iterator]()),
+	'%SetIteratorPrototype%': typeof Set === 'undefined' || !hasSymbols || !getProto ? undefined : getProto(new Set()[Symbol.iterator]()),
 	'%SharedArrayBuffer%': typeof SharedArrayBuffer === 'undefined' ? undefined : SharedArrayBuffer,
 	'%String%': String,
-	'%StringIteratorPrototype%': hasSymbols ? getProto(''[Symbol.iterator]()) : undefined,
+	'%StringIteratorPrototype%': hasSymbols && getProto ? getProto(''[Symbol.iterator]()) : undefined,
 	'%Symbol%': hasSymbols ? Symbol : undefined,
 	'%SyntaxError%': $SyntaxError,
 	'%ThrowTypeError%': ThrowTypeError,
@@ -1131,6 +1133,16 @@ var INTRINSICS = {
 	'%WeakRef%': typeof WeakRef === 'undefined' ? undefined : WeakRef,
 	'%WeakSet%': typeof WeakSet === 'undefined' ? undefined : WeakSet
 };
+
+if (getProto) {
+	try {
+		null.error; // eslint-disable-line no-unused-expressions
+	} catch (e) {
+		// https://github.com/tc39/proposal-shadowrealm/pull/384#issuecomment-1364264229
+		var errorProto = getProto(getProto(e));
+		INTRINSICS['%Error.prototype%'] = errorProto;
+	}
+}
 
 var doEval = function doEval(name) {
 	var value;
@@ -1147,7 +1159,7 @@ var doEval = function doEval(name) {
 		}
 	} else if (name === '%AsyncIteratorPrototype%') {
 		var gen = doEval('%AsyncGenerator%');
-		if (gen) {
+		if (gen && getProto) {
 			value = getProto(gen.prototype);
 		}
 	}
@@ -1217,6 +1229,7 @@ var $concat = bind.call(Function.call, Array.prototype.concat);
 var $spliceApply = bind.call(Function.apply, Array.prototype.splice);
 var $replace = bind.call(Function.call, String.prototype.replace);
 var $strSlice = bind.call(Function.call, String.prototype.slice);
+var $exec = bind.call(Function.call, RegExp.prototype.exec);
 
 /* adapted from https://github.com/lodash/lodash/blob/4.17.15/dist/lodash.js#L6735-L6744 */
 var rePropName = /[^%.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|%$))/g;
@@ -1272,6 +1285,9 @@ module.exports = function GetIntrinsic(name, allowMissing) {
 		throw new $TypeError('"allowMissing" argument must be a boolean');
 	}
 
+	if ($exec(/^%?[^%]*%?$/, name) === null) {
+		throw new $SyntaxError('`%` may not be present anywhere but at the beginning and end of the intrinsic name');
+	}
 	var parts = stringToPath(name);
 	var intrinsicBaseName = parts.length > 0 ? parts[0] : '';
 
@@ -1344,7 +1360,20 @@ module.exports = function GetIntrinsic(name, allowMissing) {
 	return value;
 };
 
-},{"function-bind":10,"has":14,"has-symbols":12}],12:[function(require,module,exports){
+},{"function-bind":10,"has":15,"has-proto":12,"has-symbols":13}],12:[function(require,module,exports){
+'use strict';
+
+var test = {
+	foo: {}
+};
+
+var $Object = Object;
+
+module.exports = function hasProto() {
+	return { __proto__: test }.foo === test.foo && !({ __proto__: null } instanceof $Object);
+};
+
+},{}],13:[function(require,module,exports){
 'use strict';
 
 var origSymbol = typeof Symbol !== 'undefined' && Symbol;
@@ -1359,7 +1388,7 @@ module.exports = function hasNativeSymbols() {
 	return hasSymbolSham();
 };
 
-},{"./shams":13}],13:[function(require,module,exports){
+},{"./shams":14}],14:[function(require,module,exports){
 'use strict';
 
 /* eslint complexity: [2, 18], max-statements: [2, 33] */
@@ -1403,14 +1432,14 @@ module.exports = function hasSymbols() {
 	return true;
 };
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 'use strict';
 
 var bind = require('function-bind');
 
 module.exports = bind.call(Function.call, Object.prototype.hasOwnProperty);
 
-},{"function-bind":10}],15:[function(require,module,exports){
+},{"function-bind":10}],16:[function(require,module,exports){
 var hasMap = typeof Map === 'function' && Map.prototype;
 var mapSizeDescriptor = Object.getOwnPropertyDescriptor && hasMap ? Object.getOwnPropertyDescriptor(Map.prototype, 'size') : null;
 var mapSize = hasMap && mapSizeDescriptor && typeof mapSizeDescriptor.get === 'function' ? mapSizeDescriptor.get : null;
@@ -1615,16 +1644,20 @@ module.exports = function inspect_(obj, options, depth, seen) {
     }
     if (isMap(obj)) {
         var mapParts = [];
-        mapForEach.call(obj, function (value, key) {
-            mapParts.push(inspect(key, obj, true) + ' => ' + inspect(value, obj));
-        });
+        if (mapForEach) {
+            mapForEach.call(obj, function (value, key) {
+                mapParts.push(inspect(key, obj, true) + ' => ' + inspect(value, obj));
+            });
+        }
         return collectionOf('Map', mapSize.call(obj), mapParts, indent);
     }
     if (isSet(obj)) {
         var setParts = [];
-        setForEach.call(obj, function (value) {
-            setParts.push(inspect(value, obj));
-        });
+        if (setForEach) {
+            setForEach.call(obj, function (value) {
+                setParts.push(inspect(value, obj));
+            });
+        }
         return collectionOf('Set', setSize.call(obj), setParts, indent);
     }
     if (isWeakMap(obj)) {
@@ -1924,7 +1957,7 @@ function arrObjKeys(obj, inspect) {
     return xs;
 }
 
-},{"./util.inspect":6}],16:[function(require,module,exports){
+},{"./util.inspect":6}],17:[function(require,module,exports){
 'use strict';
 
 var GetIntrinsic = require('get-intrinsic');
@@ -2050,5 +2083,5 @@ module.exports = function getSideChannel() {
 	return channel;
 };
 
-},{"call-bind/callBound":7,"get-intrinsic":11,"object-inspect":15}]},{},[2])(2)
+},{"call-bind/callBound":7,"get-intrinsic":11,"object-inspect":16}]},{},[2])(2)
 });

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,7 @@
 
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/LogEntryView.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Replication2/ReplicatedLog/types.h"
 #include "Basics/ResultT.h"
@@ -41,9 +41,13 @@ class Result;
 struct LoggerContext;
 }  // namespace arangodb
 
+namespace arangodb::replication2::storage {
+struct IStorageEngineMethods;
+}
+
 namespace arangodb::replication2::replicated_log {
 
-struct LogCore;
+struct IReplicatedStateHandle;
 struct LogStatus;
 struct QuickLogStatus;
 struct InMemoryLog;
@@ -72,21 +76,24 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   [[nodiscard]] virtual auto getQuickStatus() const -> QuickLogStatus = 0;
   virtual ~ILogParticipant() = default;
-  [[nodiscard]] virtual auto
-  resign() && -> std::tuple<std::unique_ptr<LogCore>, DeferredAction> = 0;
+  [[nodiscard]] virtual auto resign() && -> std::tuple<
+      std::unique_ptr<storage::IStorageEngineMethods>,
+      std::unique_ptr<IReplicatedStateHandle>, DeferredAction> = 0;
 
   using WaitForPromise = futures::Promise<WaitForResult>;
   using WaitForFuture = futures::Future<WaitForResult>;
   using WaitForIteratorFuture =
-      futures::Future<std::unique_ptr<LogRangeIterator>>;
+      futures::Future<std::unique_ptr<LogViewRangeIterator>>;
   using WaitForQueue = std::multimap<LogIndex, WaitForPromise>;
 
   [[nodiscard]] virtual auto waitFor(LogIndex index) -> WaitForFuture = 0;
   [[nodiscard]] virtual auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture = 0;
 
-  [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
-  [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
+  // Passing no bounds means everything.
+  [[nodiscard]] virtual auto getInternalLogIterator(
+      std::optional<LogRange> bounds = std::nullopt) const
+      -> std::unique_ptr<LogIterator> = 0;
   [[nodiscard]] virtual auto compact() -> ResultT<CompactionResult> = 0;
 };
 

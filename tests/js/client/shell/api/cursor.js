@@ -2,18 +2,16 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotEqual, assertMatch, assertUndefined, assertNotUndefined, assertNotNull */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,8 +29,8 @@
 const jsunity = require("jsunity");
 const internal = require('internal');
 const sleep = internal.sleep;
-let api = "/_api/cursor";
-let reId = /^\d+$/;
+const api = "/_api/cursor";
+const reId = /^\d+$/;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" : "application/x-velocypack";
 
@@ -1156,7 +1154,7 @@ function dealing_with_cursorsSuite_checking_a_querySuite() {
 
     test_window_aggregate_no_arguments_query: function () {
       let cmd = "/_api/query";
-      let body = {"query": `FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1`};
+      let body = {"query": `FOR e IN [] WINDOW { preceding: 1 } AGGREGATE i = LENGTH() RETURN 1`};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);

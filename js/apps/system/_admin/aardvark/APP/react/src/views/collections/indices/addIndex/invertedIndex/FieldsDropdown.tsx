@@ -4,7 +4,7 @@ import React from "react";
 import { components, MultiValueGenericProps } from "react-select";
 import CreatableMultiSelect from "../../../../../components/select/CreatableMultiSelect";
 import { OptionType } from "../../../../../components/select/SelectBase";
-import { IndexFormFieldProps } from "../IndexFormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { IndexInfoTooltip } from "../IndexInfoTooltip";
 import { useInvertedIndexContext } from "./InvertedIndexContext";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
@@ -42,7 +42,7 @@ const MultiValueLabel = (
     </Box>
   );
 };
-export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
+export const FieldsDropdown = ({ field }: { field: FormFieldProps }) => {
   const [formikField] = useField<InvertedIndexValuesType[]>(field.name);
   const { setCurrentFieldData } = useInvertedIndexContext();
   const dropdownValue =

@@ -33,9 +33,8 @@ const useFieldBreakcrumbs = ({
     new Array(partsLength).fill(null).map((_, index) => {
       const breadcrumbPath = pathParts.slice(0, index + 1).join(".");
       const breadcrumbValue = get(values, `${breadcrumbPath}.name`)!;
-      const { restPath, lastIndex } = extractLastIndexAndRestOfPath(
-        breadcrumbPath
-      );
+      const { restPath, lastIndex } =
+        extractLastIndexAndRestOfPath(breadcrumbPath);
       return {
         breadcrumbPath: restPath,
         breadcrumbValue,
@@ -61,31 +60,27 @@ export const FieldBreadcrumbs = ({
     <Stack
       direction="row"
       fontSize="md"
-      background={"gray.800"}
-      color="white"
+      background={"gray.300"}
       paddingX="4"
       paddingY="2"
     >
-      <Text
-        cursor="pointer"
-        textDecoration="underline"
+      <BreadcrumbLink
         onClick={() => {
           setCurrentFieldData(undefined);
         }}
       >
         Fields
-      </Text>
-      <Text>{">>"}</Text>
+      </BreadcrumbLink>
+      <Text>/</Text>
       {breadcrumbs?.map((breadcrumb, index) => {
         const isCurrentBreadcrumb =
           currentFieldData?.fieldIndex === breadcrumb.breakcrumbIndex &&
           currentFieldData?.fieldValue === breadcrumb.breadcrumbValue;
         return (
           <Stack direction="row" key={breadcrumb.breadcrumbPath}>
-            {index > 0 ? <Box>{">>"}</Box> : null}
-            <Box
-              textDecoration={!isCurrentBreadcrumb ? "underline" : ""}
-              cursor={!isCurrentBreadcrumb ? "pointer" : ""}
+            {index > 0 ? <Box>/</Box> : null}
+            <BreadcrumbLink
+              active={!isCurrentBreadcrumb}
               onClick={() => {
                 !isCurrentBreadcrumb &&
                   setCurrentFieldData({
@@ -96,10 +91,32 @@ export const FieldBreadcrumbs = ({
               }}
             >
               {breadcrumb.breadcrumbValue}
-            </Box>
+            </BreadcrumbLink>
           </Stack>
         );
       })}
     </Stack>
+  );
+};
+
+const BreadcrumbLink = ({
+  children,
+  onClick,
+  active = true
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  active?: boolean;
+}) => {
+  return (
+    <Box
+      as="span"
+      color={active ? "blue.500" : ""}
+      textDecoration={active ? "underline" : ""}
+      cursor={active ? "pointer" : ""}
+      onClick={active ? onClick : undefined}
+    >
+      {children}
+    </Box>
   );
 };

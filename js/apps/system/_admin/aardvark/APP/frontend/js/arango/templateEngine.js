@@ -1,5 +1,3 @@
-/* jshint unused: false */
-/* global  window, _, $ */
 (function () {
   'use strict';
   // For tests the templates are loaded some where else.

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,16 +25,18 @@
 
 #include "Mocks/Servers.h"
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.cpp"
 #include "Aql/VarUsageFinder.cpp"
 #include "Aql/VarUsageFinder.h"
 #include "Aql/types.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
 
 #include <optional>
-#include <unordered_set>
+#include <string_view>
 #include <vector>
 
 using namespace arangodb;
@@ -121,7 +123,7 @@ struct ExecutionNodeMock {
     _regsToClear = std::move(toClear);
   }
 
-  auto getTypeString() const -> std::string const& {
+  auto getTypeString() const -> std::string_view {
     return ExecutionNode::getTypeString(_type);
   }
 
@@ -209,6 +211,8 @@ auto ExecutionNodeMock::getVarsValidStack() const -> VarSetStack const& {
 class RegisterPlanTest : public ::testing::Test {
  protected:
   RegisterPlanTest() {}
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   auto walk(std::vector<ExecutionNodeMock>& nodes)
       -> std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> {
@@ -232,7 +236,7 @@ class RegisterPlanTest : public ::testing::Test {
     std::array<Variable*, amount> ptrs{};
     for (size_t i = 0; i < amount; ++i) {
       vars.emplace_back("var" + arangodb::basics::StringUtils::itoa(i),
-                        static_cast<VariableId>(i), false);
+                        static_cast<VariableId>(i), false, resourceMonitor);
       ptrs[i] = &vars[i];
     }
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,7 +41,6 @@ namespace aql {
 class AqlItemBlockManager;
 class BlockCollector;
 class SharedAqlItemBlockPtr;
-enum class SerializationFormat;
 
 // an <AqlItemBlock> is a <numRows>x<numRegisters> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
@@ -72,13 +71,7 @@ class AqlItemBlock {
   AqlItemBlock(AqlItemBlock const&) = delete;
   AqlItemBlock& operator=(AqlItemBlock const&) = delete;
 
-  /// @brief create the block
-  AqlItemBlock(AqlItemBlockManager&, size_t numRows,
-               RegisterCount numRegisters);
-
   void initFromSlice(arangodb::velocypack::Slice);
-
-  SerializationFormat getFormatType() const;
 
   /// @brief auxiliary struct to track how often the same AqlValue is
   /// present in an AqlItemBlock, and how much dynamic memory on instance
@@ -116,8 +109,13 @@ class AqlItemBlock {
   using ShadowRowIterator = std::vector<uint32_t>::const_iterator;
 
  protected:
+  /// @brief create the block
+  /// Should only ever be called by AqlItemBlockManager, so it's protected
+  AqlItemBlock(AqlItemBlockManager&, size_t numRows,
+               RegisterCount numRegisters);
+
   /// @brief destroy the block
-  /// Should only ever be deleted by AqlItemManager::returnBlock, so the
+  /// Should only ever be deleted by AqlItemBlockManager::returnBlock, so the
   /// destructor is protected.
   ~AqlItemBlock();
 
@@ -273,8 +271,7 @@ class AqlItemBlock {
 
   /// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
   /// can be used to recreate the AqlItemBlock via the Json constructor
-  void toVelocyPack(velocypack::Options const*,
-                    arangodb::velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Options const*, velocypack::Builder&) const;
 
   /// @brief toJson, transfer a slice of this AqlItemBlock to Json, the result
   /// can be used to recreate the AqlItemBlock via the Json constructor The
@@ -282,7 +279,7 @@ class AqlItemBlock {
   /// (excluding). Only calls with 0 <= from < to <= this.size() are allowed. If
   /// you want to transfer the full block, use from == 0, to == this.size()
   void toVelocyPack(size_t from, size_t to, velocypack::Options const*,
-                    arangodb::velocypack::Builder&) const;
+                    velocypack::Builder&) const;
 
   /// @brief Creates a human-readable velocypack of the block. Adds an object
   /// `{numRows, numRegisters, matrix}` to the builder.
@@ -291,8 +288,7 @@ class AqlItemBlock {
   // (of length nrRegs+1 (sic)). The first entry contains the shadow row depth,
   // or `null` for data rows. The entries with indexes 1..nrRegs contain the
   // registers 0..nrRegs-1, respectively.
-  void toSimpleVPack(velocypack::Options const*,
-                     arangodb::velocypack::Builder&) const;
+  void toSimpleVPack(velocypack::Options const*, velocypack::Builder&) const;
 
   void rowToSimpleVPack(size_t row, velocypack::Options const*,
                         velocypack::Builder& builder) const;
@@ -304,7 +300,7 @@ class AqlItemBlock {
   /// @brief get the ShadowRowDepth
   /// Does only work if this row is a shadow row
   /// Asserts on Maintainer, returns 0 on production
-  size_t getShadowRowDepth(size_t row) const;
+  size_t getShadowRowDepth(size_t row) const noexcept;
 
   /// @brief Transform the given row into a ShadowRow.
   void makeShadowRow(size_t row, size_t depth);
@@ -412,11 +408,12 @@ class AqlItemBlock {
     explicit OwnershipChecker(std::atomic<std::thread::id>& v) : _v(v) {
       auto old =
           _v.exchange(std::this_thread::get_id(), std::memory_order_relaxed);
-      TRI_ASSERT(old == std::thread::id());
+      TRI_ASSERT(old == std::thread::id()) << "old=" << old;
     }
     ~OwnershipChecker() {
       auto old = _v.exchange(std::thread::id(), std::memory_order_relaxed);
-      TRI_ASSERT(old == std::this_thread::get_id());
+      TRI_ASSERT(old == std::this_thread::get_id())
+          << "old=" << old << ", this=" << std::this_thread::get_id();
     }
     std::atomic<std::thread::id>& _v;
   };

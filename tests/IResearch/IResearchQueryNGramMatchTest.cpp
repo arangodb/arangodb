@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,11 +25,12 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Aql/OptimizerRulesFeature.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearchQueryCommon.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -78,6 +79,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
+            arangodb::transaction::OperationOriginTestCase{},
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS)  // required for PHRASE
@@ -109,7 +111,8 @@ class QueryNGramMatch : public QueryTest {
         arangodb::OperationOptions options;
         options.returnNew = true;
         arangodb::SingleCollectionTransaction trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase),
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
             *collection, arangodb::AccessMode::Type::WRITE);
         EXPECT_TRUE(trx.begin().ok());
 
@@ -135,6 +138,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
+            arangodb::transaction::OperationOriginTestCase{},
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS)  // required for PHRASE
@@ -164,6 +168,7 @@ class QueryNGramMatch : public QueryTest {
                 "{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                 "\"preserveOriginal\":false}")
                 ->slice(),
+            arangodb::transaction::OperationOriginTestCase{},
             arangodb::iresearch::Features(
                 irs::IndexFeatures::FREQ |
                 irs::IndexFeatures::POS));  // cache analyzer
@@ -194,7 +199,8 @@ class QueryNGramMatch : public QueryTest {
         arangodb::OperationOptions options;
         options.returnNew = true;
         arangodb::SingleCollectionTransaction trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase),
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
             *collection, arangodb::AccessMode::Type::WRITE);
         EXPECT_TRUE(trx.begin().ok());
 
@@ -646,7 +652,8 @@ class QueryNGramMatch : public QueryTest {
     // test via default analyzer
     if (flags & kAnalyzerIdentity) {
       std::vector<arangodb::velocypack::Slice> expected = {
-          // no results  will be found as identity analyzer has no positions
+          // exact match because fallback to term query in case of single ngram
+          _insertedDocs[0].slice(),
       };
       auto result = arangodb::tests::executeQuery(
           vocbase,
@@ -659,7 +666,7 @@ class QueryNGramMatch : public QueryTest {
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
-        EXPECT_TRUE(i < expected.size());
+        ASSERT_TRUE(i < expected.size()) << slice.toJson();
         EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                               expected[i++], resolved, true)));
       }
@@ -1135,7 +1142,8 @@ class QueryNGramMatch : public QueryTest {
     // test via default analyzer
     if (flags & kAnalyzerIdentity) {
       std::vector<arangodb::velocypack::Slice> expected = {
-          // no results  will be found as identity analyzer has no positions
+          // exact match because fallback to term query in case of single ngram
+          _insertedDocs[0].slice(),
       };
       auto result = arangodb::tests::executeQuery(
           vocbase,
@@ -1148,7 +1156,7 @@ class QueryNGramMatch : public QueryTest {
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
-        EXPECT_TRUE(i < expected.size());
+        ASSERT_TRUE(i < expected.size()) << slice.toJson();
         EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                               expected[i++], resolved, true)));
       }
@@ -1232,7 +1240,7 @@ class QueryNGramMatchSearch : public QueryNGramMatch {
         version(), toString(analyzer)));
     auto collection = vocbase.lookupCollection("testCollection0");
     ASSERT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created);
+    collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
 
     // add view

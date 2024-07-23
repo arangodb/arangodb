@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,19 +24,20 @@
 #include "AqlItemBlock.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
@@ -49,7 +50,7 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 namespace {
-inline void copyValueOver(arangodb::containers::HashSet<void*>& cache,
+inline void copyValueOver(arangodb::containers::HashSet<void const*>& cache,
                           AqlValue const& a, size_t rowNumber,
                           RegisterId::value_t col, SharedAqlItemBlockPtr& res) {
   if (a.requiresDestruction()) {
@@ -159,13 +160,9 @@ void AqlItemBlock::initFromSlice(VPackSlice slice) {
     rawIterator.next();
     rawIterator.next();
     RegisterId::value_t startColumn = 0;
-    if (getFormatType() == SerializationFormat::CLASSIC) {
-      startColumn = 1;
-    }
 
     // note that the end column is always _numRegisters + 1 here, as the first
-    // "real" input column is 1. column 0 contains shadow row information in
-    // case the serialization format is not CLASSIC.
+    // "real" input column is 1. column 0 contains shadow row information.
     for (RegisterId::value_t column = startColumn; column < _numRegisters + 1;
          column++) {
       for (size_t i = 0; i < _numRows; i++) {
@@ -301,10 +298,6 @@ void AqlItemBlock::initFromSlice(VPackSlice slice) {
   TRI_ASSERT(runType == NoRun);
 }
 
-SerializationFormat AqlItemBlock::getFormatType() const {
-  return _manager.getFormatType();
-}
-
 /// @brief destroy the block, used in the destructor and elsewhere
 void AqlItemBlock::destroy() noexcept {
   // none of the functions used here will throw in reality, but
@@ -363,18 +356,13 @@ void AqlItemBlock::shrink(size_t numRows) {
 
   if (ADB_UNLIKELY(numRows > _numRows)) {
     // cannot use shrink() to increase the size of the block
-    std::string errorMessage("cannot use shrink() to increase block");
-    errorMessage.append(". numRows: ");
-    errorMessage.append(std::to_string(numRows));
-    errorMessage.append(". _numRows: ");
-    errorMessage.append(std::to_string(_numRows));
-    errorMessage.append(". _numRegisters: ");
-    errorMessage.append(std::to_string(_numRegisters));
-    errorMessage.append(". _maxModifiedRowIndex: ");
-    errorMessage.append(std::to_string(_maxModifiedRowIndex));
-    errorMessage.append(". _rowIndex: ");
-    errorMessage.append(std::to_string(_rowIndex));
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMessage);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(
+            "cannot use shrink() to increase block. numRows: ", numRows,
+            ". _numRows: ", _numRows, ". _numRegisters: ", _numRegisters,
+            ". _maxModifiedRowIndex: ", _maxModifiedRowIndex,
+            ". _rowIndex: ", _rowIndex));
   }
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_numRows - numRows) * _numRegisters);
@@ -508,9 +496,10 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
 
   auto const numModifiedRows = _maxModifiedRowIndex;
 
-  auto copyRows = [&](arangodb::containers::HashSet<void*>& cache, auto type) {
+  auto copyRows = [&](arangodb::containers::HashSet<void const*>& cache,
+                      auto type) {
     constexpr bool checkShadowRows =
-        std::is_same<decltype(type), WithShadowRows>::value;
+        std::is_same_v<decltype(type), WithShadowRows>;
     cache.reserve(_valueCount.size());
 
     for (size_t row = 0; row < numModifiedRows; row++) {
@@ -542,13 +531,13 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
     }
   };
 
-  arangodb::containers::HashSet<void*> cache;
+  arangodb::containers::HashSet<void const*> cache;
 
   if (hasShadowRows()) {
-    // optimized version for when no shadow rows exist
+    // at least one shadow row exists. this is the slow path
     copyRows(cache, WithShadowRows{});
   } else {
-    // at least one shadow row exists. this is the slow path
+    // optimized version for when no shadow rows exist
     copyRows(cache, WithoutShadowRows{});
   }
   TRI_ASSERT(res->numRows() == numRows);
@@ -599,7 +588,7 @@ auto AqlItemBlock::slice(std::span<std::pair<size_t, size_t> const> ranges)
     numRows += to - from;
   }
 
-  arangodb::containers::HashSet<void*> cache;
+  arangodb::containers::HashSet<void const*> cache;
   cache.reserve(numRows * _numRegisters / 4 + 1);
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(numRows, _numRegisters)};
@@ -627,7 +616,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(
     RegisterCount newNumRegisters) const {
   TRI_ASSERT(_numRegisters <= newNumRegisters);
 
-  arangodb::containers::HashSet<void*> cache;
+  arangodb::containers::HashSet<void const*> cache;
   SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNumRegisters)};
   for (auto const& col : registers) {
     TRI_ASSERT(col.isRegularRegister() && col < _numRegisters);
@@ -645,7 +634,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
                                           size_t from, size_t to) const {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  arangodb::containers::HashSet<void*> cache;
+  arangodb::containers::HashSet<void const*> cache;
   cache.reserve((to - from) * _numRegisters / 4 + 1);
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _numRegisters)};
@@ -669,7 +658,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
 /// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
 /// can be used to recreate the AqlItemBlock via the Json constructor
 void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions,
-                                VPackBuilder& result) const {
+                                velocypack::Builder& result) const {
   return toVelocyPack(0, numRows(), trxOptions, result);
 }
 
@@ -708,7 +697,7 @@ void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions,
 ///                  such that actual indices start at 2
 void AqlItemBlock::toVelocyPack(size_t from, size_t to,
                                 velocypack::Options const* const trxOptions,
-                                VPackBuilder& result) const {
+                                velocypack::Builder& result) const {
   // Can only have positive slice size
   TRI_ASSERT(from < to);
   // We cannot slice over the upper bound.
@@ -720,7 +709,10 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
 
-  VPackBuilder raw(&options);
+  // use an on-stack buffer for building the result. this avoids creating
+  // a buffer object on the heap using a shared_ptr
+  VPackBufferUInt8 buffer;
+  VPackBuilder raw(buffer, &options);
   raw.openArray();
   // Two nulls in the beginning such that indices start with 2
   raw.add(VPackValue(VPackValueType::Null));
@@ -737,32 +729,27 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
     Positional,  // saw a value previously encountered
   };
 
-  std::unordered_map<AqlValue, size_t> table;  // remember duplicates
-  size_t lastTablePos = 0;
-  State lastState = Positional;
-
-  State currentState = Positional;
-  size_t runLength = 0;
-  size_t tablePos = 0;
+  // map keyed by unique AqlValues. we use this to remember duplicates.
+  // the mapped size_t value is the position of the entry in the "raw"
+  // builder array
+  containers::FlatHashMap<AqlValue, size_t> table;
 
   result.add("data", VPackValue(VPackValueType::Array));
 
   // write out data buffered for repeated "empty" or "next" values
   auto writeBuffered = [](State lastState, size_t lastTablePos,
-                          VPackBuilder& result, size_t runLength) {
+                          velocypack::Builder& result, size_t runLength) {
     if (lastState == Range) {
       return;
     }
 
     if (lastState == Positional) {
       if (lastTablePos >= 2) {
-        if (runLength == 1) {
-          result.add(VPackValue(lastTablePos));
-        } else {
+        if (runLength > 1) {
           result.add(VPackValue(-4));
           result.add(VPackValue(runLength));
-          result.add(VPackValue(lastTablePos));
         }
+        result.add(VPackValue(lastTablePos));
       }
     } else {
       TRI_ASSERT(lastState == Empty || lastState == Next);
@@ -777,16 +764,17 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
     }
   };
 
+  size_t lastTablePos = 0;
+  State lastState = Positional;
+  State currentState = Positional;
+  size_t tablePos = 0;
+  size_t runLength = 0;
   size_t pos = 2;  // write position in raw
 
   // hack hack hack: we use a fake register to serialize shadow rows
   RegisterId::value_t const subqueryDepthColumn =
       std::numeric_limits<RegisterId::value_t>::max();
   RegisterId::value_t startColumn = subqueryDepthColumn;
-  if (getFormatType() == SerializationFormat::CLASSIC) {
-    // skip shadow rows
-    startColumn = 0;
-  }
 
   // we start the serializaton at the fake register, which may then overflow to
   // 0...
@@ -816,14 +804,23 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
       } else if (a.isRange()) {
         currentState = Range;
       } else {
-        auto it = table.find(a);
+        TRI_ASSERT(pos >= 2);
+        // attempt an insert into the map without checking if the
+        // target element already exists. if it already exists,
+        // then the try_emplace does nothing, but we will get an
+        // iterator to the existing element.
+        // in case we inserted the value, we can simply go on and
+        // increase the global position counter.
+        auto [it, inserted] = table.try_emplace(a, pos);
 
-        if (it == table.end()) {
+        if (inserted) {
+          // we inserted a new element
           currentState = Next;
-          a.toVelocyPack(trxOptions, raw, /*resolveExternals*/ false,
-                         /*allowUnindexed*/ true);
-          table.try_emplace(a, pos++);
+          a.toVelocyPack(trxOptions, raw, /*allowUnindexed*/ true);
+          // must update position after the insert
+          pos++;
         } else {
+          // we are reusing an already existing element
           currentState = Positional;
           tablePos = it->second;
           TRI_ASSERT(tablePos >= 2);
@@ -870,9 +867,9 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
   result.add("raw", raw.slice());
 }
 
-void AqlItemBlock::rowToSimpleVPack(
-    size_t row, velocypack::Options const* options,
-    arangodb::velocypack::Builder& builder) const {
+void AqlItemBlock::rowToSimpleVPack(size_t row,
+                                    velocypack::Options const* options,
+                                    velocypack::Builder& builder) const {
   VPackArrayBuilder rowBuilder{&builder};
 
   if (isShadowRow(row)) {
@@ -886,8 +883,7 @@ void AqlItemBlock::rowToSimpleVPack(
     if (ref.isEmpty()) {
       builder.add(VPackSlice::noneSlice());
     } else {
-      ref.toVelocyPack(options, builder, /*resolveExternals*/ false,
-                       /*allowUnindexed*/ true);
+      ref.toVelocyPack(options, builder, /*allowUnindexed*/ true);
     }
   }
 }
@@ -1152,7 +1148,7 @@ bool AqlItemBlock::isShadowRow(size_t row) const noexcept {
   return _shadowRows.is(row);
 }
 
-size_t AqlItemBlock::getShadowRowDepth(size_t row) const {
+size_t AqlItemBlock::getShadowRowDepth(size_t row) const noexcept {
   TRI_ASSERT(isShadowRow(row));
   TRI_ASSERT(hasShadowRows());
   return _shadowRows.getDepth(row);
@@ -1210,7 +1206,8 @@ size_t AqlItemBlock::decrRefCount() const noexcept {
 size_t AqlItemBlock::getAddress(size_t index,
                                 RegisterId::value_t reg) const noexcept {
   TRI_ASSERT(index < _numRows);
-  TRI_ASSERT(reg < _numRegisters);
+  TRI_ASSERT(reg < _numRegisters)
+      << "violated " << reg << " < " << _numRegisters;
   return index * _numRegisters + reg;
 }
 

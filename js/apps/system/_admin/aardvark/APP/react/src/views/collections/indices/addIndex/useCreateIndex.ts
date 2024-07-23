@@ -1,20 +1,18 @@
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { encodeHelper } from "../../../../utils/encodeHelper";
+import { notifyError, notifySuccess } from "../../../../utils/notifications";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 
 const handleError = (error: { errorMessage: string }) => {
   if (error.errorMessage) {
-    window.arangoHelper.arangoError("Index error", error.errorMessage);
+    notifyError(`Index creation failed: ${error.errorMessage}`);
   } else {
-    window.arangoHelper.arangoError("Index error", "Could not create index.");
+    notifyError("Index creation failed.");
   }
 };
 
 const handleSuccess = (onSuccess: () => void) => {
-  window.arangoHelper.arangoNotification(
-    "Index",
-    "Creation in progress. This may take a while."
-  );
+  notifySuccess("Index creation in progress, this may take a while.");
   onSuccess();
 };
 

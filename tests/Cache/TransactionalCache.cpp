@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "Cache/BinaryKeyHasher.h"
+#include "Cache/CacheOptionsProvider.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
@@ -50,7 +51,10 @@ TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024 * 1024);
+
+  CacheOptions co;
+  co.cacheSize = 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache1 = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
                                                      false, 256 * 1024);
   auto cache2 = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
@@ -61,8 +65,8 @@ TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
   ASSERT_EQ(0, cache2->usage());
   ASSERT_TRUE(512 * 1024 >= cache2->size());
 
-  manager.destroyCache(cache1);
-  manager.destroyCache(cache2);
+  manager.destroyCache(std::move(cache1));
+  manager.destroyCache(std::move(cache2));
 }
 
 TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
@@ -70,7 +74,9 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
                                                     false, cacheLimit);
 
@@ -79,7 +85,7 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
     } else {
@@ -93,7 +99,7 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_EQ(0, memcmp(f.value()->value(), &j, sizeof(std::uint64_t)));
@@ -107,7 +113,7 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
     } else {
@@ -116,7 +122,7 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   }
   ASSERT_TRUE(cache->size() <= 128 * 1024);
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
@@ -124,7 +130,9 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
                                                     false, cacheLimit);
 
@@ -133,7 +141,7 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_NE(f.value(), nullptr);
@@ -157,7 +165,7 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   // test removal of bogus keys
   for (std::uint64_t i = 1024; i < 1088; i++) {
     auto status = cache->remove(&i, sizeof(std::uint64_t));
-    ASSERT_TRUE(status.ok());
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
     // ensure existing keys not removed
     std::uint64_t found = 0;
     for (std::uint64_t j = 0; j < 1024; j++) {
@@ -175,12 +183,12 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   // remove actual keys
   for (std::uint64_t i = 0; i < 1024; i++) {
     auto status = cache->remove(&i, sizeof(std::uint64_t));
-    ASSERT_TRUE(status.ok());
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, status);
     auto f = cache->find(&i, sizeof(std::uint64_t));
     ASSERT_FALSE(f.found());
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
@@ -188,18 +196,21 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
+  CacheOptions co;
+  co.cacheSize = 4 * cacheLimit;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
                                                     false, cacheLimit);
 
-  Transaction* tx = manager.beginTransaction(false);
+  Transaction tx;
+  manager.beginTransaction(tx, false);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_NE(f.value(), nullptr);
@@ -212,7 +223,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
 
   for (std::uint64_t i = 512; i < 1024; i++) {
     auto status = cache->banish(&i, sizeof(std::uint64_t));
-    ASSERT_TRUE(status.ok());
+    ASSERT_TRUE(status == TRI_ERROR_NO_ERROR ||
+                status == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     auto f = cache->find(&i, sizeof(std::uint64_t));
     ASSERT_FALSE(f.found());
   }
@@ -222,14 +234,14 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    ASSERT_TRUE(status.fail());
+    ASSERT_NE(TRI_ERROR_NO_ERROR, status);
     delete value;
     auto f = cache->find(&i, sizeof(std::uint64_t));
     ASSERT_FALSE(f.found());
   }
 
   manager.endTransaction(tx);
-  tx = manager.beginTransaction(false);
+  manager.beginTransaction(tx, false);
 
   std::uint64_t reinserted = 0;
   for (std::uint64_t i = 512; i < 1024; i++) {
@@ -237,7 +249,7 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.ok()) {
+    if (status == TRI_ERROR_NO_ERROR) {
       reinserted++;
       auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
@@ -248,7 +260,7 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   ASSERT_TRUE(reinserted >= 256);
 
   manager.endTransaction(tx);
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheTest,
@@ -260,7 +272,9 @@ TEST(CacheTransactionalCacheTest,
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
+  CacheOptions co;
+  co.cacheSize = 1024 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
@@ -269,7 +283,7 @@ TEST(CacheTransactionalCacheTest,
                                                 sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
-    if (status.fail()) {
+    if (status != TRI_ERROR_NO_ERROR) {
       delete value;
     }
   }
@@ -277,7 +291,7 @@ TEST(CacheTransactionalCacheTest,
   EXPECT_GT(cache->usageLimit(), minimumUsage);
   EXPECT_GT(cache->usage(), minimumUsage);
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
 }
 
 TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
@@ -289,7 +303,9 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
   };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
-  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
+  CacheOptions co;
+  co.cacheSize = 1024 * 1024 * 1024;
+  Manager manager(sharedPRNG, postFn, co);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache =
       manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
@@ -301,7 +317,8 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
   std::atomic<std::uint64_t> missCount(0);
   auto worker = [&manager, &cache, initialInserts, operationCount, &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
-    Transaction* tx = manager.beginTransaction(false);
+    Transaction tx;
+    manager.beginTransaction(tx, false);
     // fill with some initial data
     for (std::uint64_t i = 0; i < initialInserts; i++) {
       std::uint64_t item = lower + i;
@@ -309,7 +326,7 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
                                                   &item, sizeof(std::uint64_t));
       TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
-      if (status.fail()) {
+      if (status != TRI_ERROR_NO_ERROR) {
         delete value;
       }
     }
@@ -345,7 +362,7 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
             &item, sizeof(std::uint64_t), &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = cache->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       } else if (r >= 80) {  // banish something
@@ -389,6 +406,6 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
     delete t;
   }
 
-  manager.destroyCache(cache);
+  manager.destroyCache(std::move(cache));
   RandomGenerator::shutdown();
 }

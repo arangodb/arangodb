@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 #include "Basics/EncodingUtils.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"
@@ -99,7 +100,7 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
 
   std::unordered_map<std::string, std::string> headers = {
       {StaticStrings::UserAgent, std::string("arangosh/") + ARANGODB_VERSION},
-      {StaticStrings::AcceptEncoding, "gzip"}};
+      {StaticStrings::AcceptEncoding, StaticStrings::EncodingGzip}};
 
   uint32_t timeoutInSecs = 1;
   while (!_server.isStopping()) {
@@ -136,6 +137,21 @@ void TelemetricsHandler::fetchTelemetricsFromServer() {
             _telemetricsFetchResponse.is(TRI_ERROR_HTTP_FORBIDDEN) ||
             _telemetricsFetchResponse.is(TRI_ERROR_HTTP_ENHANCE_YOUR_CALM)) {
           _telemetricsFetchedInfo.add(response->getBodyVelocyPack()->slice());
+          auto deploymentSlice =
+              _telemetricsFetchedInfo.slice().get("deployment");
+          if (!deploymentSlice.isNone()) {
+            auto deploymentType = deploymentSlice.get("type").stringView();
+            if (deploymentType == "active_failover") {
+              // afo left here so that telemetrics can still handle it when
+              // connected to servers running previous versions of ArangoDB
+              if (auto s = deploymentSlice.get("active_failover_leader");
+                  s.isFalse()) {
+                _sendToEndpoint = false;
+              }
+            }
+          } else {
+            _sendToEndpoint = true;
+          }
           _httpClient.reset();
           break;
         }

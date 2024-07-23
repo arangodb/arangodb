@@ -23,6 +23,7 @@
 #ifndef ARANGO_CXX_DRIVER_JWT
 #define ARANGO_CXX_DRIVER_JWT
 
+#include <chrono>
 #include <string>
 
 namespace arangodb {
@@ -33,16 +34,14 @@ class Slice;
 namespace fuerte { inline namespace v1 { namespace jwt {
 
 /// Generate JWT token as used by internal arangodb communication
-std::string generateInternalToken(std::string const& secret,
-                                  std::string const& id);
+std::string generateInternalToken(std::string_view secret, std::string_view id);
 
 /// Generate JWT token as used for 'users' in arangodb
-std::string generateUserToken(std::string const& secret,
-                              std::string const& username,
-                              std::chrono::seconds validFor = std::chrono::seconds{0});
+std::string generateUserToken(
+    std::string_view secret, std::string_view username,
+    std::chrono::seconds validFor = std::chrono::seconds{0});
 
-std::string generateRawJwt(std::string const& secret,
-                           arangodb::velocypack::Slice const& body);
+std::string generateRawJwt(std::string_view secret, velocypack::Slice body);
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief Internals

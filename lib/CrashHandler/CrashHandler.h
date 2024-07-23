@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,6 +31,11 @@ class CrashHandler {
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();
 
+  /// @brief set server state string as context for crash messages.
+  /// state string will be advanced whenever the application server
+  /// changes its state. state string must be null-terminated!
+  static void setState(std::string_view state);
+
   /// @brief logs a fatal message and crashes the program
   [[noreturn]] static void crash(std::string_view context);
 
@@ -49,10 +54,6 @@ class CrashHandler {
 
   /// @brief installs the crash handler globally
   static void installCrashHandler();
-
-#ifdef _WIN32
-  static void setMiniDumpDirectory(std::string path);
-#endif
 };
 
 }  // namespace arangodb

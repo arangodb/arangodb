@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,6 +43,16 @@
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
 using namespace arangodb::options;
+
+/*static*/ std::function<bool(std::string const&)> const
+    ProgramOptions::defaultOptionsFilter = [](std::string const& name) {
+      if (name.find("passwd") != std::string::npos ||
+          name.find("password") != std::string::npos ||
+          name.find("secret") != std::string::npos) {
+        return false;
+      }
+      return true;
+    };
 
 ProgramOptions::ProcessingResult::ProcessingResult()
     : _positionals(), _touched(), _frozen(), _exitCode(0) {}
@@ -174,9 +184,9 @@ void ProgramOptions::printUsage() const {
 // hidden
 void ProgramOptions::printHelp(std::string const& search) const {
   bool const colors = (isatty(STDOUT_FILENO) != 0);
-  TRI_TerminalSize ts = TRI_DefaultTerminalSize();
-  size_t const tw = ts.columns;
-  size_t const ow = optionsWidth();
+  auto ts = terminal_utils::defaultTerminalSize();
+  size_t tw = ts.columns;
+  size_t ow = optionsWidth();
 
   std::string normalized = search;
   if (normalized == "uncommon" || normalized == "hidden") {
@@ -297,17 +307,9 @@ VPackBuilder ProgramOptions::toVelocyPack(
           builder.add("requiresValue",
                       VPackValue(option.parameter->requiresValue()));
 
-          // OS support
+          // OS support (hard coded to ["Linux"] right now)
           builder.add("os", VPackValue(VPackValueType::Array));
-          if (option.hasFlag(arangodb::options::Flags::OsLinux)) {
-            builder.add(VPackValue("linux"));
-          }
-          if (option.hasFlag(arangodb::options::Flags::OsMac)) {
-            builder.add(VPackValue("macos"));
-          }
-          if (option.hasFlag(arangodb::options::Flags::OsWindows)) {
-            builder.add(VPackValue("windows"));
-          }
+          builder.add(VPackValue("linux"));
           builder.close();
 
           // component support
@@ -421,6 +423,13 @@ bool ProgramOptions::require(std::string const& name) {
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -428,6 +437,13 @@ bool ProgramOptions::require(std::string const& name) {
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -449,6 +465,14 @@ bool ProgramOptions::setValue(std::string const& name,
   auto it = _sections.find(parts.first);
 
   if (it == _sections.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      _processingResult.touch(modernized);
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -461,6 +485,14 @@ bool ProgramOptions::setValue(std::string const& name,
   auto it2 = (*it).second.options.find(parts.second);
 
   if (it2 == (*it).second.options.end()) {
+#ifndef USE_V8
+    if (modernized.starts_with("javascript.") ||
+        modernized.starts_with("--javascript.")) {
+      // hack: ignore all options starting with --javascript if V8 is disabled
+      _processingResult.touch(modernized);
+      return true;
+    }
+#endif
     unknownOption(modernized);
     return false;
   }
@@ -582,6 +614,14 @@ Option& ProgramOptions::addObsoleteOption(std::string const& name,
 bool ProgramOptions::requiresValue(std::string const& name) {
   std::string const& modernized = modernize(name);
 
+#ifndef USE_V8
+  if (modernized.starts_with("javascript.") ||
+      modernized.starts_with("--javascript.")) {
+    // hack: make all options starting with --javascript not require a value
+    return false;
+  }
+#endif
+
   auto parts = Option::splitName(modernized);
   auto it = _sections.find(parts.first);
 
@@ -606,7 +646,7 @@ Option& ProgramOptions::getOption(std::string const& name) {
   size_t const pos = stripped.find(',');
   if (pos != std::string::npos) {
     // remove shorthand
-    stripped = stripped.substr(0, pos);
+    stripped.resize(pos);
   }
   auto parts = Option::splitName(stripped);
   auto it = _sections.find(parts.first);
@@ -720,24 +760,12 @@ void ProgramOptions::fail(int exitCode, std::string const& message) {
             << TRI_Basename(_progname.c_str()) << ":" << colorEnd << std::endl;
   failNotice(exitCode, message);
   std::cerr << std::endl;
-#ifdef _WIN32
-  // additionally log these errors to the debug output window in MSVC so
-  // we can see them during development
-  OutputDebugString(message.c_str());
-  OutputDebugString("\r\n");
-#endif
 }
 
 void ProgramOptions::failNotice(int exitCode, std::string const& message) {
   _processingResult.fail(exitCode);
 
   std::cerr << "  " << message << std::endl;
-#ifdef _WIN32
-  // additionally log these errors to the debug output window in MSVC so
-  // we can see them during development
-  OutputDebugString(message.c_str());
-  OutputDebugString("\r\n");
-#endif
 }
 
 // add a positional argument (callback from parser)

@@ -2,19 +2,16 @@
 /* global TRANSACTION, AQL_PARSE */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoDatabase
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2013 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Achim Brandt
 // / @author Dr. Frank Celler
@@ -154,10 +151,6 @@ ArangoDatabase.prototype._parse = function (query) {
   return AQL_PARSE(query);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock executeTransaction
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoDatabase.prototype._executeTransaction = function (data) {
   if (data && typeof data === 'object') {
     data = Object.assign({}, data);
@@ -184,10 +177,6 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
   return TRANSACTION(data);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionDatabaseDrop
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoDatabase.prototype._drop = function (name, options) {
   var collection = name;
 
@@ -212,10 +201,6 @@ ArangoDatabase.prototype._drop = function (name, options) {
   }
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionDatabaseTruncate
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoDatabase.prototype._truncate = function (name) {
   var collection = name;
 
@@ -234,15 +219,7 @@ ArangoDatabase.prototype._truncate = function (name) {
 // / @brief index id regex
 // //////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock IndexVerify
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([a-zA-Z0-9\-_]+)$/;
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock IndexHandle
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._index = function (id) {
   if (id.hasOwnProperty('id')) {
@@ -283,10 +260,6 @@ ArangoDatabase.prototype._index = function (id) {
   return null;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock dropIndex
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoDatabase.prototype._dropIndex = function (id) {
   if (id.hasOwnProperty('id')) {
     id = id.id;
@@ -313,10 +286,6 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 
   return col.dropIndex(id);
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock endpoints
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._endpoints = function () {
   return internal._endpoints();

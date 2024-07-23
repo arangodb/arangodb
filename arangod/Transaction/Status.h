@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,12 +25,9 @@
 
 #include <cstdint>
 #include <iosfwd>
+#include <string_view>
 
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
-
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
 /// @brief transaction statuses
 enum class Status : uint32_t {
@@ -42,28 +39,11 @@ enum class Status : uint32_t {
 };
 
 /// @brief return the status of the transaction as a string
-static inline char const* statusString(Status status) {
-  switch (status) {
-    case transaction::Status::UNDEFINED:
-      return "undefined";
-    case transaction::Status::CREATED:
-      return "created";
-    case transaction::Status::RUNNING:
-      return "running";
-    case transaction::Status::COMMITTED:
-      return "committed";
-    case transaction::Status::ABORTED:
-      return "aborted";
-  }
+std::string_view statusString(Status status);
 
-  TRI_ASSERT(false);
-  return "unknown";
-}
-
-Status statusFromString(char const* str, size_t len);
+Status statusFromString(std::string_view value);
 
 std::ostream& operator<<(std::ostream& stream,
                          arangodb::transaction::Status const& s);
 
-}  // namespace transaction
-}  // namespace arangodb
+}  // namespace arangodb::transaction

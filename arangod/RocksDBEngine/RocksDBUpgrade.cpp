@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,7 +53,8 @@ using namespace arangodb;
 
 void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
                                           rocksdb::TransactionDB* db,
-                                          bool dbExisted) {
+                                          bool dbExisted,
+                                          bool forceLittleEndianKeys) {
   static_assert(
       std::is_same<char, std::underlying_type<RocksDBEndianness>::type>::value,
       "RocksDBEndianness has wrong type");
@@ -112,6 +113,25 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
         TRI_ASSERT(endianSlice.data()[0] == 'L' ||
                    endianSlice.data()[0] == 'B');
         endianess = static_cast<RocksDBEndianness>(endianSlice.data()[0]);
+
+        if (endianess == RocksDBEndianness::Little) {
+          LOG_TOPIC("31103", FATAL, Logger::ENGINES)
+              << "detected outdated on-disk format with "
+              << rocksDBEndiannessString(endianess)
+              << " endianness from ArangoDB 3.2 or 3.3. Using this on-disk "
+                 "format "
+                 "has a severe negative impact on write performance and is not "
+                 "compatible with several newer ArangoDB features. Please move "
+                 "to the "
+              << rocksDBEndiannessString(RocksDBEndianness::Big)
+              << " endian format by performing a full logical dump of the "
+                 "deployment using arangodump, and restoring it into a fresh "
+                 "deployment using arangorestore. It is not sufficient to take "
+                 "a hot backup and restore it into a fresh deployment, because "
+                 "in a hot backup, the existing on-disk format will be "
+                 "preseved.";
+          FATAL_ERROR_EXIT();
+        }
       } else {
         LOG_TOPIC("b0083", FATAL, Logger::ENGINES)
             << "Error reading key-format, your db directory is invalid";
@@ -119,8 +139,10 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
       }
     }
   } else {
-    // new DBs are always created with Big endian data-format
-    endianess = RocksDBEndianness::Big;
+    // new DBs are always created with Big endian data-format, Unless
+    // forced by a command line option:
+    endianess = forceLittleEndianKeys ? RocksDBEndianness::Little
+                                      : RocksDBEndianness::Big;
   }
 
   // enable correct key format
@@ -130,7 +152,7 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
 
   if (!dbExisted) {
     // store endianess forever
-    TRI_ASSERT(endianess == RocksDBEndianness::Big);
+    TRI_ASSERT(forceLittleEndianKeys || endianess == RocksDBEndianness::Big);
 
     char const endVal = static_cast<char>(endianess);
     static_assert(sizeof(endVal) == 1);
@@ -158,8 +180,6 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
           << rocksutils::convertStatus(s).errorMessage();
       FATAL_ERROR_EXIT();
     }
-
-    TRI_ASSERT(s.ok());
   }
 
   // fetch stored values of startup options
@@ -184,26 +204,25 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
                                  std::string{optionName})) {
             // user is trying to switch back from extended names to traditional
             // names. this is unsupported
-            LOG_TOPIC("1d4f6", FATAL, Logger::ENGINES)
+            LOG_TOPIC("1d4f6", ERR, Logger::ENGINES)
                 << "It is unsupported to change the value of the startup "
                    "option `--"
                 << optionName << "`"
                 << " back to `false` after it was set to `true` before. "
-                << "Please remove the setting "
-                   "`--"
-                << optionName
-                << " false` from the startup "
-                   "options.";
-            FATAL_ERROR_EXIT();
+                << "Please remove the setting `--" << optionName
+                << " false` from the startup options.";
+            // still continue, so it is possible to downgrade the ArangoDB
+            // version later.
           }
         }
         // set flag for our local instance
-        cb(storedValue[0] == '1');
+        cb(localValue);
       } else if (!s.IsNotFound()) {
         // arbitrary error. we need to abort
         LOG_TOPIC("f3a71", FATAL, Logger::ENGINES)
             << "Error reading stored value for --" << optionName
-            << " from storage engine";
+            << " from storage engine: "
+            << rocksutils::convertStatus(s).errorMessage();
         FATAL_ERROR_EXIT();
       }
     }

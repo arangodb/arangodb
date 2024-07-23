@@ -95,7 +95,7 @@ const StoredValuesFields = () => {
               );
             })}
             <Button
-              colorScheme="blue"
+              colorScheme="green"
               onClick={() => {
                 push({ field: "", compression: "lz4" });
               }}

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -114,8 +114,11 @@ template<class Provider>
 using ShortestPathEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
 
 template<class Provider>
-using WeightedShortestPathEnumerator =
-    TwoSidedEnumeratorWithProviderWeighted<Provider>;
+using WeightedShortestPathEnumerator = WeightedTwoSidedEnumerator<
+    WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
+    Provider,
+    PathValidator<Provider, PathStore<typename Provider::Step>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 // SHORTEST_PATH implementation using Tracing
 template<class Provider>
@@ -123,8 +126,13 @@ using TracedShortestPathEnumerator =
     TracedTwoSidedEnumeratorWithProvider<Provider>;
 
 template<class Provider>
-using TracedWeightedShortestPathEnumerator =
-    TracedTwoSidedEnumeratorWithProviderWeighted<Provider>;
+using TracedWeightedShortestPathEnumerator = WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<typename Provider::Step>>,
+    PathStoreTracer<PathStore<typename Provider::Step>>,
+    ProviderTracer<Provider>,
+    PathValidator<ProviderTracer<Provider>,
+                  PathStoreTracer<PathStore<typename Provider::Step>>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness, bool useTracing>
@@ -215,7 +223,7 @@ using TracedDFSEnumerator = OneSidedEnumerator<
 // occupies this name
 template<class Provider, VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
-using WeightedEnumeratorRefactored = OneSidedEnumerator<
+using WeightedEnumerator = OneSidedEnumerator<
     WeightedConfiguration<Provider, vertexUniqueness, edgeUniqueness, false>>;
 
 // BFS Traversal Enumerator implementation using Tracing

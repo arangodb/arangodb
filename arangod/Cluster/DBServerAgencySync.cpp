@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "DBServerAgencySync.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -59,7 +60,7 @@ using namespace arangodb::rest;
 
 DBServerAgencySync::DBServerAgencySync(ArangodServer& server,
                                        HeartbeatThread* heartbeat)
-    : _server(server), _heartbeat(heartbeat) {}
+    : _server(server), _heartbeat(heartbeat), _requestTimeout(60.) {}
 
 void DBServerAgencySync::work() {
   LOG_TOPIC("57898", TRACE, Logger::CLUSTER) << "starting plan update handler";
@@ -72,7 +73,8 @@ void DBServerAgencySync::work() {
 
 Result DBServerAgencySync::getLocalCollections(
     containers::FlatHashSet<std::string> const& dirty,
-    AgencyCache::databases_t& databases, LocalLogsMap& replLogs) {
+    AgencyCache::databases_t& databases, LocalLogsMap& replLogs,
+    LocalShardsToLogsMap& localShardIdToLogId) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
@@ -100,9 +102,10 @@ Result DBServerAgencySync::getLocalCollections(
                     "Failed to emplace new entry in local collection cache");
     }
 
-    {
-      auto [it, created] = replLogs.try_emplace(
-          dbname, vocbase.getReplicatedStatesQuickStatus());
+    if (vocbase.replicationVersion() == replication::Version::TWO) {
+      // Create a mapping from db to replicated logs
+      auto [it, created] =
+          replLogs.try_emplace(dbname, vocbase.getReplicatedLogsStatusMap());
       if (!created) {
         LOG_TOPIC("5d5c9", WARN, Logger::MAINTENANCE)
             << "Failed to emplace new entry in local replicated logs cache";
@@ -112,9 +115,47 @@ Result DBServerAgencySync::getLocalCollections(
       }
     }
 
+    if (vocbase.replicationVersion() == replication::Version::TWO) {
+      // Create a mapping from db to [shard -> log id]
+      // This will indicate the responsible logs for each shard on this system
+      auto [it, created] = localShardIdToLogId.try_emplace(
+          dbname, maintenance::ShardIdToLogIdMap{});
+      if (!created) {
+        LOG_TOPIC("76d1a", WARN, Logger::MAINTENANCE)
+            << "Failed to emplace new database entry in local ShardId-to-LogId "
+               "cache";
+        return Result(TRI_ERROR_INTERNAL,
+                      "Failed to emplace new database entry in local "
+                      "ShardId-to-LogId cache");
+      }
+    }
+
     auto& collections = *it->second;
     VPackObjectBuilder db(&collections);
     auto cols = vocbase.collections(false);
+
+    if (vocbase.replicationVersion() == replication::Version::TWO) {
+      for (auto const& collection : cols) {
+        auto maybeShardID = ShardID::shardIdFromString(collection->name());
+        if (ADB_UNLIKELY(maybeShardID.fail())) {
+          TRI_ASSERT(false) << "Try to add a Shard->LogID entry for a "
+                               "collection that is not a shard: "
+                            << collection->name();
+          return maybeShardID.result();
+        }
+        auto [it, created] = localShardIdToLogId[dbname].try_emplace(
+            maybeShardID.get(), collection->replicatedStateId());
+        if (!created) {
+          LOG_TOPIC("0aacc", WARN, Logger::MAINTENANCE)
+              << "Failed to emplace new shard entry in local ShardId-to-LogId "
+                 "cache";
+          return Result(TRI_ERROR_INTERNAL,
+                        "Failed to emplace new shard entry in local "
+                        "ShardId-to-LogId cache");
+        }
+      }
+    }
+
     for (auto const& collection : cols) {
       // note: system collections are ignored here, but the local parts of
       // smart edge collections are system collections, too. these are
@@ -128,8 +169,11 @@ Result DBServerAgencySync::getLocalCollections(
 
         // generate a collection definition identical to that which would be
         // persisted in the case of SingleServer
-        collection->properties(collections,
-                               LogicalDataSource::Serialization::Persistence);
+        auto res = collection->properties(
+            collections, LogicalDataSource::Serialization::Persistence);
+        if (res.fail()) {
+          return res;
+        }
 
         auto const& folls = collection->followers();
         std::string const theLeader = folls->getLeader();
@@ -140,7 +184,7 @@ Result DBServerAgencySync::getLocalCollections(
         // that we are the leader. This is to circumvent the problem that
         // after a restart we would implicitly be assumed to be the leader.
         collections.add(
-            "theLeader",
+            maintenance::THE_LEADER,
             VPackValue(theLeaderTouched ? theLeader
                                         : maintenance::LEADER_NOT_YET_KNOWN));
         collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
@@ -225,7 +269,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
-  AgencyCache::databases_t plan = clusterInfo.getPlan(planIndex, dirty);
+  auto plan = clusterInfo.getPlan(planIndex, dirty);
 
   auto serverId = arangodb::ServerState::instance()->getId();
 
@@ -236,9 +280,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyCache::databases_t local;
   LocalLogsMap localLogs;
+  maintenance::ShardIdToLogIdMapByDatabase localShardIdToLogId;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
       << "Before getLocalCollections for phaseOne";
-  Result glc = getLocalCollections(dirty, local, localLogs);
+  Result glc =
+      getLocalCollections(dirty, local, localLogs, localShardIdToLogId);
 
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE)
       << "After getLocalCollections for phaseOne";
@@ -258,8 +304,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     VPackObjectBuilder o(&rb);
 
-    AgencyCache::databases_t current =
-        clusterInfo.getCurrent(currentIndex, dirty);
+    auto current = clusterInfo.getCurrent(currentIndex, dirty);
 
     auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", TRACE, Logger::MAINTENANCE)
@@ -267,7 +312,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     tmp = arangodb::maintenance::phaseOne(
         plan, planIndex, current, currentIndex, dirty, moreDirt, local,
-        serverId, mfeature, rb, currentShardLocks, localLogs);
+        serverId, mfeature, rb, currentShardLocks, localLogs,
+        localShardIdToLogId);
 
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", TRACE, Logger::MAINTENANCE)
@@ -297,9 +343,15 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     // locked *now*. Then `getLocalCollections`.
     currentShardLocks = mfeature.getShardLocks();
 
+    TRI_IF_FAILURE("Maintenance::BeforePhaseTwo") {
+      observeGlobalEvent("Maintenance::BeforePhaseTwo",
+                         ServerState::instance()->getShortName());
+    }
+
     local.clear();
     localLogs.clear();
-    glc = getLocalCollections(dirty, local, localLogs);
+    localShardIdToLogId.clear();
+    glc = getLocalCollections(dirty, local, localLogs, localShardIdToLogId);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.
@@ -315,9 +367,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("652ff", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo";
 
-    tmp = arangodb::maintenance::phaseTwo(plan, current, currentIndex, dirty,
-                                          local, serverId, mfeature, rb,
-                                          currentShardLocks, localLogs);
+    tmp = arangodb::maintenance::phaseTwo(
+        plan, current, currentIndex, dirty, local, serverId, mfeature, rb,
+        currentShardLocks, localLogs, localShardIdToLogId);
 
     LOG_TOPIC("dfc54", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
@@ -344,12 +396,13 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
 
-            auto const precondition = ao.value.get("precondition");
-            if (!precondition.isNone()) {
-              // have a precondition
-              preconditions.push_back(AgencyPrecondition(
-                  precondition.keyAt(0).copyString(),
-                  AgencyPrecondition::Type::VALUE, precondition.valueAt(0)));
+            auto const precs = ao.value.get("preconditions");
+            if (precs.isObject()) {
+              for (auto const& p : VPackObjectIterator(precs)) {
+                preconditions.emplace_back(p.key.copyString(),
+                                           AgencyPrecondition::Type::VALUE,
+                                           p.value);
+              }
             }
 
             if (op == "set") {
@@ -365,8 +418,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
               "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
 
           AgencyWriteTransaction currentTransaction(operations, preconditions);
-          AgencyCommResult r =
-              comm.sendTransactionWithFailover(currentTransaction);
+          AgencyCommResult r = comm.sendTransactionWithFailover(
+              currentTransaction, _requestTimeout);
           if (!r.successful()) {
             LOG_TOPIC("d73b8", DEBUG, Logger::MAINTENANCE)
                 << "Error reporting to agency: _statusCode: " << r.errorCode()
@@ -379,7 +432,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
               auto waitIndex = resultsSlice[0].getNumber<uint64_t>();
               LOG_TOPIC("cdc71", TRACE, Logger::MAINTENANCE)
                   << "waiting for local current version to update";
-              std::ignore = clusterInfo.waitForCurrent(waitIndex).get();
+              std::ignore = clusterInfo.waitForCurrent(waitIndex).waitAndGet();
               LOG_TOPIC("3f185", TRACE, Logger::MAINTENANCE)
                   << "current version updated";
             }
@@ -454,4 +507,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   return result;
+}
+
+double DBServerAgencySync::requestTimeout() const noexcept {
+  return _requestTimeout;
 }

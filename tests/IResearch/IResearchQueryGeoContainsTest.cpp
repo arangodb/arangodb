@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,8 +29,11 @@
 
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"
+#include "IResearch/IResearchView.h"
 #include "IResearch/MakeViewSnapshot.h"
 #include "IResearchQueryCommon.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 namespace arangodb::tests {
 namespace {
@@ -46,22 +49,25 @@ class QueryGeoContains : public QueryTest {
     {
       auto json = VPackParser::fromJson(
           absl::Substitute(R"({$0 "type": "shape"})", params));
-      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeojson",
-                                 analyzer, json->slice(), {});
+      auto r = analyzers.emplace(
+          result, _vocbase.name() + "::mygeojson", analyzer, json->slice(),
+          arangodb::transaction::OperationOriginTestCase{});
       ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
     {
       auto json = VPackParser::fromJson(
           absl::Substitute(R"({$0 "type": "centroid"})", params));
-      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeocentroid",
-                                 analyzer, json->slice(), {});
+      auto r = analyzers.emplace(
+          result, _vocbase.name() + "::mygeocentroid", analyzer, json->slice(),
+          arangodb::transaction::OperationOriginTestCase{});
       ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
     {
       auto json = VPackParser::fromJson(
           absl::Substitute(R"({$0 "type": "point"})", params));
-      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeopoint",
-                                 analyzer, json->slice(), {});
+      auto r = analyzers.emplace(
+          result, _vocbase.name() + "::mygeopoint", analyzer, json->slice(),
+          arangodb::transaction::OperationOriginTestCase{});
       ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
   }
@@ -77,7 +83,8 @@ class QueryGeoContains : public QueryTest {
     {
       auto collection = _vocbase.lookupCollection("testCollection0");
       ASSERT_TRUE(collection);
-      auto docs = VPackParser::fromJson(R"([
+      std::array<std::shared_ptr<VPackBuilder>, 3> allDocs = {
+          VPackParser::fromJson(R"([
         { "id": 1,  "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
         { "id": 2,  "geometry": { "type": "Point", "coordinates": [ 37.615315, 55.703915 ] } },
         { "id": 3,  "geometry": { "type": "Point", "coordinates": [ 37.61509, 55.703537  ] } },
@@ -87,7 +94,8 @@ class QueryGeoContains : public QueryTest {
         { "id": 7,  "geometry": { "type": "Point", "coordinates": [ 37.616297, 55.704831 ] } },
         { "id": 8,  "geometry": { "type": "Point", "coordinates": [ 37.617053, 55.70461  ] } },
         { "id": 9,  "geometry": { "type": "Point", "coordinates": [ 37.61582, 55.704459  ] } },
-        { "id": 10, "geometry": { "type": "Point", "coordinates": [ 37.614634, 55.704338 ] } },
+        { "id": 10, "geometry": { "type": "Point", "coordinates": [ 37.614634, 55.704338 ] } }])"),
+          VPackParser::fromJson(R"([
         { "id": 11, "geometry": { "type": "Point", "coordinates": [ 37.613121, 55.704193 ] } },
         { "id": 12, "geometry": { "type": "Point", "coordinates": [ 37.614135, 55.703298 ] } },
         { "id": 13, "geometry": { "type": "Point", "coordinates": [ 37.613663, 55.704002 ] } },
@@ -97,7 +105,8 @@ class QueryGeoContains : public QueryTest {
         { "id": 17, "geometry": { "type": "Point", "coordinates": [ 37.610235, 55.709754 ] } },
         { "id": 18, "geometry": { "type": "Point", "coordinates": [ 37.605,    55.707917 ] } },
         { "id": 19, "geometry": { "type": "Point", "coordinates": [ 37.545776, 55.722083 ] } },
-        { "id": 20, "geometry": { "type": "Point", "coordinates": [ 37.559509, 55.715895 ] } },
+        { "id": 20, "geometry": { "type": "Point", "coordinates": [ 37.559509, 55.715895 ] } }])"),
+          VPackParser::fromJson(R"([
         { "id": 21, "geometry": { "type": "Point", "coordinates": [ 37.701645, 55.832144 ] } },
         { "id": 22, "geometry": { "type": "Point", "coordinates": [ 37.73735,  55.816715 ] } },
         { "id": 23, "geometry": { "type": "Point", "coordinates": [ 37.75589,  55.798193 ] } },
@@ -113,29 +122,32 @@ class QueryGeoContains : public QueryTest {
             [37.602682, 55.711906],
             [37.602682, 55.706853]]
         ]}}
-      ])");
+      ])")};
 
       OperationOptions options;
       options.returnNew = true;
-      SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
-      EXPECT_TRUE(trx.begin().ok());
+      for (auto& docs : allDocs) {
+        SingleCollectionTransaction trx(
+            transaction::StandaloneContext::create(
+                _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            *collection, AccessMode::Type::WRITE);
+        EXPECT_TRUE(trx.begin().ok());
 
-      for (auto doc : VPackArrayIterator(docs->slice())) {
-        auto res = trx.insert(collection->name(), doc, options);
-        EXPECT_TRUE(res.ok()) << res.errorMessage();
-        _insertedDocs.emplace_back(res.slice().get("new"));
+        for (auto doc : VPackArrayIterator(docs->slice())) {
+          auto res = trx.insert(collection->name(), doc, options);
+          EXPECT_TRUE(res.ok()) << res.errorMessage();
+          _insertedDocs.emplace_back(res.slice().get("new"));
+        }
+
+        EXPECT_TRUE(trx.commit().ok());
+
+        // sync view
+        ASSERT_TRUE(
+            executeQuery(
+                _vocbase,
+                "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
+                .result.ok());
       }
-
-      EXPECT_TRUE(trx.commit().ok());
-
-      // sync view
-      ASSERT_TRUE(
-          executeQuery(
-              _vocbase,
-              "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
-              .result.ok());
     }
     // EXISTS will also work
     if (type() == ViewType::kArangoSearch) {
@@ -350,6 +362,115 @@ class QueryGeoContains : public QueryTest {
         RETURN d)",
                            empty));
     }
+    // test parallels
+    std::vector<VPackSlice> all;
+    all.reserve(_insertedDocs.size());
+    for (auto& b : _insertedDocs) {
+      all.push_back(b.slice());
+    }
+    for (size_t i = 1; i < 5; ++i) {
+      auto q = absl::StrCat(
+          R"(LET box = GEO_POLYGON([
+          [30.602682, 45.706853],
+          [40.613025, 45.706853],
+          [40.613025, 75.711906],
+          [30.602682, 75.711906],
+          [30.602682, 45.706853]
+        ])
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeojson')
+        OPTIONS {parallelism:)",
+          i, R"(}
+        SORT d.id ASC
+        RETURN d)");
+      EXPECT_TRUE(runQuery(q, all));
+    }
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[28].slice()};
+      for (size_t i = 1; i < 5; ++i) {
+        auto q = absl::StrCat(
+            R"(LET box = GEO_POLYGON([
+          [30.602682, 45.706853],
+          [40.613025, 45.706853],
+          [40.613025, 75.711906],
+          [30.602682, 75.711906],
+          [30.602682, 45.706853]
+        ])
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeojson')
+        OPTIONS {parallelism:)",
+            i, R"(} LIMIT 28, 100000
+        RETURN d)");
+        EXPECT_TRUE(runQuery(q, expected));
+      }
+    }
+    {
+      for (size_t i = 1; i < 5; ++i) {
+        auto q = absl::StrCat(
+            R"(LET box = GEO_POLYGON([
+          [30.602682, 45.706853],
+          [40.613025, 45.706853],
+          [40.613025, 75.711906],
+          [30.602682, 75.711906],
+          [30.602682, 45.706853]
+        ])
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeojson')
+        OPTIONS {parallelism:)",
+            i, R"(} LIMIT 29, 100000
+        RETURN d)");
+        EXPECT_TRUE(runQuery(q, empty));
+      }
+    }
+    {
+      for (size_t i = 1; i < 5; ++i) {
+        auto q = absl::StrCat(
+            R"(LET box = GEO_POLYGON([
+          [30.602682, 45.706853],
+          [40.613025, 45.706853],
+          [40.613025, 75.711906],
+          [30.602682, 75.711906],
+          [30.602682, 45.706853]
+        ])
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_CONTAINS(box, d.geometry), 'mygeojson')
+        OPTIONS {parallelism:)",
+            i, R"(} LIMIT 30, 100000
+        RETURN d)");
+        EXPECT_TRUE(runQuery(q, empty));
+      }
+    }
+    {
+      // invalid parallelism value
+      static constexpr std::string_view kQueryStr = R"(LET box = GEO_POLYGON([
+          [37.602682, 55.706853],
+          [37.613025, 55.706853],
+          [37.613025, 55.711906],
+          [37.602682, 55.711906],
+          [37.602682, 55.706853]
+        ])
+        FOR d IN testView
+        SEARCH GEO_CONTAINS(d.geometry, box) OPTIONS {parallelism:0}
+        RETURN d)";
+      auto r = executeQuery(_vocbase, std::string{kQueryStr});
+      EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+    }
+    {
+      // invalid parallelism value
+      static constexpr std::string_view kQueryStr =
+          R"(LET box = GEO_POLYGON([
+          [37.602682, 55.706853],
+          [37.613025, 55.706853],
+          [37.613025, 55.711906],
+          [37.602682, 55.711906],
+          [37.602682, 55.706853]
+        ])
+        FOR d IN testView
+        SEARCH GEO_CONTAINS(d.geometry, box) OPTIONS {parallelism:-10}
+        RETURN d)";
+      auto r = executeQuery(_vocbase, std::string{kQueryStr});
+      EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+    }
   }
 
   void queryTestsGeoCentroid() {
@@ -500,78 +621,83 @@ class QueryGeoContains : public QueryTest {
         return impl.getLinks(nullptr);
       };
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::READ);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::READ);
       ASSERT_TRUE(trx.begin().ok());
       ASSERT_TRUE(trx.state());
       auto* snapshot =
           makeViewSnapshot(trx, iresearch::ViewSnapshotMode::FindOrCreate,
                            links(), view.get(), view->name());
       ASSERT_NE(nullptr, snapshot);
-      ASSERT_EQ(1U, snapshot->size());
+      ASSERT_EQ(3U, snapshot->size());
       ASSERT_EQ(_insertedDocs.size(), snapshot->docs_count());
       ASSERT_EQ(_insertedDocs.size(), snapshot->live_docs_count());
 
-      auto& segment = (*snapshot)[0];
-
       if (isVPack) {
-        auto const columnName = mangleString("geometry", "mygeojson");
-        auto* columnReader = segment.column(columnName);
-        ASSERT_NE(nullptr, columnReader);
-        auto it = columnReader->iterator(irs::ColumnHint::kNormal);
-        ASSERT_NE(nullptr, it);
-        auto* payload = irs::get<irs::payload>(*it);
-        ASSERT_NE(nullptr, payload);
-
         auto doc = _insertedDocs.begin();
-        for (; it->next(); ++doc) {
-          EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
-                              iresearch::slice(payload->value));
+        for (size_t i = 0; i < snapshot->size(); ++i) {
+          auto& segment = (*snapshot)[i];
+          auto const columnName = mangleString("geometry", "mygeojson");
+          auto* columnReader = segment.column(columnName);
+          ASSERT_NE(nullptr, columnReader);
+          auto it = columnReader->iterator(irs::ColumnHint::kNormal);
+          ASSERT_NE(nullptr, it);
+          auto* payload = irs::get<irs::payload>(*it);
+          ASSERT_NE(nullptr, payload);
+          for (; it->next(); ++doc) {
+            EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
+                                iresearch::slice(payload->value));
+          }
         }
         ASSERT_EQ(doc, _insertedDocs.end());
       }
 
       if (isVPack) {
-        auto const columnName = mangleString("geometry", "mygeocentroid");
-        auto* columnReader = segment.column(columnName);
-        ASSERT_NE(nullptr, columnReader);
-        auto it = columnReader->iterator(irs::ColumnHint::kNormal);
-        ASSERT_NE(nullptr, it);
-        auto* payload = irs::get<irs::payload>(*it);
-        ASSERT_NE(nullptr, payload);
-
         auto doc = _insertedDocs.begin();
-        geo::ShapeContainer shape;
-        for (; it->next(); ++doc) {
-          ASSERT_TRUE(
-              geo::json::parseRegion(doc->slice().get("geometry"), shape, false)
-                  .ok());
-          S2LatLng const centroid(shape.centroid());
+        for (size_t i = 0; i < snapshot->size(); ++i) {
+          auto& segment = (*snapshot)[i];
+          auto const columnName = mangleString("geometry", "mygeocentroid");
+          auto* columnReader = segment.column(columnName);
+          ASSERT_NE(nullptr, columnReader);
+          auto it = columnReader->iterator(irs::ColumnHint::kNormal);
+          ASSERT_NE(nullptr, it);
+          auto* payload = irs::get<irs::payload>(*it);
+          ASSERT_NE(nullptr, payload);
+          geo::ShapeContainer shape;
+          for (; it->next(); ++doc) {
+            ASSERT_TRUE(geo::json::parseRegion(doc->slice().get("geometry"),
+                                               shape, false)
+                            .ok());
+            S2LatLng const centroid(shape.centroid());
 
-          auto const storedValue = iresearch::slice(payload->value);
-          ASSERT_TRUE(storedValue.isArray());
-          ASSERT_EQ(2U, storedValue.length());
-          EXPECT_DOUBLE_EQ(centroid.lng().degrees(),
-                           storedValue.at(0).getDouble());
-          EXPECT_DOUBLE_EQ(centroid.lat().degrees(),
-                           storedValue.at(1).getDouble());
+            auto const storedValue = iresearch::slice(payload->value);
+            ASSERT_TRUE(storedValue.isArray());
+            ASSERT_EQ(2U, storedValue.length());
+            EXPECT_DOUBLE_EQ(centroid.lng().degrees(),
+                             storedValue.at(0).getDouble());
+            EXPECT_DOUBLE_EQ(centroid.lat().degrees(),
+                             storedValue.at(1).getDouble());
+          }
         }
         ASSERT_EQ(doc, _insertedDocs.end());
       }
 
       if (isVPack) {
-        auto const columnName = mangleString("geometry", "mygeopoint");
-        auto* columnReader = segment.column(columnName);
-        ASSERT_NE(nullptr, columnReader);
-        auto it = columnReader->iterator(irs::ColumnHint::kNormal);
-        ASSERT_NE(nullptr, it);
-        auto* payload = irs::get<irs::payload>(*it);
-        ASSERT_NE(nullptr, payload);
-
         auto doc = _insertedDocs.begin();
-        for (; it->next(); ++doc) {
-          EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
-                              iresearch::slice(payload->value));
+        for (size_t i = 0; i < snapshot->size(); ++i) {
+          auto& segment = (*snapshot)[i];
+          auto const columnName = mangleString("geometry", "mygeopoint");
+          auto* columnReader = segment.column(columnName);
+          ASSERT_NE(nullptr, columnReader);
+          auto it = columnReader->iterator(irs::ColumnHint::kNormal);
+          ASSERT_NE(nullptr, it);
+          auto* payload = irs::get<irs::payload>(*it);
+          ASSERT_NE(nullptr, payload);
+          for (; it->next(); ++doc) {
+            EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
+                                iresearch::slice(payload->value));
+          }
         }
         ASSERT_EQ(doc, _insertedDocs.end() - 1);
       }
@@ -619,7 +745,7 @@ class QueryGeoContainsSearch : public QueryGeoContains {
         version(), analyzer));
     auto collection = _vocbase.lookupCollection("testCollection0");
     EXPECT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created);
+    collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
   }
 

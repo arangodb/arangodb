@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,26 +23,27 @@
 
 #pragma once
 
-#include <iosfwd>
-#include <string_view>
-
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/Common.h"
-#include "Basics/Exceptions.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/Result.h"
-#include "Basics/StaticStrings.h"
 #include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <iosfwd>
+#include <string_view>
+#include <vector>
+
 namespace arangodb {
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
 struct ResourceMonitor;
+struct AqlIndexStreamIterator;
+struct IndexStreamOptions;
 
 namespace velocypack {
 class Builder;
@@ -50,7 +51,7 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
-struct AttributeNamePath;
+struct AstNode;
 class Projections;
 class SortCondition;
 struct Variable;
@@ -103,6 +104,8 @@ class Index {
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX,
     TRI_IDX_TYPE_ZKD_INDEX,
+    TRI_IDX_TYPE_MDI_INDEX,
+    TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
     TRI_IDX_TYPE_INVERTED_INDEX
   };
 
@@ -147,13 +150,7 @@ class Index {
   IndexId id() const { return _iid; }
 
   /// @brief return the index name
-  std::string const& name() const {
-    if (_name == StaticStrings::IndexNameEdgeFrom ||
-        _name == StaticStrings::IndexNameEdgeTo) {
-      return StaticStrings::IndexNameEdge;
-    }
-    return _name;
-  }
+  std::string const& name() const;
 
   /// @brief set the name, if it is currently unset
   void name(std::string const&);
@@ -172,60 +169,27 @@ class Index {
   }
 
   /// @brief return the index fields names
-  std::vector<std::vector<std::string>> fieldNames() const {
-    std::vector<std::vector<std::string>> result;
-    result.reserve(_fields.size());
-
-    for (auto const& it : _fields) {
-      std::vector<std::string> parts;
-      parts.reserve(it.size());
-      for (auto const& it2 : it) {
-        parts.emplace_back(it2.name);
-      }
-      result.emplace_back(std::move(parts));
-    }
-    return result;
-  }
+  std::vector<std::vector<std::string>> fieldNames() const;
 
   /// @brief whether or not the ith attribute is expanded (somewhere)
-  inline bool isAttributeExpanded(size_t i) const {
-    if (i >= _fields.size()) {
-      return false;
-    }
-    return TRI_AttributeNamesHaveExpansion(_fields[i]);
-  }
+  bool isAttributeExpanded(size_t i) const;
 
   /// @brief whether or not any attribute is expanded
-  inline bool isAttributeExpanded(
-      std::vector<basics::AttributeName> const& attribute) const {
-    for (auto const& it : _fields) {
-      if (!basics::AttributeName::namesMatch(attribute, it)) {
-        continue;
-      }
-      return TRI_AttributeNamesHaveExpansion(it);
-    }
-    return false;
-  }
+  bool isAttributeExpanded(
+      std::vector<basics::AttributeName> const& attribute) const;
 
   /// @brief whether or not any attribute is expanded
-  inline bool attributeMatches(
+  bool attributeMatches(std::vector<basics::AttributeName> const& attribute,
+                        bool isPrimary = false) const;
+
+  /// @brief whether or not the given attribute vector matches any of the index
+  /// fields In case it does, the position will be returned as well.
+  std::pair<bool, size_t> attributeMatchesWithPos(
       std::vector<basics::AttributeName> const& attribute,
-      bool isPrimary = false) const {
-    for (auto const& it : _fields) {
-      if (basics::AttributeName::isIdentical(attribute, it, true)) {
-        return true;
-      }
-    }
-    if (isPrimary) {
-      static std::vector<basics::AttributeName> const vec_id{
-          {StaticStrings::IdString, false}};
-      return basics::AttributeName::isIdentical(attribute, vec_id, true);
-    }
-    return false;
-  }
+      bool isPrimary = false) const;
 
   /// @brief whether or not any attribute is expanded
-  inline bool hasExpansion() const { return _useExpansion; }
+  bool hasExpansion() const { return _useExpansion; }
 
   /// @brief if index needs explicit reversal and wouldn`t be reverted by
   /// storage rollback
@@ -241,16 +205,16 @@ class Index {
   }
 
   /// @brief return the underlying collection
-  inline LogicalCollection& collection() const { return _collection; }
+  LogicalCollection& collection() const { return _collection; }
 
   /// @brief return a contextual string for logging
   std::string context() const;
 
   /// @brief whether or not the index is sparse
-  inline bool sparse() const { return _sparse; }
+  bool sparse() const { return _sparse; }
 
   /// @brief whether or not the index is unique
-  inline bool unique() const { return _unique; }
+  bool unique() const { return _unique; }
 
   /// @brief validates that field names don't start or end with ":"
   static void validateFieldsWithSpecialCase(velocypack::Slice fields);
@@ -335,9 +299,7 @@ class Index {
       std::string_view extra = std::string_view()) const;
 
   /// @brief update the cluster selectivity estimate
-  virtual void updateClusterSelectivityEstimate(double /*estimate*/) {
-    TRI_ASSERT(false);  // should never be called except on Coordinator
-  }
+  virtual void updateClusterSelectivityEstimate(double /*estimate*/);
 
   /// @brief whether or not the index is implicitly unique
   /// this can be the case if the index is not declared as unique,
@@ -395,10 +357,6 @@ class Index {
   // called when the index is dropped
   virtual Result drop();
 
-  /// @brief called after the collection was truncated
-  /// @param tick at which truncate was applied
-  virtual void afterTruncate(TRI_voc_tick_t, transaction::Methods*) {}
-
   /// @brief whether or not the filter condition is supported by the index
   /// returns detailed information about the costs associated with using this
   /// index
@@ -438,6 +396,14 @@ class Index {
       aql::AstNode const* op, aql::Variable const* reference,
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
 
+  virtual bool supportsStreamInterface(
+      IndexStreamOptions const&) const noexcept {
+    return false;
+  }
+
+  virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
+      transaction::Methods* trx, IndexStreamOptions const&);
+
   virtual bool canWarmup() const noexcept;
   virtual Result warmup();
 
@@ -447,17 +413,18 @@ class Index {
   /// @param code the error key
   /// @param key the conflicting key
   Result& addErrorMsg(Result& r, ErrorCode code,
-                      std::string_view key = {}) const {
-    if (code != TRI_ERROR_NO_ERROR) {
-      r.reset(code);
-      return addErrorMsg(r, key);
-    }
-    return r;
-  }
+                      std::string_view key = {}) const;
 
   /// @brief generate error result
   /// @param key the conflicting key
   Result& addErrorMsg(Result& r, std::string_view key = {}) const;
+
+  void progress(double p) noexcept {
+    _progress.store(p, std::memory_order_relaxed);
+  }
+  double progress() const noexcept {
+    return _progress.load(std::memory_order_relaxed);
+  }
 
  protected:
   static std::vector<std::vector<basics::AttributeName>> parseFields(
@@ -485,6 +452,7 @@ class Index {
   LogicalCollection& _collection;
   std::string _name;
   std::vector<std::vector<basics::AttributeName>> const _fields;
+  std::atomic<double> _progress;
   bool const _useExpansion;
 
   mutable bool _unique;

@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,12 +28,11 @@
 const functionsDocumentation = {
   'agency-restart': 'run recovery tests'
 };
-const optionsDocumentation = [
-];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
@@ -46,7 +45,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 
 const testPaths = {
-  'agency-restart': [tu.pathForTesting('server/agency-restart')]
+  'agency-restart': [tu.pathForTesting('client/agency-restart')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -55,7 +54,6 @@ const testPaths = {
 
 function runArangodRecovery (params, agencyConfig) {
   let additionalParams= {
-    'log.foreground-tty': 'true',
     'javascript.enabled': 'true',
     'agency.activate': 'true',
     'agency.compaction-keep-size': '10000',
@@ -156,7 +154,7 @@ function agencyRestart (options) {
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.instance.args['temp.path'], {
+        trs.writeTestResult(params.instance.args['temp.path'], {
           failed: 1,
           status: false,
           message: "unable to run agency_restart test " + test,
@@ -165,7 +163,7 @@ function agencyRestart (options) {
       } catch (er) {}
       runArangodRecovery(params, agencyConfig);
 
-      results[test] = tu.readTestResult(
+      results[test] = trs.readTestResult(
         params.instance.args['temp.path'],
         {
           status: false
@@ -203,6 +201,5 @@ function agencyRestart (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['agency-restart'] = agencyRestart;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

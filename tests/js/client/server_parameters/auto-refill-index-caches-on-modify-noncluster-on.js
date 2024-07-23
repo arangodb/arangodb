@@ -1,30 +1,29 @@
 /*jshint globalstrict:false, strict:false */
 /* global arango, getOptions, runSetup, assertTrue, assertFalse, assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for server startup options
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
@@ -114,9 +113,35 @@ function AutoRefillIndexCachesEdge() {
       assertTrue(stats.cacheHits > 0, stats);
     }
   };
+  
+  let loadEdges = () => {
+    let tries = 0;
+    while (++tries < 50) {
+      let stats = db._query(`FOR i IN 0..${n - 1} FOR doc IN ${cn} FILTER doc._from == CONCAT('v/test', i) RETURN 1`).getExtra().stats;
+      if (stats.cacheHits >= n / 2) {
+        break;
+      }
+      if (tries > 1) {
+        require("internal").sleep(tries * 0.01);
+      }
+    }
+    
+    tries = 0;
+    while (++tries < 50) {
+      let stats = db._query(`FOR i IN 0..24 FOR doc IN ${cn} FILTER doc._to == CONCAT('v/test', i) RETURN 1`).getExtra().stats;
+      if (stats.cacheHits >= 15) {
+        break;
+      }
+      if (tries > 1) {
+        require("internal").sleep(tries * 0.01);
+      }
+    }
+  };
 
   let insertInitialEdges = () => {
     db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i), _from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
+    // load edges into the cache
+    loadEdges();
   };
 
   return {
@@ -134,7 +159,22 @@ function AutoRefillIndexCachesEdge() {
         db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn}`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+        // 10 here because there may be background operations running that
+        // could affect the metrics
+        assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+        runCheck(false);
+      }, runWithRetryFailCb);
+    },
+    
+    testInsertEdgeOverwriteModeEnabled: function() {
+      runWithRetry(() => {
+        insertInitialEdges();
+
+        const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+        db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i), _from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn} OPTIONS { overwriteMode: 'replace' }`);
+        const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
+
+        assertTrue(newValue - oldValue >= (n / 2), { oldValue, newValue });
         runCheck(true);
       }, runWithRetryFailCb);
     },
@@ -158,7 +198,7 @@ function AutoRefillIndexCachesEdge() {
         db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn}`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= (n / 2), { oldValue, newValue });
         runCheck(true);
       }, runWithRetryFailCb);
     },
@@ -184,7 +224,7 @@ function AutoRefillIndexCachesEdge() {
         db._query(`FOR doc IN ${cn} REPLACE doc WITH {_from: doc._from, _to: doc._to, value: doc.value + 1} INTO ${cn}`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= (n / 2), { oldValue, newValue });
         runCheck(true);
       }, runWithRetryFailCb);
     },
@@ -210,7 +250,7 @@ function AutoRefillIndexCachesEdge() {
         db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn}`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= (n / 4), { oldValue, newValue });
         runRemoveCheck(true);
       }, runWithRetryFailCb);
     },

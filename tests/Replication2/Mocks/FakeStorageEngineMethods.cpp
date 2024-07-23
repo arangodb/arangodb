@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,20 +20,21 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include <utility>
+
 #include "FakeStorageEngineMethods.h"
 
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::test;
+#include <utility>
+#include "Basics/Result.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
+#include "Replication2/Storage/IteratorPosition.h"
 
 namespace {
 template<typename F, typename R = std::invoke_result_t<F>>
 auto invoke_on_executor(
-    std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> const&
-        executor,
-    F&& fn) -> futures::Future<R> {
-  auto p = futures::Promise<R>{};
+    std::shared_ptr<arangodb::replication2::storage::rocksdb::
+                        AsyncLogWriteBatcher::IAsyncExecutor> const& executor,
+    F&& fn) -> arangodb::futures::Future<R> {
+  auto p = arangodb::futures::Promise<R>{};
   auto f = p.getFuture();
 
   executor->operator()(
@@ -44,14 +46,16 @@ auto invoke_on_executor(
 }
 }  // namespace
 
-auto FakeStorageEngineMethods::updateMetadata(
-    replicated_state::PersistedStateInfo info) -> Result {
+namespace arangodb::replication2::storage::test {
+
+auto FakeStorageEngineMethods::updateMetadata(storage::PersistedStateInfo info)
+    -> Result {
   _self.meta = std::move(info);
   return {};
 }
 
 auto FakeStorageEngineMethods::readMetadata()
-    -> arangodb::ResultT<replicated_state::PersistedStateInfo> {
+    -> arangodb::ResultT<storage::PersistedStateInfo> {
   if (_self.meta.has_value()) {
     return {*_self.meta};
   } else {
@@ -59,7 +63,7 @@ auto FakeStorageEngineMethods::readMetadata()
   }
 }
 
-auto FakeStorageEngineMethods::read(replication2::LogIndex start)
+auto FakeStorageEngineMethods::getIterator(IteratorPosition position)
     -> std::unique_ptr<PersistedLogIterator> {
   struct ContainerIterator : PersistedLogIterator {
     using Container = FakeStorageEngineMethodsContext::LogContainerType;
@@ -69,11 +73,13 @@ auto FakeStorageEngineMethods::read(replication2::LogIndex start)
           _current(_store.lower_bound(start)),
           _end(_store.end()) {}
 
-    auto next() -> std::optional<PersistingLogEntry> override {
+    auto next() -> std::optional<PersistedLogEntry> override {
       if (_current != _end) {
         auto it = _current;
         ++_current;
-        return it->second;
+        return PersistedLogEntry(
+            LogEntry{it->second},
+            storage::IteratorPosition::fromLogIndex(it->second.logIndex()));
       }
       return std::nullopt;
     }
@@ -83,24 +89,24 @@ auto FakeStorageEngineMethods::read(replication2::LogIndex start)
     Iterator _end;
   };
 
-  return std::make_unique<ContainerIterator>(_self.log, start);
+  return std::make_unique<ContainerIterator>(_self.log, position.index());
 }
 
 auto FakeStorageEngineMethods::insert(
-    std::unique_ptr<PersistedLogIterator> iter,
-    const replicated_state::IStorageEngineMethods::WriteOptions& options)
-    -> arangodb::futures::Future<arangodb::ResultT<
-        replicated_state::IStorageEngineMethods::SequenceNumber>> {
+    std::unique_ptr<LogIterator> iter,
+    const storage::IStorageEngineMethods::WriteOptions& options)
+    -> arangodb::futures::Future<
+        arangodb::ResultT<storage::IStorageEngineMethods::SequenceNumber>> {
   return invoke_on_executor(
       _self.executor,
       [this, iter = std::move(iter), options]()
-          -> arangodb::ResultT<
-              replicated_state::IStorageEngineMethods::SequenceNumber> {
+          -> arangodb::ResultT<storage::IStorageEngineMethods::SequenceNumber> {
         auto lastIndex = LogIndex{0};
         while (auto entry = iter->next()) {
           auto const res =
               _self.log.try_emplace(entry->logIndex(), entry.value());
-          TRI_ASSERT(res.second);
+          TRI_ASSERT(res.second)
+              << "duplicated log entry " << entry->logIndex();
 
           TRI_ASSERT(entry->logIndex() > lastIndex);
           lastIndex = entry->logIndex();
@@ -111,62 +117,97 @@ auto FakeStorageEngineMethods::insert(
         return {_self.lastSequenceNumber++};
       });
 }
+
 auto FakeStorageEngineMethods::removeFront(
-    LogIndex stop,
-    const replicated_state::IStorageEngineMethods::WriteOptions& options)
-    -> arangodb::futures::Future<arangodb::ResultT<
-        replicated_state::IStorageEngineMethods::SequenceNumber>> {
+    LogIndex stop, const storage::IStorageEngineMethods::WriteOptions& options)
+    -> arangodb::futures::Future<
+        arangodb::ResultT<storage::IStorageEngineMethods::SequenceNumber>> {
   return invoke_on_executor(
       _self.executor,
       [this, stop]()
-          -> arangodb::ResultT<
-              replicated_state::IStorageEngineMethods::SequenceNumber> {
+          -> arangodb::ResultT<storage::IStorageEngineMethods::SequenceNumber> {
         _self.log.erase(_self.log.begin(), _self.log.lower_bound(stop));
         return {_self.lastSequenceNumber++};
       });
 }
 
 auto FakeStorageEngineMethods::removeBack(
-    LogIndex start,
-    const replicated_state::IStorageEngineMethods::WriteOptions& options)
-    -> arangodb::futures::Future<arangodb::ResultT<
-        replicated_state::IStorageEngineMethods::SequenceNumber>> {
+    LogIndex start, const storage::IStorageEngineMethods::WriteOptions& options)
+    -> arangodb::futures::Future<
+        arangodb::ResultT<storage::IStorageEngineMethods::SequenceNumber>> {
   return invoke_on_executor(
       _self.executor,
       [this, start]()
-          -> arangodb::ResultT<
-              replicated_state::IStorageEngineMethods::SequenceNumber> {
+          -> arangodb::ResultT<storage::IStorageEngineMethods::SequenceNumber> {
         _self.log.erase(_self.log.lower_bound(start), _self.log.end());
         return {_self.lastSequenceNumber++};
       });
 }
 
-auto FakeStorageEngineMethods::getObjectId() -> std::uint64_t {
-  return _self.objectId;
-}
 auto FakeStorageEngineMethods::getLogId() -> LogId { return _self.logId; }
-auto FakeStorageEngineMethods::getSyncedSequenceNumber()
-    -> replicated_state::IStorageEngineMethods::SequenceNumber {
-  TRI_ASSERT(false) << "not implemented";
-  std::abort();
-}
+
 auto FakeStorageEngineMethods::waitForSync(
-    replicated_state::IStorageEngineMethods::SequenceNumber number)
-    -> arangodb::futures::Future<arangodb::futures::Unit> {
-  TRI_ASSERT(false) << "not implemented";
-  std::abort();
+    storage::IStorageEngineMethods::SequenceNumber number)
+    -> arangodb::futures::Future<Result> {
+  futures::Promise<Result> promise;
+  promise.setValue(Result{});
+  return promise.getFuture();
 }
 
 FakeStorageEngineMethods::FakeStorageEngineMethods(
     FakeStorageEngineMethodsContext& self)
     : _self(self) {}
 
+void FakeStorageEngineMethods::waitForCompletion() noexcept {}
+
+auto FakeStorageEngineMethods::compact() -> Result { return {}; }
+auto FakeStorageEngineMethods::drop() -> Result { return {}; }
+
 auto FakeStorageEngineMethodsContext::getMethods()
-    -> std::unique_ptr<replicated_state::IStorageEngineMethods> {
-  return std::make_unique<FakeStorageEngineMethods>(*this);
+    -> std::unique_ptr<storage::IStorageEngineMethods> {
+  auto methods = std::make_unique<FakeStorageEngineMethods>(*this);
+  return methods;
 }
 
 FakeStorageEngineMethodsContext::FakeStorageEngineMethodsContext(
     std::uint64_t objectId, arangodb::replication2::LogId logId,
-    std::shared_ptr<RocksDBAsyncLogWriteBatcher::IAsyncExecutor> executor)
-    : objectId(objectId), logId(logId), executor(std::move(executor)) {}
+    std::shared_ptr<rocksdb::AsyncLogWriteBatcher::IAsyncExecutor> executor,
+    std::variant<LogRange, std::vector<LogPayload>> initialRange,
+    std::optional<storage::PersistedStateInfo> meta)
+    : objectId(objectId),
+      logId(logId),
+      executor(std::move(executor)),
+      meta(std::move(meta)) {
+  std::visit([this](auto&& range) { emplaceLogRange(std::move(range)); },
+             std::move(initialRange));
+}
+
+void FakeStorageEngineMethodsContext::emplaceLogRange(LogRange range,
+                                                      LogTerm term) {
+  for (auto idx : range) {
+    auto const& [_, inserted] = log.emplace(
+        idx, LogEntry{term, idx,
+                      LogPayload::createFromString("(" + to_string(term) + ":" +
+                                                   to_string(idx) + ")")});
+    TRI_ASSERT(inserted);
+  }
+}
+void FakeStorageEngineMethodsContext::emplaceLogRange(
+    std::vector<LogPayload> range, LogTerm term) {
+  for (auto idx = nextLogIndex(); auto const& payload : range) {
+    auto const& [_, inserted] = log.emplace(idx, LogEntry{term, idx, payload});
+    ++idx;
+    TRI_ASSERT(inserted);
+  }
+}
+auto FakeStorageEngineMethodsContext::nextLogIndex() const noexcept
+    -> LogIndex {
+  if (log.empty()) {
+    return LogIndex{1};
+  } else {
+    auto const last = log.crbegin()->first;
+    return last + 1;
+  }
+}
+
+}  // namespace arangodb::replication2::storage::test

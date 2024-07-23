@@ -6,8 +6,10 @@ add_library(arango_vocbase STATIC
   LogicalView.cpp
   Validators.cpp
   VocbaseInfo.cpp
+  VocBaseLogManager.cpp
   ticks.cpp
   vocbase.cpp
+  VocbaseMetrics.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Aql/QueryCursor.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Aql/StandaloneCalculation.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Replication/DatabaseReplicationApplier.cpp
@@ -22,6 +24,7 @@ target_link_libraries(arango_vocbase
   arango_indexes
   arango_replication
   arango_replication2
+  arango_vocbase_api
   boost_system
   arango::validation)
 
@@ -31,3 +34,4 @@ target_include_directories(arango_vocbase PRIVATE
 
 add_subdirectory(Identifiers)
 add_subdirectory(Methods)
+add_subdirectory(Properties)

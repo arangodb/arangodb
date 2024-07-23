@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,8 +21,6 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 #include <chrono>
 #include <condition_variable>
@@ -33,6 +31,11 @@
 #include "Metrics/MetricsFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -45,7 +48,12 @@ using namespace arangodb;
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
   ArangodServer server{nullptr, nullptr};
-  server.addFeature<metrics::MetricsFeature>();
+  server.addFeature<metrics::MetricsFeature>(
+      LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
+      LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
@@ -53,9 +61,10 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
   EXPECT_TRUE(tm.holdTransactions(500));
   tm.releaseTransactions();
 
-  tm.registerTransaction(static_cast<TransactionId>(1), false, false);
+  auto guard =
+      tm.registerTransaction(static_cast<TransactionId>(1), false, false);
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(static_cast<TransactionId>(1), false, false);
+  guard.reset();
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 
   EXPECT_TRUE(tm.holdTransactions(500));
@@ -64,40 +73,43 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
+  auto trxId = static_cast<TransactionId>(1);
   ArangodServer server{nullptr, nullptr};
-  server.addFeature<metrics::MetricsFeature>();
+  server.addFeature<metrics::MetricsFeature>(
+      LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
+      LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
   std::chrono::milliseconds five(5);
-  std::mutex mu;
-  std::condition_variable cv;
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
   EXPECT_TRUE(tm.holdTransactions(500));
 
-  std::unique_lock<std::mutex> lock(mu);
+  auto guard = tm.registerTransaction(trxId, false, false);
+  EXPECT_EQ(tm.getActiveTransactionCount(), 1);
+
+  std::atomic<bool> done;
 
   auto getReadLock = [&]() -> void {
-    {
-      std::unique_lock<std::mutex> innerLock(mu);
-      cv.notify_all();
-    }
-
-    tm.registerTransaction(static_cast<TransactionId>(1), false, false);
-    EXPECT_EQ(tm.getActiveTransactionCount(), 1);
+    tm.commitManagedTrx(trxId, "foo").waitAndGet();
+    done = true;
   };
 
   std::thread reader(getReadLock);
 
-  cv.wait(lock);
-  EXPECT_EQ(tm.getActiveTransactionCount(), 0);
+  EXPECT_EQ(tm.getActiveTransactionCount(), 1);
   std::this_thread::sleep_for(five);
-  EXPECT_EQ(tm.getActiveTransactionCount(), 0);
+  EXPECT_FALSE(done);
+
   tm.releaseTransactions();
 
   reader.join();
+
   EXPECT_EQ(tm.getActiveTransactionCount(), 1);
-  tm.unregisterTransaction(static_cast<TransactionId>(1), false, false);
+  guard.reset();
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
 }

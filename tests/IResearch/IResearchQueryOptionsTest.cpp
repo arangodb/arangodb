@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,7 +26,8 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/OptimizerRule.h"
+#include "Aql/Query.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchVPackComparer.h"
@@ -91,9 +92,10 @@ class QueryOptions : public QueryTest {
       arangodb::OperationOptions opt;
 
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+          kEmpty, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -149,9 +151,10 @@ class QueryOptions : public QueryTest {
       arangodb::OperationOptions opt;
 
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+          kEmpty, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -195,9 +198,10 @@ class QueryOptions : public QueryTest {
       arangodb::OperationOptions opt;
       static std::vector<std::string> const kEmpty;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+          kEmpty, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collection_1
@@ -1055,7 +1059,8 @@ class QueryOptions : public QueryTest {
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
       auto const res = query->explain();
       ASSERT_TRUE(res.data);
@@ -1097,7 +1102,8 @@ class QueryOptions : public QueryTest {
           {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
       auto const res = query->explain();
       ASSERT_TRUE(res.data);
@@ -1160,8 +1166,9 @@ class QueryOptionsView : public QueryOptions {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(builder,
+                                  LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1194,7 +1201,7 @@ class QueryOptionsSearch : public QueryOptions {
       auto collection =
           _vocbase.lookupCollection(absl::Substitute("collection_$0", name));
       ASSERT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     };
     createIndex(1);

@@ -1,5 +1,4 @@
 add_library(arango_agency STATIC
-  ActiveFailoverJob.cpp
   AddFollower.cpp
   AgencyComm.cpp
   AgencyFeature.cpp
@@ -21,14 +20,19 @@ add_library(arango_agency STATIC
   MoveShard.cpp
   Node.cpp
   PathComponent.cpp
+  ReconfigureReplicatedLog.cpp
   RemoveFollower.cpp
   ResignLeadership.cpp
   RestAgencyHandler.cpp
   RestAgencyPrivHandler.cpp
   State.cpp
   Store.cpp
-  Supervision.cpp
-  v8-agency.cpp)
+  Supervision.cpp)
+
+if (USE_V8) 
+  target_sources(arango_agency PRIVATE
+    v8-agency.cpp)
+endif()
 
 target_link_libraries(arango_agency
   arango

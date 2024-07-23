@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,7 +30,6 @@
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Finding.h"
-#include "Cache/FrequencyBuffer.h"
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
@@ -85,7 +84,7 @@ class TransactionalCache final : public Cache {
   /// value if it fails to acquire a lock in a timely fashion. Should not block
   /// for long.
   //////////////////////////////////////////////////////////////////////////////
-  Result insert(CachedValue* value) override;
+  ::ErrorCode insert(CachedValue* value) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to remove the given key.
@@ -96,7 +95,7 @@ class TransactionalCache final : public Cache {
   /// before quitting, so may block for longer than find or insert. Client may
   /// re-try.
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(void const* key, std::uint32_t keySize) override;
+  ::ErrorCode remove(void const* key, std::uint32_t keySize) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to banish the given key.
@@ -107,10 +106,14 @@ class TransactionalCache final : public Cache {
   /// before quitting, so may block for longer than find or insert. Client
   /// should re-try.
   //////////////////////////////////////////////////////////////////////////////
-  Result banish(void const* key, std::uint32_t keySize) override;
+  ::ErrorCode banish(void const* key, std::uint32_t keySize) override;
 
   /// @brief returns the name of the hasher
   std::string_view hasherName() const noexcept;
+
+  static constexpr uint64_t allocationSize() {
+    return sizeof(TransactionalCache);
+  }
 
  private:
   // friend class manager and tasks
@@ -118,21 +121,14 @@ class TransactionalCache final : public Cache {
   friend class Manager;
   friend class MigrateTask;
 
-  static constexpr uint64_t allocationSize(bool enableWindowedStats) {
-    return sizeof(TransactionalCache) +
-           (enableWindowedStats
-                ? (sizeof(StatBuffer) +
-                   StatBuffer::allocationSize(findStatsCapacity))
-                : 0);
-  }
-
   static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
                                        Metadata&& metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
   bool freeMemoryWhile(std::function<bool(std::uint64_t)> const& cb) override;
-  void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+  void migrateBucket(Table* table, void* sourcePtr,
+                     std::unique_ptr<Table::Subtable> targets,
                      Table& newTable) override;
 
   // helpers
@@ -140,7 +136,12 @@ class TransactionalCache final : public Cache {
       Table::HashOrId bucket, std::uint64_t maxTries,
       bool singleOperation = true);
 
-  static Table::BucketClearer bucketClearer(Metadata* metadata);
+  // simplified version of getBucket(). does not report access to the
+  // manager and does not update the bucket's term.
+  std::tuple<::ErrorCode, Table::BucketLocker> getBucketSimple(
+      Table* table, Table::HashOrId bucket, std::uint64_t maxTries);
+
+  static Table::BucketClearer bucketClearer(Cache* cache, Metadata* metadata);
 };
 
 }  // end namespace arangodb::cache

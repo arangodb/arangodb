@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,22 +23,24 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Max Neunhoeffer
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
 const rp = require('@arangodb/testutils/result-processing');
+const tu = require('@arangodb/testutils/test-utils');
 const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
 const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
 const toArgv = internal.toArgv;
-const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;
@@ -68,237 +70,7 @@ const termSignal = 15;
 let tcpdump;
 let assertLines = [];
 
-class ConfigBuilder {
-  constructor(type) {
-    this.config = {
-      'log.foreground-tty': 'true'
-    };
-    this.type = type;
-    switch (type) {
-    case 'restore':
-      this.config.configuration = fs.join(CONFIG_DIR, 'arangorestore.conf');
-      this.executable = ARANGORESTORE_BIN;
-      break;
-    case 'dump':
-      this.config.configuration = fs.join(CONFIG_DIR, 'arangodump.conf');
-      this.executable = ARANGODUMP_BIN;
-      break;
-    case 'import':
-      this.config.configuration = fs.join(CONFIG_DIR, 'arangoimport.conf');
-      this.executable = ARANGOIMPORT_BIN;
-      break;
-    default:
-      throw 'Sorry this type of Arango-Binary is not yet implemented: ' + type;
-    }
-  }
-
-  setWhatToImport(what) {
-    this.config['file'] = fs.join(TOP_DIR, what.data);
-    this.config['collection'] = what.coll;
-    this.config['type'] = what.type;
-    this.config['on-duplicate'] = what.onDuplicate || 'error';
-    this.config['ignore-missing'] = what.ignoreMissing || false;
-    if (what.headers !== undefined) {
-      this.config['headers-file'] = fs.join(TOP_DIR, what.headers);
-    }
-
-    if (what.skipLines !== undefined) {
-      this.config['skip-lines'] = what.skipLines;
-    }
-
-    if (what.create !== undefined) {
-      this.config['create-collection'] = what.create;
-    }
-
-    if (what.createDatabase !== undefined) {
-      this.config['create-database'] = what.createDatabase;
-    }
-
-    if (what.database !== undefined) {
-      this.config['server.database'] = what.database;
-    }
-
-    if (what.backslash !== undefined) {
-      this.config['backslash-escape'] = what.backslash;
-    }
-
-    if (what.separator !== undefined) {
-      this.config['separator'] = what.separator;
-    }
-
-    if (what.convert !== undefined) {
-      this.config['convert'] = what.convert ? 'true' : 'false';
-    }
-
-    if (what.removeAttribute !== undefined) {
-      this.config['remove-attribute'] = what.removeAttribute;
-    }
-
-    if (what.datatype !== undefined) {
-      this.config['datatype'] = what.datatype;
-    }
-
-    if (what.mergeAttributes !== undefined) {
-      this.config['merge-attributes'] = what.mergeAttributes;
-    }
-
-    if (what.batchSize !== undefined) {
-      this.config['batch-size'] = what.batchSize;
-    }
-
-    if (what["from-collection-prefix"] !== undefined) {
-      this.config["from-collection-prefix"] = what["from-collection-prefix"];
-    }
-    if (what["to-collection-prefix"] !== undefined) {
-      this.config["to-collection-prefix"] = what["to-collection-prefix"];
-    }
-    if (what["overwrite-collection-prefix"] !== undefined) {
-      this.config["overwrite-collection-prefix"] = what["overwrite-collection-prefix"];
-    }
-  }
-
-  setAuth(username, password) {
-    if (username !== undefined) {
-      this.config['server.username'] = username;
-    }
-    if (password !== undefined) {
-      this.config['server.password'] = password;
-    }
-  }
-  setEndpoint(endpoint) { this.config['server.endpoint'] = endpoint; }
-  setDatabase(database) {
-    if (this.haveSetAllDatabases()) {
-      throw new Error("must not specify all-databases and database");
-    }
-    this.config['server.database'] = database;
-  }
-  setThreads(threads) {
-    if (this.type !== 'restore' && this.type !== 'dump') {
-      throw '"threads" is not supported for binary: ' + this.type;
-    }
-    this.config['threads'] = threads;
-  }
-  setIncludeSystem(active) {
-    if (this.type !== 'restore' && this.type !== 'dump') {
-      throw '"include-system-collections" is not supported for binary: ' + this.type;
-    }
-    this.config['include-system-collections'] = active ? 'true' : 'false';
-  }
-  setOutputDirectory(dir) {
-    if (this.type !== 'dump') {
-      throw '"output-directory" is not supported for binary: ' + this.type;
-    }
-    this.config['output-directory'] = fs.join(this.rootDir, dir);
-  }
-  getOutputDirectory() {
-    return this.config['output-directory'];
-  }
-  setInputDirectory(dir, createDatabase) {
-    if (this.type !== 'restore') {
-      throw '"input-directory" is not supported for binary: ' + this.type;
-    }
-    this.config['input-directory'] = fs.join(this.rootDir, dir);
-    if (createDatabase) {
-      this.config['create-database'] = 'true';
-    } else {
-      this.config['create-database'] = 'false';
-    }
-  }
-  setJwtFile(file) {
-    delete this.config['server.password'];
-    this.config['server.jwt-secret-keyfile'] = file;
-  }
-  setMaskings(dir) {
-    if (this.type !== 'dump') {
-      throw '"maskings" is not supported for binary: ' + this.type;
-    }
-    this.config['maskings'] = fs.join(TOP_DIR, "tests/js/common/test-data/maskings", dir);
-  }
-  activateEncryption() { this.config['encryption.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
-  activateCompression() {
-    if (this.type === 'dump') {
-      this.config['--compress-output'] = true;
-    }
-  }
-  deactivateCompression() {
-    if (this.type === 'dump') {
-      this.config['--compress-output'] = false;
-    }
-  }
-  activateEnvelopes() {
-    if (this.type === 'dump') {
-      this.config['--envelope'] = true;
-    }
-  }
-  deactivateEnvelopes() {
-    if (this.type === 'dump') {
-      this.config['--envelope'] = false;
-    }
-  }
-  setRootDir(dir) { this.rootDir = dir; }
-  restrictToCollection(collection) {
-    if (this.type !== 'restore' && this.type !== 'dump') {
-      throw '"collection" is not supported for binary: ' + this.type;
-    }
-    this.config['collection'] = collection;
-  };
-  setAllDatabases() {
-    this.config['all-databases'] = 'true';
-    delete this.config['server.database'];
-  }
-  haveSetAllDatabases() {
-    return this.config.hasOwnProperty('all-databases');
-  }
-  activateFailurePoint() {
-    if (this.type !== "restore") {
-      throw '"activateFailurePoint" is not supported for binary: ' + this.type;
-    }
-    this.config['fail-after-update-continue-file'] = 'true';
-  }
-  enableContinue() {
-    if (this.type !== "restore") {
-      throw '"enableContinue" is not supported for binary: ' + this.type;
-    }
-    this.config['continue'] = 'true';
-  }
-  deactivateFailurePoint() {
-    delete this.config['fail-after-update-continue-file'];
-  }
-  disableContinue() {
-    delete this.config['continue'];
-  }
-  toArgv() { return internal.toArgv(this.config); }
-
-  getExe() { return this.executable; }
-
-  print() {
-    print(this.executable);
-    print(this.config);
-  }
-}
-
-const createBaseConfigBuilder = function (type, options, instanceInfo, database = '_system') {
-  const cfg = new ConfigBuilder(type);
-  if (!options.jwtSecret) {
-    cfg.setAuth(options.username, options.password);
-  }
-  if (options.hasOwnProperty('logForceDirect')) {
-    cfg.config['log.force-direct'] = true;
-  }
-  if (options.hasOwnProperty('serverRequestTimeout')) {
-    cfg.config['server.request-timeout'] = options.serverRequestTimeout;
-  }
-  cfg.setDatabase(database);
-  cfg.setEndpoint(instanceInfo.endpoint);
-  cfg.setRootDir(instanceInfo.rootDir);
-  return cfg;
-};
-
 let executableExt = '';
-if (platform.substr(0, 3) === 'win') {
-  executableExt = '.exe';
-}
-
 let serverCrashedLocal = false;
 let serverFailMessagesLocal = "";
 let cleanupDirectories = [];
@@ -333,34 +105,18 @@ const TOP_DIR = (function findTopDir () {
   return topDir;
 }());
 
-// create additional system environment variables for coverage
-function coverageEnvironment () {
-  let result = [];
-  let name = 'GCOV_PREFIX';
-
-  if (process.env.hasOwnProperty(name)) {
-    result.push(
-      name +
-      "=" +
-      process.env[name] +
-      "/" +
-      crypto.md5(String(internal.time() + Math.random())));
-  }
-
-  return result;
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
 // / required to be called first.
 // //////////////////////////////////////////////////////////////////////////////
 
-function setupBinaries (builddir, buildType, configDir) {
-  if (builddir === '') {
+function setupBinaries (options) {
+  if (options.build === '') {
     if (fs.exists('build') && fs.exists(fs.join('build', 'bin'))) {
-      builddir = 'build';
+      options.build = 'build';
     } else if (fs.exists('bin')) {
-      builddir = '.';
+      options.build = '.';
     } else {
       print('FATAL: cannot find binaries, use "--build"\n');
 
@@ -370,7 +126,7 @@ function setupBinaries (builddir, buildType, configDir) {
     }
   }
 
-  BIN_DIR = fs.join(builddir, 'bin');
+  BIN_DIR = fs.join(options.build, 'bin');
   if (!fs.exists(BIN_DIR)) {
     BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
   }
@@ -379,18 +135,9 @@ function setupBinaries (builddir, buildType, configDir) {
     BIN_DIR = fs.join(TOP_DIR, 'bin');
   }
 
-  UNITTESTS_DIR = fs.join(fs.join(builddir, 'tests'));
+  UNITTESTS_DIR = fs.join(fs.join(options.build, 'tests'));
   if (!fs.exists(UNITTESTS_DIR)) {
     UNITTESTS_DIR = fs.join(TOP_DIR, UNITTESTS_DIR);
-  }
-
-  if (buildType !== '') {
-    if (fs.exists(fs.join(BIN_DIR, buildType))) {
-      BIN_DIR = fs.join(BIN_DIR, buildType);
-    }
-    if (fs.exists(fs.join(UNITTESTS_DIR, buildType))) {
-      UNITTESTS_DIR = fs.join(UNITTESTS_DIR, buildType);
-    }
   }
 
   ARANGOBACKUP_BIN = fs.join(BIN_DIR, 'arangobackup' + executableExt);
@@ -403,13 +150,13 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
   ARANGO_SECURE_INSTALLATION_BIN = fs.join(BIN_DIR, 'arango-secure-installation' + executableExt);
 
-  CONFIG_ARANGODB_DIR = fs.join(builddir, 'etc', 'arangodb3');
+  CONFIG_ARANGODB_DIR = fs.join(options.build, 'etc', 'arangodb3');
   if (!fs.exists(CONFIG_ARANGODB_DIR)) {
     CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, CONFIG_ARANGODB_DIR);
   }
 
   CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, 'etc', 'relative');
-  CONFIG_DIR = fs.join(TOP_DIR, configDir);
+  CONFIG_DIR = fs.join(TOP_DIR, options.configDir);
 
   JS_DIR = fs.join(TOP_DIR, 'js');
   JS_ENTERPRISE_DIR = fs.join(TOP_DIR, 'enterprise/js');
@@ -430,21 +177,13 @@ function setupBinaries (builddir, buildType, configDir) {
     isEnterpriseClient = true;
     checkFiles.push(ARANGOBACKUP_BIN);
   }
-  ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
-    let envName = san.toUpperCase() + "_OPTIONS";
-    let fileName = san + "_arangodb_suppressions.txt";
-    if (!process.env.hasOwnProperty(envName) &&
-        fs.exists(fileName)) {
-      // print('preparing ' + san + ' environment');
-      process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+
+  checkFiles.forEach((file) => {
+    if (!fs.isFile(file)) {
+      throw new Error('unable to locate ' + file);
     }
   });
 
-  for (let b = 0; b < checkFiles.length; ++b) {
-    if (!fs.isFile(checkFiles[b])) {
-      throw new Error('unable to locate ' + checkFiles[b]);
-    }
-  }
   global.ARANGOSH_BIN = ARANGOSH_BIN;
 }
 
@@ -485,148 +224,9 @@ function killRemainingProcesses(results) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-// / operate the arango commandline utilities
-// //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief arguments for testing (client)
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeArgsArangosh (options) {
-  return {
-    'configuration': fs.join(CONFIG_DIR, 'arangosh.conf'),
-    'javascript.startup-directory': JS_DIR,
-    'javascript.module-directory': JS_ENTERPRISE_DIR,
-    'server.username': options.username,
-    'server.password': options.password,
-    'flatCommands': ['--console.colors', 'false', '--quiet']
-  };
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangosh
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false) {
-  let args = makeArgsArangosh(options);
-  args['server.endpoint'] = instanceInfo.endpoint;
-
-  if (addArgs !== undefined) {
-    args = Object.assign(args, addArgs);
-  }
-
-  internal.env.INSTANCEINFO = JSON.stringify(instanceInfo.getStructure());
-  const argv = toArgv(args).concat(cmds);
-  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangoimport
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoImportCfg (config, options, rootDir, coreCheck = false) {
-  if (options.extremeVerbosity === true) {
-    config.print();
-  }
-  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangoimport', rootDir, coreCheck);
-}
-
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangodump or arangorestore based on config object
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
-  if (options.extremeVerbosity === true) {
-    config.print();
-  }
-  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, coreCheck);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangodump or arangorestore
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true, coreCheck = false) {
-  const cfg = createBaseConfigBuilder(which, options, instanceInfo, database);
-  cfg.setIncludeSystem(includeSystem);
-  if (rootDir) { cfg.setRootDir(rootDir); }
-
-  if (which === 'dump') {
-    cfg.setOutputDirectory(dumpDir);
-  } else {
-    cfg.setInputDirectory(dumpDir, true);
-  }
-
-  if (options.encrypted) {
-    cfg.activateEncryption();
-  }
-  if (options.allDatabases) {
-    cfg.setAllDatabases();
-  }
-  return runArangoDumpRestoreCfg(cfg, options, rootDir, coreCheck);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangobench
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck = false) {
-  let args = {
-    'configuration': fs.join(CONFIG_DIR, 'arangobackup.conf'),
-    'log.foreground-tty': 'true',
-    'server.endpoint': instanceInfo.endpoint,
-    'server.connection-timeout': 10 // 5s default
-  };
-  if (options.username) {
-    args['server.username'] = options.username;
-    args['server.password'] = "";
-  }
-  if (options.password) {
-    args['server.password'] = options.password;
-  }
-
-  args = Object.assign(args, cmds);
-
-  args['log.level'] = 'info';
-  if (!args.hasOwnProperty('verbose')) {
-    args['log.level'] = 'warning';
-  }
-  if (options.extremeVerbosity) {
-    args['log.level'] = 'trace';
-  }
-
-  args['flatCommands'] = [which];
-
-  return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, coreCheck);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangobench
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = false) {
-  let args = {
-    'configuration': fs.join(CONFIG_DIR, 'arangobench.conf'),
-    'log.foreground-tty': 'true',
-    'server.username': options.username,
-    'server.password': options.password,
-    'server.endpoint': instanceInfo.endpoint,
-    // 'server.request-timeout': 1200 // default now.
-    'server.connection-timeout': 10 // 5s default
-  };
-
-  args = Object.assign(args, cmds);
-
-  if (!args.hasOwnProperty('verbose')) {
-    args['log.level'] = 'warning';
-    args['flatCommands'] = ['--quiet'];
-  }
-
-  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief loads the JWT secret from the various ways possible
@@ -728,8 +328,9 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     cmd = options.valgrind;
   }
 
+  const launchCmd = `${Date()} executeAndWait: cmd =${cmd} args =${JSON.stringify(args)}`;
   if (options.extremeVerbosity) {
-    print(Date() + ' executeAndWait: cmd =', cmd, 'args =', args);
+    print(launchCmd);
   }
 
   const startTime = time();
@@ -750,60 +351,33 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     };
   }
 
-  let res = {};
-  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    res = executeExternal(cmd, args, false, coverageEnvironment());
-    instanceInfo.pid = res.pid;
-    instanceInfo.exitStatus = res;
-    if (crashUtils.runProcdump(options, instanceInfo, rootDir, res.pid)) {
-      Object.assign(instanceInfo.exitStatus,
-                    statusExternal(res.pid, true, timeout * 1000));
-      if (instanceInfo.exitStatus.status === 'TIMEOUT') {
-        print('Timeout while running ' + cmd + ' - will kill it now! ' + JSON.stringify(args));
-        executeExternalAndWait('netstat', ['-aonb']);
-        killExternal(res.pid);
-        crashUtils.stopProcdump(options, instanceInfo);
-        instanceInfo.exitStatus.status = 'ABORTED';
-        const deltaTime = time() - startTime;
-        return {
-          timeout: true,
-          status: false,
-          message: 'irregular termination by TIMEOUT',
-          duration: deltaTime
-        };
-      }
-      crashUtils.stopProcdump(options, instanceInfo);
-    } else {
-      print('Killing ' + cmd + ' - ' + JSON.stringify(args));
-      res = killExternal(res.pid);
-      instanceInfo.pid = res.pid;
-      instanceInfo.exitStatus = res;
-    }
-  } else {
-    // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
-    res = executeExternalAndWait(cmd, args, false, timeout*1000, coverageEnvironment());
-    instanceInfo.pid = res.pid;
-    instanceInfo.exitStatus = res;
-    crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
-  }
+  // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
+  
+  let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
+  sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
+  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
+  
+  instanceInfo.pid = res.pid;
+  instanceInfo.exitStatus = res;
   const deltaTime = time() - startTime;
-
   let errorMessage = ' - ';
+  if (sh.fetchSanFileAfterExit(res.pid)) {
+    serverCrashedLocal = true;
+    res.status = false;
+    errorMessage += " Sanitizer indicated issues  - ";
+  }
 
   if (coreCheck &&
       instanceInfo.exitStatus.hasOwnProperty('signal') &&
       ((instanceInfo.exitStatus.signal === 11) ||
        (instanceInfo.exitStatus.signal === 6) ||
-       (instanceInfo.exitStatus.signal === 4) || // mac sometimes SIG_ILLs...
-       // Windows sometimes has random numbers in signal...
-       (platform.substr(0, 3) === 'win')
-      )
-     ) {
-    print(Date() + " executeAndWait: Marking crashy - " + JSON.stringify(instanceInfo));
+        // mac sometimes SIG_ILLs...
+       (instanceInfo.exitStatus.signal === 4))) {
+    print(`${Date()} executeAndWait: Marking '${launchCmd}' crashy - ${JSON.stringify(instanceInfo)}`);
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,
                             options,
-                            'execution of ' + cmd + ' - ' + instanceInfo.exitStatus.signal);
+                            `execution of '${launchCmd}' - ${instanceInfo.exitStatus.signal}`);
     if (options.coreCheck) {
       print(instanceInfo.exitStatus.gdbHint);
     }
@@ -828,7 +402,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       return {
         timeout: false,
         status: false,
-        message: 'exit code was ' + instanceInfo.exitStatus.exit,
+        message: `exit code of '${launchCmd}' was ${instanceInfo.exitStatus.exit}`,
         duration: deltaTime,
         exitCode: instanceInfo.exitStatus.exit,
       };
@@ -845,19 +419,19 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     return {
       timeout: false,
       status: false,
-      message: 'irregular termination: ' + instanceInfo.exitStatus.status +
-        ' exit signal: ' + instanceInfo.exitStatus.signal + errorMessage,
+      message: `irregular termination of '${launchCmd}': ${instanceInfo.exitStatus.status}` +
+        ` exit signal: ${instanceInfo.exitStatus.signal} ${errorMessage}`,
       duration: deltaTime
     };
   } else if (res.status === 'TIMEOUT') {
-    print('Killing ' + cmd + ' - ' + JSON.stringify(args));
+    print('Date() + Killing ' + cmd + ' - ' + JSON.stringify(args));
     let resKill = killExternal(res.pid, abortSignal);
     if (coreCheck) {
       print(Date() + " executeAndWait: Marking crashy because of timeout - " + JSON.stringify(instanceInfo));
       crashUtils.analyzeCrash(cmd,
                               instanceInfo,
                               options,
-                              'execution of ' + cmd + ' - kill because of timeout');
+                              `execution of '${launchCmd}' - kill because of timeout`);
       if (options.coreCheck) {
         print(instanceInfo.exitStatus.gdbHint);
       }
@@ -868,8 +442,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     return {
       timeout: true,
       status: false,
-      message: 'termination by timeout: ' + instanceInfo.exitStatus.status +
-        ' killed by : ' + abortSignal + errorMessage,
+      message: `termination of '${launchCmd}' by timeout: ${instanceInfo.exitStatus.status}` +
+        ` killed by : ${abortSignal} ${errorMessage}`,
       duration: deltaTime
     };
   } else {
@@ -884,8 +458,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     return {
       timeout: false,
       status: false,
-      message: 'irregular termination: ' + instanceInfo.exitStatus.status +
-        ' exit code: ' + instanceInfo.exitStatus.exit + errorMessage,
+      message: `irregular termination of  '${launchCmd}' : ${instanceInfo.exitStatus.status}` +
+        ` exit code: ${instanceInfo.exitStatus.exit} ${errorMessage}`,
       duration: deltaTime
     };
   }
@@ -893,29 +467,16 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
 exports.setupBinaries = setupBinaries;
 exports.endpointToURL = endpointToURL;
-exports.coverageEnvironment = coverageEnvironment;
-
-exports.makeArgs = {
-  arangosh: makeArgsArangosh
-};
 
 exports.executeAndWait = executeAndWait;
 exports.killRemainingProcesses = killRemainingProcesses;
 exports.isEnterpriseClient = isEnterpriseClient;
 
-exports.createBaseConfig = createBaseConfigBuilder;
-exports.run = {
-  arangoshCmd: runArangoshCmd,
-  arangoImport: runArangoImportCfg,
-  arangoDumpRestore: runArangoDumpRestore,
-  arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,
-  arangoBenchmark: runArangoBenchmark,
-  arangoBackup: runArangoBackup
-};
-
 exports.executableExt = executableExt;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
+Object.defineProperty(exports, 'JS_DIR', {get: () => JS_DIR});
+Object.defineProperty(exports, 'JS_ENTERPRISE_DIR', {get: () => JS_ENTERPRISE_DIR});
 Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => ARANGOBACKUP_BIN});
 Object.defineProperty(exports, 'ARANGOBENCH_BIN', {get: () => ARANGOBENCH_BIN});
 Object.defineProperty(exports, 'ARANGODUMP_BIN', {get: () => ARANGODUMP_BIN});
@@ -934,3 +495,17 @@ Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => CONFIG_ARANGOD
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => CONFIG_RELATIVE_DIR});
 Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashedLocal, set: (value) => { serverCrashedLocal = value; } });
 Object.defineProperty(exports, 'serverFailMessages', {get: () => serverFailMessagesLocal, set: (value) => { serverFailMessagesLocal = value; }});
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  tu.CopyIntoObject(optionsDefaults, {
+    'build': '',
+    'configDir': 'etc/testing',
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    ' Environment options:',
+    '   - `build`: the directory containing the binaries',
+    '   - `configDir`: the directory containing the config files, defaults to',
+    '                  etc/testing',
+    ''
+  ]);
+};

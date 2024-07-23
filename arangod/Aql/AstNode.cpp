@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -88,7 +88,7 @@ constexpr frozen::unordered_map<int, std::string_view, 26> kOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
 /// @brief type names for AST nodes
-frozen::unordered_map<int, std::string_view, 80> kTypeNames{
+frozen::unordered_map<int, std::string_view, 81> kTypeNames{
     {static_cast<int>(NODE_TYPE_ROOT), "root"},
     {static_cast<int>(NODE_TYPE_FOR), "for"},
     {static_cast<int>(NODE_TYPE_LET), "let"},
@@ -171,6 +171,7 @@ frozen::unordered_map<int, std::string_view, 80> kTypeNames{
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
     {static_cast<int>(NODE_TYPE_ARRAY_FILTER), "array filter"},
+    {static_cast<int>(NODE_TYPE_DESTRUCTURING), "destructuring"},
     {static_cast<int>(NODE_TYPE_WINDOW), "window"},
 };
 
@@ -413,9 +414,40 @@ int compareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8) {
   }
 }
 
+// private ctor, only called during by FixedSizeAllocator in case of emergency
+// to properly initialize the node
+// Note that since C++17 the default constructor of `std::vector` is
+// `noexcept` iff and only if the  default constructor of its `allocator_type`
+// is. Therefore, we can say that `AstNode::AstNode()` is noexcept, if and
+// only if the default constructor of the allocator type of
+// `std::vector<AstNode*>` is noexcept, which is exactly what this fancy
+// `noexcept` expression does.
+AstNode::AstNode() noexcept(noexcept(decltype(members)::allocator_type()))
+    : type(NODE_TYPE_NOP), flags(0), _computedValue(nullptr), members{} {
+  // properly zero-initialize all members
+  value.value._int = 0;
+  value.length = 0;
+  value.type = VALUE_TYPE_NULL;
+}
+
 /// @brief create the node
-AstNode::AstNode(AstNodeType type)
-    : type(type), flags(0), _computedValue(nullptr), members{} {
+AstNode::AstNode(AstNodeType type) noexcept(
+    noexcept(decltype(members)::allocator_type()))
+    : type(type), flags(0), _computedValue(nullptr) {
+  // properly zero-initialize all members
+  value.value._int = 0;
+  value.length = 0;
+  value.type = VALUE_TYPE_NULL;
+}
+
+/// @brief create the node, and make it an internal const node
+AstNode::AstNode(AstNodeType type, InternalNode /*internal*/)
+    : type(type),
+      flags(makeFlags(DETERMINED_SORTED, DETERMINED_CONSTANT, DETERMINED_SIMPLE,
+                      DETERMINED_NONDETERMINISTIC, DETERMINED_RUNONDBSERVER,
+                      DETERMINED_CHECKUNIQUENESS, DETERMINED_V8,
+                      VALUE_RUNONDBSERVER, FLAG_INTERNAL_CONST)),
+      _computedValue(nullptr) {
   // properly zero-initialize all members
   value.value._int = 0;
   value.length = 0;
@@ -429,8 +461,18 @@ AstNode::AstNode(AstNodeValue const& value)
                       VALUE_SIMPLE, DETERMINED_RUNONDBSERVER,
                       VALUE_RUNONDBSERVER)),
       value(value),
-      _computedValue(nullptr),
-      members{} {}
+      _computedValue(nullptr) {}
+
+/// @brief create a node, with defining a value and making it an
+/// internal const node
+AstNode::AstNode(AstNodeValue const& value, InternalNode /*internal*/)
+    : type(NODE_TYPE_VALUE),
+      flags(makeFlags(DETERMINED_SORTED, DETERMINED_CONSTANT, DETERMINED_SIMPLE,
+                      DETERMINED_NONDETERMINISTIC, DETERMINED_RUNONDBSERVER,
+                      DETERMINED_CHECKUNIQUENESS, DETERMINED_V8, VALUE_CONSTANT,
+                      VALUE_SIMPLE, VALUE_RUNONDBSERVER, FLAG_INTERNAL_CONST)),
+      value(value),
+      _computedValue(nullptr) {}
 
 /// @brief create the node from VPack
 AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
@@ -478,6 +520,11 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
           VPackValueLength l;
           char const* p = v.getString(l);
           setStringValue(ast->resources().registerString(p, l), l);
+          TRI_IF_FAILURE("AstNode::throwOnAllocation") {
+            if (getStringView() == "throw!") {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
+          }
           break;
         }
         default: {
@@ -603,6 +650,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_FOR_VIEW:
     case NODE_TYPE_WINDOW:
     case NODE_TYPE_ARRAY_FILTER:
+    case NODE_TYPE_DESTRUCTURING:
       break;
   }
 
@@ -640,24 +688,14 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
   if (VPackSlice subNodes = slice.get("subNodes"); subNodes.isArray()) {
     members.reserve(subNodes.length());
 
-    try {
-      for (VPackSlice it : VPackArrayIterator(subNodes)) {
-        int t = it.get("typeID").getNumericValue<int>();
-        if (static_cast<AstNodeType>(t) == NODE_TYPE_NOP) {
-          // special handling for nop as it is a singleton
-          addMember(ast->createNodeNop());
-        } else {
-          addMember(ast->createNode(it));
-        }
+    for (VPackSlice it : VPackArrayIterator(subNodes)) {
+      int t = it.get("typeID").getNumericValue<int>();
+      if (static_cast<AstNodeType>(t) == NODE_TYPE_NOP) {
+        // special handling for nop as it is a singleton
+        addMember(ast->createNodeNop());
+      } else {
+        addMember(ast->createNode(it));
       }
-    } catch (...) {
-      // prevent leaks
-      for (auto const& it : members) {
-        if (it->type != NODE_TYPE_NOP) {
-          delete it;
-        }
-      }
-      throw;
     }
   }
 }
@@ -848,15 +886,19 @@ void AstNode::sort() {
 }
 
 /// @brief return the type name of a node
-std::string_view AstNode::getTypeString() const {
+std::string_view AstNode::getTypeString() const { return getTypeString(type); }
+
+std::string_view AstNode::getTypeString(AstNodeType type) {
   auto it = kTypeNames.find(static_cast<int>(type));
 
   if (it != kTypeNames.end()) {
     return (*it).second;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "missing node type in kTypeNames");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      absl::StrCat("missing node type in kTypeNames: ",
+                   static_cast<int>(type)));
 }
 
 /// @brief return the value type name of a node
@@ -973,7 +1015,7 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
 /// @brief build a VelocyPack representation of the node value
 ///        Can throw Out of Memory Error
 void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
-  TRI_ASSERT(valueHasVelocyPackRepresentation());
+  TRI_ASSERT(valueHasVelocyPackRepresentation()) << this->toString();
   if (type == NODE_TYPE_VALUE) {
     // dump value of "value" node
     switch (value.type) {
@@ -1146,6 +1188,10 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     TRI_ASSERT(variable != nullptr);
     builder.add("name", VPackValue(variable->name));
     builder.add("id", VPackValue(variable->id));
+    if (type == NODE_TYPE_REFERENCE) {
+      builder.add("subqueryReference",
+                  VPackValue(hasFlag(FLAG_SUBQUERY_REFERENCE)));
+    }
   }
 
   if (type == NODE_TYPE_EXPANSION) {
@@ -1515,6 +1561,7 @@ bool AstNode::isSimple() const {
   if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT ||
       type == NODE_TYPE_EXPANSION || type == NODE_TYPE_ITERATOR ||
       type == NODE_TYPE_ARRAY_LIMIT || type == NODE_TYPE_ARRAY_FILTER ||
+      type == NODE_TYPE_DESTRUCTURING ||
       type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
       type == NODE_TYPE_OPERATOR_TERNARY ||
       type == NODE_TYPE_OPERATOR_NARY_AND ||
@@ -2584,12 +2631,6 @@ AstNode* AstNode::getMemberUnchecked(size_t i) const noexcept {
   return members[i];
 }
 
-void AstNode::sortMembers(
-    std::function<bool(AstNode const*, AstNode const*)> const& func) {
-  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  std::sort(members.begin(), members.end(), func);
-}
-
 void AstNode::reduceMembers(size_t i) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
   if (i > members.size()) {
@@ -2691,7 +2732,7 @@ bool AstNode::stringEquals(std::string const& other) const {
           memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
 }
 
-void* AstNode::getData() const { return value.value._data; }
+void* AstNode::getData() const noexcept { return value.value._data; }
 
 void AstNode::setData(void* v) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,8 +48,7 @@ class AqlItemRowsTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor,
-                                       SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 
   void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
@@ -84,7 +83,7 @@ class AqlItemRowsTest : public ::testing::Test {
 };
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_narrow) {
-  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
+  auto outputBlock = itemBlockManager.requestBlock(3, 3);
   RegisterInfos executorInfos{{}, {}, 3, 3, {}, {RegIdSet{0, 1, 2}}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
@@ -122,7 +121,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_narrow) {
 }
 
 TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
-  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
+  auto outputBlock = itemBlockManager.requestBlock(3, 3);
   RegisterInfos executorInfos{{}, {}, 3, 3, {}, {RegIdSet{0, 1, 2}}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
@@ -175,7 +174,7 @@ TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
 
 TEST_F(AqlItemRowsTest,
        only_copying_from_source_to_target_but_multiplying_rows) {
-  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 9, 3)};
+  auto outputBlock = itemBlockManager.requestBlock(9, 3);
   RegisterInfos executorInfos{{}, {}, 3, 3, {}, {RegIdSet{0, 1, 2}}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
@@ -222,7 +221,7 @@ TEST_F(AqlItemRowsTest,
 
 TEST_F(AqlItemRowsTest,
        dropping_a_register_from_source_while_writing_to_target) {
-  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
+  auto outputBlock = itemBlockManager.requestBlock(3, 3);
   RegisterInfos executorInfos{{}, {}, 3, 3, RegIdSet{1}, {RegIdSet{0, 2}}};
   auto outputRegisters = executorInfos.getOutputRegisters();
   auto registersToKeep = executorInfos.registersToKeep();
@@ -269,7 +268,7 @@ TEST_F(AqlItemRowsTest, writing_rows_to_target) {
   nrInputRegisters = 3;
   nrOutputRegisters = 5;
 
-  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 5)};
+  auto outputBlock = itemBlockManager.requestBlock(3, 5);
   RegisterInfos executorInfos{{},
                               outputRegisters,
                               nrInputRegisters,
@@ -327,8 +326,7 @@ class AqlItemRowsCommonEqTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor,
-                                       SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 };
 
@@ -432,8 +430,7 @@ class AqlShadowRowsEqTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  AqlItemBlockManager itemBlockManager{monitor,
-                                       SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 };
 

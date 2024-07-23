@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,23 +23,31 @@
 
 #pragma once
 
-#include <array>
-
 #include "Aql/CollectOptions.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/IndexHint.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/SortElement.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string_view>
+#include <unordered_set>
+
 namespace arangodb {
 namespace velocypack {
+class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 class Ast;
@@ -50,6 +58,7 @@ class Collections;
 class ExecutionNode;
 struct OptimizerRule;
 class QueryContext;
+class SubqueryNode;
 
 class ExecutionPlan {
  public:
@@ -75,40 +84,41 @@ class ExecutionPlan {
       Ast*, bool trackMemoryUsage);
 
   /// @brief process the list of collections in a VelocyPack
-  static void getCollectionsFromVelocyPack(aql::Collections&,
-                                           arangodb::velocypack::Slice const);
+  static void getCollectionsFromVelocyPack(aql::Collections& colls,
+                                           velocypack::Slice slice);
 
   /// @brief create an execution plan from VelocyPack
   static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(
-      Ast* ast, arangodb::velocypack::Slice const);
+      Ast* ast, velocypack::Slice slice);
 
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
 
-  ExecutionPlan* clone(Ast*);
+  std::unique_ptr<ExecutionPlan> clone(Ast* ast);
 
   /// @brief clone the plan by recursively cloning starting from the root
-  ExecutionPlan* clone();
+  std::unique_ptr<ExecutionPlan> clone();
 
   // build flags for plan serialization
   static unsigned buildSerializationFlags(bool verbose, bool includeInternals,
                                           bool explainRegisters) noexcept;
 
   /// @brief export to VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&, Ast* ast,
-                    unsigned flags) const;
+  void toVelocyPack(velocypack::Builder& builder, unsigned flags,
+                    std::function<void(velocypack::Builder&)> const&
+                        serializeQueryData) const;
 
   /// @brief check if the plan is empty
-  inline bool empty() const { return (_root == nullptr); }
+  bool empty() const noexcept { return (_root == nullptr); }
 
   /// @brief note that an optimizer rule was applied
   void addAppliedRule(int level);
 
   /// @brief check if a specific optimizer rule was applied
-  bool hasAppliedRule(int level) const;
+  bool hasAppliedRule(int level) const noexcept;
 
   /// @brief check if a specific rule is disabled
-  bool isDisabledRule(int rule) const;
+  bool isDisabledRule(int rule) const noexcept;
 
   bool hasForcedIndexHints() const noexcept { return _hasForcedIndexHints; }
 
@@ -117,6 +127,17 @@ class ExecutionPlan {
 
   /// @brief disable a specific rule
   void disableRule(int rule);
+
+  /// @brief increase number of async prefetch nodes
+  void increaseAsyncPrefetchNodes() noexcept;
+  /// @brief decrease number of async prefetch nodes
+  void decreaseAsyncPrefetchNodes() noexcept;
+
+  size_t asyncPrefetchNodes() const noexcept;
+
+  /// @brief returns the first unsatisfied forced index hint, if
+  /// one exists. otherwise returns an empty index hint
+  IndexHint firstUnsatisfiedForcedIndexHint() const;
 
   /// @brief return the next value for a node id
   ExecutionNodeId nextId();
@@ -128,16 +149,18 @@ class ExecutionPlan {
       const;
 
   /// @brief check if the node is the root node
-  inline bool isRoot(ExecutionNode const* node) const { return _root == node; }
+  bool isRoot(ExecutionNode const* node) const noexcept {
+    return _root == node;
+  }
 
   /// @brief get the root node
-  inline ExecutionNode* root() const {
+  ExecutionNode* root() const noexcept {
     TRI_ASSERT(_root != nullptr);
     return _root;
   }
 
   /// @brief set the root node
-  inline void root(ExecutionNode* node, bool force = false) {
+  void root(ExecutionNode* node, bool force = false) {
     if (!force) {
       TRI_ASSERT(_root == nullptr);
     }
@@ -145,7 +168,7 @@ class ExecutionPlan {
   }
 
   /// @brief invalidate all cost estimations in the plan
-  inline void invalidateCost() {
+  void invalidateCost() {
     TRI_ASSERT(_root != nullptr);
     _root->invalidateCost();
   }
@@ -161,7 +184,7 @@ class ExecutionPlan {
 
   /// @brief this can be called by the optimizer to tell that the
   /// plan is temporarily in an invalid state
-  inline void setValidity(bool value) { _planValid = value; }
+  void setValidity(bool value) noexcept { _planValid = value; }
 
 /// @brief show an overview over the plan
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -175,14 +198,7 @@ class ExecutionPlan {
   }
 
   bool shouldExcludeFromScatterGather(ExecutionNode const* node) const {
-    return (_excludeFromScatterGather.find(node) !=
-            _excludeFromScatterGather.end());
-  }
-
-  void enableAsyncPrefetching() noexcept { _isAsyncPrefetchEnabled = true; }
-
-  bool isAsyncPrefetchEnabled() const noexcept {
-    return _isAsyncPrefetchEnabled;
+    return _excludeFromScatterGather.contains(node);
   }
 
   /// @brief get the node where variable with id <id> is introduced . . .
@@ -197,18 +213,18 @@ class ExecutionPlan {
 
   /// @brief find nodes of a certain type
   void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
-                       ExecutionNode::NodeType, bool enterSubqueries);
+                       ExecutionNode::NodeType, bool enterSubqueries) const;
 
   /// @brief find nodes of certain types
   void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,
-                       bool enterSubqueries);
+                       bool enterSubqueries) const;
 
   /// @brief find unique nodes of certain types
   void findUniqueNodesOfType(
       containers::SmallVector<ExecutionNode*, 8>& result,
       std::initializer_list<ExecutionNode::NodeType> const&,
-      bool enterSubqueries);
+      bool enterSubqueries) const;
 
   /// @brief find all end nodes in a plan
   void findEndNodes(containers::SmallVector<ExecutionNode*, 8>& result,
@@ -221,10 +237,10 @@ class ExecutionPlan {
   bool varUsageComputed() const;
 
   /// @brief determine if the above are already set
-  void setVarUsageComputed() { _varUsageComputed = true; }
+  void setVarUsageComputed() noexcept { _varUsageComputed = true; }
 
   /// @brief flush var usage calculation
-  void clearVarUsageComputed() { _varUsageComputed = false; }
+  void clearVarUsageComputed() noexcept { _varUsageComputed = false; }
 
   /// @brief static analysis
   void planRegisters(ExplainRegisterPlan = ExplainRegisterPlan::No);
@@ -278,7 +294,7 @@ class ExecutionPlan {
   void insertBefore(ExecutionNode* current, ExecutionNode* newNode);
 
   /// @brief get ast
-  inline Ast* getAst() const { return _ast; }
+  Ast* getAst() const noexcept { return _ast; }
 
   /// @brief resolves a variable alias, e.g. fn(tmp) -> "a.b" for the following:
   ///  LET tmp = a.b
@@ -303,23 +319,22 @@ class ExecutionPlan {
   bool fullCount() const noexcept;
 
   /// @brief parses modification options from an AST node
-  static ModificationOptions parseModificationOptions(QueryContext& query,
-                                                      char const* operationNode,
-                                                      AstNode const*,
-                                                      bool addWarnings);
+  static ModificationOptions parseModificationOptions(
+      QueryContext& query, std::string_view operationNode, AstNode const* node,
+      bool addWarnings);
 
   /// @brief registers a warning for an invalid OPTIONS attribute
   static void invalidOptionAttribute(QueryContext& query,
-                                     char const* errorReason,
-                                     char const* operationName,
-                                     char const* name, size_t length);
+                                     std::string_view errorReason,
+                                     std::string_view operationName,
+                                     std::string_view name);
 
  private:
   template<WalkerUniqueness U>
   /// @brief find nodes of certain types
   void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,
-                       bool enterSubqueries);
+                       bool enterSubqueries) const;
 
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
@@ -336,7 +351,7 @@ class ExecutionPlan {
 
   /// @brief create modification options by parsing an AST node
   /// and adding plan specific options.
-  ModificationOptions createModificationOptions(char const* operationName,
+  ModificationOptions createModificationOptions(std::string_view operationName,
                                                 AstNode const*);
 
   /// @brief create COLLECT options from an AST node
@@ -402,7 +417,6 @@ class ExecutionPlan {
   std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous,
                                                      AstNode const* node);
 
- private:
   /// @brief map from node id to the actual node
   std::unordered_map<ExecutionNodeId, ExecutionNode*> _ids;
 
@@ -416,7 +430,7 @@ class ExecutionPlan {
   std::vector<int> _appliedRules;
 
   /// @brief which optimizer rules were disabled for a plan
-  ::arangodb::containers::HashSet<int> _disabledRules;
+  containers::HashSet<int> _disabledRules;
 
   /// @brief whether or not memory usage should be tracked for this plan.
   /// note: tracking memory usage requires accessing the Ast/Query objects,
@@ -430,10 +444,6 @@ class ExecutionPlan {
 
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
-
-  /// @brief flag to indicate whether the postprocessing step to enable async
-  /// prefetching on the node level should be executed.
-  bool _isAsyncPrefetchEnabled{false};
 
   // Flag there are collection nodes with forceIndexHint:true
   bool _hasForcedIndexHints{false};
@@ -459,6 +469,8 @@ class ExecutionPlan {
 
   /// @brief number of nodes used in the plan, by type
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
+
+  size_t _asyncPrefetchNodes;
 };
 
 }  // namespace aql

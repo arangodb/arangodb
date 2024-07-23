@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -68,6 +68,8 @@ class PathValidator {
                 PathValidatorOptions opts);
   ~PathValidator();
 
+  auto validatePathUniqueness(typename PathStore::Step& step)
+      -> ValidationResult;
   auto validatePath(typename PathStore::Step& step) -> ValidationResult;
   auto validatePath(typename PathStore::Step const& step,
                     PathValidator<Provider, PathStore, vertexUniqueness,
@@ -123,15 +125,19 @@ class PathValidator {
       -> ValidationResult;
   auto evaluateVertexRestriction(typename PathStore::Step const& step) -> bool;
 
+  [[nodiscard]] auto checkPathUniqueness(typename PathStore::Step& step)
+      -> ValidationResult::Type;
+
+  [[nodiscard]] auto checkValidDisjointPath(
+      typename PathStore::Step const& lastStep)
+      -> arangodb::graph::ValidationResult::Type;
+
   [[nodiscard]] auto exposeUniqueVertices() const
       -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                          std::equal_to<VertexRef>> const&;
 
-  auto evaluateVertexExpression(arangodb::aql::Expression* expression,
-                                arangodb::velocypack::Slice value) -> bool;
-
-  auto checkValidDisjointPath(typename PathStore::Step const& lastStep)
-      -> arangodb::graph::ValidationResult::Type;
+  auto evaluateExpression(arangodb::aql::Expression* expression,
+                          arangodb::velocypack::Slice value) -> bool;
 
   auto isDisjoint() const { return _options.isDisjoint(); }
   auto isSatelliteLeader() const {

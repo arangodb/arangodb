@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,7 +35,6 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
-#include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 using namespace arangodb;
@@ -136,12 +135,11 @@ LogTopic Logger::HTTPCLIENT("httpclient", LogLevel::WARN);
 LogTopic Logger::LICENSE("license", LogLevel::INFO);
 LogTopic Logger::MAINTENANCE("maintenance", LogLevel::INFO);
 LogTopic Logger::MEMORY("memory", LogLevel::INFO);
-LogTopic Logger::MMAP("mmap");
-LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REPLICATION2("replication2", LogLevel::WARN);
 LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::WARN);
+LogTopic Logger::REPLICATED_WAL("rep-wal", LogLevel::WARN);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
@@ -157,10 +155,9 @@ LogTopic Logger::TTL("ttl", LogLevel::WARN);
 LogTopic Logger::VALIDATION("validation", LogLevel::INFO);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
+LogTopic Logger::DEPRECATION("deprecation", LogLevel::INFO);
 
 #ifdef USE_ENTERPRISE
-LogTopic LdapAuthProvider::LDAP_TOPIC("ldap", LogLevel::INFO);
-
 LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication",
                                             LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization",

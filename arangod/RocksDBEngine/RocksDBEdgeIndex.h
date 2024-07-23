@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -104,17 +103,18 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   // warm up the index cache
   Result warmup() override;
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override;
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final;
 
   Result drop() override;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc,
+                LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& options,
                 bool /*performChecks*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc,
+                LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& options) override;
 
   void refillCache(transaction::Methods& trx,
@@ -165,14 +165,14 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
  private:
   std::unique_ptr<IndexIterator> createEqIterator(
       ResourceMonitor& monitor, transaction::Methods* trx, aql::AstNode const*,
-      aql::AstNode const* valNode, bool useCache,
+      aql::AstNode const* valNode, bool withCache,
       ReadOwnWrites readOwnWrites) const;
 
   std::unique_ptr<IndexIterator> createInIterator(ResourceMonitor& monitor,
                                                   transaction::Methods* trx,
                                                   aql::AstNode const*,
                                                   aql::AstNode const* valNode,
-                                                  bool useCache) const;
+                                                  bool withCache) const;
 
   // populate the keys builder with a single (string) lookup value
   void fillLookupValue(velocypack::Builder& keys,
@@ -188,7 +188,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void warmupInternal(transaction::Methods* trx, rocksdb::Slice lower,
                       rocksdb::Slice upper);
 
-  void handleCacheInvalidation(transaction::Methods& trx,
+  void handleCacheInvalidation(cache::Cache& cache, transaction::Methods& trx,
                                OperationOptions const& options,
                                std::string_view fromToRef);
 

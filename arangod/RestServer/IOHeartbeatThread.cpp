@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -50,8 +50,10 @@ DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
 /// operation on the database volume regularly. We need visibility in
 /// production if IO is slow or not possible at all.
 IOHeartbeatThread::IOHeartbeatThread(Server& server,
-                                     metrics::MetricsFeature& metricsFeature)
+                                     metrics::MetricsFeature& metricsFeature,
+                                     DatabasePathFeature& databasePathFeature)
     : ServerThread<ArangodServer>(server, "IOHeartbeat"),
+      _databasePathFeature(databasePathFeature),
       _exeTimeHistogram(metricsFeature.add(arangodb_ioheartbeat_duration{})),
       _failures(metricsFeature.add(arangodb_ioheartbeat_failures_total{})),
       _delays(metricsFeature.add(arangodb_ioheartbeat_delays_total{})) {}
@@ -59,13 +61,14 @@ IOHeartbeatThread::IOHeartbeatThread(Server& server,
 IOHeartbeatThread::~IOHeartbeatThread() { shutdown(); }
 
 void IOHeartbeatThread::run() {
-  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   std::string testFilePath = basics::FileUtils::buildFilename(
-      databasePathFeature.directory(), "TestFileIOHeartbeat");
+      _databasePathFeature.directory(), "TestFileIOHeartbeat");
   std::string testFileContent = "This is just an I/O test.\n";
 
   LOG_TOPIC("66665", DEBUG, Logger::ENGINES) << "IOHeartbeatThread: running...";
-
+  // File might be left if previous run has crashed.
+  // That will trigger an error in spit.
+  std::ignore = basics::FileUtils::remove(testFilePath);
   while (true) {
     try {  // protect thread against any exceptions
       if (isStopping()) {

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -56,6 +56,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -65,7 +66,6 @@
 #include <utility>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
@@ -155,7 +155,7 @@ class Logger {
   friend class LoggerStream;
   friend class LogThread;
   friend class LogAppenderStream;
-  friend class LogAppenderFile;
+  friend struct LogAppenderFileFactory;
 
  public:
   static LogTopic AGENCY;
@@ -182,12 +182,11 @@ class Logger {
   static LogTopic LICENSE;
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
-  static LogTopic MMAP;
-  static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REPLICATION2;
   static LogTopic REPLICATED_STATE;
+  static LogTopic REPLICATED_WAL;
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
@@ -203,6 +202,7 @@ class Logger {
   static LogTopic VALIDATION;
   static LogTopic V8;
   static LogTopic VIEWS;
+  static LogTopic DEPRECATION;
 
  public:
   struct FIXED {
@@ -239,6 +239,8 @@ class Logger {
   static LogLevel logLevel();
   static std::unordered_set<std::string> structuredLogParams();
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
+  static std::vector<std::pair<std::string, LogLevel>> const&
+  defaultLogLevelTopics();
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
   static void setLogLevel(std::vector<std::string> const&);
@@ -304,14 +306,21 @@ class Logger {
                                    : topic.level());
   }
 
-  static void initialize(application_features::ApplicationServer&, bool);
+  static void initialize(bool threaded, uint32_t maxQueuedLogMessages);
   static void shutdown();
   static void flush() noexcept;
+
+  static void setOnDroppedMessage(std::function<void()> cb);
+  static void onDroppedMessage() noexcept;
 
  private:
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
+
+  // default log levels, captured once at startup. these can be used
+  // to reset the log levels back to defaults.
+  static std::vector<std::pair<std::string, LogLevel>> _defaultLogLevelTopics;
 
   // these variables must be set before calling initialized
   static std::unordered_set<std::string>
@@ -342,9 +351,9 @@ class Logger {
     ThreadRef();
     ~ThreadRef();
 
-    ThreadRef(const ThreadRef&) = delete;
+    ThreadRef(ThreadRef const&) = delete;
     ThreadRef(ThreadRef&&) = delete;
-    ThreadRef& operator=(const ThreadRef&) = delete;
+    ThreadRef& operator=(ThreadRef const&) = delete;
     ThreadRef& operator=(ThreadRef&&) = delete;
 
     LogThread* operator->() const noexcept { return _thread; }
@@ -356,8 +365,10 @@ class Logger {
 
   // logger thread. only populated when threaded logging is selected.
   // the pointer must only be used with atomic accessors after the ref counter
-  // has been increased. Best to usethe ThreadRef class for this!
+  // has been increased. Best to use the ThreadRef class for this!
   static std::atomic<std::size_t> _loggingThreadRefs;
   static std::atomic<LogThread*> _loggingThread;
+
+  static std::function<void()> _onDroppedMessage;
 };
 }  // namespace arangodb

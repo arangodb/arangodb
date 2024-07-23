@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -97,7 +98,7 @@ class PathValidatorTest : public ::testing::Test {
   // Expression Parts
   arangodb::transaction::Methods _trx{_query->newTrxContext()};
   aql::Ast* _ast{_query->ast()};
-  aql::Variable _tmpVar{"tmp", 0, false};
+  aql::Variable _tmpVar{"tmp", 0, false, _resourceMonitor};
   aql::AstNode* _varNode{::InitializeReference(*_ast, _tmpVar)};
 
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
@@ -684,6 +685,53 @@ TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
       auto res = validator.validatePath(s);
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
+    }
+  }
+}
+
+TYPED_TEST(PathValidatorTest, it_should_test_an_all_edges_condition) {
+  this->addEdgesOfPath({0, 1, 2});
+  std::string keyToMatch = "1";
+
+  auto expression = this->conditionKeyMatches(keyToMatch);
+
+  auto& opts = this->options();
+
+  opts.setAllEdgesExpression(std::move(expression));
+
+  auto validator = this->testee();
+  {
+    // Testing x._key == "1" with `{_key: "1"} => Should succeed
+    // but only because the edge condition is ignored (as there is no edge in
+    // the step ...)
+    Step s = this->startPath(1);
+    auto e = s.getEdge();
+    auto res = validator.validatePath(s);
+    EXPECT_FALSE(res.isFiltered());
+    EXPECT_FALSE(res.isPruned());
+  }
+
+  // start a new path, so reset the uniqueness checks
+  validator.reset();
+
+  {
+    // Testing x._key == "1" with `{_key: "0"} => Should fail
+    Step s = this->startPath(0);
+    {
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+
+    // Testing condition on level 1 (not start)
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1U);
+    s = neighbors.at(0);
+    {
+      // Testing x._key == "1" with `{_key: "1"} => Should succeed
+      auto res = validator.validatePath(s);
+      EXPECT_TRUE(res.isFiltered());
+      EXPECT_TRUE(res.isPruned());
     }
   }
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,8 +29,10 @@ struct TRI_vocbase_t;
 
 namespace arangodb::transaction {
 
-StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
-    : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
+StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase,
+                                     OperationOrigin operationOrigin)
+    : SmartContext(vocbase, Context::makeTransactionId(), nullptr,
+                   operationOrigin) {}
 
 /// @brief get transaction state, determine commit responsibility
 /*virtual*/ std::shared_ptr<TransactionState> StandaloneContext::acquireState(
@@ -41,6 +43,7 @@ StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
     responsibleForCommit = true;
     _state = transaction::Context::createState(options);
   }
+  TRI_ASSERT(_state != nullptr);
   return _state;
 }
 
@@ -51,15 +54,18 @@ void StandaloneContext::unregisterTransaction() noexcept {
 }
 
 std::shared_ptr<Context> StandaloneContext::clone() const {
-  auto clone = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  auto clone = std::make_shared<transaction::StandaloneContext>(
+      _vocbase, _operationOrigin);
   clone->setState(_state);
   return clone;
 }
 
 /// @brief create a context, returned in a shared ptr
 /*static*/ std::shared_ptr<transaction::Context>
-transaction::StandaloneContext::Create(TRI_vocbase_t& vocbase) {
-  return std::make_shared<transaction::StandaloneContext>(vocbase);
+transaction::StandaloneContext::create(TRI_vocbase_t& vocbase,
+                                       OperationOrigin operationOrigin) {
+  return std::make_shared<transaction::StandaloneContext>(vocbase,
+                                                          operationOrigin);
 }
 
 }  // namespace arangodb::transaction

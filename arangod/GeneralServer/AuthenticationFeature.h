@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,22 +23,27 @@
 
 #pragma once
 
-#include "Auth/TokenCache.h"
-#include "Auth/UserManager.h"
+#include "Basics/Result.h"
 #include "RestServer/arangod.h"
 
+#include <atomic>
+#include <cstddef>
+#include <mutex>
+#include <string>
+#include <vector>
+
 namespace arangodb {
+namespace auth {
+class TokenCache;
+class UserManager;
+}  // namespace auth
 
 class AuthenticationFeature final : public ArangodFeature {
- private:
-  const size_t _maxSecretLength = 64;
-
  public:
   static constexpr std::string_view name() noexcept { return "Authentication"; }
 
-  static inline AuthenticationFeature* instance() { return INSTANCE; }
-
   explicit AuthenticationFeature(Server& server);
+  ~AuthenticationFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -46,25 +51,19 @@ class AuthenticationFeature final : public ArangodFeature {
   void start() override final;
   void unprepare() override final;
 
-  bool isActive() const { return _active && isEnabled(); }
+  static AuthenticationFeature* instance() noexcept;
 
-  bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
-  bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
+  bool isActive() const noexcept;
 
-  /// Enable or disable standalone authentication
-  bool localAuthentication() const noexcept { return _localAuthentication; }
+  bool authenticationUnixSockets() const noexcept;
+  bool authenticationSystemOnly() const noexcept;
 
   /// @return Cache to deal with authentication tokens
-  inline auth::TokenCache& tokenCache() const noexcept {
-    TRI_ASSERT(_authCache);
-    return *_authCache.get();
-  }
+  auth::TokenCache& tokenCache() const noexcept;
 
   /// @brief user manager may be null on DBServers and Agency
   /// @return user manager singleton
-  inline auth::UserManager* userManager() const noexcept {
-    return _userManager.get();
-  }
+  auth::UserManager* userManager() const noexcept;
 
   bool hasUserdefinedJwt() const;
 #ifdef USE_ENTERPRISE
@@ -84,12 +83,12 @@ class AuthenticationFeature final : public ArangodFeature {
   /// load JWT secrets from folder
   [[nodiscard]] Result loadJwtSecretFolder();
 
- private:
+  static constexpr size_t kMaxSecretLength = 64;
+
   std::unique_ptr<auth::UserManager> _userManager;
   std::unique_ptr<auth::TokenCache> _authCache;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
-  bool _localAuthentication;
   bool _active;
   double _authenticationTimeout;
   double _sessionTimeout;
@@ -105,7 +104,7 @@ class AuthenticationFeature final : public ArangodFeature {
   std::vector<std::string> _jwtPassiveSecrets;
 #endif
 
-  static AuthenticationFeature* INSTANCE;
+  static std::atomic<AuthenticationFeature*> INSTANCE;
 };
 
 }  // namespace arangodb

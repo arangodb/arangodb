@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,6 +32,8 @@
 
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Basics/VelocyPackHelper.h"
+
+#include <fmt/ranges.h>
 
 #include <velocypack/Iterator.h>
 
@@ -68,6 +70,12 @@ auto agency::operator<<(std::ostream& os, LogPlanTermSpecification const& term)
   return os << builder.toJson();
 }
 
+auto agency::operator<<(std::ostream& os,
+                        ServerInstanceReference const& sir) noexcept
+    -> std::ostream& {
+  return os << sir.serverId << ":" << sir.rebootId;
+}
+
 auto agency::operator<<(std::ostream& os, ParticipantsConfig const& config)
     -> std::ostream& {
   VPackBuilder builder;
@@ -84,8 +92,38 @@ auto agency::operator<<(std::ostream& os, LogPlanSpecification const& term)
 
 LogCurrentLocalState::LogCurrentLocalState(LogTerm term,
                                            TermIndexPair spearhead,
-                                           bool snapshot) noexcept
-    : term(term), spearhead(spearhead), snapshotAvailable(snapshot) {}
+                                           bool snapshot,
+                                           RebootId rebootId) noexcept
+    : term(term),
+      spearhead(spearhead),
+      snapshotAvailable(snapshot),
+      rebootId(rebootId) {}
+
+auto agency::operator<<(std::ostream& ostream,
+                        LogCurrentSupervisionElection const& el)
+    -> std::ostream& {
+  using namespace fmt::literals;
+  ostream << fmt::format(
+      "Election {{ "
+      "term: {term}, "
+      "bestTermIndex: {bestTerm}:{bestIndex}, "
+      "participantsRequired: {participantsRequired}, "
+      "participantsVoting: {participantsVoting}, "
+      "electibleLeaderSet: {electibleLeaderSet}, "
+      "allParticipantsAttending: {allParticipantsAttending}, "
+      "detail: {detail} "
+      "}}",
+      "term"_a = el.term.value, "bestTerm"_a = el.bestTermIndex.term.value,
+      "bestIndex"_a = el.bestTermIndex.index.value,
+      "participantsRequired"_a = el.participantsRequired,
+      "participantsVoting"_a = el.participantsVoting,
+      "electibleLeaderSet"_a = el.electibleLeaderSet,
+      // cppcheck-suppress assignBoolToPointer
+      "allParticipantsAttending"_a = el.allParticipantsAttending,
+      "detail"_a = el.detail);
+
+  return ostream;
+}
 
 auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
     -> std::string_view {
@@ -111,7 +149,7 @@ auto agency::operator==(const LogCurrentSupervisionElection& left,
                         const LogCurrentSupervisionElection& right) noexcept
     -> bool {
   return left.term == right.term &&
-         left.participantsAvailable == right.participantsAvailable &&
+         left.participantsVoting == right.participantsVoting &&
          left.participantsRequired == right.participantsRequired &&
          left.detail == right.detail;
 }
@@ -133,7 +171,10 @@ auto agency::operator==(ImplementationSpec const& s,
       s.parameters.has_value() != s2.parameters.has_value()) {
     return false;
   }
-  return !s.parameters.has_value() ||
-         basics::VelocyPackHelper::equal(s.parameters->slice(),
-                                         s2.parameters->slice(), true);
+  return !s.parameters.has_value();
+  // To compare two velocypacks ICU is required. For unittests we don't want
+  // to have that dependency and unless we build a non-icu variant,
+  // comparing here is not possible.
+  /*         basics::VelocyPackHelper::equal(s.parameters->slice(),
+                                           s2.parameters->slice(), true);*/
 }

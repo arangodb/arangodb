@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,15 +23,20 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Future.h"
+#include "Metrics/MetricsFeature.h"
 #include "Transaction/Hints.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
@@ -39,6 +44,12 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
+#include <atomic>
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
+#include <string>
 #include <string_view>
 #include <variant>
 
@@ -58,8 +69,14 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
+struct ResourceMonitor;
 
 namespace transaction {
+class CounterGuard;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class HistoryEntry;
+#endif
 class Methods;
 struct Options;
 }  // namespace transaction
@@ -88,7 +105,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   TransactionState& operator=(TransactionState const&) = delete;
 
   TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                   transaction::Options const& options);
+                   transaction::Options const& options,
+                   transaction::OperationOrigin operationOrigin);
   virtual ~TransactionState();
 
   /// @return a cookie associated with the specified key, nullptr if none
@@ -121,35 +139,34 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] bool isRunning() const noexcept {
     return _status == transaction::Status::RUNNING;
   }
-  void setRegistered() noexcept { _registeredTransaction = true; }
-  [[nodiscard]] bool wasRegistered() const noexcept {
-    return _registeredTransaction;
-  }
-
   /// @brief returns the name of the actor the transaction runs on:
   /// - leader
   /// - follower
   /// - coordinator
   /// - single
-  [[nodiscard]] char const* actorName() const noexcept;
+  [[nodiscard]] std::string_view actorName() const noexcept;
 
   /// @brief return a reference to the global transaction statistics/counters
   TransactionStatistics& statistics() const noexcept;
 
-  [[nodiscard]] double lockTimeout() const { return _options.lockTimeout; }
-  void lockTimeout(double value) {
+  [[nodiscard]] double lockTimeout() const noexcept {
+    return _options.lockTimeout;
+  }
+  void lockTimeout(double value) noexcept {
     if (value > 0.0) {
       _options.lockTimeout = value;
     }
   }
 
-  [[nodiscard]] bool waitForSync() const { return _options.waitForSync; }
-  void waitForSync(bool value) { _options.waitForSync = value; }
+  [[nodiscard]] bool waitForSync() const noexcept {
+    return _options.waitForSync;
+  }
+  void waitForSync(bool value) noexcept { _options.waitForSync = value; }
 
-  [[nodiscard]] bool allowImplicitCollectionsForRead() const {
+  [[nodiscard]] bool allowImplicitCollectionsForRead() const noexcept {
     return _options.allowImplicitCollectionsForRead;
   }
-  void allowImplicitCollectionsForRead(bool value) {
+  void allowImplicitCollectionsForRead(bool value) noexcept {
     _options.allowImplicitCollectionsForRead = value;
   }
 
@@ -162,16 +179,17 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
       std::string_view name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
-  [[nodiscard]] Result addCollection(DataSourceId cid, std::string const& cname,
-                                     AccessMode::Type accessType,
-                                     bool lockUsage);
+  [[nodiscard]] futures::Future<Result> addCollection(
+      DataSourceId cid, std::string_view cname, AccessMode::Type accessType,
+      bool lockUsage);
 
   /// @brief use all participating collections of a transaction
-  [[nodiscard]] Result useCollections();
+  [[nodiscard]] futures::Future<Result> useCollections();
 
   /// @brief run a callback on all collections of the transaction
   template<typename F>
   void allCollections(F&& cb) {
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
     for (auto& trxCollection : _collections) {
       TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
       if (!std::forward<F>(cb)(*trxCollection)) {  // abort early
@@ -181,10 +199,13 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   }
 
   /// @brief return the number of collections in the transaction
-  [[nodiscard]] size_t numCollections() const { return _collections.size(); }
+  [[nodiscard]] size_t numCollections() const noexcept {
+    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
+    return _collections.size();
+  }
 
   /// @brief whether or not a transaction consists of a single operation
-  [[nodiscard]] bool isSingleOperation() const {
+  [[nodiscard]] bool isSingleOperation() const noexcept {
     return hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
@@ -192,7 +213,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void updateStatus(transaction::Status status) noexcept;
 
   /// @brief whether or not a specific hint is set for the transaction
-  [[nodiscard]] bool hasHint(transaction::Hints::Hint hint) const {
+  [[nodiscard]] bool hasHint(transaction::Hints::Hint hint) const noexcept {
     return _hints.has(hint);
   }
 
@@ -205,17 +226,27 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
     TRI_ASSERT(*callback != nullptr);
     _beforeCommitCallbacks.push_back(callback);
   }
+
   void addAfterCommitCallback(AfterCommitCallback const* callback) {
     TRI_ASSERT(callback != nullptr);
     TRI_ASSERT(*callback != nullptr);
     _afterCommitCallbacks.push_back(callback);
   }
+
   void applyBeforeCommitCallbacks() noexcept {
     return applyCallbackImpl(_beforeCommitCallbacks);
   }
+
   void applyAfterCommitCallbacks() noexcept {
     return applyCallbackImpl(_afterCommitCallbacks);
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // only used in maintainer mode for testing
+  void setHistoryEntry(std::shared_ptr<transaction::HistoryEntry> const& entry);
+  void clearHistoryEntry() noexcept;
+  void adjustMemoryUsage(std::int64_t value) noexcept;
+#endif
 
   /// @brief acquire a database snapshot if we do not yet have one.
   /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
@@ -223,14 +254,15 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   [[nodiscard]] virtual bool ensureSnapshot() = 0;
 
   /// @brief begin a transaction
-  virtual arangodb::Result beginTransaction(transaction::Hints hints) = 0;
+  virtual futures::Future<Result> beginTransaction(
+      transaction::Hints hints) = 0;
 
   /// @brief commit a transaction
-  virtual futures::Future<arangodb::Result> commitTransaction(
+  virtual futures::Future<Result> commitTransaction(
       transaction::Methods* trx) = 0;
 
   /// @brief abort a transaction
-  virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
+  virtual Result abortTransaction(transaction::Methods* trx) = 0;
 
   virtual Result triggerIntermediateCommit() = 0;
 
@@ -255,7 +287,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   virtual bool hasFailedOperations() const noexcept = 0;
 
-  virtual void beginQuery(bool /*isModificationQuery*/) {}
+  virtual void beginQuery(std::shared_ptr<ResourceMonitor> resourceMonitor,
+                          bool /*isModificationQuery*/) {}
   virtual void endQuery(bool /*isModificationQuery*/) noexcept {}
 
   [[nodiscard]] TransactionCollection* findCollection(DataSourceId cid) const;
@@ -264,55 +297,25 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void setExclusiveAccessType();
 
   /// @brief whether or not a transaction is read-only
-  [[nodiscard]] bool isReadOnlyTransaction() const noexcept {
-    return _type == AccessMode::Type::READ;
-  }
+  [[nodiscard]] bool isReadOnlyTransaction() const noexcept;
 
   /// @brief whether or not a transaction is a follower transaction
-  [[nodiscard]] bool isFollowerTransaction() const {
-    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
-  }
+  [[nodiscard]] bool isFollowerTransaction() const noexcept;
 
   /// @brief servers already contacted
-  [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers() const {
-    return _knownServers;
-  }
+  [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers()
+      const noexcept;
 
-  [[nodiscard]] bool knowsServer(std::string_view uuid) const {
-    return _knownServers.find(uuid) != _knownServers.end();
-  }
+  [[nodiscard]] bool knowsServer(std::string_view uuid) const noexcept;
 
   /// @brief add a server to the known set
-  void addKnownServer(std::string_view uuid) { _knownServers.emplace(uuid); }
+  void addKnownServer(std::string_view uuid);
 
   /// @brief remove a server from the known set
-  void removeKnownServer(std::string_view uuid) { _knownServers.erase(uuid); }
+  void removeKnownServer(std::string_view uuid);
 
-  void clearKnownServers() { _knownServers.clear(); }
+  void clearKnownServers();
 
-  /// @brief add the choice of replica for some more shards to the map
-  /// _chosenReplicas. Please note that the choice of replicas is not
-  /// arbitrary! If two collections have the same `distributeShardsLike`
-  /// (or one has the other as `distributeShardsLike`), then the choices for
-  /// corresponding shards must be made in a coherent fashion. Therefore:
-  /// Do not fill in this map yourself, always use this method for this.
-  /// The Nolock version does not acquire the _replicaMutex and is only
-  /// called from other, public methods in this class.
- private:
-  void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
-
-  template<typename Callbacks>
-  void applyCallbackImpl(Callbacks& callbacks) noexcept {
-    for (auto& callback : callbacks) {
-      try {
-        (*callback)(*this);
-      } catch (...) {
-      }
-    }
-    callbacks.clear();
-  }
-
- public:
   void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
 
   /// @brief lookup a replica choice for some shard, this basically looks
@@ -329,6 +332,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   void acceptAnalyzersRevision(
       QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
+
+  [[nodiscard]] transaction::OperationOrigin operationOrigin() const noexcept;
 
   [[nodiscard]] QueryAnalyzerRevisions const& analyzersRevision()
       const noexcept {
@@ -347,19 +352,32 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// Only allowed on coordinators.
   void coordinatorRerollTransactionId();
 
+  std::shared_ptr<transaction::CounterGuard> counterGuard();
+
+  /// @brief set name of user who originated the transaction. will
+  /// only be set if no user has been registered with the transaction yet.
+  /// this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  void setUsername(std::string const& name);
+
+  /// @brief return name of user who originated the transaction. may be
+  /// empty. this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  std::string_view username() const noexcept;
+
+  void trackShardRequest(CollectionNameResolver const& resolver,
+                         std::string_view database, std::string_view shard,
+                         std::string_view user, AccessMode::Type accessMode,
+                         std::string_view context) noexcept;
+
+  void trackShardUsage(CollectionNameResolver const& resolver,
+                       std::string_view database, std::string_view shard,
+                       std::string_view user, AccessMode::Type accessMode,
+                       std::string_view context, size_t nBytes) noexcept;
+
  protected:
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) = 0;
-
-  /// @brief find a collection in the transaction's list of collections
-  struct CollectionNotFound {
-    std::size_t lowerBound;
-  };
-  struct CollectionFound {
-    TransactionCollection* collection;
-  };
-  [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
-      -> std::variant<CollectionNotFound, CollectionFound>;
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
@@ -372,13 +390,49 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 #endif
 
  private:
+  /// @brief add the choice of replica for some more shards to the map
+  /// _chosenReplicas. Please note that the choice of replicas is not
+  /// arbitrary! If two collections have the same `distributeShardsLike`
+  /// (or one has the other as `distributeShardsLike`), then the choices for
+  /// corresponding shards must be made in a coherent fashion. Therefore:
+  /// Do not fill in this map yourself, always use this method for this.
+  /// The Nolock version does not acquire the _replicaMutex and is only
+  /// called from other, public methods in this class.
+  void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
+
+  template<typename Callbacks>
+  void applyCallbackImpl(Callbacks& callbacks) noexcept {
+    for (auto& callback : callbacks) {
+      try {
+        (*callback)(*this);
+      } catch (...) {
+      }
+    }
+    callbacks.clear();
+  }
+
   /// @brief check if current user can access this collection
-  Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
+  Result checkCollectionPermission(DataSourceId cid, std::string_view cname,
                                    AccessMode::Type);
 
   /// @brief helper function for addCollection
-  Result addCollectionInternal(DataSourceId cid, std::string const& cname,
-                               AccessMode::Type accessType, bool lockUsage);
+  futures::Future<Result> addCollectionInternal(DataSourceId cid,
+                                                std::string_view cname,
+                                                AccessMode::Type accessType,
+                                                bool lockUsage);
+
+  /// @brief find a collection in the transaction's list of collections
+  struct CollectionNotFound {
+    std::size_t lowerBound;
+  };
+  struct CollectionFound {
+    TransactionCollection* collection;
+  };
+
+  [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
+      -> std::variant<CollectionNotFound, CollectionFound>;
+
+  void publishShardMetrics(CollectionNameResolver const& resolver);
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
@@ -390,7 +444,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   // in case of read-only transactions collections can be added lazily.
   // this can happen concurrently, so for this we need to protect the list
-  mutable std::mutex _collectionsLock;
+  mutable basics::ReadWriteLock _collectionsLock;
+  mutable std::atomic<std::thread::id> _collectionsLockOwner;
   containers::SmallVector<TransactionCollection*, 8> _collections;
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
@@ -401,6 +456,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   std::vector<BeforeCommitCallback const*> _beforeCommitCallbacks;
   std::vector<AfterCommitCallback const*> _afterCommitCallbacks;
+
+  std::shared_ptr<transaction::CounterGuard> _counterGuard;
 
  private:
   TransactionId _id;  /// @brief local trx id
@@ -434,7 +491,31 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   std::unique_ptr<containers::FlatHashMap<ShardID, ServerID>> _chosenReplicas;
 
   QueryAnalyzerRevisions _analyzersRevision;
-  bool _registeredTransaction = false;
+
+  transaction::OperationOrigin const _operationOrigin;
+
+  metrics::MetricsFeature::UsageTrackingMode _usageTrackingMode;
+
+  /// @brief name of user who originated the transaction. may be empty.
+  /// this user name is informational only and can be used for logging,
+  /// metrics etc.
+  /// it should not be used for permission checks.
+  std::shared_mutex mutable _usernameLock;
+  std::string _username;
+
+  // protects _shardsBytesWritten and _shardsBytesRead
+  std::mutex mutable _shardsMetricsMutex;
+  // map from collection name (shard name) to number of bytes written
+  containers::FlatHashMap<std::string, size_t> _shardBytesWritten;
+  // map from collection name (shard name) to number of bytes read
+  containers::FlatHashMap<std::string, size_t> _shardBytesRead;
+  // number of times the metrics have been increased since the metrics
+  // were last published
+  size_t _shardBytesUnpublishedEvents = 0;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::shared_ptr<transaction::HistoryEntry> _historyEntry;
+#endif
 };
 
 }  // namespace arangodb

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,8 +34,11 @@ struct TRI_vocbase_t;
 namespace arangodb::transaction {
 
 SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
-                           std::shared_ptr<TransactionState> state)
-    : Context(vocbase), _globalId(globalId), _state(std::move(state)) {
+                           std::shared_ptr<TransactionState> state,
+                           OperationOrigin operationOrigin)
+    : Context(vocbase, operationOrigin),
+      _globalId(globalId),
+      _state(std::move(state)) {
   TRI_ASSERT(_globalId.isSet());
 }
 
@@ -64,31 +67,31 @@ TransactionId transaction::SmartContext::generateId() const {
 /*virtual*/ std::shared_ptr<TransactionState>
 transaction::AQLStandaloneContext::acquireState(
     transaction::Options const& options, bool& responsibleForCommit) {
-  if (!_state) {
+  if (_state) {
+    responsibleForCommit = false;
+  } else {
     responsibleForCommit = true;
     _state = transaction::Context::createState(options);
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     mgr->registerAQLTrx(_state);
-  } else {
-    responsibleForCommit = false;
   }
-
+  TRI_ASSERT(_state != nullptr);
   return _state;
 }
 
 /// @brief unregister the transaction
 void AQLStandaloneContext::unregisterTransaction() noexcept {
   TRI_ASSERT(_state != nullptr);
-  _state = nullptr;
+  _state.reset();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
   mgr->unregisterAQLTrx(_globalId);
 }
 
 std::shared_ptr<transaction::Context> AQLStandaloneContext::clone() const {
-  auto clone =
-      std::make_shared<transaction::AQLStandaloneContext>(_vocbase, _globalId);
+  auto clone = std::make_shared<transaction::AQLStandaloneContext>(
+      _vocbase, _globalId, _operationOrigin);
   clone->_state = _state;
   return clone;
 }

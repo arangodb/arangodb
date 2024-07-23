@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,11 +24,13 @@
 #include <atomic>
 #include <chrono>
 #include <limits>
+#include <memory>
 #include <thread>
 
 #include "SchedulerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/asio_ns.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Basics/signals.h"
@@ -44,11 +46,9 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
+#include "Scheduler/ThreadPoolScheduler.h"
+#ifdef USE_V8
 #include "VocBase/Methods/Tasks.h"
-
-#ifdef _WIN32
-#include <stdio.h>
-#include <windows.h>
 #endif
 
 using namespace arangodb::application_features;
@@ -71,7 +71,6 @@ size_t defaultNumberOfThreads() {
 // atomic flag to track shutdown requests
 std::atomic<bool> receivedShutdownRequest{false};
 
-#ifndef _WIN32
 // id of process that will not be used to send SIGHUP requests
 constexpr pid_t processIdUnspecified{std::numeric_limits<pid_t>::min()};
 
@@ -79,16 +78,24 @@ static_assert(processIdUnspecified != 0, "minimum pid number must be != 0");
 
 // id of process that requested a log rotation via SIGHUP
 std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
-#endif
 
 }  // namespace
 
 namespace arangodb {
 
-SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
+Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
-SchedulerFeature::SchedulerFeature(Server& server)
-    : ArangodFeature{server, *this}, _scheduler(nullptr) {
+struct SchedulerFeature::AsioHandler {
+  std::shared_ptr<asio_ns::signal_set> _exitSignals;
+  std::shared_ptr<asio_ns::signal_set> _hangupSignals;
+};
+
+SchedulerFeature::SchedulerFeature(Server& server,
+                                   metrics::MetricsFeature& metrics)
+    : ArangodFeature{server, *this},
+      _scheduler(nullptr),
+      _metricsFeature(metrics),
+      _asioHandler(std::make_unique<AsioHandler>()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
   if constexpr (Server::contains<FileDescriptorsFeature>()) {
@@ -201,8 +208,6 @@ requests.)");
           "0 = disable)",
           new DoubleParameter(&_unavailabilityQueueFillGrade, /*base*/ 1.0,
                               /*minValue*/ 0.0, /*maxValue*/ 1.0))
-      .setIntroducedIn(30610)
-      .setIntroducedIn(30706)
       .setLongDescription(R"(You can use this option to set a high-watermark
 for the scheduler's queue fill grade, from which onwards the server starts
 reporting unavailability via its availability API.
@@ -241,8 +246,21 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
       new UInt64Parameter(&_fifo1Size),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
+  options
+      ->addOption(
+          "--server.scheduler", "The scheduler type to use.",
+          new DiscreteValuesParameter<StringParameter>(
+              &_schedulerType,
+              std::unordered_set<std::string>{"supervised", "threadpools"}),
+          arangodb::options::makeFlags(arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31201);
+
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
+
+  options->addObsoleteOption(
+      "--server.max-number-detached-threads",
+      "The maximum number of detached scheduler threads.", true);
 
   // renamed options
   options->addOldOption("scheduler.threads", "server.maximal-threads");
@@ -311,32 +329,29 @@ void SchedulerFeature::prepare() {
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
   TRI_ASSERT(_queueSize > 0);
 
-  // on a DB server we intentionally disable throttling of incoming requests.
-  // this is because coordinators are the gatekeepers, and they should
-  // perform all the throttling.
-  uint64_t ongoingLowPriorityLimit =
-      ServerState::instance()->isDBServer()
-          ? 0
-          : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
-                                  _nrMaximalThreads);
+  auto metrics = std::make_shared<SchedulerMetrics>(_metricsFeature);
+  _scheduler = std::invoke([&]() -> std::unique_ptr<Scheduler> {
+    if (_schedulerType == "supervised") {
+      // on a DB server we intentionally disable throttling of incoming
+      // requests. this is because coordinators are the gatekeepers, and they
+      // should perform all the throttling.
+      uint64_t ongoingLowPriorityLimit =
+          ServerState::instance()->isDBServer()
+              ? 0
+              : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
+                                      _nrMaximalThreads);
+      return std::make_unique<SupervisedScheduler>(
+          server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize,
+          _fifo1Size, _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
+          _unavailabilityQueueFillGrade, metrics);
+    } else {
+      TRI_ASSERT(_schedulerType == "threadpools");
+      return std::make_unique<ThreadPoolScheduler>(server(), _nrMaximalThreads,
+                                                   std::move(metrics));
+    }
+  });
 
-// wait for windows fix or implement operator new
-#if (_MSC_VER >= 1)
-#pragma warning(push)
-#pragma warning(disable : 4316)  // Object allocated on the heap may not be
-                                 // aligned for this type
-#endif
-  auto sched = std::make_unique<SupervisedScheduler>(
-      server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
-      _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
-      _unavailabilityQueueFillGrade);
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
-
-  SCHEDULER = sched.get();
-
-  _scheduler = std::move(sched);
+  SCHEDULER = _scheduler.get();
 }
 
 void SchedulerFeature::start() {
@@ -353,13 +368,25 @@ void SchedulerFeature::start() {
 
 void SchedulerFeature::stop() {
   // shutdown user jobs again, in case new ones appear
+#ifdef USE_V8
   arangodb::Task::shutdownTasks();
+#endif
   signalStuffDeinit();
   _scheduler->shutdown();
 }
 
 void SchedulerFeature::unprepare() {
-  SCHEDULER = nullptr;
+  // SCHEDULER = nullptr;
+  // This is to please the TSAN sanitizer: On shutdown, we set this global
+  // pointer to nullptr. Other threads read the pointer, but the logic of
+  // ApplicationFeatures should ensure that nobody will read the pointer
+  // out after the SchedulerFeature has run its unprepare method.
+  // Sometimes the TSAN sanitizer cannot recognize this indirect
+  // synchronization and complains about reads that have happened before
+  // this write here, but are not officially inter-thread synchronized.
+  // We use the atomic reference here and in these places to silence TSAN.
+  std::atomic_ref<Scheduler*> schedulerRef{SCHEDULER};
+  schedulerRef.store(nullptr, std::memory_order_relaxed);
   _scheduler.reset();
 }
 
@@ -374,9 +401,6 @@ uint64_t SchedulerFeature::maximalThreads() const noexcept {
 void SchedulerFeature::signalStuffInit() {
   arangodb::signals::maskAllSignalsServer();
 
-#ifdef _WIN32
-// Windows does not support POSIX signal handling
-#else
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   sigfillset(&action.sa_mask);
@@ -390,95 +414,23 @@ void SchedulerFeature::signalStuffInit() {
     LOG_TOPIC("91d20", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handler for SIGPIPE";
   }
-#endif
 
   buildHangupHandler();
 }
 
 void SchedulerFeature::signalStuffDeinit() {
   // cancel signals
-  if (_exitSignals != nullptr) {
-    auto exitSignals = _exitSignals;
-    _exitSignals.reset();
+  if (_asioHandler->_exitSignals != nullptr) {
+    auto exitSignals = _asioHandler->_exitSignals;
+    _asioHandler->_exitSignals.reset();
     exitSignals->cancel();
   }
 
-#ifndef _WIN32
-  if (_hangupSignals != nullptr) {
-    _hangupSignals->cancel();
-    _hangupSignals.reset();
+  if (_asioHandler->_hangupSignals != nullptr) {
+    _asioHandler->_hangupSignals->cancel();
+    _asioHandler->_hangupSignals.reset();
   }
-#endif
 }
-
-#ifdef _WIN32
-bool CtrlHandler(DWORD eventType) {
-  bool shutdown = false;
-  std::string shutdownMessage;
-
-  switch (eventType) {
-    case CTRL_BREAK_EVENT: {
-      shutdown = true;
-      shutdownMessage = "control-break received";
-      break;
-    }
-
-    case CTRL_C_EVENT: {
-      shutdown = true;
-      shutdownMessage = "control-c received";
-      break;
-    }
-
-    case CTRL_CLOSE_EVENT: {
-      shutdown = true;
-      shutdownMessage = "window-close received";
-      break;
-    }
-
-    case CTRL_LOGOFF_EVENT: {
-      shutdown = true;
-      shutdownMessage = "user-logoff received";
-      break;
-    }
-
-    case CTRL_SHUTDOWN_EVENT: {
-      shutdown = true;
-      shutdownMessage = "system-shutdown received";
-      break;
-    }
-
-    default: {
-      shutdown = false;
-      break;
-    }
-  }
-
-  if (shutdown == false) {
-    LOG_TOPIC("ec3b4", ERR, arangodb::Logger::FIXME)
-        << "Invalid CTRL HANDLER event received - ignoring event";
-    return true;
-  }
-
-  if (!::receivedShutdownRequest.exchange(true)) {
-    LOG_TOPIC("3278a", INFO, arangodb::Logger::FIXME)
-        << shutdownMessage << ", beginning shut down sequence";
-
-    application_features::ApplicationServer::CTRL_C.store(true);
-
-    return true;
-  }
-
-  // ........................................................................
-  // user is desperate to kill the server!
-  // ........................................................................
-
-  LOG_TOPIC("18daf", INFO, arangodb::Logger::FIXME)
-      << shutdownMessage << ", terminating";
-  _exit(EXIT_FAILURE);  // quick exit for windows
-  return true;
-}
-
-#else
 
 extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
@@ -537,10 +489,8 @@ extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
         ::processIdRequestingLogRotate.store(::processIdUnspecified);
       });
 }
-#endif
 
 void SchedulerFeature::buildHangupHandler() {
-#ifndef _WIN32
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   sigfillset(&action.sa_mask);
@@ -553,20 +503,9 @@ void SchedulerFeature::buildHangupHandler() {
     LOG_TOPIC("b7ed0", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handler for hang up";
   }
-#endif
 }
 
 void SchedulerFeature::buildControlCHandler() {
-#ifdef _WIN32
-  {
-    int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
-
-    if (result == 0) {
-      LOG_TOPIC("e21e8", WARN, arangodb::Logger::FIXME)
-          << "unable to install control-c handler";
-    }
-  }
-#else
   // Signal masking on POSIX platforms
   //
   // POSIX allows signals to be blocked using functions such as sigprocmask()
@@ -592,7 +531,6 @@ void SchedulerFeature::buildControlCHandler() {
     LOG_TOPIC("e666b", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for SIGINT/SIGQUIT/SIGTERM";
   }
-#endif
 }
 
 }  // namespace arangodb

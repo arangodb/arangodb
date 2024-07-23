@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,6 +39,7 @@ const fs = require('fs');
 const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const inst = require('@arangodb/testutils/instance');
 const im = require('@arangodb/testutils/instance-manager');
 const crashUtils = require('@arangodb/testutils/crash-utils');
@@ -57,7 +58,7 @@ const testPaths = {
   'endpoints': [tu.pathForTesting('client/endpoint-spec.js')]
 };
 
-class endpointRunner extends tu.runInArangoshRunner {
+class endpointRunner extends trs.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     
@@ -76,7 +77,10 @@ class endpointRunner extends tu.runInArangoshRunner {
                                         'rocksdb.debug-logging': 'true',
                                       },
                                       {}, 'tcp', this.dummyDir, '',
-                                      new inst.agencyConfig(this.options, null));
+                                      new inst.agencyConfig(this.options, null),
+                                      this.dummyDir,
+                                      this.options.memory
+                                     );
     this.endpoint = this.instance.args['server.endpoint'];
   }
   getEndpoint() {
@@ -233,7 +237,7 @@ class endpointRunner extends tu.runInArangoshRunner {
       },
 
       unix: {
-        skip: function () { return obj.options.skipEndpointsUnix || platform.substr(0, 3) === 'win'; },
+        skip: function () { return obj.options.skipEndpointsUnix; },
         protocol: 'unix',
         serverArgs: function () {
           // use a random filename
@@ -382,8 +386,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipEndpointsIpv6'] = false;
   opts['skipEndpointsIpv4'] = false;
   opts['skipEndpointsSSL'] = false;
-  opts['skipEndpointsUnix'] = (platform.substr(0, 3) === 'win');
+  opts['skipEndpointsUnix'] = false;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

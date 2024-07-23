@@ -35,7 +35,9 @@ Custom boost locator
 
 ## date
 
-Forward port of C++20 date/time class
+Forward port of C++20 date/time class. We have patched this slightly to
+avoid a totally unnecessary user database lookup which poses problems
+with static glibc builds and nsswitch.
 
 ## fakeit
 
@@ -66,39 +68,27 @@ Then copy `temp_modules.h` to `modules.h`, and fix the paths.
 
 Only used on Linux/Mac, still uses autofoo.
 
+Updated to the head of the dev branch to make it possible to compile
+ArangoDB with clang 15.0.7 in an 3.18 Alpine container.
+
 The following change has been made to jemalloc compared to upstream commit
-54eaed1d8b56b1aa528be3bdd1877e59c56fa90c:
+e4817c8d89a2a413e835c4adeab5c5c4412f9235:
 
 ```diff
-diff --git a/3rdParty/jemalloc/CMakeLists.txt b/3rdParty/jemalloc/CMakeLists.txt
-index add5b967e2e..3ef8b0d6e39 100644
---- a/3rdParty/jemalloc/CMakeLists.txt
-+++ b/3rdParty/jemalloc/CMakeLists.txt
-@@ -28,7 +28,7 @@ if (LINUX OR DARWIN)
-   else ()
-     set(JEMALLOC_CC_TMP "${CMAKE_C_COMPILER}")
-     set(JEMALLOC_CXX_TMP "${CMAKE_CXX_COMPILER}")
--    set(JEMALLOC_CONFIG "background_thread:true")
-+    set(JEMALLOC_CONFIG "background_thread:true,cache_oblivious:false")
-   endif ()
-
-   if (USE_JEMALLOC_PROF)
-diff --git a/3rdParty/jemalloc/v5.3.0/src/jemalloc.c b/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
-index 7655de4e2f3..9e1c8a37627 100644
---- a/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
-+++ b/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
-@@ -1220,6 +1220,7 @@ malloc_conf_init_helper(sc_data_t *sc_data, unsigned bin_shard_sizes[SC_NBINS],
-
-                        CONF_HANDLE_BOOL(opt_abort, "abort")
-                        CONF_HANDLE_BOOL(opt_abort_conf, "abort_conf")
-+                       CONF_HANDLE_BOOL(opt_cache_oblivious, "cache_oblivious")
-                        CONF_HANDLE_BOOL(opt_trust_madvise, "trust_madvise")
-                        if (strncmp("metadata_thp", k, klen) == 0) {
-                                int m;
+diff --git a/3rdParty/jemalloc/jemalloc/src/pages.c b/3rdParty/jemalloc/jemalloc/src/pages.c
+index 8cf2fd9f876..11489b3f03d 100644
+--- a/3rdParty/jemalloc/jemalloc/src/pages.c
++++ b/3rdParty/jemalloc/jemalloc/src/pages.c
+@@ -37,7 +37,7 @@ size_t        os_page;
+ 
+ #ifndef _WIN32
+ #  define PAGES_PROT_COMMIT (PROT_READ | PROT_WRITE)
+-#  define PAGES_PROT_DECOMMIT (PROT_NONE)
++#  define PAGES_PROT_DECOMMIT (PROT_READ | PROT_WRITE)
+ static int     mmap_flags;
+ #endif
+ static bool    os_overcommits;
 ```
-This change will become irrelevant when upgrading to a newer version of
-jemalloc, because it is already contained in upstream jemalloc.
-
 
 ## libunwind
 
@@ -260,22 +250,32 @@ http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided
 
 https://github.com/swagger-api/swagger-ui/releases
 
-Our copy of swagger-ui resides at `js/assets/swagger`. The `index.html`
-contains a few tweaks to make swagger-ui work with the web interface.
+Our copy of swagger-ui resides at `js/server/assets/swagger`. The `index.css`
+and `swagger-initializer.js` files contain a few tweaks to make swagger-ui look
+a little nicer and make it work with the web interface.
 
 To upgrade to a newer version:
 
-1. Copy the file `js/assets/swagger/index.html` to a safe location and open it in an editor
-2. Delete all existing files inside `js/assets/swagger` including `index.html`
+1. Copy the files `js/server/assets/swagger/index.css` and
+   `js/server/assets/swagger/swagger-initializer.js`
+   to a safe location and open them in an editor
+2. Delete all existing files inside `js/server/assets/swagger`
 3. Download the release bundle of swagger-ui you want to upgrade to
-4. Copy all files from the bundle's `dist` folder into `js/assets/swagger`
-5. Open the new `js/assets/swagger/index.html` in an editor
-6. Add an HTML comment to the start of the file indicating the release version number,
-   e.g.  `<!-- swagger-ui 1.2.3 -->`
-7. Apply all changes from the old copy to the new file,
-   these are indicated by code comments in the following format:
+4. Copy all files from the bundle's `dist` folder into `js/server/assets/swagger`,
+   but delete the unnecessary `*es-bundle*` and non-bundle files (`swagger-ui.*`)
+5. Open the new `js/server/assets/swagger/index.css` file in an editor
+6. Apply the style adjustments from the old copy to the new file, indicated by
+   code comments in the following format:
+   `/* #region ArangoDB-specific changes */` and `/* #endregion */`
+7. Open the new `js/server/assets/swagger/swagger-initializer.js` file in an editor
+8. Add a comment to the start of the file indicating the release version number,
+   e.g.  `// Version: swagger-ui 5.6.7`
+9. Apply all code changes from the old copy to the new file,
+   indicated by code comments in the following format:
    `#region ArangoDB-specific changes` and `#endregion`
-8. Verify the changes were applied correctly and discard the old copy of `index.html`
+10. Verify the changes were applied correctly and discard the old copies of
+    `index.css` and `swagger-initializer.js`
+11. Update the information in `LICENSES-OTHER-COMPONENTS.md` for swagger-ui
 
 To verify the changes were applied correctly, start the ArangoDB server and
 open the _Rest API_ documentation (_Support_ tab) in the ArangoDB web interface.
@@ -300,12 +300,34 @@ the _Execute_ button.
   user is authorized to execute, the response should not indicate an
   ArangoDB authentication error.
 
-  This confirms the `requestInterceptor`-related changes were applied correctly.
+  This confirms the `requestInterceptor`-related changes for authentication
+  were applied correctly.
+
+* When using the `POST /_api/index#persistent` endpoint with any collection name,
+  the response URL should contain `?collection=<collection-name>` but not contain
+  `#persistent` anywhere.
+
+  This confirms the `requestInterceptor`-related changes for removing
+  fragment identifiers used for disambiguation in OpenAPI were applied correctly.
 
 * All text in the API documentation should use readable color combinations.
   The API documentation should NOT look obviously "broken" or "ugly".
 
-  This indicates the stylistic CSS changes were applied correctly.
+  Text should NOT partially have a font size of 12px or smaller but 14px.
+
+  Inline code should be black, NOT purple, and the background should only have
+  little padding that only slightly overlaps with other inline code in the
+  above or below line.
+
+  Code blocks should have a background, but NOT the individual lines of it.
+  The font weight should be normal, NOT bold.
+
+  Models should NOT have a background, expandible nested models should only have
+  a slightly larger font size than the properties. Property descriptions should
+  NOT use a monospace but a sans-serif font.
+
+  This indicates the stylistic CSS changes were applied correctly and that the
+  HTML IDs and classes are unchanged.
 
 * Scroll to the very end of the page and check the bottom right corner.
   There should be NO badge reading _INVALID_.

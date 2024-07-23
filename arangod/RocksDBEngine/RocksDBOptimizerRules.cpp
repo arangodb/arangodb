@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,27 +23,34 @@
 
 #include "RocksDBOptimizerRules.h"
 
+#include "Aql/Ast.h"
 #include "Aql/AttributeNamePath.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
-#include "Aql/IndexNode.h"
-#include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
-#include "Aql/SortNode.h"
 #include "Basics/StaticStrings.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <absl/strings/str_cat.h>
+
+#include <initializer_list>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -63,13 +70,27 @@ void RocksDBOptimizerRules::registerResources(OptimizerRulesFeature& feature) {
   feature.registerRule(
       "reduce-extraction-to-projection", reduceExtractionToProjectionRule,
       OptimizerRule::reduceExtractionToProjectionRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Modify `EnumerationCollectionNode` and `IndexNode` that would have
+extracted entire documents to only return a projection of each document.
+
+Projections are limited to at most 5 different document attributes by default.
+The maximum number of projected attributes can optionally be adjusted by
+setting the `maxProjections` hint for an AQL `FOR` operation since
+ArangoDB 3.9.1.)");
 
   // remove SORT RAND() LIMIT 1 if appropriate
   feature.registerRule(
       "remove-sort-rand-limit-1", removeSortRandRule,
       OptimizerRule::removeSortRandRule,
-      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Remove `SORT RAND() LIMIT 1` constructs by moving the random iteration
+into `EnumerateCollectionNode`.
+
+The RocksDB storage engine doesn't allow to seek random documents efficiently.
+This optimization picks a pseudo-random document based on a limited number of
+seeks within the collection's key range, selecting a random start key in the
+key range, and then going a few steps before or after that.)");
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a
@@ -119,19 +140,26 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         auto const& hint = en->hint();
 
         // now check all indexes if they cover the projection
-        if (hint.type() != aql::IndexHint::HintType::Disabled) {
+        if (!hint.isDisabled()) {
           std::vector<std::shared_ptr<Index>> indexes;
 
           auto& trx = plan->getAst()->query().trxForOptimization();
           if (!trx.isInaccessibleCollection(
                   en->collection()->getCollection()->name())) {
-            indexes = en->collection()->getCollection()->getIndexes();
+            indexes = en->collection()
+                          ->getCollection()
+                          ->getPhysical()
+                          ->getReadyIndexes();
           }
 
           std::shared_ptr<Index> picked;
           auto selectIndexIfPossible =
               [&picked,
                &projections](std::shared_ptr<Index> const& idx) -> bool {
+            if (idx->inProgress()) {
+              // index is currently being built
+              return false;
+            }
             if (!idx->covers(projections)) {
               // index doesn't cover the projection
               return false;
@@ -157,9 +185,9 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           };
 
           bool forced = false;
-          if (hint.type() == aql::IndexHint::HintType::Simple) {
+          if (hint.isSimple()) {
             forced = hint.isForced();
-            for (std::string const& hinted : hint.hint()) {
+            for (std::string const& hinted : hint.candidateIndexes()) {
               auto idx = en->collection()->getCollection()->lookupIndex(hinted);
               if (idx && selectIndexIfPossible(idx)) {
                 TRI_ASSERT(picked != nullptr);
@@ -169,8 +197,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             if (forced && !picked) {
               THROW_ARANGO_EXCEPTION_MESSAGE(
                   TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-                  "could not use index hint to serve query; " +
-                      hint.toString());
+                  absl::StrCat("could not use index hint to serve query; ",
+                               hint.toString()));
             }
           }
 
@@ -184,6 +212,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           }
 
           if (picked != nullptr) {
+            TRI_ASSERT(!picked->inProgress());
             // turn the EnumerateCollection node into an IndexNode now
             auto condition = std::make_unique<Condition>(plan->getAst());
             condition->normalize(plan.get());
@@ -193,7 +222,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             // optimization, so force it - if we wouldn't force it here it would
             // mean that for a FILTER-less query we would be a lot less
             // efficient for some indexes
-            auto inode = new IndexNode(
+            auto inode = plan->createNode<IndexNode>(
                 plan.get(), plan->nextId(), en->collection(), en->outVariable(),
                 std::vector<transaction::Methods::IndexHandle>{picked},
                 false,  // here we are not using inverted index so for sure no
@@ -201,7 +230,6 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
                 std::move(condition), opts);
             en->CollectionAccessingNode::cloneInto(*inode);
             en->DocumentProducingNode::cloneInto(plan.get(), *inode);
-            plan->registerNode(inode);
             plan->replaceNode(n, inode);
 
             if (en->isRestricted()) {
@@ -244,19 +272,23 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           ExecutionNode::castTo<EnumerateCollectionNode*>(n);
       auto const& hint = en->hint();
 
-      if (hint.type() != aql::IndexHint::HintType::Disabled) {
+      if (!hint.isDisabled()) {
         std::shared_ptr<Index> picked;
         std::vector<std::shared_ptr<Index>> indexes;
 
         auto& trx = plan->getAst()->query().trxForOptimization();
         if (!trx.isInaccessibleCollection(
                 en->collection()->getCollection()->name())) {
-          indexes = en->collection()->getCollection()->getIndexes();
+          indexes = en->collection()
+                        ->getCollection()
+                        ->getPhysical()
+                        ->getReadyIndexes();
         }
 
         auto selectIndexIfPossible =
             [&picked](std::shared_ptr<Index> const& idx) -> bool {
           if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+            TRI_ASSERT(!idx->inProgress());
             picked = idx;
             return true;
           }
@@ -264,9 +296,9 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         };
 
         bool forced = false;
-        if (hint.type() == aql::IndexHint::HintType::Simple) {
+        if (hint.isSimple()) {
           forced = hint.isForced();
-          for (std::string const& hinted : hint.hint()) {
+          for (std::string const& hinted : hint.candidateIndexes()) {
             auto idx = en->collection()->getCollection()->lookupIndex(hinted);
             if (idx && selectIndexIfPossible(idx)) {
               TRI_ASSERT(picked != nullptr);
@@ -276,7 +308,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           if (forced && !picked) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-                "could not use index hint to serve query; " + hint.toString());
+                absl::StrCat("could not use index hint to serve query; ",
+                             hint.toString()));
           }
         }
 
@@ -292,17 +325,17 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         if (picked != nullptr) {
           TRI_ASSERT(picked->type() ==
                      Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+          TRI_ASSERT(!picked->inProgress());
           IndexIteratorOptions opts;
           opts.useCache = false;
           auto condition = std::make_unique<Condition>(plan->getAst());
           condition->normalize(plan.get());
-          auto inode = new IndexNode(
+          auto inode = plan->createNode<IndexNode>(
               plan.get(), plan->nextId(), en->collection(), en->outVariable(),
               std::vector<transaction::Methods::IndexHandle>{picked},
               false,  // here we are not using inverted index so for sure no
                       // "whole" coverage
               std::move(condition), opts);
-          plan->registerNode(inode);
           plan->replaceNode(n, inode);
           en->CollectionAccessingNode::cloneInto(*inode);
           en->DocumentProducingNode::cloneInto(plan.get(), *inode);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,10 +40,9 @@ class HttpResponse : public GeneralResponse {
   friend class RestBatchHandler;  // TODO must be removed
 
  public:
-  static bool HIDE_PRODUCT_HEADER;
-
   HttpResponse(ResponseCode code, uint64_t mid,
-               std::unique_ptr<basics::StringBuffer> = nullptr);
+               std::unique_ptr<basics::StringBuffer> buffer,
+               rest::ResponseCompressionType rct);
   ~HttpResponse() = default;
 
   void setCookie(std::string const& name, std::string const& value,
@@ -65,12 +64,14 @@ class HttpResponse : public GeneralResponse {
     return *_body;
   }
 
-  size_t bodySize() const;
+  size_t bodySize() const override;
 
   void sealBody() { _bodySize = _body->length(); }
 
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
+
+  void clearBody() noexcept override;
 
   void reset(ResponseCode code) override final;
 
@@ -81,14 +82,18 @@ class HttpResponse : public GeneralResponse {
                   bool resolve_externals = true) override final;
   void addRawPayload(std::string_view payload) override final;
 
-  bool isResponseEmpty() const override final { return _body->empty(); }
+  void setAllowCompression(
+      rest::ResponseCompressionType rct) noexcept override final;
+
+  rest::ResponseCompressionType compressionAllowed()
+      const noexcept override final;
+
+  bool isResponseEmpty() const noexcept override final {
+    return _body->empty();
+  }
 
   ErrorCode reservePayload(std::size_t size) override final {
     return _body->reserve(size);
-  }
-
-  arangodb::Endpoint::TransportType transportType() override final {
-    return arangodb::Endpoint::TransportType::HTTP;
   }
 
   std::unique_ptr<basics::StringBuffer> stealBody() {
@@ -98,11 +103,15 @@ class HttpResponse : public GeneralResponse {
 
  private:
   // the body must already be set. deflate is then run on the existing body
-  ErrorCode deflate() override { return _body->deflate(); }
+  ErrorCode zlibDeflate(bool onlyIfSmaller) override;
 
   // the body must already be set. gzip compression is then run on the existing
   // body
-  ErrorCode gzip() override { return _body->gzip(); }
+  ErrorCode gzipCompress(bool onlyIfSmaller) override;
+
+  // the body must already be set. lz4 compression is then run on the existing
+  // body
+  ErrorCode lz4Compress(bool onlyIfSmaller) override;
 
   void addPayloadInternal(uint8_t const* data, size_t length,
                           velocypack::Options const* options,
@@ -111,5 +120,6 @@ class HttpResponse : public GeneralResponse {
   std::vector<std::string> _cookies;
   std::unique_ptr<basics::StringBuffer> _body;
   size_t _bodySize;
+  rest::ResponseCompressionType _allowCompression;
 };
 }  // namespace arangodb

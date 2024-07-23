@@ -1,17 +1,17 @@
 import { Box, Button, Stack } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
 import React from "react";
-import { IndexFormField, IndexFormFieldProps } from "./IndexFormField";
+import { FormField, FormFieldProps } from "../../../../components/form/FormField";
 
 export const IndexFormFieldsList = ({
   fields,
   isFormDisabled,
   renderField
 }: {
-  fields: IndexFormFieldProps[];
+  fields: FormFieldProps[];
   isFormDisabled?: boolean;
   renderField?: (props: {
-    field: IndexFormFieldProps;
+    field: FormFieldProps;
     index?: number;
     autoFocus: boolean;
   }) => JSX.Element;
@@ -30,7 +30,7 @@ export const IndexFormFieldsList = ({
     >
       {fields.map((field, index) => {
         return (
-          <IndexFormField
+          <FormField
             render={renderField}
             key={field.name}
             index={index}

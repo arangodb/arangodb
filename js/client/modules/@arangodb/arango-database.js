@@ -1,19 +1,16 @@
 /* jshint strict: false */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoDatabase
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2013 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +18,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Achim Brandt
 // / @author Dr. Frank Celler
@@ -54,7 +51,6 @@ const ArangoView = require('@arangodb/arango-view').ArangoView;
 const ArangoError = require('@arangodb').ArangoError;
 const ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
-const ArangoPrototypeState = require("@arangodb/arango-prototype-state").ArangoPrototypeState;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief index id regex
@@ -118,19 +114,6 @@ ArangoDatabase.prototype._replicatedlogurl = function (id) {
   }
 
   return '/_api/log/' + encodeURIComponent(id);
-};
-
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief return the base url for prototype state usage
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._prototypestateurl = function (id) {
-  if (id === undefined) {
-    return '/_api/prototype-state';
-  }
-
-  return '/_api/prototype-state/' + encodeURIComponent(id);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -414,26 +397,6 @@ ArangoDatabase.prototype._replicatedLog = function (id) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return a prototype state identified by its id
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._prototypeState = function (id) {
-  let requestResult = this._connection.GET(this._prototypestateurl(id));
-
-  // return null in case of not found
-  if (requestResult !== null
-      && requestResult.error === true
-      && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
-    return null;
-  }
-
-  // check all other errors and throw them
-  arangosh.checkRequestResult(requestResult);
-
-  return new ArangoPrototypeState(this, id);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a new collection
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -446,6 +409,15 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     'name': name,
     'type': ArangoCollection.TYPE_DOCUMENT
   });
+
+  // Convenience transformation.
+  // We have documented that the strings "edge" and "document" are allowed
+  // here, but not in the HTTP Api.
+  if (type === 'edge') {
+    type = ArangoCollection.TYPE_EDGE;
+  } else if (type === 'document') {
+    type = ArangoCollection.TYPE_DOCUMENT;
+  }
 
   if (typeof type === 'object') {
     options = type;
@@ -475,7 +447,9 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     urlAddon += '?' + urlAddons.join('&');
   }
 
-  if (type !== undefined) {
+  if (!isNaN(type)) {
+    // Only overwrite type with numeric values, otherwise
+    // use default value.
     body.type = type;
   }
 
@@ -502,17 +476,6 @@ ArangoDatabase.prototype._createReplicatedLog = function (spec) {
   let requestResult = this._connection.POST(this._replicatedlogurl(), spec);
   arangosh.checkRequestResult(requestResult);
   return new ArangoReplicatedLog(this, requestResult.result.id);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief creates a replicated state
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoDatabase.prototype._createPrototypeState = function (spec) {
-  spec = spec || {};
-  let requestResult = this._connection.POST(this._prototypestateurl(), spec);
-  arangosh.checkRequestResult(requestResult);
-  return new ArangoPrototypeState(this, requestResult.result.id);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -911,6 +874,9 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
   url = appendBoolParameter(url, 'returnNew', options.returnNew);
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true, true);
+  if (options.versionAttribute) {
+    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+  }
 
   let requestResult;
   if (rev === null || ignoreRevs) {
@@ -992,6 +958,9 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
   url = appendBoolParameter(url, 'returnNew', options.returnNew);
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true, true);
+  if (options.versionAttribute) {
+    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+  }
 
   let requestResult;
   if (rev === null || ignoreRevs) {
@@ -1019,6 +988,7 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
 ArangoDatabase.prototype._createStatement = function (data) {
   return new ArangoStatement(this, data);
 };
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief factory method to create and execute a new statement

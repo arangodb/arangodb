@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,21 +27,15 @@
 #include "Maskings/MaskingFunction.h"
 #include "Maskings/ParseResult.h"
 
-namespace arangodb {
-namespace maskings {
+namespace arangodb::maskings {
 class RandomStringMask : public MaskingFunction {
  public:
   static ParseResult<AttributeMasking> create(Path, Maskings*,
-                                              VPackSlice const& def);
+                                              velocypack::Slice def);
 
- public:
-  VPackValue mask(bool, std::string& buffer) const override;
-  VPackValue mask(std::string const& data, std::string& buffer) const override;
-  VPackValue mask(int64_t, std::string& buffer) const override;
-  VPackValue mask(double, std::string& buffer) const override;
-
- protected:
   explicit RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
+
+  void mask(std::string_view data, velocypack::Builder& out,
+            std::string& buffer) const override;
 };
-}  // namespace maskings
-}  // namespace arangodb
+}  // namespace arangodb::maskings

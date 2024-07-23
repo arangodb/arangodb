@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,11 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <v8.h>
-#include "Basics/Common.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -62,16 +65,15 @@ inline std::string stringify(v8::Isolate* isolate,
 class v8gHelper {
   // raii helper
   TRI_v8_global_t* _v8g;
-  v8::Isolate* _isolate;
   v8::TryCatch& _tryCatch;
 
  public:
   v8gHelper(v8::Isolate* isolate, v8::TryCatch& tryCatch,
-            v8::Handle<v8::Value>& request, v8::Handle<v8::Value>& response)
-      : _isolate(isolate), _tryCatch(tryCatch) {
+            v8::Handle<v8::Value> request, v8::Handle<v8::Value> response)
+      : _tryCatch(tryCatch) {
     TRI_GET_GLOBALS();
     _v8g = v8g;
-    _v8g->_currentRequest = request;
+    _v8g->_currentRequest.Reset(isolate, request);
   }
 
   void cancel(bool doCancel) {
@@ -88,8 +90,8 @@ class v8gHelper {
     if (_tryCatch.HasCaught() && !_tryCatch.CanContinue()) {
       _v8g->_canceled = true;
     } else {
-      _v8g->_currentRequest = v8::Undefined(_isolate);
-      _v8g->_currentResponse = v8::Undefined(_isolate);
+      _v8g->_currentRequest.Reset();
+      _v8g->_currentResponse.Reset();
     }
   }
 };

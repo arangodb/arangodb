@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,11 +21,13 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <v8.h>
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "Transactions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "V8/V8SecurityFeature.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
@@ -35,14 +37,17 @@
 #include "Transaction/Options.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CursorRepository.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-helper.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <v8.h>
 
 namespace arangodb {
 
@@ -61,14 +66,10 @@ bool allowTransactions(v8::Isolate* isolate) {
           v8security.isAdminScriptContext(isolate));
 }
 
-Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
+Result executeTransaction(V8Executor* executor, basics::ReadWriteLock& lock,
                           std::atomic<bool>& canceled, VPackSlice slice,
                           std::string const& portType, VPackBuilder& builder) {
-  // YOU NEED A TRY CATCH BLOCK like:
-  //    TRI_V8_TRY_CATCH_BEGIN(isolate);
-  //    TRI_V8_TRY_CATCH_END
-  // outside of this function!
-
+  v8::Isolate* isolate = executor->isolate();
   Result rv;
 
   if (!allowTransactions(isolate)) {
@@ -76,80 +77,80 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
                     "JavaScript transactions are disabled");
   }
 
-  READ_LOCKER(readLock, lock);
-  if (canceled) {
-    return rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
-  }
+  rv = executor->runInContext([&](v8::Isolate* isolate) {
+    Result rv;
 
-  v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
-  v8::Handle<v8::Value> in = TRI_VPackToV8(isolate, slice);
-
-  v8::Handle<v8::Value> result;
-  v8::TryCatch tryCatch(isolate);
-
-  v8::Handle<v8::Object> request = v8::Object::New(isolate);
-  v8::Handle<v8::Value> jsPortTypeKey =
-      TRI_V8_ASCII_STRING(isolate, "portType");
-  v8::Handle<v8::Value> jsPortTypeValue =
-      TRI_V8_ASCII_STD_STRING(isolate, portType);
-  if (!request->Set(context, jsPortTypeKey, jsPortTypeValue).FromMaybe(false)) {
-    rv.reset(TRI_ERROR_INTERNAL, "could not set portType");
-    return rv;
-  }
-  {
-    auto requestVal = v8::Handle<v8::Value>::Cast(request);
-    auto responseVal = v8::Handle<v8::Value>::Cast(v8::Undefined(isolate));
-    v8gHelper globalVars(isolate, tryCatch, requestVal, responseVal);
-    readLock.unlock();  // unlock
-    rv = executeTransactionJS(isolate, in, result, tryCatch);
-    globalVars.cancel(canceled);
-  }
-
-  // do not allow the manipulation of the isolate while we are messing here
-  READ_LOCKER(readLock2, lock);
-
-  if (canceled) {  // if it was ok we would already have committed
-    if (rv.ok()) {
-      rv.reset(TRI_ERROR_REQUEST_CANCELED,
-               "handler canceled - result already committed");
-    } else {
-      rv.reset(TRI_ERROR_REQUEST_CANCELED, "handler canceled");
+    READ_LOCKER(readLock, lock);
+    if (canceled) {
+      return rv.reset(TRI_ERROR_REQUEST_CANCELED);
     }
-    return rv;
-  }
 
-  if (rv.fail()) {
-    return rv;
-  }
+    v8::HandleScope scope(isolate);
+    v8::Handle<v8::Value> in = TRI_VPackToV8(isolate, slice);
 
-  if (tryCatch.HasCaught()) {
-    // we have some javascript error that is not an arangoError
-    std::string msg;
-    if (!tryCatch.Message().IsEmpty()) {
-      v8::String::Utf8Value m(isolate, tryCatch.Message()->Get());
-      if (*m != nullptr) {
-        msg = *m;
+    v8::Handle<v8::Value> result;
+    v8::TryCatch tryCatch(isolate);
+
+    v8::Handle<v8::Object> request = v8::Object::New(isolate);
+    v8::Handle<v8::Value> jsPortTypeKey =
+        TRI_V8_ASCII_STRING(isolate, "portType");
+    v8::Handle<v8::Value> jsPortTypeValue =
+        TRI_V8_ASCII_STD_STRING(isolate, portType);
+    if (!request
+             ->Set(isolate->GetCurrentContext(), jsPortTypeKey, jsPortTypeValue)
+             .FromMaybe(false)) {
+      rv.reset(TRI_ERROR_INTERNAL, "could not set portType");
+      return rv;
+    }
+
+    {
+      auto requestVal = v8::Handle<v8::Value>::Cast(request);
+      auto responseVal = v8::Handle<v8::Value>::Cast(v8::Undefined(isolate));
+      v8gHelper globalVars(isolate, tryCatch, requestVal, responseVal);
+      readLock.unlock();  // unlock
+      rv = executeTransactionJS(isolate, in, result, tryCatch);
+      globalVars.cancel(canceled);
+    }
+
+    // do not allow the manipulation of the isolate while we are messing here
+    readLock.lock();
+
+    if (canceled) {  // if it was ok we would already have committed
+      return rv.reset(TRI_ERROR_REQUEST_CANCELED);
+    }
+
+    if (rv.fail()) {
+      return rv;
+    }
+
+    if (tryCatch.HasCaught()) {
+      // we have some javascript error that is not an arangoError
+      std::string msg;
+      if (!tryCatch.Message().IsEmpty()) {
+        v8::String::Utf8Value m(isolate, tryCatch.Message()->Get());
+        if (*m != nullptr) {
+          msg = *m;
+        }
       }
+      rv.reset(TRI_ERROR_HTTP_SERVER_ERROR, msg);
     }
-    rv.reset(TRI_ERROR_HTTP_SERVER_ERROR, msg);
-  }
 
-  if (rv.fail()) {
+    if (rv.fail()) {
+      return rv;
+    }
+
+    if (result.IsEmpty() || result->IsUndefined()) {
+      // turn undefined to none
+      builder.add(VPackSlice::noneSlice());
+    } else {
+      TRI_V8ToVPack(isolate, builder, result, false);
+    }
     return rv;
-  }
-
-  if (result.IsEmpty() || result->IsUndefined()) {
-    // turn undefined to none
-    builder.add(VPackSlice::noneSlice());
-  } else {
-    TRI_V8ToVPack(isolate, builder, result, false);
-  }
+  });
   return rv;
 }
 
-Result executeTransactionJS(v8::Isolate* isolate,
-                            v8::Handle<v8::Value> const& arg,
+Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
                             v8::Handle<v8::Value>& result,
                             v8::TryCatch& tryCatch) {
   Result rv;
@@ -394,7 +395,8 @@ Result executeTransactionJS(v8::Isolate* isolate,
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  transaction::V8Context ctx(vocbase, embed);
+  auto origin = transaction::OperationOriginREST{"JavaScript transaction"};
+  transaction::V8Context ctx(vocbase, origin, embed);
   if (writeCollections.empty() && exclusiveCollections.empty()) {
     ctx.setReadOnly();
   }
@@ -406,7 +408,8 @@ Result executeTransactionJS(v8::Isolate* isolate,
                            readCollections, writeCollections,
                            exclusiveCollections, trxOptions);
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() &&
+      !trxOptions.skipFastLockRound) {
     // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and
     // potentialy reroll it.
     trx.addHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
@@ -458,7 +461,7 @@ Result executeTransactionJS(v8::Isolate* isolate,
 
   rv = trx.finish(rv);
 
-  // if we do not remove unused V8Cursors, V8Context might not reset global
+  // if we do not remove unused V8Cursors, V8Executor might not reset global
   // state
   vocbase.cursorRepository()->garbageCollect(/*force*/ false);
 

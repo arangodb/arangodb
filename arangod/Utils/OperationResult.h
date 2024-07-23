@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "Basics/Result.h"
 #include "Utils/OperationOptions.h"
@@ -38,10 +37,10 @@ namespace arangodb {
 
 struct OperationResult final {
   // create from Result
-  explicit OperationResult(Result const& other, OperationOptions const& options)
-      : result(other), options(options) {}
-  explicit OperationResult(Result&& other, OperationOptions const& options)
-      : result(std::move(other)), options(options) {}
+  explicit OperationResult(Result const& other, OperationOptions options)
+      : result(other), options(std::move(options)) {}
+  explicit OperationResult(Result&& other, OperationOptions options)
+      : result(std::move(other)), options(std::move(options)) {}
 
   // copy
   OperationResult(OperationResult const& other) = delete;
@@ -80,18 +79,20 @@ struct OperationResult final {
   bool fail() const noexcept { return result.fail(); }
   ErrorCode errorNumber() const noexcept { return result.errorNumber(); }
   bool is(ErrorCode errorNumber) const noexcept {
-    return result.errorNumber() == errorNumber;
+    return result.is(errorNumber);
   }
-  bool isNot(ErrorCode errorNumber) const noexcept { return !is(errorNumber); }
+  bool isNot(ErrorCode errorNumber) const noexcept {
+    return result.isNot(errorNumber);
+  }
   std::string_view errorMessage() const { return result.errorMessage(); }
 
-  inline bool hasSlice() const { return buffer != nullptr; }
-  inline VPackSlice slice() const {
+  bool hasSlice() const noexcept { return buffer != nullptr; }
+  velocypack::Slice slice() const noexcept {
     TRI_ASSERT(buffer != nullptr);
     return VPackSlice(buffer->data());
   }
 
-  void reset() {
+  void reset() noexcept {
     result.reset();
     buffer.reset();
     options = OperationOptions();
@@ -99,7 +100,7 @@ struct OperationResult final {
   }
 
   Result result;
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
+  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer;
   OperationOptions options;
 
   // Executive summary for baby operations: reports all errors that did occur

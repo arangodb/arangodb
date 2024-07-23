@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,9 @@
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/vocbase.h"
+
+#include <atomic>
+#include <memory>
 
 namespace rocksdb {
 class PinnableSlice;
@@ -67,8 +69,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
-                                     bool& created) override;
+  futures::Future<std::shared_ptr<Index>> createIndex(
+      velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
+      Replication2Callback replicationCb = nullptr) override;
 
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
@@ -99,23 +103,21 @@ class RocksDBCollection final : public RocksDBMetaCollection {
       transaction::Methods* trx, std::string_view key,
       std::pair<LocalDocumentId, RevisionId>& result) const override;
 
-  bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
+  bool lookupRevision(transaction::Methods* trx, velocypack::Slice key,
                       RevisionId& revisionId, ReadOwnWrites) const;
 
-  Result read(transaction::Methods*, std::string_view key,
-              IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites readOwnWrites) const override;
+  Result lookup(transaction::Methods* trx, std::string_view key,
+                IndexIterator::DocumentCallback const& cb,
+                LookupOptions options) const override;
 
-  Result readFromSnapshot(transaction::Methods* trx,
-                          LocalDocumentId const& token,
-                          IndexIterator::DocumentCallback const& cb,
-                          ReadOwnWrites readOwnWrites,
-                          StorageSnapshot const& snapshot) const override;
+  Result lookup(transaction::Methods* trx, LocalDocumentId token,
+                IndexIterator::DocumentCallback const& cb,
+                LookupOptions options,
+                StorageSnapshot const* snapshot = nullptr) const override;
 
-  /// @brief lookup with callback, not thread-safe on same transaction::Context
-  Result read(transaction::Methods* trx, LocalDocumentId const& token,
-              IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites readOwnWrites) const override;
+  Result lookup(transaction::Methods* trx, std::span<LocalDocumentId> tokens,
+                MultiDocumentCallback const& cb,
+                LookupOptions options) const override;
 
   Result insert(transaction::Methods& trx,
                 IndexesSnapshot const& indexesSnapshot,
@@ -145,17 +147,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 velocypack::Slice previousDocument,
                 OperationOptions const& options) override;
 
-  bool cacheEnabled() const noexcept { return _cacheEnabled; }
+  bool cacheEnabled() const noexcept override;
 
   bool hasDocuments() override;
 
-  /// @brief lookup document in cache and / or rocksdb
-  /// @param readCache attempt to read from cache
-  /// @param fillCache fill cache with found document
-  Result lookupDocument(transaction::Methods& trx, LocalDocumentId documentId,
-                        velocypack::Builder& builder, bool readCache,
-                        bool fillCache,
-                        ReadOwnWrites readOwnWrites) const override;
+  void freeMemory() noexcept override;
 
   // @brief return the primary index
   // WARNING: Make sure that this instance
@@ -210,27 +206,18 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                         RevisionId oldRevisionId, RevisionId newRevisionId,
                         OperationOptions const& options) const;
 
-  /// @brief lookup document in cache and / or rocksdb
-  /// @param readCache attempt to read from cache
-  /// @param fillCache fill cache with found document
-  Result lookupDocumentVPack(transaction::Methods* trx,
-                             LocalDocumentId const& documentId,
-                             rocksdb::PinnableSlice& ps, bool readCache,
-                             bool fillCache, ReadOwnWrites readOwnWrites) const;
-
-  Result lookupDocumentVPack(
-      transaction::Methods*, LocalDocumentId const& documentId,
-      IndexIterator::DocumentCallback const& cb, bool withCache,
-      ReadOwnWrites readOwnWrites,
-      RocksDBEngine::RocksDBSnapshot const* snapshot = nullptr) const;
+  Result lookupDocumentVPack(transaction::Methods* trx, LocalDocumentId token,
+                             IndexIterator::DocumentCallback const& cb,
+                             LookupOptions options,
+                             StorageSnapshot const* snapshot) const;
 
   /// @brief create hash-cache
   void setupCache() const;
   /// @brief destory hash-cache
   void destroyCache() const;
 
-  /// is this collection using a cache
-  inline bool useCache() const noexcept { return (_cacheEnabled && _cache); }
+  /// @brief: this can return a nullptr. the caller has to check the result
+  std::shared_ptr<cache::Cache> useCache() const noexcept;
 
   /// @brief track key in file
   void invalidateCacheEntry(RocksDBKey const& key) const;
@@ -258,12 +245,17 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // vocbase might already be destroyed at the time the destructor is executed
   cache::Manager* _cacheManager;
 
+  // maximum size of cache values to be stored in in-memory cache for
+  // documents.
+  size_t const _maxCacheValueSize;
+
   /// @brief document cache (optional)
+  /// use only with std::atomic_load|store_explicit()!
   mutable std::shared_ptr<cache::Cache> _cache;
 
-  std::atomic<bool> _cacheEnabled;
-
   TransactionStatistics& _statistics;
+
+  std::atomic_bool _cacheEnabled;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {

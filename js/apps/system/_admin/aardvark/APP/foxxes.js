@@ -3,14 +3,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2010-2013 triAGENS GmbH, Cologne, Germany
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License");
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -128,6 +128,23 @@ installer.use(function (req, res, next) {
       errors.ERROR_INVALID_SERVICE_MANIFEST.code
     ].indexOf(e.errorNum) !== -1) {
       res.throw('bad request', e);
+    }
+    if (
+      e.isArangoError &&
+      e.errorNum === errors.ERROR_SERVICE_SOURCE_ERROR.code
+    ) {
+      let errorType = 'internal server error';
+      if ([
+        '/foxxes/store',
+        '/foxxes/git',
+        '/foxxes/url'
+      ].indexOf(req.path) !== -1) {
+        errorType = (
+          e.message.includes('(timeout after') ?
+          'gateway timeout' : 'bad gateway'
+        );
+      }
+      res.throw(errorType, e);
     }
     if (
       e.isArangoError &&

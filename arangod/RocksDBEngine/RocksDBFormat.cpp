@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -82,6 +82,12 @@ void (*uint16ToPersistent)(std::string& p, uint16_t value) = nullptr;
 void (*uint32ToPersistent)(std::string& p, uint32_t value) = nullptr;
 void (*uint64ToPersistent)(std::string& p, uint64_t value) = nullptr;
 
+void (*uint64ToPersistentRaw)(char* p, uint64_t value) = nullptr;
+
+RocksDBEndianness getRocksDBKeyFormatEndianness() noexcept {
+  return rocksDBEndianness;
+}
+
 void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
   rocksDBEndianness = e;
 
@@ -93,6 +99,7 @@ void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
     uint16ToPersistent = &uint16ToPersistentLE;
     uint32ToPersistent = &uint32ToPersistentLE;
     uint64ToPersistent = &uint64ToPersistentLE;
+    uint64ToPersistentRaw = &uintToPersistentRawLE<uint64_t>;
     return;
   } else if (e == RocksDBEndianness::Big) {
     LOG_TOPIC("5e446", DEBUG, Logger::ENGINES) << "using big-endian keys";
@@ -102,6 +109,7 @@ void setRocksDBKeyFormatEndianess(RocksDBEndianness e) {
     uint16ToPersistent = &uint16ToPersistentBE;
     uint32ToPersistent = &uint32ToPersistentBE;
     uint64ToPersistent = &uint64ToPersistentBE;
+    uint64ToPersistentRaw = &uintToPersistentRawBE<uint64_t>;
     return;
   }
   LOG_TOPIC("b8243", FATAL, Logger::ENGINES) << "Invalid key endianness";

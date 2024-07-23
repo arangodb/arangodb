@@ -1,19 +1,16 @@
 /*jshint strict: false, unused: false, maxlen: 200 */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoCollection
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2011-2013 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +18,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Dr. Frank Celler
 // / @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
@@ -155,17 +152,9 @@ ArangoCollection.prototype.documentId = function (documentKey) {
   return `${this.name()}/${documentKey}`;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionAll
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.all = function () {
   return new SimpleQueryAll(this);
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionByExample
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExample = function (example) {
   var e;
@@ -189,25 +178,13 @@ ArangoCollection.prototype.byExample = function (example) {
   return new SimpleQueryByExample(this, e);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionRange
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.range = function (name, left, right) {
   return new SimpleQueryRange(this, name, left, right, 0);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionClosedRange
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.closedRange = function (name, left, right) {
   return new SimpleQueryRange(this, name, left, right, 1);
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionGeo
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.geo = function (loc, order) {
   var idx;
@@ -269,17 +246,9 @@ ArangoCollection.prototype.geo = function (loc, order) {
   return new SimpleQueryGeo(this, idx.id);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionNear
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.near = function (lat, lon) {
   return new SimpleQueryNear(this, lat, lon);
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionWithin
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.within = function (lat, lon, radius) {
   return new SimpleQueryWithin(this, lat, lon, radius);
@@ -292,10 +261,6 @@ ArangoCollection.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
 ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
   return new SimpleQueryFulltext(this, attribute, query, iid);
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock collectionIterate
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.iterate = function (iterator, options) {
   var probability = 1.0;
@@ -365,25 +330,13 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
   }
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock documentsCollectionRemoveByExample
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.removeByExample = function (example, waitForSync, limit) {
   throw 'cannot call abstract removeByExample function';
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock documentsCollectionReplaceByExample
-// //////////////////////////////////////////////////////////////////////////////
-
 ArangoCollection.prototype.replaceByExample = function (example, newValue, waitForSync, limit) {
   throw 'cannot call abstract replaceByExample function';
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock documentsCollectionUpdateByExample
-// //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {
   throw 'cannot call abstract updateExample function';

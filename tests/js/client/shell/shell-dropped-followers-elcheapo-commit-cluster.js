@@ -2,18 +2,16 @@
 /* global fail, assertEqual, assertTrue, assertFalse, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoTransaction el cheapo and dropped followers
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
@@ -59,7 +57,7 @@ function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
   // Make leaders the same:
   if (leader !== plan[shards[1]].leader) {
     let moveShardJob = {
-      database: "_system",
+      database: db._name(),
       collection: cn,
       shard: shards[1],
       fromServer: plan[shards[1]].leader,
@@ -98,7 +96,7 @@ function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
   // Make followers the same:
   if (follower !== plan[shards[1]].followers[0]) {
     let moveShardJob = {
-      database: "_system",
+      database: db._name(),
       collection: cn,
       shard: shards[1],
       fromServer: plan[shards[1]].followers[0],
@@ -123,15 +121,15 @@ function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
 }
 
 function switchConnectionToCoordinator(collInfo) {
-  arango.reconnect(collInfo.endpointMap[collInfo.coordinator], "_system", "root", "");
+  arango.reconnect(collInfo.endpointMap[collInfo.coordinator], db._name(), "root", "");
 }
 
 function switchConnectionToLeader(collInfo) {
-  arango.reconnect(collInfo.endpointMap[collInfo.leader], "_system", "root", "");
+  arango.reconnect(collInfo.endpointMap[collInfo.leader], db._name(), "root", "");
 }
 
 function switchConnectionToFollower(collInfo) {
-  arango.reconnect(collInfo.endpointMap[collInfo.follower], "_system", "root", "");
+  arango.reconnect(collInfo.endpointMap[collInfo.follower], db._name(), "root", "");
 }
 
 function dropFollowersElCheapoSuite() {
@@ -308,9 +306,54 @@ function dropFollowersElCheapoSuite() {
   };
 }
 
+function lockTimeoutSuite() {
+  'use strict';
+  const cn = 'UnitTestsLockTimeout';
+  let collInfo = {};
+
+  const endpointMap = getEndpointMap();
+  const info = { endpointMap, coordinator: "Coordinator0001" };
+
+  return {
+    setUp: function () {
+      switchConnectionToCoordinator(info);
+      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      db._createDatabase(cn);
+      db._useDatabase(cn);
+      collInfo = createCollectionWithTwoShardsSameLeaderAndFollower(cn);
+    },
+
+    tearDown: function () {
+      switchConnectionToCoordinator(info);
+      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      db._useDatabase('_system');
+      db._dropDatabase(cn);
+    },
+    
+    testLockTimeouts: function() {
+      // All we want to do is a single query and for that switch on some
+      // assertions:
+
+      switchConnectionToLeader(collInfo);
+      arango.PUT("/_admin/debug/failat/assertLockTimeoutLow",{});
+      switchConnectionToFollower(collInfo);
+      arango.PUT("/_admin/debug/failat/assertLockTimeoutHigh",{});
+      switchConnectionToCoordinator(collInfo);
+
+      // we are not testing much inside this test here, except that the
+      // DB servers don't run into the assertion failure in RocksDBMetaCollection
+      // while trying to acquire the collection lock.
+      db._query(`FOR i IN 1..100 INSERT {Hallo:i} INTO ${cn} RETURN NEW`).toArray();
+    },
+  };
+}
+
 let ep = getEndpointsByType('dbserver');
 if (ep.length && debugCanUseFailAt(ep[0])) {
   // only execute if failure tests are available
-  jsunity.run(dropFollowersElCheapoSuite);
+  if (db._properties().replicationVersion !== "2") {
+    jsunity.run(dropFollowersElCheapoSuite);
+  }
+  jsunity.run(lockTimeoutSuite);
 }
 return jsunity.done();

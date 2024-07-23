@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -146,6 +147,15 @@ struct AgencyLogBuilder {
     return *this;
   }
 
+  auto allStatesReady() -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    for (auto& [id, v] : current.localState) {
+      v.state =
+          replication2::replicated_log::LocalStateMachineStatus::kOperational;
+    }
+    return *this;
+  }
+
   auto makeCurrent() -> RLA::LogCurrent& {
     if (!_log.current.has_value()) {
       _log.current.emplace();
@@ -157,9 +167,23 @@ struct AgencyLogBuilder {
       if (_log.plan.has_value()) {
         _log.current->supervision->assumedWriteConcern =
             _log.plan->participantsConfig.config.effectiveWriteConcern;
+        _log.current->supervision->assumedWaitForSync =
+            _log.plan->participantsConfig.config.waitForSync;
       }
     }
     return _log.current.value();
+  }
+
+  auto setPlanConfigGeneration(std::size_t generation) {
+    auto& plan = makePlan();
+    plan.participantsConfig.generation = generation;
+  }
+
+  auto commitCurrentParticipantsConfig() {
+    auto& plan = makePlan();
+    auto& current = makeCurrent();
+    establishLeadership();
+    current.leader->committedParticipantsConfig = plan.participantsConfig;
   }
 
   auto get() const noexcept -> RLA::Log const& { return _log; }

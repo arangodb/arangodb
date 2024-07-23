@@ -12,15 +12,18 @@ strip_install_bin_and_config(arangodump    ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} 
 strip_install_bin_and_config(arangoimport  ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
 strip_install_bin_and_config(arangorestore ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
 strip_install_bin_and_config(arangoexport  ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
-strip_install_bin_and_config(arangosh      ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
 strip_install_bin_and_config(arangovpack   ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
 
-install_command_alias(${BIN_ARANGOSH}
-  ${CMAKE_INSTALL_BINDIR}
-  foxx-manager)
-install_config(foxx-manager)
+if (USE_V8)
+  strip_install_bin_and_config(arangosh      ${STRIP_DIR} ${CMAKE_INSTALL_BINDIR} strip_install_client)
 
-install_command_alias(${BIN_ARANGOSH}
-  ${CMAKE_INSTALL_BINDIR}
-  arangoinspect)
-install_config(arangoinspect)
+  install_command_alias(${BIN_ARANGOSH}
+    ${CMAKE_INSTALL_BINDIR}
+    foxx-manager)
+  install_config(foxx-manager)
+
+  install_command_alias(${BIN_ARANGOSH}
+    ${CMAKE_INSTALL_BINDIR}
+    arangoinspect)
+  install_config(arangoinspect)
+endif ()

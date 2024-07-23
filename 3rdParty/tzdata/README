@@ -11,14 +11,17 @@ changes made by political bodies to time zone boundaries, UTC offsets,
 and daylight-saving rules.
 
 See <https://www.iana.org/time-zones/repository/tz-link.html> or the
-file tz-link.html for how to acquire the code and data.  Once acquired,
-read the comments in the file 'Makefile' and make any changes needed
-to make things right for your system, especially if you are using some
-platform other than GNU/Linux.  Then run the following commands,
-substituting your desired installation directory for "$HOME/tzdir":
+file tz-link.html for how to acquire the code and data.
 
-	make TOPDIR=$HOME/tzdir install
-	$HOME/tzdir/usr/bin/zdump -v America/Los_Angeles
+Once acquired, read the leading comments in the file "Makefile"
+and make any changes needed to make things right for your system,
+especially when using a platform other than current GNU/Linux.
+
+Then run the following commands, substituting your desired
+installation directory for "$HOME/tzdir":
+
+	make TOPDIR="$HOME/tzdir" install
+	"$HOME/tzdir/usr/bin/zdump" -v America/Los_Angeles
 
 See the file tz-how-to.html for examples of how to read the data files.
 

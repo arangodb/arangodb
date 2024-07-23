@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,10 +31,15 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -67,6 +72,9 @@ bool DropCollection::first() {
   LOG_TOPIC("a2961", DEBUG, Logger::MAINTENANCE)
       << "DropCollection: dropping local shard '" << database << "/" << shard;
 
+  std::string from;
+  _description.get("from", from);
+
   // Database still there?
   auto& df = _feature.server().getFeature<DatabaseFeature>();
   try {
@@ -82,7 +90,16 @@ bool DropCollection::first() {
       TRI_ASSERT(coll);
       LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
           << "Dropping local collection " << shard;
-      result(Collections::drop(*coll, false));
+
+      if (vocbase.replicationVersion() == replication::Version::TWO) {
+        result(dropCollectionReplication2(shard, coll));
+      } else {
+        // both flags should not be necessary here, as we are only dealing with
+        // shard names here and not actual cluster-wide collection names
+        CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                          .allowDropGraphCollection = true};
+        result(Collections::drop(*coll, dropOptions));
+      }
 
       // it is safe here to clear our replication failure statistics even
       // if the collection could not be dropped. the drop attempt alone
@@ -93,7 +110,7 @@ bool DropCollection::first() {
 
       error << "failed to lookup local collection " << database << "/" << shard;
       LOG_TOPIC("02722", ERR, Logger::MAINTENANCE)
-          << "DropCollection: " << error.str();
+          << "DropCollection: " << error.str() << " found " << found;
       result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, error.str());
 
       return false;
@@ -137,4 +154,22 @@ void DropCollection::setState(ActionState state) {
     _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
+}
+
+Result DropCollection::dropCollectionReplication2(
+    ShardID const& shard, std::shared_ptr<LogicalCollection>& coll) {
+  TRI_ASSERT(coll != nullptr) << shard;
+
+  auto res = basics::catchToResult([&]() {
+    auto leader = coll->getDocumentStateLeader();
+    return leader->dropShard(shard).waitAndGet();
+  });
+
+  if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+      res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+    // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+    std::this_thread::sleep_for(std::chrono::milliseconds{50});
+  }
+
+  return res;
 }

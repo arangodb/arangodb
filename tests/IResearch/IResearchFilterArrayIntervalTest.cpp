@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,6 +47,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AqlHelper.h"
@@ -67,12 +69,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/Methods/Collections.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
 #endif
+#include "VocBase/Methods/Collections.h"
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
@@ -87,6 +87,8 @@ class IResearchFilterArrayIntervalTest
                                             arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
  private:
   TRI_vocbase_t* _vocbase;
@@ -106,7 +108,7 @@ class IResearchFilterArrayIntervalTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -122,7 +124,7 @@ class IResearchFilterArrayIntervalTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -142,8 +144,8 @@ class IResearchFilterArrayIntervalTest
         unused);
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")
-            ->slice());  // cache analyzer
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -528,7 +530,8 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       SCOPED_TRACE(testing::Message("Query:") << queryString);
 
       arangodb::aql::Variable var("c", 0,
-                                  /*isFullDocumentFromCollection*/ false);
+                                  /*isFullDocumentFromCollection*/ false,
+                                  resourceMonitor);
       arangodb::aql::AqlValue value(arangodb::aql::AqlValue("2"));
       arangodb::aql::AqlValueGuard guard(value, true);
       ExpressionContextMock ctx;
@@ -812,7 +815,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       SCOPED_TRACE(testing::Message("Query") << queryString);
       irs::Or expected;
       if (operation.first.find("ANY") != std::string::npos) {
-        expected.add<irs::empty>();
+        expected.add<irs::Empty>();
       } else {
         expected.add<irs::all>();
       }

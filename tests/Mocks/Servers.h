@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,26 +23,34 @@
 
 #pragma once
 
-#include "IResearch/AgencyMock.h"
-#include "StorageEngineMock.h"
-
 #include "Mocks/LogLevels.h"
 
-#include "Agency/Store.h"
+#include "Agency/AgencyCommon.h"
 #include "RestServer/arangod.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "Logger/LogMacros.h"
+#include "Transaction/Hints.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 
 struct TRI_vocbase_t;
 
+class StorageEngineMock;
+
 namespace arangodb {
+
+class LogicalCollection;
+class Scheduler;
+
+namespace network {
+class ConnectionPool;
+}
 
 namespace transaction {
 class Methods;
-}
+}  // namespace transaction
 
 namespace aql {
 class Query;
@@ -122,7 +130,7 @@ class MockServer {
       _oldApplicationServerState = arangodb::application_features::
           ApplicationServer::State::UNINITIALIZED;
   arangodb::ArangodServer _server;
-  StorageEngineMock _engine;
+  std::unique_ptr<StorageEngineMock> _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool>
       _features;
   std::string _testFilesystemPath;
@@ -176,6 +184,11 @@ class MockAqlServer
   // want to use within the Query.
   std::shared_ptr<arangodb::aql::Query> createFakeQuery(
       bool activateTracing = false, std::string queryString = "",
+      std::function<void(arangodb::aql::Query&)> runBeforePrepare =
+          [](arangodb::aql::Query&) {}) const;
+  std::shared_ptr<arangodb::aql::Query> createFakeQuery(
+      Scheduler* scheduler, bool activateTracing = false,
+      std::string queryString = "",
       std::function<void(arangodb::aql::Query&)> runBeforePrepare =
           [](arangodb::aql::Query&) {}) const;
 };
@@ -254,6 +267,8 @@ class MockClusterServer
           [](arangodb::aql::Query&) {}) const;
 
   ServerID const& getServerID() const;
+
+  auto genUniqId() const -> std::uint64_t;
 
   // You can only create specialized types
  protected:

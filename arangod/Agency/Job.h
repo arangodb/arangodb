@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,10 +41,6 @@ class Slice;
 }
 namespace replication2 {
 class LogId;
-namespace replicated_state::agency {
-struct Target;
-struct Plan;
-}  // namespace replicated_state::agency
 namespace agency {
 struct LogPlanSpecification;
 struct LogTarget;
@@ -156,6 +152,9 @@ struct Job {
   static std::string findOtherHealthyParticipant(
       Node const& snap, std::string const& db, replication2::LogId stateId,
       std::string const& serverToAvoid);
+  static std::string findOtherHealthyParticipant(
+      Node const& snap, arangodb::replication2::agency::LogTarget const& target,
+      std::string const& serverToAvoid);
 
   static bool isServerLeaderForState(Node const& snap, std::string const& db,
                                      replication2::LogId stateId,
@@ -170,6 +169,9 @@ struct Job {
                   replication2::LogId stateId);
   static std::optional<replication2::agency::LogPlanSpecification> readLogPlan(
       Node const& snap, std::string const& db, replication2::LogId logId);
+  static std::optional<replication2::LogId> getReplicatedStateId(
+      Node const& snap, std::string const& db, std::string const& collection,
+      std::string const& shard);
 
   /// @brief The shard must be one of a collection without
   /// `distributeShardsLike`. This returns all servers which
@@ -262,8 +264,14 @@ struct Job {
   static void addPreconditionUnchanged(velocypack::Builder& pre,
                                        std::string_view key,
                                        velocypack::Slice value);
+  static void addPreconditionUnchanged(velocypack::Builder& pre,
+                                       std::string_view key,
+                                       velocypack::Value value);
   static void addPreconditionJobStillInPending(velocypack::Builder& pre,
                                                std::string const& jobId);
+  static void addPreconditionClonesStillExist(
+      velocypack::Builder& pre, std::string_view database,
+      std::vector<shard_t> const& clones);
   static std::string checkServerHealth(Node const& snapshot,
                                        std::string const& server);
 };

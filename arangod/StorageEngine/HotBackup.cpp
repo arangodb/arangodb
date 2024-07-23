@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,7 +31,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/RocksDBEngine/RocksDBHotBackup/RocksDBHotBackup.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
 
@@ -55,7 +55,7 @@ arangodb::Result HotBackup::execute(std::string const& command,
                                     VPackBuilder& report) {
   switch (_engine) {
     case BACKUP_ENGINE::ROCKSDB:
-      return executeRocksDB(command, payload, report);
+      return executeDBServer(command, payload, report);
     case BACKUP_ENGINE::CLUSTER:
       return executeCoordinator(command, payload, report);
   }
@@ -64,9 +64,12 @@ arangodb::Result HotBackup::execute(std::string const& command,
                           "hot backup not implemented for this storage engine");
 }
 
-arangodb::Result HotBackup::executeRocksDB(std::string const& command,
-                                           VPackSlice const payload,
-                                           VPackBuilder& report) {
+arangodb::Result HotBackup::executeDBServer(std::string const& command,
+                                            VPackSlice const payload,
+                                            VPackBuilder& report) {
+  // Either on a dbserver or we are in the (un)lock command
+  TRI_ASSERT(_engine != BACKUP_ENGINE::CLUSTER || command == "lock" ||
+             command == "unlock");
 #ifdef USE_ENTERPRISE
   auto& feature = _server.getFeature<HotBackupFeature>();
   auto operation =
@@ -94,9 +97,9 @@ arangodb::Result HotBackup::executeCoordinator(std::string const& command,
   auto& feature = _server.getFeature<ClusterFeature>();
   if (command == "create") {
     return hotBackupCoordinator(feature, payload, report);
-  } else if (command == "lock") {
-    return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED,
-                            "backup locks not implemented on coordinators");
+  } else if (command == "lock" || command == "unlock") {
+    // forward to dbserver part
+    return executeDBServer(command, payload, report);
   } else if (command == "restore") {
     return hotRestoreCoordinator(feature, payload, report);
   } else if (command == "delete") {
@@ -111,10 +114,10 @@ arangodb::Result HotBackup::executeCoordinator(std::string const& command,
     return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED,
                             command + " is not implemented on coordinators");
   }
-#endif
-
+#else
   // We'll never get here
   return arangodb::Result();
+#endif
 }
 
 }  // namespace arangodb

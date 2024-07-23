@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,6 +34,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -119,6 +120,7 @@ uint64_t defaultMemoryLimit(uint64_t available, double reserveFraction,
   // minimum reserve memory is 256MB
   reserve = std::max<uint64_t>(reserve, static_cast<uint64_t>(256) << 20);
 
+  TRI_ASSERT(available > 0);
   double f = double(1.0) - (double(reserve) / double(available));
   double dyn = (double(available) * f * percentage);
   if (dyn < 0.0) {
@@ -162,8 +164,13 @@ DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached_total,
                 "Number of global AQL query memory limit violations");
 DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached_total,
                 "Number of local AQL query memory limit violations");
+DECLARE_GAUGE(arangodb_aql_cursors_active, uint64_t,
+              "Total amount of active AQL query results cursors");
+DECLARE_GAUGE(arangodb_aql_cursors_memory_usage, uint64_t,
+              "Total memory usage of active query result cursors");
 
-QueryRegistryFeature::QueryRegistryFeature(Server& server)
+QueryRegistryFeature::QueryRegistryFeature(Server& server,
+                                           metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _trackingEnabled(true),
       _trackSlowQueries(true),
@@ -180,9 +187,11 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
 #endif
       _allowCollectionsInExpressions(false),
       _logFailedQueries(false),
+      _maxAsyncPrefetchSlotsTotal(256),
+      _maxAsyncPrefetchSlotsPerQuery(32),
       _maxQueryStringLength(4096),
       _maxCollectionsPerQuery(2048),
-      _peakMemoryUsageThreshold(4294967296),  // 4GB
+      _peakMemoryUsageThreshold(1073741824),  // 1GB
       _queryGlobalMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(
@@ -199,31 +208,29 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
       _queryCacheMode("off"),
-      _queryTimes(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_query_time{})),
-      _slowQueryTimes(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_slow_query_time{})),
-      _totalQueryExecutionTime(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_total_query_time_msec_total{})),
-      _queriesCounter(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_all_query_total{})),
-      _runningQueries(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_current_query{})),
-      _globalQueryMemoryUsage(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_global_memory_usage{})),
-      _globalQueryMemoryLimit(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_aql_global_memory_limit{})),
+      _queryTimes(metrics.add(arangodb_aql_query_time{})),
+      _slowQueryTimes(metrics.add(arangodb_aql_slow_query_time{})),
+      _totalQueryExecutionTime(
+          metrics.add(arangodb_aql_total_query_time_msec_total{})),
+      _queriesCounter(metrics.add(arangodb_aql_all_query_total{})),
+      _runningQueries(metrics.add(arangodb_aql_current_query{})),
+      _globalQueryMemoryUsage(metrics.add(arangodb_aql_global_memory_usage{})),
+      _globalQueryMemoryLimit(metrics.add(arangodb_aql_global_memory_limit{})),
       _globalQueryMemoryLimitReached(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_aql_global_query_memory_limit_reached_total{})),
+          metrics.add(arangodb_aql_global_query_memory_limit_reached_total{})),
       _localQueryMemoryLimitReached(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_aql_local_query_memory_limit_reached_total{})) {
+          metrics.add(arangodb_aql_local_query_memory_limit_reached_total{})),
+      _activeCursors(metrics.add(arangodb_aql_cursors_active{})),
+      _cursorsMemoryUsage(metrics.add(arangodb_aql_cursors_memory_usage{})) {
   static_assert(
       Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
 
   setOptional(false);
+#ifdef USE_V8
   startsAfter<V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
 
   auto properties = arangodb::aql::QueryCache::instance()->properties();
   _queryCacheMaxResultsCount = properties.maxResultsCount;
@@ -231,6 +238,8 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
   _queryCacheMaxEntrySize = properties.maxEntrySize;
   _queryCacheIncludeSystem = properties.includeSystem;
 }
+
+QueryRegistryFeature::~QueryRegistryFeature() = default;
 
 void QueryRegistryFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
@@ -240,6 +249,10 @@ void QueryRegistryFeature::collectOptions(
   options->addOldOption("database.query-cache-max-results",
                         "query.cache-entries");
   options->addOldOption("database.disable-query-tracking", "query.tracking");
+
+  // option obsoleted since 3.12.1, because the APIs are turned on by default.
+  options->addObsoleteOption("query.enable-debug-apis",
+                             "Whether to enable query debug APIs.", false);
 
   options
       ->addOption("--query.global-memory-limit",
@@ -351,8 +364,6 @@ allowed memory usage but not increase it.)");
           "The runtime threshold for AQL queries (in seconds, 0 = no limit).",
           new DoubleParameter(&_queryMaxRuntime, /*base*/ 1.0,
                               /*minValue*/ 0.0))
-      .setIntroducedIn(30607)
-      .setIntroducedIn(30703)
       .setLongDescription(R"(Sets a default maximum runtime for AQL queries.
 
 The default value is `0`, meaning that the runtime of AQL queries is not
@@ -371,17 +382,13 @@ issued for administration and database-internal purposes.)");
   options->addOption("--query.tracking", "Whether to track queries.",
                      new BooleanParameter(&_trackingEnabled));
 
-  options
-      ->addOption("--query.tracking-slow-queries",
-                  "Whether to track slow queries.",
-                  new BooleanParameter(&_trackSlowQueries))
-      .setIntroducedIn(30704);
+  options->addOption("--query.tracking-slow-queries",
+                     "Whether to track slow queries.",
+                     new BooleanParameter(&_trackSlowQueries));
 
-  options
-      ->addOption("--query.tracking-with-querystring",
-                  "Whether to track the query string.",
-                  new BooleanParameter(&_trackQueryString))
-      .setIntroducedIn(30704);
+  options->addOption("--query.tracking-with-querystring",
+                     "Whether to track the query string.",
+                     new BooleanParameter(&_trackQueryString));
 
   options
       ->addOption("--query.tracking-with-bindvars",
@@ -396,11 +403,9 @@ results cache is used.
 You can disable tracking and displaying bind variable values by setting the
 option to `false`.)");
 
-  options
-      ->addOption("--query.tracking-with-datasources",
-                  "Whether to track data sources of AQL queries.",
-                  new BooleanParameter(&_trackDataSources))
-      .setIntroducedIn(30704);
+  options->addOption("--query.tracking-with-datasources",
+                     "Whether to track data sources of AQL queries.",
+                     new BooleanParameter(&_trackDataSources));
 
   options
       ->addOption("--query.fail-on-warning",
@@ -553,37 +558,31 @@ The value can still be adjusted on a per-query basis by setting the
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
 #ifdef USE_ENTERPRISE
-  options
-      ->addOption("--query.smart-joins",
-                  "Whether to enable the SmartJoins query optimization.",
-                  new BooleanParameter(&_smartJoins),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30405);
+  options->addOption("--query.smart-joins",
+                     "Whether to enable the SmartJoins query optimization.",
+                     new BooleanParameter(&_smartJoins),
+                     arangodb::options::makeDefaultFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::Enterprise));
 
-  options
-      ->addOption("--query.parallelize-traversals",
-                  "Whether to enable traversal parallelization.",
-                  new BooleanParameter(&_parallelizeTraversals),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30701);
+  options->addOption("--query.parallelize-traversals",
+                     "Whether to enable traversal parallelization.",
+                     new BooleanParameter(&_parallelizeTraversals),
+                     arangodb::options::makeDefaultFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::Enterprise));
 
   // this is an Enterprise-only option
   // in Community Edition, _maxParallelism will stay at its default value
   // (currently 4), but will not be used.
-  options
-      ->addOption(
-          "--query.max-parallelism",
-          "The maximum number of threads to use for a single query; the "
-          "actual query execution may use less depending on various factors.",
-          new UInt64Parameter(&_maxParallelism),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30701);
+  options->addOption(
+      "--query.max-parallelism",
+      "The maximum number of threads to use for a single query; the "
+      "actual query execution may use less depending on various factors.",
+      new UInt64Parameter(&_maxParallelism),
+      arangodb::options::makeDefaultFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::Enterprise));
 #endif
 
   options
@@ -706,6 +705,32 @@ lookups.)");
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31007);
+
+  options
+      ->addOption(
+          "--query.max-total-async-prefetch-slots",
+          "The maximum total number of slots available for asynchronous "
+          "prefetching across all AQL queries.",
+          new SizeTParameter(&_maxAsyncPrefetchSlotsTotal),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200);
+
+  options
+      ->addOption(
+          "--query.max-query-async-prefetch-slots",
+          "The maximum per-query number of slots available for asynchronous "
+          "prefetching inside any AQL query.",
+          new SizeTParameter(&_maxAsyncPrefetchSlotsPerQuery),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200);
 }
 
 void QueryRegistryFeature::validateOptions(
@@ -715,6 +740,17 @@ void QueryRegistryFeature::validateOptions(
     LOG_TOPIC("2af5f", FATAL, Logger::AQL)
         << "invalid value for `--query.global-memory-limit`. expecting 0 or a "
            "value >= `--query.memory-limit`";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_maxAsyncPrefetchSlotsPerQuery > _maxAsyncPrefetchSlotsTotal) {
+    LOG_TOPIC("84882", FATAL, Logger::AQL)
+        << "invalid values for `--query.max-total-async-prefetch-slots` ("
+        << _maxAsyncPrefetchSlotsTotal
+        << ") / `--query.max-query-async-prefetch-slots` ("
+        << _maxAsyncPrefetchSlotsPerQuery
+        << "). the latter option must not be set to a higher value than the "
+           "former";
     FATAL_ERROR_EXIT();
   }
 
@@ -784,9 +820,10 @@ void QueryRegistryFeature::prepare() {
   // create the query registry
   _queryRegistry = std::make_unique<aql::QueryRegistry>(_queryRegistryTTL);
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
-}
 
-void QueryRegistryFeature::start() {}
+  _asyncPrefetchSlotsManager.configure(_maxAsyncPrefetchSlotsTotal,
+                                       _maxAsyncPrefetchSlotsPerQuery);
+}
 
 void QueryRegistryFeature::beginShutdown() {
   TRI_ASSERT(_queryRegistry != nullptr);
@@ -827,6 +864,11 @@ void QueryRegistryFeature::trackSlowQuery(double time) {
   // query is already counted here as normal query, so don't count it
   // again in _queryTimes or _totalQueryExecutionTime
   _slowQueryTimes.count(time);
+}
+
+aql::AsyncPrefetchSlotsManager&
+QueryRegistryFeature::asyncPrefetchSlotsManager() noexcept {
+  return _asyncPrefetchSlotsManager;
 }
 
 }  // namespace arangodb

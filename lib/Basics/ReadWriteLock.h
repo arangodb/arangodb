@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,6 +29,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <mutex>
+#include <string>
 
 namespace arangodb::basics {
 
@@ -53,12 +54,12 @@ class ReadWriteLock {
   void lockWrite();
 
   /// @brief locks for writing within microsecond timeout
-  [[nodiscard]] bool lockWrite(uint64_t timeout) {
+  [[nodiscard]] bool tryLockWriteFor(uint64_t timeout) {
     std::chrono::microseconds ms(timeout);
-    return lockWrite(ms);
+    return tryLockWriteFor(ms);
   }
 
-  [[nodiscard]] bool lockWrite(std::chrono::microseconds timeout);
+  [[nodiscard]] bool tryLockWriteFor(std::chrono::microseconds timeout);
 
   /// @brief locks for writing, but only tries
   [[nodiscard]] bool tryLockWrite() noexcept;
@@ -68,6 +69,9 @@ class ReadWriteLock {
 
   /// @brief locks for reading, tries only
   [[nodiscard]] bool tryLockRead() noexcept;
+
+  /// @brief try to get the lock until timeout is reached
+  [[nodiscard]] bool tryLockReadFor(std::chrono::microseconds timeout);
 
   /// @brief releases the read-lock or write-lock
   void unlock() noexcept;
@@ -82,6 +86,8 @@ class ReadWriteLock {
   [[nodiscard]] bool isLockedRead() const noexcept;
   [[nodiscard]] bool isLockedWrite() const noexcept;
 
+  std::string stringifyLockState() const;
+
  private:
   /// @brief mutex for _readers_bell cv
   std::mutex _reader_mutex;
@@ -95,17 +101,17 @@ class ReadWriteLock {
   /// @brief a condition variable to wake up one writer thread
   std::condition_variable _writers_bell;
 
-  /// @brief _state, lowest bit is write_lock, the next 15 bits is the number of
-  /// queued writers, the last 16 bits the number of active readers.
-  std::atomic<uint32_t> _state;
+  /// @brief _state, lowest bit is write_lock, the next 31 bits is the number of
+  /// queued writers, the last 32 bits the number of active readers.
+  std::atomic<uint64_t> _state;
 
-  static constexpr uint32_t WRITE_LOCK = 1;
+  static constexpr uint64_t WRITE_LOCK = 1;
 
-  static constexpr uint32_t READER_INC = 1 << 16;
-  static constexpr uint32_t READER_MASK = ~(READER_INC - 1);
+  static constexpr uint64_t READER_INC = std::uint64_t{1} << 32;
+  static constexpr uint64_t READER_MASK = ~(READER_INC - 1);
 
-  static constexpr uint32_t QUEUED_WRITER_INC = 1 << 1;
-  static constexpr uint32_t QUEUED_WRITER_MASK = (READER_INC - 1) & ~WRITE_LOCK;
+  static constexpr uint64_t QUEUED_WRITER_INC = 1 << 1;
+  static constexpr uint64_t QUEUED_WRITER_MASK = (READER_INC - 1) & ~WRITE_LOCK;
 
   static_assert((READER_MASK & WRITE_LOCK) == 0,
                 "READER_MASK and WRITE_LOCK conflict");

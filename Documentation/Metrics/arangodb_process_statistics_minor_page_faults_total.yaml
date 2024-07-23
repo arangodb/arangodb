@@ -14,4 +14,4 @@ exposedBy:
   - single
 description: |
   The number of minor faults the process has made which have not required
-  loading a memory page from disk. This figure is not reported on Windows.
+  loading a memory page from disk.

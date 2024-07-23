@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -158,7 +158,7 @@ static void JS_RecalculateCounts(
   auto* physical = toRocksDBCollection(*collection);
 
   v8::Handle<v8::Value> result = v8::Number::New(
-      isolate, static_cast<double>(physical->recalculateCounts()));
+      isolate, static_cast<double>(physical->recalculateCounts().waitAndGet()));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -209,18 +209,10 @@ static void JS_WaitForEstimatorSync(
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
 
-  // release all unused ticks from flush feature
-  v8g->server().getFeature<FlushFeature>().releaseUnusedTicks();
-
-  // force-flush
-  RocksDBEngine& engine =
-      v8g->server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  engine.settingsManager()->sync(/*force*/ true);
-
   v8g->server()
       .getFeature<EngineSelectorFeature>()
       .engine()
-      .waitForEstimatorSync(std::chrono::seconds(10));
+      .waitForEstimatorSync();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -351,7 +343,7 @@ static void JS_CollectionRevisionTreeRebuild(
   }
 
   auto* physical = toRocksDBCollection(*collection);
-  Result result = physical->rebuildRevisionTree();
+  Result result = physical->rebuildRevisionTree().waitAndGet();
 
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(result.errorNumber(), result.errorMessage());
@@ -379,7 +371,7 @@ static void JS_CollectionRevisionTreeSummary(
 
   auto* physical = toRocksDBCollection(*collection);
   VPackBuilder builder;
-  physical->revisionTreeSummary(builder, fromCollection);
+  physical->revisionTreeSummary(builder, fromCollection).waitAndGet();
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
@@ -409,10 +401,11 @@ static void JS_CollectionRevisionTreePendingUpdates(
 #endif
 
 void RocksDBV8Functions::registerResources(RocksDBEngine& engine) {
-  ISOLATE;
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
 
   // patch ArangoCollection object
   v8::Handle<v8::ObjectTemplate> rt =

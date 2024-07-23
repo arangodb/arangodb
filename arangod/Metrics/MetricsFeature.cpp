@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,8 +29,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Agency/Node.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
 #include "Logger/LoggerFeature.h"
@@ -45,36 +47,55 @@
 
 namespace arangodb::metrics {
 
-MetricsFeature::MetricsFeature(Server& server)
-    : ArangodFeature{server, *this},
+template<typename Server>
+MetricsFeature::MetricsFeature(
+    Server& server,
+    LazyApplicationFeatureReference<QueryRegistryFeature>
+        lazyQueryRegistryFeatureRef,
+    LazyApplicationFeatureReference<StatisticsFeature> lazyStatisticsFeatureRef,
+    LazyApplicationFeatureReference<EngineSelectorFeature>
+        lazyEngineSelectorFeatureRef,
+    LazyApplicationFeatureReference<ClusterMetricsFeature>
+        lazyClusterMetricsFeatureRef,
+    LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef)
+    : ApplicationFeature{server, *this},
+      _lazyQueryRegistryFeatureRef(std::move(lazyQueryRegistryFeatureRef)),
+      _lazyStatisticsFeatureRef(std::move(lazyStatisticsFeatureRef)),
+      _lazyEngineSelectorFeatureRef(std::move(lazyEngineSelectorFeatureRef)),
+      _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
+      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
       _export{true},
       _exportReadWriteMetrics{false},
-      _ensureWhitespace{true} {
+      _ensureWhitespace{true},
+      _usageTrackingModeString{"disabled"},
+      _usageTrackingMode{UsageTrackingMode::kDisabled} {
   setOptional(false);
-  startsAfter<LoggerFeature>();
-  startsBefore<application_features::GreetingsFeaturePhase>();
+  startsAfter<LoggerFeature, Server>();
+  startsBefore<application_features::GreetingsFeaturePhase, Server>();
 }
+
+template MetricsFeature::MetricsFeature(
+    ArangodServer&, LazyApplicationFeatureReference<QueryRegistryFeature>,
+    LazyApplicationFeatureReference<StatisticsFeature>,
+    LazyApplicationFeatureReference<EngineSelectorFeature>,
+    LazyApplicationFeatureReference<ClusterMetricsFeature>,
+    LazyApplicationFeatureReference<ClusterFeature>);
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   _serverStatistics =
       std::make_unique<ServerStatistics>(*this, StatisticsFeature::time());
 
-  options
-      ->addOption("--server.export-metrics-api",
-                  "Whether to enable the metrics API.",
-                  new options::BooleanParameter(&_export),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30600);
+  options->addOption(
+      "--server.export-metrics-api", "Whether to enable the metrics API.",
+      new options::BooleanParameter(&_export),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--server.export-read-write-metrics",
-                  "Whether to enable metrics for document reads and writes.",
-                  new options::BooleanParameter(&_exportReadWriteMetrics),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30707);
+  options->addOption(
+      "--server.export-read-write-metrics",
+      "Whether to enable metrics for document reads and writes.",
+      new options::BooleanParameter(&_exportReadWriteMetrics),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(
@@ -89,22 +110,77 @@ void MetricsFeature::collectOptions(
       .setLongDescription(R"(Using the whitespace characters in the output may
 be required to make the metrics output compatible with some processing tools,
 although Prometheus itself doesn't need it.)");
+
+  std::unordered_set<std::string> modes = {"disabled", "enabled-per-shard",
+                                           "enabled-per-shard-per-user"};
+  options
+      ->addOption(
+          "--server.export-shard-usage-metrics",
+          "Whether or not to export shard usage metrics.",
+          new options::DiscreteValuesParameter<options::StringParameter>(
+              &_usageTrackingModeString, modes),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(This option can be used to make DB-Servers export
+detailed shard usage metrics.
+
+- By default, this option is set to `disabled` so that no shard usage metrics
+  are exported.
+
+- Set the option to `enabled-per-shard` to make DB-Servers collect per-shard
+  usage metrics whenever a shard is accessed.
+
+- Set this option to `enabled-per-shard-per-user` to make DB-Servers collect
+  usage metrics per shard and per user whenever a shard is accessed.
+
+Note that enabling shard usage metrics can produce a lot of metrics if there 
+are many shards and/or users in the system.)");
 }
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   auto metric = builder.build();
+  TRI_ASSERT(metric != nullptr);
   MetricKeyView key{metric->name(), metric->labels()};
   std::lock_guard lock{_mutex};
-  if (!_registry.try_emplace(key, metric).second) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string{builder.type()} + " " +
-                                       std::string{builder.name()} +
-                                       " already exists");
+  auto [it, inserted] = _registry.try_emplace(key, metric);
+  if (!inserted) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(builder.type(), " ", metric->name(), ":", metric->labels(),
+                     " already exists"));
   }
+  return (*it).second;
+}
+
+std::shared_ptr<Metric> MetricsFeature::doEnsureMetric(Builder& builder) {
+  auto metric = builder.build();
+  TRI_ASSERT(metric != nullptr);
+  MetricKeyView key{metric->name(), metric->labels()};
+  {
+    // happy path: check if metric already exists and if so, return it
+    std::shared_lock lock{_mutex};
+    if (auto it = _registry.find(key); it != _registry.end()) {
+      return (*it).second;
+    }
+  }
+  // slow path: create new metric under exclusive lock
+  std::lock_guard lock{_mutex};
+  // insertion can fail here because someone else concurrently inserted the
+  // metric. this is fine, because in that case we simply return that
+  // version.
+  auto [it, inserted] = _registry.try_emplace(key, metric);
+  return (*it).second;
+}
+
+std::shared_ptr<Metric> MetricsFeature::doAddDynamic(Builder& builder) {
+  auto metric = doEnsureMetric(builder);
+  metric->setDynamic();
   return metric;
 }
 
-Metric* MetricsFeature::get(MetricKeyView const& key) {
+Metric* MetricsFeature::get(MetricKeyView const& key) const {
   std::shared_lock lock{_mutex};
   auto it = _registry.find(key);
   if (it == _registry.end()) {
@@ -125,19 +201,39 @@ bool MetricsFeature::ensureWhitespace() const noexcept {
   return _ensureWhitespace;
 }
 
+MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
+    const noexcept {
+  return _usageTrackingMode;
+}
+
 void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_exportReadWriteMetrics) {
     serverStatistics().setupDocumentMetrics();
   }
+
+  // translate usage tracking mode string to enum value
+  if (_usageTrackingModeString == "enabled-per-shard") {
+    _usageTrackingMode = UsageTrackingMode::kEnabledPerShard;
+  } else if (_usageTrackingModeString == "enabled-per-shard-per-user") {
+    _usageTrackingMode = UsageTrackingMode::kEnabledPerShardPerUser;
+  } else {
+    _usageTrackingMode = UsageTrackingMode::kDisabled;
+  }
 }
 
-void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
+void MetricsFeature::toPrometheus(std::string& result,
+                                  MetricsParts metricsParts,
+                                  CollectMode mode) const {
   // minimize reallocs
-  result.reserve(32768);
+  result.reserve(64 * 1024);
 
-  // QueryRegistryFeature
-  auto& q = server().getFeature<QueryRegistryFeature>();
-  q.updateMetrics();
+  if (metricsParts.includeStandardMetrics()) {
+    // QueryRegistryFeature only provides standard metrics.
+    // update only necessary if these metrics should be included
+    // in the output
+    _queryRegistryFeature->updateMetrics();
+  }
+
   bool hasGlobals = false;
   {
     auto lock = initGlobalLabels();
@@ -146,6 +242,15 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
     std::string_view curr;
     for (auto const& i : _registry) {
       TRI_ASSERT(i.second);
+      if (i.second->isDynamic()) {
+        if (!metricsParts.includeDynamicMetrics()) {
+          continue;
+        }
+      } else {
+        if (!metricsParts.includeStandardMetrics()) {
+          continue;
+        }
+      }
       curr = i.second->name();
       if (last != curr) {
         last = curr;
@@ -159,17 +264,28 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
       batch->toPrometheus(result, _globals, _ensureWhitespace);
     }
   }
-  auto& sf = server().getFeature<StatisticsFeature>();
-  auto time = std::chrono::duration<double, std::milli>(
-      std::chrono::system_clock::now().time_since_epoch());
-  sf.toPrometheus(result, time.count(), _ensureWhitespace);
-  auto& es = server().getFeature<EngineSelectorFeature>().engine();
-  if (es.typeName() == RocksDBEngine::kEngineName) {
-    es.getStatistics(result);
-  }
-  auto& cm = server().getFeature<ClusterMetricsFeature>();
-  if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
-    cm.toPrometheus(result, _globals, _ensureWhitespace);
+
+  if (metricsParts.includeStandardMetrics()) {
+    // StatisticsFeature only provides standard metrics
+    auto time = std::chrono::duration<double, std::milli>(
+        std::chrono::system_clock::now().time_since_epoch());
+    _statisticsFeature->toPrometheus(result, time.count(), _globals,
+                                     _ensureWhitespace);
+
+    // Storage engine only provides standard metrics
+    auto& es = _engineSelectorFeature->engine();
+    if (es.typeName() == RocksDBEngine::kEngineName) {
+      es.toPrometheus(result, _globals, _ensureWhitespace);
+    }
+
+    // ClusterMetricsFeature only provides standard metrics
+    if (hasGlobals && _clusterMetricsFeature->isEnabled() &&
+        mode != CollectMode::Local) {
+      _clusterMetricsFeature->toPrometheus(result, _globals, _ensureWhitespace);
+    }
+
+    // agency node metrics only provide standard metrics
+    consensus::Node::toPrometheus(result, _globals, _ensureWhitespace);
   }
 }
 
@@ -190,20 +306,22 @@ constexpr auto kCoordinatorMetrics =
         "arangodb_search_consolidation_time",
     });
 
-void MetricsFeature::toVPack(velocypack::Builder& builder) const {
+void MetricsFeature::toVPack(velocypack::Builder& builder,
+                             MetricsParts metricsParts) const {
   builder.openArray(true);
   std::shared_lock lock{_mutex};
   for (auto const& i : _registry) {
     TRI_ASSERT(i.second);
     auto const name = i.second->name();
     if (kCoordinatorMetrics.count(name)) {
-      i.second->toVPack(builder, server());
+      i.second->toVPack(builder);
     }
   }
+  auto& ci = _clusterFeature->clusterInfo();
   for (auto const& [name, batch] : _batch) {
     TRI_ASSERT(batch);
     if (kCoordinatorBatch.count(name)) {
-      batch->toVPack(builder, server());
+      batch->toVPack(builder, ci);
     }
   }
   lock.unlock();
@@ -227,15 +345,15 @@ std::shared_lock<std::shared_mutex> MetricsFeature::initGlobalLabels() const {
     // isn't yet known. This check here is to prevent that the label is
     // permanently empty if metrics are requested too early.
     if (auto shortname = instance->getShortName(); !shortname.empty()) {
-      auto label = "shortname=\"" + shortname + "\"";
-      _globals = label + (_globals.empty() ? "" : "," + _globals);
+      _globals = absl::StrCat("shortname=\"", shortname, "\"",
+                              (_globals.empty() ? "" : ","), _globals);
       hasShortname = true;
     }
   }
   if (!hasRole) {
     if (auto role = instance->getRole(); role != ServerState::ROLE_UNDEFINED) {
-      auto label = "role=\"" + ServerState::roleToString(role) + "\"";
-      _globals += (_globals.empty() ? "" : ",") + label;
+      absl::StrAppend(&_globals, (_globals.empty() ? "" : ","), "role=\"",
+                      ServerState::roleToString(role), "\"");
       hasRole = true;
     }
   }
@@ -268,6 +386,14 @@ void MetricsFeature::batchRemove(std::string_view name,
   if (it->second->remove(labels) == 0) {
     _batch.erase(name);
   }
+}
+
+void MetricsFeature::prepare() {
+  _queryRegistryFeature = std::move(_lazyQueryRegistryFeatureRef).get();
+  _statisticsFeature = std::move(_lazyStatisticsFeatureRef).get();
+  _engineSelectorFeature = std::move(_lazyEngineSelectorFeatureRef).get();
+  _clusterMetricsFeature = std::move(_lazyClusterMetricsFeatureRef).get();
+  _clusterFeature = std::move(_lazyClusterFeatureRef).get();
 }
 
 }  // namespace arangodb::metrics

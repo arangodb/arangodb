@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,9 +24,10 @@
 #include "AttributeMasking.h"
 
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 #include "Maskings/RandomStringMask.h"
 #include "Maskings/RandomMask.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::maskings;
@@ -37,22 +38,22 @@ void arangodb::maskings::InstallMaskings() {
 }
 
 std::unordered_map<std::string, ParseResult<AttributeMasking> (*)(
-                                    Path, Maskings*, VPackSlice const&)>
+                                    Path, Maskings*, velocypack::Slice)>
     AttributeMasking::_maskings;
 
 ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
-                                                      VPackSlice const& def) {
+                                                      velocypack::Slice def) {
   if (!def.isObject()) {
     return ParseResult<AttributeMasking>(
         ParseResult<AttributeMasking>::PARSE_FAILED,
         "expecting an object for collection definition");
   }
 
-  std::string path = "";
-  std::string type = "";
+  std::string_view path;
+  std::string type;
 
-  for (auto const& entry : VPackObjectIterator(def, false)) {
-    std::string key = entry.key.copyString();
+  for (auto entry : VPackObjectIterator(def, false)) {
+    auto key = entry.key.stringView();
 
     if (key == "type") {
       if (!entry.value.isString()) {
@@ -69,7 +70,7 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
             "path must be a string");
       }
 
-      path = entry.value.copyString();
+      path = entry.value.stringView();
     }
   }
 
@@ -91,12 +92,12 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
   if (it == _maskings.end()) {
     return ParseResult<AttributeMasking>(
         ParseResult<AttributeMasking>::UNKNOWN_TYPE,
-        "unknown attribute masking type '" + type + "'");
+        absl::StrCat("unknown attribute masking type '", type, "'"));
   }
 
   return it->second(ap.result, maskings, def);
 }
 
-bool AttributeMasking::match(std::vector<std::string> const& path) const {
+bool AttributeMasking::match(std::vector<std::string_view> const& path) const {
   return _path.match(path);
 }

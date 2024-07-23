@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "VocbaseInfo.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -35,7 +36,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
 #include "Utilities/NameValidator.h"
-#include "VocBase/Methods/Databases.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -60,6 +60,16 @@ uint64_t CreateDatabaseInfo::getId() const {
 
 void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
   _shardingPrototype = type;
+}
+
+void CreateDatabaseInfo::setSharding(std::string_view sharding) {
+  // sharding -- must be "", "flexible" or "single"
+  bool isValidProperty =
+      (sharding.empty() || sharding == "flexible" || sharding == "single");
+  TRI_ASSERT(isValidProperty);
+  if (isValidProperty) {
+    _sharding = sharding;
+  }
 }
 
 Result CreateDatabaseInfo::load(std::string_view name, uint64_t id) {
@@ -93,26 +103,6 @@ Result CreateDatabaseInfo::load(std::string_view name, VPackSlice options,
   _name = name;
 
   Result res = extractOptions(options, true /*getId*/, false /*getName*/);
-  if (res.ok()) {
-    res = extractUsers(users);
-  }
-  if (!res.ok()) {
-    return res;
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _valid = true;
-#endif
-
-  return checkOptions();
-}
-
-Result CreateDatabaseInfo::load(std::string_view name, uint64_t id,
-                                VPackSlice options, VPackSlice users) {
-  _name = name;
-  _id = id;
-
-  Result res = extractOptions(options, false /*getId*/, false /*getUser*/);
   if (res.ok()) {
     res = extractUsers(users);
   }
@@ -244,21 +234,29 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice options, bool extractId,
     _replicationFactor = vocopts.replicationFactor;
     _writeConcern = vocopts.writeConcern;
     _sharding = vocopts.sharding;
-    _replicationVersion = vocopts.replicationVersion;
+    if (!ServerState::instance()->isSingleServer()) {
+      if (!arangodb::replication2::EnableReplication2) {
+        if (vocopts.replicationVersion == replication::Version::TWO) {
+          return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                        "Replication version 2 is disabled in this binary, "
+                        "cannot create replication version 2 databases.");
+        }
+      }
+      // Just ignore Replication2 for SingleServers
+      _replicationVersion = vocopts.replicationVersion;
+    }
 
     if (extractName) {
       auto nameSlice = options.get(StaticStrings::DatabaseName);
       if (!nameSlice.isString()) {
-        return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, "no valid id given");
+        return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD,
+                      "no valid database name given");
       }
       _name = nameSlice.copyString();
     }
     if (extractId) {
       auto idSlice = options.get(StaticStrings::DatabaseId);
       if (idSlice.isString()) {
-        // improve once it works
-        // look for some nice internal helper this has proably been done before
-        auto idStr = idSlice.copyString();
         _id = basics::StringUtils::uint64(idSlice.stringView().data(),
                                           idSlice.stringView().size());
 
@@ -286,22 +284,39 @@ Result CreateDatabaseInfo::checkOptions() {
 
   if (_replicationVersion == replication::Version::TWO &&
       !replication2::EnableReplication2) {
-    LOG_TOPIC("8fdd7", ERR, Logger::REPLICATION2)
+    LOG_TOPIC("8fdd7", FATAL, Logger::REPLICATION2)
         << "Replication version 2 is disabled in this binary, but loading a "
            "version 2 database "
         << "(named '" << _name << "'). "
-        << "Creating such databases is disabled. Loading a version 2 database "
-           "that was created with another binary will work, but it is strongly "
-           "discouraged to use it in production. Please dump the data, and "
+        << "Creating such databases is disabled. Please dump the data, and "
            "recreate the database with replication version 1 (the default), "
            "and then restore the data.";
+    FATAL_ERROR_EXIT();
   }
 
-  bool isSystem = _name == StaticStrings::SystemDatabase;
-  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNames();
+  if (_validateNames) {
+    bool isSystem = _name == StaticStrings::SystemDatabase;
+    bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNames();
 
-  return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
+    return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
+  }
+  return {};
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+CreateDatabaseInfo::CreateDatabaseInfo(CreateDatabaseInfo::MockConstruct,
+                                       ArangodServer& server,
+                                       ExecContext const& execContext,
+                                       std::string const& name,
+                                       std::uint64_t id,
+                                       replication::Version version)
+    : _server(server),
+      _context(execContext),
+      _id(id),
+      _name(name),
+      _replicationVersion(version),
+      _valid(true) {}
+#endif
 
 VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
                                  bool strictValidation) {
@@ -334,6 +349,7 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
 
   bool haveCluster = server.hasFeature<ClusterFeature>();
   {
+    auto& cf = server.getFeature<ClusterFeature>();
     VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
     bool isSatellite =
         (replicationSlice.isString() &&
@@ -342,8 +358,7 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
     isSatellite = isSatellite || (isNumber && replicationSlice.getUInt() == 0);
     if (!isSatellite && !isNumber) {
       if (haveCluster) {
-        vocbaseOptions.replicationFactor =
-            server.getFeature<ClusterFeature>().defaultReplicationFactor();
+        vocbaseOptions.replicationFactor = cf.defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeee", ERR, Logger::CLUSTER)
             << "Cannot access ClusterFeature to determine replicationFactor";
@@ -355,10 +370,8 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
           replicationSlice
               .getNumber<decltype(vocbaseOptions.replicationFactor)>();
       if (haveCluster && strictValidation) {
-        auto const minReplicationFactor =
-            server.getFeature<ClusterFeature>().minReplicationFactor();
-        auto const maxReplicationFactor =
-            server.getFeature<ClusterFeature>().maxReplicationFactor();
+        auto const minReplicationFactor = cf.minReplicationFactor();
+        auto const maxReplicationFactor = cf.maxReplicationFactor();
         // make sure the replicationFactor value is between the configured min
         // and max values
         if (0 < maxReplicationFactor &&
@@ -381,8 +394,7 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
 #ifndef USE_ENTERPRISE
     if (vocbaseOptions.replicationFactor == 0) {
       if (haveCluster) {
-        vocbaseOptions.replicationFactor =
-            server.getFeature<ClusterFeature>().defaultReplicationFactor();
+        vocbaseOptions.replicationFactor = cf.defaultReplicationFactor();
       } else {
         LOG_TOPIC("eeeef", ERR, Logger::CLUSTER)
             << "Cannot access ClusterFeature to determine replicationFactor";

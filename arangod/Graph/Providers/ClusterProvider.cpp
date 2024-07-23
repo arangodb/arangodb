@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,18 +26,16 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryContext.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Transaction/Helpers.h"
-
-#include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-
-#include "Logger/LogMacros.h"
 
 #include <utility>
 #include <vector>
@@ -199,7 +197,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
@@ -286,7 +284,7 @@ void ClusterProvider<StepImpl>::destroyEngines() {
                    "/_internal/traverser/" +
                        arangodb::basics::StringUtils::itoa(engine.second),
                    VPackBuffer<uint8_t>(), options)
-                   .get();
+                   .waitAndGet();
 
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have
@@ -355,7 +353,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -532,12 +530,6 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
     -> void {
   builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
-}
-
-template<class StepImpl>
-auto ClusterProvider<StepImpl>::getEdgeDocumentToken(
-    typename Step::Edge const& edge) -> EdgeDocumentToken {
-  return EdgeDocumentToken{_opts.getCache()->getCachedEdge(edge.getID())};
 }
 
 template<class StepImpl>

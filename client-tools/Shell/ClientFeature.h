@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -78,8 +78,6 @@ class ClientFeature final : public HttpEndpointProvider {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
-  void stop() override final;
 
   std::string databaseName() const;
   void setDatabaseName(std::string_view databaseName);
@@ -113,6 +111,9 @@ class ClientFeature final : public HttpEndpointProvider {
   bool getWarn() const noexcept;
   void setWarnConnect(bool warnConnect) noexcept;
   bool getWarnConnect() const noexcept;
+  void setCompressTransfer(bool value) noexcept;
+  bool compressTransfer() const noexcept;
+  uint64_t compressRequestThreshold() const noexcept;
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
@@ -130,9 +131,9 @@ class ClientFeature final : public HttpEndpointProvider {
   ApplicationServer& server() const noexcept;
 
   static std::string buildConnectedMessage(
-      std::string const& endpointSpecification, std::string const& version,
-      std::string const& role, std::string const& mode,
-      std::string const& databaseName, std::string const& user);
+      std::string_view endpointSpecification, std::string_view version,
+      std::string_view role, std::string_view mode,
+      std::string_view databaseName, std::string_view user);
 
   static int runMain(
       int argc, char* argv[],
@@ -166,14 +167,12 @@ class ClientFeature final : public HttpEndpointProvider {
   double _connectionTimeout;
   double _requestTimeout;
   uint64_t _maxPacketSize;
+  // if > 0, it means that request bodies >= this value will be
+  // sent our compressed.
+  uint64_t _compressRequestThreshold;
   // only set at startup
   uint64_t _sslProtocol;
   size_t _retries;
-
-#if _WIN32
-  uint16_t _codePage;
-  uint16_t _originalCodePage;
-#endif
 
   bool const _allowJwtSecret;
   bool _authentication;
@@ -183,6 +182,10 @@ class ClientFeature final : public HttpEndpointProvider {
   bool _warnConnect;
   bool _haveServerPassword;
   bool _forceJson;
+  // if true, all requests sent out will add an extra
+  // HTTP header "Accept-Encoding: deflate" to advertise that
+  // the remote can compress the response body.
+  bool _compressTransfer;
 };
 
 }  // namespace arangodb

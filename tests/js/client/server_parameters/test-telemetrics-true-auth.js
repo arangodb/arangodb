@@ -4,13 +4,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2023 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
@@ -132,7 +133,7 @@ function parseCollections(colls) {
     assertTrue(coll.hasOwnProperty("n_skiplist"));
     assertTrue(coll.hasOwnProperty("n_ttl"));
     assertTrue(coll.hasOwnProperty("n_unknown"));
-    assertTrue(coll.hasOwnProperty("n_zkd"));
+    assertTrue(coll.hasOwnProperty("n_mdi"));
     const idxs = coll["idxs"];
     parseIndexes(idxs);
   });
@@ -299,8 +300,8 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         databases.forEach((database, idx) => {
           let totalNumDocs = 0;
           if (idx === db1Idx) {
-            // there are already the 8 system collections in each database + 1 created here
-            assertEqual(database["n_doc_colls"], 10);
+            // there are already the 7 system collections in each database + 1 created here
+            assertEqual(database["n_doc_colls"], 9);
             database["colls"].forEach(coll => {
               const nDocs = coll["n_docs"];
               totalNumDocs += nDocs;
@@ -315,10 +316,9 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
                 assertEqual(coll.idxs.length, 5);
               } else {
                 assertTrue(nDocs === 0 || nDocs === 1);
-                //system collections have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
@@ -327,13 +327,13 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
             assertEqual(totalNumDocs, db1DocsCount);
           } else {
             //includes the collections created for the smart graph
-            assertEqual(database["n_doc_colls"], 15);
+            assertEqual(database["n_doc_colls"], 14);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              //system collections would have replication factor 2, our one has 1, so both are allowed
+              // We cannot distinguish which variant we analyse.
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
@@ -437,8 +437,8 @@ function telemetricsShellReconnectGraphTestsuite() {
         databases.forEach((database, idx) => {
           let totalNumDocs = 0;
           if (idx === db1Idx) {
-            // there are already the 9 system collections in the database + 1 created here
-            assertEqual(database["n_doc_colls"], 10);
+            // there are already the 8 system collections in the database + 1 created here
+            assertEqual(database["n_doc_colls"], 9);
             database["colls"].forEach(coll => {
               const nDocs = coll["n_docs"];
               totalNumDocs += nDocs;
@@ -454,9 +454,9 @@ function telemetricsShellReconnectGraphTestsuite() {
               } else {
                 assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
@@ -464,15 +464,15 @@ function telemetricsShellReconnectGraphTestsuite() {
             });
             assertEqual(totalNumDocs, db1DocsCount);
           } else {
-            // there are already 12 collections in the _system database + 2 created here
-            assertEqual(database["n_doc_colls"], 14);
+            // there are already 11 collections in the _system database + 2 created here
+            assertEqual(database["n_doc_colls"], 13);
             assertEqual(database["n_edge_colls"], 1);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              //system collections would have replication factor 2, our one has 1, so both are allowed
+              // We cannot distinguish which variant we analyse.
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
@@ -501,7 +501,7 @@ function telemetricsShellReconnectGraphTestsuite() {
       let file = fs.getTempFile() + "-telemetrics";
       fs.write(file, `(function() { const x = 0;})();`);
       let options = internal.options();
-      let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
+      let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
       const args = {
         'javascript.startup-directory': options['javascript.startup-directory'],
         'server.endpoint': endpoint,
@@ -612,8 +612,8 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
         databases.forEach((database, idx) => {
           let totalNumDocs = 0;
           if (idx === db1Idx) {
-            // there are already the 8 system collections in each database + 1 created here
-            assertEqual(database["n_doc_colls"], 10);
+            // there are already the 7 system collections in each database + 1 created here
+            assertEqual(database["n_doc_colls"], 9);
             database["colls"].forEach(coll => {
               const nDocs = coll["n_docs"];
               totalNumDocs += nDocs;
@@ -629,9 +629,9 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
               } else {
                 assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections would have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
@@ -640,13 +640,13 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
             assertEqual(totalNumDocs, db1DocsCount);
           } else {
             //includes the collections created for the smart graph
-            assertEqual(database["n_doc_colls"], 15);
+            assertEqual(database["n_doc_colls"], 14);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              //system collections would have replication factor 2, our one has 1, so both are allowed
+              // We cannot distinguish which variant we analyse.
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
@@ -760,8 +760,8 @@ function telemetricsApiReconnectGraphTestsuite() {
         databases.forEach((database, idx) => {
           let totalNumDocs = 0;
           if (idx === db1Idx) {
-            // there are already the 8 system collections in each database + 1 created here
-            assertEqual(database["n_doc_colls"], 10);
+            // there are already the 7 system collections in each database + 1 created here
+            assertEqual(database["n_doc_colls"], 9);
             database["colls"].forEach(coll => {
               const nDocs = coll["n_docs"];
               totalNumDocs += nDocs;
@@ -776,10 +776,9 @@ function telemetricsApiReconnectGraphTestsuite() {
                 assertEqual(coll.idxs.length, 5);
               } else {
                 assertTrue(nDocs === 0 || nDocs === 1);
-                //system collections would have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
@@ -787,14 +786,12 @@ function telemetricsApiReconnectGraphTestsuite() {
             });
             assertEqual(totalNumDocs, db1DocsCount);
           } else {
-            assertEqual(database["n_doc_colls"], 14);
+            assertEqual(database["n_doc_colls"], 13);
             assertEqual(database["n_edge_colls"], 1);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }

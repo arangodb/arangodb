@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,10 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
 #include "v8-globals.h"
 
@@ -146,6 +150,9 @@ TRI_v8_global_t::TRI_v8_global_t(
   UrlKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "url"));
   UserKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "user"));
   ValueKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "value"));
+  VersionAttributeKey.Reset(
+      isolate, TRI_V8_ASCII_STD_STRING(
+                   isolate, arangodb::StaticStrings::VersionAttributeString));
   VersionKeyHidden.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "*version"));
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "waitForSync"));
   CompactKey.Reset(isolate, TRI_V8_ASCII_STD_STRING(
@@ -186,7 +193,7 @@ TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent(
         // zero indicates that v8g was probably deallocated
         // before calling the v8::WeakCallbackInfo::Callback
       },
-      v8::WeakCallbackType::kFinalizer);
+      v8::WeakCallbackType::kParameter);
   v8g->increaseActiveExternals();
 }
 
@@ -213,30 +220,30 @@ TRI_v8_global_t::SharedPtrPersistent::emplace(
 
 TRI_v8_global_t::~TRI_v8_global_t() = default;
 
-v8::Local<v8::Object> TRI_GetObject(v8::Local<v8::Context>& context,
+v8::Local<v8::Object> TRI_GetObject(v8::Local<v8::Context> context,
                                     v8::Handle<v8::Value> val) {
   return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
 }
 
-bool TRI_HasProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+bool TRI_HasProperty(v8::Local<v8::Context> context, v8::Isolate* isolate,
                      v8::Local<v8::Object> obj, std::string_view key) {
   return obj
       ->Has(context, TRI_V8_ASCII_PAIR_STRING(isolate, key.data(), key.size()))
       .FromMaybe(false);
 }
 
-bool TRI_HasProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+bool TRI_HasProperty(v8::Local<v8::Context> context, v8::Isolate* isolate,
                      v8::Local<v8::Object> obj, v8::Local<v8::String> key) {
   return obj->Has(context, key).FromMaybe(false);
 }
 
-bool TRI_HasRealNamedProperty(v8::Local<v8::Context>& context,
+bool TRI_HasRealNamedProperty(v8::Local<v8::Context> context,
                               v8::Isolate* isolate, v8::Local<v8::Object> obj,
                               v8::Local<v8::String> key) {
   return obj->HasRealNamedProperty(context, key).FromMaybe(false);
 }
 
-v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
+v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context> context,
                                      v8::Isolate* isolate,
                                      v8::Local<v8::Object> obj,
                                      std::string_view key) {
@@ -245,14 +252,14 @@ v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
       .FromMaybe(v8::Local<v8::Value>());
 }
 
-v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
+v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context> context,
                                      v8::Isolate* isolate,
                                      v8::Local<v8::Object> obj,
                                      v8::Local<v8::String> key) {
   return obj->Get(context, key).FromMaybe(v8::Local<v8::Value>());
 }
 
-bool TRI_DeleteProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+bool TRI_DeleteProperty(v8::Local<v8::Context> context, v8::Isolate* isolate,
                         v8::Local<v8::Object>& obj, std::string_view key) {
   return obj
       ->Delete(context,
@@ -260,22 +267,22 @@ bool TRI_DeleteProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
       .FromMaybe(false);
 }
 
-bool TRI_DeleteProperty(v8::Local<v8::Context>& context, v8::Isolate* isolate,
+bool TRI_DeleteProperty(v8::Local<v8::Context> context, v8::Isolate* isolate,
                         v8::Local<v8::Object>& obj, v8::Local<v8::Value> key) {
   return obj->Delete(context, key).FromMaybe(false);
 }
 
-v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context>& context,
+v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context> context,
                                    v8::Handle<v8::Value> val) {
   return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
 }
 
-v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context>& context,
+v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context> context,
                                          v8::Handle<v8::Value> val) {
   return val->ToString(context).FromMaybe(v8::Local<v8::String>());
 }
 
-std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
+std::string TRI_ObjectToString(v8::Local<v8::Context> context,
                                v8::Isolate* isolate,
                                v8::MaybeLocal<v8::Value> val) {
   v8::String::Utf8Value x(isolate, val.FromMaybe(v8::Local<v8::Value>())
@@ -284,7 +291,7 @@ std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
   return std::string(*x, x.length());
 }
 
-std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
+std::string TRI_ObjectToString(v8::Local<v8::Context> context,
                                v8::Isolate* isolate,
                                v8::Local<v8::String> val) {
   v8::String::Utf8Value x(isolate, val);

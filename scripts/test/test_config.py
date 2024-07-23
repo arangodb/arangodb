@@ -4,7 +4,7 @@ import copy
 import logging
 import os
 
-from site_config import IS_WINDOWS, IS_MAC, TEMP
+from site_config import TEMP
 
 TEST_LOG_FILES = []
 
@@ -77,26 +77,14 @@ class TestConfig:
             "true",
             "--writeXmlReport",
             "true",
-            '--testXmlOutputDirectory',
+            "--testXmlOutputDirectory",
             str(self.xml_report_dir),
         ]
 
         if "filter" in os.environ:
             self.args += ["--test", os.environ["filter"]]
         if "sniff" in flags:
-            if IS_WINDOWS and "TSHARK" in os.environ:
-                self.args += [
-                    "--sniff",
-                    "true",
-                    "--sniffProgram",
-                    os.environ["TSHARK"],
-                    "--sniffDevice",
-                    os.environ["DUMPDEVICE"],
-                ]
-            elif IS_MAC:
-                self.args += ["--sniff", "sudo"]
-            else:
-                self.args += ["--sniff", "true"]
+            self.args += ["--sniff", "true"]
 
         if "SKIPNONDETERMINISTIC" in os.environ:
             self.args += ["--skipNondeterministic", os.environ["SKIPNONDETERMINISTIC"]]
@@ -122,8 +110,6 @@ class TestConfig:
         if "ONLYGREY" in os.environ:
             self.args += ["--onlyGrey", os.environ["ONLYGREY"]]
 
-        if "vst" in flags:
-            self.args += ["--vst", "true"]
         if "ssl" in flags:
             self.args += ["--protocol", "ssl"]
         if "http2" in flags:

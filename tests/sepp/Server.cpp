@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,7 +51,6 @@ constexpr auto kNonServerFeatures =
                ArangodServer::id<GreetingsFeature>(),
                ArangodServer::id<HttpEndpointProvider>(),
                ArangodServer::id<LogBufferFeature>(),
-               ArangodServer::id<pregel::PregelFeature>(),
                ArangodServer::id<ServerFeature>(),
                ArangodServer::id<SslServerFeature>(),
                ArangodServer::id<StatisticsFeature>()};
@@ -61,7 +60,8 @@ constexpr auto kNonServerFeatures =
 namespace arangodb::sepp {
 
 struct Server::Impl {
-  Impl(RocksDBOptionsProvider const& optionsProvider,
+  Impl(arangodb::RocksDBOptionsProvider const& optionsProvider,
+       arangodb::CacheOptionsProvider const& cacheOptionsProvider,
        std::string databaseDirectory);
   ~Impl();
 
@@ -75,6 +75,7 @@ struct Server::Impl {
 
   std::shared_ptr<arangodb::options::ProgramOptions> _options;
   RocksDBOptionsProvider const& _optionsProvider;
+  CacheOptionsProvider const& _cacheOptionsProvider;
   std::string _databaseDirectory;
   ::ArangodServer _server;
   std::thread _serverThread;
@@ -82,10 +83,12 @@ struct Server::Impl {
 };
 
 Server::Impl::Impl(RocksDBOptionsProvider const& optionsProvider,
+                   CacheOptionsProvider const& cacheOptionsProvider,
                    std::string databaseDirectory)
     : _options(std::make_shared<arangodb::options::ProgramOptions>("sepp", "",
                                                                    "", "")),
       _optionsProvider(optionsProvider),
+      _cacheOptionsProvider(cacheOptionsProvider),
       _databaseDirectory(std::move(databaseDirectory)),
       _server(_options, "") {
   std::string name = "arangod";  // we simply reuse the arangod config
@@ -148,11 +151,21 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
         return std::make_unique<InitDatabaseFeature>(server,
                                                      kNonServerFeatures);
       },
+#ifdef TRI_HAVE_GETRLIMIT
+      [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
+        return std::make_unique<BumpFileDescriptorsFeature>(
+            server, "--server.descriptors-minimum");
+      },
+#endif
       [](auto& server, TypeTag<LoggerFeature>) {
         return std::make_unique<LoggerFeature>(server, true);
       },
       [this](auto& server, TypeTag<RocksDBEngine>) {
         return std::make_unique<RocksDBEngine>(server, _optionsProvider);
+      },
+      [this](auto& server, TypeTag<CacheManagerFeature>) {
+        return std::make_unique<CacheManagerFeature>(server,
+                                                     _cacheOptionsProvider);
       },
       [&result](auto& server, TypeTag<ScriptFeature>) {
         return std::make_unique<ScriptFeature>(server, &result);
@@ -209,8 +222,9 @@ void Server::Impl::runServer(char const* exectuable) {
 }
 
 Server::Server(arangodb::RocksDBOptionsProvider const& optionsProvider,
+               arangodb::CacheOptionsProvider const& cacheOptionsProvider,
                std::string databaseDirectory)
-    : _impl(std::make_unique<Impl>(optionsProvider,
+    : _impl(std::make_unique<Impl>(optionsProvider, cacheOptionsProvider,
                                    std::move(databaseDirectory))) {}
 
 Server::~Server() = default;

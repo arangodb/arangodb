@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,6 +42,9 @@ extern std::string const NO_LEADER;
 enum role_t { FOLLOWER, CANDIDATE, LEADER };
 
 enum apply_ret_t { APPLIED, PRECONDITION_FAILED, FORBIDDEN, UNKNOWN_ERROR };
+
+using TimePoint = std::chrono::system_clock::time_point;
+using SteadyTimePoint = std::chrono::steady_clock::time_point;
 
 typedef std::chrono::duration<long, std::ratio<1, 1000>> duration_t;
 typedef uint64_t index_t;
@@ -152,7 +155,8 @@ struct log_t {
     builder.add("term", VPackValue(term));
     builder.add("query", VPackSlice(entry->data()));
     builder.add("clientId", VPackValue(clientId));
-    builder.add("timestamp", VPackValue(timestamp.count()));
+    builder.add("timestamp",
+                VPackValue(static_cast<uint64_t>(timestamp.count())));
 
     builder.close();
   }

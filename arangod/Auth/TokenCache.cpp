@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,16 +26,20 @@
 
 #include "Agency/AgencyComm.h"
 #include "Auth/Handler.h"
+#include "Auth/UserManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Ssl/SslInterface.h"
 
+#include <absl/strings/escaping.h>
 #include <fuerte/jwt.h>
 
 #include <velocypack/Builder.h>
@@ -51,6 +55,10 @@ namespace {
 constexpr std::string_view hs256String("HS256");
 constexpr std::string_view jwtString("JWT");
 }  // namespace
+
+bool auth::TokenCache::Entry::expired() const noexcept {
+  return _expiry != 0 && _expiry < TRI_microtime();
+}
 
 auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
     : _userManager(um), _jwtCache(16384), _authTimeout(timeout) {}
@@ -69,7 +77,7 @@ auth::TokenCache::~TokenCache() {
 
 #ifndef USE_ENTERPRISE
 
-void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
+void auth::TokenCache::setJwtSecret(std::string jwtSecret) {
   {
     WRITE_LOCKER(writeLocker, _jwtSecretLock);
     LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
@@ -81,12 +89,17 @@ void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
 
 #endif
 
+std::string const& auth::TokenCache::jwtToken() const noexcept {
+  TRI_ASSERT(!_jwtSuperToken.empty());
+  return _jwtSuperToken;
+}
+
 std::string auth::TokenCache::jwtSecret() const {
   READ_LOCKER(writeLocker, _jwtSecretLock);
   return _jwtActiveSecret;  // intentional copy
 }
 
-// public called from {H2,Http,Vst}CommTask.cpp
+// public called from {H2,Http}CommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
 auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
@@ -137,17 +150,13 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
       auth::TokenCache::Entry res = it->second;
       // and now give up on the read-lock
       guard.unlock();
-
-      // LDAP rights might need to be refreshed
-      if (!_userManager->refreshUser(res.username())) {
-        return res;
-      }
-      // fallthrough intentional here
+      return res;
     }
   }
 
   // parse Basic auth header
-  std::string const up = StringUtils::decodeBase64(secret);
+  std::string up;
+  absl::Base64Unescape(secret, &up);
   std::string::size_type n = up.find(':', 0);
   if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
     LOG_TOPIC("2a529", TRACE, arangodb::Logger::AUTHENTICATION)
@@ -196,10 +205,6 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
             << "JWT Token expired";
         return auth::TokenCache::Entry::Unauthenticated();
       }
-      if (_userManager != nullptr) {
-        // LDAP rights might need to be refreshed
-        _userManager->refreshUser(entry->username());
-      }
       return *entry;
     }
   }
@@ -241,8 +246,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
   return newEntry;
 }
 
-std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(
-    std::string const& str, char const* hint) {
+std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string_view str,
+                                                          char const* hint) {
   std::shared_ptr<VPackBuilder> result;
   VPackParser parser;
   try {
@@ -262,9 +267,10 @@ std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(
   return result;
 }
 
-bool auth::TokenCache::validateJwtHeader(std::string const& header) {
-  std::shared_ptr<VPackBuilder> headerBuilder =
-      parseJson(StringUtils::decodeBase64U(header), "jwt header");
+bool auth::TokenCache::validateJwtHeader(std::string_view headerWebBase64) {
+  std::string header;
+  absl::WebSafeBase64Unescape(headerWebBase64, &header);
+  std::shared_ptr<VPackBuilder> headerBuilder = parseJson(header, "jwt header");
   if (headerBuilder == nullptr) {
     return false;
   }
@@ -293,9 +299,10 @@ bool auth::TokenCache::validateJwtHeader(std::string const& header) {
 }
 
 auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
-    std::string const& body) {
-  std::shared_ptr<VPackBuilder> bodyBuilder =
-      parseJson(StringUtils::decodeBase64U(body), "jwt body");
+    std::string_view bodyWebBase64) {
+  std::string body;
+  absl::WebSafeBase64Unescape(bodyWebBase64, &body);
+  std::shared_ptr<VPackBuilder> bodyBuilder = parseJson(body, "jwt body");
   if (bodyBuilder == nullptr) {
     LOG_TOPIC("99524", TRACE, Logger::AUTHENTICATION) << "invalid JWT body";
     return auth::TokenCache::Entry::Unauthenticated();
@@ -387,14 +394,16 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
 
 #ifndef USE_ENTERPRISE
 bool auth::TokenCache::validateJwtHMAC256Signature(
-    std::string const& message, std::string const& signature) {
-  std::string decodedSignature = StringUtils::decodeBase64U(signature);
+    std::string_view message, std::string_view signatureWebBase64) {
+  std::string signature;
+  absl::WebSafeBase64Unescape(signatureWebBase64, &signature);
 
   READ_LOCKER(guard, _jwtSecretLock);
-  return verifyHMAC(_jwtActiveSecret.c_str(), _jwtActiveSecret.length(),
-                    message.c_str(), message.length(), decodedSignature.c_str(),
-                    decodedSignature.length(),
-                    SslInterface::Algorithm::ALGORITHM_SHA256);
+  return verifyHMAC(
+      _jwtActiveSecret.data(), _jwtActiveSecret.size(),
+      message.data(),                    // cppcheck-suppress invalidLifetime
+      message.size(), signature.data(),  // cppcheck-suppress invalidLifetime
+      signature.size(), SslInterface::Algorithm::ALGORITHM_SHA256);
 }
 #endif
 

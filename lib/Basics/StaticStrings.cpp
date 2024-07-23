@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -65,6 +65,7 @@ std::string const StaticStrings::OverwriteCollectionPrefix(
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
 std::string const StaticStrings::RefillIndexCachesString("refillIndexCaches");
+std::string const StaticStrings::VersionAttributeString("versionAttribute");
 std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
@@ -72,6 +73,13 @@ std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::Compact("compact");
 std::string const StaticStrings::DontWaitForCommit("dontWaitForCommit");
+std::string const StaticStrings::UserString("user");
+
+// dump headers
+std::string const StaticStrings::DumpAuthUser("x-arango-dump-auth-user");
+std::string const StaticStrings::DumpBlockCounts("x-arango-dump-block-counts");
+std::string const StaticStrings::DumpId("x-arango-dump-id");
+std::string const StaticStrings::DumpShardId("x-arango-dump-shard-id");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(
@@ -102,7 +110,6 @@ std::string const StaticStrings::JobsCollection("_jobs");
 std::string const StaticStrings::AppsCollection("_apps");
 std::string const StaticStrings::AppBundlesCollection("_appbundles");
 std::string const StaticStrings::FrontendCollection("_frontend");
-std::string const StaticStrings::PregelCollection("_pregel_queries");
 std::string const StaticStrings::StatisticsCollection("_statistics");
 std::string const StaticStrings::Statistics15Collection("_statistics15");
 std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
@@ -115,7 +122,6 @@ std::string const StaticStrings::AnalyzersDeletedRevision("revisionDeleted");
 // Database definition fields
 std::string const StaticStrings::DatabaseId("id");
 std::string const StaticStrings::DatabaseName("name");
-std::string const StaticStrings::DatabaseOptions("options");
 std::string const StaticStrings::Properties("properties");
 
 // LogicalDataSource definition fields
@@ -139,18 +145,18 @@ std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexStoredValues("storedValues");
+std::string const StaticStrings::IndexPrefixFields("prefixFields");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");
 std::string const StaticStrings::IndexLegacyPolygons("legacyPolygons");
+std::string const StaticStrings::IndexCreationError("creationError");
 
 // static index names
 std::string const StaticStrings::IndexNameEdge("edge");
 std::string const StaticStrings::IndexNameEdgeFrom("edge_from");
 std::string const StaticStrings::IndexNameEdgeTo("edge_to");
-std::string const StaticStrings::IndexNameInaccessible("inaccessible");
 std::string const StaticStrings::IndexNamePrimary("primary");
-std::string const StaticStrings::IndexNameTime("time");
 
 // index hint strings
 std::string const StaticStrings::IndexHintDisableIndex("disableIndex");
@@ -166,6 +172,7 @@ std::string const StaticStrings::UseCache("useCache");
 std::string const StaticStrings::Parallelism("parallelism");
 std::string const StaticStrings::ForceOneShardAttributeValue(
     "forceOneShardAttributeValue");
+std::string const StaticStrings::JoinStrategyType("joinStrategyType");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -191,6 +198,7 @@ std::string const StaticStrings::Authorization("authorization");
 std::string const StaticStrings::BatchContentType(
     "application/x-arango-batchpart");
 std::string const StaticStrings::CacheControl("cache-control");
+std::string const StaticStrings::Chunked("chunked");
 std::string const StaticStrings::Close("Close");
 std::string const StaticStrings::ClusterCommSource("x-arango-source");
 std::string const StaticStrings::Code("code");
@@ -198,6 +206,7 @@ std::string const StaticStrings::Connection("connection");
 std::string const StaticStrings::ContentEncoding("content-encoding");
 std::string const StaticStrings::ContentLength("content-length");
 std::string const StaticStrings::ContentTypeHeader("content-type");
+std::string const StaticStrings::Cookie("cookie");
 std::string const StaticStrings::CorsMethods(
     "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT");
 std::string const StaticStrings::Error("error");
@@ -212,7 +221,6 @@ std::string const StaticStrings::ExposedCorsHeaders(
     "etag, content-encoding, content-length, location, server, "
     "x-arango-errors, x-arango-async-id");
 std::string const StaticStrings::HLCHeader("x-arango-hlc");
-std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
 std::string const StaticStrings::LockLocation("lockLocation");
@@ -243,18 +251,23 @@ std::string const StaticStrings::HSTS("strict-transport-security");
 // mime types
 std::string const StaticStrings::MimeTypeDump(
     "application/x-arango-dump; charset=utf-8");
+std::string const StaticStrings::MimeTypeDumpNoEncoding(
+    "application/x-arango-dump");
 std::string const StaticStrings::MimeTypeHtml("text/html; charset=utf-8");
+std::string const StaticStrings::MimeTypeHtmlNoEncoding("text/html");
 std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
 std::string const StaticStrings::MimeTypeJsonNoEncoding("application/json");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
+std::string const StaticStrings::MimeTypeTextNoEncoding("text/plain");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // accept-encodings
-std::string const StaticStrings::EncodingIdentity("identity");
+std::string const StaticStrings::EncodingArangoLz4("x-arango-lz4");
 std::string const StaticStrings::EncodingDeflate("deflate");
 std::string const StaticStrings::EncodingGzip("gzip");
+std::string const StaticStrings::EncodingLz4("lz4");
 
 std::string const StaticStrings::Body("body");
 std::string const StaticStrings::ParsedBody("parsedBody");
@@ -267,6 +280,7 @@ std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
+std::string const StaticStrings::GroupId("groupId");
 std::string const StaticStrings::KeyOptions("keyOptions");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
@@ -288,9 +302,6 @@ std::string const StaticStrings::WriteConcern("writeConcern");
 std::string const StaticStrings::ShardingSingle("single");
 std::string const StaticStrings::ReplicationVersion("replicationVersion");
 std::string const StaticStrings::ReplicatedLogs("replicatedLogs");
-std::string_view const StaticStrings::SoftWriteConcern("softWriteConcern");
-std::string_view const StaticStrings::EffectiveWriteConcern(
-    "effectiveWriteConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
@@ -300,7 +311,6 @@ std::string const StaticStrings::GraphOptions("options");
 std::string const StaticStrings::GraphSmartGraphAttribute(
     "smartGraphAttribute");
 std::string const StaticStrings::GraphEdgeDefinitions("edgeDefinitions");
-std::string const StaticStrings::GraphEdgeDefinitionType("type");
 std::string const StaticStrings::GraphOrphans("orphanCollections");
 
 std::string const StaticStrings::GraphName("name");
@@ -308,7 +318,6 @@ std::string const StaticStrings::GraphTraversalProfileLevel("traversalProfile");
 
 // smart graph relevant attributes
 std::string const StaticStrings::IsDisjoint("isDisjoint");
-std::string const StaticStrings::IsHybrid("isHybrid");
 std::string const StaticStrings::GraphIsSmart("isSmart");
 std::string const StaticStrings::GraphIsSatellite("isSatellite");
 std::string const StaticStrings::GraphSatellites("satellites");
@@ -323,28 +332,6 @@ std::string const StaticStrings::FullToPrefix("_to_");
 std::string const StaticStrings::GraphDirection("direction");
 std::string const StaticStrings::GraphDirectionInbound("inbound");
 std::string const StaticStrings::GraphDirectionOutbound("outbound");
-
-// Pregel Section Start
-
-// Pregel Accumulator Attributes
-std::string const StaticStrings::AccumulatorHot("hot");
-std::string const StaticStrings::AccumulatorCold("cold");
-std::string const StaticStrings::AccumulatorValue("value");
-std::string const StaticStrings::AccumulatorSender("sender");
-std::string const StaticStrings::AccumulatorName("accumulator");
-
-// Pregel VertexComputation Attributes
-std::string const StaticStrings::VertexComputationPregelId("pregel-id");
-std::string const StaticStrings::VertexComputationVertexId("vertex");
-std::string const StaticStrings::VertexComputationPhase("phase");
-std::string const StaticStrings::VertexComputationGlobalSuperstep(
-    "global-superstep");
-std::string const StaticStrings::VertexComputationPhaseStep("phase-step");
-std::string const StaticStrings::VertexComputationMessage("message");
-std::string const StaticStrings::VertexComputationVoteActive("vote-active");
-std::string const StaticStrings::VertexComputationVoteHalt("vote-halt");
-
-// Pregel Section End
 
 // Query Strings
 std::string const StaticStrings::QuerySortASC("ASC");
@@ -396,13 +383,11 @@ std::string const StaticStrings::LocalStatus("localStatus");
 std::string const StaticStrings::Participants("participants");
 std::string const StaticStrings::ServerId("serverId");
 std::string const StaticStrings::Spearhead("spearhead");
-std::string const StaticStrings::TargetConfig("targetConfig");
 std::string const StaticStrings::Term("term");
 std::string const StaticStrings::CommitIndex("commitIndex");
 std::string const StaticStrings::FirstIndex("firstIndex");
 std::string const StaticStrings::ReleaseIndex("releaseIndex");
-std::string const StaticStrings::LowestIndexToKeep("lowestIndexToKeep");
-std::string const StaticStrings::Outcome("outcome");
+std::string const StaticStrings::SyncIndex("syncIndex");
 
 // Generic attribute names
 std::string const StaticStrings::AttrCoordinator("coordinator");
@@ -425,8 +410,8 @@ std::string const StaticStrings::BackupSearchToDeleteName(
     "DIRECTORY_TO_DELETE_SEARCH");
 
 // aql api strings
-std::string const StaticStrings::SerializationFormat("serializationFormat");
 std::string const StaticStrings::AqlDocumentCall("x-arango-aql-document-aql");
+std::string const StaticStrings::AqlFastPath("x-arango-fast-path");
 std::string const StaticStrings::AqlRemoteExecute("execute");
 std::string const StaticStrings::AqlRemoteCallStack("callStack");
 std::string const StaticStrings::AqlRemoteLimit("limit");
@@ -463,6 +448,3 @@ std::string const StaticStrings::ValidationParameterMessage("message");
 std::string const StaticStrings::ValidationParameterLevel("level");
 std::string const StaticStrings::ValidationParameterRule("rule");
 std::string const StaticStrings::ValidationParameterType("type");
-
-// TODO REMOVE ME AFTER REFACTOR IS DONE
-std::string const StaticStrings::GraphRefactorFlag("refactor");

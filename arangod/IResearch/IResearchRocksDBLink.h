@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,47 +43,48 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   IResearchRocksDBLink(IndexId iid, LogicalCollection& collection,
                        uint64_t objectId);
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) final {
-    IResearchDataStore::afterTruncate(tick, trx);
+  ResultT<TruncateGuard> truncateBegin(rocksdb::WriteBatch& batch) final {
+    auto r = RocksDBIndex::truncateBegin(batch);
+    if (!r.ok()) {
+      return r;
+    }
+    return IResearchDataStore::truncateBegin();
+  }
+
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final {
+    IResearchDataStore::truncateCommit(std::move(guard), tick, trx);
+    guard = {};
   }
 
   bool canBeDropped() const final { return IResearchDataStore::canBeDropped(); }
 
-  Result drop() final /*noexcept*/ { return IResearchLink::drop(); }
+  Result drop() /*noexcept*/ final { return IResearchLink::drop(); }
 
   bool hasSelectivityEstimate() const final {
     return IResearchDataStore::hasSelectivityEstimate();
   }
 
-  Result insertInRecovery(transaction::Methods& trx,
-                          LocalDocumentId const& documentId, VPackSlice doc,
-                          rocksdb::SequenceNumber tick) {
-    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
-                                      IResearchLinkMeta>(trx, documentId, doc,
-                                                         meta(), &tick);
-  }
-
-  Result removeInRecovery(transaction::Methods& trx,
-                          LocalDocumentId const& documentId,
-                          rocksdb::SequenceNumber tick) {
-    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
-                                      &tick);
+  void recoveryInsert(uint64_t tick, LocalDocumentId documentId,
+                      VPackSlice doc) {
+    IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
+                                       IResearchLinkMeta>(tick, documentId, doc,
+                                                          meta());
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
-                LocalDocumentId const& documentId, VPackSlice doc,
+                LocalDocumentId documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) final {
     return IResearchDataStore::insert<FieldIterator<FieldMeta>,
                                       IResearchLinkMeta>(trx, documentId, doc,
-                                                         meta(), nullptr);
+                                                         meta());
   }
 
-  Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId, VPackSlice,
+  Result remove(transaction::Methods& trx, RocksDBMethods* /*methods*/,
+                LocalDocumentId documentId, VPackSlice /*doc*/,
                 OperationOptions const& /*options*/) final {
-    return IResearchDataStore::remove(trx, documentId, meta().hasNested(),
-                                      nullptr);
+    return IResearchDataStore::remove(trx, documentId);
   }
 
   bool isSorted() const final { return IResearchLink::isSorted(); }

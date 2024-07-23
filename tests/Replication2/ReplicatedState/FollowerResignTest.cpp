@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,25 +23,18 @@
 
 #include <gtest/gtest.h>
 
-#include "Replication2/ReplicatedLog/TestHelper.h"
-
 #include "Replication2/ReplicatedState/ReplicatedState.h"
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
-#include "Replication2/Streams/LogMultiplexer.h"
-#include "Replication2/Mocks/FakeReplicatedState.h"
-#include "Replication2/Mocks/FakeFollower.h"
 
 #include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
-using namespace arangodb::replication2::test;
 
-struct ReplicatedStateFollowerResignTest : test::ReplicatedLogTest {
+struct ReplicatedStateFollowerResignTest : ::testing::Test {
   struct State {
     using LeaderType = test::EmptyLeaderType<State>;
     using FollowerType = test::FakeFollowerType<State>;

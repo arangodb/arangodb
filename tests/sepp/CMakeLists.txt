@@ -3,12 +3,14 @@ option(BUILD_SEPP "Build SEPP (Storage Engine Performance Prediction)" OFF)
 if (BUILD_SEPP)
   add_executable(sepp EXCLUDE_FROM_ALL
     main.cpp
+    CacheOptions.cpp
     Execution.cpp
     ExecutionThread.cpp
     Runner.cpp
     RocksDBOptions.cpp
     Server.cpp
     ValueGenerators/RandomStringGenerator.cpp
+    Workloads/EdgeCache.cpp
     Workloads/GetByPrimaryKey.cpp
     Workloads/InsertDocuments.cpp
     Workloads/IterateDocuments.cpp

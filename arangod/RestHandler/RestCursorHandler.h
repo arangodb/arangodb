@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,16 +24,15 @@
 #pragma once
 
 #include "Aql/QueryResult.h"
-#include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 #include "Scheduler/Scheduler.h"
+#include "Transaction/Hints.h"
+#include "Transaction/OperationOrigin.h"
 
+#include <memory>
 #include <mutex>
 #include <optional>
+#include <string_view>
 
 namespace arangodb {
 namespace velocypack {
@@ -56,11 +55,10 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   ~RestCursorHandler();
 
- public:
-  virtual RestStatus execute() override;
   char const* name() const override { return "RestCursorHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_AQL; }
+  RequestLane lane() const override final;
 
+  virtual RestStatus execute() override;
   virtual RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
@@ -70,7 +68,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief register the query either as streaming cursor or in _query
   /// the query is not executed here.
   /// this method is also used by derived classes
-  RestStatus registerQueryOrCursor(arangodb::velocypack::Slice const& body);
+  [[nodiscard]] futures::Future<RestStatus> registerQueryOrCursor(
+      velocypack::Slice body, transaction::OperationOrigin operationOrigin);
 
   /// @brief Process the query registered in _query.
   /// The function is repeatable, so whenever we need to WAIT
@@ -89,12 +88,9 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   ///        queryResult.
   virtual RestStatus handleQueryResult();
 
-  /// @brief whether or not the query was canceled
-  bool wasCanceled();
-
  private:
   /// @brief register the currently running query
-  void registerQuery(std::shared_ptr<arangodb::aql::Query> query);
+  void registerQuery(std::shared_ptr<aql::Query> query);
 
   /// @brief cancel the currently running query
   void cancelQuery();
@@ -130,12 +126,17 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void releaseCursor();
 
  protected:
+  bool wasCanceled() const;
+
   /// @brief Reference to a queryResult, which is reused after waiting.
   aql::QueryResult _queryResult;
 
  private:
+  /// @brief whether or not the query was killed
+  bool _queryKilled;
+
   /// @brief currently running query
-  std::shared_ptr<arangodb::aql::Query> _query;
+  std::shared_ptr<aql::Query> _query;
 
   /// @brief our query registry
   arangodb::aql::QueryRegistry* _queryRegistry;
@@ -144,16 +145,10 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   Cursor* _cursor;
 
   /// @brief lock for currently running query
-  std::mutex _queryLock;
-
-  /// @brief whether or not the query has already started executing
-  bool _hasStarted;
-
-  /// @brief whether or not the query was killed
-  bool _queryKilled;
+  mutable std::mutex _queryLock;
 
   /// @brief A shared pointer to the query options velocypack, s.t. we avoid
   ///        to reparse and set default options
-  std::shared_ptr<arangodb::velocypack::Builder> _options;
+  std::shared_ptr<velocypack::Builder> _options;
 };
 }  // namespace arangodb
