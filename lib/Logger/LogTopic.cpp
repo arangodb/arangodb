@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "LogTopic.h"
+
 #include <array>
 #include <cstdint>
 #include <map>
@@ -29,7 +31,7 @@
 #include <utility>
 #include <vector>
 
-#include "LogTopic.h"
+#include <absl/strings/str_cat.h>
 
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -211,7 +213,7 @@ LogTopic::LogTopic(TopicName name, LogLevel level, size_t id)
     // allowed to log messages without a topic. From 3.2 onwards,
     // logging is always topic-based, and all previously topicless
     // log invocations now use the log topic "fixme".
-    _displayName = "{" + std::string(name) + "} ";
+    _displayName = absl::StrCat("{", name, "} ");
   }
 
   Topics::instance().emplace(name, this);

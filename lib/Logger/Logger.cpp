@@ -45,6 +45,8 @@
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Logger/LogThread.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Dumper.h>
 #include <velocypack/Sink.h>
 
@@ -627,15 +629,13 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
 
   // pid
   if (_showProcessIdentifier) {
-    out.append(",\"pid\":");
-    StringUtils::itoa(uint64_t(_cachedPid.load(std::memory_order_relaxed)),
-                      out);
+    absl::StrAppend(&out, ",\"pid\":",
+                    uint64_t(_cachedPid.load(std::memory_order_relaxed)));
   }
 
   // tid
   if (_showThreadIdentifier) {
-    out.append(",\"tid\":");
-    StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
+    absl::StrAppend(&out, ",\"tid\":", Thread::currentThreadNumber());
   }
 
   // thread name
@@ -668,8 +668,7 @@ void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
   }
 
   if (_showLineNumber) {
-    out.append(",\"line\":");
-    StringUtils::itoa(uint64_t(line), out);
+    absl::StrAppend(&out, ",\"line\":", line);
   }
 
   if (_showLineNumber && !function.empty()) {
@@ -755,8 +754,7 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
   LogContext& logContext = LogContext::current();
   // hostname
   if (!_hostname.empty()) {
-    out.append(_hostname);
-    out.push_back(' ');
+    absl::StrAppend(&out, _hostname, " ");
   }
 
   // human readable format
@@ -765,8 +763,7 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
 
   // output prefix
   if (!_outputPrefix.empty()) {
-    out.append(_outputPrefix);
-    out.push_back(' ');
+    absl::StrAppend(&out, _outputPrefix, " ");
   }
 
   // [pid-tid-threadname], all components are optional
@@ -774,15 +771,14 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
   if (_showProcessIdentifier) {
     // append the process / thread identifier
     TRI_ASSERT(_cachedPid.load(std::memory_order_relaxed) != 0);
-    out.push_back('[');
-    StringUtils::itoa(uint64_t(_cachedPid.load(std::memory_order_relaxed)),
-                      out);
+    absl::StrAppend(&out, "[",
+                    uint64_t(_cachedPid.load(std::memory_order_relaxed)));
     haveProcessOutput = true;
   }
 
   if (_showThreadIdentifier) {
     out.push_back(haveProcessOutput ? '-' : '[');
-    StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
+    absl::StrAppend(&out, Thread::currentThreadNumber());
     haveProcessOutput = true;
   }
 
@@ -806,18 +802,11 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
   }
 
   // log level
-  out.append(Logger::translateLogLevel(level));
-  out.push_back(' ');
+  absl::StrAppend(&out, Logger::translateLogLevel(level), " ");
 
   // check if we must display the line number
   if (_showLineNumber && !file.empty() && !function.empty()) {
-    out.push_back('[');
-    out.append(function);
-    out.push_back('@');
-    out.append(file);
-    out.push_back(':');
-    StringUtils::itoa(uint64_t(line), out);
-    out.append("] ", 2);
+    absl::StrAppend(&out, "[", function, "@", file, ":", line, "] ");
   }
 
   // the offset is used by the in-memory logger, and it cuts off everything
@@ -827,16 +816,10 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
   offset = static_cast<uint32_t>(out.size());
 
   if (::arangodb::Logger::getShowIds()) {
-    out.push_back('[');
-    out.append(logid);
-    out.append("] ", 2);
+    absl::StrAppend(&out, "[", logid, "] ");
   }
 
-  {
-    out.push_back('{');
-    out.append(LogTopic::lookup(topicId));
-    out.append("} ", 2);
-  }
+  absl::StrAppend(&out, "{", LogTopic::lookup(topicId), "} ");
 
   {
     READ_LOCKER(guard, _structuredParamsLock);
@@ -847,8 +830,7 @@ void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
           if (!_structuredLogParams.contains({key.data(), key.size()})) {
             return;
           }
-          out.push_back('[');
-          out.append(key).append(": ", 2);
+          absl::StrAppend(&out, "[", key, ": ");
 
           if constexpr (std::is_same_v<std::string_view,
                                        std::remove_cv_t<std::remove_reference_t<

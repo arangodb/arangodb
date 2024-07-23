@@ -55,17 +55,17 @@ struct Appenders {
 
  private:
   enum class Type {
-    Unknown,
-    File,
-    Stderr,
-    Stdout,
-    Syslog,
+    kUnknown,
+    kFile,
+    kStderr,
+    kStdout,
+    kSyslog,
   };
 
   struct AppenderConfig {
     std::string output;
     LogTopic* topic = nullptr;
-    Type type = Type::Unknown;
+    Type type = Type::kUnknown;
   };
   ResultT<AppenderConfig> parseDefinition(std::string const& definition);
 

@@ -34,6 +34,8 @@
 #include "Logger/LogMessage.h"
 #include "Logger/Logger.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace arangodb::logger {
 
 namespace {
@@ -56,10 +58,10 @@ void Appenders::addAppender(LogGroup const& logGroup,
   }
 
   auto& config = res.get();
-  TRI_ASSERT(res->type != Type::Unknown);
+  TRI_ASSERT(res->type != Type::kUnknown);
 
   auto key =
-      config.type == Type::Syslog ? std::string(syslogPrefix) : config.output;
+      config.type == Type::kSyslog ? std::string(syslogPrefix) : config.output;
 
   std::shared_ptr<LogAppender> appender;
 
@@ -95,24 +97,24 @@ void Appenders::addAppender(LogGroup const& logGroup,
 std::shared_ptr<LogAppender> Appenders::buildAppender(
     LogGroup const& group, AppenderConfig const& config) {
   switch (config.type) {
-    case Type::File:
+    case Type::kFile:
       return LogAppenderFileFactory::getFileAppender(
           config.output.substr(filePrefix.size()));
-    case Type::Stderr:
+    case Type::kStderr:
       TRI_ASSERT(config.output == "+");
       if (!_groups[group.id()].definition2appenders.contains("+")) {
         return std::make_shared<LogAppenderStderr>();
       }
       // already got a logger for stderr
       break;
-    case Type::Stdout:
+    case Type::kStdout:
       TRI_ASSERT(config.output == "-");
       if (!_groups[group.id()].definition2appenders.contains("-")) {
         return std::make_shared<LogAppenderStdout>();
       }
       // already got a logger for stdout
       break;
-    case Type::Syslog:
+    case Type::kSyslog:
 #ifdef ARANGODB_ENABLE_SYSLOG
     {
       auto s = basics::StringUtils::split(
@@ -127,7 +129,7 @@ std::shared_ptr<LogAppender> Appenders::buildAppender(
       return std::make_shared<LogAppenderSyslog>(s[0], identifier);
     }
 #endif
-    case Type::Unknown:
+    case Type::kUnknown:
       TRI_ASSERT(false);
   }
   return nullptr;
@@ -236,39 +238,42 @@ ResultT<Appenders::AppenderConfig> Appenders::parseDefinition(
   } else {
     return Result(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("strange output definition '") + definition + "' ignored");
+        absl::StrCat("strange output definition '", definition , "' ignored");
   }
 
   if (!topicName.empty()) {
     result.topic = LogTopic::lookup(topicName);
 
     if (result.topic == nullptr) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "strange topic '" + topicName +
-                                                 "', ignoring whole defintion");
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("strange topic '", topicName,
+                                 "', ignoring whole defintion"));
     }
   }
 
   if (result.output == "+") {
-    result.type = Type::Stderr;
+    result.type = Type::kStderr;
   } else if (result.output == "-") {
-    result.type = Type::Stdout;
+    result.type = Type::kStdout;
 #ifdef ARANGODB_ENABLE_SYSLOG
   } else if (result.output.starts_with(syslogPrefix)) {
     auto s = basics::StringUtils::split(
         result.output.substr(syslogPrefix.size()), '/');
 
     if (s.size() < 1 || s.size() > 2) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    "unknown syslog definition '" + result.output +
-                        "', expecting 'syslog://facility/identifier'");
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("unknown syslog definition '", result.output,
+                       "', expecting 'syslog://facility/identifier'"));
     }
-    result.type = Type::Syslog;
+    result.type = Type::kSyslog;
 #endif
   } else if (result.output.starts_with(filePrefix)) {
-    result.type = Type::File;
+    result.type = Type::kFile;
   } else {
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  "unknown output definition '" + result.output + "'");
+    return Result(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("unknown output definition '", result.output, "'"));
   }
 
   return result;
