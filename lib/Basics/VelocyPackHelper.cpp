@@ -603,6 +603,11 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
       return compareInt64Double(l.i, r.d);
     case kUnsignedIntegral + kDouble* Type::kNumTypes:
       return compareUInt64Double(l.u, r.d);
+    case kSignedIntegral + kSignedIntegral* Type::kNumTypes:
+      // Note that since we have SmallInt and Int and UTCDate it is
+      // indeed possible that both sides are signed integers, although
+      // we have checked before that the types are not equal!
+      return comp<int64_t>(l.i, r.i);
     default:  // does not happen!
       TRI_ASSERT(false);
       return 0;
@@ -893,7 +898,8 @@ int VelocyPackHelper::compareInternal(VPackSlice lhs, VPackSlice rhs,
     case VPackValueType::Double:
     case VPackValueType::Int:
     case VPackValueType::UInt:
-    case VPackValueType::SmallInt: {
+    case VPackValueType::SmallInt:
+    case VPackValueType::UTCDate: {
       if (sortingMethod == SortingMethod::Correct) {
         return compareNumberValuesCorrectly(lhsType, lhs, rhs);
       } else {
