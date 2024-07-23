@@ -238,7 +238,7 @@ ResultT<Appenders::AppenderConfig> Appenders::parseDefinition(
   } else {
     return Result(
         TRI_ERROR_BAD_PARAMETER,
-        absl::StrCat("strange output definition '", definition , "' ignored");
+        absl::StrCat("strange output definition '", definition, "' ignored"));
   }
 
   if (!topicName.empty()) {
