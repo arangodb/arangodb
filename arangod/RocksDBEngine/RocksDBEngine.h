@@ -417,6 +417,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
     return _metricsIndexEstimatorMemoryUsage;
   }
 
+  std::string getSortingMethodFile() const;
+
+  std::string getLanguageFile() const;
+
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
@@ -427,10 +431,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   std::string getEncryptionTypeFile() const;
 
   std::string getKeyStoreFolder() const;
-
-  std::string getSortingMethodFile() const;
-
-  std::string getLanguageFile() const;
 
   std::vector<enterprise::EncryptionSecret> userEncryptionSecrets() const;
 
