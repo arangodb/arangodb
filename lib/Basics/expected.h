@@ -50,10 +50,8 @@ struct expected {
   }
 
   expected& operator=(expected&& other) noexcept(
-      std::is_nothrow_move_constructible_v<T>&&
-          std::is_nothrow_destructible_v<T>&& std::is_nothrow_move_assignable_v<
-              T>) requires(std::move_constructible<T>&&
-                               std::is_move_assignable_v<T>) {
+      std::is_nothrow_destructible_v<T>&& std::is_nothrow_move_assignable_v<
+          T>) requires(std::is_move_assignable_v<T>) {
     if (this != &other) {
       if (other._state == kValue && _state == kValue) {
         _value = std::move(other._value);
@@ -158,7 +156,7 @@ struct expected {
  private:
   auto copy_from(expected const& other) noexcept(
       std::is_nothrow_copy_constructible_v<T>) requires
-      std::is_copy_constructible_v<T> {
+      std::copy_constructible<T> {
     if (other._state == kValue) {
       new (&_value) T(other._value);
       _state = kValue;
