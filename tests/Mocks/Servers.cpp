@@ -477,7 +477,7 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
       aql::QueryString(queryString), nullptr,
       aql::QueryOptions(queryOptions.slice()), scheduler);
   callback(*query);
-  query->prepareQuery();
+  query->prepareQuery().waitAndGet();
 
   return query;
 }
@@ -620,7 +620,7 @@ std::shared_ptr<aql::Query> MockClusterServer::createFakeQuery(
       aql::QueryString(queryString), nullptr,
       aql::QueryOptions(queryOptions.slice()));
   callback(*query);
-  query->prepareQuery();
+  query->prepareQuery().waitAndGet();
 
   return query;
 }

@@ -542,7 +542,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -649,7 +649,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -761,7 +761,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -872,7 +872,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -984,7 +984,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1096,7 +1096,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1218,7 +1218,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1330,7 +1330,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1418,7 +1418,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1508,7 +1508,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1629,7 +1629,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1719,7 +1719,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1804,7 +1804,7 @@ class QueryScorer : public QueryTest {
               _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery();
+      query->prepareQuery().waitAndGet();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 

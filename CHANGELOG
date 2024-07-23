@@ -1,6 +1,9 @@
 devel
 -----
 
+* During AQL setup, the Coordinator will no longer block threads while waiting
+  for DBServers to finish the query instantiation.
+
 * Add optimizer rule `push-limit-into-index` that pushes a limit down into index
   iteration and can optimize the query execution when compound index is used
   along with SORT and LIMIT clauses.

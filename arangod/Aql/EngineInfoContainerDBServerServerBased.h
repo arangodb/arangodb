@@ -28,10 +28,8 @@
 #include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTypes.h"
-#include "VocBase/AccessMode.h"
 
 #include <map>
-#include <set>
 #include <stack>
 
 namespace arangodb {
@@ -83,7 +81,7 @@ class EngineInfoContainerDBServerServerBased {
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
-  Result buildEngines(
+  futures::Future<Result> buildEngines(
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
       MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
@@ -93,6 +91,18 @@ class EngineInfoContainerDBServerServerBased {
   void addGraphNode(GraphNode* node, bool pushToSingleServer);
 
  private:
+  struct BuildEnginesInternalResult {
+    Result result;
+    // cleanup will be executed iff either cleanupReason is set, or if an
+    // exception is thrown.
+    std::optional<ErrorCode> cleanupReason;
+  };
+  auto buildEnginesInternal(
+      std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+      MapRemoteToSnippet& snippetIds, ServerQueryIdList& serverToQueryId,
+      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+      std::vector<ServerID>& dbServers)
+      -> futures::Future<BuildEnginesInternalResult>;
   /**
    * @brief Helper method to generate the Request to be send to a specific
    * database server. this request contains all the necessary information to
