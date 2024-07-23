@@ -36,7 +36,6 @@
 #include "Basics/signals.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -480,7 +479,7 @@ extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
           LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
               << "hangup received, about to reopen logfile (sender pid "
               << processIdRequesting << ")";
-          LogAppender::reopen();
+          Logger::reopen();
           LOG_TOPIC("23db2", INFO, arangodb::Logger::FIXME)
               << "hangup received, reopened logfile";
         } catch (...) {

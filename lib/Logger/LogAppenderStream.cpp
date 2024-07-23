@@ -18,15 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchCommon.h"
-#include "Logger/Topics.h"
+#include "LogAppenderStream.h"
 
-namespace arangodb::iresearch {
+#include "Logger/LogMessage.h"
 
-LogTopic TOPIC{logger::topic::ArangoSearch{}};
+namespace arangodb {
 
-}  // namespace arangodb::iresearch
+LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
+    : LogAppender(), _fd(fd), _useColors(false) {}
+
+void LogAppenderStream::logMessage(LogMessage const& message) {
+  this->writeLogMessage(message._level, message._topicId, message._message);
+}
+
+}  // namespace arangodb
