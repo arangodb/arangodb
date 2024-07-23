@@ -49,9 +49,6 @@
 #include <signal.h>
 #endif
 
-inline void ADB_WindowsEntryFunction() {}
-inline void ADB_WindowsExitFunction(int, void*) {}
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -78,8 +75,6 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
   pthread_setattr_default_np(&a);
 #endif
 
-  ADB_WindowsEntryFunction();
-
   // global initialization
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
 
@@ -96,8 +91,6 @@ ArangoGlobalContext::~ArangoGlobalContext() {
 
   RandomGenerator::shutdown();
   TRI_ShutdownProcess();
-
-  ADB_WindowsExitFunction(_ret, nullptr);
 }
 
 int ArangoGlobalContext::exit(int ret) {
