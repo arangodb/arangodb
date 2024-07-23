@@ -18,24 +18,45 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <iosfwd>
+#include <string>
+
+#include "Logger/LogAppender.h"
+#include "Logger/LogLevel.h"
 
 namespace arangodb {
-enum class LogLevel {
-  DEFAULT = 0,
-  FATAL = 1,
-  ERR = 2,
-  WARN = 3,
-  INFO = 4,
-  DEBUG = 5,
-  TRACE = 6
-};
-}
+struct LogMessage;
 
-std::ostream& operator<<(std::ostream&, arangodb::LogLevel);
+class LogAppenderStream : public LogAppender {
+ public:
+  LogAppenderStream(std::string const& filename, int fd);
+  ~LogAppenderStream() = default;
+
+  void logMessage(LogMessage const& message) override final;
+
+  virtual std::string details() const override = 0;
+
+  int fd() const { return _fd; }
+
+ protected:
+  void updateFd(int fd) { _fd = fd; }
+
+  virtual void writeLogMessage(LogLevel level, size_t topicId,
+                               std::string const& message) = 0;
+
+  /// @brief maximum size for reusable log buffer
+  /// if the buffer exceeds this size, it will be freed after the log
+  /// message was produced. otherwise it will be kept for recycling
+  static constexpr size_t maxBufferSize = 64 * 1024;
+
+  /// @brief file descriptor
+  int _fd;
+
+  /// @brief whether or not we should use colors
+  bool _useColors;
+};
+
+}  // namespace arangodb
