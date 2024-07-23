@@ -274,9 +274,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       // note: this is a default value from RocksDB (db/column_family.cc,
       // kAdjustedTtl):
       _periodicCompactionTtl(30 * 24 * 60 * 60),
-      // intentional deviation from RocksDB default (0) to reduce I/O for
-      // writing to WAL
-      _recycleLogFileNum(4),
+      _recycleLogFileNum(0),
       _compressionType(::kCompressionTypeLZ4),
       _blobCompressionType(::kCompressionTypeLZ4),
       _blockCacheType(::kBlockCacheTypeLRU),
