@@ -430,6 +430,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   std::string getSortingMethodFile() const;
 
+  std::string getLanguageFile() const;
+
   std::vector<enterprise::EncryptionSecret> userEncryptionSecrets() const;
 
   /// rotate user-provided keys, writes out the internal key files
@@ -818,5 +820,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
 static constexpr const char* kEncryptionKeystoreFolder = "ENCRYPTION-KEYS";
 static constexpr const char* kSortingMethodFile = "SORTING";
+static constexpr const char* kLanguageFile = "LANGUAGE";
 
 }  // namespace arangodb

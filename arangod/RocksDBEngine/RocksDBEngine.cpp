@@ -4234,4 +4234,8 @@ std::string RocksDBEngine::getSortingMethodFile() const {
                                                     kSortingMethodFile);
 }
 
+std::string RocksDBEngine::getLanguageFile() const {
+  return arangodb::basics::FileUtils::buildFilename(_basePath, kLanguageFile);
+}
+
 }  // namespace arangodb
