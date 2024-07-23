@@ -220,7 +220,7 @@ class instanceManager {
       if (role !== undefined && !arangod.isRole(role)) {
         return;
       }
-      if (url !== undefined && arangod.url !== url) {
+      if (url !== undefined && arangod.url !== url && arangod.endpoint !== url) {
         return;
       }
       if (arangod.debugSetFailAt(failurePoint, shortName)) {
@@ -238,7 +238,7 @@ class instanceManager {
       if (role !== undefined && !arangod.isRole(role)) {
         return;
       }
-      if (url !== undefined && arangod.url !== url) {
+      if (url !== undefined && arangod.url !== url && arangod.endpoint !== url) {
         return;
       }
       arangod.debugClearFailAt(failurePoint, shortName);
@@ -251,7 +251,7 @@ class instanceManager {
       if (role !== undefined && !arangod.isRole(role)) {
         return;
       }
-      if (url !== undefined && arangod.url !== url) {
+      if (url !== undefined && arangod.url !== url && arangod.endpoint !== url) {
         return;
       }
       arangod.debugClearFailAt(failurePoint, shortName);
