@@ -4190,7 +4190,7 @@ using SortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod;
 
 Result RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
-  std::string path = databasePathFeature.subdirectoryName("SORTING");
+  std::string path = databasePathFeature.subdirectoryName(kSortingMethodFile);
   std::string value =
       sortingMethod == SortingMethod::Legacy ? "LEGACY" : "CORRECT";
   try {
@@ -4208,7 +4208,7 @@ Result RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
 SortingMethod RocksDBEngine::readSortingFile() {
   SortingMethod sortingMethod = SortingMethod::Legacy;
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
-  std::string path = databasePathFeature.subdirectoryName("SORTING");
+  std::string path = databasePathFeature.subdirectoryName(kSortingMethodFile);
   std::string value;
   try {
     basics::FileUtils::slurp(path, value);
@@ -4227,6 +4227,11 @@ SortingMethod RocksDBEngine::readSortingFile() {
     }
   }
   return sortingMethod;
+}
+
+std::string RocksDBEngine::getSortingMethodFile() const {
+  return arangodb::basics::FileUtils::buildFilename(_basePath,
+                                                    kSortingMethodFile);
 }
 
 }  // namespace arangodb
