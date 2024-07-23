@@ -161,6 +161,8 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
     return;
   }
 
+  std::unique_lock guardError{_condition.mutex};
+
   std::shared_ptr<VPackBuilder> parsedBody;
   try {
     parsedBody = result->getBodyVelocyPack();
