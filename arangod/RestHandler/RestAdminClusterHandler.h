@@ -66,6 +66,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const RebalanceShards;
   static std::string const Rebalance;
   static std::string const ShardStatistics;
+  static std::string const VPackSortMigration;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -107,7 +108,12 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRebalanceExecute();
   RestStatus handleRebalancePlan();
 
+  RestStatus handleVPackSortMigration();
+
  private:
+  RestStatus handleVPackSortMigrationTest();
+  RestStatus handleVPackSortMigrationAction();
+
   struct MoveShardContext {
     std::string database;
     std::string collection;

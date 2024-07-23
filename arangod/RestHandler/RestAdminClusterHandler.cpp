@@ -347,6 +347,8 @@ std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 std::string const RestAdminClusterHandler::Rebalance = "rebalance";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
+std::string const RestAdminClusterHandler::VPackSortMigration =
+    "vpackSortMigration";
 
 RestStatus RestAdminClusterHandler::execute() {
   // here we first do a glboal check, which is based on the setting in startup
@@ -422,6 +424,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRebalance();
     } else if (command == ShardStatistics) {
       return handleShardStatistics();
+    } else if (command == VPackSortMigration) {
+      return handleVPackSortMigration();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -2902,3 +2906,41 @@ RestAdminClusterHandler::collectRebalanceInformation(
 
   return p;
 }
+
+RestStatus RestAdminClusterHandler::handleVPackSortMigrationTest() {
+  VPackBuilder builder;
+  { VPackObjectBuilder guard(&builder); }
+  generateOk(ResponseCode::OK, builder.slice());
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleVPackSortMigrationAction() {
+  VPackBuilder builder;
+  { VPackObjectBuilder guard(&builder); }
+  generateOk(ResponseCode::OK, builder.slice());
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleVPackSortMigration() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() == rest::RequestType::GET) {
+    return handleVPackSortMigrationTest();
+  }
+  if (request()->requestType() == rest::RequestType::PUT) {
+    return handleVPackSortMigrationAction();
+  }
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  return RestStatus::DONE;
+}
+
