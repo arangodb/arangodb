@@ -51,12 +51,12 @@ function quickKeysSuite() {
   };
 
   let runTestForCount = function(n, quick, adjustQuickLimit) {
-    IM.debugSetFailAt("disableRevisionsAsDocumentIds", undefined, instanceRole.dbServer, primaryEndpoint);
+    IM.debugSetFailAt("disableRevisionsAsDocumentIds", undefined, instanceRole.single, primaryEndpoint);
     createCollection(n);
     
     let quickLimit = 1000000;
     if (adjustQuickLimit) {
-      IM.debugSetFailAt("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100", undefined, instanceRole.dbServer, primaryEndpoint);
+      IM.debugSetFailAt("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100", undefined, instanceRole.single, primaryEndpoint);
       quickLimit = 100;
     }
 
