@@ -110,10 +110,6 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   RestStatus handleVPackSortMigration();
 
- private:
-  RestStatus handleVPackSortMigrationTest();
-  RestStatus handleVPackSortMigrationAction();
-
   struct MoveShardContext {
     std::string database;
     std::string collection;

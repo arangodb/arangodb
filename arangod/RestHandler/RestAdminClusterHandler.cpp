@@ -2907,39 +2907,66 @@ RestAdminClusterHandler::collectRebalanceInformation(
   return p;
 }
 
-RestStatus RestAdminClusterHandler::handleVPackSortMigrationTest() {
-  VPackBuilder builder;
-  { VPackObjectBuilder guard(&builder); }
-  generateOk(ResponseCode::OK, builder.slice());
-  return RestStatus::DONE;
-}
+namespace {
 
-RestStatus RestAdminClusterHandler::handleVPackSortMigrationAction() {
-  VPackBuilder builder;
-  { VPackObjectBuilder guard(&builder); }
-  generateOk(ResponseCode::OK, builder.slice());
-  return RestStatus::DONE;
-}
+// On dbservers, agents and single servers:
+Result analyzeVPackIndexSorting(VPackBuilder& result) { return {}; }
+
+Result migrateVPackIndexSorting(VPackBuilder& result) { return {}; }
+
+// On coordinators:
+Result handleVPackSortMigrationTest(VPackBuilder& result) { return {}; }
+
+Result handleVPackSortMigrationAction(VPackBuilder& result) { return {}; }
+
+}  // namespace
 
 RestStatus RestAdminClusterHandler::handleVPackSortMigration() {
+  // First we do the authentication: We only allow superuser access, since
+  // this is a critical migration operation:
+  if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "only superusers may run vpack index migration");
+    return RestStatus::DONE;
+  }
+
+  // First check methods:
+  if (request()->requestType() != rest::RequestType::GET &&
+      request()->requestType() != rest::RequestType::PUT) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  // We behave differently on a coordinator and on a single server,
+  // dbserver or agent.
+  // On a coordinator, we basically implement a trampoline to all dbservers.
+  // On the other instance types, we implement the actual checking and
+  // migration logic. Agents do not have to be checked since they do not
+  // use VPack indexes.
+  VPackBuilder result;
+  Result res;
   if (!ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on coordinators");
-    return RestStatus::DONE;
+    if (request()->requestType() == rest::RequestType::GET) {
+      res = ::analyzeVPackIndexSorting(result);
+    } else {  // PUT
+      res = ::migrateVPackIndexSorting(result);
+    }
+  } else {
+    // Coordinators from here:
+    if (request()->requestType() == rest::RequestType::GET) {
+      Result res = handleVPackSortMigrationTest(result);
+      generateOk(rest::ResponseCode::OK, result.slice());
+    } else {  // PUT
+      Result res = handleVPackSortMigrationAction(result);
+      generateOk(rest::ResponseCode::OK, result.slice());
+    }
   }
-
-  if (!ExecContext::current().isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+  if (res.fail()) {
+    generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
+                  res.errorMessage());
+  } else {
+    generateOk(rest::ResponseCode::OK, result.slice());
   }
-
-  if (request()->requestType() == rest::RequestType::GET) {
-    return handleVPackSortMigrationTest();
-  }
-  if (request()->requestType() == rest::RequestType::PUT) {
-    return handleVPackSortMigrationAction();
-  }
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
