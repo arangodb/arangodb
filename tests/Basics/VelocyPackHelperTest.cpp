@@ -701,8 +701,8 @@ TEST(VPackHelperTest, test_utcdate) {
   EXPECT_EQ(1, compGeneric(VPackValue(i, VPackValueType::UTCDate), i));
   EXPECT_EQ(-1, compGeneric(d + 1.0, VPackValue(i, VPackValueType::UTCDate)));
   EXPECT_EQ(1, compGeneric(VPackValue(i + 1, VPackValueType::UTCDate), d));
-  EXPECT_EQ(-1, compGeneric(VPackValue(i - 1, VPackValueType::UTCDate), d));
-  EXPECT_EQ(1, compGeneric(u + 1, VPackValue(i, VPackValueType::UTCDate)));
+  EXPECT_EQ(1, compGeneric(VPackValue(i - 1, VPackValueType::UTCDate), d));
+  EXPECT_EQ(-1, compGeneric(u + 1, VPackValue(i, VPackValueType::UTCDate)));
   EXPECT_EQ(-1, compGeneric(u - 1, VPackValue(i, VPackValueType::UTCDate)));
   EXPECT_EQ(1, compGeneric(VPackValue(i + 1, VPackValueType::UTCDate), u));
   EXPECT_EQ(1, compGeneric(VPackValue(i - 1, VPackValueType::UTCDate), u));
