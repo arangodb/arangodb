@@ -2943,4 +2943,3 @@ RestStatus RestAdminClusterHandler::handleVPackSortMigration() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
-
