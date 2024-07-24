@@ -111,7 +111,6 @@ class ApplicationServer {
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
  public:
-  // handled i.e. in WindowsServiceFeature.cpp
   enum class State : int {
     UNINITIALIZED,
     IN_COLLECT_OPTIONS,
