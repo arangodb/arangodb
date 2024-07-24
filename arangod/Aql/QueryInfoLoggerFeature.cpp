@@ -296,11 +296,7 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     auto query = aql::Query::create(
         transaction::StandaloneContext::create(*vocbase, origin),
         aql::QueryString(removeQuery), std::move(bindVars), options);
-#if 0
-    query->collections().add(StaticStrings::QueriesCollection,
-                             AccessMode::Type::WRITE,
-                             aql::Collection::Hint::Collection);
-#endif
+
     aql::QueryResult queryResult = query->executeSync();
 
     LOG_TOPIC_IF("05da1", TRACE, Logger::QUERIES,
