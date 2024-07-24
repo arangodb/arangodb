@@ -29,7 +29,7 @@ endpoints priority=250 single -- --skipEndpointsIpv6 true
 
 recovery priority=2000 buckets=3 parallelity=3 size=small single
 # cluster
-recovery_cluster priority=2000 size=small cluster buckets=5
+recovery_cluster priority=2000 size=small cluster buckets=8
 
 recovery_server priority=2000 buckets=3 parallelity=3 size=small single
 # cluster
@@ -109,7 +109,8 @@ hot_backup enterprise size=large -- --dumpAgencyOnError true
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
 server_parameters priority=1000 parallelity=5 buckets=6 cluster -- --dumpAgencyOnError true
-server_permissions,server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
+server_permissions priority=1000 parallelity=5 size=small buckets=2 -- --dumpAgencyOnError true
+server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
 # Dump Tests
 dump size=medium -- --dumpAgencyOnError true
