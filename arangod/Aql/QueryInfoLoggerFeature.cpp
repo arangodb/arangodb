@@ -37,6 +37,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
@@ -215,14 +216,22 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
       return;
     }
 
+    auto offset = std::chrono::seconds(1);
+    if (ServerState::instance()->isCoordinator()) {
+      // there may be multiple coordinators all trying to issue the
+      // garbage collection query at around the very same time. use a
+      // random offset here to make this less likely.
+      offset = std::chrono::seconds(RandomGenerator::interval(uint32_t(5)));
+    }
+
     auto workItem = scheduler->queueDelayed(
-        "queries-gc", RequestLane::CLIENT_SLOW, std::chrono::seconds(2),
-        [this](bool canceled) {
+        "queries-gc", RequestLane::CLIENT_SLOW, offset, [this](bool canceled) {
           if (!canceled && !isStopping()) {
             if (Result res = basics::catchToResult(
                     [this]() { return cleanupCollection(); });
                 res.fail() && res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
                 res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+                res.isNot(TRI_ERROR_ARANGO_CONFLICT) &&
                 res.isNot(TRI_ERROR_ARANGO_READ_ONLY)) {
               LOG_TOPIC("7a99c", WARN, Logger::QUERIES)
                   << "unable to perform garbage collection "
@@ -258,12 +267,14 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
               "unable to find _system database"};
     }
 
+    // note: we are using ignoreErrors: true here so that concurrent updates/
+    // removals of the same documents does not cause the query to fail.
     constexpr std::string_view removeQuery =
         "/*queries cleanup*/ FOR doc IN @@collection FILTER doc.started < "
-        "@minDate REMOVE doc IN @@collection";
+        "@minDate REMOVE doc IN @@collection OPTIONS {ignoreErrors: true}";
 
     std::string minDate = TRI_StringTimeStamp(TRI_microtime() - _retentionTime,
-                                              /*useLocalTime*/ false);
+                                              Logger::getUseLocalTime());
 
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
@@ -285,9 +296,11 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     auto query = aql::Query::create(
         transaction::StandaloneContext::create(*vocbase, origin),
         aql::QueryString(removeQuery), std::move(bindVars), options);
+#if 0
     query->collections().add(StaticStrings::QueriesCollection,
                              AccessMode::Type::WRITE,
                              aql::Collection::Hint::Collection);
+#endif
     aql::QueryResult queryResult = query->executeSync();
 
     LOG_TOPIC_IF("05da1", TRACE, Logger::QUERIES,
@@ -468,7 +481,7 @@ QueryInfoLoggerFeature::QueryInfoLoggerFeature(Server& server)
       _logProbability(0.1),
       _pushInterval(3'000),
       _cleanupInterval(600'000),
-      _retentionTime(86400.0) {
+      _retentionTime(28800.0) {
   setOptional(true);
   // we need to be able to run AQL queries here ourselves.
   startsAfter<DatabaseFeaturePhase>();

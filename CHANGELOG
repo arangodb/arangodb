@@ -89,6 +89,7 @@ devel
   after a query's start time it will be approximately retained in the system
   collection. For example, `--query.collection-logger-retention-time=86400`
   will keep query information around for approximately 1 day (86400 seconds).
+  The default retention time is 28800 seconds, i.e. 8 hours.
   The actual cleanup of the system collection is only executed with a 
   configurable interval as well, so that the cleanup process does not cause
   much traffic. The cleanup interval can be controlled by setting the option
