@@ -108,7 +108,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRebalanceExecute();
   RestStatus handleRebalancePlan();
 
-  RestStatus handleVPackSortMigration();
+  typedef futures::Future<futures::Unit> FutureVoid;
+
+  FutureVoid handleVPackSortMigration();
 
   struct MoveShardContext {
     std::string database;
@@ -145,7 +147,6 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
                                          VPackSlice body);
 
   typedef std::chrono::steady_clock clock;
-  typedef futures::Future<futures::Unit> FutureVoid;
 
   FutureVoid waitForSupervisionState(bool state,
                                      std::string const& reactivationTime,

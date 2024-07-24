@@ -33,6 +33,12 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+
+#include "Network/NetworkFeature.h"
+#include "Network/Methods.h"
+
 namespace arangodb {
 
 // On dbservers, agents and single servers:
@@ -89,9 +95,74 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
 
 Result migrateVPackIndexSorting(VPackBuilder& result) { return {}; }
 
-// On coordinators:
-Result handleVPackSortMigrationTest(VPackBuilder& result) { return {}; }
+namespace {
+async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
+                             VPackBuilder& result) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-Result handleVPackSortMigrationAction(VPackBuilder& result) { return {}; }
+  auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+  auto& nf = vocbase.server().getFeature<NetworkFeature>();
+
+  auto dbs = ci.getCurrentDBServers();
+  std::vector<futures::Future<network::Response>> requests;
+  requests.reserve(dbs.size());
+
+  network::RequestOptions opts;
+  opts.database = vocbase.name();
+
+  for (auto const& server : dbs) {
+    LOG_DEVEL << "forwarding to server " << server;
+    auto f =
+        network::sendRequest(nf.pool(), "server:" + server, verb,
+                             "_admin/cluster/vpackSortMigration", {}, opts);
+    requests.emplace_back(std::move(f).then([server](auto&& response) {
+      LOG_DEVEL << "received response from " << server;
+      return std::move(response).get();
+    }));
+  }
+
+  LOG_DEVEL << "awaiting all results";
+  auto responses = co_await futures::collectAll(requests);
+  LOG_DEVEL << "all server responded";
+
+  auto server = dbs.begin();
+  {
+    VPackObjectBuilder b(&result);
+    for (auto& resp : responses) {
+      auto res = basics::catchToResultT([&] { return std::move(resp).get(); });
+
+      {
+        result.add(VPackValue(*(server++)));
+        VPackObjectBuilder ob{&result};
+        if (res.fail()) {
+          result.add("error", VPackValue(false));
+          result.add("errorMessage", res.errorMessage());
+          result.add("errorCode", res.errorNumber());
+        } else {
+          result.add("error", VPackValue(false));
+          result.add("response", res.get().slice());
+        }
+      }
+    }
+  }
+
+  co_return {};
+}
+}  // namespace
+
+// On coordinators:
+async<Result> handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
+                                           VPackBuilder& result) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+
+  return fanOutRequests(vocbase, fuerte::RestVerb::Get, result);
+}
+
+async<Result> handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
+                                             VPackBuilder& result) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+
+  return fanOutRequests(vocbase, fuerte::RestVerb::Put, result);
+}
 
 }  // namespace arangodb
