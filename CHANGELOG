@@ -10,9 +10,11 @@ devel
   instances with a fresh database directory will only use the new sorting
   method. There will be a migration path.
 
-* Add optimizer rule `push-limit-into-index` that pushes a limit down
-  into index iteration and can optimize the query execution when compound
-  index is used along with SORT and LIMIT clauses.
+* FE-457: fix query UI result table headers & table/geo detection.
+
+* Add optimizer rule `push-limit-into-index` that pushes a limit down into index
+  iteration and can optimize the query execution when compound index is used
+  along with SORT and LIMIT clauses.
 
 * FE-423: Add a progress bar to reflect an index creation process.
 
