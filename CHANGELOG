@@ -3,8 +3,6 @@ devel
 
 * FE-457: fix query UI result table headers & table/geo detection.
 
-* Updated ArangoDB Starter to v0.19.3.
-
 * Add optimizer rule `push-limit-into-index` that pushes a limit down into index
   iteration and can optimize the query execution when compound index is used
   along with SORT and LIMIT clauses.
