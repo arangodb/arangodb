@@ -85,8 +85,16 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
         if (database == nullptr) {
           continue;
         }
+        LOG_TOPIC("42536", DEBUG, Logger::ENGINES)
+            << "Checking VPackSortMigration for database " << name;
         database->processCollections([&](LogicalCollection* collection) {
+          LOG_TOPIC("42537", DEBUG, Logger::ENGINES)
+              << "Checking VPackSortMigration for collection "
+              << collection->name();
           for (auto& index : collection->getPhysical()->getReadyIndexes()) {
+            LOG_TOPIC("42538", DEBUG, Logger::ENGINES)
+                << "Checking VPackSortMigration for index with ID "
+                << index->id().id() << " and name " << index->name();
             if (auto type = index->type();
                 type == IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX ||
                 type == IndexType::TRI_IDX_TYPE_HASH_INDEX ||
@@ -98,9 +106,11 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
                 // The above types will all be instances of RocksDBIndex, but
                 // we check just in case!
                 auto objectId = rocksDBIndex->objectId();
+                LOG_TOPIC("42539", DEBUG, Logger::ENGINES)
+                    << "VPackSortMigration: RocksDBIndex, objectId: "
+                    << std::hex << objectId;
                 auto bounds = rocksDBIndex->getBounds(objectId);
                 auto columnFamily = rocksDBIndex->columnFamily();
-                rocksDBIndex->compact();  // trigger a compaction, just in case
 
                 // Note that the below iterator will automatically create a
                 // RocksDB read snapshot for
@@ -113,15 +123,32 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
                 options.fill_cache = false;
                 std::unique_ptr<rocksdb::Iterator> it(
                     db->NewIterator(options, columnFamily));
-                rocksdb::Slice prev_key;  // starts empty
+                std::string prev_key;  // copy the previous key, since the
+                                       // slice to which the it->key() points
+                                       // is not guaranteed to keep its value!
                 bool alarm = false;
                 for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
-                  auto key = it->key();
-                  if (!prev_key.empty() &&
-                      newComparator.Compare(prev_key, key) > 0) {
-                    alarm = true;
-                    break;
+                  rocksdb::Slice key = it->key();
+                  if (!prev_key.empty()) {
+                    LOG_TOPIC("42540", TRACE, Logger::ENGINES)
+                        << "VPackSortMigration: comparing keys: "
+                        << key.ToString(true) << " with "
+                        << rocksdb::Slice(prev_key.data(), prev_key.size())
+                               .ToString(true);
+                    // Note that there is an implicit conversion from
+                    // std::string to rocksdb::Slice:
+                    if (newComparator.Compare(prev_key, key) > 0) {
+                      LOG_TOPIC("42541", WARN, Logger::ENGINES)
+                          << "VPackSortMigration: found problematic key for "
+                             "database "
+                          << name << ", collection " << collection->name()
+                          << ", index with ID " << index->id().id()
+                          << " and name " << index->name();
+                      alarm = true;
+                      break;
+                    }
                   }
+                  prev_key.assign(key.data(), key.size());
                 }
                 if (alarm) {
                   problemFound = true;
@@ -141,30 +168,59 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
     }
 
     if (!problemFound) {
-      guardO->add("error", VPackValue(false));
-      guardO->add("errorCode", VPackValue(0));
-      guardO->add("errorMessage", VPackValue("all good with sorting order"));
+      guardO->add(StaticStrings::Error, VPackValue(false));
+      guardO->add(StaticStrings::ErrorCode, VPackValue(0));
+      guardO->add(StaticStrings::ErrorMessage,
+                  VPackValue("all good with sorting order"));
     } else {
-      guardO->add("error", VPackValue(true));
-      guardO->add("errorCode",
+      guardO->add(StaticStrings::Error, VPackValue(true));
+      guardO->add(StaticStrings::ErrorCode,
                   VPackValue(TRI_ERROR_ARANGO_INDEX_HAS_LEGACY_SORTED_KEYS));
-      guardO->add("errorMessage",
+      guardO->add(StaticStrings::ErrorMessage,
                   VPackValue("some indexes have legacy sorted keys"));
     }
   }
 
-  // Finally, wait for all compaction jobs to have finished, this gives us
-  // some level of confidence that potential bad keys and tomb stones which
-  // we can no longer see in the index have been flushed out of the system.
-
   return {};
 }
 
-Result migrateVPackIndexSorting(VPackBuilder& result) { return {}; }
+Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
+  // Just for the sake of completeness, restrict ourselves to the RocksDB
+  // storage engine:
+  result.clear();
+  auto& engineSelectorFeature =
+      vocbase.server().getFeature<EngineSelectorFeature>();
+  if (!engineSelectorFeature.isRocksDB()) {
+    {
+      VPackObjectBuilder guard(&result);
+      guard->add(StaticStrings::Error, VPackValue(false));
+      guard->add(StaticStrings::ErrorCode, VPackValue(0));
+      guard->add(
+          StaticStrings::ErrorMessage,
+          VPackValue("VPack sorting migration is unnecessary for storage "
+                     "engines other than RocksDB"));
+    }
+    return {};
+  }
+
+  auto& engine = engineSelectorFeature.engine<RocksDBEngine>();
+  Result res = engine.writeSortingFile(
+      arangodb::basics::VelocyPackHelper::SortingMethod::Correct);
+
+  if (res.ok()) {
+    VPackObjectBuilder guard(&result);
+    guard->add(StaticStrings::Error, VPackValue(false));
+    guard->add(StaticStrings::ErrorCode, VPackValue(0));
+    guard->add(StaticStrings::ErrorMessage,
+               VPackValue("VPack sorting migration done."));
+    return {};
+  }
+  return res;
+}
 
 namespace {
 async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
-                             VPackBuilder& result) {
+                             VPackBuilder& result, bool includeAgents) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
@@ -188,9 +244,11 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
     }));
   }
 
-  LOG_DEVEL << "awaiting all results";
+  LOG_TOPIC("22535", DEBUG, Logger::ENGINES)
+      << "VPackSortMigration: awaiting all results";
   auto responses = co_await futures::collectAll(requests);
-  LOG_DEVEL << "all server responded";
+  LOG_TOPIC("22536", DEBUG, Logger::ENGINES)
+      << "VPackSortMigration: all server responded";
 
   auto server = dbs.begin();
   {
@@ -202,12 +260,14 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
         result.add(VPackValue(*(server++)));
         VPackObjectBuilder ob{&result};
         if (res.fail()) {
-          result.add("error", VPackValue(false));
-          result.add("errorMessage", res.errorMessage());
-          result.add("errorCode", res.errorNumber());
+          result.add(StaticStrings::Error, VPackValue(false));
+          result.add(StaticStrings::ErrorMessage,
+                     VPackValue(res.errorMessage()));
+          result.add(StaticStrings::ErrorCode, VPackValue(res.errorNumber()));
         } else {
-          result.add("error", VPackValue(false));
-          result.add("response", res.get().slice());
+          result.add(StaticStrings::Error, VPackValue(false));
+          result.add(StaticStrings::ErrorCode, VPackValue(0));
+          result.add("result", res.get().slice());
         }
       }
     }
@@ -222,14 +282,14 @@ async<Result> handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
                                            VPackBuilder& result) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  return fanOutRequests(vocbase, fuerte::RestVerb::Get, result);
+  return fanOutRequests(vocbase, fuerte::RestVerb::Get, result, false);
 }
 
-async<Result> handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
-                                             VPackBuilder& result) {
+async<Result> handleVPackSortMigrationCompaction(TRI_vocbase_t& vocbase,
+                                                 VPackBuilder& result) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  return fanOutRequests(vocbase, fuerte::RestVerb::Put, result);
+  return fanOutRequests(vocbase, fuerte::RestVerb::Put, result, true);
 }
 
 }  // namespace arangodb

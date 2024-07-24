@@ -350,6 +350,9 @@ std::string const RestAdminClusterHandler::Rebalance = "rebalance";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
 std::string const RestAdminClusterHandler::VPackSortMigration =
     "vpackSortMigration";
+std::string const RestAdminClusterHandler::VPackSortMigrationCheck = "check";
+std::string const RestAdminClusterHandler::VPackSortMigrationMigrate =
+    "migrate";
 
 RestStatus RestAdminClusterHandler::execute() {
   // here we first do a glboal check, which is based on the setting in startup
@@ -425,8 +428,6 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRebalance();
     } else if (command == ShardStatistics) {
       return handleShardStatistics();
-    } else if (command == VPackSortMigration) {
-      return waitForFuture(handleVPackSortMigration());
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -438,6 +439,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRebalance();
     } else if (command == Maintenance) {
       return handleDBServerMaintenance(suffixes.at(1));
+    } else if (command == VPackSortMigration) {
+      return waitForFuture(handleVPackSortMigration(suffixes.at(1)));
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command +
@@ -2909,7 +2912,8 @@ RestAdminClusterHandler::collectRebalanceInformation(
 }
 
 RestAdminClusterHandler::FutureVoid
-RestAdminClusterHandler::handleVPackSortMigration() {
+RestAdminClusterHandler::handleVPackSortMigration(
+    std::string const& subCommand) {
   // First we do the authentication: We only allow superuser access, since
   // this is a critical migration operation:
   if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
@@ -2919,8 +2923,10 @@ RestAdminClusterHandler::handleVPackSortMigration() {
   }
 
   // First check methods:
-  if (request()->requestType() != rest::RequestType::GET &&
-      request()->requestType() != rest::RequestType::PUT) {
+  if (!((request()->requestType() == rest::RequestType::GET &&
+         subCommand == VPackSortMigrationCheck) ||
+        (request()->requestType() != rest::RequestType::PUT &&
+         subCommand == VPackSortMigrationMigrate))) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     co_return;
@@ -2936,11 +2942,9 @@ RestAdminClusterHandler::handleVPackSortMigration() {
   Result res;
   if (!ServerState::instance()->isCoordinator()) {
     if (request()->requestType() == rest::RequestType::GET) {
-      // res = ::analyzeVPackIndexSorting(_vocbase, result);
-      LOG_DEVEL << "Recived request";
-      res = TRI_ERROR_NO_ERROR;
+      res = ::analyzeVPackIndexSorting(_vocbase, result);
     } else {  // PUT
-      res = ::migrateVPackIndexSorting(result);
+      res = ::migrateVPackIndexSorting(_vocbase, result);
     }
   } else {
     // Coordinators from here:

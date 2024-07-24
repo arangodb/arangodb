@@ -28,13 +28,11 @@ namespace arangodb {
 
 // On dbservers, agents and single servers:
 Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
-
-Result migrateVPackIndexSorting(VPackBuilder& result);
+Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
 
 // On coordinators:
 async<Result> handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
                                            VPackBuilder& result);
-
 async<Result> handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
                                              VPackBuilder& result);
 
