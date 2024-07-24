@@ -85,7 +85,7 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
         if (database == nullptr) {
           continue;
         }
-        LOG_TOPIC("42536", DEBUG, Logger::ENGINES)
+        LOG_TOPIC("76521", DEBUG, Logger::ENGINES)
             << "Checking VPackSortMigration for database " << name;
         database->processCollections([&](LogicalCollection* collection) {
           LOG_TOPIC("42537", DEBUG, Logger::ENGINES)

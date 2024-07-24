@@ -1007,6 +1007,10 @@ void RocksDBEngine::start() {
   // Now fix the actual rocksdb Comparator, if we need to:
   if (_sortingMethod ==
       arangodb::basics::VelocyPackHelper::SortingMethod::Legacy) {
+    LOG_TOPIC("12653", WARN, Logger::ENGINES)
+        << "ATTENTION: Using legacy sorting method for VPack indexes. Consider "
+           "running GET /_admin/cluster/vpackSortMigration/check to find out "
+           "if cheap migration is an option.";
     server().getFeature<RocksDBOptionFeature>().resetVPackComparator(
         std::make_unique<RocksDBVPackComparator<
             arangodb::basics::VelocyPackHelper::SortingMethod::Legacy>>());
