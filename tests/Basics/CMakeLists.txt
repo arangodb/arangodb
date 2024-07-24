@@ -1,8 +1,10 @@
 target_sources(arangodbtests
   PRIVATE
+  AsyncTest.cpp
   ConversionsTest.cpp
   CsvTest.cpp
   datetime.cpp
+  ExpectedTests.cpp
   FilesTest.cpp
   FpConvTest.cpp
   FutureSharedLockTest.cpp
@@ -34,5 +36,6 @@ target_sources(arangodbtests
   SpinLockTest.cpp
   StringBufferTest.cpp
   StringUtilsTest.cpp
+  TypeListTests.cpp
   UnshackledMutexTest.cpp
   VelocyPackHelperTest.cpp)

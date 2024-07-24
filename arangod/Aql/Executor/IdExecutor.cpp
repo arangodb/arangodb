@@ -88,8 +88,8 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
     TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    auto const& [state, inputRow] = inputRange.peekDataRow();
-
+    auto const& [state, inputRow] =
+        inputRange.peekDataRow(AqlItemBlockInputRange::HasDataRow{});
     size_t rows = inputRange.countAndSkipAllRemainingDataRows();
 
     output.fastForwardAllRows(inputRow, rows);

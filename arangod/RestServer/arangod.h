@@ -126,7 +126,6 @@ class ViewTypesFeature;
 class ClusterEngine;
 class DaemonFeature;
 class SupervisorFeature;
-class WindowsServiceFeature;
 class AuditFeature;
 class LicenseFeature;
 class RCloneFeature;
