@@ -813,6 +813,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   std::shared_ptr<replication2::storage::wal::WalManager> _walManager;
 
+  // For command line option to force legacy even for new databases.
+  bool _forceLegacySortingMethod;
+
   arangodb::basics::VelocyPackHelper::SortingMethod
       _sortingMethod;  // Detected at startup in the prepare method
 };

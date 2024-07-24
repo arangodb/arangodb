@@ -338,6 +338,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
           metrics.add(rocksdb_cache_edge_compressed_inserts_total{})),
       _metricsEdgeCacheEmptyInserts(
           metrics.add(rocksdb_cache_edge_empty_inserts_total{})),
+      _forceLegacySortingMethod(false),
       _sortingMethod(
           arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
   startsAfter<BasicFeaturePhaseServer>();
@@ -767,6 +768,20 @@ when disk size is very constrained and no replication is used.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
 
+  options
+      ->addOption(
+          "--rocksdb.force-legacy-comparator",
+          "If set to `true`, forces a new database directory to use the "
+          "legacy sorting method. This is only for testing. Don't use.",
+          new BooleanParameter(&_forceLegacySortingMethod),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31202);
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options
       ->addOption(
@@ -974,7 +989,10 @@ void RocksDBEngine::start() {
     // When we are getting here, the whole engine-rocksdb directory
     // did not exist when we got here. Therefore, we can use the correct
     // sorting behaviour in the RocksDBVPackComparator:
-    _sortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod::Correct;
+    _sortingMethod =
+        _forceLegacySortingMethod
+            ? arangodb::basics::VelocyPackHelper::SortingMethod::Legacy
+            : arangodb::basics::VelocyPackHelper::SortingMethod::Correct;
     // Now remember this decision by putting a `SORTING` file in the
     // database directory:
     if (writeSortingFile(_sortingMethod).fail()) {
