@@ -34,13 +34,13 @@ namespace arangodb {
 struct VectorIndexRandomVector {
   double bParam;
   double wParam;
-  std::vector<double> Vparam;
+  std::vector<double> vParam;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, VectorIndexRandomVector& x) {
     return f.object(x)
         .fields(f.field("bParam", x.bParam), f.field("wParam", x.wParam),
-                f.field("vParam", x.Vparam))
+                f.field("vParam", x.vParam))
         .invariant([](VectorIndexRandomVector& x) -> inspection::Status {
           if (x.wParam == 0) {
             return {"Division by zero is undefined!"};

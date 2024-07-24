@@ -60,10 +60,10 @@ AqlValue ApproxNear(ExpressionContext*, AstNode const&,
 
   // TODO what to do when there is no index, how to compare against fields
   std::vector<arangodb::VectorIndexRandomVector> randomFunctions{
-      {.bParam = 0.1, .wParam = 0.004, .Vparam = {0.1, 0.1, 0.1}},
-      {.bParam = 0.1, .wParam = 0.004, .Vparam = {0.3, 0.2, 0.1}},
-      {.bParam = 0.1, .wParam = 0.004, .Vparam = {0.1, 0.2, 0.5}},
-      {.bParam = 0.1, .wParam = 0.004, .Vparam = {0.3, 0.1, 0.2}},
+      {.bParam = 0.1, .wParam = 0.004, .vParam = {0.1, 0.1, 0.1}},
+      {.bParam = 0.1, .wParam = 0.004, .vParam = {0.3, 0.2, 0.1}},
+      {.bParam = 0.1, .wParam = 0.004, .vParam = {0.1, 0.2, 0.5}},
+      {.bParam = 0.1, .wParam = 0.004, .vParam = {0.3, 0.1, 0.2}},
   };
   arangodb::VectorIndexDefinition defaultVectorIndexDefinition{
       .dimensions = rhsVec.size(),

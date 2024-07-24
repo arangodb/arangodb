@@ -668,10 +668,10 @@ zkd::byte_string_view RocksDBKey::vectorVPackIndexValue(
 zkd::byte_string_view RocksDBKey::vectorVPackIndexValue(char const* data,
                                                         size_t size) {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size > sizeof(uint64_t));
+  TRI_ASSERT(size > sizeof(uint64_t) * 2);
   return zkd::byte_string_view(
       reinterpret_cast<const std::byte*>(data) + sizeof(uint64_t),
-      size - sizeof(uint64_t));
+      size - sizeof(uint64_t) * 2);
 }
 
 namespace arangodb {
