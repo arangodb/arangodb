@@ -359,6 +359,7 @@ Ast::Ast(QueryContext& query,
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),
       _containsBindParameters(false),
+      _containsAttributeNameBindParameters(false),
       _containsModificationNode(false),
       _containsUpsertNode(false),
       _containsParallelNode(false),
@@ -1188,6 +1189,7 @@ AstNode* Ast::createNodeBoundAttributeAccess(AstNode const* accessed,
   node->addMember(parameter);
 
   _containsBindParameters = true;
+  _containsAttributeNameBindParameters = true;
 
   return node;
 }
@@ -1970,6 +1972,8 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 /// e.g. @@foo and `doc.@attr`).
 void Ast::injectBindParametersFirstStage(
     BindParameters& parameters, CollectionNameResolver const& resolver) {
+  TRI_ASSERT(!_containsAttributeNameBindParameters || _containsBindParameters);
+
   if (_containsBindParameters || _containsTraversal) {
     auto func = [&](AstNode* node) -> AstNode* {
       if (node->type == NODE_TYPE_PARAMETER_DATASOURCE) {
@@ -4487,6 +4491,14 @@ bool Ast::containsAsyncPrefetch() const noexcept {
 }
 
 void Ast::setContainsAsyncPrefetch() noexcept { _containsAsyncPrefetch = true; }
+
+bool Ast::containsBindParameters() const noexcept {
+  return _containsBindParameters;
+}
+
+bool Ast::containsAttributeNameBindParameters() const noexcept {
+  return _containsAttributeNameBindParameters;
+}
 
 AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
   if (auto it = _subqueries.find(variable->id); it != _subqueries.end()) {

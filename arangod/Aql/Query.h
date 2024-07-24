@@ -274,23 +274,24 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void registerQueryInTransactionState();
   void unregisterQueryInTransactionState() noexcept;
 
-  bool canUsePlanCache() noexcept;
-
-  /// @brief calculate a hash for the query, once
-  uint64_t hash();
-
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
   /// to be able to only prepare a query from VelocyPack and then store it
   /// in the QueryRegistry.
   std::unique_ptr<ExecutionPlan> preparePlan();
 
+  /// @brief calculate a hash for the query, once
+  uint64_t hash();
+
   /// @brief calculate a hash value for the query string and bind
   /// parameters
   uint64_t calculateHash() const;
 
-  /// @brief whether or not the query cache can be used for the query
-  bool canUseQueryCache() const;
+  /// @brief whether or not the query results cache can be used for the query
+  bool canUseResultsCache() const;
+
+  /// @brief whether or not the query plan cache can be used for the query
+  bool canUsePlanCache() const noexcept;
 
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
@@ -358,7 +359,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   std::vector<std::unique_ptr<ExecutionPlan>> _plans;
 
   /// plan serialized before instantiation, used for query profiling
-  std::unique_ptr<velocypack::UInt8Buffer> _planSliceCopy;
+  std::shared_ptr<velocypack::UInt8Buffer> _planSliceCopy;
 
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is

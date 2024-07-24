@@ -43,7 +43,7 @@ function GeneralArrayCursor (documents, skip, limit, data) {
 
   var self = this;
   if (data !== null && data !== undefined && typeof data === 'object') {
-    [ 'stats', 'warnings', 'profile', 'plan' ].forEach(function (d) {
+    [ 'stats', 'warnings', 'profile', 'plan', 'planCacheKey' ].forEach(function (d) {
       if (data.hasOwnProperty(d)) {
         self._extra[d] = data[d];
       }

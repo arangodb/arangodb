@@ -1071,6 +1071,7 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
   checkCollectionInvariants();
 
   // invalidate all entries in the query cache now
+  queryPlanCache().invalidateAll();
   aql::QueryCache::instance()->invalidate(this);
 
   return TRI_ERROR_NO_ERROR;
@@ -1320,6 +1321,7 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
   }
 
   // invalidate all entries in the query cache now
+  queryPlanCache().invalidateAll();
   aql::QueryCache::instance()->invalidate(this);
 
   unregisterView(*view);
@@ -1329,7 +1331,7 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
   events::DropView(dbName, view->name(), TRI_ERROR_NO_ERROR);
   _versionTracker.track("drop view");
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)

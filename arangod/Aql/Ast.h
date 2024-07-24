@@ -158,6 +158,8 @@ class Ast {
   void setContainsParallelNode() noexcept;
   bool containsAsyncPrefetch() const noexcept;
   void setContainsAsyncPrefetch() noexcept;
+  bool containsBindParameters() const noexcept;
+  bool containsAttributeNameBindParameters() const noexcept;
 
   bool canApplyParallelism() const noexcept {
     return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
@@ -674,7 +676,6 @@ class Ast {
     return ((_astFlags & static_cast<decltype(_astFlags)>(flag)) != 0);
   }
 
- private:
   /// @brief the query
   QueryContext& _query;
 
@@ -713,6 +714,10 @@ class Ast {
 
   /// @brief whether or not the query contains bind parameters
   bool _containsBindParameters;
+
+  /// @brief whether or not the query contains attribute name bind parameters
+  /// (e.g. doc.@attributeName)
+  bool _containsAttributeNameBindParameters;
 
   /// @brief contains INSERT / UPDATE / REPLACE / REMOVE / UPSERT
   bool _containsModificationNode;

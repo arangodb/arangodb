@@ -27,7 +27,9 @@
 
 #include <velocypack/Builder.h>
 
+#include <cstddef>
 #include <memory>
+#include <optional>
 #include <unordered_set>
 #include <vector>
 
@@ -45,18 +47,26 @@ struct QueryResult {
   QueryResult(QueryResult&& other) = default;
   QueryResult& operator=(QueryResult&& other) = default;
 
-  QueryResult() : cached(false), allowDirtyReads(false) {}
+  QueryResult()
+      : planCacheKey(std::nullopt), cached(false), allowDirtyReads(false) {}
 
   explicit QueryResult(Result const& res)
-      : result(res), cached(false), allowDirtyReads(false) {}
+      : result(res),
+        planCacheKey(std::nullopt),
+        cached(false),
+        allowDirtyReads(false) {}
 
   explicit QueryResult(Result&& res)
-      : result(std::move(res)), cached(false), allowDirtyReads(false) {}
+      : result(std::move(res)),
+        planCacheKey(std::nullopt),
+        cached(false),
+        allowDirtyReads(false) {}
 
   virtual ~QueryResult() = default;
 
   void reset(Result const& res) {
     result.reset(res);
+    planCacheKey.reset();
     cached = false;
     data.reset();
     extra.reset();
@@ -65,6 +75,7 @@ struct QueryResult {
 
   void reset(Result&& res) {
     result.reset(std::move(res));
+    planCacheKey.reset();
     cached = false;
     data.reset();
     extra.reset();
@@ -103,6 +114,7 @@ struct QueryResult {
   }
 
   Result result;
+  std::optional<size_t> planCacheKey;
   bool cached;
   bool allowDirtyReads;  // indicate that query was done with dirty reads,
                          // we need to preserve this here, since query results

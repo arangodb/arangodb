@@ -358,13 +358,15 @@ bool Query::tryLoadPlanFromCache() {
     // construct plan cache key
     TRI_ASSERT(!_planCacheKey.has_value());
     _planCacheKey.emplace(_vocbase.queryPlanCache().createCacheKey(
-        _queryString, bindParametersAsBuilder()));
+        _queryString, bindParametersAsBuilder(), _queryOptions));
 
     // look up query in query plan cache
     auto cacheEntry = _vocbase.queryPlanCache().lookup(*_planCacheKey);
     if (cacheEntry != nullptr) {
+      _resourceMonitor->increaseMemoryUsage(cacheEntry->size());
+      _planSliceCopy = cacheEntry;
       // entry found in plan cache
-      VPackSlice querySlice = cacheEntry->slice();
+      VPackSlice querySlice = VPackSlice(cacheEntry->data());
       VPackSlice collections = querySlice.get("collections");
       VPackSlice variables = querySlice.get("variables");
 
@@ -443,7 +445,7 @@ void Query::prepareQuery() {
       unsigned flags = ExecutionPlan::buildSerializationFlags(
           /*verbose*/ false, /*includeInternals*/ false,
           /*explainRegisters*/ false);
-      _planSliceCopy = std::make_unique<VPackBufferUInt8>();
+      _planSliceCopy = std::make_shared<VPackBufferUInt8>();
       try {
         VPackBuilder b(*_planSliceCopy);
         plan->toVelocyPack(b, flags, serializeQueryData);
@@ -528,8 +530,8 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
                 VPackValue(_ast->containsModificationNode()));
   };
 
-  auto serialized = std::make_shared<velocypack::Builder>();
-  plan.toVelocyPack(*serialized, flags, serializeQueryData);
+  velocypack::Builder serialized;
+  plan.toVelocyPack(serialized, flags, serializeQueryData);
 
   // convert map of data sources into vector of data source names
   std::vector<std::string> dataSources;
@@ -538,8 +540,8 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
                  [](auto const& it) { return it.second; });
 
   // store plan in query plan cache for future queries
-  _vocbase.queryPlanCache().store(
-      std::move(*_planCacheKey), std::move(dataSources), std::move(serialized));
+  _vocbase.queryPlanCache().store(std::move(*_planCacheKey),
+                                  std::move(dataSources), serialized.steal());
   _planCacheKey.reset();
 }
 
@@ -557,13 +559,20 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   Parser parser(*this, *_ast, _queryString);
   parser.parse();
 
+  if (_ast->containsAttributeNameBindParameters() || !_warnings.empty()) {
+    // we found an attribute name bind parameter or the query parsing already
+    // produced warnings. in these cases we must disable query plan caching
+    _queryOptions.optimizePlanForCaching = false;
+    _planCacheKey.reset();
+  }
+
   // put in collection and attribute name bind parameters (e.g. @@collection or
   // doc.@attr).
   _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
 
   _ast->injectBindParametersSecondStage(_bindParameters);
 
-  if (parser.ast()->containsUpsertNode()) {
+  if (_ast->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the
     // intermediate commit invalidates the read-own-write iterator required by
     // the subquery. Setting intermediateCommitSize and intermediateCommitCount
@@ -636,7 +645,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   plan->findVarUsage();
 
-  if (canUsePlanCache()) {
+  if (_planCacheKey.has_value()) {
+    // store result plan in query plan cache
     storePlanInCache(*plan);
   }
 
@@ -654,7 +664,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
 
-    bool useQueryCache = canUseQueryCache();
+    bool useQueryCache = canUseResultsCache();
     switch (_executionPhase) {
       case ExecutionPhase::INITIALIZE: {
         if (useQueryCache) {
@@ -687,6 +697,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         }
 
         logAtStart();
+        if (_planCacheKey.has_value()) {
+          queryResult.planCacheKey = _planCacheKey->hash();
+        }
         // NOTE: If the options have a shorter lifetime than the builder, it
         // gets invalid (at least set() and close() are broken).
         queryResult.data = std::make_shared<VPackBuilder>(&vpackOptions());
@@ -766,6 +779,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // array to the query cache
         queryResult.data->close();
         queryResult.allowDirtyReads = _allowDirtyReads;
+        if (_planCacheKey.has_value()) {
+          queryResult.planCacheKey = _planCacheKey->hash();
+        }
 
         if (useQueryCache && !_allowDirtyReads && _warnings.empty()) {
           // Cannot cache dirty reads! Yes, the query cache is not used in
@@ -876,7 +892,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
   QueryResultV8 queryResult;
 
   try {
-    bool useQueryCache = canUseQueryCache();
+    bool useQueryCache = canUseResultsCache();
 
     if (useQueryCache) {
       // check the query cache for an existing result
@@ -1008,6 +1024,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       throw;
     }
 
+    if (_planCacheKey.has_value()) {
+      queryResult.planCacheKey = _planCacheKey->hash();
+    }
     queryResult.v8Data = resArray;
     queryResult.context = _trx->transactionContext();
     queryResult.extra = std::make_shared<VPackBuilder>();
@@ -1150,8 +1169,40 @@ QueryResult Query::parse() {
 /// @brief explain an AQL query
 QueryResult Query::explain() {
   QueryResult result;
+  result.extra = std::make_shared<VPackBuilder>();
+
+  VPackOptions options;
+  options.checkAttributeUniqueness = false;
+  options.buildUnindexedArrays = true;
+  result.data = std::make_shared<VPackBuilder>(&options);
 
   try {
+    if (tryLoadPlanFromCache()) {
+      TRI_ASSERT(_planCacheKey.has_value());
+      TRI_ASSERT(_planSliceCopy != nullptr);
+
+      enterState(QueryExecutionState::ValueType::FINALIZATION);
+      result.data->add(VPackSlice(_planSliceCopy->data()));
+      {
+        VPackBuilder& b = *result.extra;
+        VPackObjectBuilder guard(&b, /*unindexed*/ true);
+        // warnings
+        TRI_ASSERT(_warnings.empty());
+        _warnings.toVelocyPack(b);
+        b.add(VPackValue("stats"));
+        {
+          // optimizer statistics
+          ensureExecutionTime();
+          VPackObjectBuilder guard(&b, /*unindexed*/ true);
+          Optimizer::Stats::toVelocyPackForCachedPlan(b);
+          b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
+          b.add("executionTime", VPackValue(executionTime()));
+        }
+        result.planCacheKey = _planCacheKey->hash();
+      }
+      return result;
+    }
+
     init(/*createProfile*/ false);
     enterState(QueryExecutionState::ValueType::PARSING);
 
@@ -1223,11 +1274,6 @@ QueryResult Query::explain() {
                   VPackValue(_ast->containsModificationNode()));
     };
 
-    VPackOptions options;
-    options.checkAttributeUniqueness = false;
-    options.buildUnindexedArrays = true;
-    result.data = std::make_shared<VPackBuilder>(&options);
-
     ResourceUsageScope scope(*_resourceMonitor);
 
     if (_queryOptions.allPlans) {
@@ -1278,6 +1324,11 @@ QueryResult Query::explain() {
       // cachability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&
                        _warnings.empty() && _ast->root()->isCacheable());
+
+      if (_planCacheKey.has_value()) {
+        // store result plan in query plan cache
+        storePlanInCache(*bestPlan);
+      }
     }
 
     // the query object no owns the memory used by the plan(s)
@@ -1289,7 +1340,6 @@ QueryResult Query::explain() {
       THROW_ARANGO_EXCEPTION(commitResult);
     }
 
-    result.extra = std::make_shared<VPackBuilder>();
     {
       VPackBuilder& b = *result.extra;
       VPackObjectBuilder guard(&b, /*unindexed*/ true);
@@ -1305,7 +1355,6 @@ QueryResult Query::explain() {
         b.add("executionTime", VPackValue(executionTime()));
       }
     }
-
   } catch (Exception const& ex) {
     result.reset(Result(
         ex.code(),
@@ -1498,8 +1547,25 @@ uint64_t Query::hash() {
   return _queryHash;
 }
 
-bool Query::canUsePlanCache() noexcept {
+/// @brief whether or not the query plan cache can be used for the query
+bool Query::canUsePlanCache() const noexcept {
   if (!_queryOptions.optimizePlanForCaching) {
+    return false;
+  }
+  if (_queryOptions.allPlans) {
+    // if we are required to return all plans, we cannot simply retrieve
+    // a single plan from the plan cache.
+    return false;
+  }
+  if (_queryOptions.explainRegisters == ExplainRegisterPlan::Yes) {
+    // if we are required to return register information, we cannot use a
+    // cached plan.
+    return false;
+  }
+  if (!_queryOptions.optimizerRules.empty()) {
+    // user-defined setting of optimizer rules. we don't want to
+    // distinguish between multiple plans for the same query but with
+    // different sets of optimizer rules, so we simply bail out here.
     return false;
   }
 #ifdef USE_ENTERPRISE
@@ -1683,8 +1749,8 @@ uint64_t Query::calculateHash() const {
   return hashval ^ _bindParameters.hash();
 }
 
-/// @brief whether or not the query cache can be used for the query
-bool Query::canUseQueryCache() const {
+/// @brief whether or not the query results cache can be used for the query
+bool Query::canUseResultsCache() const {
   bool isCachingAllowed = !(_transactionContext->isStreaming() ||
                             _transactionContext->isTransactionJS()) ||
                           _transactionContext->isReadOnlyTransaction();

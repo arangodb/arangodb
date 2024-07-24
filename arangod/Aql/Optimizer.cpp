@@ -559,5 +559,17 @@ void Optimizer::Stats::toVelocyPack(velocypack::Builder& b) const {
             velocypack::Value(it.second));
     }
     b.close();
+  } else {
+    b.add("rules", velocypack::Slice::emptyObjectSlice());
   }
+}
+
+void Optimizer::Stats::toVelocyPackForCachedPlan(velocypack::Builder& b) {
+  TRI_ASSERT(b.isOpenObject());
+  b.add("rulesExecuted", velocypack::Value(0));
+  b.add("rulesSkipped", velocypack::Value(0));
+  b.add("plansCreated", velocypack::Value(1));
+  // note: "rules" object must be present because otherwise the explainer
+  // will not show all plan details
+  b.add("rules", velocypack::Slice::emptyObjectSlice());
 }

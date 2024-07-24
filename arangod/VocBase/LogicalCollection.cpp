@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryPlanCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
@@ -1162,6 +1163,7 @@ futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
 Result LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
+  vocbase().queryPlanCache().invalidate(guid());
   aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
   Result res = _physical->dropIndex(iid);

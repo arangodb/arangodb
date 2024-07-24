@@ -46,6 +46,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
+#include "Aql/QueryPlanCache.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
 #include "Basics/HybridLogicalClock.h"
@@ -679,6 +680,14 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
+  if (queryResult.planCacheKey.has_value()) {
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "planCacheKey"),
+              TRI_V8UInt64String<size_t>(isolate,
+                                         queryResult.planCacheKey.value()))
+        .FromMaybe(false);
+  }
+
   if (queryResult.data != nullptr) {
     if (query->queryOptions().allPlans) {
       result
@@ -922,6 +931,14 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+  if (queryResult.planCacheKey.has_value()) {
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "planCacheKey"),
+              TRI_V8UInt64String<size_t>(isolate,
+                                         queryResult.planCacheKey.value()))
+        .FromMaybe(false);
+  }
 
   if (!queryResult.v8Data.IsEmpty()) {
     result
@@ -1301,6 +1318,37 @@ static void JS_QueryCacheInvalidateAql(
   }
 
   arangodb::aql::QueryCache::instance()->invalidate();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_PlanCacheQueriesAql(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_PLAN_CACHE_QUERIES()");
+  }
+
+  auto& vocbase = GetContextVocBase(isolate);
+
+  VPackBuilder builder;
+  vocbase.queryPlanCache().toVelocyPack(builder);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_PlanCacheInvalidateAql(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_PLAN_CACHE_INVALIDATE()");
+  }
+
+  auto& vocbase = GetContextVocBase(isolate);
+  vocbase.queryPlanCache().invalidateAll();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2219,6 +2267,12 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_INVALIDATE"),
       JS_QueryCacheInvalidateAql, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "AQL_PLAN_CACHE_QUERIES"),
+      JS_PlanCacheQueriesAql, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "AQL_PLAN_CACHE_INVALIDATE"),
+      JS_PlanCacheInvalidateAql, true);
 
   TRI_InitV8Replication(isolate, context, &vocbase, threadNumber, v8g);
 
