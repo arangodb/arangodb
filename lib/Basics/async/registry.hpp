@@ -10,92 +10,81 @@ namespace arangodb::coroutine {
 
 struct PromiseInList : Observables {
   PromiseInList(std::source_location loc) : Observables(std::move(loc)) {}
-  // atomic ptr to next promise in this thread
   std::atomic<PromiseInList*> next;
-  // thread id
+  // only needed to remove an item
+  std::atomic<PromiseInList*> previous;
 };
 
 std::ostream& operator<<(std::ostream& out, const PromiseInList& promise) {
   return out << static_cast<Observables>(promise);
 }
 
-struct PromiseList {
-  auto add(PromiseInList* promise) -> void;
-  auto remove(std::unordered_set<PromiseInList*> promises_to_delete) -> void;
-  template<typename F>
-  auto for_promise(F& function) -> void;
+/**
+   List of coroutine promises on one thread.
 
-  // atomic pointer to some promise that was startet by specific thread
+   add and remove are called on this thread, therefore they are not supposed
+   to run concurrently. for_promise is called from a different thread and can
+   run concurrently to add. But remove and for_promise are mutually exclusive
+   via a mutex to make sure that for_promise always iterates over a valid list.
+
+ */
+struct ThreadPromiseList {
+  /**
+     Add a promise on the current thread to the list.
+   */
+  auto add(PromiseInList* promise) -> void {
+    auto current_head = head.load(std::memory_order_relaxed);
+    promise->next.store(current_head, std::memory_order_relaxed);
+    if (current_head != nullptr) {
+      current_head->previous.store(promise, std::memory_order_relaxed);
+    }
+    // (1) sets value read by (2)
+    head.store(promise, std::memory_order_release);
+  }
+
+  /**
+     Remove a promise on the current thread to the list.
+   */
+  auto remove(PromiseInList* promise) -> void {
+    auto guard = std::lock_guard(mutex);
+    auto next = promise->next.load(std::memory_order_relaxed);
+    auto previous = promise->previous.load(std::memory_order_relaxed);
+    if (previous == nullptr) {  // promise is current head
+      // (4) sets value read by (5)
+      head.store(next, std::memory_order_release);
+    } else {
+      // (3) sets value read by (5)
+      previous->next.store(next, std::memory_order_release);
+    }
+    if (next != nullptr) {
+      next->previous.store(previous, std::memory_order_relaxed);
+    }
+    // TODO delete promise
+  }
+
+  /**
+     Execute a function on each promise in the list.
+
+     This function can called from any thread.
+   */
+  template<typename F>
+  requires requires(F f, PromiseInList* promise) { {f(promise)}; }
+  auto for_promise(F& function) -> void {
+    auto guard = std::lock_guard(mutex);
+    // (2) reads value set by (1)
+    for (auto current = head.load(std::memory_order_acquire);
+         current != nullptr;
+         // (5) read value set by (3) or (4)
+         current = current->next.load(std::memory_order_acquire)) {
+      function(current);
+    }
+  }
+
   std::atomic<PromiseInList*> head = nullptr;
   std::mutex mutex;
 };
 
-// perhaps only need relaxed everywhere because we don't need any
-// synchronization
-
-auto PromiseList::add(PromiseInList* promise) -> void {
-  auto current_head = head.load(std::memory_order_relaxed);
-  do {
-    // set promise -> current_head
-    promise->next.store(current_head, std::memory_order_relaxed);
-    // set head = promise
-    // (1) sets value read by (2)
-  } while (not head.compare_exchange_weak(
-      current_head, promise,
-      std::memory_order_release,  // makes sure that promise->next.store
-                                  // happens before head is set to promise in
-                                  // all other threads as well
-      std::memory_order_relaxed));
-}
-
-auto PromiseList::remove(std::unordered_set<PromiseInList*> promises_to_delete)
-    -> void {
-  auto guard = std::lock_guard(mutex);
-  auto current = head.load(std::memory_order_relaxed);
-  if (promises_to_delete.contains(current)) {
-    auto next_after_head = current->next.load(std::memory_order_relaxed);
-    // set head = next_after_head
-    if (head.compare_exchange_strong(current, next_after_head,
-                                     std::memory_order_relaxed)) {
-      // if a new element was added in parallel, it cannot be in the
-      // promises_to_delete set
-      current = next_after_head;
-    }
-  }
-  while (current != nullptr) {
-    auto next = current->next.load();
-    if (promises_to_delete.contains(next)) {
-      auto next_to_next = next->next.load(
-          std::memory_order_acquire);  // make sure that this happens before
-                                       // the store below
-      current->next.store(next_to_next,
-                          std::memory_order_release);  // make sure this happens
-                                                       // after the load above
-      current = next_to_next;
-    } else {
-      current = next;
-    }
-  }
-  // TODO delete promises
-}
-
-// TODO requires
-template<typename F>
-auto PromiseList::for_promise(F& function) -> void {
-  auto guard = std::lock_guard(mutex);
-  // (2) reads value set by (1)
-  for (auto current = head.load(
-           std::memory_order_acquire);  // makes sure that all following loads
-                                        // happen after this one
-       current != nullptr;
-       current = current->next.load(
-           std::memory_order_acquire)) {  // makes sure that all following
-                                          // loads happen after this one
-    function(current);
-  }
-}
-
 // TODO global variable
-PromiseList promises;
+ThreadPromiseList promises;
 
 }  // namespace arangodb::coroutine
