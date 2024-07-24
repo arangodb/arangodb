@@ -41,10 +41,10 @@ const {
   getCoordinators,
   getDBServers,
   runParallelArangoshTests,
-  waitForShardsInSync
+  waitForShardsInSync,
+  getInstanceInfo
 } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
-let IM = global.instanceManager;
 
 const fetchRevisionTree = (serverUrl, shardId) => {
   let result = request({ method: "POST", url: serverUrl + "/_api/replication/batch", body: {ttl : 3600}, json: true });
@@ -292,6 +292,7 @@ function BaseChaosSuite(testOpts) {
       db._create(coordination_cn);
 
       if (testOpts.withFailurePoints) {
+        let IM = getInstanceInfo();
         IM.debugSetFailAt("replicateOperations_randomize_timeout", undefined, instanceRole.dbServer);
         IM.debugSetFailAt("delayed_synchronous_replication_request_processing", undefined, instanceRole.dbServer);
         IM.debugSetFailAt("Query::setupTimeout", undefined, instanceRole.dbServer);
@@ -312,6 +313,7 @@ function BaseChaosSuite(testOpts) {
         IM.debugSetFailAt("lowCountCacheTimeout", undefined, instanceRole.coordinator);
       }
       if (testOpts.withDelays) {
+        let IM = getInstanceInfo();
         IM.debugSetFailAt("TransactionChaos::blockerOnSync", undefined, instanceRole.dbServer);
         IM.debugSetFailAt("TransactionChaos::randomSleep", undefined, instanceRole.dbServer);
         IM.debugSetFailAt("TransactionChaos::randomSync", undefined, instanceRole.dbServer);
