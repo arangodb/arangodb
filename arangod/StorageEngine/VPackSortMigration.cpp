@@ -23,6 +23,7 @@
 #include "VPackSortMigration.h"
 
 #include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -76,6 +77,7 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
             // we check just in case!
             auto objectId = rocksDBIndex->objectId();
             auto bounds = rocksDBIndex->getBounds(objectId);
+            LOG_DEVEL << engine.currentTick();  // just use the engine
           }
         }
       }
