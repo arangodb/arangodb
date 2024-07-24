@@ -141,7 +141,7 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
     } else {
       guardO->add("error", VPackValue(true));
       guardO->add("errorCode",
-                  VPackValue(TRI_ERROR_INDEX_HAS_LEGACY_SORTED_KEYS));
+                  VPackValue(TRI_ERROR_ARANGO_INDEX_HAS_LEGACY_SORTED_KEYS));
       guardO->add("errorMessage",
                   VPackValue("some indexes have legacy sorted keys"));
     }
