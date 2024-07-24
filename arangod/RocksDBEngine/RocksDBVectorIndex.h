@@ -1,4 +1,3 @@
-////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -62,6 +61,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   coveredFields() const override {
     // index does not cover the vector index attribute!
     return Index::emptyCoveredFields;
+  }
+
+  VectorIndexDefinition const& getDefinition() const noexcept {
+    return _definition;
   }
 
  protected:

@@ -73,8 +73,8 @@ struct VectorIndexDefinition {
           if (x.Kparameter < 1) {
             return {"K parameter must be greater then 0!"};
           }
-          if (x.Lparameter < 1) {
-            return {"L parameter must be greater then 0!"};
+          if (x.Lparameter < 1 || x.Lparameter >= 256) {
+            return {"L parameter must be greater then 0 and lower then 256!"};
           }
           if (x.min > x.max) {
             return {"Min cannot be greater then max!"};

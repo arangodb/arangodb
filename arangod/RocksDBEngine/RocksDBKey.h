@@ -200,6 +200,9 @@ class RocksDBKey {
                                  const std::vector<std::uint8_t>& value,
                                  LocalDocumentId documentId);
 
+  void constructVectorIndexValue(uint64_t objectId,
+                                 const std::vector<std::uint8_t>& value);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for revision tree for a collection
   //////////////////////////////////////////////////////////////////////////////
@@ -310,7 +313,6 @@ class RocksDBKey {
   /// @brief Extracts the mdi value
   ///
   /// May be called only on mdi values
-  //////////////////////////////////////////////////////////////////////////////
   static zkd::byte_string_view mdiVPackIndexCurveValue(
       rocksdb::Slice const& slice);
   static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(
@@ -318,6 +320,9 @@ class RocksDBKey {
   static zkd::byte_string_view mdiIndexCurveValue(rocksdb::Slice const& slice);
   static zkd::byte_string_view mdiUniqueIndexCurveValue(
       rocksdb::Slice const& slice);
+
+  static zkd::byte_string_view vectorVPackIndexValue(
+      const rocksdb::Slice& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts log index from key

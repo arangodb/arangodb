@@ -165,6 +165,19 @@ void RocksDBKey::constructVectorIndexValue(
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
+void RocksDBKey::constructVectorIndexValue(
+    uint64_t indexId, std::vector<std::uint8_t> const& value) {
+  _type = RocksDBEntryType::VectorVPackIndexValue;
+  size_t keyLength = sizeof(uint64_t) + value.size();
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, indexId);
+  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
+                             value.size()};
+  _buffer->append(sv.data(), sv.size());
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
 void RocksDBKey::constructDatabase(TRI_voc_tick_t databaseId) {
   TRI_ASSERT(databaseId != 0);
   _type = RocksDBEntryType::Database;
@@ -645,6 +658,11 @@ zkd::byte_string_view RocksDBKey::mdiIndexCurveValue(
 zkd::byte_string_view RocksDBKey::mdiUniqueIndexCurveValue(
     const rocksdb::Slice& slice) {
   return mdiUniqueIndexCurveValue(slice.data(), slice.size());
+}
+
+zkd::byte_string_view RocksDBKey::vectorVPackIndexValue(
+    const rocksdb::Slice& slice) {
+  return vectorVPackIndexValue(slice.data(), slice.size());
 }
 
 zkd::byte_string_view RocksDBKey::vectorVPackIndexValue(char const* data,

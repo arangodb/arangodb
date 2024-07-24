@@ -19,12 +19,17 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBVectorIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
+#include <algorithm>
+#include <cstdint>
+#include <cstring>
 #include "Basics/voc-errors.h"
 #include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "Transaction/Helpers.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Vector/LocalSensitiveHashing.h"
 #endif
@@ -37,6 +42,104 @@
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
+
+class RocksDBVectorIndexIterator final : public IndexIterator {
+ public:
+  RocksDBVectorIndexIterator(ResourceMonitor& monitor,
+                             LogicalCollection* collection,
+                             RocksDBVectorIndex* index,
+                             transaction::Methods* trx,
+                             std::vector<double> input,
+                             ReadOwnWrites readOwnWrites)
+      : IndexIterator(collection, trx, readOwnWrites),
+        _bound(RocksDBKeyBounds::VectorVPackIndex(index->objectId())),
+        _index(index) {
+    _hashedStrings = calculateHashedStrings(_index->getDefinition(), input);
+    _itHashedStrings = _hashedStrings.begin();
+
+    _upperBound = _bound.end();
+    RocksDBTransactionMethods* mthds =
+        RocksDBTransactionState::toMethods(trx, _collection->id());
+    _iter = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+      TRI_ASSERT(opts.prefix_same_as_start);
+      opts.iterate_upper_bound = &_upperBound;
+    });
+    TRI_ASSERT(_iter != nullptr);
+
+    _rocksdbKey.constructVectorIndexValue(_index->objectId(),
+                                          *_itHashedStrings);
+    _iter->Seek(_rocksdbKey.string());
+  }
+
+  std::string_view typeName() const noexcept final {
+    return "rocksdb-vector-index-iterator";
+  }
+
+ protected:
+  bool nextImpl(LocalDocumentIdCallback const& callback,
+                uint64_t limit) override {
+    for (uint64_t i = 0; i < limit;) {
+      if (!_iter->Valid()) {
+        return false;
+      }
+      auto key = _iter->key();
+      auto indexValue = RocksDBKey::vectorVPackIndexValue(key);
+
+      // TODO Fix this, conversion should not happen
+      std::vector<std::uint8_t> valueConverted(indexValue.size());
+      std::memcpy(valueConverted.data(), indexValue.data(), indexValue.size());
+
+      if (valueConverted == *_itHashedStrings) {
+        auto documentId = RocksDBKey::indexDocumentId(key);
+
+        if (!_seenDocumentIds.contains(documentId)) {
+          _seenDocumentIds.insert(documentId);
+          callback(documentId);
+          ++i;
+        }
+        _iter->Next();
+      } else {
+        ++_itHashedStrings;
+        if (_itHashedStrings != _hashedStrings.end()) {
+          return false;
+        }
+
+        if (valueConverted != *_itHashedStrings) {
+          _rocksdbKey.constructVectorIndexValue(_index->objectId(),
+                                                *_itHashedStrings);
+          _iter->Seek(_rocksdbKey.string());
+        }
+      }
+    }
+
+    return true;
+  }
+
+  void resetImpl() override {
+    _itHashedStrings = _hashedStrings.begin();
+    _rocksdbKey.constructVectorIndexValue(_index->objectId(),
+                                          *_itHashedStrings);
+    _iter->Seek(_rocksdbKey.string());
+  }
+
+  bool nextCoveringImpl(CoveringCallback const& callback,
+                        uint64_t limit) override {
+    return false;
+  }
+
+ private:
+  RocksDBKey _rocksdbKey;
+  rocksdb::Slice _upperBound;
+  RocksDBKey _upperBoundKey;
+  std::vector<std::uint8_t> _cur;
+  RocksDBKeyBounds _bound;
+
+  std::unique_ptr<rocksdb::Iterator> _iter;
+  RocksDBVectorIndex* _index = nullptr;
+  std::vector<std::vector<uint8_t>> _hashedStrings;
+  std::vector<std::vector<uint8_t>>::iterator _itHashedStrings;
+  std::unordered_set<LocalDocumentId> _seenDocumentIds;
+};
 
 RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                        arangodb::velocypack::Slice info)
