@@ -67,6 +67,16 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _definition;
   }
 
+  FilterCosts supportsFilterCondition(
+      transaction::Methods& /*trx*/,
+      std::vector<std::shared_ptr<Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
+      size_t itemsInIndex) const override;
+
+  aql::AstNode* specializeCondition(
+      transaction::Methods& trx, aql::AstNode* condition,
+      aql::Variable const* reference) const override;
+
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
@@ -75,6 +85,12 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& /*options*/) override;
+
+  std::unique_ptr<IndexIterator> iteratorForCondition(
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 
  private:
   template<typename F>

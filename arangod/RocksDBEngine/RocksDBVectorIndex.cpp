@@ -20,11 +20,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBVectorIndex.h"
-#include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include "Aql/AstNode.h"
+#include "Aql/Function.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBIndex.h"
@@ -49,7 +51,7 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
                              LogicalCollection* collection,
                              RocksDBVectorIndex* index,
                              transaction::Methods* trx,
-                             std::vector<double> input,
+                             std::vector<double>&& input,
                              ReadOwnWrites readOwnWrites)
       : IndexIterator(collection, trx, readOwnWrites),
         _bound(RocksDBKeyBounds::VectorVPackIndex(index->objectId())),
@@ -100,7 +102,7 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
         _iter->Next();
       } else {
         ++_itHashedStrings;
-        if (_itHashedStrings != _hashedStrings.end()) {
+        if (_itHashedStrings == _hashedStrings.end()) {
           return false;
         }
 
@@ -232,6 +234,24 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
 #endif
 }
 
+Index::FilterCosts RocksDBVectorIndex::supportsFilterCondition(
+    transaction::Methods& /*trx*/,
+    std::vector<std::shared_ptr<Index>> const& allIndexes,
+    aql::AstNode const* node, aql::Variable const* reference,
+    size_t itemsInIndex) const {
+  TRI_ASSERT(node->numMembers() == 1);
+  auto const* firstMemeber = node->getMember(0);
+  if (firstMemeber->type == aql::NODE_TYPE_FCALL) {
+    auto const* funcNode =
+        static_cast<aql::Function const*>(firstMemeber->getData());
+
+    if (funcNode->name == "APPROX_NEAR") {
+      return {.supportsCondition = true};
+    }
+  }
+  return {};
+}
+
 /// @brief removes a document from the index
 Result RocksDBVectorIndex::remove(transaction::Methods& trx,
                                   RocksDBMethods* methods,
@@ -245,6 +265,44 @@ Result RocksDBVectorIndex::remove(transaction::Methods& trx,
 #else
   return Result(TRI_ERROR_ONLY_ENTERPRISE);
 #endif
+}
+
+std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
+  node = node->getMember(0);
+  TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
+  // auto const* funcNode = static_cast<aql::Function const*>(node->getData());
+  auto const* funcNode = static_cast<aql::Function const*>(node->getData());
+
+  TRI_ASSERT(funcNode->name == "APPROX_NEAR");
+
+  auto const* functionCallParams = node->getMember(0);
+  TRI_ASSERT(functionCallParams->type == aql::NODE_TYPE_ARRAY);
+  TRI_ASSERT(functionCallParams->numMembers() == 2);
+
+  auto const* rhs = functionCallParams->getMember(1);
+  TRI_ASSERT(rhs->type == aql::NODE_TYPE_ARRAY);
+
+  std::vector<double> input;
+  input.reserve(rhs->numMembers());
+  for (size_t i = 0; i < rhs->numMembers(); ++i) {
+    input.push_back(rhs->getMember(i)->getDoubleValue());
+  }
+
+  return std::make_unique<RocksDBVectorIndexIterator>(
+      monitor, &_collection, this, trx, std::move(input), readOwnWrites);
+}
+
+// Remove conditions covered by this index
+aql::AstNode* RocksDBVectorIndex::specializeCondition(
+    transaction::Methods& trx, aql::AstNode* condition,
+    aql::Variable const* reference) const {
+  if (!condition->hasFlag(aql::AstNodeFlagType::FLAG_FINALIZED)) {
+    condition->clearMembers();
+  }
+  return condition;
 }
 
 }  // namespace arangodb
