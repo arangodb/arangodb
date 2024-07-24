@@ -350,6 +350,9 @@ function translateTestList(cases, options) {
       if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
+        if (which.startsWith('./')) {
+          which = which.slice(2);
+        }
         if (fs.exists(which)) {
           options.test = which;
           return translateTestList(['auto'], options);
