@@ -426,7 +426,7 @@ RestStatus RestAdminClusterHandler::execute() {
     } else if (command == ShardStatistics) {
       return handleShardStatistics();
     } else if (command == VPackSortMigration) {
-      return handleVPackSortMigration();
+      return waitForFuture(handleVPackSortMigration());
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -2908,13 +2908,14 @@ RestAdminClusterHandler::collectRebalanceInformation(
   return p;
 }
 
-RestStatus RestAdminClusterHandler::handleVPackSortMigration() {
+RestAdminClusterHandler::FutureVoid
+RestAdminClusterHandler::handleVPackSortMigration() {
   // First we do the authentication: We only allow superuser access, since
   // this is a critical migration operation:
   if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "only superusers may run vpack index migration");
-    return RestStatus::DONE;
+    co_return;
   }
 
   // First check methods:
@@ -2922,7 +2923,7 @@ RestStatus RestAdminClusterHandler::handleVPackSortMigration() {
       request()->requestType() != rest::RequestType::PUT) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   // We behave differently on a coordinator and on a single server,
@@ -2935,18 +2936,18 @@ RestStatus RestAdminClusterHandler::handleVPackSortMigration() {
   Result res;
   if (!ServerState::instance()->isCoordinator()) {
     if (request()->requestType() == rest::RequestType::GET) {
-      res = ::analyzeVPackIndexSorting(_vocbase, result);
+      // res = ::analyzeVPackIndexSorting(_vocbase, result);
+      LOG_DEVEL << "Recived request";
+      res = TRI_ERROR_NO_ERROR;
     } else {  // PUT
       res = ::migrateVPackIndexSorting(result);
     }
   } else {
     // Coordinators from here:
     if (request()->requestType() == rest::RequestType::GET) {
-      Result res = handleVPackSortMigrationTest(result);
-      generateOk(rest::ResponseCode::OK, result.slice());
+      res = co_await handleVPackSortMigrationTest(_vocbase, result);
     } else {  // PUT
-      Result res = handleVPackSortMigrationAction(result);
-      generateOk(rest::ResponseCode::OK, result.slice());
+      res = co_await handleVPackSortMigrationAction(_vocbase, result);
     }
   }
   if (res.fail()) {
@@ -2955,5 +2956,5 @@ RestStatus RestAdminClusterHandler::handleVPackSortMigration() {
   } else {
     generateOk(rest::ResponseCode::OK, result.slice());
   }
-  return RestStatus::DONE;
+  co_return;
 }
