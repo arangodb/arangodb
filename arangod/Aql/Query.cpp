@@ -1687,6 +1687,7 @@ void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
     if (sink.overflowed()) {
       // truncate value with "..."
       TRI_ASSERT(initialLength + maxLength >= 3);
+      out.resize(initialLength + maxLength - 3);
       absl::StrAppend(&out, "... (",
                       sink.unconstrainedLength() - initialLength - maxLength,
                       ")");

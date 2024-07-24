@@ -37,7 +37,6 @@ devel
   - `maxDNFConditionMembers`
   - `maxNodesPerCallstack`
 
-//
 // TODO:
 // - currently the cache is never invalidated, which is wrong. we must invalidate
 //   the cache whenever
