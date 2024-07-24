@@ -285,8 +285,8 @@ async<Result> handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
   return fanOutRequests(vocbase, fuerte::RestVerb::Get, result, false);
 }
 
-async<Result> handleVPackSortMigrationCompaction(TRI_vocbase_t& vocbase,
-                                                 VPackBuilder& result) {
+async<Result> handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
+                                             VPackBuilder& result) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   return fanOutRequests(vocbase, fuerte::RestVerb::Put, result, true);
