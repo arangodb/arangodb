@@ -31,6 +31,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
@@ -53,8 +54,10 @@ void throwArrayExpectedException(AqlValue const& value) {
 }  // namespace
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister)
-    : _inputRegister(inputRegister), _outputRegister(outputRegister) {}
+    QueryContext& query, RegisterId inputRegister, RegisterId outputRegister)
+    : _query(query),
+      _inputRegister(inputRegister),
+      _outputRegister(outputRegister) {}
 
 RegisterId EnumerateListExecutorInfos::getInputRegister() const noexcept {
   return _inputRegister;
@@ -62,6 +65,10 @@ RegisterId EnumerateListExecutorInfos::getInputRegister() const noexcept {
 
 RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
   return _outputRegister;
+}
+
+QueryContext& EnumerateListExecutorInfos::getQuery() const noexcept {
+  return _query;
 }
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
@@ -143,6 +150,11 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
 
     TRI_ASSERT(_inputArrayPosition < _inputArrayLength);
     processArrayElement(output);
+
+    _killCheckCounter = (_killCheckCounter + 1) % 1024;
+    if (ADB_UNLIKELY(_killCheckCounter == 0 && _infos.getQuery().killed())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
   }
 
   if (_inputArrayLength == _inputArrayPosition) {
@@ -182,6 +194,11 @@ EnumerateListExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     });
     auto const skipped = skipArrayElement(skip);
     call.didSkip(skipped);
+
+    _killCheckCounter = (_killCheckCounter + 1) % 1024;
+    if (ADB_UNLIKELY(_killCheckCounter == 0 && _infos.getQuery().killed())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
   }
 
   if (_inputArrayPosition < _inputArrayLength) {

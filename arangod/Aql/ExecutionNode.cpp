@@ -1865,7 +1865,8 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   RegisterId outRegister = variableToRegisterId(_outVariable);
   auto registerInfos =
       createRegisterInfos(RegIdSet{inputRegister}, RegIdSet{outRegister});
-  auto executorInfos = EnumerateListExecutorInfos(inputRegister, outRegister);
+  auto executorInfos =
+      EnumerateListExecutorInfos(engine.getQuery(), inputRegister, outRegister);
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
