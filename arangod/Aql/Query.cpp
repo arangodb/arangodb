@@ -2154,9 +2154,12 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
              "locks time out.";
 
       for (auto const& [server, queryId, rebootId] : _serverQueryIds) {
+        // note: if the text structure of this message is changed, it is likely
+        // that some test in tests/js/client/shell/aql-failures-cluster.js also
+        // needs to be adjusted to honor the new message structure.
         auto msg = absl::StrCat(
             "Failed to send unlock request DELETE /_api/aql/finish/", queryId,
-            " to server: ", server, " in database ", vocbase().name());
+            " to server:", server, " in database ", vocbase().name());
         _warnings.registerWarning(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, msg);
         LOG_TOPIC("7c10f", WARN, Logger::QUERIES) << msg;
       }
