@@ -273,15 +273,16 @@ jobs:
       SCCACHE_S3_KEY_PREFIX: << parameters.s3-prefix >>
       CC: /tools/clang
       CXX: /tools/clang++
+    working_directory: /mnt/ramdisk/project
     steps:
       - checkout-arangodb:
           with-submodules: true
-          destination: "/root/project"
+          destination: "/mnt/ramdisk/project"
       - when:
           condition: << parameters.enterprise >>
           steps:
             - checkout-enterprise:
-                destination: "/root/project/enterprise"
+                destination: "/mnt/ramdisk/project/enterprise"
       - run:
           name: Print SCCache Settings
           command: sccache -s
