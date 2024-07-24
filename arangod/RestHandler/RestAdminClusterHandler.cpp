@@ -59,6 +59,7 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
+#include "StorageEngine/VPackSortMigration.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -2907,20 +2908,6 @@ RestAdminClusterHandler::collectRebalanceInformation(
   return p;
 }
 
-namespace {
-
-// On dbservers, agents and single servers:
-Result analyzeVPackIndexSorting(VPackBuilder& result) { return {}; }
-
-Result migrateVPackIndexSorting(VPackBuilder& result) { return {}; }
-
-// On coordinators:
-Result handleVPackSortMigrationTest(VPackBuilder& result) { return {}; }
-
-Result handleVPackSortMigrationAction(VPackBuilder& result) { return {}; }
-
-}  // namespace
-
 RestStatus RestAdminClusterHandler::handleVPackSortMigration() {
   // First we do the authentication: We only allow superuser access, since
   // this is a critical migration operation:
@@ -2948,7 +2935,7 @@ RestStatus RestAdminClusterHandler::handleVPackSortMigration() {
   Result res;
   if (!ServerState::instance()->isCoordinator()) {
     if (request()->requestType() == rest::RequestType::GET) {
-      res = ::analyzeVPackIndexSorting(result);
+      res = ::analyzeVPackIndexSorting(_vocbase, result);
     } else {  // PUT
       res = ::migrateVPackIndexSorting(result);
     }
