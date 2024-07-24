@@ -50,7 +50,6 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleDatabaseDefaults();
   void handleTLS();
   void writeModeResult(bool);
-  void handleVPackSortMigration();
 
   void handleJWTSecretsReload();
   void handleEncryptionKeyRotation();

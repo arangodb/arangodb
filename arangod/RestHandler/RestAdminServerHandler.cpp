@@ -67,8 +67,6 @@ RestStatus RestAdminServerHandler::execute() {
     handleJWTSecretsReload();
   } else if (suffixes.size() == 1 && suffixes[0] == "encryption") {
     handleEncryptionKeyRotation();
-  } else if (suffixes.size() == 1 && suffixes[0] == "vpack-sort-migration") {
-    handleVPackSortMigration();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
@@ -300,30 +298,3 @@ void RestAdminServerHandler::handleEncryptionKeyRotation() {
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
 }
 #endif
-
-void RestAdminServerHandler::handleVPackSortMigration() {
-  // This is the low level checking of sort order with the new comparator
-  // as well as the migration. See RestAdminClusterHandler for the
-  // coordinator part, which orchestrates this in a cluster.
-  auto const requestType = _request->requestType();
-  VPackBuilder builder;
-  { VPackObjectBuilder guard(&builder); }
-
-  if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  "only superusers may run vpack index migration");
-    return;
-  }
-  if (ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
-                  TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
-    return;
-  }
-  // Actually, this is on dbservers, single servers and agents!
-
-  if (requestType == rest::RequestType::GET) {
-    generateOk(rest::ResponseCode::OK, builder.slice());
-  } else if (requestType == rest::RequestType::PUT) {
-    generateOk(rest::ResponseCode::OK, builder.slice());
-  }
-}
