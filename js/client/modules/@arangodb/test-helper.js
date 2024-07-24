@@ -551,7 +551,7 @@ exports.getCtrlCoordinators = function() {
 };
 
 exports.getServers = function (role) {
-  let ret = getInstanceInfo().arangods.filter(arangod => arangod.isRole(role));
+  let ret = exports.getInstanceInfo().arangods.filter(arangod => arangod.isRole(role));
   if (ret.length === 0) {
     throw new Error("No instance matched the type " + role);
   }
@@ -569,27 +569,27 @@ exports.getAgents = function () {
 };
 
 exports.getServerById = function (id) {
-  const instanceInfo = getInstanceInfo();
+  const instanceInfo = exports.getInstanceInfo();
   return instanceInfo.arangods.find((d) => (d.id === id));
 };
 
 exports.getServersByType = function (type) {
   const isType = (d) => (d.instanceRole.toLowerCase() === type);
-  const instanceInfo = getInstanceInfo();
+  const instanceInfo = exports.getInstanceInfo();
   return instanceInfo.arangods.filter(isType);
 };
 
 exports.getEndpointById = function (id) {
   const toEndpoint = (d) => (d.endpoint);
 
-  const instanceInfo = getInstanceInfo();
+  const instanceInfo = exports.getInstanceInfo();
   const instance = instanceInfo.arangods.find(d => d.id === id);
   return endpointToURL(toEndpoint(instance));
 };
 
 exports.getUrlById = function (id) {
   const toUrl = (d) => (d.url);
-  const instanceInfo = getInstanceInfo();
+  const instanceInfo = exports.getInstanceInfo();
   return instanceInfo.arangods.filter((d) => (d.id === id))
     .map(toUrl)[0];
 };
@@ -598,7 +598,7 @@ exports.getEndpointsByType = function (type) {
   const isType = (d) => (d.instanceRole.toLowerCase() === type);
   const toEndpoint = (d) => (d.endpoint);
 
-  const instanceInfo = getInstanceInfo();
+  const instanceInfo = exports.getInstanceInfo();
   return instanceInfo.arangods.filter(isType)
     .map(toEndpoint)
     .map(endpointToURL);
