@@ -867,6 +867,10 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                                   AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   double start = -1.0;
   auto profilingGuard = scopeGuard([&]() noexcept {
     _execNodeStats.fetching += currentSteadyClockValue() - start;
