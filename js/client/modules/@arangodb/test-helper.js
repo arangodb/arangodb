@@ -77,7 +77,7 @@ exports.getInstanceInfo = function() {
     instanceManager.setFromStructure(JSON.parse(internal.env.INSTANCEINFO));
   }
   return instanceManager;
-}
+};
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
