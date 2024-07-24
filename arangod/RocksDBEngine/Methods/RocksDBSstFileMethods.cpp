@@ -29,11 +29,12 @@
 #include "Basics/FileUtils.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/Thread.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/TemporaryStorageFeature.h"
 
-#include "Logger/LogMacros.h"
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 
@@ -50,6 +51,7 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(
       _ridx(ridx),
       _cf(ridx->columnFamily()),
       _sstFileWriter(rocksdb::EnvOptions(dbOptions), dbOptions,
+                     ridx->columnFamily()->GetComparator(),
                      ridx->columnFamily()),
       _idxPath(idxPath),
       _usageTracker(usageTracker),
@@ -103,16 +105,14 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
 
   auto comparator = _cf->GetComparator();
   std::sort(_keyValPairs.begin(), _keyValPairs.end(),
-            [&comparator](auto& v1, auto& v2) {
+            [&comparator](auto const& v1, auto const& v2) {
               return comparator->Compare({v1.first}, {v2.first}) < 0;
             });
   TRI_pid_t pid = Thread::currentProcessId();
   std::string tmpFileName =
-      std::to_string(pid) + '-' +
-      std::to_string(RandomGenerator::interval(UINT32_MAX));
-  std::string fileName =
-      basics::FileUtils::buildFilename(_idxPath, tmpFileName);
-  fileName += ".sst";
+      absl::StrCat(pid, "-", RandomGenerator::interval(UINT32_MAX));
+  std::string fileName = absl::StrCat(
+      basics::FileUtils::buildFilename(_idxPath, tmpFileName), ".sst");
   rocksdb::Status res = _sstFileWriter.Open(fileName);
   if (res.ok()) {
     _bytesToWriteCount = 0;
@@ -142,6 +142,13 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
       insertEstimators();
     }
   }
+
+  if (!res.ok()) {
+    LOG_TOPIC("fad7f", WARN, Logger::ENGINES)
+        << "error during insertion into SST file " << fileName << ": "
+        << rocksutils::convertStatus(res).errorMessage();
+  }
+
   return res;
 }
 
