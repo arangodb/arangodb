@@ -524,10 +524,10 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
     }
   }
 
-  // Formally, we now have to face 20 different cases, since each side
-  // can be one of SmallInt, Int, UInt, UTCDate, double but the two are
+  // Formally, we now have to face 12 different cases, since each side
+  // can be one of SmallInt, Int, UInt, double but the two are
   // different types. Let's reduce this to only 3 cases by reducing
-  // SmallInt and Int to i64, UInt and UTCDate to u64 and by reordering
+  // SmallInt and Int to i64, UInt to u64 and by reordering
   // to have only I ~ U, I ~ D and U ~ D:
 
   union Number {
@@ -559,10 +559,6 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
       l.d = lhs.getNumericValue<double>();
       lhst = Type::kDouble;
       break;
-    case VPackValueType::UTCDate:
-      l.i = lhs.getUTCDate();
-      lhst = Type::kSignedIntegral;
-      break;
     default:    // does not happen, just to please the compiler!
       l.u = 0;  // treat anything else as 0
       lhst = Type::kUnsignedIntegral;
@@ -582,10 +578,6 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
     case VPackValueType::Double:
       r.d = rhs.getNumericValue<double>();
       rhst = Type::kDouble;
-      break;
-    case VPackValueType::UTCDate:
-      r.i = rhs.getUTCDate();
-      rhst = Type::kSignedIntegral;
       break;
     default:    // does not happen, just to please the compiler!
       r.u = 0;  // treat anything else as 0
@@ -607,7 +599,7 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
     case kUnsignedIntegral + kDouble* Type::kNumTypes:
       return compareUInt64Double(l.u, r.d);
     case kSignedIntegral + kSignedIntegral* Type::kNumTypes:
-      // Note that since we have SmallInt and Int and UTCDate it is
+      // Note that since we have SmallInt and Int it is
       // indeed possible that both sides are signed integers, although
       // we have checked before that the types are not equal!
       return comp<int64_t>(l.i, r.i);
