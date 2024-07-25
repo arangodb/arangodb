@@ -1,23 +1,13 @@
 #pragma once
 
-#include "observables.hpp"
+#include "promise.hpp"
 #include <atomic>
+#include <memory>
 #include <mutex>
 #include <source_location>
 #include <unordered_set>
 
 namespace arangodb::coroutine {
-
-struct PromiseInList : Observables {
-  PromiseInList(std::source_location loc) : Observables(std::move(loc)) {}
-  std::atomic<PromiseInList*> next;
-  // only needed to remove an item
-  std::atomic<PromiseInList*> previous;
-};
-
-std::ostream& operator<<(std::ostream& out, const PromiseInList& promise) {
-  return out << static_cast<Observables>(promise);
-}
 
 /**
    List of coroutine promises on one thread.
@@ -28,7 +18,7 @@ std::ostream& operator<<(std::ostream& out, const PromiseInList& promise) {
    via a mutex to make sure that for_promise always iterates over a valid list.
 
  */
-struct ThreadPromiseList {
+struct PromiseRegistryOnThread {
   /**
      Add a promise on the current thread to the list.
    */
@@ -43,9 +33,11 @@ struct ThreadPromiseList {
   }
 
   /**
-     Remove a promise on the current thread to the list.
+     Erase a promise on the current thread.
+
+     This removes the promise from the list and destroys the promise.
    */
-  auto remove(PromiseInList* promise) -> void {
+  auto erase(PromiseInList* promise) -> void {
     auto guard = std::lock_guard(mutex);
     auto next = promise->next.load(std::memory_order_relaxed);
     auto previous = promise->previous.load(std::memory_order_relaxed);
@@ -84,7 +76,10 @@ struct ThreadPromiseList {
   std::mutex mutex;
 };
 
-// TODO global variable
-ThreadPromiseList promises;
+/**
+   Registry of all active promises on this thread.
+ */
+thread_local std::shared_ptr<coroutine::PromiseRegistryOnThread>
+    promise_registry;
 
 }  // namespace arangodb::coroutine

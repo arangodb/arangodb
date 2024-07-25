@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Basics/async/registry.hpp"
+#include "Basics/async/promise_registry.hpp"
 #include "Basics/expected.h"
 #include <coroutine>
 #include <atomic>
@@ -46,7 +46,7 @@ struct async_promise_base : coroutine::PromiseInList {
   }
   void unhandled_exception() { _value.set_exception(std::current_exception()); }
   auto get_return_object() {
-    coroutine::promises.add(this);
+    coroutine::promise_registry->add(this);
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
   }
