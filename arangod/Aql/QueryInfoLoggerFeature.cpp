@@ -409,9 +409,7 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     SingleCollectionTransaction trx(std::move(ctx),
                                     StaticStrings::QueriesCollection,
                                     AccessMode::Type::WRITE);
-    Result res = trx.begin();
-
-    if (!res.ok()) {
+    if (auto res = trx.begin(); !res.ok()) {
       return res;
     }
 
