@@ -20,17 +20,17 @@ auto print(coroutine::PromiseInList* promise) -> void {
 }
 
 int main() {
+  std::jthread([]() {
+    thread_registry.create();
+    auto z = baz();
+    // we are sure that all threads still exist
+  }).join();
   thread_registry.create();
 
   auto f = foo();
   auto b = bar();
 
-  auto thread = std::jthread([]() {
-    thread_registry.create();
-    auto z = baz();
-    // we are sure that all threads still exist
-    thread_registry.for_promise(print);
-  });
+  thread_registry.for_promise(print);
 }
 
 // TODO implement free list

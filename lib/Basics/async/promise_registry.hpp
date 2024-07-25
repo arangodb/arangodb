@@ -73,7 +73,7 @@ struct PromiseRegistryOnThread {
   }
 
   std::atomic<PromiseInList*> head = nullptr;
-  std::atomic<PromiseRegistryOnThread*> next;
+  std::atomic<std::shared_ptr<PromiseRegistryOnThread>> next;
   std::mutex mutex;
 };
 

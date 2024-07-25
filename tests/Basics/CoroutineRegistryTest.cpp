@@ -47,7 +47,7 @@ TEST_F(CoroutineRegistryTest, includes_coroutines_running_on_differen_threads) {
   auto f = foo();
   auto b = bar();
 
-  auto thread = std::jthread([this]() {
+  std::jthread([this]() {
     thread_registry.create();
 
     auto z = baz();
@@ -57,4 +57,22 @@ TEST_F(CoroutineRegistryTest, includes_coroutines_running_on_differen_threads) {
 
     EXPECT_EQ(promise_lines, std::vector<uint>({23, 22, 21}));
   });
+}
+
+TEST_F(CoroutineRegistryTest,
+       includes_coroutines_of_deleted_threads_before_garbage_collection) {
+  thread_registry.create();
+
+  auto f = foo();
+  auto b = bar();
+
+  std::jthread([this]() {
+    thread_registry.create();
+
+    auto z = baz();
+  }).join();
+
+  thread_registry.for_promise(collect_promise_line);
+
+  EXPECT_EQ(promise_lines.size(), 3)
 }
