@@ -31,17 +31,17 @@
 
 namespace arangodb {
 
-struct VectorIndexRandomVector {
+struct VectorHashFunction {
   double bParam;
   double wParam;
   std::vector<double> vParam;
 
   template<class Inspector>
-  friend inline auto inspect(Inspector& f, VectorIndexRandomVector& x) {
+  friend inline auto inspect(Inspector& f, VectorHashFunction& x) {
     return f.object(x)
         .fields(f.field("bParam", x.bParam), f.field("wParam", x.wParam),
                 f.field("vParam", x.vParam))
-        .invariant([](VectorIndexRandomVector& x) -> inspection::Status {
+        .invariant([](VectorHashFunction& x) -> inspection::Status {
           if (x.wParam == 0) {
             return {"Division by zero is undefined!"};
           }
@@ -57,7 +57,7 @@ struct VectorIndexDefinition {
   double max;
   std::size_t Kparameter;
   std::size_t Lparameter;
-  std::vector<VectorIndexRandomVector> randomFunctions;
+  std::vector<VectorHashFunction> randomFunctions;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, VectorIndexDefinition& x) {
