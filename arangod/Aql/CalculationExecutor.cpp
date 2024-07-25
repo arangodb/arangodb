@@ -114,6 +114,11 @@ CalculationExecutor<calculationType>::produceRows(
     // by exterior.
     TRI_ASSERT(!shouldExitContextBetweenBlocks() || !_hasEnteredContext ||
                state == ExecutorState::HASMORE);
+
+    _killCheckCounter = (_killCheckCounter + 1) % 1024;
+    if (ADB_UNLIKELY(_killCheckCounter == 0 && _infos.getQuery().killed())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
   }
 
   return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};

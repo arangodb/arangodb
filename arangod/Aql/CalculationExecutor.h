@@ -137,6 +137,9 @@ class CalculationExecutor {
   // Necessary for owned contexts, which will not be exited when we call
   // exitContext; but only for assertions in maintainer mode.
   bool _hasEnteredContext;
+
+  // note: it is fine if this counter overflows
+  uint_fast16_t _killCheckCounter = 0;
 };
 
 }  // namespace aql

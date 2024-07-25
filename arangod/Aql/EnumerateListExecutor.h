@@ -46,12 +46,13 @@ class AqlItemBlockInputRange;
 class RegisterInfos;
 class OutputAqlItemRow;
 class NoStats;
+class QueryContext;
 template<BlockPassthrough>
 class SingleRowFetcher;
 
 class EnumerateListExecutorInfos {
  public:
-  EnumerateListExecutorInfos(RegisterId inputRegister,
+  EnumerateListExecutorInfos(QueryContext& query, RegisterId inputRegister,
                              RegisterId outputRegister);
 
   EnumerateListExecutorInfos() = delete;
@@ -61,8 +62,10 @@ class EnumerateListExecutorInfos {
 
   RegisterId getInputRegister() const noexcept;
   RegisterId getOutputRegister() const noexcept;
+  QueryContext& getQuery() const noexcept;
 
  private:
+  QueryContext& _query;
   // These two are exactly the values in the parent members
   // ExecutorInfo::_inRegs and ExecutorInfo::_outRegs, respectively
   // getInputRegisters() and getOutputRegisters().
@@ -135,6 +138,9 @@ class EnumerateListExecutor {
   ExecutorState _currentRowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
+
+  // note: it is fine if this counter overflows
+  uint_fast16_t _killCheckCounter = 0;
 };
 
 }  // namespace aql

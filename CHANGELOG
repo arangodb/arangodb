@@ -1,6 +1,10 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* Forcefully kill all running AQL queries on server shutdown.
+  This allows for a faster server shutdown even if there are some long-running
+  AQL queries ongoing.
+
 * Updated ArangoDB Starter to v0.18.7 and arangosync to v2.19.8.
 
 * Fixed MDS-1216: restoring the previous value of the "padded" key generator
