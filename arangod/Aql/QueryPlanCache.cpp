@@ -29,6 +29,7 @@
 #include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/vocbase.h"
 
 #include <boost/container_hash/hash.hpp>
@@ -69,9 +70,12 @@ bool QueryPlanCache::KeyEqual::operator()(
       rhs.bindParameters->slice().normalizedHash()) {
     return false;
   }
-  return basics::VelocyPackHelper::compare(
-             lhs.bindParameters->slice(), rhs.bindParameters->slice(),
-             /*useUtf8*/ true, &VPackOptions::Defaults, nullptr, nullptr) == 0;
+  if (basics::VelocyPackHelper::compare(
+          lhs.bindParameters->slice(), rhs.bindParameters->slice(),
+          /*useUtf8*/ true, &VPackOptions::Defaults, nullptr, nullptr) != 0) {
+    return false;
+  }
+  return true;
 }
 
 QueryPlanCache::QueryPlanCache() : _entries(5, KeyHasher{}, KeyEqual{}) {}

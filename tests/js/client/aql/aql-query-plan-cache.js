@@ -28,6 +28,7 @@
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
+const graphs = require("@arangodb/general-graph");
 const isCluster = internal.isCluster();
       
 const cn1 = "UnitTestsQueryPlanCache1";
@@ -463,8 +464,70 @@ function QueryPlanCacheTestSuite () {
       // plan cache keys must be identical
       assertEqual(key, res.planCacheKey);
     },
-   
-    // test views
+    
+    testNamedGraphQuery : function () {
+      const gn = 'UnitTestsNamedGraph';
+      const en = 'UnitTestsNamedGraphEdge';
+      const vn = 'UnitTestsNamedGraphVertex';
+
+      let g = graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 3, replicationFactor: 2 });
+
+      try {
+        for (let i = 0; i < 5; ++i) { 
+          db[vn].insert({ _key: "test" + i });
+          if (i > 0) {
+            db[en].insert({ _from: vn + "/test" + (i - 1), _to: vn + "/test" + i });
+          }
+        }
+        const query = `FOR v, e, p IN 1..4 OUTBOUND '${vn}/test0' GRAPH '${gn}' RETURN {v, e, p}`;
+        const options = { optimizePlanForCaching: true };
+
+        let res = db._query(query, null, options);
+        assertFalse(res.hasOwnProperty("planCacheKey"));
+        assertEqual(4, res.toArray().length);
+      
+        res = db._query(query, null, options);
+        assertTrue(res.hasOwnProperty("planCacheKey"));
+        let key = res.planCacheKey;
+        assertEqual(4, res.toArray().length);
+      } finally {
+        graphs._drop(gn, true);
+      }
+    },
+    
+    testViewQuery : function () {
+      const vn = 'UnitTestsView';
+
+      db._createView(vn, "arangosearch", {});
+      try {
+        db._view(vn).properties({ links: { [cn1]: { includeAllFields: true } } });
+
+        const query = `FOR doc IN ${vn} SEARCH doc.value == @value OPTIONS {waitForSync: true} RETURN doc.value`;
+        const options = { optimizePlanForCaching: true };
+        
+        db._query(`FOR i IN 1..10 INSERT {value: i} INTO ${cn1}`);
+
+        let res = db._query(query, {value: 1}, options);
+        assertFalse(res.hasOwnProperty("planCacheKey"));
+        assertEqual([1], res.toArray());
+    
+        // it is possible here that the background link creation is still ongoing
+        // and invalidates the plan cache entries. so we try repeatedly.
+        let tries = 0;
+        while (++tries < 40) {
+          res = db._query(query, {value: 2}, options);
+          if (res.hasOwnProperty("planCacheKey")) {
+            break;
+          }
+          internal.sleep(0.25);
+        }
+        assertTrue(res.hasOwnProperty("planCacheKey"));
+        assertEqual([2], res.toArray());
+      } finally {
+        db._dropView(vn);
+      }
+    },
+    
     // test permissions
     //
     // plan attribute is set -> fix

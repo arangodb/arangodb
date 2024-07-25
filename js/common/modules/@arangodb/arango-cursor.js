@@ -43,12 +43,15 @@ function GeneralArrayCursor (documents, skip, limit, data) {
 
   let self = this;
   if (data !== null && data !== undefined && typeof data === 'object') {
-    [ 'stats', 'warnings', 'profile', 'plan', 'planCacheKey' ].forEach(function (d) {
+    [ 'stats', 'warnings', 'profile', 'plan' ].forEach(function (d) {
       if (data.hasOwnProperty(d)) {
         self._extra[d] = data[d];
       }
     });
     this._cached = data.cached || false;
+    if (data.hasOwnProperty('planCacheKey')) {
+      this.planCacheKey = data.planCacheKey;
+    }
   }
 
   this.execute();
@@ -107,8 +110,8 @@ GeneralArrayCursor.prototype.execute = function () {
 GeneralArrayCursor.prototype._PRINT = function (context) {
   let text = '[object GeneralArrayCursor';
   
-  if (this._extra.hasOwnProperty('planCacheKey')) {
-    text += ', plan cache key: "' + this._extra.planCacheKey + '"';
+  if (this.planCacheKey !== undefined) {
+    text += ', plan cache key: "' + this.planCacheKey + '"';
   }
   
   text += ', count: ' + this._documents.length;

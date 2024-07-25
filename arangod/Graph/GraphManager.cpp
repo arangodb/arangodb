@@ -22,27 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GraphManager.h"
-#include "GraphOperations.h"
-
-#include <velocypack/Buffer.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
-#include <array>
-#include <boost/range/join.hpp>
-#include <utility>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
-#include "Basics/ReadLocker.h"
+#include "Aql/QueryPlanCache.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
+#include "Graph/GraphOperations.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -63,13 +55,20 @@
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
+#include <boost/range/join.hpp>
+#include <velocypack/Buffer.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+
+#include <array>
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::graph;
 using VelocyPackHelper = basics::VelocyPackHelper;
 
 namespace {
-static bool arrayContainsCollection(VPackSlice array,
-                                    std::string const& colName) {
+bool arrayContainsCollection(VPackSlice array, std::string const& colName) {
   TRI_ASSERT(array.isArray());
   for (VPackSlice it : VPackArrayIterator(array)) {
     if (it.stringView() == colName) {
@@ -387,7 +386,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   }
 
   // finally save the graph
-  return storeGraph(*(graph.get()), waitForSync, false);
+  return storeGraph(*graph, waitForSync, false);
 }
 
 OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
@@ -416,6 +415,9 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
                                                  builder.slice(), options);
 
   res = trx.finish(result.result);
+
+  ctx()->vocbase().queryPlanCache().invalidateAll();
+
   if (res.fail() && result.ok()) {
     return OperationResult{std::move(res), options};
   }
@@ -496,7 +498,7 @@ Result GraphManager::ensureAllCollections(Graph* graph,
       if (col->type() != TRI_COL_TYPE_EDGE) {
         return Result(
             TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
-            "Collection: '" + col->name() + "' is not an EdgeCollection");
+            "Collection: '" + col->name() + "' is not an edge collection");
       } else {
         // found the collection
         existentEdgeCollections.emplace(std::move(col));
@@ -825,7 +827,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
     for (auto const& it : graph->edgeCollections()) {
       if (!checkCollectionAccess(it)) {
         return {TRI_ERROR_FORBIDDEN,
-                "Createing Graphs requires RW access on the database (" +
+                "Createing graphs requires RW access on the database (" +
                     databaseName + ")"};
       }
     }
@@ -834,7 +836,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
     for (auto const& it : graph->vertexCollections()) {
       if (!checkCollectionAccess(it)) {
         return {TRI_ERROR_FORBIDDEN,
-                "Createing Graphs requires RW access on the database (" +
+                "Createing graphs requires RW access on the database (" +
                     databaseName + ")"};
       }
     }
@@ -843,7 +845,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
         << logprefix << "No write access to " << databaseName << "."
         << StaticStrings::GraphCollection;
     return {TRI_ERROR_ARANGO_READ_ONLY,
-            "Createing Graphs requires RW access on the database (" +
+            "Createing graphs requires RW access on the database (" +
                 databaseName + ")"};
   }
 
@@ -931,6 +933,8 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     builder.add(StaticStrings::KeyString, VPackValue(graph.name()));
   }
 
+  ctx()->vocbase().queryPlanCache().invalidateAll();
+
   {  // Remove from _graphs
     OperationOptions options(ExecContext::current());
     options.waitForSync = waitForSync;
@@ -996,6 +1000,8 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
       return OperationResult{firstDropError, options};
     }
   }
+
+  ctx()->vocbase().queryPlanCache().invalidateAll();
 
   return OperationResult{TRI_ERROR_NO_ERROR, options};
 }

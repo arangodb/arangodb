@@ -933,6 +933,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   if (queryResult.planCacheKey.has_value()) {
+    LOG_DEVEL << "SETTING PLANCACHE KEY DATA";
     result
         ->Set(context, TRI_V8_ASCII_STRING(isolate, "planCacheKey"),
               TRI_V8UInt64String<size_t>(isolate,
