@@ -199,6 +199,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
                              velocypack::Slice collections,
                              velocypack::Slice variables,
                              velocypack::Slice snippets,
+                             bool simpleSnippetFormat,
                              QueryAnalyzerRevisions const& analyzersRevision);
 
   /// @brief whether or not a query is a modification query

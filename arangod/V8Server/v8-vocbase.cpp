@@ -791,18 +791,11 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(revisionRes);
   }
 
-  // simon: hack to get the behavior of old second aql::Query constructor
-  VPackBuilder snippetBuilder;  // simon: hack to make format conform
-  snippetBuilder.openObject();
-  snippetBuilder.add("0", VPackValue(VPackValueType::Object));
-  snippetBuilder.add("nodes", queryBuilder.slice().get("nodes"));
-  snippetBuilder.close();
-  snippetBuilder.close();
-
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   query->prepareFromVelocyPack(
       /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
-      /*snippets*/ snippetBuilder.slice(), analyzersRevision);
+      /*snippets*/ queryBuilder.slice().get("nodes"), /*simple*/ true,
+      analyzersRevision);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -933,7 +926,6 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   if (queryResult.planCacheKey.has_value()) {
-    LOG_DEVEL << "SETTING PLANCACHE KEY DATA";
     result
         ->Set(context, TRI_V8_ASCII_STRING(isolate, "planCacheKey"),
               TRI_V8UInt64String<size_t>(isolate,

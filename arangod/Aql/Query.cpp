@@ -398,23 +398,15 @@ bool Query::tryLoadPlanFromCache() {
         THROW_ARANGO_EXCEPTION(revisionRes);
       }
 
-      VPackBuilder snippetBuilder;
-      snippetBuilder.openObject();
-      snippetBuilder.add("0", VPackValue(VPackValueType::Object));
-      snippetBuilder.add("nodes", querySlice.get("nodes"));
-      snippetBuilder.close();
-      snippetBuilder.close();
-
       // TODO: validate all this
       prepareFromVelocyPack(querySlice, collections, variables,
-                            /*snippets*/ snippetBuilder.slice(),
-                            analyzersRevision);
+                            /*snippets*/ querySlice.get("nodes"),
+                            /*simpleSnippetFormat*/ true, analyzersRevision);
 
       TRI_ASSERT(!_plans.empty());
 
       auto& plan = _plans.front();
       plan->findVarUsage();
-      plan->planRegisters(ExplainRegisterPlan::Yes);
       plan->findCollectionAccessVariables();
       plan->prepareTraversalOptions();
 
@@ -520,8 +512,8 @@ void Query::prepareQuery() {
   } catch (std::bad_alloc const&) {
     setResult({TRI_ERROR_OUT_OF_MEMORY});
     throw;
-  } catch (...) {
-    setResult({TRI_ERROR_INTERNAL});
+  } catch (std::exception const& ex) {
+    setResult({TRI_ERROR_INTERNAL, ex.what()});
     throw;
   }
 }
@@ -2415,7 +2407,7 @@ void Query::debugKillQuery() {
 void Query::prepareFromVelocyPack(
     velocypack::Slice querySlice, velocypack::Slice collections,
     velocypack::Slice variables, velocypack::Slice snippets,
-    QueryAnalyzerRevisions const& analyzersRevision) {
+    bool simpleSnippetFormat, QueryAnalyzerRevisions const& analyzersRevision) {
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
@@ -2480,20 +2472,30 @@ void Query::prepareFromVelocyPack(
 
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](velocypack::Slice snippet) {
-    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
+    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet,
+                                                         simpleSnippetFormat);
     TRI_ASSERT(plan != nullptr);
 
     ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
   };
 
-  for (auto pair : VPackObjectIterator(snippets, /*sequential*/ true)) {
-    instantiateSnippet(pair.value);
+  if (simpleSnippetFormat) {
+    // a single snippet
+    instantiateSnippet(snippets);
+  } else {
+    // potentially multiple snippets, contained in an object with snippet ids as
+    // keys
+    for (auto pair : VPackObjectIterator(snippets, /*sequential*/ true)) {
+      instantiateSnippet(pair.value);
 
-    TRI_ASSERT(!_snippets.empty());
-    TRI_ASSERT(!_trx->state()->isDBServer() ||
-               _snippets.back()->engineId() != 0);
+      TRI_ASSERT(!_snippets.empty());
+      TRI_ASSERT(!_trx->state()->isDBServer() ||
+                 _snippets.back()->engineId() != 0);
+    }
   }
+
+  TRI_ASSERT(!_snippets.empty());
 
   if (!_snippets.empty()) {
     TRI_ASSERT(_trx->state()->isDBServer() || _snippets[0]->engineId() == 0);

@@ -28,7 +28,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/IdExecutor.h"
-#include "Aql/RegisterPlan.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
