@@ -26,6 +26,7 @@
 #include "Aql/Function.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBIndex.h"
@@ -33,6 +34,7 @@
 #include "Transaction/Helpers.h"
 #include "Zkd/ZkdHelper.h"
 #include "Utils/ByteString.h"
+#include "tao/json/internal/grammar.hpp"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Vector/LocalSensitiveHashing.h"
 #endif
@@ -237,7 +239,9 @@ Index::FilterCosts RocksDBVectorIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
-  TRI_ASSERT(node->numMembers() == 1);
+  if (node->numMembers() != 1) {
+    return {};
+  }
   auto const* firstMemeber = node->getMember(0);
   if (firstMemeber->type == aql::NODE_TYPE_FCALL) {
     auto const* funcNode =
@@ -269,6 +273,7 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
+  LOG_DEVEL << __FUNCTION__;
   node = node->getMember(0);
   TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
   // auto const* funcNode = static_cast<aql::Function const*>(node->getData());
@@ -297,9 +302,9 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
 aql::AstNode* RocksDBVectorIndex::specializeCondition(
     transaction::Methods& trx, aql::AstNode* condition,
     aql::Variable const* reference) const {
-  if (!condition->hasFlag(aql::AstNodeFlagType::FLAG_FINALIZED)) {
-    condition->clearMembers();
-  }
+  TEMPORARILY_UNLOCK_NODE(condition);
+
+  // TODO Fix this
   return condition;
 }
 

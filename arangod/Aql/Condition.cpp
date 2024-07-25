@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/Functions.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
@@ -43,11 +44,13 @@
 #include "Basics/debugging.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
+#include "CrashHandler/CrashHandler.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
+#include <port/port_posix.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
@@ -965,6 +968,12 @@ void Condition::collectOverlappingMembers(
     auto operand = andNode->getMemberUnchecked(i);
     bool allowOps = operand->isComparisonOperator();
 
+    if (operand->type == NODE_TYPE_FCALL &&
+        functions::getFunctionName(*operand) == "APPROX_NEAR") {
+      toRemove.emplace(i);
+      continue;
+    }
+
     if (isSparse && allowOps && !isFromTraverser &&
         (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
          operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
@@ -1082,7 +1091,8 @@ AstNode* Condition::removeCondition(ExecutionPlan const* plan,
   size_t const n = andNode->numMembers();
 
   auto conditionAndNode = condition->getMemberUnchecked(0);
-  TRI_ASSERT(conditionAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+  TRI_ASSERT(conditionAndNode->type == NODE_TYPE_OPERATOR_NARY_AND)
+      << "type is " << conditionAndNode->getTypeString();
 
   containers::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove,
