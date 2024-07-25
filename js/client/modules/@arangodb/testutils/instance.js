@@ -1281,7 +1281,9 @@ class instance {
     if (shortName !== undefined && this.shortName !== shortName) {
       return false;
     }
-    this.connect();
+    if (!this.connect()) {
+      throw new Error(`failed to connect my instance {JSON.stringify(this.getStructure())}`);
+    }
     let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
     if (reply.code !== 200) {
       throw new Error(`Failed to set ${failurePoint}: ${reply.parsedBody}`);
@@ -1292,7 +1294,9 @@ class instance {
     if (shortName !== undefined && this.shortName !== shortName) {
       return false;
     }
-    this.connect();
+    if (!this.connect()) {
+      throw new Error(`failed to connect my instance {JSON.stringify(this.getStructure())}`);
+    }
     let reply = arango.DELETE_RAW(`/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`);
     if (reply.code !== 200) {
       throw new Error(`Failed to remove FP: '${failurePoint}' =>  ${reply.parsedBody}`);
