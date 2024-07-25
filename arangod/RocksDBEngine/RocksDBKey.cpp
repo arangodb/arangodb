@@ -28,6 +28,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "Zkd/ZkdHelper.h"
 
 #include <cstdint>
 #include <iostream>
@@ -150,9 +151,9 @@ void RocksDBKey::constructMdiIndexValue(uint64_t indexId,
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructVectorIndexValue(
-    uint64_t indexId, std::vector<std::uint8_t> const& value,
-    LocalDocumentId documentId) {
+void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
+                                           zkd::byte_string_view value,
+                                           LocalDocumentId documentId) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
   size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t);
   _buffer->clear();
@@ -165,8 +166,8 @@ void RocksDBKey::constructVectorIndexValue(
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructVectorIndexValue(
-    uint64_t indexId, std::vector<std::uint8_t> const& value) {
+void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
+                                           zkd::byte_string_view value) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
   size_t keyLength = sizeof(uint64_t) + value.size();
   _buffer->clear();

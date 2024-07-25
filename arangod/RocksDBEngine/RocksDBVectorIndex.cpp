@@ -26,12 +26,12 @@
 #include "Aql/Function.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/VPack.h"
-#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
+#include "Zkd/ZkdHelper.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Vector/LocalSensitiveHashing.h"
 #endif
@@ -56,7 +56,8 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
       : IndexIterator(collection, trx, readOwnWrites),
         _bound(RocksDBKeyBounds::VectorVPackIndex(index->objectId())),
         _index(index) {
-    _hashedStrings = calculateHashedStrings(_index->getDefinition(), input);
+    _hashedStrings =
+        vector::calculateHashedStrings(_index->getDefinition(), input);
     _itHashedStrings = _hashedStrings.begin();
 
     _upperBound = _bound.end();
@@ -87,11 +88,7 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
       auto key = _iter->key();
       auto indexValue = RocksDBKey::vectorVPackIndexValue(key);
 
-      // TODO Fix this, conversion should not happen
-      std::vector<std::uint8_t> valueConverted(indexValue.size());
-      std::memcpy(valueConverted.data(), indexValue.data(), indexValue.size());
-
-      if (valueConverted == *_itHashedStrings) {
+      if (indexValue == *_itHashedStrings) {
         auto documentId = RocksDBKey::indexDocumentId(key);
 
         if (!_seenDocumentIds.contains(documentId)) {
@@ -106,7 +103,7 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
           return false;
         }
 
-        if (valueConverted != *_itHashedStrings) {
+        if (indexValue != *_itHashedStrings) {
           _rocksdbKey.constructVectorIndexValue(_index->objectId(),
                                                 *_itHashedStrings);
           _iter->Seek(_rocksdbKey.string());
@@ -138,8 +135,8 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
 
   std::unique_ptr<rocksdb::Iterator> _iter;
   RocksDBVectorIndex* _index = nullptr;
-  std::vector<std::vector<uint8_t>> _hashedStrings;
-  std::vector<std::vector<uint8_t>>::iterator _itHashedStrings;
+  std::vector<zkd::byte_string> _hashedStrings;
+  std::vector<zkd::byte_string>::iterator _itHashedStrings;
   std::unordered_set<LocalDocumentId> _seenDocumentIds;
 };
 
@@ -199,10 +196,10 @@ Result RocksDBVectorIndex::processDocument(velocypack::Slice doc,
 
   if (input.size() != _definition.dimensions) {
     // TODO Find better error code
-    return {TRI_ERROR_BAD_PARAMETER};
+    return {TRI_ERROR_BAD_PARAMETER, "sasa"};
   }
   // TODO Maybe check all values withing <min, max>
-  auto hashes = calculateHashedStrings(_definition, input);
+  auto hashes = vector::calculateHashedStrings(_definition, input);
   // prefix + hash + documentId
   for (auto const& hashedString : hashes) {
     RocksDBKey rocksdbKey;

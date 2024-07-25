@@ -73,10 +73,10 @@ AqlValue ApproxNear(ExpressionContext*, AstNode const&,
       .Lparameter = 2,
       .randomFunctions = randomFunctions};
 
-  auto const lhsHashedStrings =
-      arangodb::calculateHashedStrings(defaultVectorIndexDefinition, lhsVec);
-  auto const rhsHashedStrings =
-      arangodb::calculateHashedStrings(defaultVectorIndexDefinition, rhsVec);
+  auto const lhsHashedStrings = arangodb::vector::calculateHashedStrings(
+      defaultVectorIndexDefinition, lhsVec);
+  auto const rhsHashedStrings = arangodb::vector::calculateHashedStrings(
+      defaultVectorIndexDefinition, rhsVec);
 
   LOG_DEVEL << "COMAPRISO VEC: " << lhsVec << " " << rhsVec;
   for (std::size_t i{0}; i < lhsHashedStrings.size(); ++i) {

@@ -478,7 +478,6 @@ Result IndexFactory::validateFieldsDefinition(
 }
 
 /// @brief process the fields list, deduplicate it, and add it to the json
-// TODO REMOVE create
 Result IndexFactory::processIndexFields(VPackSlice definition,
                                         VPackBuilder& builder, size_t minFields,
                                         size_t maxFields, bool create,

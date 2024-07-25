@@ -196,12 +196,11 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for vector index
   //////////////////////////////////////////////////////////////////////////////
-  void constructVectorIndexValue(uint64_t objectId,
-                                 const std::vector<std::uint8_t>& value,
+  void constructVectorIndexValue(uint64_t objectId, zkd::byte_string_view value,
                                  LocalDocumentId documentId);
 
   void constructVectorIndexValue(uint64_t objectId,
-                                 const std::vector<std::uint8_t>& value);
+                                 zkd::byte_string_view value);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for revision tree for a collection
