@@ -76,7 +76,7 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
   {
     VPackObjectBuilder guardO(&result);
     bool problemFound = false;
-    guardO->add(VPackValue("result"));  // just write key
+    guardO->add(VPackValue("affected"));  // just write key
     {
       VPackArrayBuilder guardA(&result);
 
@@ -233,11 +233,12 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
   network::RequestOptions opts;
   opts.database = vocbase.name();
 
+  std::string path =
+      absl::StrCat("/_admin/cluster/vpackSortMigration/",
+                   verb == fuerte::RestVerb::Get ? "check" : "migrate");
   for (auto const& server : dbs) {
-    LOG_DEVEL << "forwarding to server " << server;
-    auto f =
-        network::sendRequest(nf.pool(), "server:" + server, verb,
-                             "_admin/cluster/vpackSortMigration", {}, opts);
+    auto f = network::sendRequest(nf.pool(), "server:" + server, verb, path, {},
+                                  opts);
     requests.emplace_back(std::move(f).then([server](auto&& response) {
       LOG_DEVEL << "received response from " << server;
       return std::move(response).get();
@@ -258,16 +259,14 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
 
       {
         result.add(VPackValue(*(server++)));
-        VPackObjectBuilder ob{&result};
         if (res.fail()) {
-          result.add(StaticStrings::Error, VPackValue(false));
+          VPackObjectBuilder ob{&result};
+          result.add(StaticStrings::Error, VPackValue(true));
           result.add(StaticStrings::ErrorMessage,
                      VPackValue(res.errorMessage()));
           result.add(StaticStrings::ErrorCode, VPackValue(res.errorNumber()));
         } else {
-          result.add(StaticStrings::Error, VPackValue(false));
-          result.add(StaticStrings::ErrorCode, VPackValue(0));
-          result.add("result", res.get().slice());
+          result.add(res.get().slice());
         }
       }
     }
