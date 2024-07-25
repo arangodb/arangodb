@@ -82,7 +82,6 @@ function createVPackIndexes(databasename, collname, attrA, attrB) {
                    name:"mdi_unique", fieldValueTypes: "double", unique: true});
     nr += 2;
   } catch(e) {
-    print(JSON.stringify(e));
     // Smile it away on 3.11
   }
   db._useDatabase("_system");
@@ -142,7 +141,7 @@ function legacySortingTestSuite() {
       c = db._collection(cn);
       indexes = c.getIndexes();
       let ids_dn = indexes.map(x => x.id);
-      db._useDatabase("_system")
+      db._useDatabase("_system");
 
       r = arango.GET("/_admin/cluster/vpackSortMigration/check");
 
@@ -150,7 +149,6 @@ function legacySortingTestSuite() {
       // We do not check the details of the output, since we do this
       // in the single server case and we never know which shards land
       // on which dbserver. We do not even know
-      print(names, ids_system, ids_dn, r);
       assertEqual(false, r.error);
       assertEqual(200, r.code);
       assertEqual("object", typeof(r.result));
@@ -181,7 +179,6 @@ function legacySortingTestSuite() {
       r = arango.GET("/_admin/cluster/vpackSortMigration/check");
 
       // Now check that we found all the indexes and not too many:
-      print(names, ids_system, ids_dn, r);
       assertEqual(false, r.error);
       assertEqual(200, r.code);
       assertEqual("object", typeof(r.result));

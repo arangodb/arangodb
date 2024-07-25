@@ -82,7 +82,6 @@ function createVPackIndexes(databasename, collname, attrA, attrB) {
                    name:"mdi_unique", fieldValueTypes: "double", unique: true});
     nr += 2;
   } catch(e) {
-    print(JSON.stringify(e));
     // Smile it away on 3.11
   }
   db._useDatabase("_system");
@@ -101,16 +100,16 @@ function legacySortingTestSuite() {
       for (let i = 0; i < 1000; ++i) {
         l.push({Hallo:i, a:i, b: i, x: i * 1.234567, y : i * 1.234567});
       }
-      let c = db._create(cn, {numberOfShards:1});
+      let c = db._create(cn);
       c.insert(l);
-      c = db._create(cn2, {numberOfShards:1});
+      c = db._create(cn2);
       c.insert(l);
 
       db._createDatabase(dn);
       db._useDatabase(dn);
-      c = db._create(cn, {numberOfShards:1});
+      c = db._create(cn);
       c.insert(l);
-      c = db._create(cn2, {numberOfShards:1});
+      c = db._create(cn2);
       c.insert(l);
       db._useDatabase("_system");
     },
@@ -139,12 +138,11 @@ function legacySortingTestSuite() {
       c = db._collection(cn);
       indexes = c.getIndexes();
       let ids_dn = indexes.map(x => x.id);
-      db._useDatabase("_system")
+      db._useDatabase("_system");
 
       r = arango.GET("/_admin/cluster/vpackSortMigration/check");
 
       // Now check that we found all the indexes and not too many:
-      print(names, ids_system, ids_dn, r);
       assertEqual(false, r.error);
       assertEqual(200, r.code);
       assertEqual(true, r.result.error);
