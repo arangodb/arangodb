@@ -1339,9 +1339,9 @@ class instance {
       return;
     }
     if (!this.checkDebugTerminated()){
-      this.connect();
       let reply;
       try {
+        this.connect();
         reply = arango.PUT_RAW('/_admin/debug/crash', '');
       } catch(ex) {
         if (ex instanceof ArangoError &&
