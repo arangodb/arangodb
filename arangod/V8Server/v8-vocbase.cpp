@@ -1321,37 +1321,6 @@ static void JS_QueryCacheInvalidateAql(
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_PlanCacheQueriesAql(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AQL_PLAN_CACHE_QUERIES()");
-  }
-
-  auto& vocbase = GetContextVocBase(isolate);
-
-  VPackBuilder builder;
-  vocbase.queryPlanCache().toVelocyPack(builder);
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_PlanCacheInvalidateAql(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AQL_PLAN_CACHE_INVALIDATE()");
-  }
-
-  auto& vocbase = GetContextVocBase(isolate);
-  vocbase.queryPlanCache().invalidateAll();
-  TRI_V8_TRY_CATCH_END
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_t
 ////////////////////////////////////////////////////////////////////////////////
@@ -2267,12 +2236,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_INVALIDATE"),
       JS_QueryCacheInvalidateAql, true);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "AQL_PLAN_CACHE_QUERIES"),
-      JS_PlanCacheQueriesAql, true);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "AQL_PLAN_CACHE_INVALIDATE"),
-      JS_PlanCacheInvalidateAql, true);
 
   TRI_InitV8Replication(isolate, context, &vocbase, threadNumber, v8g);
 

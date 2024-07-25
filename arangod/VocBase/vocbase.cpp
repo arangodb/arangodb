@@ -487,7 +487,7 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
 
-  queryPlanCache().invalidateAll();
+  queryPlanCache().invalidate(collection.guid());
   aql::QueryCache::instance()->invalidate(this);
 
   collection.setDeleted();
@@ -1176,6 +1176,11 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   _dataSourceByName.erase(oldName);
 
   checkCollectionInvariants();
+
+  // invalidate all entries in the query cache now
+  queryPlanCache().invalidateAll();
+  aql::QueryCache::instance()->invalidate(this);
+
   locker.unlock();
   writeLocker.unlock();
   _versionTracker.track("rename collection");

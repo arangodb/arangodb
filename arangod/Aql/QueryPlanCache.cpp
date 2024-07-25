@@ -88,7 +88,7 @@ std::shared_ptr<velocypack::UInt8Buffer> QueryPlanCache::lookup(
 }
 
 void QueryPlanCache::store(
-    Key&& key, std::vector<std::string>&& dataSourceGuids,
+    Key&& key, std::unordered_map<std::string, std::string>&& dataSourceGuids,
     std::shared_ptr<velocypack::UInt8Buffer> serializedPlan) {
   Value value{std::move(dataSourceGuids), std::move(serializedPlan),
               TRI_microtime()};
@@ -106,12 +106,11 @@ QueryPlanCache::Key QueryPlanCache::createCacheKey(
   return {queryString, filterBindParameters(bindVars), queryOptions.fullCount};
 }
 
-void QueryPlanCache::invalidate(std::string_view dataSourceGuid) {
+void QueryPlanCache::invalidate(std::string const& dataSourceGuid) {
   std::unique_lock guard(_mutex);
   for (auto it = _entries.begin(); it != _entries.end(); /* no hoisting */) {
     auto const& value = (*it).second;
-    if (std::find(value.dataSourceGuids.begin(), value.dataSourceGuids.end(),
-                  dataSourceGuid) != value.dataSourceGuids.end()) {
+    if (value.dataSourceGuids.contains(dataSourceGuid)) {
       it = _entries.erase(it);
     } else {
       ++it;
@@ -145,7 +144,7 @@ void QueryPlanCache::toVelocyPack(velocypack::Builder& builder) const {
 
     builder.add("dataSources", VPackValue(VPackValueType::Array));
     for (auto const& ds : value.dataSourceGuids) {
-      builder.add(VPackValue(ds));
+      builder.add(VPackValue(ds.second));
     }
     builder.close();  // dataSources
 

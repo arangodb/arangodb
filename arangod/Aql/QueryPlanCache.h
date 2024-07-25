@@ -86,7 +86,7 @@ class QueryPlanCache {
     // list of all data sources (collections & views) used in the query.
     // needed so that we can invalidate the cache if the definition of a
     // data source changes or a data source gets dropped
-    std::vector<std::string> dataSourceGuids;
+    std::unordered_map<std::string, std::string> dataSourceGuids;
 
     // plan velocypack
     std::shared_ptr<velocypack::UInt8Buffer> serializedPlan;
@@ -109,14 +109,15 @@ class QueryPlanCache {
 
   std::shared_ptr<velocypack::UInt8Buffer> lookup(Key const& key) const;
 
-  void store(Key&& key, std::vector<std::string>&& dataSourceGuids,
+  void store(Key&& key,
+             std::unordered_map<std::string, std::string>&& dataSourceGuids,
              std::shared_ptr<velocypack::UInt8Buffer> serializedPlan);
 
   Key createCacheKey(QueryString const& queryString,
                      std::shared_ptr<velocypack::Builder> const& bindVars,
                      QueryOptions const& queryOptions) const;
 
-  void invalidate(std::string_view dataSourceGuid);
+  void invalidate(std::string const& dataSourceGuid);
 
   void invalidateAll();
 

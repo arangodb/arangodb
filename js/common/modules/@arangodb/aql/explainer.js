@@ -210,9 +210,9 @@ function printQuery(query, cacheable, planCacheKey) {
     query = query.substr(0, maxLength / 2) + ' ... ' + query.substr(query.length - maxLength / 2);
   }
   if (planCacheKey !== undefined) {
-    headline += ', plan cache key: ' + planCacheKey;
+    headline += ', plan cache key: "' + planCacheKey + '"';
   }
-  headline += ', eligible for query results caching: ' + (cacheable ? 'true' : 'false');
+  headline += ', results cachable: ' + (cacheable ? 'true' : 'false');
   headline += '):';
   stringBuilder.appendLine(section(headline));
   stringBuilder.appendLine(' ' + value(stringBuilder.wrap(query, 100)));

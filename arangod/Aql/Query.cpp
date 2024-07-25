@@ -533,11 +533,13 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
   velocypack::Builder serialized;
   plan.toVelocyPack(serialized, flags, serializeQueryData);
 
-  // convert map of data sources into vector of data source names
-  std::vector<std::string> dataSources;
-  std::transform(_queryDataSources.begin(), _queryDataSources.end(),
-                 std::back_inserter(dataSources),
-                 [](auto const& it) { return it.second; });
+  auto dataSources = _queryDataSources;
+  _trx->state()->allCollections(  // collect transaction DataSources
+      [&dataSources](TransactionCollection& trxCollection) -> bool {
+        auto const& c = trxCollection.collection();
+        dataSources.try_emplace(c->guid());
+        return true;  // continue traversal
+      });
 
   // store plan in query plan cache for future queries
   _vocbase.queryPlanCache().store(std::move(*_planCacheKey),
@@ -559,9 +561,10 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   Parser parser(*this, *_ast, _queryString);
   parser.parse();
 
-  if (_ast->containsAttributeNameBindParameters() || !_warnings.empty()) {
-    // we found an attribute name bind parameter or the query parsing already
-    // produced warnings. in these cases we must disable query plan caching
+  if (_queryOptions.optimizePlanForCaching &&
+      (_ast->containsAttributeNameBindParameters() || !_warnings.empty())) {
+    // we found an attribute name bind parameter or warnings occurred during
+    // query parsing. in these cases we must disable query plan caching
     _queryOptions.optimizePlanForCaching = false;
     _planCacheKey.reset();
   }
@@ -646,8 +649,16 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   plan->findVarUsage();
 
   if (_planCacheKey.has_value()) {
-    // store result plan in query plan cache
-    storePlanInCache(*plan);
+    TRI_ASSERT(_queryOptions.optimizePlanForCaching);
+
+    if (_warnings.empty()) {
+      // store result plan in query plan cache
+      storePlanInCache(*plan);
+    } else {
+      // query parsing/optimization produced warnings. we must disable query
+      // plan caching
+      _planCacheKey.reset();
+    }
   }
 
   return plan;

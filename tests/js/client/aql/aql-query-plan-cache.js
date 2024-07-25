@@ -1,0 +1,384 @@
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual  */
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
+
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const internal = require("internal");
+      
+const cn1 = "UnitTestsQueryPlanCache1";
+const cn2 = "UnitTestsQueryPlanCache2";
+
+const assertNotCached = (query, bindVars = {}, options = {}) => {
+  options.optimizePlanForCaching = true;
+  // execute query once
+  let res = db._query(query, bindVars, options);
+  assertFalse(res.hasOwnProperty("planCacheKey"));
+  
+  // execute query again
+  res = db._query(query, bindVars, options);
+  // should still not have the planCacheKey attribute
+  assertFalse(res.hasOwnProperty("planCacheKey"));
+};
+
+const assertCached = (query, bindVars = {}, options = {}) => {
+  options.optimizePlanForCaching = true;
+  // execute query once
+  let res = db._query(query, bindVars, options);
+  assertFalse(res.hasOwnProperty("planCacheKey"));
+  
+  // execute query again
+  res = db._query(query, bindVars, options);
+  // should now have the planCacheKey attribute
+  assertTrue(res.hasOwnProperty("planCacheKey"));
+};
+
+let id = 1;
+const uniqid = () => {
+  return `/* query-${id++} */ `;
+};
+
+function QueryPlanCacheTestSuite () {
+  let c1, c2;
+
+  return {
+    setUp : function () {
+      c1 = db._create(cn1);
+      c2 = db._create(cn2);
+    },
+
+    tearDown : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+      c1 = null;
+      c2 = null;
+    },
+    
+    testExplicitlyDisabled : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == 25 RETURN doc`;
+      const options = { optimizePlanForCaching: false };
+  
+      // execute query once
+      let res = db._query(query, null, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+  
+      // execute query again
+      res = db._query(query, null, options);
+      // should still not have the planCacheKey attribute
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+    },
+    
+    testWarningsDuringParsing : function () {
+      const query = `${uniqid()} RETURN 1 / 0`;
+
+      assertNotCached(query);
+    },
+
+    testWarningsDuringExecution : function () {
+      const query = `${uniqid()} RETURN 1 / NOOPT(0)`;
+      const options = { optimizePlanForCaching: true };
+  
+      // execute query once
+      let res = db._query(query, null, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(1, res.getExtra().warnings.length, res.getExtra());
+  
+      // execute query again
+      res = db._query(query, null, options);
+      // query plan can be cached, because warnings during query
+      // execution do not matter for plan caching
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      assertEqual(1, res.getExtra().warnings.length, res.getExtra());
+    },
+    
+    testAttributeNameBindParameter : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.@attr == 25 RETURN doc`;
+
+      // attribute name bind parameters are not supported
+      assertNotCached(query, { attr: "foo" });
+    },
+    
+    testCollectionBindParameter : function () {
+      const query = `${uniqid()} FOR doc IN @@collection FILTER doc.value == 25 RETURN doc`;
+
+      assertCached(query, { "@collection" : cn1 });
+    },
+    
+    testDifferentCollectionsBindParameter : function () {
+      const query = `${uniqid()} FOR doc IN @@collection FILTER doc.value <= 6 RETURN doc`;
+      const options = { optimizePlanForCaching: true };
+
+      db._query(`FOR i IN 1..10 INSERT {value: i} INTO ${cn1}`);
+      db._query(`FOR i IN 1..10 INSERT {value: i * 2} INTO ${cn2}`);
+
+      // execute for collection 1
+      let res = db._query(query, { "@collection": cn1 }, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(6, res.toArray().length);
+      
+      res = db._query(query, { "@collection": cn1 }, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      let key = res.planCacheKey;
+      assertEqual(6, res.toArray().length);
+
+      // execute for collection 2 - this must produce a different plan
+      res = db._query(query, { "@collection": cn2 }, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(3, res.toArray().length);
+      
+      res = db._query(query, { "@collection": cn2 }, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      // plan cache keys must differ
+      assertNotEqual(key, res.planCacheKey);
+      assertEqual(3, res.toArray().length);
+    },
+    
+    testValueBindParameter : function () {
+      const query = `${uniqid()} FOR doc IN 0..99 FILTER doc == @value RETURN doc`;
+      const options = { optimizePlanForCaching: true };
+
+      let key;
+      for (let i = 0; i < 100; ++i) {
+        let res = db._query(query, { value: i }, options);
+        if (i === 0) {
+          assertFalse(res.hasOwnProperty("planCacheKey"));
+        } else {
+          assertTrue(res.hasOwnProperty("planCacheKey"));
+          if (i === 1) {
+            key = res.planCacheKey;
+          } else {
+            // we must always see the same plan cache key
+            assertEqual(res.planCacheKey, key);
+          }
+        }
+        assertEqual([ i ], res.toArray());
+      }
+    },
+    
+    testExplain : function () {
+      const query = `${uniqid()} FOR doc IN 0..99 RETURN doc`;
+      const bindVars = {};
+      const options = { optimizePlanForCaching: true };
+
+      let stmt = db._createStatement({ query, bindVars, options });
+      let res = stmt.explain();
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      
+      stmt = db._createStatement({ query, bindVars, options });
+      res = stmt.explain();
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+    },
+    
+    testExplainAllPlans : function () {
+      const query = `${uniqid()} FOR doc IN 0..99 RETURN doc`;
+      const bindVars = {};
+      const options = { optimizePlanForCaching: true, allPlans: true };
+
+      let stmt = db._createStatement({ query, bindVars, options });
+      let res = stmt.explain();
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      
+      // allPlans is not supported with plan caching
+      stmt = db._createStatement({ query, bindVars, options });
+      res = stmt.explain();
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+    },
+    
+    testProfiling : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == 1 SORT doc.value LIMIT 2 RETURN doc`;
+      const options = { optimizePlanForCaching: true, profile: 2 };
+
+      let res = db._query(query, null, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      let extra = res.getExtra();
+      assertTrue(extra.hasOwnProperty("stats"), extra);
+      assertTrue(extra.hasOwnProperty("profile"), extra);
+      assertTrue(extra.hasOwnProperty("plan"), extra);
+      let plan = extra.plan;
+      
+      res = db._query(query, null, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      extra = res.getExtra();
+      assertTrue(extra.hasOwnProperty("stats"), extra);
+      assertTrue(extra.hasOwnProperty("profile"), extra);
+      assertTrue(extra.hasOwnProperty("plan"), extra);
+
+      // compare selected attributes of the execution plans.
+      // we cannot compare the literal plans because the cached execution
+      // plan contains more internal details (such as variable usage information and registers)
+      ["collections", "variables", "estimatedCost", "estimatedNrItems", "rules"].forEach((a) => {
+        assertEqual(plan[a], extra.plan[a], { a, expected: plan[a], actual: extra.plan[a] });
+      });
+
+      // compare plan node types
+      plan.nodes.forEach((n, i) => {
+        assertEqual(n.type, extra.plan.nodes[i].type);
+      });
+    },
+    
+    testOptimizerRulesSet : function () {
+      const query = `${uniqid()} RETURN 1`;
+
+      assertCached(query);
+      assertNotCached(query, null, { optimizer: { rules: ["-all"] } });
+      assertNotCached(query, null, { optimizer: { rules: ["+async-prefetch"] } });
+      assertNotCached(query, null, { optimizer: { rules: ["-async-prefetch"] } });
+    },
+    
+    testFullCount : function () {
+      const query = `${uniqid()} FOR doc IN 0..99 LIMIT 10 RETURN doc`;
+      const options1 = { optimizePlanForCaching: true };
+      const options2 = { optimizePlanForCaching: true, fullCount: true };
+
+      // execute without fullCount
+      let res = db._query(query, null, options1);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(10, res.toArray().length);
+      assertFalse(res.getExtra().stats.hasOwnProperty("fullCount"));
+      
+      res = db._query(query, null, options1);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      let key = res.planCacheKey;
+      assertEqual(10, res.toArray().length);
+      assertFalse(res.getExtra().stats.hasOwnProperty("fullCount"));
+
+      // execute with fullCount - this must produce a different plan
+      res = db._query(query, null, options2);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(100, res.getExtra().stats.fullCount);
+      assertEqual(10, res.toArray().length);
+      
+      res = db._query(query, null, options2);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      // plan cache keys must differ
+      assertNotEqual(key, res.planCacheKey);
+      assertEqual(100, res.getExtra().stats.fullCount);
+      assertEqual(10, res.toArray().length);
+    },
+
+    testInvalidationAfterCollectionRecreation : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} RETURN doc`;
+      const options = { optimizePlanForCaching: true };
+
+      db._query(`FOR i IN 1..10 INSERT {} INTO ${cn1}`);
+
+      let res = db._query(query, null, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(10, res.toArray().length);
+      
+      res = db._query(query, null, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      let key = res.planCacheKey;
+      assertEqual(10, res.toArray().length);
+
+      // drop and recreate the collection
+      db._drop(cn1);
+      db._create(cn1);
+      
+      res = db._query(query, null, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(0, res.toArray().length);
+      
+      res = db._query(query, null, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      assertEqual(0, res.toArray().length);
+      // plan cache keys are identical, but the plan is
+      // refererring to a different instance of the collection
+      // now.
+      assertEqual(key, res.planCacheKey);
+    },
+    
+    testNoInvalidationAfterUnrelatedCollectionDropping : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} RETURN doc`;
+      const options = { optimizePlanForCaching: true };
+
+      db._query(`FOR i IN 1..10 INSERT {} INTO ${cn1}`);
+
+      let res = db._query(query, null, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(10, res.toArray().length);
+      
+      res = db._query(query, null, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      let key = res.planCacheKey;
+      assertEqual(10, res.toArray().length);
+
+      // drop an unrelated collection
+      db._drop(cn2);
+      
+      res = db._query(query, null, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      assertEqual(10, res.toArray().length);
+      // plan cache keys must be identical
+      assertEqual(key, res.planCacheKey);
+    },
+    
+    testInvalidationAfterCollectionRenaming : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} RETURN doc`;
+      const options = { optimizePlanForCaching: true };
+
+      db._query(`FOR i IN 1..10 INSERT {} INTO ${cn1}`);
+
+      let res = db._query(query, null, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(10, res.toArray().length);
+      
+      res = db._query(query, null, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      let key = res.planCacheKey;
+      assertEqual(10, res.toArray().length);
+
+      // rename the collection
+      db._drop(cn2);
+      db[cn1].rename(cn2);
+
+      // rename it back to original name
+      db[cn2].rename(cn1);
+      
+      res = db._query(query, null, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(10, res.toArray().length);
+      
+      res = db._query(query, null, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      assertEqual(10, res.toArray().length);
+      // plan cache keys are identical, but the plan is
+      // refererring to a different instance of the collection
+      // now.
+      assertEqual(key, res.planCacheKey);
+    },
+    
+    testInvalidationAfterIndexCreation : function () {
+    },
+   
+    // test views
+    // test permissions
+    // test collection property changes
+  };
+}
+
+jsunity.run(QueryPlanCacheTestSuite);
+return jsunity.done();
