@@ -171,36 +171,6 @@ class VelocyPackHelper {
     arangodb::velocypack::Slice const* rhsBase;
   };
 
-#if 0
-  template<bool useUtf8>
-  struct VPackSorted {
-    explicit VPackSorted(bool reverse,
-                         arangodb::velocypack::Options const* options =
-                             &arangodb::velocypack::Options::Defaults,
-                         arangodb::velocypack::Slice const* lhsBase = nullptr,
-                         arangodb::velocypack::Slice const* rhsBase = nullptr)
-        : _reverse(reverse),
-          options(options),
-          lhsBase(lhsBase),
-          rhsBase(rhsBase) {}
-
-    bool operator()(arangodb::velocypack::Slice lhs,
-                    arangodb::velocypack::Slice rhs) const {
-      if (_reverse) {
-        return VelocyPackHelper::compare(
-                   lhs, rhs, useUtf8, options, lhsBase, rhsBase) > 0;
-      }
-      return VelocyPackHelper::compare(
-                 lhs, rhs, useUtf8, options, lhsBase, rhsBase) < 0;
-    }
-
-    bool _reverse;
-    arangodb::velocypack::Options const* options;
-    arangodb::velocypack::Slice const* lhsBase;
-    arangodb::velocypack::Slice const* rhsBase;
-  };
-#endif
-
   struct AttributeSorterUTF8StringView {
     bool operator()(std::string_view l, std::string_view r) const;
   };
