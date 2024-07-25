@@ -73,13 +73,8 @@ struct PromiseRegistryOnThread {
   }
 
   std::atomic<PromiseInList*> head = nullptr;
+  std::atomic<PromiseRegistryOnThread*> next;
   std::mutex mutex;
 };
-
-/**
-   Registry of all active promises on this thread.
- */
-thread_local std::shared_ptr<coroutine::PromiseRegistryOnThread>
-    promise_registry;
 
 }  // namespace arangodb::coroutine
