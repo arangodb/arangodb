@@ -36,6 +36,7 @@
 #include "IResearch/IResearchExecutionPool.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"

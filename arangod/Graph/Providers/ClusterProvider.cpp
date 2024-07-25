@@ -25,6 +25,7 @@
 #include "ClusterProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"

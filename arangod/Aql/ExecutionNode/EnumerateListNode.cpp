@@ -31,6 +31,7 @@
 #include "Aql/Expression.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

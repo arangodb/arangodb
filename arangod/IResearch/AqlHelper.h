@@ -27,14 +27,12 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "IResearch/IResearchCommon.h"
 #include "VelocyPackHelper.h"
-#include "IResearch/IResearchFilterOptimization.h"
-#include "IResearch/IResearchInvertedIndexMeta.h"
 
 #include "search/scorer.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
-#include "Cluster/ClusterInfo.h"
 
 #include <absl/strings/numbers.h>
 
@@ -64,6 +62,7 @@ class Methods;  // forward declaration
 namespace iresearch {
 
 struct IResearchInvertedIndexMeta;
+struct InvertedIndexField;
 struct QueryContext;
 
 //////////////////////////////////////////////////////////////////////////////

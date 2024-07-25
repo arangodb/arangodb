@@ -36,7 +36,6 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearch/IResearchViewStoredValues.h"
-#include "IResearch/Search.h"
 #include "VocBase/LogicalView.h"
 
 #include "utils/bit_utils.hpp"
@@ -61,6 +60,8 @@ struct VarInfo;
 using FieldRegisters = std::map<size_t, RegisterId>;
 }  // namespace aql
 namespace iresearch {
+
+class SearchMeta;
 
 bool isFilterConditionEmpty(aql::AstNode const* filterCondition) noexcept;
 

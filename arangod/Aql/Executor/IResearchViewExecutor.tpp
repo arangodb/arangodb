@@ -41,6 +41,7 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchReadUtils.h"
+#include "IResearch/Search.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
