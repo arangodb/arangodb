@@ -1,6 +1,10 @@
 devel
 -----
 
+* Forcefully kill all running AQL queries on server shutdown.
+  This allows for a faster server shutdown even if there are some long-running
+  AQL queries ongoing.
+
 * Optional logging of AQL query metadata into `_queries` system collection.
 
   There is now a functionality to optionally log metadata of finished AQL
