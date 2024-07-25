@@ -4234,10 +4234,16 @@ SortingMethod RocksDBEngine::readSortingFile() {
   std::string value;
   try {
     basics::FileUtils::slurp(path, value);
+    value = arangodb::basics::StringUtils::trim(value);
     sortingMethod =
         (value == "LEGACY") ? SortingMethod::Legacy : SortingMethod::Correct;
   } catch (std::exception const& ex) {
-    sortingMethod = SortingMethod::Legacy;
+    // When we see a database directory without SORTING file, we fall back
+    // to legacy mode, except for agents. Since agents have never used
+    // VPackIndexes before we fixed the sorting order, we might as well
+    // directly consider them to be migrated to the CORRECT sorting order:
+    sortingMethod = ServerState::instance()->isAgent() ? SortingMethod::Correct
+                                                       : SortingMethod::Legacy;
     LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
         << "unable to read 'SORTING' file '" << path << "': " << ex.what()
         << ". This is expected directly after an upgrade and will then be "

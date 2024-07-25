@@ -2925,7 +2925,7 @@ RestAdminClusterHandler::handleVPackSortMigration(
   // First check methods:
   if (!((request()->requestType() == rest::RequestType::GET &&
          subCommand == VPackSortMigrationCheck) ||
-        (request()->requestType() != rest::RequestType::PUT &&
+        (request()->requestType() == rest::RequestType::PUT &&
          subCommand == VPackSortMigrationMigrate))) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
