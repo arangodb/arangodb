@@ -22,7 +22,8 @@
 
 #include "gtest/gtest.h"
 
-#include <cstdint>
+#include <bitset>
+#include <cstring>
 #include <cstring>
 
 #include <fmt/core.h>
@@ -30,6 +31,7 @@
 #include <velocypack/Parser.h>
 
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/Enumerate.h"
 #include "Random/RandomGenerator.h"
 #include "VelocypackUtils/VelocyPackStringLiteral.h"
 
@@ -38,6 +40,9 @@ using namespace arangodb::velocypack;
 
 // TODO Implement generating close values of a given Number, both in the same
 //      type and in others
+
+// TODO Adapt the probability distributions, so generated numbers are more
+//      interesting (e.g. lots of doubles |d| < 1 probably aren't helpful).
 
 // TODO This test should run multiple threads, so we can get more coverage in
 //      the same time.
@@ -64,8 +69,10 @@ struct VPackHelperRandomTest : public testing::Test {
   struct Number {
     std::uint64_t significand{};
     std::int16_t exponent{};
+    // signum is -1 for negative numbers, 1 for positive, and 0 for 0.
     std::int8_t signum{};
     NumberValueType type{};
+    // vpack representation of this number
     std::uint8_t vpBuffer[9] = {};
 
     [[nodiscard]] auto valueType() const noexcept -> ValueType {
@@ -74,16 +81,58 @@ struct VPackHelperRandomTest : public testing::Test {
     [[nodiscard]] auto slice() const noexcept -> Slice {
       return Slice(vpBuffer);
     }
+    void check() const;
 
-    [[nodiscard]] auto operator<=>(Number const& right) {
-      // Number const& left = *this;
-      // TODO implement comparison
+    [[nodiscard]] auto operator<=>(Number const& right) const
+        -> std::weak_ordering {
+      Number const& left = *this;
+      auto const signumCmp = left.signum <=> right.signum;
+      if (signumCmp != std::strong_ordering::equal) {
+        return signumCmp;
+      }
+      auto const commonSignum = left.signum;  // left.signum == right.signum
+      if (commonSignum == 0) {                // both numbers are 0
+        return std::strong_ordering::equal;
+      }
+      // both numbers are either strictly positive, or strictly negative, and
+      // in particular both are non-zero.
+
+      auto const leftBits = 64 - std::countl_zero(left.significand);
+      auto const rightBits = 64 - std::countl_zero(right.significand);
+      auto const leftShift = leftBits >= rightBits ? 0 : rightBits - leftBits;
+      auto const rightShift = rightBits >= leftBits ? 0 : leftBits - rightBits;
+      // shift the smaller significand, so both have the same number of bits,
+      // without losing digits. Adjust the exponent to compensate.
+      auto const leftSignificand = left.significand << leftShift;
+      auto const rightSignificand = right.significand << rightShift;
+      auto const leftExponent = left.exponent - leftShift;
+      auto const rightExponent = right.exponent - rightShift;
+
+      auto const exponentCmp = leftExponent <=> rightExponent;
+      if (exponentCmp != std::strong_ordering::equal) {
+        if (commonSignum > 0) {
+          return exponentCmp <=> 0;
+        } else {
+          return 0 <=> exponentCmp;
+        }
+      }
+
+      auto const significandCmp = leftSignificand <=> rightSignificand;
+      if (commonSignum > 0) {
+        return significandCmp <=> 0;
+      } else {
+        return 0 <=> significandCmp;
+      }
     }
+
+    template<VPackHelperRandomTest::NumberValueType type>
+    void writeVPack();
   };
 
   static auto genType() -> NumberValueType {
     auto n = RandomGenerator::interval(std::uint32_t{3});
-    // TODO Possibly tune the probabilities (e.g. make SmallInt less likely)
+    // TODO Possibly tune the probabilities (e.g. make SmallInt much less
+    //      likely: it only has 16 distinct values!)
     switch (n) {
       case 0:
         return NumberValueType::Double;
@@ -144,8 +193,11 @@ struct VPackHelperRandomTest : public testing::Test {
         auto const normalizeExponent = -bitsAfterFirstOne;
         // TODO change probability distribution, like for the significand
         //      (choose the number of bits uniformly first)
+        //        number.exponent =
+        //            normalizeExponent + RandomGenerator::interval(-1022,
+        //            1023);
         number.exponent =
-            normalizeExponent + RandomGenerator::interval(-1022, 1023);
+            normalizeExponent + RandomGenerator::interval(-64, 64);
       }
     }
 
@@ -154,35 +206,13 @@ struct VPackHelperRandomTest : public testing::Test {
       if (number.significand != 0) {
         number.signum = RandomGenerator::interval(std::uint32_t{1}) * 2 - 1;
       }
+    } else if (type == NumberValueType::UInt) {
+      number.signum = number.significand == 0 ? 0 : 1;
     }
 
-    // vpBuffer (velocypack representation)
-    reusableBuilder.clear();
-    if constexpr (type == NumberValueType::Double) {
-      auto d = number.signum * std::ldexp(number.significand, number.exponent);
-      reusableBuilder.add(Value(d, static_cast<ValueType>(type)));
-    } else if constexpr (type == NumberValueType::UInt) {
-      reusableBuilder.add(
-          Value(number.significand, static_cast<ValueType>(type)));
-    } else if constexpr (type == NumberValueType::Int) {
-      if (number.signum == -1 && number.significand == 0) [[unlikely]] {
-        // there is no -0 in two's complement; use ::lowest() instead, which
-        // is also not yet part of the generated values, as its representation
-        // is 1 bit longer.
-        reusableBuilder.add(Value(std::numeric_limits<std::int64_t>::lowest(),
-                                  static_cast<ValueType>(type)));
-      } else {
-        reusableBuilder.add(
-            Value(number.signum * static_cast<std::int64_t>(number.significand),
-                  static_cast<ValueType>(type)));
-      }
-    } else if constexpr (type == NumberValueType::SmallInt) {
-      reusableBuilder.add(
-          Value(number.signum * static_cast<std::int32_t>(number.significand),
-                static_cast<ValueType>(type)));
-    }
-    std::memcpy(number.vpBuffer, reusableBuilder.slice().start(),
-                reusableBuilder.slice().byteSize());
+    // TODO remove the check when everything works
+    number.check();
+    number.writeVPack<type>();
 
     return number;
   }
@@ -202,12 +232,130 @@ struct VPackHelperRandomTest : public testing::Test {
   }
 };
 
+auto to_string(VPackHelperRandomTest::NumberValueType type)
+    -> std::string_view {
+  switch (type) {
+    case VPackHelperRandomTest::NumberValueType::Double:
+      return "Double";
+    case VPackHelperRandomTest::NumberValueType::Int:
+      return "Int";
+    case VPackHelperRandomTest::NumberValueType::UInt:
+      return "UInt";
+    case VPackHelperRandomTest::NumberValueType::SmallInt:
+      return "SmallInt";
+  }
+}
+auto to_string(VPackHelperRandomTest::Number const& number) -> std::string {
+  return fmt::format(
+      "{{.type={}, .signum={}, .exponent={}, .significand={}, slice={}}}",
+      to_string(number.type), number.signum, number.exponent,
+      number.significand, number.slice().toString());
+}
+
+auto operator<<(std::ostream& ostream,
+                VPackHelperRandomTest::Number const& number) -> std::ostream& {
+  return ostream << to_string(number);
+}
+
+void VPackHelperRandomTest::Number::check() const {
+  TRI_ASSERT((signum == 0) == (significand == 0)) << *this;
+  TRI_ASSERT(signum != 0 || exponent == 0) << *this;
+}
+
+template<VPackHelperRandomTest::NumberValueType type>
+void VPackHelperRandomTest::Number::writeVPack() {
+  reusableBuilder.clear();
+  if constexpr (type == NumberValueType::Double) {
+    auto d = signum * std::ldexp(significand, exponent);
+    reusableBuilder.add(Value(d, static_cast<ValueType>(type)));
+  } else if constexpr (type == NumberValueType::UInt) {
+    reusableBuilder.add(Value(significand, static_cast<ValueType>(type)));
+  } else if constexpr (type == NumberValueType::Int) {
+    if (signum == -1 && significand == 0) [[unlikely]] {
+      // there is no -0 in two's complement; use ::lowest() instead, which
+      // is also not yet part of the generated values, as its representation
+      // is 1 bit longer.
+      reusableBuilder.add(Value(std::numeric_limits<std::int64_t>::lowest(),
+                                static_cast<ValueType>(type)));
+    } else {
+      reusableBuilder.add(Value(signum * static_cast<std::int64_t>(significand),
+                                static_cast<ValueType>(type)));
+    }
+  } else if constexpr (type == NumberValueType::SmallInt) {
+    reusableBuilder.add(Value(signum * static_cast<std::int32_t>(significand),
+                              static_cast<ValueType>(type)));
+  }
+  std::memcpy(vpBuffer, reusableBuilder.slice().start(),
+              reusableBuilder.slice().byteSize());
+}
+
 thread_local Builder VPackHelperRandomTest::reusableBuilder;
 
-TEST_F(VPackHelperRandomTest, test) {
+TEST_F(VPackHelperRandomTest, test_me) {
+  auto left = Number{
+      .significand = 34359738368,
+      .exponent = 0,
+      .signum = -1,
+      .type = NumberValueType::Int,
+  };  // slice=-34359738368
+  left.writeVPack<NumberValueType::Int>();
+  auto right = Number{
+      .significand = 264904856511168,
+      .exponent = -13,
+      .signum = -1,
+      .type = NumberValueType::Double,
+  };  // slice=-32337018617.085938
+  right.writeVPack<NumberValueType::Double>();
+  EXPECT_EQ(left <=> right, std::weak_ordering::less);
+  EXPECT_EQ(right <=> left, std::weak_ordering::greater);
+}
+
+// TODO maybe add a handful of tests for Number::operator<=>
+
+static auto compareVPack(VPackHelperRandomTest::Number const& left,
+                         VPackHelperRandomTest::Number const& right)
+    -> std::strong_ordering {
+  auto res = basics::VelocyPackHelper::compareNumberValuesCorrectly(
+      left.slice().type(), left.slice(), right.slice());
+  if (res < 0) {
+    return std::strong_ordering::less;
+  }
+  if (res > 0) {
+    return std::strong_ordering::greater;
+  }
+  return std::strong_ordering::equal;
+}
+
+TEST_F(VPackHelperRandomTest, test_vpackcmps) {
   SCOPED_TRACE(fmt::format("seed={}", seed));
-    for(auto i = 0; i < 1000; ++i) {
-      auto n = genNumber();
-      std::cout << n.slice().typeName() << " " << n.slice().toString() << "\n";
+  constexpr auto num = 10000;
+  auto numbers = std::multiset<Number>{};
+  for (auto i = 0; i < num; ++i) {
+    auto n = genNumber();
+    // TODO generate and add a few numbers near `n`, also of different types
+    numbers.emplace(n);
+  }
+
+  auto groupedNumbers = std::vector<std::vector<Number>>();
+
+  auto last = std::optional<Number>();
+  for (auto const& n : numbers) {
+    if (last.has_value() and (n <=> *last) == 0) {
+      groupedNumbers.back().emplace_back(n);
+    } else {
+      groupedNumbers.emplace_back(std::vector({n}));
     }
+    last = n;
+  }
+
+  for (auto const& [li, leftGroup] : enumerate(groupedNumbers)) {
+    for (auto const& left : leftGroup) {
+      for (auto const& [ri, rightGroup] : enumerate(groupedNumbers)) {
+        for (auto const& right : rightGroup) {
+          EXPECT_EQ(compareVPack(left, right), li <=> ri)
+              << left << " " << right;
+        }
+      }
+    }
+  }
 }
