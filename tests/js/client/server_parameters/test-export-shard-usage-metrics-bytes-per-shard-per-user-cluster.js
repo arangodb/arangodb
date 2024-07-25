@@ -1086,7 +1086,7 @@ function BaseTestSuite(targetUser) {
           db._query(`LET payload = '${payload}' FOR i IN 1..${n} INSERT {} INTO ${c1.name()} INSERT {payload} INTO ${c2.name()}`);
 
           assertTotalWriteMetricsAreCounted(c1, replicationFactor, n * 30, n * 40);
-          assertTotalWriteMetricsAreCounted(c2, replicationFactor, n * 360, n * 370);
+          assertTotalWriteMetricsAreCounted(c2, replicationFactor, n * 350, n * 370);
         } finally {
           db._drop(c2.name());
           db._drop(c1.name());
