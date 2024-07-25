@@ -110,6 +110,7 @@ std::string const StaticStrings::JobsCollection("_jobs");
 std::string const StaticStrings::AppsCollection("_apps");
 std::string const StaticStrings::AppBundlesCollection("_appbundles");
 std::string const StaticStrings::FrontendCollection("_frontend");
+std::string const StaticStrings::QueriesCollection("_queries");
 std::string const StaticStrings::StatisticsCollection("_statistics");
 std::string const StaticStrings::Statistics15Collection("_statistics15");
 std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
