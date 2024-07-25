@@ -83,7 +83,7 @@ const optionsDefaults = {
   'cleanup': true,
   'concurrency': 3,
   'duration': 10,
-  'extremeVerbosity': false,
+  'extremeVerbosity': true,
   'force': true,
   'forceJson': false,
   'forceNoCompress': false,
