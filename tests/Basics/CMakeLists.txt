@@ -46,3 +46,10 @@ add_executable(coro-registry
 target_link_libraries(coro-registry
 	arango_crashhandler_light
 	arango_assertions)
+
+add_executable(coro-test
+	CoroutineRegistryTest.cpp)
+target_link_libraries(coro-test
+	arango_crashhandler_light
+	arango_assertions
+	GTest::gtest_main)
