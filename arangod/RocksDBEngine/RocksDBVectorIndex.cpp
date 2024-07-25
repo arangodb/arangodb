@@ -32,6 +32,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
 #include "Zkd/ZkdHelper.h"
+#include "Utils/ByteString.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Vector/LocalSensitiveHashing.h"
 #endif
@@ -135,8 +136,8 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
 
   std::unique_ptr<rocksdb::Iterator> _iter;
   RocksDBVectorIndex* _index = nullptr;
-  std::vector<zkd::byte_string> _hashedStrings;
-  std::vector<zkd::byte_string>::iterator _itHashedStrings;
+  std::vector<byte_string> _hashedStrings;
+  std::vector<byte_string>::iterator _itHashedStrings;
   std::unordered_set<LocalDocumentId> _seenDocumentIds;
 };
 

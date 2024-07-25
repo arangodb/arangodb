@@ -30,16 +30,15 @@
 #include "ClusterEngine/ClusterIndex.h"
 #include "Containers/Enumerate.h"
 #include "Containers/FlatHashSet.h"
-#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "Zkd/ZkdHelper.h"
+#include "Utils/ByteString.h"
 
 using namespace arangodb;
 
@@ -51,7 +50,7 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
   RocksDBMdiIndexIterator(ResourceMonitor& monitor,
                           LogicalCollection* collection,
                           RocksDBMdiIndexBase* index, transaction::Methods* trx,
-                          zkd::byte_string min, zkd::byte_string max,
+                          byte_string min, byte_string max,
                           transaction::BuilderLeaser prefix, std::size_t dim,
                           ReadOwnWrites readOwnWrites, size_t lookahead)
       : IndexIterator(collection, trx, readOwnWrites),
@@ -118,7 +117,7 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
     }
   }
 
-  auto loadKey(zkd::byte_string_view key) {
+  auto loadKey(byte_string_view key) {
     if constexpr (hasPrefix) {
       _rocksdbKey.constructMdiIndexValue(_index->objectId(), _prefix->slice(),
                                          _cur);
@@ -273,9 +272,9 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
   RocksDBKey _rocksdbKey;
   rocksdb::Slice _upperBound;
   RocksDBKey _upperBoundKey;
-  zkd::byte_string _cur;
-  zkd::byte_string const _min;
-  zkd::byte_string const _max;
+  byte_string _cur;
+  byte_string const _min;
+  byte_string const _max;
   RocksDBKeyBounds _bound;
   std::size_t const _dim;
   transaction::BuilderLeaser const _prefix;
@@ -299,15 +298,14 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
 
 namespace {
 
-auto convertDouble(double x) -> zkd::byte_string {
+auto convertDouble(double x) -> byte_string {
   zkd::BitWriter bw;
   bw.append(zkd::Bit::ZERO);  // add zero bit for `not infinity`
   zkd::into_bit_writer_fixed_length(bw, x);
   return std::move(bw).str();
 }
 
-auto nodeExtractDouble(aql::AstNode const* node)
-    -> std::optional<zkd::byte_string> {
+auto nodeExtractDouble(aql::AstNode const* node) -> std::optional<byte_string> {
   if (node != nullptr) {
     return convertDouble(node->getDoubleValue());
   }
@@ -329,10 +327,10 @@ auto accessDocumentPath(VPackSlice doc,
   return doc;
 }
 
-ResultT<zkd::byte_string> readDocumentKey(
+ResultT<byte_string> readDocumentKey(
     VPackSlice doc,
     std::vector<std::vector<basics::AttributeName>> const& fields) {
-  std::vector<zkd::byte_string> v;
+  std::vector<byte_string> v;
   v.reserve(fields.size());
 
   for (auto const& path : fields) {
@@ -355,7 +353,7 @@ auto boundsForIterator(RocksDBMdiIndexBase const* index,
                        aql::AstNode const* node, aql::Variable const* reference,
                        IndexIteratorOptions const& opts,
                        velocypack::Builder& prefixValuesBuilder)
-    -> std::pair<zkd::byte_string, zkd::byte_string> {
+    -> std::pair<byte_string, byte_string> {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   std::unordered_map<size_t, aql::AstNode const*> extractedPrefix;
   std::unordered_map<size_t, mdi::ExpressionBounds> extractedBounds;
@@ -366,13 +364,13 @@ auto boundsForIterator(RocksDBMdiIndexBase const* index,
   TRI_ASSERT(unusedExpressions.empty());
 
   size_t const dim = index->fields().size();
-  std::vector<zkd::byte_string> min;
+  std::vector<byte_string> min;
   min.resize(dim);
-  std::vector<zkd::byte_string> max;
+  std::vector<byte_string> max;
   max.resize(dim);
 
-  static const auto ByteStringPosInfinity = zkd::byte_string{std::byte{0x80}};
-  static const auto ByteStringNegInfinity = zkd::byte_string{std::byte{0}};
+  static const auto ByteStringPosInfinity = byte_string{std::byte{0x80}};
+  static const auto ByteStringNegInfinity = byte_string{std::byte{0}};
 
   for (auto&& [idx, field] : enumerate(index->fields())) {
     if (auto it = extractedBounds.find(idx); it != extractedBounds.end()) {
@@ -716,7 +714,7 @@ Result RocksDBMdiIndex::insert(transaction::Methods& trx,
                                bool performChecks) {
   TRI_ASSERT(_unique == false);
 
-  zkd::byte_string keyValue;
+  byte_string keyValue;
   {
     auto result = readDocumentKey(doc, _fields);
     if (result.fail()) {
@@ -789,7 +787,7 @@ Result RocksDBMdiIndex::remove(transaction::Methods& trx,
                                OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == false);
 
-  zkd::byte_string keyValue;
+  byte_string keyValue;
   {
     auto result = readDocumentKey(doc, _fields);
     if (result.fail()) {
@@ -1098,7 +1096,7 @@ Result RocksDBUniqueMdiIndex::insert(transaction::Methods& trx,
                                      bool performChecks) {
   TRI_ASSERT(_unique == true);
 
-  zkd::byte_string keyValue;
+  byte_string keyValue;
   {
     auto result = readDocumentKey(doc, _fields);
     if (result.fail()) {
@@ -1156,7 +1154,7 @@ Result RocksDBUniqueMdiIndex::remove(transaction::Methods& trx,
                                      OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == true);
 
-  zkd::byte_string keyValue;
+  byte_string keyValue;
   {
     auto result = readDocumentKey(doc, _fields);
     if (result.fail()) {
