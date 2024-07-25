@@ -27,7 +27,7 @@ agency,agency-restart priority=350 parallelity=3 size=small single -- --dumpAgen
 authentication priority=1000 single
 endpoints priority=250 single -- --skipEndpointsIpv6 true
 
-recovery priority=2000 buckets=6 parallelity=3 size=small single
+recovery priority=2000 buckets=8 parallelity=3 size=small single
 # cluster
 recovery_cluster priority=2000 size=small cluster buckets=8
 
@@ -92,8 +92,8 @@ shell_client_multi priority=1500 cluster suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 
 # different number of buckets in cluster
-shell_client_aql priority=1000 size=medium+ cluster buckets=17 -- --dumpAgencyOnError true
-shell_client priority=500 cluster size=medium+ buckets=16 -- --dumpAgencyOnError true
+shell_client_aql priority=1000 size=medium+ cluster buckets=20 -- --dumpAgencyOnError true
+shell_client priority=500 cluster size=medium+ buckets=18 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
 
