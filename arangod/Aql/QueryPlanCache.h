@@ -24,9 +24,11 @@
 #pragma once
 
 #include "Aql/QueryString.h"
+#include "Auth/Common.h"
 
 #include <velocypack/Buffer.h>
 
+#include <functional>
 #include <memory>
 #include <shared_mutex>
 #include <string>
@@ -82,11 +84,16 @@ class QueryPlanCache {
     bool operator()(Key const& lhs, Key const& rhs) const noexcept;
   };
 
+  struct DataSourceEntry {
+    std::string name;
+    auth::Level level;
+  };
+
   struct Value {
     // list of all data sources (collections & views) used in the query.
     // needed so that we can invalidate the cache if the definition of a
     // data source changes or a data source gets dropped
-    std::unordered_map<std::string, std::string> dataSourceGuids;
+    std::unordered_map<std::string, DataSourceEntry> dataSources;
 
     // plan velocypack
     std::shared_ptr<velocypack::UInt8Buffer> serializedPlan;
@@ -107,10 +114,12 @@ class QueryPlanCache {
 
   ~QueryPlanCache();
 
-  std::shared_ptr<velocypack::UInt8Buffer> lookup(Key const& key) const;
+  // looks up a key in the cache.
+  // returns the cache entry if it exists, and nullptr otherwise
+  std::shared_ptr<Value const> lookup(Key const& key) const;
 
   void store(Key&& key,
-             std::unordered_map<std::string, std::string>&& dataSourceGuids,
+             std::unordered_map<std::string, DataSourceEntry>&& dataSources,
              std::shared_ptr<velocypack::UInt8Buffer> serializedPlan);
 
   Key createCacheKey(QueryString const& queryString,
@@ -131,7 +140,8 @@ class QueryPlanCache {
   mutable std::shared_mutex _mutex;
 
   // mapping from plan cache key to stored plan velocypack
-  std::unordered_map<Key, Value, KeyHasher, KeyEqual> _entries;
+  std::unordered_map<Key, std::shared_ptr<Value const>, KeyHasher, KeyEqual>
+      _entries;
 };
 
 }  // namespace arangodb::aql

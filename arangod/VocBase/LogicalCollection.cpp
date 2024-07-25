@@ -1113,6 +1113,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     }
   }
 
+  vocbase().queryPlanCache().invalidate(guid());
+
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
     return ClusterCollectionMethods::updateCollectionProperties(vocbase(),
@@ -1156,6 +1158,8 @@ futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
   if (idx) {
     vocbase().versionTracker().track("create index");
   }
+  vocbase().queryPlanCache().invalidate(guid());
+
   co_return idx;
 }
 
@@ -1170,6 +1174,7 @@ Result LogicalCollection::dropIndex(IndexId iid) {
 
   if (res.ok()) {
     vocbase().versionTracker().track("drop index");
+    vocbase().queryPlanCache().invalidate(guid());
   }
 
   return res;

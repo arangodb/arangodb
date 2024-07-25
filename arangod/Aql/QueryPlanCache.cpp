@@ -78,20 +78,21 @@ QueryPlanCache::QueryPlanCache() : _entries(5, KeyHasher{}, KeyEqual{}) {}
 
 QueryPlanCache::~QueryPlanCache() {}
 
-std::shared_ptr<velocypack::UInt8Buffer> QueryPlanCache::lookup(
+std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
     QueryPlanCache::Key const& key) const {
   std::shared_lock guard(_mutex);
   if (auto it = _entries.find(key); it != _entries.end()) {
-    return (*it).second.serializedPlan;
+    return (*it).second;
   }
   return nullptr;
 }
 
 void QueryPlanCache::store(
-    Key&& key, std::unordered_map<std::string, std::string>&& dataSourceGuids,
+    QueryPlanCache::Key&& key,
+    std::unordered_map<std::string, DataSourceEntry>&& dataSources,
     std::shared_ptr<velocypack::UInt8Buffer> serializedPlan) {
-  Value value{std::move(dataSourceGuids), std::move(serializedPlan),
-              TRI_microtime()};
+  auto value = std::make_shared<Value>(
+      std::move(dataSources), std::move(serializedPlan), TRI_microtime());
 
   std::unique_lock guard(_mutex);
 
@@ -102,15 +103,15 @@ QueryPlanCache::Key QueryPlanCache::createCacheKey(
     QueryString const& queryString,
     std::shared_ptr<velocypack::Builder> const& bindVars,
     QueryOptions const& queryOptions) const {
-  // TODO: avoid full copy of queryString here
   return {queryString, filterBindParameters(bindVars), queryOptions.fullCount};
 }
 
 void QueryPlanCache::invalidate(std::string const& dataSourceGuid) {
   std::unique_lock guard(_mutex);
+
   for (auto it = _entries.begin(); it != _entries.end(); /* no hoisting */) {
     auto const& value = (*it).second;
-    if (value.dataSourceGuids.contains(dataSourceGuid)) {
+    if (value->dataSources.contains(dataSourceGuid)) {
       it = _entries.erase(it);
     } else {
       ++it;
@@ -129,7 +130,7 @@ void QueryPlanCache::toVelocyPack(velocypack::Builder& builder) const {
   builder.openArray(true);
   for (auto const& it : _entries) {
     auto const& key = it.first;
-    auto const& value = it.second;
+    auto const& value = *(it.second);
 
     builder.openObject();
     builder.add("hash", VPackValue(key.hash()));
@@ -143,8 +144,8 @@ void QueryPlanCache::toVelocyPack(velocypack::Builder& builder) const {
     builder.add("fullCount", VPackValue(key.fullCount));
 
     builder.add("dataSources", VPackValue(VPackValueType::Array));
-    for (auto const& ds : value.dataSourceGuids) {
-      builder.add(VPackValue(ds.second));
+    for (auto const& ds : value.dataSources) {
+      builder.add(VPackValue(ds.second.name));
     }
     builder.close();  // dataSources
 

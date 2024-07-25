@@ -28,6 +28,7 @@
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
+const isCluster = internal.isCluster();
       
 const cn1 = "UnitTestsQueryPlanCache1";
 const cn2 = "UnitTestsQueryPlanCache2";
@@ -337,6 +338,11 @@ function QueryPlanCacheTestSuite () {
     },
     
     testInvalidationAfterCollectionRenaming : function () {
+      if (isCluster) {
+        // renaming not supported in cluster
+        return;
+      }
+
       const query = `${uniqid()} FOR doc IN ${cn1} RETURN doc`;
       const options = { optimizePlanForCaching: true };
 
@@ -371,12 +377,98 @@ function QueryPlanCacheTestSuite () {
       assertEqual(key, res.planCacheKey);
     },
     
+    testInvalidationAfterCollectionPropertyChange : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} RETURN doc`;
+      const options = { optimizePlanForCaching: true };
+
+      db._query(`FOR i IN 1..10 INSERT {} INTO ${cn1}`);
+
+      let res = db._query(query, null, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(10, res.toArray().length);
+      
+      res = db._query(query, null, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      let key = res.planCacheKey;
+      assertEqual(10, res.toArray().length);
+
+      // change properties
+      db[cn1].properties({ cacheEnabled: true });
+      
+      res = db._query(query, null, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual(10, res.toArray().length);
+      
+      res = db._query(query, null, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      assertEqual(10, res.toArray().length);
+      assertEqual(key, res.planCacheKey);
+    },
+    
     testInvalidationAfterIndexCreation : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == @value RETURN doc.value`;
+      const options = { optimizePlanForCaching: true };
+      
+      db._query(`FOR i IN 1..10 INSERT {value: i} INTO ${cn1}`);
+
+      let res = db._query(query, {value: 1}, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual([1], res.toArray());
+      
+      res = db._query(query, {value: 2}, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      let key = res.planCacheKey;
+      assertEqual([2], res.toArray());
+
+      // create a new index on the collection
+      db[cn1].ensureIndex({ type: "persistent", fields: ["value"] });
+      
+      res = db._query(query, {value: 3}, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual([3], res.toArray());
+
+      res = db._query(query, {value: 4}, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      assertEqual([4], res.toArray());
+      // plan cache keys must be identical
+      assertEqual(key, res.planCacheKey);
+    },
+    
+    testInvalidationAfterIndexDrop : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == @value RETURN doc.value`;
+      const options = { optimizePlanForCaching: true };
+      
+      db[cn1].ensureIndex({ type: "persistent", fields: ["value"], name: "value" });
+      db._query(`FOR i IN 1..10 INSERT {value: i} INTO ${cn1}`);
+
+      let res = db._query(query, {value: 1}, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual([1], res.toArray());
+      
+      res = db._query(query, {value: 2}, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      let key = res.planCacheKey;
+      assertEqual([2], res.toArray());
+
+      // drop the index
+      db[cn1].dropIndex("value");
+      
+      res = db._query(query, {value: 3}, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertEqual([3], res.toArray());
+
+      res = db._query(query, {value: 4}, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      assertEqual([4], res.toArray());
+      // plan cache keys must be identical
+      assertEqual(key, res.planCacheKey);
     },
    
     // test views
     // test permissions
-    // test collection property changes
+    //
+    // plan attribute is set -> fix
+    // validate attribute used in plan serialization
   };
 }
 

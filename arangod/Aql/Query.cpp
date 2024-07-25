@@ -47,6 +47,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Timing.h"
+#include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
@@ -361,10 +362,33 @@ bool Query::tryLoadPlanFromCache() {
     // look up query in query plan cache
     auto cacheEntry = _vocbase.queryPlanCache().lookup(*_planCacheKey);
     if (cacheEntry != nullptr) {
-      _resourceMonitor->increaseMemoryUsage(cacheEntry->size());
-      _planSliceCopy = cacheEntry;
       // entry found in plan cache
-      VPackSlice querySlice = VPackSlice(cacheEntry->data());
+
+      auto hasPermissions = std::invoke([&] {
+        // check if the current user has permissions on all the collections
+        ExecContext const& exec = ExecContext::current();
+
+        if (!exec.isSuperuser()) {
+          for (auto const& dataSource : cacheEntry->dataSources) {
+            if (!exec.canUseCollection(dataSource.second.name,
+                                       dataSource.second.level)) {
+              // cannot use query cache result because of permissions
+              return false;
+            }
+          }
+        }
+
+        return true;
+      });
+
+      if (!hasPermissions) {
+        return false;
+      }
+
+      _resourceMonitor->increaseMemoryUsage(cacheEntry->serializedPlan->size());
+      _planSliceCopy = cacheEntry->serializedPlan;
+
+      VPackSlice querySlice = VPackSlice(cacheEntry->serializedPlan->data());
       VPackSlice collections = querySlice.get("collections");
       VPackSlice variables = querySlice.get("variables");
 
@@ -530,13 +554,28 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
   velocypack::Builder serialized;
   plan.toVelocyPack(serialized, flags, serializeQueryData);
 
-  auto dataSources = _queryDataSources;
-  _trx->state()->allCollections(  // collect transaction DataSources
-      [&dataSources](TransactionCollection& trxCollection) -> bool {
-        auto const& c = trxCollection.collection();
-        dataSources.try_emplace(c->guid());
-        return true;  // continue traversal
-      });
+  auto dataSources = std::invoke([&]() {
+    std::unordered_map<std::string, QueryPlanCache::DataSourceEntry>
+        dataSources;
+    // add views
+    for (auto const& it : _queryDataSources) {
+      dataSources.try_emplace(it.first, QueryPlanCache::DataSourceEntry{
+                                            it.second, auth::Level::RO});
+    }
+    // collect transaction DataSources
+    _trx->state()->allCollections(
+        [&dataSources](TransactionCollection& trxCollection) -> bool {
+          auto const& c = trxCollection.collection();
+          auth::Level level =
+              trxCollection.accessType() == AccessMode::Type::READ
+                  ? auth::Level::RO
+                  : auth::Level::RW;
+          dataSources.try_emplace(
+              c->guid(), QueryPlanCache::DataSourceEntry{c->name(), level});
+          return true;  // continue traversal
+        });
+    return dataSources;
+  });
 
   // store plan in query plan cache for future queries
   _vocbase.queryPlanCache().store(std::move(*_planCacheKey),

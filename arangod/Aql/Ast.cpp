@@ -301,7 +301,7 @@ LogicalDataSource::Category injectDataSourceInQuery(
     ast.query().collections().add(std::string(nameRef), accessType,
                                   aql::Collection::Hint::None);
 
-    ast.query().addDataSource(dataSource);
+    ast.query().addDataSource(*dataSource);
 
     // Make sure to add all collections now:
     resolver.visitCollections(
