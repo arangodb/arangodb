@@ -2268,12 +2268,12 @@ void Query::prepareFromVelocyPack(
 void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
                          QuerySerializationOptions const& options) const {
   // query state
-  auto currentState = [&]() {
+  auto currentState = std::invoke([&]() {
     if (killed()) {
       return QueryExecutionState::ValueType::KILLED;
     }
     return (isCurrent ? state() : QueryExecutionState::ValueType::FINISHED);
-  }();
+  });
 
   double elapsed = (isCurrent ? elapsedSince(startTime()) : executionTime());
 
