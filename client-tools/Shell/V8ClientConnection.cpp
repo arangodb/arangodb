@@ -434,7 +434,7 @@ std::string V8ClientConnection::getHandle() {
 
 void V8ClientConnection::connectHandle(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
-    std::string_view handle) {
+    std::string& handle) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
@@ -807,7 +807,7 @@ static void ClientConnection_connectHandle(
   TRI_Utf8ValueNFC handle(isolate, args[0]);
 
   v8connection->connectHandle(isolate, args,
-                              std::string_view(*handle, handle.length()));
+                              std::string(*handle, handle.length()));
   TRI_V8_TRY_CATCH_END
 }
 
