@@ -445,7 +445,7 @@ void Query::prepareQuery() {
         // set up collections
         TRI_ASSERT(builder.isOpenObject());
         builder.add(VPackValue("collections"));
-        collections().toVelocyPack(builder);
+        collections().toVelocyPack(builder);  // /*includeViews*/ false;
 
         // set up variables
         TRI_ASSERT(builder.isOpenObject());
@@ -532,7 +532,7 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
     // set up collections
     TRI_ASSERT(builder.isOpenObject());
     builder.add(VPackValue("collections"));
-    collections().toVelocyPack(builder);
+    collections().toVelocyPack(builder);  // /*includeViews*/ false;
 
     // set up variables
     TRI_ASSERT(builder.isOpenObject());
@@ -1302,7 +1302,7 @@ QueryResult Query::explain() {
       // set up collections
       TRI_ASSERT(builder.isOpenObject());
       builder.add(VPackValue("collections"));
-      collections().toVelocyPack(builder);
+      collections().toVelocyPack(builder);  // /*includeViews*/ false;
 
       // set up variables
       TRI_ASSERT(builder.isOpenObject());
@@ -2049,8 +2049,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   }
 
   // used by hotbackup to prevent commits
-  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
-      commitGuard;
+  std::optional<transaction::Manager::TransactionCommitGuard> commitGuard;
   // If the query is not read-only, we want to acquire the transaction
   // commit lock as read lock, read-only queries can just proceed.
   // note that we only need to acquire the commit lock if the transaction
@@ -2483,6 +2482,9 @@ void Query::prepareFromVelocyPack(
   if (simpleSnippetFormat) {
     // a single snippet
     instantiateSnippet(snippets);
+    TRI_ASSERT(!_snippets.empty());
+    TRI_ASSERT(!_trx->state()->isDBServer() ||
+               _snippets.back()->engineId() != 0);
   } else {
     // potentially multiple snippets, contained in an object with snippet ids as
     // keys

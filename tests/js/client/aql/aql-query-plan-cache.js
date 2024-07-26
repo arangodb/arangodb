@@ -531,7 +531,6 @@ function QueryPlanCacheTestSuite () {
     // test permissions
     //
     // plan attribute is set -> fix
-    // validate attribute used in plan serialization
   };
 }
 
