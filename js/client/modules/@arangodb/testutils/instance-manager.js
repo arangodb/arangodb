@@ -92,6 +92,7 @@ class instanceManager {
     this.endpoints = [];
     this.endpoint = undefined;
     this.connectedEndpoint = undefined;
+    this.connectionHandle = undefined;
     this.arangods = [];
     this.restKeyFile = '';
     this.tcpdump = null;
@@ -198,6 +199,7 @@ class instanceManager {
     return ret;
   }
   rememberConnection() {
+    this.connectionHandle = arango.getConnectionHandle();
     this.dbName = '_system';
     try {
       this.dbName = db._name();
@@ -206,7 +208,13 @@ class instanceManager {
     this.connectedEndpoint = arango.getEndpoint();
   }
   reconnectMe() {
-    arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
+    if (this.connectionHandle !== undefined) {
+      try {
+        return arango.connectHandle(this.connectionHandle);
+      } catch (ex) {
+        print(`${RED}${date()}failet to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
+    } 
+    return arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
   }
   debugCanUseFailAt() {
     const res = arango.GET_RAW("_admin/debug/failat");
@@ -220,22 +228,31 @@ class instanceManager {
   }
   debugSetFailAt(failurePoint, shortName, role, url) {
     let count = 0;
+    let skipped = [];
     this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (role !== undefined && !arangod.isRole(role)) {
+        skipped.push("role");
         return;
       }
       if (url !== undefined && arangod.url !== url && arangod.endpoint !== url) {
+        skipped.push("url");
         return;
       }
-      if (arangod.debugSetFailAt(failurePoint, shortName)) {
+      if (shortName !== undefined && thisarangod.shortName !== shortName) {
+        skipped.push("shortName");
+        return false;
+      }
+      if (arangod.debugSetFailAt(failurePoint)) {
         count += 1;
+      } else {
+        skipped.push("instance");
       }
     });
     if (count === 0) {
       let msg = "";
       this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
-      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${shortName}, ${role}, ${url}${msg}`);
+      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${shortName}, ${role}, ${url}${msg} \n${JSON.stringify(skipped)}`);
     }
     this.reconnectMe();
   }
@@ -261,6 +278,7 @@ class instanceManager {
       if (url !== undefined && arangod.url !== url && arangod.endpoint !== url) {
         return;
       }
+      print(arangod.name)
       arangod.debugClearFailAt(failurePoint, shortName);
     });
     this.reconnectMe();
