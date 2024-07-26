@@ -432,8 +432,8 @@ std::string V8ClientConnection::getHandle() {
   return connectionIdentifier(_builder);
 }
 
-void V8ClientConnection::connectHandle(v8::Isolate* isolate,
-                                       v8::FunctionCallbackInfo<v8::Value> const& args,
+void V8ClientConnection::connectHandle(
+                                       v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
                                        std::string handle) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   // check if we have a connection for that endpoint in our cache
@@ -768,21 +768,21 @@ static void ClientConnection_getHandle(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  if (client == nullptr) {
+  if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(
         "getHandle() must be invoked on an arango connection object "
         "instance.");
   }
 
-  TRI_V8_RETURN(client->getHandle());
+  TRI_V8_RETURN(v8connection->getHandle());
   TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ClientConnection method "getHandle"
+/// @brief ClientConnection method "connectHandle"
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClientConnection_connectHandle(
@@ -791,10 +791,10 @@ static void ClientConnection_connectHandle(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+  V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
+      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
-  if (client == nullptr) {
+  if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(
         "connectHandle() must be invoked on an arango connection object "
         "instance.");
@@ -806,7 +806,7 @@ static void ClientConnection_connectHandle(
 
   TRI_Utf8ValueNFC handle(isolate, args[0]);
 
-  client->connectHandle(isolate, args, handle);
+  v8connection->connectHandle(isolate, args, handle);
   TRI_V8_TRY_CATCH_END
 }
 
