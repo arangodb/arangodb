@@ -90,6 +90,8 @@ class instanceManager {
     this.instanceRoles = [];
     this.urls = [];
     this.endpoints = [];
+    this.endpoint = undefined;
+    this.connectedEndpoint = undefined;
     this.arangods = [];
     this.restKeyFile = '';
     this.tcpdump = null;
@@ -201,9 +203,11 @@ class instanceManager {
       this.dbName = db._name();
     } catch (e) {}
     this.userName = arango.connectedUser();
+    this.connectedEndpoint = arango.getEndpoint();
   }
   reconnectMe() {
-    arango.reconnect(this.endpoint, this.dbName, this.userName, '');
+    print(this.connectedEndpoint)
+    arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
   }
   debugCanUseFailAt() {
     const res = arango.GET_RAW("_admin/debug/failat");
@@ -217,8 +221,7 @@ class instanceManager {
   }
   debugSetFailAt(failurePoint, shortName, role, url) {
     let count = 0;
-    let dbName = db._name();
-    let oldUser = arango.connectedUser();
+    this.rememberConnection();
     this.arangods.forEach(arangod => {
       if (role !== undefined && !arangod.isRole(role)) {
         return;
@@ -235,7 +238,7 @@ class instanceManager {
       this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
       throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${shortName}, ${role}, ${url}${msg}`);
     }
-    arango.reconnect(this.endpoint, dbName, oldUser, '');
+    this.reconnectMe();
   }
   debugRemoveFailAt(failurePoint, shortName, role, url) {
     this.rememberConnection();
