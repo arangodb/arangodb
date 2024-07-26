@@ -373,7 +373,14 @@ void Query::prepareQuery() {
         // set up collections
         TRI_ASSERT(builder.isOpenObject());
         builder.add(VPackValue("collections"));
-        collections().toVelocyPack(builder);
+        collections().toVelocyPack(
+            builder, /*filter*/
+            [](std::string const& name, Collection const&) {
+              // exclude collections without names or with names that are just
+              // ids
+              return !(name.empty() ||
+                       (name.front() >= '0' && name.front() <= '9'));
+            });
 
         // set up variables
         TRI_ASSERT(builder.isOpenObject());
@@ -1109,7 +1116,11 @@ QueryResult Query::explain() {
       // set up collections
       TRI_ASSERT(builder.isOpenObject());
       builder.add(VPackValue("collections"));
-      collections().toVelocyPack(builder);
+      collections().toVelocyPack(builder, /*filter*/ [](std::string const& name,
+                                                        Collection const&) {
+        // exclude collections without names or with names that are just ids
+        return !(name.empty() || (name.front() >= '0' && name.front() <= '9'));
+      });
 
       // set up variables
       TRI_ASSERT(builder.isOpenObject());
@@ -1813,8 +1824,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   }
 
   // used by hotbackup to prevent commits
-  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
-      commitGuard;
+  std::optional<transaction::Manager::TransactionCommitGuard> commitGuard;
   // If the query is not read-only, we want to acquire the transaction
   // commit lock as read lock, read-only queries can just proceed.
   // note that we only need to acquire the commit lock if the transaction
