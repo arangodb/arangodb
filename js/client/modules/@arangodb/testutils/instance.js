@@ -1344,8 +1344,9 @@ class instance {
         this.connect();
         reply = arango.PUT_RAW('/_admin/debug/crash', '');
       } catch(ex) {
-        if (ex instanceof ArangoError &&
-            ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+        if (ex instanceof ArangoError && (
+          (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
+            (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code))) {
           print(`Terminated instance ${this.name} - ${ex}`);
           return this.checkDebugTerminated();
         }
