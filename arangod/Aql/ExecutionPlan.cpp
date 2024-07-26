@@ -700,8 +700,7 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
     }
   }
 
-  if (auto apfn = slice.get("asyncPrefetchNodes");
-      !apfn.isNone() && apfn.isNumber<size_t>()) {
+  if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
     plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
   }
 
