@@ -150,7 +150,7 @@ function replicationAutoRepairSuite() {
         }
         if (count === n / 2) {
           // do not replicate from leader to follower after half of documents
-          IM.debugSetFailAt("replicateOperations::skip", undefined, instanceRole.dbServer, follower);
+          IM.debugSetFailAt("replicateOperations::skip", undefined, instanceRole.dbServer, leader);
         }
         c.insert(docs);
       }
@@ -179,7 +179,7 @@ function replicationAutoRepairSuite() {
         assertEqual(200, result.status);
       }
       
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, follower);
+      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, leader);
 
       // this will trigger a drop-follower operation on the next insert on the leader
       IM.debugSetFailAt("replicateOperationsDropFollower", undefined, instanceRole.dbServer, leader);
