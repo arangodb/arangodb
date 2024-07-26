@@ -154,9 +154,9 @@ function legacySortingTestSuite() {
       assertTrue(Array.isArray(r.result.affected));
       assertEqual(2*nr, r.result.affected.length);
       for (let o of r.result.affected) {
-        assertTrue(o.collection === cn);
+        assertEqual(o.collection, cn);
         assertTrue(names.indexOf(o.indexName) >= 0);
-        assertTrue(o.indexId !== 0);   // Not the primary index!
+        assertNotEqual(0, o.indexId);   // Not the primary index!
         if (o.database === "_system") {
           assertTrue(ids_system.indexOf(cn + "/" + o.indexId) >= 0);
         } else if (o.database === dn) {
