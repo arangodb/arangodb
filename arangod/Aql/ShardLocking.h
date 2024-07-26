@@ -139,7 +139,7 @@ class ShardLocking {
   // This will honor shard restrictions on the given snippet.
   // All shards will be returned, there will be no filtering on the server.
   std::unordered_set<ShardID> const& shardsForSnippet(
-      aql::QuerySnippet::Id snippetId, Collection const* col);
+      aql::QuerySnippet::Id snippetId, Collection const* col) const;
 
  private:
   // Adjust locking level of a single collection
@@ -148,7 +148,6 @@ class ShardLocking {
                      std::unordered_set<ShardID> const& restrictedShards,
                      bool useAsSatellite);
 
- private:
   QueryContext& _query;
 
   std::unordered_map<Collection const*, CollectionLockingInformation>
