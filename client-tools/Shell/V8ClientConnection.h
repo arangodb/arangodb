@@ -144,7 +144,7 @@ class V8ClientConnection {
 
   void connectHandle(v8::Isolate* isolate,
                      v8::FunctionCallbackInfo<v8::Value> const& args,
-                     std::string_view handle);
+                     std::string handle);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   uint32_t sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer);
