@@ -235,14 +235,18 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
   LOG_TOPIC("22536", DEBUG, Logger::ENGINES)
       << "VPackSortMigration: all servers responded";
 
-  auto server = dbs.begin();
   {
     VPackObjectBuilder b(&result);
     for (auto& resp : responses) {
       auto res = basics::catchToResultT([&] { return std::move(resp).get(); });
 
       {
-        result.add(VPackValue(*(server++)));
+        // result.add(VPackValue(*(server++)));
+        std::string server = res.get().destination;
+        if (server.starts_with("server:")) {
+          server = server.substr(7);
+        }
+        result.add(VPackValue(server));
         if (res.fail()) {
           VPackObjectBuilder ob{&result};
           result.add(StaticStrings::Error, VPackValue(true));
