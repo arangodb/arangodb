@@ -815,6 +815,10 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                                   AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   // TODO The logic in the MultiDependencySingleRowFetcher branch should be
   //      moved into the MultiDependencySingleRowFetcher.
   static_assert(isMultiDepExecutor<Executor> ==
