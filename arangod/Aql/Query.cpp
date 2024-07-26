@@ -649,12 +649,20 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   if (_planCacheKey.has_value()) {
     TRI_ASSERT(_queryOptions.optimizePlanForCaching);
 
-    if (_warnings.empty()) {
+    // if query parsing/optimization produces warnings. we must disable query
+    // plan caching.
+    // additionally, if the query contains a REMOTE_SINGLE/REMOTE_MULTIPLE node,
+    // we must also disable caching, because these node types do not have
+    // constructors for being created from serialized velocypack input
+    bool canCachePlan = _warnings.empty() &&
+                        !plan->contains(ExecutionNode::REMOTE_SINGLE) &&
+                        !plan->contains(ExecutionNode::REMOTE_MULTIPLE);
+
+    if (canCachePlan) {
       // store result plan in query plan cache
       storePlanInCache(*plan);
     } else {
-      // query parsing/optimization produced warnings. we must disable query
-      // plan caching
+      // do not store plan in cache
       _planCacheKey.reset();
     }
   }
@@ -1131,7 +1139,12 @@ ExecutionState Query::finalize(velocypack::Builder& extras) {
       executionStats.toVelocyPack(extras, _queryOptions.fullCount);
     });
 
-    if (_planSliceCopy) {
+    bool keepPlan =
+        _planSliceCopy != nullptr &&
+        _queryOptions.profile >= ProfileLevel::Blocks &&
+        ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
+
+    if (keepPlan) {
       extras.add("plan", VPackSlice(_planSliceCopy->data()));
     }
   }
@@ -2622,7 +2635,7 @@ Query::buildSerializeQueryDataCallback() const {
     collections().toVelocyPack(
         builder, /*filter*/ [this](std::string const& name, Collection const&) {
           // exclude collections without names or with names that are just ids
-          if (name.empty() || (name.front() >= '0' && name.front() <= '9')) {
+          if (name.empty()) {
             return false;
           }
           if (this->resolver().getCollection(name) == nullptr) {

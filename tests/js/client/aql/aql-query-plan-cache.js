@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual  */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, assertNotUndefined  */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -188,10 +188,12 @@ function QueryPlanCacheTestSuite () {
       let stmt = db._createStatement({ query, bindVars, options });
       let res = stmt.explain();
       assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertNotUndefined(res.plan, res);
       
       stmt = db._createStatement({ query, bindVars, options });
       res = stmt.explain();
       assertTrue(res.hasOwnProperty("planCacheKey"));
+      assertNotUndefined(res.plan, res);
     },
     
     testExplainAllPlans : function () {
@@ -202,11 +204,13 @@ function QueryPlanCacheTestSuite () {
       let stmt = db._createStatement({ query, bindVars, options });
       let res = stmt.explain();
       assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertNotUndefined(res.plans, res);
       
       // allPlans is not supported with plan caching
       stmt = db._createStatement({ query, bindVars, options });
       res = stmt.explain();
       assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertNotUndefined(res.plans, res);
     },
     
     testProfiling : function () {
@@ -479,7 +483,7 @@ function QueryPlanCacheTestSuite () {
             db[en].insert({ _from: vn + "/test" + (i - 1), _to: vn + "/test" + i });
           }
         }
-        const query = `FOR v, e, p IN 1..4 OUTBOUND '${vn}/test0' GRAPH '${gn}' RETURN {v, e, p}`;
+        const query = `${uniqid()} FOR v, e, p IN 1..4 OUTBOUND '${vn}/test0' GRAPH '${gn}' RETURN {v, e, p}`;
         const options = { optimizePlanForCaching: true };
 
         let res = db._query(query, null, options);
@@ -502,7 +506,7 @@ function QueryPlanCacheTestSuite () {
       try {
         db._view(vn).properties({ links: { [cn1]: { includeAllFields: true } } });
 
-        const query = `FOR doc IN ${vn} SEARCH doc.value == @value OPTIONS {waitForSync: true} RETURN doc.value`;
+        const query = `${uniqid()} FOR doc IN ${vn} SEARCH doc.value == @value OPTIONS {waitForSync: true} RETURN doc.value`;
         const options = { optimizePlanForCaching: true };
         
         db._query(`FOR i IN 1..10 INSERT {value: i} INTO ${cn1}`);
@@ -527,10 +531,53 @@ function QueryPlanCacheTestSuite () {
         db._dropView(vn);
       }
     },
+
+    testSingleRemoteNodePreventsCaching : function () {
+      if (!isCluster) {
+        // SingleRemoteOperationNode is only used in cluster
+        return;
+      }
+      const query = `${uniqid()} INSERT {} INTO ${cn1}`;
+     
+      assertNotCached(query);
+
+      let stmt = db._createStatement({ query });
+      let res = stmt.explain();
+      assertEqual(1, res.plan.nodes.filter((n) => n.type === 'SingleRemoteOperationNode').length, res.plan.nodes);
+    },
     
-    // test permissions
-    //
-    // plan attribute is set -> fix
+    testMultipleRemoteNodePreventsCaching : function () {
+      if (!isCluster) {
+        // MultipleRemoteModificationNode is only used in cluster
+        return;
+      }
+      const query = `${uniqid()} FOR doc IN [{}, {}, {}] INSERT doc INTO ${cn1}`;
+      
+      assertNotCached(query);
+
+      let stmt = db._createStatement({ query });
+      let res = stmt.explain();
+      assertEqual(1, res.plan.nodes.filter((n) => n.type === 'MultipleRemoteModificationNode').length, res.plan.nodes);
+    },
+    
+    testPlanAttributeNotSetForQueryFromCache : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == @value RETURN doc.value`;
+      const options = { optimizePlanForCaching: true };
+      
+      let res = db._query(query, {value: 1}, options);
+      assertFalse(res.hasOwnProperty("planCacheKey"));
+      assertUndefined(res.data.extra.plan, res);
+      
+      res = db._query(query, {value: 2}, options);
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      assertUndefined(res.data.extra.plan, res);
+     
+      // try again with profiling enabled. this must populate the plan attribute
+      res = db._query(query, {value: 2}, Object.assign(options, {profile: 2}));
+      assertTrue(res.hasOwnProperty("planCacheKey"));
+      assertNotUndefined(res.data.extra.plan, res);
+    },
+
   };
 }
 

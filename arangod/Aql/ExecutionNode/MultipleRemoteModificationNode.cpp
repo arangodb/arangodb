@@ -57,6 +57,14 @@ MultipleRemoteModificationNode::MultipleRemoteModificationNode(
       _outVariableNew(NEW),
       _options(options) {}
 
+MultipleRemoteModificationNode::MultipleRemoteModificationNode(
+    ExecutionPlan* plan, velocypack::Slice base)
+    : ExecutionNode(plan, base), CollectionAccessingNode(plan, base) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "multiple remote operation node deserialization not implemented.");
+}
+
 /// @brief creates corresponding MultipleRemoteModificationNode
 std::unique_ptr<ExecutionBlock> MultipleRemoteModificationNode::createBlock(
     ExecutionEngine& engine) const {

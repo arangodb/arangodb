@@ -24,6 +24,10 @@ devel
   name bind parameters, e.g. `FILTER doc.@attributeName == ...`.
   Additionally, if a query produces any warnings during parsing or query plan
   optimization, it is not eligible for plan caching.
+  Query plans are also not eligible for caching if they contain one of the
+  following execution node types:
+  - SingleRemoteOperationNode
+  - MultipleRemoteModificationNode
 
   If a query is eligible for plan caching, the plan cache will be checked using
   the exact same query string and set of collection bind parameter values. 

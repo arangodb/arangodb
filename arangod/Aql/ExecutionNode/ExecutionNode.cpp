@@ -107,7 +107,7 @@ frozen::unordered_map<int, std::string_view, 36> const kTypeNames{
     {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_PATHS), "EnumeratePathsNode"},
-    {static_cast<int>(ExecutionNode::REMOTESINGLE),
+    {static_cast<int>(ExecutionNode::REMOTE_SINGLE),
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::REMOTE_MULTIPLE),
      "MultipleRemoteModificationNode"},
@@ -390,7 +390,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new ShortestPathNode(plan, slice);
     case ENUMERATE_PATHS:
       return new EnumeratePathsNode(plan, slice);
-    case REMOTESINGLE:
+    case REMOTE_SINGLE:
       return new SingleRemoteOperationNode(plan, slice);
     case REMOTE_MULTIPLE:
       return new MultipleRemoteModificationNode(plan, slice);
@@ -1561,7 +1561,7 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
     case SHORTEST_PATH:
     case ENUMERATE_PATHS:
 
-    case REMOTESINGLE:
+    case REMOTE_SINGLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case MATERIALIZE:
 
@@ -1597,7 +1597,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case JOIN:
     case SHORTEST_PATH:
     case ENUMERATE_PATHS:
-    case REMOTESINGLE:
+    case REMOTE_SINGLE:
     case REMOTE_MULTIPLE:
     case ENUMERATE_IRESEARCH_VIEW:
     case DISTRIBUTE_CONSUMER:
