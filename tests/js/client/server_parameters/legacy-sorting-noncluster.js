@@ -55,8 +55,12 @@ function poisonCollection(databasename, collname, attrA, attrB) {
   let r = 
     arango.POST_RAW(`/_db/${databasename}/_api/document/${collname}`,
       `{"_key":"X","${attrA}":1152921504606846977,"${attrB}":"x","x":1.0,"y":1.0}`);
-  arango.POST_RAW(`/_db/${databasename}/_api/document/${collname}`,
+  assertFalse(r.error);
+  assertEqual(202, r.code);
+  r = arango.POST_RAW(`/_db/${databasename}/_api/document/${collname}`,
     `{"_key":"Y","${attrA}":1152921504606846976.0,"${attrB}":"y","x":1.0,"y":1.0}`);
+  assertFalse(r.error);
+  assertEqual(202, r.code);
 }
 
 function createVPackIndexes(databasename, collname, attrA, attrB) {
@@ -143,11 +147,11 @@ function legacySortingTestSuite() {
       r = arango.GET("/_admin/cluster/vpackSortMigration/check");
 
       // Now check that we found all the indexes and not too many:
-      assertEqual(false, r.error);
+      assertFalse(r.error);
       assertEqual(200, r.code);
-      assertEqual(true, r.result.error);
+      assertTrue(r.result.error);
       assertEqual(1242, r.result.errorCode);
-      assertEqual("object", typeof(r.result.affected));
+      assertTrue(Array.isArray(r.result.affected));
       assertEqual(2*nr, r.result.affected.length);
       for (let o of r.result.affected) {
         assertTrue(o.collection === cn);
@@ -179,11 +183,11 @@ function legacySortingTestSuite() {
       r = arango.GET("/_admin/cluster/vpackSortMigration/check");
 
       // Now check that we found all the indexes and not too many:
-      assertEqual(false, r.error);
+      assertFalse(r.error);
       assertEqual(200, r.code);
-      assertEqual(false, r.result.error);
+      assertFalse(r.result.error);
       assertEqual(0, r.result.errorCode);
-      assertEqual("object", typeof(r.result.affected));
+      assertTrue(Array.isArray(r.result.affected));
       assertEqual(0, r.result.affected.length);
     }
   };

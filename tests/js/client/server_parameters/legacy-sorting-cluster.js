@@ -55,8 +55,12 @@ function poisonCollection(databasename, collname, attrA, attrB) {
   let r = 
     arango.POST_RAW(`/_db/${databasename}/_api/document/${collname}`,
       `{"_key":"X","${attrA}":1152921504606846977,"${attrB}":"x","x":1.0,"y":1.0}`);
-  arango.POST_RAW(`/_db/${databasename}/_api/document/${collname}`,
+  assertFalse(r.error);
+  assertEqual(202, r.code);
+  r = arango.POST_RAW(`/_db/${databasename}/_api/document/${collname}`,
     `{"_key":"Y","${attrA}":1152921504606846976.0,"${attrB}":"y","x":1.0,"y":1.0}`);
+  assertEqual(202, r.code);
+  assertFalse(r.error);
 }
 
 function createVPackIndexes(databasename, collname, attrA, attrB) {
@@ -149,16 +153,16 @@ function legacySortingTestSuite() {
       // We do not check the details of the output, since we do this
       // in the single server case and we never know which shards land
       // on which dbserver. We do not even know
-      assertEqual(false, r.error);
+      assertFalse(r.error);
       assertEqual(200, r.code);
       assertEqual("object", typeof(r.result));
       for (let dbserver in r.result) {
         let oneResult = r.result[dbserver];
-        assertEqual(false, oneResult.error);
+        assertFalse(oneResult.error);
         assertEqual(200, oneResult.code);
-        assertEqual(true, oneResult.result.error);
+        assertTrue(oneResult.result.error);
         assertEqual(1242, oneResult.result.errorCode);
-        assertEqual("object", typeof(oneResult.result.affected));
+        assertTrue(Array.isArray(oneResult.result.affected));
         assertTrue(oneResult.result.affected.length > 0);
       }
 
@@ -179,16 +183,16 @@ function legacySortingTestSuite() {
       r = arango.GET("/_admin/cluster/vpackSortMigration/check");
 
       // Now check that we found all the indexes and not too many:
-      assertEqual(false, r.error);
+      assertFalse(r.error);
       assertEqual(200, r.code);
       assertEqual("object", typeof(r.result));
       for (let dbserver in r.result) {
         let oneResult = r.result[dbserver];
-        assertEqual(false, oneResult.error);
+        assertFalse(oneResult.error);
         assertEqual(200, oneResult.code);
-        assertEqual(false, oneResult.result.error);
+        assertFalse(oneResult.result.error);
         assertEqual(0, oneResult.result.errorCode);
-        assertEqual("object", typeof(oneResult.result.affected));
+        assertTrue(Array.isArray(oneResult.result.affected));
         assertEqual(0, oneResult.result.affected.length);
       }
     }
