@@ -4219,7 +4219,7 @@ Result RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
     basics::FileUtils::spit(path, value, true);
   } catch (std::exception const& ex) {
     LOG_TOPIC("8ff0f", ERR, Logger::STARTUP)
-        << "unable to write 'SORTING' file '" << _path << "': " << ex.what()
+        << "unable to write 'SORTING' file '" << path << "': " << ex.what()
         << ". Please make sure the file/directory is writable for the "
            "arangod process and user!";
     return {TRI_ERROR_CANNOT_WRITE_FILE};

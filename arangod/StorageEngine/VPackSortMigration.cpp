@@ -113,7 +113,7 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
                 auto columnFamily = rocksDBIndex->columnFamily();
 
                 // Note that the below iterator will automatically create a
-                // RocksDB read snapshot for
+                // RocksDB read snapshot
                 rocksdb::Slice const end = bounds.end();
                 rocksdb::ReadOptions options;
                 options.iterate_upper_bound =
@@ -240,7 +240,6 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
     auto f = network::sendRequest(nf.pool(), "server:" + server, verb, path, {},
                                   opts);
     requests.emplace_back(std::move(f).then([server](auto&& response) {
-      LOG_DEVEL << "received response from " << server;
       return std::move(response).get();
     }));
   }
@@ -249,7 +248,7 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
       << "VPackSortMigration: awaiting all results";
   auto responses = co_await futures::collectAll(requests);
   LOG_TOPIC("22536", DEBUG, Logger::ENGINES)
-      << "VPackSortMigration: all server responded";
+      << "VPackSortMigration: all servers responded";
 
   auto server = dbs.begin();
   {

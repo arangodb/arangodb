@@ -44,7 +44,7 @@ struct RocksDBOptionsProvider {
       RocksDBColumnFamilyManager::Family family) const;
   void resetVPackComparator(
       std::unique_ptr<rocksdb::Comparator> newComparator) {
-    _vpackCmp.reset(newComparator.release());
+    _vpackCmp = std::move(newComparator);
   }
 
   virtual bool useFileLogging() const noexcept { return false; }
