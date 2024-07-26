@@ -706,17 +706,18 @@ class instance {
   connect() {
     if (this.connectionHandle !== undefined) {
       return arango.connectHandle(this.connectionHandle);
-    if (this.JWT) {
-      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
-      this.connectionHandle = arango.getConnectionHandle();
-      return ret;
     } else {
-      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
-      this.connectionHandle = arango.getConnectionHandle();
-      return ret;
+      if (this.JWT) {
+        const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
+        this.connectionHandle = arango.getConnectionHandle();
+        return ret;
+      } else {
+        const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
+        this.connectionHandle = arango.getConnectionHandle();
+        return ret;
+      }
     }
   }
-
   checkArangoConnection(count, overrideVerbosity=false) {
     this.endpoint = this.args['server.endpoint'];
     while (count > 0) {

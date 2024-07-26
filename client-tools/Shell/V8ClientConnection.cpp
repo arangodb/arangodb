@@ -428,29 +428,28 @@ void V8ClientConnection::reconnect() {
   }
 }
 
-v8::Handle<v8::Value> V8ClientConnection::getHandle(
-    v8::Isolate* isolate) {
-   TRI_V8_TRY_CATCH_BEGIN(isolate);
-   std::string connectionHandle = connectionIdentifier(_builder);
-   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->username()));
+v8::Handle<v8::Value> V8ClientConnection::getHandle(v8::Isolate* isolate) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  std::string connectionHandle = connectionIdentifier(_builder);
+  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->username()));
 }
 
 v8::Handle<v8::Value> V8ClientConnection::connectHandle(
-  v8::Isolate* isolate, std::string_view handle) {
+    v8::Isolate* isolate, std::string_view handle) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-    // check if we have a connection for that endpoint in our cache
-    auto it = _connectionCache.find(handle);
-    if (it != _connectionCache.end()) {
-      auto c = (*it).second;
-      // cache hit. remove the connection from the cache and return it!
-      _connectionCache.erase(it);
-      if (!bypassCache) {
-        return std::make_pair(c, true);
-      }
-    } else {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                     "Handle not found in the collection list");
+  // check if we have a connection for that endpoint in our cache
+  auto it = _connectionCache.find(handle);
+  if (it != _connectionCache.end()) {
+    auto c = (*it).second;
+    // cache hit. remove the connection from the cache and return it!
+    _connectionCache.erase(it);
+    if (!bypassCache) {
+      return std::make_pair(c, true);
     }
+  } else {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                                                                "Handle not found in the collection list");
+  }
 }
 
 
@@ -811,7 +810,8 @@ static void ClientConnection_connectHandle(
 
   TRI_Utf8ValueNFC handle(isolate, args[0]);
 
-  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->connectHandle(isolate, handle)));
+  TRI_V8_RETURN(
+      TRI_V8_STD_STRING(isolate, client->connectHandle(isolate, handle)));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3044,9 +3044,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
       isolate, "getConnectionHandle",
       v8::FunctionTemplate::New(isolate, ClientConnection_getHandle, v8client));
 
-  connection_proto->Set(
-      isolate, "connectHandle",
-      v8::FunctionTemplate::New(isolate, ClientConnection_connectHandle, v8client));
+  connection_proto->Set(isolate, "connectHandle",
+                        v8::FunctionTemplate::New(
+                            isolate, ClientConnection_connectHandle, v8client));
 
   connection_proto->Set(isolate, "connectedUser",
                         v8::FunctionTemplate::New(
