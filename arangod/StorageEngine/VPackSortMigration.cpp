@@ -50,16 +50,9 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
   auto& engineSelectorFeature =
       vocbase.server().getFeature<EngineSelectorFeature>();
   if (!engineSelectorFeature.isRocksDB()) {
-    {
-      VPackObjectBuilder guard(&result);
-      guard->add("error", VPackValue(false));
-      guard->add("errorCode", VPackValue(0));
-      guard->add(
-          "errorMessage",
-          VPackValue("VPack sorting migration is unnecessary for storage "
-                     "engines other than RocksDB"));
-    }
-    return {};
+    return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                  "VPack sorting migration is unnecessary for storage engines "
+                  "other than RocksDB");
   }
 
   auto& engine = engineSelectorFeature.engine<RocksDBEngine>();
@@ -191,16 +184,9 @@ Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
   auto& engineSelectorFeature =
       vocbase.server().getFeature<EngineSelectorFeature>();
   if (!engineSelectorFeature.isRocksDB()) {
-    {
-      VPackObjectBuilder guard(&result);
-      guard->add(StaticStrings::Error, VPackValue(false));
-      guard->add(StaticStrings::ErrorCode, VPackValue(0));
-      guard->add(
-          StaticStrings::ErrorMessage,
-          VPackValue("VPack sorting migration is unnecessary for storage "
-                     "engines other than RocksDB"));
-    }
-    return {};
+    return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                  "VPack sorting migration is unnecessary for storage engines "
+                  "other than RocksDB");
   }
 
   auto& engine = engineSelectorFeature.engine<RocksDBEngine>();
