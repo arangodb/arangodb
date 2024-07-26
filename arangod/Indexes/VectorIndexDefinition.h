@@ -51,10 +51,22 @@ struct VectorHashFunction {
   }
 };
 
+enum class SimilarityMetric : std::uint8_t {
+  kEuclidian,
+  kCosine,
+};
+
+template<class Inspector>
+inline auto inspect(Inspector& f, SimilarityMetric& x) {
+  return f.enumeration(x).values(SimilarityMetric::kEuclidian, "euclidian",
+                                 SimilarityMetric::kCosine, "cosine");
+}
+
 struct VectorIndexDefinition {
   std::size_t dimensions;
   double min;
   double max;
+  SimilarityMetric metric;
   std::size_t Kparameter;
   std::size_t Lparameter;
   std::vector<VectorHashFunction> randomFunctions;
@@ -62,10 +74,12 @@ struct VectorIndexDefinition {
   template<class Inspector>
   friend inline auto inspect(Inspector& f, VectorIndexDefinition& x) {
     return f.object(x)
-        .fields(f.field("dimensions", x.dimensions), f.field("min", x.min),
-                f.field("max", x.max), f.field("Kparameter", x.Kparameter),
-                f.field("Lparameter", x.Lparameter),
-                f.field("randomFunctions", x.randomFunctions))
+        .fields(
+            f.field("dimensions", x.dimensions), f.field("min", x.min),
+            f.field("metric", x.metric).fallback(SimilarityMetric::kEuclidian),
+            f.field("max", x.max), f.field("Kparameter", x.Kparameter),
+            f.field("Lparameter", x.Lparameter),
+            f.field("randomFunctions", x.randomFunctions))
         .invariant([](VectorIndexDefinition& x) -> inspection::Status {
           if (x.dimensions < 1) {
             return {"Dimensions must be greater then 0!"};

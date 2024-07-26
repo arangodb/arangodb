@@ -569,6 +569,7 @@ bool Index::CompareIdentifiers(velocypack::Slice const& lhs,
 
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
+// TODO change to comare
 bool Index::Compare(StorageEngine& engine, VPackSlice const& lhs,
                     VPackSlice const& rhs, std::string const& dbname) {
   auto normalizeType = [](VPackSlice s) -> std::string_view {
