@@ -132,6 +132,7 @@ class instance {
     this.port = '';
     this.url = '';
     this.endpoint = '';
+    this.connectionHandle = undefined;
     this.assertLines = [];
     this.useableMemory = mem;
     this.memProfCounter = 0;
@@ -663,7 +664,8 @@ class instance {
                            this.options.username,
                            this.options.password,
                            time() < deadline,
-                           this.JWT);
+                             this.JWT);
+            this.connectionHandle = arango.getConnectionHandle();
           } else {
             print(Date() + " reconnecting " + this.url);
             arango.reconnect(this.endpoint,
@@ -671,6 +673,7 @@ class instance {
                            this.options.username,
                            this.options.password,
                            time() < deadline);
+            this.connectionHandle = arango.getConnectionHandle();
           }
           return;
         } else {
@@ -701,10 +704,16 @@ class instance {
   }
 
   connect() {
+    if (this.connectionHandle !== undefined) {
+      return arango.connectHandle(this.connectionHandle);
     if (this.JWT) {
-      return arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
+      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
+      this.connectionHandle = arango.getConnectionHandle();
+      return ret;
     } else {
-      return arango.reconnect(this.endpoint, '_system', 'root', '', true);
+      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
+      this.connectionHandle = arango.getConnectionHandle();
+      return ret;
     }
   }
 
@@ -1277,10 +1286,7 @@ class instance {
     }
     return [];
   }
-  debugSetFailAt(failurePoint, shortName) {
-    if (shortName !== undefined && this.shortName !== shortName) {
-      return false;
-    }
+  debugSetFailAt(failurePoint) {
     if (!this.connect()) {
       throw new Error(`failed to connect my instance {JSON.stringify(this.getStructure())}`);
     }
@@ -1294,10 +1300,13 @@ class instance {
     if (shortName !== undefined && this.shortName !== shortName) {
       return false;
     }
+    print('connect')
     if (!this.connect()) {
       throw new Error(`failed to connect my instance {JSON.stringify(this.getStructure())}`);
     }
+    print('send')
     let reply = arango.DELETE_RAW(`/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`);
+    print('sent')
     if (reply.code !== 200) {
       throw new Error(`Failed to remove FP: '${failurePoint}' =>  ${reply.parsedBody}`);
     }

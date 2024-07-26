@@ -428,6 +428,32 @@ void V8ClientConnection::reconnect() {
   }
 }
 
+v8::Handle<v8::Value> V8ClientConnection::getHandle(
+    v8::Isolate* isolate) {
+   TRI_V8_TRY_CATCH_BEGIN(isolate);
+   std::string connectionHandle = connectionIdentifier(_builder);
+   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->username()));
+}
+
+v8::Handle<v8::Value> V8ClientConnection::connectHandle(
+  v8::Isolate* isolate, std::string_view handle) {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+    // check if we have a connection for that endpoint in our cache
+    auto it = _connectionCache.find(handle);
+    if (it != _connectionCache.end()) {
+      auto c = (*it).second;
+      // cache hit. remove the connection from the cache and return it!
+      _connectionCache.erase(it);
+      if (!bypassCache) {
+        return std::make_pair(c, true);
+      }
+    } else {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                     "Handle not found in the collection list");
+    }
+}
+
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void V8ClientConnection::reconnectWithNewPassword(std::string const& password) {
   _client.setPassword(password);
@@ -736,6 +762,59 @@ static void ClientConnection_setJwtSecret(
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "getHandle"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_getHandle(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
+  if (client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "getHandle() must be invoked on an arango connection object "
+        "instance.");
+  }
+
+  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->getHandle(isolate)));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "getHandle"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_connectHandle(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
+  if (client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "connectHandle() must be invoked on an arango connection object "
+        "instance.");
+  }
+  // check params
+  if (args.Length() != 1 || !args[0]->IsString()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("connectHandle(<handleString>)");
+  }
+
+  TRI_Utf8ValueNFC handle(isolate, args[0]);
+
+  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->connectHandle(isolate, handle)));
+  TRI_V8_TRY_CATCH_END
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "connectedUser"
@@ -2960,6 +3039,14 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "reconnect",
       v8::FunctionTemplate::New(isolate, ClientConnection_reconnect, v8client));
+
+  connection_proto->Set(
+      isolate, "getConnectionHandle",
+      v8::FunctionTemplate::New(isolate, ClientConnection_getHandle, v8client));
+
+  connection_proto->Set(
+      isolate, "connectHandle",
+      v8::FunctionTemplate::New(isolate, ClientConnection_connectHandle, v8client));
 
   connection_proto->Set(isolate, "connectedUser",
                         v8::FunctionTemplate::New(
