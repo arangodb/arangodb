@@ -206,7 +206,6 @@ class instanceManager {
     this.connectedEndpoint = arango.getEndpoint();
   }
   reconnectMe() {
-    print(this.connectedEndpoint)
     arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
   }
   debugCanUseFailAt() {
