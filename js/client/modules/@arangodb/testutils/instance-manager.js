@@ -213,6 +213,7 @@ class instanceManager {
         return arango.connectHandle(this.connectionHandle);
       } catch (ex) {
         print(`${RED}${date()}failet to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
+      }
     } 
     return arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
   }
