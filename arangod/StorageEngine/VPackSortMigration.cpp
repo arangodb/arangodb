@@ -239,9 +239,8 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
   for (auto const& server : dbs) {
     auto f = network::sendRequest(nf.pool(), "server:" + server, verb, path, {},
                                   opts);
-    requests.emplace_back(std::move(f).then([server](auto&& response) {
-      return std::move(response).get();
-    }));
+    requests.emplace_back(std::move(f).then(
+        [server](auto&& response) { return std::move(response).get(); }));
   }
 
   LOG_TOPIC("22535", DEBUG, Logger::ENGINES)

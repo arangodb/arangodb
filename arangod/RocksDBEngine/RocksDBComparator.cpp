@@ -53,7 +53,7 @@ int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
 
     int res;
     if constexpr (sortingMethod ==
-        arangodb::basics::VelocyPackHelper::SortingMethod::Legacy) {
+                  arangodb::basics::VelocyPackHelper::SortingMethod::Legacy) {
       res = arangodb::basics::VelocyPackHelper::compareLegacy(
           (lhsValid ? *lhsIter : VPackSlice::noneSlice()),
           (rhsValid ? *rhsIter : VPackSlice::noneSlice()), true);
