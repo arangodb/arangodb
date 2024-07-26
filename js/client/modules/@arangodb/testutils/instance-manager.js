@@ -212,7 +212,7 @@ class instanceManager {
       try {
         return arango.connectHandle(this.connectionHandle);
       } catch (ex) {
-        print(`${RED}${date()}failet to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
+        print(`${RED}${Date()}failet to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
       }
     } 
     return arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
@@ -240,7 +240,7 @@ class instanceManager {
         skipped.push("url");
         return;
       }
-      if (shortName !== undefined && thisarangod.shortName !== shortName) {
+      if (shortName !== undefined && this.arangod.shortName !== shortName) {
         skipped.push("shortName");
         return false;
       }
@@ -279,7 +279,6 @@ class instanceManager {
       if (url !== undefined && arangod.url !== url && arangod.endpoint !== url) {
         return;
       }
-      print(arangod.name)
       arangod.debugClearFailAt(failurePoint, shortName);
     });
     this.reconnectMe();

@@ -448,10 +448,9 @@ v8::Handle<v8::Value> V8ClientConnection::connectHandle(
     }
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                                                                "Handle not found in the collection list");
+                                   "Handle not found in the collection list");
   }
 }
-
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void V8ClientConnection::reconnectWithNewPassword(std::string const& password) {

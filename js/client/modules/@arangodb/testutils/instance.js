@@ -1301,13 +1301,10 @@ class instance {
     if (shortName !== undefined && this.shortName !== shortName) {
       return false;
     }
-    print('connect')
     if (!this.connect()) {
       throw new Error(`failed to connect my instance {JSON.stringify(this.getStructure())}`);
     }
-    print('send')
     let reply = arango.DELETE_RAW(`/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`);
-    print('sent')
     if (reply.code !== 200) {
       throw new Error(`Failed to remove FP: '${failurePoint}' =>  ${reply.parsedBody}`);
     }
