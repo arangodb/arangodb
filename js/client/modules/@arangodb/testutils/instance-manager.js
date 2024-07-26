@@ -231,7 +231,9 @@ class instanceManager {
       }
     });
     if (count === 0) {
-      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${shortName}, ${role}, ${url}`);
+      msg = "";
+      arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
+      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${shortName}, ${role}, ${url}${msg}`);
     }
     arango.reconnect(this.endpoint, dbName, oldUser, '');
   }
