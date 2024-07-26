@@ -26,15 +26,12 @@
 #include "Aql/Function.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/VPack.h"
-#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
-#include "Zkd/ZkdHelper.h"
 #include "Utils/ByteString.h"
-#include "tao/json/internal/grammar.hpp"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Vector/LocalSensitiveHashing.h"
 #endif
@@ -248,7 +245,13 @@ Index::FilterCosts RocksDBVectorIndex::supportsFilterCondition(
         static_cast<aql::Function const*>(firstMemeber->getData());
 
     if (funcNode->name == "APPROX_NEAR") {
-      return {.supportsCondition = true};
+      auto const* args = firstMemeber->getMember(0);
+      auto const* indexName = args->getMember(0);
+      if (indexName->isValueType(aql::AstNodeValueType::VALUE_TYPE_STRING)) {
+        if (indexName->getStringView() == _name) {
+          return {.supportsCondition = true};
+        }
+      }
     }
   }
   return {};
@@ -273,24 +276,22 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
-  LOG_DEVEL << __FUNCTION__;
   node = node->getMember(0);
   TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
-  // auto const* funcNode = static_cast<aql::Function const*>(node->getData());
   auto const* funcNode = static_cast<aql::Function const*>(node->getData());
 
   TRI_ASSERT(funcNode->name == "APPROX_NEAR");
 
   auto const* functionCallParams = node->getMember(0);
-  TRI_ASSERT(functionCallParams->type == aql::NODE_TYPE_ARRAY);
   TRI_ASSERT(functionCallParams->numMembers() == 2);
+  TRI_ASSERT(functionCallParams->type == aql::NODE_TYPE_ARRAY);
 
   auto const* rhs = functionCallParams->getMember(1);
-  TRI_ASSERT(rhs->type == aql::NODE_TYPE_ARRAY);
 
   std::vector<double> input;
   input.reserve(rhs->numMembers());
   for (size_t i = 0; i < rhs->numMembers(); ++i) {
+    // TODO check if is numeric and check that vector is dimensions length
     input.push_back(rhs->getMember(i)->getDoubleValue());
   }
 
