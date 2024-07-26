@@ -428,14 +428,13 @@ void V8ClientConnection::reconnect() {
   }
 }
 
-v8::Handle<v8::Value> V8ClientConnection::getHandle(v8::Isolate* isolate) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  std::string connectionHandle = connectionIdentifier(_builder);
-  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->username()));
+std::string V8ClientConnection::getHandle() {
+  return connectionIdentifier(_builder);
 }
 
-v8::Handle<v8::Value> V8ClientConnection::connectHandle(
-    v8::Isolate* isolate, std::string_view handle) {
+v8::Handle<v8::Value> V8ClientConnection::connectHandle(v8::Isolate* isolate,
+                                                        v8::FunctionCallbackInfo<v8::Value> const& args,
+                                                        std::string_view handle) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
@@ -443,9 +442,7 @@ v8::Handle<v8::Value> V8ClientConnection::connectHandle(
     auto c = (*it).second;
     // cache hit. remove the connection from the cache and return it!
     _connectionCache.erase(it);
-    if (!bypassCache) {
-      return std::make_pair(c, true);
-    }
+    TRI_V8_RETURN_TRUE();
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                    "Handle not found in the collection list");
@@ -780,7 +777,7 @@ static void ClientConnection_getHandle(
         "instance.");
   }
 
-  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->getHandle(isolate)));
+  TRI_V8_RETURN(client->getHandle(isolate));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -809,8 +806,7 @@ static void ClientConnection_connectHandle(
 
   TRI_Utf8ValueNFC handle(isolate, args[0]);
 
-  TRI_V8_RETURN(
-      TRI_V8_STD_STRING(isolate, client->connectHandle(isolate, handle)));
+  client->connectHandle(isolate, args, handle);
   TRI_V8_TRY_CATCH_END
 }
 
