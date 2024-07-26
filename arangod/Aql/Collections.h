@@ -52,7 +52,6 @@ class Collections {
 
   ~Collections();
 
- public:
   Collection* get(std::string_view name) const;
 
   Collection* add(std::string const& name, AccessMode::Type accessType,
@@ -62,7 +61,9 @@ class Collections {
 
   bool empty() const;
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    std::function<bool(std::string const&,
+                                       Collection const&)> const& filter) const;
 
   void visit(std::function<bool(std::string const&, Collection&)> const&
                  visitor) const;

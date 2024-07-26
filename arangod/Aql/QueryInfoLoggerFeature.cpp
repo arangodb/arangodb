@@ -580,6 +580,11 @@ void QueryInfoLoggerFeature::beginShutdown() {
 }
 
 void QueryInfoLoggerFeature::start() {
+  if (!_logEnabled) {
+    // feature is turned off. no need to execute the garbage collection
+    return;
+  }
+
   if (!ServerState::instance()->isSingleServerOrCoordinator()) {
     // this feature is only available on single servers and coordinators
     return;
