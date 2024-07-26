@@ -432,9 +432,9 @@ std::string V8ClientConnection::getHandle() {
   return connectionIdentifier(_builder);
 }
 
-v8::Handle<v8::Value> V8ClientConnection::connectHandle(v8::Isolate* isolate,
-                                                        v8::FunctionCallbackInfo<v8::Value> const& args,
-                                                        std::string_view handle) {
+void V8ClientConnection::connectHandle(v8::Isolate* isolate,
+                                       v8::FunctionCallbackInfo<v8::Value> const& args,
+                                       std::string handle) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
@@ -777,7 +777,7 @@ static void ClientConnection_getHandle(
         "instance.");
   }
 
-  TRI_V8_RETURN(client->getHandle(isolate));
+  TRI_V8_RETURN(client->getHandle());
   TRI_V8_TRY_CATCH_END
 }
 
