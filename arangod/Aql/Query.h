@@ -355,8 +355,12 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // log the end of a query (warnings only)
   void logAtEnd() const;
 
-  std::function<void(velocypack::Builder&)> buildSerializeQueryDataCallback()
-      const;
+  struct CollectionSerializationFlags {
+    bool includeNumericIds = true;
+    bool includeViews = true;
+  };
+  std::function<void(velocypack::Builder&)> buildSerializeQueryDataCallback(
+      CollectionSerializationFlags flags) const;
 
   enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 

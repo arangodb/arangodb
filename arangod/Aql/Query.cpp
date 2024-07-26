@@ -447,7 +447,10 @@ void Query::prepareQuery() {
       _planSliceCopy = std::make_shared<VPackBufferUInt8>();
       try {
         VPackBuilder b(*_planSliceCopy);
-        plan->toVelocyPack(b, flags, buildSerializeQueryDataCallback());
+        plan->toVelocyPack(
+            b, flags,
+            buildSerializeQueryDataCallback(
+                {.includeNumericIds = false, .includeViews = true}));
 
         TRI_IF_FAILURE("Query::serializePlans1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -514,7 +517,9 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
       /*explainRegisters*/ false);
 
   velocypack::Builder serialized;
-  plan.toVelocyPack(serialized, flags, buildSerializeQueryDataCallback());
+  plan.toVelocyPack(serialized, flags,
+                    buildSerializeQueryDataCallback(
+                        {.includeNumericIds = true, .includeViews = false}));
 
   auto dataSources = std::invoke([&]() {
     std::unordered_map<std::string, QueryPlanCache::DataSourceEntry>
@@ -1294,8 +1299,10 @@ QueryResult Query::explain() {
 
         preparePlanForSerialization(pln);
 
-        pln->toVelocyPack(*result.data, flags,
-                          buildSerializeQueryDataCallback());
+        pln->toVelocyPack(
+            *result.data, flags,
+            buildSerializeQueryDataCallback(
+                {.includeNumericIds = false, .includeViews = true}));
         TRI_IF_FAILURE("Query::serializePlans1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -1317,8 +1324,10 @@ QueryResult Query::explain() {
       TRI_ASSERT(bestPlan != nullptr);
 
       preparePlanForSerialization(bestPlan);
-      bestPlan->toVelocyPack(*result.data, flags,
-                             buildSerializeQueryDataCallback());
+      bestPlan->toVelocyPack(
+          *result.data, flags,
+          buildSerializeQueryDataCallback(
+              {.includeNumericIds = false, .includeViews = true}));
 
       TRI_IF_FAILURE("Query::serializePlans1") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -2627,18 +2636,26 @@ void Query::logSlow(QuerySerializationOptions const& options) const {
 }
 
 std::function<void(velocypack::Builder&)>
-Query::buildSerializeQueryDataCallback() const {
-  return [this](velocypack::Builder& builder) {
+Query::buildSerializeQueryDataCallback(
+    Query::CollectionSerializationFlags flags) const {
+  return [flags, this](velocypack::Builder& builder) {
     // set up collections
     TRI_ASSERT(builder.isOpenObject());
     builder.add(VPackValue("collections"));
     collections().toVelocyPack(
-        builder, /*filter*/ [this](std::string const& name, Collection const&) {
+        builder,
+        /*filter*/ [flags, this](std::string const& name, Collection const&) {
           // exclude collections without names or with names that are just ids
           if (name.empty()) {
             return false;
           }
-          if (this->resolver().getCollection(name) == nullptr) {
+          if (!flags.includeNumericIds &&
+              (name.front() >= '0' && name.front() <= '9')) {
+            // exclude numeric collection ids from the serialization.
+            return false;
+          }
+          if (!flags.includeViews &&
+              this->resolver().getCollection(name) == nullptr) {
             // collection does not exist. probably a view.
             return false;
           }
