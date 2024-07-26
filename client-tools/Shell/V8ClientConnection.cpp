@@ -806,7 +806,8 @@ static void ClientConnection_connectHandle(
 
   TRI_Utf8ValueNFC handle(isolate, args[0]);
 
-  v8connection->connectHandle(isolate, args, std::string_view(*handle, handle.length()));
+  v8connection->connectHandle(isolate, args,
+                              std::string_view(*handle, handle.length()));
   TRI_V8_TRY_CATCH_END
 }
 
