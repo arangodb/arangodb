@@ -327,7 +327,10 @@ RocksDBEngine::RocksDBEngine(Server& server,
               rocksdb_cache_edge_compressed_inserts_total{})),
       _metricsEdgeCacheEmptyInserts(
           server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_empty_inserts_total{})) {
+              rocksdb_cache_edge_empty_inserts_total{})),
+      _forceLegacySortingMethod(false),
+      _sortingMethod(
+          arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine
@@ -787,6 +790,20 @@ replication doing a resync, however.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31005);
 
+  options
+      ->addOption(
+          "--rocksdb.force-legacy-comparator",
+          "If set to `true`, forces a new database directory to use the "
+          "legacy sorting method. This is only for testing. Don't use.",
+          new BooleanParameter(&_forceLegacySortingMethod),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31202);
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options
       ->addOption(
@@ -955,6 +972,34 @@ void RocksDBEngine::start() {
           << "': " << systemErrorStr;
       FATAL_ERROR_EXIT();
     }
+    // When we are getting here, the whole engine-rocksdb directory
+    // did not exist when we got here. Therefore, we can use the correct
+    // sorting behaviour in the RocksDBVPackComparator:
+    _sortingMethod =
+        _forceLegacySortingMethod
+            ? arangodb::basics::VelocyPackHelper::SortingMethod::Legacy
+            : arangodb::basics::VelocyPackHelper::SortingMethod::Correct;
+    // Now remember this decision by putting a `SORTING` file in the
+    // database directory:
+    if (writeSortingFile(_sortingMethod).fail()) {
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    // In this case the engine-rocksdb directory does already exist.
+    // Therefore, we want to recognize the sorting behaviour in the
+    // RocksDBVPackComparator:
+    _sortingMethod = readSortingFile();
+  }
+  // Now fix the actual rocksdb Comparator, if we need to:
+  if (_sortingMethod ==
+      arangodb::basics::VelocyPackHelper::SortingMethod::Legacy) {
+    LOG_TOPIC("12653", WARN, Logger::ENGINES)
+        << "ATTENTION: Using legacy sorting method for VPack indexes. Consider "
+           "running GET /_admin/cluster/vpackSortMigration/check to find out "
+           "if cheap migration is an option.";
+    server().getFeature<RocksDBOptionFeature>().resetVPackComparator(
+        std::make_unique<RocksDBVPackComparator<
+            arangodb::basics::VelocyPackHelper::SortingMethod::Legacy>>());
   }
 
 #ifdef USE_SST_INGESTION
@@ -4001,6 +4046,64 @@ void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
     _metricsEdgeCacheCompressedInserts.count(totalCompressedInserts);
     _metricsEdgeCacheEmptyInserts.count(totalEmptyInserts);
   }
+}
+
+using SortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod;
+
+Result RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
+  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+  std::string path = databasePathFeature.subdirectoryName(kSortingMethodFile);
+  std::string value =
+      sortingMethod == SortingMethod::Legacy ? "LEGACY" : "CORRECT";
+  try {
+    basics::FileUtils::spit(path, value, true);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("8ff0f", ERR, Logger::STARTUP)
+        << "unable to write 'SORTING' file '" << path << "': " << ex.what()
+        << ". Please make sure the file/directory is writable for the "
+           "arangod process and user!";
+    return {TRI_ERROR_CANNOT_WRITE_FILE};
+  }
+  return {};
+}
+
+SortingMethod RocksDBEngine::readSortingFile() {
+  SortingMethod sortingMethod = SortingMethod::Legacy;
+  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+  std::string path = databasePathFeature.subdirectoryName(kSortingMethodFile);
+  std::string value;
+  try {
+    basics::FileUtils::slurp(path, value);
+    value = arangodb::basics::StringUtils::trim(value);
+    sortingMethod =
+        (value == "LEGACY") ? SortingMethod::Legacy : SortingMethod::Correct;
+  } catch (std::exception const& ex) {
+    // When we see a database directory without SORTING file, we fall back
+    // to legacy mode, except for agents. Since agents have never used
+    // VPackIndexes before we fixed the sorting order, we might as well
+    // directly consider them to be migrated to the CORRECT sorting order:
+    sortingMethod = ServerState::instance()->isAgent() ? SortingMethod::Correct
+                                                       : SortingMethod::Legacy;
+    LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
+        << "unable to read 'SORTING' file '" << path << "': " << ex.what()
+        << ". This is expected directly after an upgrade and will then be "
+           "rectified automatically for subsequent restarts.";
+    if (writeSortingFile(sortingMethod).fail()) {
+      LOG_TOPIC("8ff0d", WARN, Logger::STARTUP)
+          << "Unable to write 'SORTING' file '" << _path << "', "
+          << "this is OK for now, legacy sorting will be used anyway.";
+    }
+  }
+  return sortingMethod;
+}
+
+std::string RocksDBEngine::getSortingMethodFile() const {
+  return arangodb::basics::FileUtils::buildFilename(_basePath,
+                                                    kSortingMethodFile);
+}
+
+std::string RocksDBEngine::getLanguageFile() const {
+  return arangodb::basics::FileUtils::buildFilename(_basePath, kLanguageFile);
 }
 
 }  // namespace arangodb

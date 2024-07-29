@@ -75,7 +75,6 @@ class RocksDBReplicationManager;
 class RocksDBSettingsManager;
 class RocksDBSyncThread;
 class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
-class RocksDBVPackComparator;
 class RocksDBWalAccess;
 class TransactionCollection;
 class TransactionState;
@@ -389,6 +388,10 @@ class RocksDBEngine final : public StorageEngine {
   void trackRevisionTreeMemoryIncrease(std::uint64_t value) noexcept;
   void trackRevisionTreeMemoryDecrease(std::uint64_t value) noexcept;
 
+  std::string getSortingMethodFile() const;
+
+  std::string getLanguageFile() const;
+
 #ifdef USE_ENTERPRISE
   bool encryptionKeyRotationEnabled() const;
 
@@ -534,6 +537,15 @@ class RocksDBEngine final : public StorageEngine {
 
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
+
+ public:
+  Result writeSortingFile(
+      arangodb::basics::VelocyPackHelper::SortingMethod sortingMethod);
+
+ private:
+  // The following method returns what is detected for the sorting method.
+  // If no SORTING file is detected, a new one with "LEGACY" will be created.
+  arangodb::basics::VelocyPackHelper::SortingMethod readSortingFile();
 
   RocksDBOptionsProvider const& _optionsProvider;
 
@@ -757,9 +769,17 @@ class RocksDBEngine final : public StorageEngine {
   std::unique_ptr<rocksdb::Env> _checksumEnv;
 
   std::unique_ptr<RocksDBDumpManager> _dumpManager;
+
+  // For command line option to force legacy even for new databases.
+  bool _forceLegacySortingMethod;
+
+  arangodb::basics::VelocyPackHelper::SortingMethod
+      _sortingMethod;  // Detected at startup in the prepare method
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
 static constexpr const char* kEncryptionKeystoreFolder = "ENCRYPTION-KEYS";
+static constexpr const char* kSortingMethodFile = "SORTING";
+static constexpr const char* kLanguageFile = "LANGUAGE";
 
 }  // namespace arangodb
