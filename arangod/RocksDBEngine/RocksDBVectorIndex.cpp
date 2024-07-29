@@ -20,10 +20,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
+#include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/VPack.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -289,10 +291,27 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
   auto const* rhs = functionCallParams->getMember(1);
 
   std::vector<double> input;
+  if (rhs->numMembers() != _definition.dimensions) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+        fmt::format(
+            "vector length must be of size {}, same as index dimensions!",
+            _definition.dimensions));
+  }
   input.reserve(rhs->numMembers());
   for (size_t i = 0; i < rhs->numMembers(); ++i) {
-    // TODO check if is numeric and check that vector is dimensions length
-    input.push_back(rhs->getMember(i)->getDoubleValue());
+    auto const vectorField = rhs->getMember(i);
+    if (!vectorField->isNumericValue()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+                                     "vector field must be numeric value");
+    }
+    auto dv = vectorField->getDoubleValue();
+    if (std::isnan(dv)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+                                     "vector field cannot be NaN");
+    }
+
+    input.push_back(dv);
   }
 
   return std::make_unique<RocksDBVectorIndexIterator>(
