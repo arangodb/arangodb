@@ -380,6 +380,10 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
         } else if (name == StaticStrings::IndexHintOption) {
           options->setHint(
               IndexHint(ast->query(), optionsNode, IndexHint::FromTraversal{}));
+        } else if (name == arangodb::StaticStrings::UseCache) {
+          if (value->isBoolValue()) {
+            options->setUseCache(value->getBoolValue());
+          }
         } else {
           ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
                                                 "TRAVERSAL", name);
@@ -452,6 +456,10 @@ std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
               ast->query(), "unknown",
               arangodb::graph::PathType::toString(type), name);
 #endif
+        } else if (name == arangodb::StaticStrings::UseCache) {
+          if (value->isBoolValue()) {
+            options->setUseCache(value->getBoolValue());
+          }
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown",
