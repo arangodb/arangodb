@@ -83,6 +83,7 @@ add_library(arango_aql STATIC
   QueryContext.cpp
   QueryExecutionState.cpp
   QueryExpressionContext.cpp
+  QueryInfoLoggerFeature.cpp
   QueryList.cpp
   QueryOptions.cpp
   QueryProfile.cpp

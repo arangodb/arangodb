@@ -386,7 +386,7 @@ function debugDumpViews () {
     },
 
     testDebugDumpWithViews: function () {
-      let query = `for d in view search ANALYZER(d.value1 == "31" or d.value1 == "1", "my_delimiter") OPTIONS {waitForSync: true } return d `;
+      let query = `for d in view search ANALYZER(d.value1 == "31" or d.value1 == "1", "my_delimiter") OPTIONS {waitForSync: true} return d`;
       let res = db._query(query).toArray();
       assertEqual(res.length, 2);
       explainer.debugDump(fileName, query, {}, {examples: 50, anonymize: false});
@@ -399,6 +399,38 @@ function debugDumpViews () {
 
       res = db._query(query).toArray();
       assertEqual(res.length, 2);
+    },
+    
+    testDebugDumpWithViewsCollectionIds: function () {
+      let query = `for d in view search d.value1 == 42 return d`;
+      explainer.debugDump(fileName, query, {}, {examples: 50, anonymize: false});
+//      explainer.inspectDump(fileName, outFileName);
+    
+      let data = JSON.parse(fs.readFileSync(fileName).toString());
+      assertTrue(data.hasOwnProperty("collections"));
+      let c = data.collections;
+      assertEqual([cn, cn1].sort(), Object.keys(c).sort());
+      assertEqual(cn, c[cn].name);
+      assertEqual(cn1, c[cn1].name);
+
+      assertTrue(data.hasOwnProperty("explain"));
+      let exp = data.explain;
+      assertTrue(exp.hasOwnProperty("plan"));
+      let plan = exp.plan;
+      assertTrue(plan.hasOwnProperty("collections"));
+
+      assertEqual([
+        { "name" : "collection", "type" : "read" }, 
+        { "name" : "edgeTestCollection", "type" : "read" }, 
+        { "name" : "view", "type" : "read" }, 
+      ], plan.collections.sort((l, r) => {
+        if (l.name < r.name) {
+          return -1;
+        } else if (l.name > r.name) {
+          return 1;
+        }
+        return 0;
+      }));
     },
   };
 }

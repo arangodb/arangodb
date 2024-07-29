@@ -216,7 +216,9 @@ const detectGeo = ({
   let isGeo = false;
   let isTable = false;
   // makes a map like {type: 1, coordinates: 2} across all resultItems
-  let attributeCountMap = {} as any;
+  let attributeCountMap = {} as {
+    [key: string]: number;
+  };
   result?.forEach(resultItem => {
     if (
       typeof resultItem !== "object" ||
@@ -257,27 +259,27 @@ const detectGeo = ({
         attributeCountMap[key] = 1;
       }
     });
-    //
-    // answers the question - what % of result resultItems have a given attribute
-    // for eg, do 95% have attribute 'type'?
-    // If yes, then it's can be displayed as a table
+  });
 
-    Object.keys(attributeCountMap).forEach(key => {
-      const attributeCount = attributeCountMap[key];
-      const attributeRateForResultItem = (attributeCount / result.length) * 100;
-      if (attributeRateForResultItem <= 95) {
-        isTable = false;
-      } else {
-        isTable = true;
-      }
-    });
-    if (result.length === validGeojsonCount) {
-      isGeo = true;
+  // answers the question - what % of result resultItems have a given attribute
+  // for eg, do 95% have attribute 'type'?
+  // If yes, then it's can be displayed as a table
+  Object.keys(attributeCountMap).forEach(key => {
+    const attributeCount = attributeCountMap[key];
+    const attributeRateForResultItem = (attributeCount / result.length) * 100;
+    if (attributeRateForResultItem <= 95) {
+      isTable = false;
     } else {
-      isGeo = false;
       isTable = true;
     }
   });
+
+  if (result?.length === validGeojsonCount) {
+    isGeo = true;
+  } else {
+    isGeo = false;
+    isTable = true;
+  }
   return {
     isGeo,
     isTable
