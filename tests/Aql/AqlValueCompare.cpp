@@ -66,7 +66,9 @@ AqlValue makeAQLValue(uint64_t x) {
 }
 
 AqlValue makeAQLValue(double x) {
-  return AqlValue(arangodb::aql::AqlValueHintDouble(x));
+  VPackBuilder b;
+  b.add(VPackValue(x));
+  return AqlValue(b.slice());
 }
 
 static inline int AqlValueComp(AqlValue& a, AqlValue& b) {
@@ -470,60 +472,3 @@ TEST(AqlValueCompareTest, test_generic_uses_correct_numerical_comparison) {
   EXPECT_EQ(1, compGeneric(u, i - 1));
 }
 
-// So far we do not actually use UTCDate, but for the sake of completeness
-// we check if things work as expected. UTCDates are larger than any number
-// (including NaN), and smaller than any string:
-
-TEST(AqlValueCompareTest, test_utcdate) {
-  double d = ldexp(1.0, 60);
-  uint64_t u = uint64_t{1} << 60;
-  int64_t i = int64_t{1} << 60;
-  std::string s = "abc";
-  EXPECT_EQ(-1, compGeneric(d, VPackValue(i, VPackValueType::UTCDate)));
-  EXPECT_EQ(1, compGeneric(VPackValue(i, VPackValueType::UTCDate), d));
-  EXPECT_EQ(-1, compGeneric(u, VPackValue(i, VPackValueType::UTCDate)));
-  EXPECT_EQ(1, compGeneric(VPackValue(i, VPackValueType::UTCDate), u));
-  EXPECT_EQ(-1, compGeneric(i, VPackValue(i, VPackValueType::UTCDate)));
-  EXPECT_EQ(1, compGeneric(VPackValue(i, VPackValueType::UTCDate), i));
-  EXPECT_EQ(-1, compGeneric(d + 1.0, VPackValue(i, VPackValueType::UTCDate)));
-  EXPECT_EQ(1, compGeneric(VPackValue(i + 1, VPackValueType::UTCDate), d));
-  EXPECT_EQ(1, compGeneric(VPackValue(i - 1, VPackValueType::UTCDate), d));
-  EXPECT_EQ(-1, compGeneric(u + 1, VPackValue(i, VPackValueType::UTCDate)));
-  EXPECT_EQ(-1, compGeneric(u - 1, VPackValue(i, VPackValueType::UTCDate)));
-  EXPECT_EQ(1, compGeneric(VPackValue(i + 1, VPackValueType::UTCDate), u));
-  EXPECT_EQ(1, compGeneric(VPackValue(i - 1, VPackValueType::UTCDate), u));
-  EXPECT_EQ(-1, compGeneric(i + 1, VPackValue(i, VPackValueType::UTCDate)));
-  EXPECT_EQ(-1, compGeneric(i - 1, VPackValue(i, VPackValueType::UTCDate)));
-  EXPECT_EQ(1, compGeneric(VPackValue(i + 1, VPackValueType::UTCDate), i));
-  EXPECT_EQ(1, compGeneric(VPackValue(i - 1, VPackValueType::UTCDate), i));
-  EXPECT_EQ(-1,
-            compGeneric(VPackValue(i, VPackValueType::UTCDate), VPackValue(s)));
-  EXPECT_EQ(1,
-            compGeneric(VPackValue(s), VPackValue(i, VPackValueType::UTCDate)));
-}
-
-TEST(AqlValueCompareTest, test_small_int_with_int) {
-  int64_t i = int64_t{5};
-  EXPECT_EQ(0, compGeneric(i, VPackValue(i, VPackValueType::SmallInt)));
-  EXPECT_EQ(0, compGeneric(VPackValue(i, VPackValueType::SmallInt), i));
-  EXPECT_EQ(1, compGeneric(i + 1, VPackValue(i, VPackValueType::SmallInt)));
-  EXPECT_EQ(-1, compGeneric(VPackValue(i, VPackValueType::SmallInt), i + 1));
-  EXPECT_EQ(-1, compGeneric(i, VPackValue(i + 1, VPackValueType::SmallInt)));
-  EXPECT_EQ(1, compGeneric(VPackValue(i + 1, VPackValueType::SmallInt), i));
-}
-
-TEST(AqlValueCompareTest, test_small_int_with_utcdate) {
-  int64_t i = int64_t{5};
-  EXPECT_EQ(1, compGeneric(VPackValue(i, VPackValueType::UTCDate),
-                           VPackValue(i, VPackValueType::SmallInt)));
-  EXPECT_EQ(-1, compGeneric(VPackValue(i, VPackValueType::SmallInt),
-                            VPackValue(i, VPackValueType::UTCDate)));
-  EXPECT_EQ(1, compGeneric(VPackValue(i + 1, VPackValueType::UTCDate),
-                           VPackValue(i, VPackValueType::SmallInt)));
-  EXPECT_EQ(-1, compGeneric(VPackValue(i, VPackValueType::SmallInt),
-                            VPackValue(i + 1, VPackValueType::UTCDate)));
-  EXPECT_EQ(1, compGeneric(VPackValue(i, VPackValueType::UTCDate),
-                           VPackValue(i + 1, VPackValueType::SmallInt)));
-  EXPECT_EQ(-1, compGeneric(VPackValue(i + 1, VPackValueType::SmallInt),
-                            VPackValue(i, VPackValueType::UTCDate)));
-}

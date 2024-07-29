@@ -688,6 +688,24 @@ int64_t AqlValue::toInt64() const {
   return 0;
 }
 
+int64_t AqlValue::asInt64() const {
+  TRI_ASSERT(type() == VPACK_INLINE_INT64);
+  return absl::little_endian::ToHost(
+      _data.longNumberMeta.data.intLittleEndian.val);
+}
+
+uint64_t AqlValue::asUInt64() const {
+  TRI_ASSERT(type() == VPACK_INLINE_UINT64);
+  return absl::little_endian::ToHost(
+      _data.longNumberMeta.data.uintLittleEndian.val);
+}
+
+double AqlValue::asDouble() const {
+  TRI_ASSERT(type() == VPACK_INLINE_DOUBLE);
+  return std::bit_cast<double>(absl::little_endian::ToHost(
+      _data.longNumberMeta.data.uintLittleEndian.val));
+}
+
 bool AqlValue::toBoolean() const {
   auto t = type();
   switch (t) {
@@ -944,13 +962,17 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
     case VPACK_INLINE_INT64:
       switch (rightType) {
         case VPACK_INLINE_INT64:
-          return comp<int64_t>(left.toInt64(), right.toInt64());
+          return comp<int64_t>(left.asInt64(), right.asInt64());
         case VPACK_INLINE_UINT64:
-          return VelocyPackHelper::compareInt64UInt64(
-              left.toInt64(), static_cast<uint64_t>(right.toInt64()));
-        case VPACK_INLINE_DOUBLE:
-          return VelocyPackHelper::compareInt64Double(left.toInt64(),
-                                                      right.toDouble());
+          return VelocyPackHelper::compareInt64UInt64(left.asInt64(),
+                                                      right.asUInt64());
+        case VPACK_INLINE_DOUBLE: {
+          double d = right.asDouble();
+          if (std::isnan(d)) [[unlikely]] {
+            return basics::VelocyPackHelper::cmp_less;
+          }
+          return VelocyPackHelper::compareInt64Double(left.asInt64(), d);
+        }
         default:
           return basics::VelocyPackHelper::compare(left.slice(leftType),
                                                    right.slice(rightType),
@@ -959,34 +981,59 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
     case VPACK_INLINE_UINT64:
       switch (rightType) {
         case VPACK_INLINE_INT64:
-          return -VelocyPackHelper::compareInt64UInt64(
-              right.toInt64(), static_cast<uint64_t>(left.toInt64()));
+          return -VelocyPackHelper::compareInt64UInt64(right.toInt64(),
+                                                       left.asUInt64());
         case VPACK_INLINE_UINT64:
-          return comp<uint64_t>(static_cast<uint64_t>(left.toInt64()),
-                                static_cast<uint64_t>(right.toInt64()));
-        case VPACK_INLINE_DOUBLE:
-          return VelocyPackHelper::compareUInt64Double(
-              static_cast<uint64_t>(left.toInt64()), right.toDouble());
+          return comp<uint64_t>(left.asUInt64(), right.asUInt64());
+        case VPACK_INLINE_DOUBLE: {
+          double d = right.asDouble();
+          if (std::isnan(d)) [[unlikely]] {
+            return basics::VelocyPackHelper::cmp_less;
+          }
+          return VelocyPackHelper::compareUInt64Double(left.asUInt64(), d);
+        }
         default:
           return basics::VelocyPackHelper::compare(left.slice(leftType),
                                                    right.slice(rightType),
                                                    compareUtf8, options);
       }
-    case VPACK_INLINE_DOUBLE:
+    case VPACK_INLINE_DOUBLE: {
       switch (rightType) {
-        case VPACK_INLINE_INT64:
-          return -VelocyPackHelper::compareInt64Double(right.toInt64(),
-                                                       left.toDouble());
-        case VPACK_INLINE_UINT64:
-          return -VelocyPackHelper::compareUInt64Double(
-              static_cast<uint64_t>(right.toInt64()), left.toDouble());
-        case VPACK_INLINE_DOUBLE:
-          return comp<double>(left.toDouble(), right.toDouble());
+        case VPACK_INLINE_INT64: {
+          double ld = left.asDouble();
+          if (std::isnan(ld)) [[unlikely]] {
+            return basics::VelocyPackHelper::cmp_greater;
+          }
+          return -VelocyPackHelper::compareInt64Double(right.asInt64(), ld);
+        }
+        case VPACK_INLINE_UINT64: {
+          double ld = left.asDouble();
+          if (std::isnan(ld)) [[unlikely]] {
+            return basics::VelocyPackHelper::cmp_greater;
+          }
+          return -VelocyPackHelper::compareUInt64Double(right.asUInt64(), ld);
+        }
+        case VPACK_INLINE_DOUBLE: {
+          double d = left.asDouble();
+          if (std::isnan(d)) [[unlikely]] {
+            d = right.asDouble();
+            if (std::isnan(d)) {
+              return basics::VelocyPackHelper::cmp_equal;
+            }
+            return basics::VelocyPackHelper::cmp_greater;
+          }
+          d = right.asDouble();
+          if (std::isnan(d)) [[unlikely]] {
+            return basics::VelocyPackHelper::cmp_less;
+          }
+          return comp<double>(left.asDouble(), right.asDouble());
+        }
         default:
           return basics::VelocyPackHelper::compare(left.slice(leftType),
                                                    right.slice(rightType),
                                                    compareUtf8, options);
       }
+    }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
