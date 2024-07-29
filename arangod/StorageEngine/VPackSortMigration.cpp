@@ -91,8 +91,7 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
             if (auto type = index->type();
                 type == IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX ||
                 type == IndexType::TRI_IDX_TYPE_HASH_INDEX ||
-                type == IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-                type == IndexType::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+                type == IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX) {
               RocksDBIndex* rocksDBIndex =
                   dynamic_cast<RocksDBIndex*>(index.get());
               if (rocksDBIndex != nullptr) {
