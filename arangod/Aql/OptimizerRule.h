@@ -105,6 +105,9 @@ struct OptimizerRule {
 
     replaceLikeWithRange,
 
+    // replace iteration over an ENTRIES array with an object iteration
+    replaceEntriesWithObjectIteration,
+
     /// simplify some conditions in CalculationNodes
     simplifyConditionsRule,
 

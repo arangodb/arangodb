@@ -330,6 +330,11 @@ void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
+/// @brief replace enumeration of ENTRIES with object iteration
+void replaceEntriesWithObjectIteration(Optimizer*,
+                                       std::unique_ptr<ExecutionPlan>,
+                                       OptimizerRule const&);
+
 /// @brief move filters into EnumerateCollection nodes
 void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                   OptimizerRule const&);
