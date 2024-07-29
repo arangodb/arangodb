@@ -40,7 +40,7 @@ struct DoubleValue {
   }
 };
 
-DoubleValue makeDoubleValue(uint8_t sign, uint16_t E, uint64_t M) {
+static DoubleValue makeDoubleValue(uint8_t sign, uint16_t E, uint64_t M) {
   EXPECT_LT(sign, 2);
   EXPECT_LT(E, 2048);
   EXPECT_LT(M, uint64_t{1} << 52);
@@ -74,8 +74,16 @@ static inline int AqlValueComp(AqlValue& a, AqlValue& b) {
   return AqlValue::Compare(&opt, a, b, true);
 }
 
+std::string to_string(AqlValue& a) {
+  VPackBuilder b;
+  arangodb::velocypack::Options opt;
+  a.toVelocyPack(&opt, b, true);
+  return b.slice().toJson();
+}
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
+// --SECTION--                                                        test
+// suite
 // -----------------------------------------------------------------------------
 
 //////////////////////////////////////////////////////////////////////////////
@@ -89,8 +97,8 @@ TEST(AqlValueCompareTest, test_comparison_numerical_double) {
     // Do everything twice, once with +0 and once with -0
 
     // We create a vector of numerical velocypack values which is supposed
-    // to be sorted strictly ascending. We also check transitivity by comparing
-    // all pairs:
+    // to be sorted strictly ascending. We also check transitivity by
+    // comparing all pairs:
     std::vector<AqlValue> v;
     v.push_back(makeAQLValue(makeDoubleValue(1, 2047, 0).d));  // -Inf
     for (uint16_t i = 2046; i >= 1; --i) {
@@ -117,31 +125,31 @@ TEST(AqlValueCompareTest, test_comparison_numerical_double) {
     // Now check if our comparator agrees that this is strictly ascending:
     for (std::size_t i = 0; i < v.size() - 1; ++i) {
       auto c = AqlValueComp(v[i], v[i + 1]);
-      EXPECT_EQ(-1, c) << "Not strictly increasing: " << i << " " << v[i] << " "
-                       << v[i + 1];
+      EXPECT_EQ(-1, c) << "Not strictly increasing: " << i << " "
+                       << to_string(v[i]) << " " << to_string(v[i + 1]);
       c = AqlValueComp(v[i + 1], v[i]);
-      EXPECT_EQ(1, c) << "Not strictly decreasing: " << i << " " << v[i + 1]
-                      << " " << v[i];
+      EXPECT_EQ(1, c) << "Not strictly decreasing: " << i << " "
+                      << to_string(v[i + 1]) << " " << to_string(v[i]);
     }
     // Check reflexivity:
     for (std::size_t i = 0; i < v.size(); ++i) {
       auto c = AqlValueComp(v[i], v[i]);
-      EXPECT_EQ(0, c) << "Not reflexive: " << i << " " << v[i];
+      EXPECT_EQ(0, c) << "Not reflexive: " << i << " " << to_string(v[i]);
     }
     // And check transitivity by comparing all pairs:
     for (std::size_t i = 0; i < v.size() - 1; ++i) {
       for (std::size_t j = i + 1; j < v.size(); ++j) {
         auto c = AqlValueComp(v[i], v[j]);
-        EXPECT_EQ(-1, c) << "Not transitive: " << i << " " << v[i] << " " << j
-                         << " " << v[j];
+        EXPECT_EQ(-1, c) << "Not transitive: " << i << " " << to_string(v[i])
+                         << " " << j << " " << to_string(v[j]);
       }
     }
     // And the same the other way round
     for (std::size_t i = 0; i < v.size() - 1; ++i) {
       for (std::size_t j = i + 1; j < v.size(); ++j) {
         auto c = AqlValueComp(v[j], v[i]);
-        EXPECT_EQ(1, c) << "Not transitive: " << i << " " << v[i] << " " << j
-                        << " " << v[j];
+        EXPECT_EQ(1, c) << "Not transitive: " << i << " " << to_string(v[i])
+                        << " " << j << " " << to_string(v[j]);
       }
     }
   }
@@ -198,15 +206,15 @@ TEST(AqlValueCompareTest, test_inequality_with_integers) {
     AqlValue l = makeAQLValue(static_cast<double>(x));
     AqlValue r = makeAQLValue(x - 1);
     EXPECT_EQ(1, AqlValueComp(l, r))
-        << "Not less: " << i << " " << l << " " << r;
+        << "Not less: " << i << " " << to_string(l) << " " << to_string(r);
     EXPECT_EQ(-1, AqlValueComp(r, l))
-        << "Not greater: " << i << " " << r << " " << l;
+        << "Not greater: " << i << " " << to_string(r) << " " << to_string(l);
     AqlValue ll = makeAQLValue(y + 1);
     AqlValue rr = makeAQLValue(static_cast<double>(y));
     EXPECT_EQ(1, AqlValueComp(ll, rr))
-        << "Not less: " << i << " " << ll << " " << rr;
+        << "Not less: " << i << " " << to_string(ll) << " " << to_string(rr);
     EXPECT_EQ(-1, AqlValueComp(rr, ll))
-        << "Not greater: " << i << " " << rr << " " << ll;
+        << "Not greater: " << i << " " << to_string(rr) << " " << to_string(ll);
     x <<= 1;
     y <<= 1;
   }
