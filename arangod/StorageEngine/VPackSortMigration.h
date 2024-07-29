@@ -2,7 +2,6 @@
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,34 +20,20 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
-
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "RestServer/arangod.h"
+#include "Basics/Result.h"
+#include "Basics/async.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 
-class BootstrapFeature final : public ArangodFeature {
- public:
-  static constexpr std::string_view name() noexcept { return "Bootstrap"; }
+// On dbservers, agents and single servers:
+Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
+Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
 
-  explicit BootstrapFeature(Server& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-  void stop() override final;
-  void unprepare() override final;
-
-  bool isReady() const;
-
- private:
-  void killRunningQueries();
-  void waitForHealthEntry();
-  /// @brief wait for databases to appear in Plan and Current
-  void waitForDatabases() const;
-
-  bool _isReady;
-  bool _bark;
-};
+// On coordinators:
+async<Result> handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
+                                           VPackBuilder& result);
+async<Result> handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
+                                             VPackBuilder& result);
 
 }  // namespace arangodb

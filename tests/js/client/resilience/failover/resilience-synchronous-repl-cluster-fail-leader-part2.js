@@ -29,112 +29,13 @@ const jsunity = require("jsunity");
 const fs = require('fs');
 const internal = require('internal');
 
-function SynchronousReplicationFailLeaderSuite () {
+function SynchronousReplicationFailLeaderSuitePart2 () {
   'use strict';
   const suite = internal.load(fs.join(internal.pathForTesting('client'), 'resilience', 'failover', 'resilience-synchronous-repl-cluster.inc'));
 
   return {
     setUp : suite.setUp,
     tearDown : suite.tearDown,
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run a standard check with failures:
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFailureLeader : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.failLeader();
-      suite.runBasicOperations({}, {});
-      suite.healLeader();
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 1
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail1 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:1, follower: false},
-                         {place:18, follower: false});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 2
-////////////////////////////////////////////////////////////////////////////////
-    testBasicOperationsLeaderFail2 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:2, follower: false},
-                         {place:18, follower: false});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 3
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail3 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:3, follower: false},
-                         {place:18, follower: false});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 4
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail4 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:4, follower: false},
-                         {place:18, follower: false});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 5
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail5 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:5, follower: false},
-                         {place:18, follower: false});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 6
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail6 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:6, follower: false},
-                         {place:18, follower: false});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 7
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail7 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:7, follower: false},
-                         {place:18, follower: false});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 8
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail8 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:8, follower: false},
-                         {place:18, follower: false});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fail leader in place 9
@@ -252,7 +153,7 @@ function SynchronousReplicationFailLeaderSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(SynchronousReplicationFailLeaderSuite);
+jsunity.run(SynchronousReplicationFailLeaderSuitePart2);
 
 return jsunity.done();
 

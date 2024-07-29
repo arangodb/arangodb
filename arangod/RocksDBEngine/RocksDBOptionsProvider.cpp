@@ -23,6 +23,8 @@
 
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
+#include "Basics/VelocyPackHelper.h"
+#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #include <rocksdb/slice_transform.h>
@@ -30,7 +32,9 @@
 namespace arangodb {
 
 RocksDBOptionsProvider::RocksDBOptionsProvider()
-    : _vpackCmp(std::make_unique<RocksDBVPackComparator>()) {}
+    : _vpackCmp(
+          std::make_unique<RocksDBVPackComparator<
+              arangodb::basics::VelocyPackHelper::SortingMethod::Correct>>()) {}
 
 rocksdb::Options const& RocksDBOptionsProvider::getOptions() const {
   if (!_options) {

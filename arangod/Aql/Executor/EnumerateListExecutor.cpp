@@ -262,6 +262,11 @@ EnumerateListExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       stats.incrFiltered();
     }
     ++_inputArrayPosition;
+
+    _killCheckCounter = (_killCheckCounter + 1) % 1024;
+    if (ADB_UNLIKELY(_killCheckCounter == 0 && _infos.getQuery().killed())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
   }
 
   if (_inputArrayLength == _inputArrayPosition) {
@@ -323,6 +328,11 @@ EnumerateListExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
       auto const skipped = skipArrayElement(skip);
       // the call to skipArrayElement has advanced the input position already
       call.didSkip(skipped);
+    }
+
+    _killCheckCounter = (_killCheckCounter + 1) % 1024;
+    if (ADB_UNLIKELY(_killCheckCounter == 0 && _infos.getQuery().killed())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
   }
 
