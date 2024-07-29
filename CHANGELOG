@@ -1,11 +1,10 @@
 devel
 -----
 
-* Optional query plan caching.
-
-  ArangoDB now has an optional AQL query execution plan cache that can be used
+* ArangoDB now has an optional AQL query execution plan cache that can be used
   to skip query planning and optimization when running the same queries 
-  repeatedly.
+  repeatedly. This feature is currently experimental.
+
   The plan cache is fully optional and is only considered for AQL queries that
   have the option `optimizePlanForCaching` set to `true`. If the option is not
   set to `true`, the plan cache is bypassed.
@@ -41,42 +40,25 @@ devel
   - `maxDNFConditionMembers`
   - `maxNodesPerCallstack`
 
+  Whenever a query uses a cached plan from the plan cache, the query result will
+  include an attribute `planCacheKey` on the top level when executing, 
+  explaining or profiling a query. The explain and profiling output will also
+  display a "plan cache key: ..." indicator to show that a cached query plan
+  was used.
+
+  The query plan cache is organized per database. It gets invalidated at the
+  following events:
+  - an existing collection gets dropped or renamed, or the properties of an
+    existing collection are modified
+  - an index is added to an existing collection or an index is dropped
+  - an existing view gets dropped or renamed, or the properties of an existing
+    view are modified
+  - a named graph is added, or an existing named graph gets dropped
+
 // TODO:
-// - currently the cache is never invalidated, which is wrong. we must invalidate
-//   the cache whenever
-//   - a collection gets dropped
-//   - maybe: the properties of a collection get changed (TODO: clarify if this
-//     can influence the query plans at all)
-//   - an index for a collection gets dropped
-//   - a new index for a collection gets created
-//   - a view gets dropped
-//   - the properties of an existing view get modified
-//   in the cluster, we need to track the changes of database objects which are
+// - in the cluster, we need to track the changes of database objects which are
 //   executed via other coordinators by tailing the changes in the AgencyCache,
 //   and react accordingly. this is currently missing in this PR.
-// - the cache implementation is intentionally kept simple. each per-database
-//   cache object has a simple R/W lock, which may turn out to be a point of
-//   mutex contention at some point. in this case, we could shard each cache
-//   object so that it uses multiple buckets
-// - we need to ensure that permissions for collections/views are still verified
-//   even for queries that come from the plan cache. this is required because a
-//   privileged user's query may insert the query into the plan cache, and an
-//   unprivileged user's query may reuse the plan cache entry, even though the
-//   unprivileged user should not have access to the collections/views used in
-//   the query. we can copy the permissions checks from the query results cache
-//   that we already have.
-// - it is currently unclear if the query plan cache works as expected with the
-//   following types of bind parameters:
-//   - collection bind parameters: these must be part of the plan cache key.
-//     the same query string used with different collection bind parameters must
-//     lead to different plan cache keys and entries.
-//   - attribute name bind parameters: these must be part of the plan cache key.
-//     the same query string used with different attribute name bind parameters
-//     must lead to different plan cache keys and entries. this is currently not
-//     the case!
-//   - value bind parameters: these should be fully ignored when constructing
-//     the plan cache keys, i.e. different value bind parameter values should
-//     lead to the same plan cache key if everything else is identical.
 // - memory limit: currently, the plan cache has no memory limit nor memory
 //   accounting. it is currently unclear if we want to put a limit on the cache,
 //   and if it should be a global limit across all databases, or a per-database
@@ -87,13 +69,8 @@ devel
 // - the serialized query plans are relatively verbose right now. it may be
 //   possible to reduce the verbosity of the cached plans somehow, by passing
 //   other flags to the serialization function. this would reduce the memory
-//   usage of cached plans, and would very likely speed up caching and creating
-//   a plan from the plan cache.
-// - observability is missing: when a query is created from a cached plan, there
-//   is currently no visibility for this in the query result nor in the explain
-//   output nor profile result. we should add a "cachedPlan" attribute in these
-//   results which show the hash of the cached plan, if any. we should also
-//   improve the explainer so that it displays the "cachedPlan" value.
+//   usage of cached plans, and may peed up caching and creating plans from the
+//   plan cache.
 // - when enabling the "optimizePlanForCaching" flag for a query, the generated
 //   query execution plan may be worse than when not setting this flag. the
 //   reason is that certain query optimizations are only possible when literal
@@ -107,19 +84,6 @@ devel
 //   it is currently unclear how to bring back this optimization in case a
 //   cached plan is used. potentially it is an option to run a limited number
 //   of optimizer rules on the plan that was retrieved from the cache.
-// - using _value bind parameters_ in certain positions of the query string may
-//   change the semantics of a query and thus may mandate the use of a different
-//   query execution plan. it is currently unclear if this is the case or not,
-//   but we should validate this. a few places for which this may be an issue:
-//   - LIMIT @offset, @limit (if allowed by the parser): the offset and limit
-//     values are part of the LimitNode, so using different offsets/limits
-//     may require using different plans
-//   - FOR ... OPTIONS @options (if allowed by the parser): OPTIONS can
-//     influence the behavior of the query, so using different sets of options
-//     may require using different plans
-//   - INSERT/UPDATE/REPLACE/REMOVE/UPSERT ... OPTIONS @options (if allowed by
-//     the parser): OPTIONS can influence the behavior of modification queries,
-//     so using different sets of options may require using different plans
 
 * Forcefully kill all running AQL queries on server shutdown.
   This allows for a faster server shutdown even if there are some long-running

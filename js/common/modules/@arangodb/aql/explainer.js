@@ -2258,7 +2258,6 @@ function processQuery(query, explain, planIndex) {
     postHandle(node);
   };
 
-
   if (planIndex === undefined) {
     printQuery(query, explain.cacheable, explain.planCacheKey);
   }
@@ -2391,6 +2390,9 @@ function profileQuery(data, shouldPrint) {
   let stmt = db._createStatement(data);
   let cursor = stmt.execute();
   let extra = cursor.getExtra();
+  if (cursor.planCacheKey !== undefined) {
+    extra.planCacheKey = cursor.planCacheKey;
+  }
   processQuery(data.query, extra, undefined);
 
   if (shouldPrint === undefined || shouldPrint) {
