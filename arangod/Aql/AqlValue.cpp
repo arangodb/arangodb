@@ -908,6 +908,20 @@ VPackSlice AqlValue::slice(AqlValueType type) const {
   }
 }
 
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+
+namespace {
+
+template<typename T>
+int comp(T a, T b) {
+  if (a == b) {
+    return VelocyPackHelper::cmp_equal;
+  }
+  return a < b ? VelocyPackHelper::cmp_less : VelocyPackHelper::cmp_greater;
+}
+
+}  // namespace
+
 int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
                       AqlValue const& right, bool compareUtf8) {
   auto const leftType = left.type();
@@ -928,40 +942,51 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
 
   switch (leftType) {
     case VPACK_INLINE_INT64:
+      switch (rightType) {
+        case VPACK_INLINE_INT64:
+          return comp<int64_t>(left.toInt64(), right.toInt64());
+        case VPACK_INLINE_UINT64:
+          return VelocyPackHelper::compareInt64UInt64(
+              left.toInt64(), static_cast<uint64_t>(right.toInt64()));
+        case VPACK_INLINE_DOUBLE:
+          return VelocyPackHelper::compareInt64Double(left.toInt64(),
+                                                      right.toDouble());
+        default:
+          return basics::VelocyPackHelper::compare(left.slice(leftType),
+                                                   right.slice(rightType),
+                                                   compareUtf8, options);
+      }
     case VPACK_INLINE_UINT64:
-      // if right value type is also optimized inline we can optimize comparison
-      if (leftType == rightType) {
-        if (leftType == VPACK_INLINE_UINT64) {
-          uint64_t l = static_cast<uint64_t>(left.toInt64());
-          uint64_t r = static_cast<uint64_t>(right.toInt64());
-          if (l == r) {
-            return 0;
-          }
-          return (l < r ? -1 : 1);
-        } else {
-          int64_t l = left.toInt64();
-          int64_t r = right.toInt64();
-          if (l == r) {
-            return 0;
-          }
-          return (l < r ? -1 : 1);
-        }
-        // intentional fallthrough to double comparison
+      switch (rightType) {
+        case VPACK_INLINE_INT64:
+          return -VelocyPackHelper::compareInt64UInt64(
+              right.toInt64(), static_cast<uint64_t>(left.toInt64()));
+        case VPACK_INLINE_UINT64:
+          return comp<uint64_t>(static_cast<uint64_t>(left.toInt64()),
+                                static_cast<uint64_t>(right.toInt64()));
+        case VPACK_INLINE_DOUBLE:
+          return VelocyPackHelper::compareUInt64Double(
+              static_cast<uint64_t>(left.toInt64()), right.toDouble());
+        default:
+          return basics::VelocyPackHelper::compare(left.slice(leftType),
+                                                   right.slice(rightType),
+                                                   compareUtf8, options);
       }
-      [[fallthrough]];
     case VPACK_INLINE_DOUBLE:
-      // here we could only compare doubles in case of right is also inlined
-      // the same is done in VelocyPackHelper::compare for numbers. Equal types
-      // are compared directly - unequal (or doubles) as doubles
-      if (VPACK_INLINE_INT64 <= rightType && rightType <= VPACK_INLINE_DOUBLE) {
-        double l = left.toDouble();
-        double r = right.toDouble();
-        if (l == r) {
-          return 0;
-        }
-        return (l < r ? -1 : 1);
+      switch (rightType) {
+        case VPACK_INLINE_INT64:
+          return -VelocyPackHelper::compareInt64Double(right.toInt64(),
+                                                       left.toDouble());
+        case VPACK_INLINE_UINT64:
+          return -VelocyPackHelper::compareUInt64Double(
+              static_cast<uint64_t>(right.toInt64()), left.toDouble());
+        case VPACK_INLINE_DOUBLE:
+          return comp<double>(left.toDouble(), right.toDouble());
+        default:
+          return basics::VelocyPackHelper::compare(left.slice(leftType),
+                                                   right.slice(rightType),
+                                                   compareUtf8, options);
       }
-      [[fallthrough]];
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
@@ -1184,8 +1209,8 @@ Range const* AqlValue::range() const {
 }
 
 void AqlValue::erase() noexcept {
-  // VPACK_INLINE must have a value of 0, and VPackSlice::None must be equal
-  // to a NUL byte too
+  // VPACK_INLINE must have a value of 0, and VPackSlice::None must be
+  // equal to a NUL byte too
   static_assert(AqlValueType::VPACK_INLINE == 0,
                 "invalid value for VPACK_INLINE");
 
@@ -1245,7 +1270,8 @@ void AqlValue::initFromSlice(VPackSlice slice, VPackValueLength length) {
 }
 
 void AqlValue::initFromUint(uint64_t v) {
-  // We want int instead of uint because it allows us to use it without checks
+  // We want int instead of uint because it allows us to use it without
+  // checks
   if (v < (std::uint64_t{1} << std::uint64_t{63})) {
     return initFromInt(static_cast<int64_t>(v));
   }
