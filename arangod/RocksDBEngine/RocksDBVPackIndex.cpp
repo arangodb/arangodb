@@ -548,7 +548,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       RocksDBVPackIndexSearchValueFormat format)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
-        _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
+        _cmp(index->comparator()),
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
         _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _resourceMonitor(monitor),
@@ -1169,7 +1169,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   static constexpr size_t expectedIteratorMemoryUsage = 8192;
 
   RocksDBVPackIndex const* _index;
-  RocksDBVPackComparator const* _cmp;
+  rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   std::shared_ptr<VPackIndexCacheType> _cache;
   size_t const _maxCacheValueSize;
@@ -2924,7 +2924,8 @@ void RocksDBVPackIndex::warmupInternal(transaction::Methods* trx) {
     rocksdb::Slice key = it->key();
     TRI_ASSERT(objectId() == RocksDBKey::objectId(key));
     VPackSlice v = RocksDBKey::indexedVPack(key);
-    if (basics::VelocyPackHelper::compare(v, builder.slice(), true) != 0) {
+    int cmp = basics::VelocyPackHelper::compare(v, builder.slice(), true);
+    if (cmp != 0) {
       // index values are different. now do a lookup in cache/rocksdb
       builder.clear();
       builder.add(v);
