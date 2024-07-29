@@ -74,5 +74,5 @@ TEST_F(CoroutineRegistryTest,
 
   thread_registry.for_promise(collect_promise_line);
 
-  EXPECT_EQ(promise_lines.size(), 3)
+  EXPECT_EQ(promise_lines.size(), 3);
 }
