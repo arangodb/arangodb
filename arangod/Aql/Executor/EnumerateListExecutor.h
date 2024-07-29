@@ -56,8 +56,8 @@ class SingleRowFetcher;
 class EnumerateListExecutorInfos {
  public:
   EnumerateListExecutorInfos(
-      RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
-      Expression* filter, VariableId outputVariableId,
+       RegisterId inputRegister, const std::vector<RegisterId>&& outputRegisters,
+       QueryContext& query, Expression* filter, VariableId outputVariableId,
       std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs);
 
   EnumerateListExecutorInfos() = delete;
@@ -67,7 +67,7 @@ class EnumerateListExecutorInfos {
 
   QueryContext& getQuery() const noexcept;
   RegisterId getInputRegister() const noexcept;
-  RegisterId getOutputRegister() const noexcept;
+  const std::vector<RegisterId>& getOutputRegister() const noexcept;
   VariableId getOutputVariableId() const noexcept;
   bool hasFilter() const noexcept;
   Expression* getFilter() const noexcept;
@@ -80,7 +80,7 @@ class EnumerateListExecutorInfos {
   // ExecutorInfo::_inRegs and ExecutorInfo::_outRegs, respectively
   // getInputRegisters() and getOutputRegisters().
   RegisterId const _inputRegister;
-  RegisterId const _outputRegister;
+  std::vector<RegisterId> const _outputRegisters;
   VariableId const _outputVariableId;
   Expression* _filter;
   // Input variable and register pairs required for the filter

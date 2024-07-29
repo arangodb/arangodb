@@ -57,9 +57,7 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
 
   // We store here EnumerateListNode which takes as input CalculationNode. This
   // Calculation node is "ENTRIES" function.
-  SmallVector<
-      std::tuple<EnumerateListNode*, const CalculationNode*, const Expression*>,
-      8>
+  SmallVector<std::tuple<EnumerateListNode*, CalculationNode*, Expression*>, 8>
       enumAndCalc;
 
   for (auto elNodeRaw : enumerationListNodes) {
@@ -100,10 +98,10 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
           Variable const* v =
               static_cast<Variable const*>(indexedValue->getData());
           if (reqVar->isEqualTo(*v)) {
-            auto indexValue = exp->getMemberUnchecked(1);
-            if (indexedValue->isConstant()) {
-              int val = indexValue->getIntValue();
-              if (!indexes[val]) {
+            auto idx = exp->getMemberUnchecked(1);
+            if (idx->isConstant()) {
+              int val = idx->getIntValue();
+              if (indexes[val]) {
                 return std::make_tuple(false, keyValueNodes);
               }
               indexes[val] = 1;
@@ -118,12 +116,9 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
   };
 
   for (auto p : enumAndCalc) {
-    EnumerateListNode* eln;
-    const CalculationNode* cn;
-    const Expression* exp;
-    std::tie(eln, cn, exp) = p;
+    auto [eln, cn, exp] = p;
 
-    auto outVar = cn->outVariable();
+    auto outVar = eln->outVariable();
     bool optRequired;
     SmallVector<CalculationNode*, 2> keyValueNodes;
 
@@ -135,7 +130,21 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
       plan->unlinkNode(keyValueNodes[0]);
       plan->unlinkNode(keyValueNodes[1]);
 
-      // Replace current ExecutionNode with new one;
+      // Replace current CalculationNode with new one
+
+      auto ast = plan->getAst();
+      auto args = exp->node()->getMemberUnchecked(0);
+      // ENTRIES function should take only one argument
+      TRI_ASSERT(args->numMembers() == 1);
+
+      auto letExpr =
+          std::make_unique<Expression>(ast, args->getMemberUnchecked(0));
+      // Variable* outVariable = ast->variables()->createTemporaryVariable();
+
+      [[maybe_unused]] auto newCalcNode = plan->createNode<CalculationNode>(
+          plan.get(), plan->nextId(), std::move(letExpr), eln->inVariable());
+
+      plan->replaceNode(cn, newCalcNode);
 
       modified = true;
     }

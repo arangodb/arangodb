@@ -111,9 +111,21 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegisterId inputRegister = variableToRegisterId(_inVariable);
-  RegisterId outRegister = variableToRegisterId(_outVariable);
+  std::vector<RegisterId> outRegisters;
+
+  RegIdSet outRegisterSet;
+  if (_mode == kEnumerateArray) {
+    outRegisters.resize(1);
+    outRegisters[0] = variableToRegisterId(_outVariable);
+    outRegisterSet = RegIdSet{outRegisters[0]};
+  } else {
+    outRegisters.resize(2);
+    outRegisters[0] = variableToRegisterId(_keyValuePairOutVars[0]);
+    outRegisters[1] = variableToRegisterId(_keyValuePairOutVars[1]);
+    outRegisterSet = RegIdSet{outRegisters[0], outRegisters[1]};
+  }
   auto registerInfos =
-      createRegisterInfos(RegIdSet{inputRegister}, RegIdSet{outRegister});
+      createRegisterInfos(RegIdSet{inputRegister}, outRegisterSet);
 
   std::vector<std::pair<VariableId, RegisterId>> varsToRegs;
   if (hasFilter()) {
@@ -128,8 +140,8 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     }
   }
   auto executorInfos = EnumerateListExecutorInfos(
-      inputRegister, outRegister, engine.getQuery(), filter(), _outVariable->id,
-      std::move(varsToRegs));
+      inputRegister, std::move(outRegisters), engine.getQuery(), filter(),
+      _outVariable->id, std::move(varsToRegs));
   return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }

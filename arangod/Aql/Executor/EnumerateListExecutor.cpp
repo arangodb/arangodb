@@ -121,12 +121,12 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
 }  // namespace arangodb::aql
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
-    Expression* filter, VariableId outputVariableId,
+    RegisterId inputRegister, const std::vector<RegisterId>&& outputRegisters,
+    QueryContext& query, Expression* filter, VariableId outputVariableId,
     std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs)
     : _query(query),
       _inputRegister(inputRegister),
-      _outputRegister(outputRegister),
+      _outputRegisters(outputRegisters),
       _outputVariableId(outputVariableId),
       _filter(filter),
       _varsToRegs(std::move(varsToRegs)) {
@@ -142,8 +142,9 @@ RegisterId EnumerateListExecutorInfos::getInputRegister() const noexcept {
   return _inputRegister;
 }
 
-RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
-  return _outputRegister;
+const std::vector<RegisterId>& EnumerateListExecutorInfos::getOutputRegister()
+    const noexcept {
+  return _outputRegisters;
 }
 
 VariableId EnumerateListExecutorInfos::getOutputVariableId() const noexcept {
@@ -207,6 +208,10 @@ bool EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
   bool mustDestroy;
   AqlValue innerValue =
       getAqlValue(inputList, _inputArrayPosition, mustDestroy);
+  // auto str_val = innerValue.slice().stringView();
+  std::cout << innerValue.isArray() << std::endl;
+  auto strval = innerValue.slice().toString();
+  std::cout << "<" << strval << ">" << std::endl;
   AqlValueGuard guard(innerValue, mustDestroy);
 
   TRI_IF_FAILURE("EnumerateListBlock::getSome") {
@@ -217,7 +222,14 @@ bool EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
     return false;
   }
 
-  output.moveValueInto(_infos.getOutputRegister(), _currentRow, &guard);
+  auto outputRegs = _infos.getOutputRegister();
+  if (outputRegs.size() == 1) {
+    output.moveValueInto(outputRegs[0], _currentRow, &guard);
+  } else {
+    output.moveValueInto(outputRegs[0], _currentRow, &guard);
+    output.moveValueInto(outputRegs[1], _currentRow, &guard);
+  }
+
   output.advanceRow();
 
   return true;
