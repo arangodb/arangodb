@@ -48,6 +48,8 @@ struct PromiseInList : Observables {
   std::atomic<PromiseInList*> next;
   // only needed to remove an item
   std::atomic<PromiseInList*> previous;
+  // identifies the list it belongs to
+  void* list_id;
 };
 
 std::ostream& operator<<(std::ostream& out, const PromiseInList& promise) {

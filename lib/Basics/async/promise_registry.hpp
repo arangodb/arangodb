@@ -52,7 +52,7 @@ struct PromiseRegistryOnThread {
      thread the registry lives on.
    */
   auto erase(PromiseInList* promise) -> Result {
-    if (std::this_thread::get_id() != thread_id) {
+    if (promise->list_id != this) {
       return Result{TRI_ERROR_INTERNAL,
                     "You cannot erase a promise of another thread from this "
                     "promise registry."};
@@ -90,7 +90,7 @@ struct PromiseRegistryOnThread {
     }
   }
 
-  const std::thread::id thread_id = std::this_thread::get_id();
+  std::thread::id thread_id = std::this_thread::get_id();
   std::atomic<PromiseInList*> head = nullptr;
   std::atomic<std::shared_ptr<PromiseRegistryOnThread>> next;
   std::mutex mutex;
