@@ -471,4 +471,3 @@ TEST(AqlValueCompareTest, test_generic_uses_correct_numerical_comparison) {
   EXPECT_EQ(-1, compGeneric(i - 1, u));
   EXPECT_EQ(1, compGeneric(u, i - 1));
 }
-
