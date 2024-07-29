@@ -189,7 +189,8 @@ void QueryPlanCache::invalidate(std::string const& dataSourceGuid) {
 
 void QueryPlanCache::invalidateAll() {
   std::unique_lock guard(_mutex);
-  _entries.clear();
+  // make sure all memory is acutally freed
+  _entries = {};
   _memoryUsage = 0;
 }
 
