@@ -27,9 +27,10 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
+#include "Random/RandomGenerator.h"
 #include "VocBase/vocbase.h"
 
 #include <boost/container_hash/hash.hpp>
@@ -44,11 +45,21 @@ size_t QueryPlanCache::Key::hash() const {
   return QueryPlanCache::KeyHasher{}(*this);
 }
 
+size_t QueryPlanCache::Key::memoryUsage() const noexcept {
+  // note: the 256 bytes overhead is a magic number estimated here.
+  // we will definitely have some overhead for each entry because
+  // strings may have reserved more capacity than actual bytes
+  // are used. the velocypack buffer for the bind parameters also
+  // may have some overhead because of over-allocation.
+  return 256 + queryString.size() + bindParameters->byteSize();
+}
+
 size_t QueryPlanCache::KeyHasher::operator()(
     QueryPlanCache::Key const& key) const noexcept {
   size_t hash = 0;
   boost::hash_combine(hash, key.queryString.hash());
-  boost::hash_combine(hash, key.bindParameters->slice().normalizedHash());
+  boost::hash_combine(hash,
+                      VPackSlice(key.bindParameters->data()).normalizedHash());
   // arbitrary integer values used here from https://hexwords.netlify.app/
   // for fullcount=true / fullcount=false
   boost::hash_combine(hash, key.fullCount ? 0xB16F007 : 0xB0BCA7);
@@ -66,21 +77,50 @@ bool QueryPlanCache::KeyEqual::operator()(
     return false;
   }
 
-  if (lhs.bindParameters->slice().normalizedHash() !=
-      rhs.bindParameters->slice().normalizedHash()) {
+  auto lhsSlice = VPackSlice(lhs.bindParameters->data());
+  auto rhsSlice = VPackSlice(rhs.bindParameters->data());
+  if (lhsSlice.normalizedHash() != rhsSlice.normalizedHash()) {
     return false;
   }
   if (basics::VelocyPackHelper::compare(
-          lhs.bindParameters->slice(), rhs.bindParameters->slice(),
+          lhsSlice, rhsSlice,
           /*useUtf8*/ true, &VPackOptions::Defaults, nullptr, nullptr) != 0) {
     return false;
   }
   return true;
 }
 
-QueryPlanCache::QueryPlanCache() : _entries(5, KeyHasher{}, KeyEqual{}) {}
+size_t QueryPlanCache::Value::memoryUsage() const noexcept {
+  // note: the magic numbers here are estimated.
+  // we will definitely have some overhead for each entry because
+  // strings may have reserved more capacity than actual bytes
+  // are used. the velocypack buffer for the serialized plan also
+  // may have some overhead because of over-allocation.
+  size_t total = 32;
+  for (auto const& it : dataSources) {
+    total += 32 + it.first.size() + it.second.name.size();
+  }
+  total += serializedPlan->size();
+  return total;
+}
 
-QueryPlanCache::~QueryPlanCache() {}
+QueryPlanCache::QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
+                               size_t maxIndividualEntrySize)
+    : _entries(5, KeyHasher{}, KeyEqual{}),
+      _memoryUsage(0),
+      _maxEntries(maxEntries),
+      _maxMemoryUsage(maxMemoryUsage),
+      _maxIndividualEntrySize(maxIndividualEntrySize) {}
+
+QueryPlanCache::~QueryPlanCache() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  size_t total = 0;
+  for (auto const& it : _entries) {
+    total += it.first.memoryUsage() + it.second->memoryUsage();
+  }
+  TRI_ASSERT(_memoryUsage == total);
+#endif
+}
 
 std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
     QueryPlanCache::Key const& key) const {
@@ -91,16 +131,34 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
   return nullptr;
 }
 
-void QueryPlanCache::store(
+bool QueryPlanCache::store(
     QueryPlanCache::Key&& key,
     std::unordered_map<std::string, DataSourceEntry>&& dataSources,
     std::shared_ptr<velocypack::UInt8Buffer> serializedPlan) {
   auto value = std::make_shared<Value>(
       std::move(dataSources), std::move(serializedPlan), TRI_microtime());
+  size_t memoryUsage = key.memoryUsage() + value->memoryUsage();
+
+  if (memoryUsage > _maxIndividualEntrySize) {
+    return false;
+  }
 
   std::unique_lock guard(_mutex);
 
-  _entries.insert_or_assign(std::move(key), std::move(value));
+  // for the sake of memory accouting, we need to perform a lookup for
+  // the same cache key first, and subtract its memory usage before
+  // we can actually delete it.
+  if (auto it = _entries.find(key); it != _entries.end()) {
+    _memoryUsage -= (*it).first.memoryUsage() + (*it).second->memoryUsage();
+    _entries.erase(it);
+  }
+
+  _entries.emplace(std::move(key), std::move(value));
+  _memoryUsage += memoryUsage;
+
+  applySizeConstraints();
+
+  return true;
 }
 
 QueryPlanCache::Key QueryPlanCache::createCacheKey(
@@ -111,24 +169,34 @@ QueryPlanCache::Key QueryPlanCache::createCacheKey(
 }
 
 void QueryPlanCache::invalidate(std::string const& dataSourceGuid) {
+  size_t total = 0;
+
   std::unique_lock guard(_mutex);
 
   for (auto it = _entries.begin(); it != _entries.end(); /* no hoisting */) {
     auto const& value = (*it).second;
     if (value->dataSources.contains(dataSourceGuid)) {
+      total += value->memoryUsage();
       it = _entries.erase(it);
     } else {
       ++it;
     }
   }
+
+  TRI_ASSERT(_memoryUsage >= total);
+  _memoryUsage -= total;
 }
 
 void QueryPlanCache::invalidateAll() {
   std::unique_lock guard(_mutex);
   _entries.clear();
+  _memoryUsage = 0;
 }
 
-void QueryPlanCache::toVelocyPack(velocypack::Builder& builder) const {
+void QueryPlanCache::toVelocyPack(
+    velocypack::Builder& builder,
+    std::function<bool(QueryPlanCache::Key const&,
+                       QueryPlanCache::Value const&)> const& filter) const {
   std::unique_lock guard(_mutex);
 
   builder.openArray(true);
@@ -136,14 +204,18 @@ void QueryPlanCache::toVelocyPack(velocypack::Builder& builder) const {
     auto const& key = it.first;
     auto const& value = *(it.second);
 
+    if (!filter(key, value)) {
+      continue;
+    }
+
     builder.openObject();
-    builder.add("hash", VPackValue(key.hash()));
+    builder.add("hash", VPackValue(std::to_string(key.hash())));
     builder.add("query", VPackValue(key.queryString.string()));
     builder.add("queryHash", VPackValue(key.queryString.hash()));
     if (key.bindParameters == nullptr) {
       builder.add("bindVars", VPackSlice::emptyObjectSlice());
     } else {
-      builder.add("bindVars", key.bindParameters->slice());
+      builder.add("bindVars", VPackSlice(key.bindParameters->data()));
     }
     builder.add("fullCount", VPackValue(key.fullCount));
 
@@ -155,29 +227,57 @@ void QueryPlanCache::toVelocyPack(velocypack::Builder& builder) const {
 
     builder.add("created", VPackValue(TRI_StringTimeStamp(
                                value.dateCreated, Logger::getUseLocalTime())));
+    builder.add("memoryUsage",
+                VPackValue(it.first.memoryUsage() + it.second->memoryUsage()));
 
     builder.close();
   }
   builder.close();
 }
 
-std::shared_ptr<velocypack::Builder> QueryPlanCache::filterBindParameters(
+std::shared_ptr<velocypack::UInt8Buffer> QueryPlanCache::filterBindParameters(
     std::shared_ptr<velocypack::Builder> const& source) {
   // extract relevant bind vars from passed bind variables.
   // we intentionally ignore all value bind parameters here
-  auto result = std::make_shared<velocypack::Builder>();
-  result->openObject();
+  velocypack::Builder result;
+  result.openObject();
   if (source != nullptr) {
     for (auto it : VPackObjectIterator(source->slice())) {
       if (it.key.stringView().starts_with('@')) {
         // collection name bind parameter
-        result->add(it.key.stringView(), it.value);
+        result.add(it.key.stringView(), it.value);
       }
     }
   }
-  result->close();
+  result.close();
 
-  return result;
+  return result.steal();
+}
+
+void QueryPlanCache::applySizeConstraints() {
+  while (_entries.size() > _maxEntries || _memoryUsage > _maxMemoryUsage) {
+    TRI_ASSERT(!_entries.empty());
+    if (_entries.empty()) {
+      // this should never be true. if we get here, it indicates a programming
+      // error.
+      break;
+    }
+
+    // pick a "random" entry to evict. for simplicity, we either pick a
+    // pseudorandom number between 0 and 63 and skip that many steps in the map.
+    // when done with skipping, we have found our target item and evict it. this
+    // is not very random, but it is bounded and allows us to get away without
+    // maintaining a full LRU list.
+    size_t entriesToSkip =
+        RandomGenerator::interval(uint32_t(64)) % _entries.size();
+    auto it = _entries.begin();
+    while (entriesToSkip-- > 0) {
+      ++it;
+    }
+    TRI_ASSERT(it != _entries.end());
+    _memoryUsage -= (*it).first.memoryUsage() + (*it).second->memoryUsage();
+    _entries.erase(it);
+  }
 }
 
 }  // namespace arangodb::aql

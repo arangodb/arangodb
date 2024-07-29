@@ -1373,9 +1373,15 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
 
     numberOfCursorsMetric = feature.cursorsMetric();
     memoryUsageMetric = feature.cursorsMemoryUsageMetric();
+    _queryPlanCache = std::make_unique<aql::QueryPlanCache>(
+        feature.queryPlanCacheMaxEntries(),
+        feature.queryPlanCacheMaxMemoryUsage(),
+        feature.queryPlanCacheMaxIndividualEntrySize());
+  } else {
+    // create only a stub
+    _queryPlanCache = std::make_unique<aql::QueryPlanCache>(
+        /*maxEntries*/ 0, /*maxMemoryUsage*/ 0, /*maxIndividualEntrySize*/ 0);
   }
-
-  _queryPlanCache = std::make_unique<aql::QueryPlanCache>();
   _cursorRepository = std::make_unique<CursorRepository>(
       *this, numberOfCursorsMetric, memoryUsageMetric);
 

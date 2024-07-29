@@ -200,6 +200,9 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _maxNodesPerCallstack(aql::QueryOptions::defaultMaxNodesPerCallstack),
+      _queryPlanCacheMaxEntries(128),
+      _queryPlanCacheMaxMemoryUsage(8 * 1024 * 1024),
+      _queryPlanCacheMaxIndividualEntrySize(2 * 1024 * 1024),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
@@ -463,11 +466,49 @@ processing logic, which then also accounts for the queries' runtime. It is thus
 expected that the lifetime of streaming queries is longer than for regular
 queries.)");
 
+  // query plan cache
+  options
+      ->addOption(
+          "--query.plan-cache-max-entries",
+          "The maximum number of plans in query plan cache per database.",
+          new UInt64Parameter(&_queryPlanCacheMaxEntries),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31202);
+
+  options
+      ->addOption("--query.plan-cache-max-memory-usage",
+                  "The maximum allowed memory usage for the query plan cache "
+                  "in each database.",
+                  new UInt64Parameter(&_queryPlanCacheMaxMemoryUsage),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31202);
+
+  options
+      ->addOption("--query.plan-cache-max-entry-size",
+                  "The maximum size of an individual entry in the query plan "
+                  "cache in each database.",
+                  new UInt64Parameter(&_queryPlanCacheMaxIndividualEntrySize),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31202);
+
+  // query results cache
   options
       ->addOption("--query.cache-mode",
                   "The mode for the AQL query result cache. Can be \"on\", "
                   "\"off\", or \"demand\".",
-                  new StringParameter(&_queryCacheMode))
+                  new StringParameter(&_queryCacheMode),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(Toggles the AQL query results cache behavior.
 The possible values are:
 
@@ -481,7 +522,10 @@ The possible values are:
       ->addOption(
           "--query.cache-entries",
           "The maximum number of results in query result cache per database.",
-          new UInt64Parameter(&_queryCacheMaxResultsCount))
+          new UInt64Parameter(&_queryCacheMaxResultsCount),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(If a query is eligible for caching and the number
 of items in the database's query cache is equal to this threshold value, another
 cached query result is removed from the cache.
@@ -493,7 +537,10 @@ This option only has an effect if the query cache mode is set to either `on` or
       ->addOption("--query.cache-entries-max-size",
                   "The maximum cumulated size of results in the query result "
                   "cache per database (in bytes).",
-                  new UInt64Parameter(&_queryCacheMaxResultsSize))
+                  new UInt64Parameter(&_queryCacheMaxResultsSize),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(When a query result is inserted into the query
 results cache, it is checked if the total size of cached results would exceed
 this value, and if so, another cached query result is removed from the cache
@@ -506,7 +553,10 @@ This option only has an effect if the query cache mode is set to either `on` or
       ->addOption("--query.cache-entry-max-size",
                   "The maximum size of an individual result entry in query "
                   "result cache (in bytes).",
-                  new UInt64Parameter(&_queryCacheMaxEntrySize))
+                  new UInt64Parameter(&_queryCacheMaxEntrySize),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(Query results are only eligible for caching if
 their size does not exceed this setting's value.)");
 
@@ -514,7 +564,10 @@ their size does not exceed this setting's value.)");
       ->addOption("--query.cache-include-system-collections",
                   "Whether to include system collection queries in "
                   "the query result cache.",
-                  new BooleanParameter(&_queryCacheIncludeSystem))
+                  new BooleanParameter(&_queryCacheIncludeSystem),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(Not storing these results is normally beneficial
 if you use the query results cache, as queries on system collections are
 internal to ArangoDB and use space in the query results cache unnecessarily.)");
@@ -523,7 +576,11 @@ internal to ArangoDB and use space in the query results cache unnecessarily.)");
       ->addOption(
           "--query.optimizer-max-plans",
           "The maximum number of query plans to create for a query.",
-          new UInt64Parameter(&_maxQueryPlans, /*base*/ 1, /*minValue*/ 1))
+          new UInt64Parameter(&_maxQueryPlans, /*base*/ 1, /*minValue*/ 1),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(You can control how many different query execution
 plans the AQL query optimizer generates at most for any given AQL query with
 this option. Normally, the AQL query optimizer generates a single execution plan
@@ -546,6 +603,9 @@ The value can still be adjusted on a per-query basis by setting the
                   "before splitting the remaining nodes into a separate thread",
                   new UInt64Parameter(&_maxNodesPerCallstack),
                   arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30900);
 

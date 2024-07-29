@@ -35,6 +35,7 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
 const users = require("@arangodb/users");
+const planCache = require("@arangodb/aql/plan-cache");
 const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
 
 const cn1 = "UnitTestsQueryPlanCache1";
@@ -71,6 +72,15 @@ const uniqid = () => {
 
 function QueryPlanCacheTestSuite () {
   let c1, c2;
+        
+  let buildFilter = (values) => {
+    return (entry) => {
+      return Object.keys(values).every((key) => {
+        return JSON.stringify(entry[key]) === JSON.stringify(values[key]);
+      });
+    };
+  };
+
 
   return {
     setUp : function () {
@@ -162,6 +172,138 @@ function QueryPlanCacheTestSuite () {
       } finally {
         arango.reconnect(endpoint, db._name(), "root", "");
         users.remove("test_user");
+      }
+    },
+    
+    testPlanCacheClear : function () {
+      const query1 = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value1 == @value RETURN doc.value`;
+      const query2 = `${uniqid()} FOR doc IN @@collection FILTER doc.value1 == @value RETURN doc.value`;
+      const query3 = `${uniqid()} FOR doc IN ${cn2} FILTER doc.value1 == @value RETURN doc.value`;
+      const options = { optimizePlanForCaching: true };
+      const optionsFullCount = { optimizePlanForCaching: true, fullCount: true };
+        
+      const endpoint = arango.getEndpoint();
+      users.save("test_user1", "testi");
+      users.save("test_user2", "testi");
+
+      try {
+        users.grantDatabase("test_user1", "_system", "rw");
+        users.grantCollection("test_user1", "_system", cn1, "rw");
+        users.grantCollection("test_user1", "_system", cn2, "rw");
+        
+        users.grantDatabase("test_user2", "_system", "ro");
+
+        arango.reconnect(endpoint, db._name(), "test_user1", "testi");
+
+        db._query(query1, {value: 1}, options);
+        db._query(query2, {"@collection": cn1, value: 1}, options);
+        db._query(query3, {value: 1}, options);
+        db._query(query2, {"@collection": cn2, value: 1}, options);
+        db._query(query3, {value: 1}, optionsFullCount);
+
+        let entries = planCache.toArray();
+        assertEqual(1, entries.filter(buildFilter({ query: query1, bindVars: {}, fullCount: false, dataSources: [cn1] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn1}, fullCount: false, dataSources: [cn1] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query3, bindVars: {}, fullCount: false, dataSources: [cn2] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn2}, fullCount: false, dataSources: [cn2] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query3, bindVars: {}, fullCount: true, dataSources: [cn2] })).length, entries);
+
+        // clear plan cache - now the queries must not be found
+        planCache.clear();
+        
+        entries = planCache.toArray();
+        assertEqual(0, entries.length, entries);
+        
+        // execute queries again
+        db._query(query1, {value: 1}, options);
+        db._query(query2, {"@collection": cn1, value: 1}, options);
+        db._query(query3, {value: 1}, options);
+        db._query(query2, {"@collection": cn2, value: 1}, options);
+        db._query(query3, {value: 1}, optionsFullCount);
+        
+        entries = planCache.toArray();
+        assertEqual(1, entries.filter(buildFilter({ query: query1, bindVars: {}, fullCount: false, dataSources: [cn1] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn1}, fullCount: false, dataSources: [cn1] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query3, bindVars: {}, fullCount: false, dataSources: [cn2] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn2}, fullCount: false, dataSources: [cn2] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query3, bindVars: {}, fullCount: true, dataSources: [cn2] })).length, entries);
+        
+        // now connect with a user that has no privileges to clear the plan cache
+        arango.reconnect(endpoint, db._name(), "test_user2", "testi");
+      
+        try {
+          planCache.clear();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_FORBIDDEN.code, err.errorNum);
+        }
+        
+        // provide permissions for the user so that they can clear the cache
+        arango.reconnect(endpoint, db._name(), "root", "");
+        users.grantDatabase("test_user2", "_system", "rw");
+        
+        arango.reconnect(endpoint, db._name(), "test_user2", "testi");
+        planCache.clear();
+        
+        entries = planCache.toArray();
+        assertEqual(0, entries.length, entries);
+        
+        // now connect with a original user that also has access to the underlying collections
+        arango.reconnect(endpoint, db._name(), "test_user1", "testi");
+        
+        entries = planCache.toArray();
+        assertEqual(0, entries.length, entries);
+      } finally {
+        arango.reconnect(endpoint, db._name(), "root", "");
+        users.remove("test_user1");
+        users.remove("test_user2");
+      }
+    },
+    
+    testPlanCacheToArray : function () {
+      const query1 = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value1 == @value RETURN doc.value`;
+      const query2 = `${uniqid()} FOR doc IN @@collection FILTER doc.value1 == @value RETURN doc.value`;
+      const query3 = `${uniqid()} FOR doc IN ${cn2} FILTER doc.value1 == @value RETURN doc.value`;
+      const options = { optimizePlanForCaching: true };
+        
+      const endpoint = arango.getEndpoint();
+      users.save("test_user1", "testi");
+      users.save("test_user2", "testi");
+
+      try {
+        users.grantDatabase("test_user1", "_system", "rw");
+        users.grantCollection("test_user1", "_system", cn1, "rw");
+        users.grantCollection("test_user1", "_system", cn2, "ro");
+        
+        users.grantDatabase("test_user2", "_system", "ro");
+        users.grantCollection("test_user2", "_system", cn1, "ro");
+        users.grantCollection("test_user2", "_system", cn2, "none");
+
+        arango.reconnect(endpoint, db._name(), "test_user1", "testi");
+
+        db._query(query1, {value: 1}, options);
+        db._query(query2, {"@collection": cn1, value: 1}, options);
+        db._query(query3, {value: 1}, options);
+        db._query(query2, {"@collection": cn2, value: 1}, options);
+
+        let entries = planCache.toArray();
+        assertEqual(1, entries.filter(buildFilter({ query: query1, bindVars: {}, fullCount: false, dataSources: [cn1] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn1}, fullCount: false, dataSources: [cn1] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query3, bindVars: {}, fullCount: false, dataSources: [cn2] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn2}, fullCount: false, dataSources: [cn2] })).length, entries);
+
+        // connect with other user
+        arango.reconnect(endpoint, db._name(), "test_user2", "testi");
+        
+        entries = planCache.toArray();
+        
+        assertEqual(1, entries.filter(buildFilter({ query: query1, bindVars: {}, fullCount: false, dataSources: [cn1] })).length, entries);
+        assertEqual(1, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn1}, fullCount: false, dataSources: [cn1] })).length, entries);
+        assertEqual(0, entries.filter(buildFilter({ query: query3, bindVars: {}, fullCount: false, dataSources: [cn2] })).length, entries);
+        assertEqual(0, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn2}, fullCount: false, dataSources: [cn2] })).length, entries);
+      } finally {
+        arango.reconnect(endpoint, db._name(), "root", "");
+        users.remove("test_user1");
+        users.remove("test_user2");
       }
     },
     

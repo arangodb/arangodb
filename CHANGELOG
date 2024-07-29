@@ -7,7 +7,7 @@ devel
 
   The plan cache is fully optional and is only considered for AQL queries that
   have the option `optimizePlanForCaching` set to `true`. If the option is not
-  set to `true`, the plan cache is bypassed.
+  set to `true`, the plan cache is bypassed. This is also the default.
 
   If the option is set to `true`, the query's eligibility for being cached is
   checked first. Any queries that have any of the following query options set
@@ -29,11 +29,16 @@ devel
   - MultipleRemoteModificationNode
 
   If a query is eligible for plan caching, the plan cache will be checked using
-  the exact same query string and set of collection bind parameter values. 
-  If no plan can be found in the plan cache, the query is planned and optimized
-  as usual, and the cached plan will be inserted into the plan cache. Repeated 
-  invocations of the same query string that use the same set of collection bind 
-  parameter values will then make use of the cached plan entry.
+  the exact same query string and set of collection bind parameter values.
+  A cached plan entry is only considered identical to the current query if the
+  query strings are bytewise identical and the set of collection bind 
+  parameters is exactly the same (bind parameter names and bind parameter 
+  values).
+  If no plan entry can be found in the plan cache, the query is planned and 
+  optimized as usual, and the cached plan will be inserted into the plan cache.
+  Repeated executions of the same query (same query string and using the same 
+  set of collection bind parameters) will then make use of the cached plan
+  entry.
 
   The following query options will be ignored when a cached plan is used:
   - `joinStrategyType`
@@ -55,17 +60,51 @@ devel
     view are modified
   - a named graph is added, or an existing named graph gets dropped
 
+  Memory usage of the query plan cache can be restricted using the following
+  startup options:
+  - `--query.plan-cache-max-entries`: maximum number of plans in the query plan
+    cache in each database. The default value is 128.
+  - `--query.plan-cache-max-memory-usage`: maximum total memory usage for the
+    query plan cache in each database. The default value is 8MB.
+  - `--query.plan-cache-max-entry-size`: maximum size of an individual entry
+    in the query plan cache in each database. The default value is 2MB.
+  Note that each database has its own query plan cache, and that these options
+  are used for each individual plan cache. Also note that in a cluster, each
+  coordinator will have its own query plan cache.
+
+  There are also new APIs to clear the contents of the query plan cache and to
+  retrieve the current plan cache entries. The following HTTP REST APIs exist:
+  - HTTP DELETE `/_api/query-plan-cache` to delete all entries in the query
+    plan cache for the current database. This requires write privileges for the
+    current database.
+  - HTTP GET `/_api/query-plan-cache` to retrieve all entries in the query
+    plan cache for the current database. This requires read privileges for the
+    current database. In addition, only those query plans will be returned for
+    which the current user has at least read permissions on all collections
+    and views included in the query.
+  In a cluster, these APIs are specific to the coordinator that they are run 
+  on.
+
+  There is also a JavaScript module `@arangodb/query/plan-cache` that exposes
+  the same functionality:
+  - `require("@arangodb/aql/plan-cache`).clear()` to delete all entries in
+    the plan cache for the current database. This requires write privileges for
+    the current database.
+  - `require("@arangodb/aql/plan-cache`).toArray()` to retrieve all entries
+    in the plan cache for the current database. This requires read privileges
+    for the current database. In addition, only those query plans will be 
+    returned for which the current user has at least read permissions on all
+    collections and views included in the query.
+  In a cluster, these APIs are specific to the coordinator that they are run 
+  on.
+
 // TODO:
+// - the amount of memory consumed by the individual query plan caches is
+//   tracked, but currently cannot be observed via metrics. There is also no
+//   global memory limit for all query plan caches combined.
 // - in the cluster, we need to track the changes of database objects which are
 //   executed via other coordinators by tailing the changes in the AgencyCache,
 //   and react accordingly. this is currently missing in this PR.
-// - memory limit: currently, the plan cache has no memory limit nor memory
-//   accounting. it is currently unclear if we want to put a limit on the cache,
-//   and if it should be a global limit across all databases, or a per-database
-//   plan cache limit.
-// - memory accounting: we probably want memory accounting for the plan cache(s),
-//   so that database admins can always check how much memory is actually in use
-//   for cached plans.
 // - the serialized query plans are relatively verbose right now. it may be
 //   possible to reduce the verbosity of the cached plans somehow, by passing
 //   other flags to the serialization function. this would reduce the memory

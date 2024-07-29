@@ -49,10 +49,12 @@ struct QueryOptions;
 // cached plan.
 // the cache keys consist of the full query string, the query's `fullcount`
 // attribute value and the set of "relevant" bind parameters, which are the
-// collection name bind parameters only.
-// these bind parameters are relevant during the query optimization phase,
-// because they determine which collections and indexes can be used by the
-// query. once an AQL query is started that has its "optimizePlanForCaching"
+// collection name parameters only. attribute name bind parameters and value
+// bind parameters are not part of the cache keys.
+// the collection name bind parameters are relevant during the query
+// optimization phase, because they determine which collections and indexes
+// can be used by the query.
+// once an AQL query is started that has its "optimizePlanForCaching"
 // flag set to true, the Query object will generate a cache key object for the
 // query plan cache.
 // it will then perform a lookup in the query plan cache and run the query using
@@ -66,14 +68,18 @@ class QueryPlanCache {
   struct Key {
     QueryString queryString;
 
-    // collection and attribute name bind parameters.
-    // these parameters do not include value bind parameters
-    std::shared_ptr<velocypack::Builder> bindParameters;
+    // collection name bind parameters.
+    // these parameters do not include value bind parameters and
+    // attribute name bind parameters.
+    // guaranteed to be a non-nullptr.
+    std::shared_ptr<velocypack::UInt8Buffer> bindParameters;
 
     // fullcount enabled for query: yes or no
     bool fullCount;
 
     size_t hash() const;
+
+    size_t memoryUsage() const noexcept;
   };
 
   struct KeyHasher {
@@ -85,20 +91,29 @@ class QueryPlanCache {
   };
 
   struct DataSourceEntry {
+    // actual name of the datasource
     std::string name;
+
+    // datasource access level. will either be read or write.
     auth::Level level;
   };
 
   struct Value {
+    size_t memoryUsage() const noexcept;
+
     // list of all data sources (collections & views) used in the query.
     // needed so that we can invalidate the cache if the definition of a
-    // data source changes or a data source gets dropped
+    // data source changes or a data source gets dropped.
+    // maps from datasource guid to a pair of {datasource name, datasource
+    // access level}. access level is either read or write.
     std::unordered_map<std::string, DataSourceEntry> dataSources;
 
-    // plan velocypack
+    // the query plan velocypack. guaranteed to be a non-nullptr.
     std::shared_ptr<velocypack::UInt8Buffer> serializedPlan;
 
-    // timestamp when this plan was cached
+    // timestamp when this plan was cached. currently not used, but
+    // could be used when analyzing/exposing the contents of the query
+    // plan cache later.
     double dateCreated;
   };
 
@@ -110,7 +125,8 @@ class QueryPlanCache {
   QueryPlanCache(QueryPlanCache const&) = delete;
   QueryPlanCache& operator=(QueryPlanCache const&) = delete;
 
-  QueryPlanCache();
+  QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
+                 size_t maxIndividualEntrySize);
 
   ~QueryPlanCache();
 
@@ -118,7 +134,10 @@ class QueryPlanCache {
   // returns the cache entry if it exists, and nullptr otherwise
   std::shared_ptr<Value const> lookup(Key const& key) const;
 
-  void store(Key&& key,
+  // stores an entry in the cache.
+  // returns true if the entry was stored successfully, and false if the entry
+  // could not be stored (e.g. due to sizing constraints).
+  bool store(Key&& key,
              std::unordered_map<std::string, DataSourceEntry>&& dataSources,
              std::shared_ptr<velocypack::UInt8Buffer> serializedPlan);
 
@@ -130,18 +149,40 @@ class QueryPlanCache {
 
   void invalidateAll();
 
-  void toVelocyPack(velocypack::Builder& builder) const;
+  void toVelocyPack(
+      velocypack::Builder& builder,
+      std::function<bool(QueryPlanCache::Key const&,
+                         QueryPlanCache::Value const&)> const& filter) const;
 
-  static std::shared_ptr<velocypack::Builder> filterBindParameters(
+  static std::shared_ptr<velocypack::UInt8Buffer> filterBindParameters(
       std::shared_ptr<velocypack::Builder> const& source);
 
  private:
+  // apply sizing constraints (e.g. memory usage, max number of entries).
+  // must be called while holding _mutex in exclusive mode.
+  void applySizeConstraints();
+
   // mutex protecting _entries
   mutable std::shared_mutex _mutex;
 
-  // mapping from plan cache key to stored plan velocypack
+  // mapping from plan cache key to stored plan velocypack.
+  // protected by _mutex.
   std::unordered_map<Key, std::shared_ptr<Value const>, KeyHasher, KeyEqual>
       _entries;
+
+  // total approximate memory usage by _entries. protected by _mutex.
+  size_t _memoryUsage;
+
+  // maximum number of plan cache entries for the cache
+  size_t const _maxEntries;
+
+  // maximum total allowed memory usage for the cache.
+  // note that this can be temporarily violated during insertion of a new
+  // new cache entry.
+  size_t const _maxMemoryUsage;
+
+  // maximum allowed size for an individual entry.
+  size_t const _maxIndividualEntrySize;
 };
 
 }  // namespace arangodb::aql

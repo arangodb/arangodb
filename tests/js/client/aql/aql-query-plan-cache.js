@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, assertNotUndefined  */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, assertNotUndefined, assertMatch, assertNotMatch  */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,6 +29,7 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
 const graphs = require("@arangodb/general-graph");
+const planCache = require("@arangodb/aql/plan-cache");
 const isCluster = internal.isCluster();
       
 const cn1 = "UnitTestsQueryPlanCache1";
@@ -70,6 +71,8 @@ function QueryPlanCacheTestSuite () {
     setUp : function () {
       c1 = db._create(cn1);
       c2 = db._create(cn2);
+
+      planCache.clear();
     },
 
     tearDown : function () {
@@ -243,6 +246,17 @@ function QueryPlanCacheTestSuite () {
       plan.nodes.forEach((n, i) => {
         assertEqual(n.type, extra.plan.nodes[i].type);
       });
+    },
+    
+    testProfilingOutput : function () {
+      const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == 1 SORT doc.value LIMIT 2 RETURN doc`;
+      const options = { optimizePlanForCaching: true, profile: 2 };
+
+      let output = require('@arangodb/aql/explainer').profileQuery({ query, options }, false);
+      assertNotMatch(/plan cache key:/i, output);
+      
+      output = require('@arangodb/aql/explainer').profileQuery({ query, options }, false);
+      assertMatch(/plan cache key:/i, output);
     },
     
     testOptimizerRulesSet : function () {
@@ -501,13 +515,13 @@ function QueryPlanCacheTestSuite () {
     
     testViewQuery : function () {
       const vn = 'UnitTestsView';
+      const options = { optimizePlanForCaching: true };
 
       db._createView(vn, "arangosearch", {});
       try {
         db._view(vn).properties({ links: { [cn1]: { includeAllFields: true } } });
 
         const query = `${uniqid()} FOR doc IN ${vn} SEARCH doc.value == @value OPTIONS {waitForSync: true} RETURN doc.value`;
-        const options = { optimizePlanForCaching: true };
         
         db._query(`FOR i IN 1..10 INSERT {value: i} INTO ${cn1}`);
 
@@ -577,7 +591,53 @@ function QueryPlanCacheTestSuite () {
       assertTrue(res.hasOwnProperty("planCacheKey"));
       assertNotUndefined(res.data.extra.plan, res);
     },
+    
+    testPlanCacheClearing : function () {
+      const options = { optimizePlanForCaching: true };
 
+      for (let i = 0; i < 100; ++i) {
+        const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value${i} == @value RETURN doc.value`;
+      
+        db._query(query, {value: 1}, options);
+      }
+
+      let entries = planCache.toArray();
+      assertNotEqual(0, entries.length, entries);
+      assertTrue(entries.length > 10, entries);
+
+      planCache.clear();
+      
+      entries = planCache.toArray();
+      assertEqual(0, entries.length, entries);
+    },
+
+    testPlanCacheContents : function () {
+      const query1 = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value1 == @value RETURN doc.value`;
+      const query2 = `${uniqid()} FOR doc IN @@collection FILTER doc.value1 == @value RETURN doc.value`;
+      const query3 = `${uniqid()} FOR doc IN ${cn2} FILTER doc.value1 == @value RETURN doc.value`;
+      const options = { optimizePlanForCaching: true };
+        
+      db._query(query1, {value: 1}, options);
+      db._query(query2, {"@collection": cn1, value: 1}, options);
+      db._query(query3, {value: 1}, options);
+      db._query(query2, {"@collection": cn2, value: 1}, options);
+      db._query(query3, {value: 1}, Object.assign(options, {fullCount: true}));
+      
+      let buildFilter = (values) => {
+        return (entry) => {
+          return Object.keys(values).every((key) => {
+            return JSON.stringify(entry[key]) === JSON.stringify(values[key]);
+          });
+        };
+      };
+
+      let entries = planCache.toArray();
+      assertEqual(1, entries.filter(buildFilter({ query: query1, bindVars: {}, fullCount: false, dataSources: [cn1] })).length, entries);
+      assertEqual(1, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn1}, fullCount: false, dataSources: [cn1] })).length, entries);
+      assertEqual(1, entries.filter(buildFilter({ query: query3, bindVars: {}, fullCount: false, dataSources: [cn2] })).length, entries);
+      assertEqual(1, entries.filter(buildFilter({ query: query2, bindVars: {"@collection": cn2}, fullCount: false, dataSources: [cn2] })).length, entries);
+      assertEqual(1, entries.filter(buildFilter({ query: query3, bindVars: {}, fullCount: true, dataSources: [cn2] })).length, entries);
+    },
   };
 }
 

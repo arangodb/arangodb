@@ -545,8 +545,8 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
   });
 
   // store plan in query plan cache for future queries
-  _vocbase.queryPlanCache().store(std::move(*_planCacheKey),
-                                  std::move(dataSources), serialized.steal());
+  std::ignore = _vocbase.queryPlanCache().store(
+      std::move(*_planCacheKey), std::move(dataSources), serialized.steal());
   _planCacheKey.reset();
 }
 
