@@ -390,7 +390,7 @@ RestStatus RestAdminClusterHandler::execute() {
     } else if (command == Maintenance) {
       return handleDBServerMaintenance(suffixes.at(1));
     } else if (command == VPackSortMigration) {
-      return waitForFuture(handleVPackSortMigration(suffixes.at(1)));
+      return handleVPackSortMigration(suffixes.at(1));
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command +
@@ -2979,15 +2979,14 @@ RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
   return RestStatus::DONE;
 }
 
-RestAdminClusterHandler::FutureVoid
-RestAdminClusterHandler::handleVPackSortMigration(
+RestStatus RestAdminClusterHandler::handleVPackSortMigration(
     std::string const& subCommand) {
   // First we do the authentication: We only allow superuser access, since
   // this is a critical migration operation:
   if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "only superusers may run vpack index migration");
-    co_return;
+    return RestStatus::DONE;
   }
 
   // First check methods:
@@ -2997,7 +2996,7 @@ RestAdminClusterHandler::handleVPackSortMigration(
          subCommand == VPackSortMigrationMigrate))) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    co_return;
+    return RestStatus::DONE;
   }
 
   // We behave differently on a coordinator and on a single server,
@@ -3017,9 +3016,9 @@ RestAdminClusterHandler::handleVPackSortMigration(
   } else {
     // Coordinators from here:
     if (request()->requestType() == rest::RequestType::GET) {
-      res = co_await handleVPackSortMigrationTest(_vocbase, result);
+      res = handleVPackSortMigrationTest(_vocbase, result);
     } else {  // PUT
-      res = co_await handleVPackSortMigrationAction(_vocbase, result);
+      res = handleVPackSortMigrationAction(_vocbase, result);
     }
   }
   if (res.fail()) {
@@ -3028,5 +3027,5 @@ RestAdminClusterHandler::handleVPackSortMigration(
   } else {
     generateOk(rest::ResponseCode::OK, result.slice());
   }
-  co_return;
+  return RestStatus::DONE;
 }

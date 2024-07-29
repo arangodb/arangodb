@@ -115,7 +115,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   typedef futures::Future<futures::Unit> FutureVoid;
 
-  FutureVoid handleVPackSortMigration(std::string const& subCommand);
+  RestStatus handleVPackSortMigration(std::string const& subCommand);
 
   struct MoveShardContext {
     std::string database;

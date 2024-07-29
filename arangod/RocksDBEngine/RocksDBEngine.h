@@ -37,6 +37,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/VelocyPackHelper.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"

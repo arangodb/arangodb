@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Result.h"
-#include "Basics/async.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -31,9 +30,9 @@ Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
 Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
 
 // On coordinators:
-async<Result> handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
-                                           VPackBuilder& result);
-async<Result> handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
-                                             VPackBuilder& result);
+Result handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
+                                    VPackBuilder& result);
+Result handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
+                                      VPackBuilder& result);
 
 }  // namespace arangodb

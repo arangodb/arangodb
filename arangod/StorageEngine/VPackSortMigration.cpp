@@ -23,6 +23,8 @@
 #include "VPackSortMigration.h"
 #include <rocksdb/utilities/transaction_db.h>
 
+#include <ApplicationFeatures/ApplicationFeature.h>
+#include <ApplicationFeatures/ApplicationServer.h>
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
@@ -40,6 +42,7 @@
 
 #include "Network/NetworkFeature.h"
 #include "Network/Methods.h"
+#include "absl/strings/str_cat.h"
 
 namespace arangodb {
 
@@ -204,8 +207,8 @@ Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
 }
 
 namespace {
-async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
-                             VPackBuilder& result, bool includeAgents) {
+Result fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
+                      VPackBuilder& result, bool includeAgents) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
@@ -230,7 +233,7 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
 
   LOG_TOPIC("22535", DEBUG, Logger::ENGINES)
       << "VPackSortMigration: awaiting all results";
-  auto responses = co_await futures::collectAll(requests);
+  auto responses = futures::collectAll(requests).get();
   LOG_TOPIC("22536", DEBUG, Logger::ENGINES)
       << "VPackSortMigration: all servers responded";
 
@@ -259,20 +262,20 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
     }
   }
 
-  co_return {};
+  return {};
 }
 }  // namespace
 
 // On coordinators:
-async<Result> handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
-                                           VPackBuilder& result) {
+Result handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
+                                    VPackBuilder& result) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   return fanOutRequests(vocbase, fuerte::RestVerb::Get, result, false);
 }
 
-async<Result> handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
-                                             VPackBuilder& result) {
+Result handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
+                                      VPackBuilder& result) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   return fanOutRequests(vocbase, fuerte::RestVerb::Put, result, true);
