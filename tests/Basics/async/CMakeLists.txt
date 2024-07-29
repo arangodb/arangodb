@@ -17,4 +17,5 @@ add_executable(promise_registry_test
 target_link_libraries(promise_registry_test
 	arango_crashhandler_light
 	arango_assertions
+	arango   # for Result
 	GTest::gtest_main)

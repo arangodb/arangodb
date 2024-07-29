@@ -1,3 +1,4 @@
+#include <functional>
 #include "Basics/async/promise_registry.hpp"
 #include "Basics/async/feature.hpp"
 
@@ -22,9 +23,7 @@ struct ThreadRegistryForPromises {
   // all thrads can call this
   // auto erase(PromiseInList* list) -> void;
 
-  template<typename F>
-  requires requires(F f, PromiseInList* promise) { {f(promise)}; }
-  auto for_promise(F& function) -> void {
+  auto for_promise(std::function<void(PromiseInList*)> function) -> void {
     // (2) reads value set by (1)
     for (auto current = head.load(std::memory_order_acquire);
          current != nullptr;

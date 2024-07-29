@@ -1,7 +1,9 @@
 #pragma once
 
+#include "Basics/Result.h"
 #include "promise.hpp"
 #include <atomic>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <source_location>
@@ -57,11 +59,9 @@ struct PromiseRegistryOnThread {
   /**
      Execute a function on each promise in the list.
 
-     This function can called from any thread.
+     This function can be called from any thread.
    */
-  template<typename F>
-  requires requires(F f, PromiseInList* promise) { {f(promise)}; }
-  auto for_promise(F& function) -> void {
+  auto for_promise(std::function<void(PromiseInList*)> function) -> void {
     auto guard = std::lock_guard(mutex);
     // (2) reads value set by (1)
     for (auto current = head.load(std::memory_order_acquire);
