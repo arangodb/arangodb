@@ -30,6 +30,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 
+#include "Aql/AqlValue.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/Enumerate.h"
 #include "Random/RandomGenerator.h"
@@ -326,6 +327,23 @@ static auto compareVPack(VPackHelperRandomTest::Number const& left,
   return std::strong_ordering::equal;
 }
 
+static auto compareAqlValue(VPackHelperRandomTest::Number const& left,
+                            VPackHelperRandomTest::Number const& right)
+    -> std::strong_ordering {
+  velocypack::Options options;
+  arangodb::aql::AqlValue leftValue{left.slice()};
+  arangodb::aql::AqlValue rightValue{right.slice()};
+  auto res =
+      arangodb::aql::AqlValue::Compare(&options, leftValue, rightValue, true);
+  if (res < 0) {
+    return std::strong_ordering::less;
+  }
+  if (res > 0) {
+    return std::strong_ordering::greater;
+  }
+  return std::strong_ordering::equal;
+}
+
 TEST_F(VPackHelperRandomTest, test_vpackcmps) {
   SCOPED_TRACE(fmt::format("seed={}", seed));
   constexpr auto num = 10000;
@@ -353,6 +371,8 @@ TEST_F(VPackHelperRandomTest, test_vpackcmps) {
       for (auto const& [ri, rightGroup] : enumerate(groupedNumbers)) {
         for (auto const& right : rightGroup) {
           EXPECT_EQ(compareVPack(left, right), li <=> ri)
+              << left << " " << right;
+          EXPECT_EQ(compareAqlValue(left, right), li <=> ri)
               << left << " " << right;
         }
       }
