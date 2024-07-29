@@ -1,6 +1,19 @@
 devel
 -----
 
+* Include LANGUAGE file in hotbackups. This is necessary to be able to detect
+  locale changes across a hotbackup create/restore process.
+
+* Fix sorting behaviour of VelocyPack values w.r.t. numbers. This has an
+  impact on indexes indexing VPackValues. Therefore, after an upgrade the 
+  old sorting order will be retained to allow smooth upgrades. Newly started
+  instances with a fresh database directory will only use the new sorting
+  method. There is also a migration API under 
+  GET /_admin/cluster/vpackSortMigration/check and 
+  PUT /_admin/cluster/vpackSortMigration/migrate to check for problematic
+  indexes and - provided there are none - to migrate the instance to 
+  the new sorting order.
+
 * Forcefully kill all running AQL queries on server shutdown.
   This allows for a faster server shutdown even if there are some long-running
   AQL queries ongoing.
