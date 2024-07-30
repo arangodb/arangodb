@@ -179,22 +179,38 @@ function legacySortingTestSuite() {
         db._useDatabase("_system");
       }
 
-      // And check again:
-      r = arango.GET("/_admin/cluster/vpackSortMigration/check");
-
-      // Now check that we found all the indexes and not too many:
-      assertFalse(r.error);
-      assertEqual(200, r.code);
-      assertEqual("object", typeof(r.result));
-      for (let dbserver in r.result) {
-        let oneResult = r.result[dbserver];
-        assertFalse(oneResult.error);
-        assertEqual(200, oneResult.code);
-        assertFalse(oneResult.result.error);
-        assertEqual(0, oneResult.result.errorCode);
-        assertTrue(Array.isArray(oneResult.result.affected));
-        assertEqual(0, oneResult.result.affected.length);
+      // Now check that we find no more bad indexes:
+      // Unfortunately, it is possible that some followers might not yet
+      // have dropped their indexes. Therefore, we conduct the following
+      // test potentially repeatedly and only assume that it is successful
+      // after at most 60s:
+      let tester = function(r) {
+        if (r.error !== false) { return false; }
+        if (r.code !== 200) { return false; }
+        if (typeof(r.result) !== "object") { return false; }
+        for (let dbserver in r.result) {
+          let oneResult = r.result[dbserver];
+          if (oneResult.error !== false) { return false; }
+          if (oneResult.code !== 200) { return false; }
+          if (oneResult.result.error !== false) { return false; }
+          if (oneResult.result.errorCode !== 0) { return false; }
+          if (!Array.isArray(oneResult.result.affected)) { return false; }
+          if (oneResult.result.affected.length !== 0) { return false; }
+          return true;
+        }
+      };
+      let count = 0;
+      while (count < 60) {
+        r = arango.GET("/_admin/cluster/vpackSortMigration/check");
+        let res = tester(r);
+        if (res === true) {
+          return;
+        }
+        console.error("Bad result:", JSON.stringify(r));
+        require("internal").wait(1.0);
+        count += 1;
       }
+      assertTrue(false, "Test not good after 60s.");
     }
   };
 }
