@@ -4239,6 +4239,13 @@ SortingMethod RocksDBEngine::readSortingFile() {
     sortingMethod =
         (value == "LEGACY") ? SortingMethod::Legacy : SortingMethod::Correct;
   } catch (std::exception const& ex) {
+    // To find out if we are an agent, we need to check if the AgencyFeature
+    // is activated! Note that we cannot use ServerState::isAgent here for
+    // the following reason: When we run an upgraded version for the first
+    // time, we almost certainly run with --database.auto-upgrade=true .
+    // But in this case, the AgencyFeature and the ClusterFeature are
+    // disabled! Therefore, the role of the server is not correctly
+    // reported to the ServerState class!
     auto& agencyFeature = server().getFeature<AgencyFeature>();
     // When we see a database directory without SORTING file, we fall back
     // to legacy mode, except for agents. Since agents have never used
