@@ -17,6 +17,9 @@ devel
       FOR v, e, p IN 1..2 OUTBOUND 'vertex/123' edges OPTIONS {useCache:false}
         ...
 
+* Fix comparison of numeric values in AQL to bring it in line with the 
+  now correct VPack numerical sorting.
+
 * Include LANGUAGE file in hotbackups. This is necessary to be able to detect
   locale changes across a hotbackup create/restore process.
 

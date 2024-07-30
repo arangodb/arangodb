@@ -402,17 +402,6 @@ int comp(T a, T b) {
   return a < b ? VelocyPackHelper::cmp_less : VelocyPackHelper::cmp_greater;
 }
 
-// The following function deserves an explanation: We want to compare
-// numerically. If i is negative, we are good, since all unsigned numbers
-// are numerically non-negative. Otherwise, we know that i can be cast
-// statically to uint64_t and we can compare there.
-int compareInt64UInt64(int64_t i, uint64_t u) {
-  if (i < 0) {
-    return VelocyPackHelper::cmp_less;
-  }
-  return comp<uint64_t>(static_cast<uint64_t>(i), u);
-}
-
 // We use the following constants below for case distinctions,
 // we use static asserts to ensure that the `double` implementation
 // is actually IEEE 754 with 64 bits, otherwise our comparison method
@@ -422,6 +411,19 @@ constexpr uint64_t uint64_2_63 = uint64_t{1} << 63;
 
 static_assert(53 == std::numeric_limits<double>::digits);
 static_assert(63 == std::numeric_limits<int64_t>::digits);
+
+}  // namespace
+
+// The following function deserves an explanation: We want to compare
+// numerically. If i is negative, we are good, since all unsigned numbers
+// are numerically non-negative. Otherwise, we know that i can be cast
+// statically to uint64_t and we can compare there.
+int VelocyPackHelper::compareInt64UInt64(int64_t i, uint64_t u) {
+  if (i < 0) {
+    return VelocyPackHelper::cmp_less;
+  }
+  return comp<uint64_t>(static_cast<uint64_t>(i), u);
+}
 
 // This function deserves an explanation: Not all possible values of
 // uint64_t can be represented faithfully as double (IEEE 754 64bit).
@@ -433,7 +435,7 @@ static_assert(63 == std::numeric_limits<int64_t>::digits);
 // the limited precision of double. Then we can evaluate the result.
 // This method has been evaluated using godbolt. Only change if you
 // know what you are doing!
-int compareUInt64Double(uint64_t u, double d) {
+int VelocyPackHelper::compareUInt64Double(uint64_t u, double d) {
   if (std::isnan(d)) [[unlikely]] {
     return VelocyPackHelper::cmp_less;
   }
@@ -472,7 +474,7 @@ int compareUInt64Double(uint64_t u, double d) {
 // negative of an int64_t because of the twos-complement implementation
 // and the one negative value which does not have a positive counterpart.
 // We also have to handle NaN separately.
-int compareInt64Double(int64_t i, double d) {
+int VelocyPackHelper::compareInt64Double(int64_t i, double d) {
   if (std::isnan(d)) [[unlikely]] {
     return VelocyPackHelper::cmp_less;
   }
@@ -484,8 +486,6 @@ int compareInt64Double(int64_t i, double d) {
   }
   return compareUInt64Double(static_cast<uint64_t>(i), d);
 }
-
-}  // namespace
 
 int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
 
