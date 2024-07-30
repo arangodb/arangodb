@@ -28,6 +28,7 @@
 
 #include <velocypack/Buffer.h>
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <shared_mutex>
@@ -65,6 +66,13 @@ struct QueryOptions;
 // cache, using the already computed cache key.
 class QueryPlanCache {
  public:
+  // maximum number of times a cached query plan is used before it is
+  // invalidated and wiped from the cache.
+  // the rationale for wiping entries from the cache after they have been
+  // used several times is that somehow outdated entries get flush
+  // eventually.
+  static constexpr size_t kMaxNumUsages = 256;
+
   struct Key {
     QueryString queryString;
 
@@ -115,6 +123,8 @@ class QueryPlanCache {
     // could be used when analyzing/exposing the contents of the query
     // plan cache later.
     double dateCreated;
+
+    std::atomic<size_t> numUsed;
   };
 
   struct Entry {
@@ -132,7 +142,7 @@ class QueryPlanCache {
 
   // looks up a key in the cache.
   // returns the cache entry if it exists, and nullptr otherwise
-  std::shared_ptr<Value const> lookup(Key const& key) const;
+  std::shared_ptr<Value const> lookup(Key const& key);
 
   // stores an entry in the cache.
   // returns true if the entry was stored successfully, and false if the entry
@@ -167,8 +177,7 @@ class QueryPlanCache {
 
   // mapping from plan cache key to stored plan velocypack.
   // protected by _mutex.
-  std::unordered_map<Key, std::shared_ptr<Value const>, KeyHasher, KeyEqual>
-      _entries;
+  std::unordered_map<Key, std::shared_ptr<Value>, KeyHasher, KeyEqual> _entries;
 
   // total approximate memory usage by _entries. protected by _mutex.
   size_t _memoryUsage;

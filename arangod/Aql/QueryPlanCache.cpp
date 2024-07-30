@@ -123,10 +123,29 @@ QueryPlanCache::~QueryPlanCache() {
 }
 
 std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
-    QueryPlanCache::Key const& key) const {
+    QueryPlanCache::Key const& key) {
   std::shared_lock guard(_mutex);
   if (auto it = _entries.find(key); it != _entries.end()) {
-    return (*it).second;
+    // increase numUsed counter of current entry.
+    // when used more than kMaxNumUsages times, we intentionally wipe the entry
+    // from the cache and return a nullptr. this is done so that somehow
+    // outdated entries get replaced with fresh entries eventually
+    if ((*it).second->numUsed.fetch_add(1, std::memory_order_relaxed) <=
+        kMaxNumUsages) {
+      return (*it).second;
+    }
+    guard.unlock();
+
+    // write-lock and wipe the entry from the cache
+    std::unique_lock wguard(_mutex);
+    // need to lock up the most current version of the key, because
+    // it may have changed between the original lookup and now.
+    if (auto it = _entries.find(key); it != _entries.end()) {
+      auto const& value = (*it).second;
+      TRI_ASSERT(_memoryUsage >= value->memoryUsage());
+      _memoryUsage -= value->memoryUsage();
+      _entries.erase(it);
+    }
   }
   return nullptr;
 }
@@ -136,7 +155,7 @@ bool QueryPlanCache::store(
     std::unordered_map<std::string, DataSourceEntry>&& dataSources,
     std::shared_ptr<velocypack::UInt8Buffer> serializedPlan) {
   auto value = std::make_shared<Value>(
-      std::move(dataSources), std::move(serializedPlan), TRI_microtime());
+      std::move(dataSources), std::move(serializedPlan), TRI_microtime(), 0);
   size_t memoryUsage = key.memoryUsage() + value->memoryUsage();
 
   if (memoryUsage > _maxIndividualEntrySize) {
@@ -153,7 +172,8 @@ bool QueryPlanCache::store(
     _entries.erase(it);
   }
 
-  _entries.emplace(std::move(key), std::move(value));
+  bool inserted = _entries.emplace(std::move(key), std::move(value)).second;
+  TRI_ASSERT(inserted);
   _memoryUsage += memoryUsage;
 
   applySizeConstraints();
@@ -228,6 +248,8 @@ void QueryPlanCache::toVelocyPack(
 
     builder.add("created", VPackValue(TRI_StringTimeStamp(
                                value.dateCreated, Logger::getUseLocalTime())));
+    builder.add("numUsed",
+                VPackValue(value.numUsed.load(std::memory_order_relaxed)));
     builder.add("memoryUsage",
                 VPackValue(it.first.memoryUsage() + it.second->memoryUsage()));
 
