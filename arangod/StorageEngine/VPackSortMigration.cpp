@@ -208,7 +208,7 @@ Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
 
 namespace {
 Result fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
-                      VPackBuilder& result, bool includeAgents) {
+                      VPackBuilder& result) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
@@ -219,6 +219,12 @@ Result fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
   requests.reserve(dbs.size());
 
   network::RequestOptions opts;
+  if (verb == fuerte::RestVerb::Get) {
+    // We want to use a long timeout for the check, since going through
+    // the indexes might take a while. The user is supposed to call this
+    // route asynchronously anyway:
+    opts.timeout = arangodb::network::Timeout(12 * 3600.0);
+  }
   opts.database = vocbase.name();
 
   std::string path =
@@ -271,14 +277,14 @@ Result handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
                                     VPackBuilder& result) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  return fanOutRequests(vocbase, fuerte::RestVerb::Get, result, false);
+  return fanOutRequests(vocbase, fuerte::RestVerb::Get, result);
 }
 
 Result handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
                                       VPackBuilder& result) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  return fanOutRequests(vocbase, fuerte::RestVerb::Put, result, true);
+  return fanOutRequests(vocbase, fuerte::RestVerb::Put, result);
 }
 
 }  // namespace arangodb
