@@ -461,13 +461,18 @@ void V8ClientConnection::disconnectHandle(
   auto it = _connectionCache.find(handle);
   if (it != _connectionCache.end()) {
     auto c = (*it).second;
-    // cache hit. remove the connection from the cache and return it!
-    _connection.swap(oldConnection);
+    // cache hit. remove the connection from the cache!
     _connectionCache.erase(it);
     TRI_V8_RETURN_TRUE();
   } else {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                   "Handle not found in the connection list");
+    auto id = connectionIdentifier(_builder);
+    if (id == handle) {
+      // our main connection is the one to trash.
+      _connection.reset();
+      TRI_V8_RETURN_TRUE();
+    }
+    // we don't know that collection?
+    TRI_V8_RETURN_FALSE();
   }
 }
 
