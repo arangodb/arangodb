@@ -1082,11 +1082,11 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
 }
 
 template<class Executor>
+template<class E>
 auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
     AqlCallStack& stack, SkipResult& skipResult) -> ExecState {
-  if (!executorHasSideEffects<Executor>) {
-    TRI_ASSERT(false);  // TODO - make this a compile time error
-  }
+  static_assert(std::is_same_v<Executor, E> &&
+                executorHasSideEffects<Executor>);
   if (!stack.needToCountSubquery()) {
     // We need to really produce things here
     // fall back to original version as any other executor.
