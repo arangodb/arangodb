@@ -350,10 +350,14 @@ function QueryPlanCacheTestSuite () {
       db._drop(cn2);
       
       res = db._query(query, null, options);
-      assertTrue(res.hasOwnProperty("planCacheKey"));
       assertEqual(10, res.toArray().length);
-      // plan cache keys must be identical
-      assertEqual(key, res.planCacheKey);
+      if (isCluster) {
+        assertFalse(res.hasOwnProperty("planCacheKey"));
+      } else {
+        assertTrue(res.hasOwnProperty("planCacheKey"));
+        // plan cache keys must be identical
+        assertEqual(key, res.planCacheKey);
+      }
     },
     
     testInvalidationAfterCollectionRenaming : function () {
