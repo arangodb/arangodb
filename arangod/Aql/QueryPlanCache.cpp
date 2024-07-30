@@ -30,7 +30,7 @@
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
-#include "Metrics/Gauge.h"
+#include "Metrics/Counter.h"
 #include "Random/RandomGenerator.h"
 #include "VocBase/vocbase.h"
 
