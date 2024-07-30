@@ -18,10 +18,7 @@ import {
   DatabasePermissionSwitch,
   getIsDefaultRow
 } from "./DatabasePermissionSwitch";
-import {
-  useFetchDatabasePermissions,
-  useUsername
-} from "./useFetchDatabasePermissions";
+import { useFetchDatabasePermissions } from "./useFetchDatabasePermissions";
 import {
   SystemDatabaseActionState,
   usePermissionChangeHandlers
@@ -257,7 +254,6 @@ export const UserPermissionsContextProvider = ({
 }) => {
   const { databaseTable, refetchDatabasePermissions } =
     usePermissionTableData();
-  const { username } = useUsername();
   const {
     handleDatabaseCellClick,
     handleCollectionCellClick,
@@ -282,10 +278,6 @@ export const UserPermissionsContextProvider = ({
     getExpandedRowModel: getExpandedRowModel(),
     getRowCanExpand: () => true
   });
-
-  React.useEffect(() => {
-    window.arangoHelper.buildUserSubNav(username, "Permissions");
-  }, [username]);
 
   return (
     <UserPermissionsContext.Provider
