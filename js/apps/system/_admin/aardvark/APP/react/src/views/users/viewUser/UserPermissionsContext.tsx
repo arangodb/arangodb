@@ -110,7 +110,12 @@ const permissionColumns = [
       return (
         <Flex alignItems="center">
           <Text>Administrate</Text>
-          <InfoTooltip label="Allows creating/dropping of collections and setting user permissions in the database." />
+          <InfoTooltip
+            boxProps={{
+              color: "gray.700"
+            }}
+            label="Allows creating/dropping of collections and setting user permissions in the database."
+          />
         </Flex>
       );
     },
@@ -130,7 +135,12 @@ const permissionColumns = [
       return (
         <Flex alignItems="center">
           <Text>Access</Text>
-          <InfoTooltip label="Allows access to the database. User cannot create or drop collections." />
+          <InfoTooltip
+            boxProps={{
+              color: "gray.700"
+            }}
+            label="Allows access to the database. User cannot create or drop collections."
+          />
         </Flex>
       );
     },
@@ -150,7 +160,12 @@ const permissionColumns = [
       return (
         <Flex alignItems="center">
           <Text>No Access</Text>
-          <InfoTooltip label="User has no access to the database." />
+          <InfoTooltip
+            boxProps={{
+              color: "gray.700"
+            }}
+            label="User has no access to the database."
+          />
         </Flex>
       );
     },
@@ -172,7 +187,12 @@ const permissionColumns = [
         return (
           <Flex alignItems="center">
             <Text>Use Default</Text>
-            <InfoTooltip label="Access level is unspecified. Database default (*) will be used." />
+            <InfoTooltip
+              boxProps={{
+                color: "gray.700"
+              }}
+              label="Access level is unspecified. Database default (*) will be used."
+            />
           </Flex>
         );
       },
@@ -230,7 +250,12 @@ export const TABLE_COLUMNS = [
         return (
           <Flex padding="2">
             <Tag>Default</Tag>
-            <InfoTooltip label="Default access level for databases, if authorization level is not specified." />
+            <InfoTooltip
+              boxProps={{
+                color: "gray.700"
+              }}
+              label="Default access level for databases, if authorization level is not specified."
+            />
           </Flex>
         );
       }
