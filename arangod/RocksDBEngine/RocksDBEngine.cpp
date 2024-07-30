@@ -3890,6 +3890,16 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
       LOG_TOPIC("9cbfd", INFO, Logger::ENGINES)
           << "waiting for " << numRunning << " compaction job(s) to finish...";
     }
+    // Maybe a flush can help?
+    if (iterations == 100) {
+      Result res =
+          flushWal(false /* waitForSync */, true /* flushColumnFamilies */);
+      if (res.fail()) {
+        LOG_TOPIC("25161", WARN, Logger::ENGINES)
+            << "Error on flushWal during waitForCompactionJobsToFinish: "
+            << res.errorMessage();
+      }
+    }
     // unfortunately there is not much we can do except waiting for
     // RocksDB's compaction job(s) to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
