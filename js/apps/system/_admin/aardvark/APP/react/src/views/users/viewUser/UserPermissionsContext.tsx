@@ -285,7 +285,7 @@ export const UserPermissionsContextProvider = ({
 
   React.useEffect(() => {
     window.arangoHelper.buildUserSubNav(username, "Permissions");
-  });
+  }, [username]);
 
   return (
     <UserPermissionsContext.Provider
