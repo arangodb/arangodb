@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed MDS-1225: reloading of AQL user-defined functions inside AQL queries 
+  could cause trouble if the `_aqlfunctions` collection is located on different
+  DB server than the leader shards of other collections used in the same query.
+
 * Fix comparison of numeric values in AQL to bring it in line with the 
   now correct VPack numerical sorting.
 
