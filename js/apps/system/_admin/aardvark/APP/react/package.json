@@ -58,7 +58,7 @@
     "react-graph-vis": "^1.0.7",
     "react-leaflet": "^4.2.1",
     "react-router-dom": "^5.3.4",
-    "react-select": "^5.7.2",
+    "react-select": "^5.8.0",
     "react-split-grid": "^1.0.4",
     "recharts": "^2.10.3",
     "sigma": "^1.2.2",
