@@ -37,6 +37,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Transaction/Helpers.h"
+#include "VocBase/vocbase.h"
 
 #include <utility>
 #include <vector>

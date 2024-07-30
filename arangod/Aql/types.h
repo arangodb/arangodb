@@ -26,8 +26,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/RegisterId.h"
 #include "Aql/RegIdFlatSet.h"
-#include "Basics/debugging.h"
-#include "Cluster/ClusterTypes.h"
+#include "Basics/RebootId.h"
 #include "Containers/HashSetFwd.h"
 
 #include <cstdint>
@@ -37,6 +36,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+#include <absl/container/flat_hash_map.h>
 
 namespace arangodb {
 

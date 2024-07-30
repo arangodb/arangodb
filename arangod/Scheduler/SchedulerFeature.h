@@ -24,12 +24,13 @@
 #pragma once
 
 #include "RestServer/arangod.h"
-#include "Scheduler/Scheduler.h"
 
 #include <functional>
 #include <memory>
 
 namespace arangodb {
+
+class Scheduler;
 
 class SchedulerFeature final : public ArangodFeature {
  public:

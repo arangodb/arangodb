@@ -31,6 +31,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;

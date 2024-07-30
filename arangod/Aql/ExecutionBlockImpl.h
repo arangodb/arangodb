@@ -29,7 +29,6 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallSet.h"
 #include "Aql/AqlCallStack.h"
-#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/Stats.h"
@@ -56,6 +55,7 @@ class IdExecutor;
 
 struct AqlCall;
 class AqlItemBlock;
+class AqlItemBlockInputRange;
 class ExecutionEngine;
 class ExecutionNode;
 class InputAqlItemRow;
