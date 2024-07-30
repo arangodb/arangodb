@@ -53,9 +53,6 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   if constexpr (ArangodServer::contains<FileDescriptorsFeature>()) {
     startsAfter<FileDescriptorsFeature, ArangodServer>();
   }
-  if constexpr (ArangodServer::contains<WindowsServiceFeature>()) {
-    startsAfter<WindowsServiceFeature, ArangodServer>();
-  }
   if constexpr (ArangodServer::contains<AuditFeature>()) {
     startsAfter<AuditFeature, ArangodServer>();
   }

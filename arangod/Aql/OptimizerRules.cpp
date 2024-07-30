@@ -203,8 +203,7 @@ void replaceGatherNodeVariables(
 
     if (it2 != replacements.end()) {
       // match with our replacement table
-      it.var = (*it2).second;
-      it.attributePath.clear();
+      it.resetTo((*it2).second);
     } else {
       // no match. now check all our replacements and compare how
       // their sources are actually calculated (e.g. #2 may mean
@@ -222,8 +221,7 @@ void replaceGatherNodeVariables(
         expr->stringify(buffer);
         if (cmp == buffer) {
           // finally a match!
-          it.var = it3.second;
-          it.attributePath.clear();
+          it.resetTo(it3.second);
           break;
         }
       }
@@ -1976,7 +1974,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : collectNode->groupVariables()) {
-          sortElements.emplace_back(v.outVar, true);
+          sortElements.push_back(SortElement::create(v.outVar, true));
         }
 
         auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
@@ -2011,7 +2009,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
-          sortElements.emplace_back(v.outVar, true);
+          sortElements.push_back(SortElement::create(v.outVar, true));
         }
 
         auto sortNode = newPlan->createNode<SortNode>(
@@ -2051,7 +2049,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     if (!groupVariables.empty()) {
       SortElementVector sortElements;
       for (auto const& v : groupVariables) {
-        sortElements.emplace_back(v.inVar, true);
+        sortElements.push_back(SortElement::create(v.inVar, true));
       }
 
       auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
@@ -2662,15 +2660,13 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
       // ...if it's used exactly once later by another calculation,
       // it's a temporary variable that we can fuse with the other
       // calculation easily
+      CalculationNode* calcNode = ExecutionNode::castTo<CalculationNode*>(n);
 
-      if (!ExecutionNode::castTo<CalculationNode*>(n)
-               ->expression()
-               ->isDeterministic()) {
+      if (!calcNode->expression()->isDeterministic()) {
         continue;
       }
 
-      AstNode const* rootNode =
-          ExecutionNode::castTo<CalculationNode*>(n)->expression()->node();
+      AstNode const* rootNode = calcNode->expression()->node();
 
       if (rootNode->type == NODE_TYPE_REFERENCE) {
         // if the LET is a simple reference to another variable, e.g. LET a = b
@@ -2705,6 +2701,69 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
           toUnlink.emplace(n);
           continue;
         }
+      } else if (rootNode->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // if the LET is a simple attribute access, e.g. LET a = b.c
+        // then replace all references to a with b.c in all following nodes.
+        // note: we can only safely replace variables inside CalculationNodes,
+        // but no other node types
+        bool eligible = true;
+        auto current = n->getFirstParent();
+
+        VarSet vars;
+        std::vector<CalculationNode*> found;
+
+        // check first if we have a COLLECT with an INTO later in the query
+        // in this case we must not perform the replacements
+        while (current != nullptr) {
+          vars.clear();
+          current->getVariablesUsedHere(vars);
+          if (current->getType() != EN::CALCULATION) {
+            // variable used by other node type than CalculationNode.
+            // we cannot proceed.
+            if (vars.contains(outVariable)) {
+              eligible = false;
+              break;
+            }
+          } else {
+            // variable used by CalculationNode.
+            if (vars.contains(outVariable)) {
+              // now remember which CalculationNodes contain references to
+              // our variable.
+              found.emplace_back(
+                  ExecutionNode::castTo<CalculationNode*>(current));
+            }
+          }
+
+          // check if we have a COLLECT with into
+          if (current->getType() == EN::COLLECT) {
+            CollectNode const* collectNode =
+                ExecutionNode::castTo<CollectNode const*>(current);
+            if (collectNode->hasOutVariable() &&
+                !collectNode->hasExpressionVariable()) {
+              eligible = false;
+              break;
+            }
+          }
+          current = current->getFirstParent();
+        }
+
+        if (eligible) {
+          auto visitor = [&](AstNode* node) {
+            if (node->type == NODE_TYPE_REFERENCE &&
+                static_cast<Variable const*>(node->getData()) ==
+                    calcNode->outVariable()) {
+              return const_cast<AstNode*>(rootNode);
+            }
+            return node;
+          };
+          for (auto const& it : found) {
+            AstNode* simplified = plan->getAst()->traverseAndModify(
+                it->expression()->nodeForModification(), visitor);
+            it->expression()->replaceNode(simplified);
+          }
+          toUnlink.emplace(n);
+          continue;
+        }
       }
 
       VarSet vars;
@@ -2715,7 +2774,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
 
       while (current != nullptr) {
         current->getVariablesUsedHere(vars);
-        if (vars.find(outVariable) != vars.end()) {
+        if (vars.contains(outVariable)) {
           if (current->getType() == EN::COLLECT) {
             if (ExecutionNode::castTo<CollectNode const*>(current)
                     ->hasOutVariable()) {
@@ -3722,7 +3781,8 @@ auto insertGatherNode(
       // result, or if we use the index for filtering only
       if (first->isSorted() && idxNode->needsGatherNodeSort()) {
         for (auto const& path : first->fieldNames()) {
-          elements.emplace_back(sortVariable, isSortAscending, path);
+          elements.push_back(
+              SortElement::createWithPath(sortVariable, isSortAscending, path));
         }
         for (auto const& it : allIndexes) {
           if (first != it) {
@@ -7856,7 +7916,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
         TRI_ASSERT(!expr->willUseV8());
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
-        if (found.find(outVariable) != found.end()) {
+        if (found.contains(outVariable)) {
           // check if the introduced variable refers to another temporary
           // variable that is not valid yet in the EnumerateCollection/Index
           // node, which would prevent moving the calculation and filter
@@ -7865,9 +7925,8 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
           //     LET a = RAND()
           //     FILTER doc.value == 2 && doc.value > a
           bool eligible = std::none_of(
-              introduced.begin(), introduced.end(), [&](Variable const* temp) {
-                return (found.find(temp) != found.end());
-              });
+              introduced.begin(), introduced.end(),
+              [&](Variable const* temp) { return found.contains(temp); });
 
           if (eligible) {
             calculations.emplace(calculationNode->outVariable(),

@@ -51,12 +51,13 @@ using namespace arangodb::aql;
 constexpr double kFastPathLockTimeout = 2.0;
 
 ClusterQuery::ClusterQuery(QueryId id,
+                           std::shared_ptr<velocypack::Builder> bindParameters,
                            std::shared_ptr<transaction::Context> ctx,
                            QueryOptions options)
     : Query{id,
             ctx,
             {},
-            /*bindParams*/ nullptr,
+            bindParameters,
             std::move(options),
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
@@ -73,13 +74,16 @@ ClusterQuery::~ClusterQuery() {
 /// @brief factory method for creating a cluster query. this must be used to
 /// ensure that ClusterQuery objects are always created using shared_ptrs.
 std::shared_ptr<ClusterQuery> ClusterQuery::create(
-    QueryId id, std::shared_ptr<transaction::Context> ctx,
-    QueryOptions options) {
+    QueryId id, std::shared_ptr<velocypack::Builder> bindParameters,
+    std::shared_ptr<transaction::Context> ctx, QueryOptions options) {
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : ClusterQuery {
-    MakeSharedQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
+    MakeSharedQuery(QueryId id,
+                    std::shared_ptr<velocypack::Builder> bindParameters,
+                    std::shared_ptr<transaction::Context> ctx,
                     QueryOptions options)
-        : ClusterQuery{id, std::move(ctx), std::move(options)} {}
+        : ClusterQuery{id, std::move(bindParameters), std::move(ctx),
+                       std::move(options)} {}
 
     ~MakeSharedQuery() final {
       // Destroy this query, otherwise it's still
@@ -89,8 +93,8 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
     }
   };
   TRI_ASSERT(ctx != nullptr);
-  return std::make_shared<MakeSharedQuery>(id, std::move(ctx),
-                                           std::move(options));
+  return std::make_shared<MakeSharedQuery>(id, std::move(bindParameters),
+                                           std::move(ctx), std::move(options));
 }
 
 void ClusterQuery::buildTraverserEngines(velocypack::Slice traverserSlice,

@@ -58,6 +58,7 @@
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
+#include "Containers/Enumerate.h"
 #include "Containers/NodeHashMap.h"
 #include "Indexes/Index.h"
 #include "Inspection/VPack.h"
@@ -91,19 +92,15 @@
 #include "VocBase/Methods/Indexes.h"
 
 #include <absl/strings/str_cat.h>
-
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include <chrono>
-
-#include "Containers/Enumerate.h"
 
 namespace arangodb {
 /// @brief internal helper struct for counting the number of shards etc.
@@ -1769,7 +1766,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         // be old.
         if (systemDB->replicationVersion() == replication::Version::ONE) {
           // find _graphs collection in Plan
-          if (auto it2 = it->second->find(StaticStrings::GraphCollection);
+          if (auto it2 = it->second->find(StaticStrings::GraphsCollection);
               it2 != it->second->end()) {
             // found!
             if (it2->second.collection->distributeShardsLike().empty()) {

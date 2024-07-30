@@ -21,27 +21,31 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "LogTopic.h"
+
+#include <array>
 #include <cstdint>
 #include <map>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
-#include "LogTopic.h"
+#include <absl/strings/str_cat.h>
 
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "Logger/Topics.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
 #endif
 
-using namespace arangodb;
+namespace arangodb {
+
+static_assert(logger::kNumTopics < LogTopic::GLOBAL_LOG_TOPIC);
 
 namespace {
-
-std::atomic<uint16_t> NEXT_TOPIC_ID(0);
 
 class Topics {
  public:
@@ -53,10 +57,8 @@ class Topics {
 
   template<typename Visitor>
   bool visit(Visitor const& visitor) const {
-    std::lock_guard guard{_namesLock};
-
-    for (auto const& topic : _names) {
-      if (!visitor(topic.first, topic.second)) {
+    for (auto const& [name, idx] : _nameToIndex) {
+      if (!visitor(name, _topics[idx])) {
         return false;
       }
     }
@@ -64,18 +66,11 @@ class Topics {
     return true;
   }
 
-  bool setLogLevel(std::string const& name, LogLevel level) {
-    std::lock_guard guard{_namesLock};
+  bool setLogLevel(TopicName name, LogLevel level) {
+    auto* topic = find(name);
 
-    auto const it = _names.find(name);
-
-    if (it == _names.end()) {
-      return false;
-    }
-
-    auto* topic = it->second;
-
-    if (!topic) {
+    if (topic == nullptr) {
+      TRI_ASSERT(false) << "topic '" << name << "' not initialized";
       return false;
     }
 
@@ -83,99 +78,99 @@ class Topics {
     return true;
   }
 
-  LogTopic* find(std::string const& name) const noexcept {
-    std::lock_guard guard{_namesLock};
-    auto const it = _names.find(name);
-    return it == _names.end() ? nullptr : it->second;
+  LogTopic* get(size_t idx) const noexcept { return _topics[idx]; }
+
+  LogTopic* find(TopicName name) const noexcept {
+    auto const it = _nameToIndex.find(name);
+    return it == _nameToIndex.end() ? nullptr : _topics[it->second];
   }
 
-  void emplace(std::string const& name, LogTopic* topic) noexcept {
-    try {
-      std::lock_guard guard{_namesLock};
-      _names[name] = topic;
-    } catch (...) {
-    }
+  void emplace(TopicName name, LogTopic* topic) noexcept {
+    auto const it = _nameToIndex.find(name);
+    ADB_PROD_ASSERT(it != _nameToIndex.end() && _topics[it->second] == nullptr);
+    _topics[it->second] = topic;
   }
 
  private:
-  mutable std::mutex _namesLock;
-  std::map<std::string, LogTopic*> _names;
+  Topics() {
+    logger::TopicList::foreach ([this]<typename Topic>() {
+      _nameToIndex[Topic::name] = logger::TopicList::index<Topic>();
+    });
+  }
+  std::array<LogTopic*, logger::kNumTopics> _topics{};
+  std::map<TopicName, size_t> _nameToIndex;
 
-  Topics() = default;
   Topics(const Topics&) = delete;
   Topics& operator=(const Topics&) = delete;
 };  // Topics
 
 }  // namespace
 
-// pseudo-topic to address all log topics
-std::string const LogTopic::ALL("all");
-
-LogTopic Logger::AGENCY("agency", LogLevel::INFO);
-LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
-LogTopic Logger::AGENCYSTORE("agencystore", LogLevel::WARN);
-LogTopic Logger::AQL("aql", LogLevel::INFO);
-LogTopic Logger::AUTHENTICATION("authentication", LogLevel::WARN);
-LogTopic Logger::AUTHORIZATION("authorization");
-LogTopic Logger::BACKUP("backup");
-LogTopic Logger::BENCH("bench");
-LogTopic Logger::CACHE("cache", LogLevel::INFO);
-LogTopic Logger::CLUSTER("cluster", LogLevel::INFO);
-LogTopic Logger::COMMUNICATION("communication", LogLevel::INFO);
-LogTopic Logger::CONFIG("config");
-LogTopic Logger::CRASH("crash");
-LogTopic Logger::DEVEL("development", LogLevel::FATAL);
-LogTopic Logger::DUMP("dump", LogLevel::INFO);
-LogTopic Logger::ENGINES("engines", LogLevel::INFO);
-LogTopic Logger::FIXME("general", LogLevel::INFO);
-LogTopic Logger::FLUSH("flush", LogLevel::INFO);
-LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
-LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
-LogTopic Logger::HTTPCLIENT("httpclient", LogLevel::WARN);
-LogTopic Logger::LICENSE("license", LogLevel::INFO);
-LogTopic Logger::MAINTENANCE("maintenance", LogLevel::INFO);
-LogTopic Logger::MEMORY("memory", LogLevel::INFO);
-LogTopic Logger::MMAP("mmap");
-LogTopic Logger::QUERIES("queries", LogLevel::INFO);
-LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
-LogTopic Logger::REPLICATION2("replication2", LogLevel::WARN);
-LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::WARN);
-LogTopic Logger::REPLICATED_WAL("rep-wal", LogLevel::WARN);
-LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
-LogTopic Logger::RESTORE("restore", LogLevel::INFO);
-LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
-LogTopic Logger::SECURITY("security", LogLevel::INFO);
-LogTopic Logger::SSL("ssl", LogLevel::WARN);
-LogTopic Logger::STARTUP("startup", LogLevel::INFO);
-LogTopic Logger::STATISTICS("statistics", LogLevel::INFO);
-LogTopic Logger::SUPERVISION("supervision", LogLevel::INFO);
-LogTopic Logger::SYSCALL("syscall", LogLevel::INFO);
-LogTopic Logger::THREADS("threads", LogLevel::WARN);
-LogTopic Logger::TRANSACTIONS("trx", LogLevel::WARN);
-LogTopic Logger::TTL("ttl", LogLevel::WARN);
-LogTopic Logger::VALIDATION("validation", LogLevel::INFO);
-LogTopic Logger::V8("v8", LogLevel::WARN);
-LogTopic Logger::VIEWS("views", LogLevel::FATAL);
-LogTopic Logger::DEPRECATION("deprecation", LogLevel::INFO);
+LogTopic Logger::AGENCY(logger::topic::Agency{});
+LogTopic Logger::AGENCYCOMM(logger::topic::Agencycomm{});
+LogTopic Logger::AGENCYSTORE(logger::topic::Agencystore{});
+LogTopic Logger::AQL(logger::topic::Aql{});
+LogTopic Logger::AUTHENTICATION(logger::topic::Authentication{});
+LogTopic Logger::AUTHORIZATION(logger::topic::Authorization{});
+LogTopic Logger::BACKUP(logger::topic::Backup{});
+LogTopic Logger::BENCH(logger::topic::Bench{});
+LogTopic Logger::CACHE(logger::topic::Cache{});
+LogTopic Logger::CLUSTER(logger::topic::Cluster{});
+LogTopic Logger::COMMUNICATION(logger::topic::Communication{});
+LogTopic Logger::CONFIG(logger::topic::Config{});
+LogTopic Logger::CRASH(logger::topic::Crash{});
+LogTopic Logger::DEVEL(logger::topic::Development{});
+LogTopic Logger::DUMP(logger::topic::Dump{});
+LogTopic Logger::ENGINES(logger::topic::Engines{});
+LogTopic Logger::FIXME(logger::topic::Fixme{});
+LogTopic Logger::FLUSH(logger::topic::Flush{});
+LogTopic Logger::GRAPHS(logger::topic::Graphs{});
+LogTopic Logger::HEARTBEAT(logger::topic::Heartbeat{});
+LogTopic Logger::HTTPCLIENT(logger::topic::Httpclient{});
+LogTopic Logger::LICENSE(logger::topic::License{});
+LogTopic Logger::MAINTENANCE(logger::topic::Maintenance{});
+LogTopic Logger::MEMORY(logger::topic::Memory{});
+LogTopic Logger::QUERIES(logger::topic::Queries{});
+LogTopic Logger::REPLICATION(logger::topic::Replication{});
+LogTopic Logger::REPLICATION2(logger::topic::Replication2{});
+LogTopic Logger::REPLICATED_STATE(logger::topic::ReplicatedState{});
+LogTopic Logger::REPLICATED_WAL(logger::topic::ReplicatedWal{});
+LogTopic Logger::REQUESTS(logger::topic::Requests{});
+LogTopic Logger::RESTORE(logger::topic::Restore{});
+LogTopic Logger::ROCKSDB(logger::topic::Rocksdb{});
+LogTopic Logger::SECURITY(logger::topic::Security{});
+LogTopic Logger::SSL(logger::topic::Ssl{});
+LogTopic Logger::STARTUP(logger::topic::Startup{});
+LogTopic Logger::STATISTICS(logger::topic::Statistics{});
+LogTopic Logger::SUPERVISION(logger::topic::Supervision{});
+LogTopic Logger::SYSCALL(logger::topic::Syscall{});
+LogTopic Logger::THREADS(logger::topic::Threads{});
+LogTopic Logger::TRANSACTIONS(logger::topic::Trx{});
+LogTopic Logger::TTL(logger::topic::Ttl{});
+LogTopic Logger::VALIDATION(logger::topic::Validation{});
+LogTopic Logger::V8(logger::topic::V8{});
+LogTopic Logger::VIEWS(logger::topic::Views{});
+LogTopic Logger::DEPRECATION(logger::topic::Deprecation{});
 
 #ifdef USE_ENTERPRISE
-LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication",
-                                            LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization",
-                                           LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_DATABASE("audit-database", LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_COLLECTION("audit-collection", LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_VIEW("audit-view", LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_DOCUMENT("audit-document", LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_HOTBACKUP("audit-hotbackup", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_AUTHENTICATION(logger::audit::Authentication{});
+LogTopic AuditFeature::AUDIT_AUTHORIZATION(logger::audit::Authorization{});
+LogTopic AuditFeature::AUDIT_DATABASE(logger::audit::Database{});
+LogTopic AuditFeature::AUDIT_COLLECTION(logger::audit::Collection{});
+LogTopic AuditFeature::AUDIT_VIEW(logger::audit::View{});
+LogTopic AuditFeature::AUDIT_DOCUMENT(logger::audit::Document{});
+LogTopic AuditFeature::AUDIT_SERVICE(logger::audit::Service{});
+LogTopic AuditFeature::AUDIT_HOTBACKUP(logger::audit::HotBackup{});
 #endif
 
-std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
-  std::vector<std::pair<std::string, LogLevel>> levels;
+std::vector<std::pair<TopicName, LogLevel>> LogTopic::logLevelTopics() {
+  std::vector<std::pair<TopicName, LogLevel>> levels;
+  levels.reserve(logger::kNumTopics);
 
-  auto visitor = [&levels](std::string const& name, LogTopic const* topic) {
-    levels.emplace_back(name, topic->level());
+  auto visitor = [&levels](TopicName name, LogTopic const* topic) {
+    if (topic) {
+      levels.emplace_back(name, topic->level());
+    }
     return true;
   };
 
@@ -184,40 +179,32 @@ std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
   return levels;
 }
 
-void LogTopic::setLogLevel(std::string const& name, LogLevel level) {
+void LogTopic::setLogLevel(TopicName name, LogLevel level) {
   if (!Topics::instance().setLogLevel(name, level)) {
     LOG_TOPIC("5363d", WARN, arangodb::Logger::FIXME)
         << "strange topic '" << name << "'";
   }
 }
 
-LogTopic* LogTopic::lookup(std::string const& name) {
+LogTopic* LogTopic::lookup(TopicName name) {
   return Topics::instance().find(name);
 }
 
-std::string LogTopic::lookup(size_t topicId) {
-  std::string name("UNKNOWN");
-
-  auto visitor = [&name, topicId](std::string const&, LogTopic const* topic) {
-    if (topic->_id == topicId) {
-      name = topic->_name;
-      return false;  // break the loop
-    }
-    return true;
-  };
-
-  Topics::instance().visit(visitor);
-
-  return name;
+TopicName LogTopic::lookup(size_t topicId) {
+  auto* topic = Topics::instance().get(topicId);
+  return topic->name();
 }
 
-LogTopic::LogTopic(std::string const& name)
-    : LogTopic(name, LogLevel::DEFAULT) {}
+template<typename Topic>
+LogTopic::LogTopic(Topic)
+    : LogTopic(Topic::name, Topic::defaultLevel,
+               logger::TopicList::index<Topic>()) {
+  static_assert(logger::TopicList::contains<Topic>(),
+                "Topic not found in TopicList");
+}
 
-LogTopic::LogTopic(std::string const& name, LogLevel level)
-    : _id(NEXT_TOPIC_ID.fetch_add(1, std::memory_order_seq_cst)),
-      _name(name),
-      _level(level) {
+LogTopic::LogTopic(TopicName name, LogLevel level, size_t id)
+    : _id(id), _name(name), _level(level) {
   // "all" is only a pseudo-topic.
   TRI_ASSERT(name != "all");
 
@@ -226,9 +213,16 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
     // allowed to log messages without a topic. From 3.2 onwards,
     // logging is always topic-based, and all previously topicless
     // log invocations now use the log topic "fixme".
-    _displayName = std::string("{") + name + "} ";
+    _displayName = absl::StrCat("{", name, "} ");
   }
 
   Topics::instance().emplace(name, this);
-  TRI_ASSERT(_id < MAX_LOG_TOPICS);
+  TRI_ASSERT(_id < GLOBAL_LOG_TOPIC);
 }
+
+// those two log topics are created in other files, so we have to explicitly
+// instantiate them here
+template LogTopic::LogTopic(logger::topic::ArangoSearch);
+template LogTopic::LogTopic(logger::topic::LibIResearch);
+
+}  // namespace arangodb

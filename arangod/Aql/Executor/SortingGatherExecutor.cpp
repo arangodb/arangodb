@@ -41,7 +41,7 @@ namespace {
 /// @brief OurLessThan: comparison method for elements of SortingGatherBlock
 class OurLessThan {
  public:
-  OurLessThan(arangodb::aql::QueryContext& query,
+  OurLessThan(aql::QueryContext& query,
               std::vector<SortRegister>& sortRegisters) noexcept
       : _resolver(query.resolver()),
         _vpackOptions(query.vpackOptions()),
@@ -93,8 +93,8 @@ class OurLessThan {
   }
 
  private:
-  arangodb::CollectionNameResolver const& _resolver;
-  arangodb::velocypack::Options const& _vpackOptions;
+  CollectionNameResolver const& _resolver;
+  velocypack::Options const& _vpackOptions;
   std::vector<SortRegister>& _sortRegisters;
 };  // OurLessThan
 
@@ -105,7 +105,7 @@ class OurLessThan {
 class HeapSorting final : public SortingGatherExecutor::SortingStrategy,
                           private OurLessThan {
  public:
-  HeapSorting(arangodb::aql::QueryContext& query,
+  HeapSorting(QueryContext& query,
               std::vector<SortRegister>& sortRegisters) noexcept
       : OurLessThan(query, sortRegisters) {}
 
@@ -154,7 +154,7 @@ class HeapSorting final : public SortingGatherExecutor::SortingStrategy,
 class MinElementSorting final : public SortingGatherExecutor::SortingStrategy,
                                 private OurLessThan {
  public:
-  MinElementSorting(arangodb::aql::QueryContext& query,
+  MinElementSorting(QueryContext& query,
                     std::vector<SortRegister>& sortRegisters) noexcept
       : OurLessThan(query, sortRegisters), _blockPos(nullptr) {}
 
@@ -187,9 +187,8 @@ SortingGatherExecutor::ValueType::ValueType(size_t index, InputAqlItemRow prow,
     : dependencyIndex{index}, row{std::move(prow)}, state{pstate} {}
 
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(
-    std::vector<SortRegister>&& sortRegister,
-    arangodb::aql::QueryContext& query, GatherNode::SortMode sortMode,
-    size_t limit, GatherNode::Parallelism p)
+    std::vector<SortRegister>&& sortRegister, QueryContext& query,
+    GatherNode::SortMode sortMode, size_t limit, GatherNode::Parallelism p)
     : _sortRegister(std::move(sortRegister)),
       _query(query),
       _sortMode(sortMode),
@@ -197,12 +196,12 @@ SortingGatherExecutorInfos::SortingGatherExecutorInfos(
       _limit(limit) {}
 
 SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _numberDependencies(0),
+    : _fetchParallel(infos.parallelism() == GatherNode::Parallelism::Parallel),
+      _numberDependencies(0),
       _inputRows(),
       _limit(infos.limit()),
       _rowsReturned(0),
-      _strategy(nullptr),
-      _fetchParallel(infos.parallelism() == GatherNode::Parallelism::Parallel) {
+      _strategy(nullptr) {
   switch (infos.sortMode()) {
     case GatherNode::SortMode::MinElement:
       _strategy = std::make_unique<MinElementSorting>(infos.query(),

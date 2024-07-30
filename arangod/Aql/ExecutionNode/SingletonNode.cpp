@@ -33,12 +33,24 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+SingletonNode::SingletonNode(ExecutionPlan* plan, ExecutionNodeId id,
+                             BindParameterVariableMapping bindParameterOutVars)
+    : ExecutionNode(plan, id),
+      _bindParameterOutVars(std::move(bindParameterOutVars)) {}
+
 SingletonNode::SingletonNode(ExecutionPlan* plan, ExecutionNodeId id)
     : ExecutionNode(plan, id) {}
 
 SingletonNode::SingletonNode(ExecutionPlan* plan,
                              arangodb::velocypack::Slice base)
-    : ExecutionNode(plan, base) {}
+    : ExecutionNode(plan, base) {
+  if (auto bindVars = base.get("bindParameterVariables"); !bindVars.isNone()) {
+    for (auto [key, value] : VPackObjectIterator(bindVars, true)) {
+      _bindParameterOutVars[key.copyString()] =
+          Variable::varFromVPack(plan->getAst(), bindVars, key.stringView());
+    }
+  }
+}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
@@ -56,13 +68,21 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 /// @brief clone ExecutionNode recursively
 ExecutionNode* SingletonNode::clone(ExecutionPlan* plan,
                                     bool withDependencies) const {
-  return cloneHelper(std::make_unique<SingletonNode>(plan, _id),
-                     withDependencies);
+  return cloneHelper(
+      std::make_unique<SingletonNode>(plan, _id, _bindParameterOutVars),
+      withDependencies);
 }
 
 /// @brief doToVelocyPack, for SingletonNode
-void SingletonNode::doToVelocyPack(velocypack::Builder&, unsigned) const {
-  // nothing to do here!
+void SingletonNode::doToVelocyPack(velocypack::Builder& builder,
+                                   unsigned) const {
+  builder.add(VPackValue("bindParameterVariables"));
+  builder.openObject();
+  for (auto const& [name, var] : _bindParameterOutVars) {
+    builder.add(VPackValue(name));
+    var->toVelocyPack(builder);
+  }
+  builder.close();
 }
 
 /// @brief the cost of a singleton is 1, it produces one item only
@@ -83,3 +103,12 @@ AsyncPrefetchEligibility SingletonNode::canUseAsyncPrefetching()
 ExecutionNode::NodeType SingletonNode::getType() const { return SINGLETON; }
 
 size_t SingletonNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
+std::vector<const Variable*> SingletonNode::getVariablesSetHere() const {
+  std::vector<const Variable*> result;
+  result.reserve(_bindParameterOutVars.size());
+  std::transform(_bindParameterOutVars.begin(), _bindParameterOutVars.end(),
+                 std::back_inserter(result),
+                 [](auto const& pair) { return pair.second; });
+  return result;
+}
