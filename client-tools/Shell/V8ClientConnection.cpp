@@ -434,14 +434,18 @@ std::string V8ClientConnection::getHandle() {
 
 void V8ClientConnection::connectHandle(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
-    std::string& handle) {
+    std::string const& handle) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
   if (it != _connectionCache.end()) {
     auto c = (*it).second;
     // cache hit. remove the connection from the cache and return it!
+    std::shared_ptr<fu::Connection> oldConnection;
+    std::string oldConnectionId = connectionIdentifier(_builder);
+    _connection.swap(oldConnection);
     _connectionCache.erase(it);
+    _connectionCache.emplace(oldConnectionId, oldConnection);
     TRI_V8_RETURN_TRUE();
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
