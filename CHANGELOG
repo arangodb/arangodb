@@ -124,6 +124,9 @@ devel
 //   cached plan is used. potentially it is an option to run a limited number
 //   of optimizer rules on the plan that was retrieved from the cache.
 
+* Fix comparison of numeric values in AQL to bring it in line with the 
+  now correct VPack numerical sorting.
+
 * Include LANGUAGE file in hotbackups. This is necessary to be able to detect
   locale changes across a hotbackup create/restore process.
 

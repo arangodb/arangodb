@@ -95,7 +95,7 @@ futures::Future<OperationResult> GraphOperations::changeEdgeDefinitionForGraph(
   }
 
   // now write to database
-  return trx.update(StaticStrings::GraphCollection, builder.slice(), options);
+  return trx.update(StaticStrings::GraphsCollection, builder.slice(), options);
 }
 
 futures::Future<OperationResult> GraphOperations::eraseEdgeDefinition(
@@ -122,7 +122,7 @@ futures::Future<OperationResult> GraphOperations::eraseEdgeDefinition(
   _graph.toPersistence(builder);
   builder.close();
 
-  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphsCollection,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -133,7 +133,7 @@ futures::Future<OperationResult> GraphOperations::eraseEdgeDefinition(
     co_return OperationResult(res, options);
   }
   OperationResult result =
-      trx.update(StaticStrings::GraphCollection, builder.slice(), options);
+      trx.update(StaticStrings::GraphsCollection, builder.slice(), options);
 
   if (dropCollection) {
     std::unordered_set<std::string> collectionsToBeRemoved;
@@ -287,7 +287,7 @@ futures::Future<OperationResult> GraphOperations::editEdgeDefinition(
     co_return OperationResult{TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT, options};
   }
 
-  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphsCollection,
                                   AccessMode::Type::WRITE);
 
   res = co_await trx.beginAsync();
@@ -410,7 +410,7 @@ futures::Future<OperationResult> GraphOperations::addOrphanCollection(
   _graph.toPersistence(builder);
   builder.close();
 
-  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphsCollection,
                                   AccessMode::Type::WRITE);
 
   res = co_await trx.beginAsync();
@@ -419,7 +419,7 @@ futures::Future<OperationResult> GraphOperations::addOrphanCollection(
     co_return OperationResult(res, options);
   }
 
-  result = co_await trx.updateAsync(StaticStrings::GraphCollection,
+  result = co_await trx.updateAsync(StaticStrings::GraphsCollection,
                                     builder.slice(), options);
 
   res = co_await trx.finishAsync(result.result);
@@ -485,7 +485,7 @@ futures::Future<OperationResult> GraphOperations::eraseOrphanCollection(
 
   OperationResult result(Result(), options);
   {
-    SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+    SingleCollectionTransaction trx(ctx(), StaticStrings::GraphsCollection,
                                     AccessMode::Type::WRITE);
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -498,7 +498,7 @@ futures::Future<OperationResult> GraphOperations::eraseOrphanCollection(
     options.waitForSync = waitForSync;
 
     result =
-        trx.update(StaticStrings::GraphCollection, builder.slice(), options);
+        trx.update(StaticStrings::GraphsCollection, builder.slice(), options);
     res = co_await trx.finishAsync(result.result);
   }
 
