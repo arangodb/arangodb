@@ -136,9 +136,21 @@ export const theme = extendTheme({
               }
             };
           }
+          if (props.colorScheme === "gray" || !props.colorScheme) {
+            return {
+              color: "gray.950"
+            };
+          }
           return defaultTheme.components.Button.variants?.solid(props);
         },
         outline: (props: StyleFunctionProps) => {
+          if (props.colorScheme === "gray" || !props.colorScheme) {
+            return {
+              color: "gray.950"
+            };
+          }
+        },
+        ghost: (props: StyleFunctionProps) => {
           if (props.colorScheme === "gray" || !props.colorScheme) {
             return {
               color: "gray.950"
