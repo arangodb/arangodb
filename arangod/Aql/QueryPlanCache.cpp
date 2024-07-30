@@ -138,7 +138,7 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
     if ((*it).second->numUsed.fetch_add(1, std::memory_order_relaxed) <=
         kMaxNumUsages) {
       if (_numberOfHitsMetric != nullptr) {
-        _numberOfHitsMetric->fetch_add(1);
+        _numberOfHitsMetric->count();
       }
       return (*it).second;
     }
@@ -157,7 +157,7 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
   }
 
   if (_numberOfMissesMetric != nullptr) {
-    _numberOfMissesMetric->fetch_add(1);
+    _numberOfMissesMetric->count();
   }
   return nullptr;
 }
