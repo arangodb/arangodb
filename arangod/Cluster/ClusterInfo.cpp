@@ -1766,7 +1766,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         // be old.
         if (systemDB->replicationVersion() == replication::Version::ONE) {
           // find _graphs collection in Plan
-          if (auto it2 = it->second->find(StaticStrings::GraphCollection);
+          if (auto it2 = it->second->find(StaticStrings::GraphsCollection);
               it2 != it->second->end()) {
             // found!
             if (it2->second.collection->distributeShardsLike().empty()) {
