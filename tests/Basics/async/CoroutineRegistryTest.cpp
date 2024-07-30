@@ -56,7 +56,7 @@ TEST(CoroutineRegistryTest, includes_coroutines_running_on_differen_threads) {
       promise_lines.push_back(promise->_where.line());
     });
 
-    EXPECT_EQ(promise_lines, std::vector<uint>({14, 13, 12}));
+    EXPECT_EQ(promise_lines, std::vector<uint>({13, 12, 14}));
   });
 }
 

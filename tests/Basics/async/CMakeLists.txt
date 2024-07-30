@@ -10,6 +10,7 @@ add_executable(coro-test
 target_link_libraries(coro-test
 	arango_crashhandler_light
 	arango_assertions
+	arango    # for Result
 	GTest::gtest_main)
 
 add_executable(promise_registry_test

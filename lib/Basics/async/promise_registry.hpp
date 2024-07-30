@@ -92,7 +92,6 @@ struct PromiseRegistryOnThread {
 
   std::thread::id thread_id = std::this_thread::get_id();
   std::atomic<PromiseInList*> head = nullptr;
-  std::atomic<std::shared_ptr<PromiseRegistryOnThread>> next;
   std::mutex mutex;
 };
 
