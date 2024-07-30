@@ -8,13 +8,12 @@ type StyledTextboxProps = {
   [key: string]: any;
 };
 
-
 const StyledTextbox = styled.input`
   &&& {
     width: 90%;
     height: auto;
   }
-`
+`;
 
 type TextboxProps = {
   id?: string;
