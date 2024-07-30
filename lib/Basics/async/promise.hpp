@@ -7,6 +7,8 @@
 
 namespace arangodb::coroutine {
 
+struct PromiseRegistry;
+
 enum class State {
   Initialized = 0,
   Transforming,
@@ -45,11 +47,17 @@ std::ostream& operator<<(std::ostream& out, const Observables& observables) {
 
 struct PromiseInList : Observables {
   PromiseInList(std::source_location loc) : Observables(std::move(loc)) {}
+
+  virtual auto destroy() -> void = 0;
+  virtual ~PromiseInList() = default;
+
+  // identifies the promise list it belongs to
+  PromiseRegistry* registry;
   std::atomic<PromiseInList*> next;
   // only needed to remove an item
   std::atomic<PromiseInList*> previous;
-  // identifies the list it belongs to
-  void* list_id;
+  // only needed to garbage collect promises
+  std::atomic<PromiseInList*> next_to_free;
 };
 
 std::ostream& operator<<(std::ostream& out, const PromiseInList& promise) {

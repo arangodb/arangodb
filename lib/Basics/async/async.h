@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Basics/async/promise_registry.hpp"
+#include "Basics/async/promise.hpp"
 #include "Basics/async/feature.hpp"
 #include "Basics/expected.h"
 #include <coroutine>
@@ -34,7 +35,7 @@ struct async_promise_base : coroutine::PromiseInList {
         if (addr == nullptr) {
           return std::noop_coroutine();
         } else if (addr == self.address()) {
-          self.destroy();
+          _promise->registry->register_to_delete(_promise);
           return std::noop_coroutine();
         } else {
           return std::coroutine_handle<>::from_address(addr);
@@ -50,6 +51,12 @@ struct async_promise_base : coroutine::PromiseInList {
     coroutine::promise_registry->add(this);
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
+  }
+
+  auto destroy() -> void override {
+    std::coroutine_handle<promise_type>::from_promise(
+        *static_cast<promise_type*>(this))
+        .destroy();
   }
 
   std::atomic<void*> _continuation = nullptr;
@@ -88,8 +95,9 @@ struct async {
                    c.address(), std::memory_order_acq_rel) == nullptr;
       }
       auto await_resume() {
-        expected<T> r = std::move(_handle.promise()._value);
-        _handle.destroy();
+        auto& promise = _handle.promise();
+        expected<T> r = std::move(promise._value);
+        promise->registry->register_to_delete(promise);
         return std::move(r).get();
       }
       explicit awaitable(std::coroutine_handle<promise_type> handle)
@@ -106,9 +114,10 @@ struct async {
 
   void reset() {
     if (_handle) {
-      if (_handle.promise()._continuation.exchange(
+      auto& promise = _handle.promise();
+      if (promise._continuation.exchange(
               _handle.address(), std::memory_order_release) != nullptr) {
-        _handle.destroy();
+        promise.registry->register_to_delete(&promise);
       }
       _handle = nullptr;
     }

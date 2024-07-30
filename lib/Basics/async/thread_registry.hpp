@@ -9,7 +9,7 @@ struct ThreadRegistryForPromises {
   // all threads can call this
   auto create() -> void {
     auto guard = std::lock_guard(mutex);
-    promise_registry = std::make_shared<coroutine::PromiseRegistryOnThread>();
+    promise_registry = std::make_shared<coroutine::PromiseRegistry>();
     registries.push_back(promise_registry);
   }
 
@@ -18,13 +18,17 @@ struct ThreadRegistryForPromises {
   // auto erase(PromiseInList* list) -> void;
 
   auto for_promise(std::function<void(PromiseInList*)> function) -> void {
-    auto guard = std::lock_guard(mutex);
-    for (auto& registry : registries) {
+    auto regs = [&] {
+      auto guard = std::lock_guard(mutex);
+      return registries;
+    }();
+
+    for (auto& registry : regs) {
       registry->for_promise(function);
     }
   }
 
-  std::vector<std::shared_ptr<PromiseRegistryOnThread>> registries;
+  std::vector<std::shared_ptr<PromiseRegistry>> registries;
   std::mutex mutex;
 };
 
