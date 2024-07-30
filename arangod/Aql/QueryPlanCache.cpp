@@ -30,6 +30,7 @@
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
+#include "Metrics/Gauge.h"
 #include "Random/RandomGenerator.h"
 #include "VocBase/vocbase.h"
 
@@ -105,12 +106,16 @@ size_t QueryPlanCache::Value::memoryUsage() const noexcept {
 }
 
 QueryPlanCache::QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
-                               size_t maxIndividualEntrySize)
+                               size_t maxIndividualEntrySize,
+                               metrics::Counter* numberOfHitsMetric,
+                               metrics::Counter* numberOfMissesMetric)
     : _entries(5, KeyHasher{}, KeyEqual{}),
       _memoryUsage(0),
       _maxEntries(maxEntries),
       _maxMemoryUsage(maxMemoryUsage),
-      _maxIndividualEntrySize(maxIndividualEntrySize) {}
+      _maxIndividualEntrySize(maxIndividualEntrySize),
+      _numberOfHitsMetric(numberOfHitsMetric),
+      _numberOfMissesMetric(numberOfMissesMetric) {}
 
 QueryPlanCache::~QueryPlanCache() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -132,6 +137,9 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
     // outdated entries get replaced with fresh entries eventually
     if ((*it).second->numUsed.fetch_add(1, std::memory_order_relaxed) <=
         kMaxNumUsages) {
+      if (_numberOfHitsMetric != nullptr) {
+        _numberOfHitsMetric->fetch_add(1);
+      }
       return (*it).second;
     }
     guard.unlock();
@@ -146,6 +154,10 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
       _memoryUsage -= value->memoryUsage();
       _entries.erase(it);
     }
+  }
+
+  if (_numberOfMissesMetric != nullptr) {
+    _numberOfMissesMetric->fetch_add(1);
   }
   return nullptr;
 }

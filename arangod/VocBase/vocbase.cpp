@@ -1376,11 +1376,14 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
     _queryPlanCache = std::make_unique<aql::QueryPlanCache>(
         feature.queryPlanCacheMaxEntries(),
         feature.queryPlanCacheMaxMemoryUsage(),
-        feature.queryPlanCacheMaxIndividualEntrySize());
+        feature.queryPlanCacheMaxIndividualEntrySize(),
+        feature.queryPlanCacheHitsMetric(),
+        feature.queryPlanCacheMissesMetric());
   } else {
     // create only a stub
     _queryPlanCache = std::make_unique<aql::QueryPlanCache>(
-        /*maxEntries*/ 0, /*maxMemoryUsage*/ 0, /*maxIndividualEntrySize*/ 0);
+        /*maxEntries*/ 0, /*maxMemoryUsage*/ 0, /*maxIndividualEntrySize*/ 0,
+        nullptr, nullptr);
   }
   _cursorRepository = std::make_unique<CursorRepository>(
       *this, numberOfCursorsMetric, memoryUsageMetric);

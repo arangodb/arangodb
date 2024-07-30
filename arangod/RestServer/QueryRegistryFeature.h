@@ -107,6 +107,12 @@ class QueryRegistryFeature final : public ArangodFeature {
   uint64_t queryPlanCacheMaxIndividualEntrySize() const noexcept {
     return _queryPlanCacheMaxIndividualEntrySize;
   }
+  metrics::Counter* queryPlanCacheHitsMetric() const {
+    return &_queryPlanCacheHitsMetric;
+  }
+  metrics::Counter* queryPlanCacheMissesMetric() const {
+    return &_queryPlanCacheMissesMetric;
+  }
 
   metrics::Gauge<uint64_t>* cursorsMetric() const { return &_activeCursors; }
   metrics::Gauge<uint64_t>* cursorsMemoryUsageMetric() const {
@@ -175,6 +181,8 @@ class QueryRegistryFeature final : public ArangodFeature {
   metrics::Counter& _localQueryMemoryLimitReached;
   metrics::Gauge<uint64_t>& _activeCursors;
   metrics::Gauge<uint64_t>& _cursorsMemoryUsage;
+  metrics::Counter& _queryPlanCacheHitsMetric;
+  metrics::Counter& _queryPlanCacheMissesMetric;
 };
 
 }  // namespace arangodb

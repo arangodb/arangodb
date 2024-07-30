@@ -25,6 +25,7 @@
 
 #include "Aql/QueryString.h"
 #include "Auth/Common.h"
+#include "Metrics/Fwd.h"
 
 #include <velocypack/Buffer.h>
 
@@ -136,7 +137,9 @@ class QueryPlanCache {
   QueryPlanCache& operator=(QueryPlanCache const&) = delete;
 
   QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
-                 size_t maxIndividualEntrySize);
+                 size_t maxIndividualEntrySize,
+                 metrics::Counter* numberOfHitsMetric,
+                 metrics::Counter* numberOfMissesMetric);
 
   ~QueryPlanCache();
 
@@ -192,6 +195,12 @@ class QueryPlanCache {
 
   // maximum allowed size for an individual entry.
   size_t const _maxIndividualEntrySize;
+
+  /// @brief number of plan cache lookup hits
+  metrics::Counter* _numberOfHitsMetric;
+
+  /// @brief number of plan cache lookup misses
+  metrics::Counter* _numberOfMissesMetric;
 };
 
 }  // namespace arangodb::aql

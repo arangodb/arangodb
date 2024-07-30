@@ -168,6 +168,10 @@ DECLARE_GAUGE(arangodb_aql_cursors_active, uint64_t,
               "Total amount of active AQL query results cursors");
 DECLARE_GAUGE(arangodb_aql_cursors_memory_usage, uint64_t,
               "Total memory usage of active query result cursors");
+DECLARE_COUNTER(arangodb_aql_query_plan_cache_hits_total,
+                "Total number of lookup hits in the AQL query plan cache");
+DECLARE_COUNTER(arangodb_aql_query_plan_cache_misses_total,
+                "Total number of lookup misses in the AQL query plan cache");
 
 QueryRegistryFeature::QueryRegistryFeature(Server& server,
                                            metrics::MetricsFeature& metrics)
@@ -224,7 +228,11 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
       _localQueryMemoryLimitReached(
           metrics.add(arangodb_aql_local_query_memory_limit_reached_total{})),
       _activeCursors(metrics.add(arangodb_aql_cursors_active{})),
-      _cursorsMemoryUsage(metrics.add(arangodb_aql_cursors_memory_usage{})) {
+      _cursorsMemoryUsage(metrics.add(arangodb_aql_cursors_memory_usage{})),
+      _queryPlanCacheHitsMetric(
+          metrics.add(arangodb_aql_query_plan_cache_hits_total{})),
+      _queryPlanCacheMissesMetric(
+          metrics.add(arangodb_aql_query_plan_cache_misses_total{})) {
   static_assert(
       Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
 

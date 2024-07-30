@@ -98,13 +98,20 @@ devel
   In a cluster, these APIs are specific to the coordinator that they are run 
   on.
 
+  The following metrics are exposed on a single server and each coordinator to
+  provide insights into how many query plans were served from the query plan
+  cache:
+  - `arangodb_aql_query_plan_cache_hits_total`: total number of plans looked
+    up and found in the query plan cache, across all database-specific plan
+    caches on the instance.
+  - `arangodb_aql_query_plan_cache_misses_total`: total number of plans looked
+    up and not found in the query plan cache, across all database-specific plan
+    caches on the instance.
+
 // TODO:
 // - the amount of memory consumed by the individual query plan caches is
 //   tracked, but currently cannot be observed via metrics. There is also no
 //   global memory limit for all query plan caches combined.
-// - in the cluster, we need to track the changes of database objects which are
-//   executed via other coordinators by tailing the changes in the AgencyCache,
-//   and react accordingly. this is currently missing in this PR.
 // - the serialized query plans are relatively verbose right now. it may be
 //   possible to reduce the verbosity of the cached plans somehow, by passing
 //   other flags to the serialization function. this would reduce the memory
