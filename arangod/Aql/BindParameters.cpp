@@ -120,9 +120,6 @@ void BindParameters::registerNode(std::string_view name, AstNode* node) {
                                    "invalid bind parameter access");
   }
 
-  TRI_ASSERT(!(*it).second.first.isNone());
-  // no node must have been registered before
-  TRI_ASSERT((*it).second.second == nullptr);
   (*it).second.second = node;
 }
 
