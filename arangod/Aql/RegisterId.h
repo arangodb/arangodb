@@ -26,7 +26,7 @@
 #include <limits>
 #include <type_traits>
 
-#include "Basics/debugging.h"
+#include "Assertions/Assert.h"
 
 namespace arangodb::aql {
 

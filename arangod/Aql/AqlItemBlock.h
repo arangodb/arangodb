@@ -24,15 +24,13 @@
 #pragma once
 
 #include "Aql/AqlValue.h"
+#include "Aql/RegisterId.h"
 #include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
-
-#include "Containers/SmallVector.h"
 
 #include <limits>
 #include <span>
 #include <thread>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 

@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesLateMaterializedCommon.h"
 #include "Aql/types.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "IResearch/IResearchFilterOptimization.h"
