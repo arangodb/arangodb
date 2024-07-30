@@ -66,6 +66,10 @@ export const ChakraCustomProvider = ({
             },
             "label, input, button, select, textarea": {
               lineHeight: "inherit"
+            },
+            "pre, code, kbd,samp": {
+              fontFamily: "SFMono-Regular,Menlo,Monaco,Consolas,monospace",
+              fontSize: "1em"
             }
           }}
         />
