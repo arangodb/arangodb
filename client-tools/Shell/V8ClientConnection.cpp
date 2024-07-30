@@ -470,9 +470,10 @@ void V8ClientConnection::disconnectHandle(
       // our main connection is the one to trash.
       _connection.reset();
       TRI_V8_RETURN_TRUE();
+    } else {
+      // we don't know that connection?
+      TRI_V8_RETURN_FALSE();
     }
-    // we don't know that collection?
-    TRI_V8_RETURN_FALSE();
   }
 }
 
