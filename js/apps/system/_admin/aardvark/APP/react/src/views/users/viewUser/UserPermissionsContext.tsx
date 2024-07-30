@@ -6,7 +6,7 @@ import {
   getExpandedRowModel,
   Table
 } from "@tanstack/react-table";
-import React from "react";
+import React, { useMemo } from "react";
 
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
@@ -56,31 +56,39 @@ export const useUserPermissionsContext = () => {
 const usePermissionTableData = () => {
   const { databasePermissions, refetchDatabasePermissions } =
     useFetchDatabasePermissions();
-  if (!databasePermissions)
+
+  const databaseTable = useMemo(
+    () =>
+      databasePermissions
+        ? (Object.entries(databasePermissions)
+            .map(([databaseName, permissionObject]) => {
+              return {
+                databaseName,
+                permission: permissionObject.permission,
+                collections: Object.entries(permissionObject.collections || {})
+                  .map(([collectionName, collectionPermission]) => {
+                    // filter out built-in collections
+                    if (collectionName.startsWith("_")) {
+                      return null;
+                    }
+                    return {
+                      collectionName,
+                      permission: collectionPermission
+                    };
+                  })
+                  .filter(Boolean) as CollectionType[]
+              };
+            })
+            .filter(Boolean) as DatabaseTableType[])
+        : [],
+    [databasePermissions]
+  );
+
+  if (!databasePermissions) {
     return {
       databaseTable: []
     };
-  const databaseTable = Object.entries(databasePermissions)
-    .map(([databaseName, permissionObject]) => {
-      return {
-        databaseName,
-        permission: permissionObject.permission,
-        collections: Object.entries(permissionObject.collections || {})
-          .map(([collectionName, collectionPermission]) => {
-            
-            // filter out built-in collections
-            if (collectionName.startsWith("_")) {
-              return null;
-            }
-            return {
-              collectionName,
-              permission: collectionPermission
-            };
-          })
-          .filter(Boolean) as CollectionType[]
-      };
-    })
-    .filter(Boolean) as DatabaseTableType[];
+  }
   let serverLevelDefaultPermission;
   try {
     serverLevelDefaultPermission = databasePermissions["*"].permission;
@@ -88,7 +96,7 @@ const usePermissionTableData = () => {
     // just ignore, not part of the response
   }
   return {
-    databaseTable: [...databaseTable],
+    databaseTable: databaseTable,
     serverLevelDefaultPermission,
     refetchDatabasePermissions
   };
