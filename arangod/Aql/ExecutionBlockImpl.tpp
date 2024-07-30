@@ -36,7 +36,6 @@
 #include "Aql/Executor/IResearchViewExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SimpleModifier.h"
 #include "Aql/SkipResult.h"
 #include "Aql/Timing.h"
