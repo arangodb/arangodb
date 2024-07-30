@@ -449,7 +449,7 @@ void V8ClientConnection::connectHandle(
     TRI_V8_RETURN_TRUE();
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                   "Handle not found in the collection list");
+                                   "Handle not found in the connection list");
   }
 }
 
