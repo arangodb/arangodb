@@ -500,6 +500,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   startArango (subEnv) {
+    this.connectionHandle = undefined;
     try {
       this._executeArangod({}, subEnv);
     } catch (x) {
@@ -514,6 +515,7 @@ class instance {
       throw new Error("kill the instance before relaunching it!");
       return;
     }
+    this.connectionHandle = undefined;
     try {
       let args = {...this.args, ...moreArgs};
       this._executeArangod(args);
@@ -555,6 +557,7 @@ class instance {
     if (ret.status !== 'RUNNING') {
       this.processSanitizerReports();
     }
+    this.connectionHandle = undefined;
     return ret;
   }
 
@@ -712,7 +715,7 @@ class instance {
     while (count > 0) {
       try {
         if (this.options.extremeVerbosity || overrideVerbosity) {
-          print('tickeling ' + this.endpoint);
+          print(`${Date()} tickeling ${this.endpoint}`);
         }
         this.connect();
         return;
@@ -720,6 +723,7 @@ class instance {
         if (this.options.extremeVerbosity || overrideVerbosity) {
           print(`no... ${e.message}`);
         }
+        this.connectionHandle = undefined;
         sleep(0.5);
       }
       count --;
@@ -743,7 +747,8 @@ class instance {
         killExternal(this.pid, abortSignal);
         print(statusExternal(this.pid, true));
       }
-    } catch(ex) {
+      this.connectionHandle = undefined;
+   } catch(ex) {
       print(ex);
     }
     this.pid = null;
@@ -756,6 +761,7 @@ class instance {
       return;
     }
     this.exitStatus = statusExternal(this.pid, true);
+    this.connectionHandle = undefined;
     if (this.exitStatus.status !== 'TERMINATED') {
       this.processSanitizerReports();
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
@@ -833,10 +839,12 @@ class instance {
       if (forceTerminate) {
         let sockStat = this.getSockStat(Date() + "Force killing - sockstat before: ");
         this.killWithCoreDump('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
+        this.connectionHandle = undefined;
         this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
+        this.connectionHandle = undefined;
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -857,6 +865,7 @@ class instance {
           this.serverCrashedLocal = true;
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
+          this.connectionHandle = undefined;
         } else {
           this.processSanitizerReports();
           if (!this.options.noStartStopLogs) {
@@ -907,6 +916,7 @@ class instance {
     while (timeout > 0) {
       this.exitStatus = statusExternal(this.pid, false);
       if (this.exitStatus.status === 'TERMINATED') {
+        this.connectionHandle = undefined;
         return true;
       }
       sleep(1);
@@ -915,6 +925,7 @@ class instance {
     this.shutDownOneInstance({nonAgenciesCount: 1}, true, 0);
     crashUtils.aggregateDebugger(this, this.options);
     this.waitForExitAfterDebugKill();
+    this.connectionHandle = undefined;
     this.pid = null;
     return false;
   }
