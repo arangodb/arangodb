@@ -1,7 +1,6 @@
 import 'jsoneditor-react/es/editor.min.css';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
-import { createRoot } from 'react-dom/client';
 
 const jsoneditor = require('jsoneditor');
 const d3 = require('d3');
