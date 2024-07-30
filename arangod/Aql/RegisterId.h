@@ -24,6 +24,7 @@
 #pragma once
 
 #include <limits>
+#include <stdint.h>
 #include <type_traits>
 
 #include "Assertions/Assert.h"
