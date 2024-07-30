@@ -13,11 +13,9 @@ struct ThreadRegistryForPromises {
     registries.push_back(promise_registry);
   }
 
-  // TODO implement erase fct
-  // all thrads can call this
-  // auto erase(PromiseInList* list) -> void;
-
-  auto for_promise(std::function<void(PromiseInList*)> function) -> void {
+  template<typename F>
+  requires requires(F f, PromiseInList* promise) { {f(promise)}; }
+  auto for_promise(F&& function) -> void {
     auto regs = [&] {
       auto guard = std::lock_guard(mutex);
       return registries;

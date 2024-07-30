@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Assertions/ProdAssert.h"
-#include "Basics/Result.h"
 #include "promise.hpp"
 #include <atomic>
 #include <functional>
@@ -13,96 +12,121 @@
 
 namespace arangodb::coroutine {
 
+/**
+   This registry belongs to a specific thread (the owning thread) and owns a
+   list of promises that live on this thread.
+
+   A promise can be marked for deletion on any thread, the garbage collection
+   can only be called on the owning thread and destroys all marked promises. A
+   promise can only be added on the owning thread, therefore adding and garbage
+   collection cannot happen concurrently. The garbage collection can also not
+   run during an iteration over all promises in the list.
+ */
 struct PromiseRegistry {
-  auto garbage_collect() -> void {
-    auto guard = std::lock_guard(mutex);
-    for (auto current = free_head.exchange(nullptr); current != nullptr;) {
-      auto next = current->next_to_free.load(std::memory_order_relaxed);
-      erase(current);
-      current = next;
-    }
-  }
-
   /**
-     Add a promise on the current thread to the list.
+     Adds a promise on the registry's thread to the registry.
 
-     Returns an error if this function is called on a differnt thread than the
-     thread the registry lives on.
+     Can only be called on the owning thread, crashes
+     otherwise.
    */
-  auto add(PromiseInList* promise) -> Result {
-    if (std::this_thread::get_id() != thread_id) {
-      return Result{TRI_ERROR_INTERNAL,
-                    "You cannot add a promise of another thread to this "
-                    "promise list."};
-    }
+  auto add(PromiseInList* promise) -> void {
+    // promise needs to live on the same thread as this registry
+    ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
     auto current_head = promise_head.load(std::memory_order_relaxed);
     promise->next.store(current_head, std::memory_order_relaxed);
+    promise->registry = this;
     if (current_head != nullptr) {
       current_head->previous.store(promise, std::memory_order_relaxed);
     }
-    // (1) sets value read by (2)
+    // (1) - this store synchronizes with load in (2)
     promise_head.store(promise, std::memory_order_release);
-    return Result{};
   }
 
   /**
-     Execute a function on each promise in the list.
+     Executes a function on each promise in the registry.
 
-     This function can be called from any thread. It makes sure that it only
-     runs on a valid list and not during removal of items.
+     Can be called from any thread. It makes sure that all
+     items stay valid during iteration (i.e. are not deleted in the meantime).
    */
-  auto for_promise(std::function<void(PromiseInList*)> function) -> void {
+  template<typename F>
+  requires requires(F f, PromiseInList* promise) { {f(promise)}; }
+  auto for_promise(F&& function) -> void {
     auto guard = std::lock_guard(mutex);
-    // (2) reads value set by (1)
+    // (2) - this load synchronizes with store in (1)
     for (auto current = promise_head.load(std::memory_order_acquire);
          current != nullptr;
-         // (5) read value set by (3) or (4)
+         // (5) - this load synchronizes with store in (3) and (4)
          current = current->next.load(std::memory_order_acquire)) {
       function(current);
     }
   }
 
-  auto register_to_delete(PromiseInList* promise) -> Result {
+  /**
+     Marks a promise in the registry for deletion.
+
+     Can be called from any thread. The promise needs to be included in
+     the registry list, crashes otherwise.
+   */
+  auto mark_for_deletion(PromiseInList* promise) -> void {
     // makes sure that promise is really in this list
     ADB_PROD_ASSERT(promise->registry == this);
-    // (1) loads value set by (2)
+    // (1) - this load synchronizes with compare_exchange_weak in (2)
     auto current_head = free_head.load(std::memory_order_acquire);
     do {
       promise->next_to_free.store(current_head, std::memory_order_relaxed);
-      // (2) sets value load by (1)
+      // (2) - this compare_exchange_weak synchronizes with load in (1)
     } while (not free_head.compare_exchange_weak(current_head, promise,
                                                  std::memory_order_release,
                                                  std::memory_order_relaxed));
-    return Result{};
   }
 
-  const std::thread::id thread_id = std::this_thread::get_id();
+  /**
+     Deletes all promises that are marked for deletion.
+
+     Can only be called on the owning thread, crashes otheriwse.
+   */
+  auto garbage_collect() -> void {
+    ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
+    PromiseInList* head;
+    {
+      auto guard = std::lock_guard(mutex);
+      // (7) - this exchange synchronizes with load in (1) and store in (2)
+      head = free_head.exchange(nullptr, std::memory_order_acq_rel);
+    }
+    for (auto current = head; current != nullptr;) {
+      auto next = current->next_to_free.load(std::memory_order_relaxed);
+      remove(current);
+      current->destroy();
+      current = next;
+    }
+  }
+
+  const std::thread::id owning_thread = std::this_thread::get_id();
   std::atomic<PromiseInList*> free_head = nullptr;
   std::atomic<PromiseInList*> promise_head = nullptr;
   std::mutex mutex;
 
-  /**
-     Erase a promise on the current thread.
-
-     This removes the promise from the list and destroys the promise.
-     Returns an error if this function is called for a promise that is not part
-     of this list.
-   */
  private:
-  auto erase(PromiseInList* promise) -> void {
+  /**
+     Removes the promise from the registry.
+
+     Caller needs to make sure that the given promise is part of this registry
+     (which also means that this function should only be called on the owning
+     thread.)
+   */
+  auto remove(PromiseInList* promise) -> void {
     auto next = promise->next.load(std::memory_order_relaxed);
     auto previous = promise->previous.load(std::memory_order_relaxed);
     if (previous == nullptr) {  // promise is current head
-      // (4) sets value read by (5)
+      // (3) - this store synchronizes with the load in (5)
       promise_head.store(next, std::memory_order_release);
     } else {
-      // (3) sets value read by (5)
+      // (4) - this store synchronizes with the load in (5)
       previous->next.store(next, std::memory_order_release);
     }
     if (next != nullptr) {
       next->previous.store(previous, std::memory_order_relaxed);
     }
-    promise->destroy();
   }
 };
 

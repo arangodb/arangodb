@@ -35,7 +35,7 @@ struct async_promise_base : coroutine::PromiseInList {
         if (addr == nullptr) {
           return std::noop_coroutine();
         } else if (addr == self.address()) {
-          _promise->registry->register_to_delete(_promise);
+          _promise->registry->mark_for_deletion(_promise);
           return std::noop_coroutine();
         } else {
           return std::coroutine_handle<>::from_address(addr);
@@ -97,7 +97,7 @@ struct async {
       auto await_resume() {
         auto& promise = _handle.promise();
         expected<T> r = std::move(promise._value);
-        promise->registry->register_to_delete(promise);
+        promise->registry->mark_for_deletion(promise);
         return std::move(r).get();
       }
       explicit awaitable(std::coroutine_handle<promise_type> handle)
@@ -117,7 +117,7 @@ struct async {
       auto& promise = _handle.promise();
       if (promise._continuation.exchange(
               _handle.address(), std::memory_order_release) != nullptr) {
-        promise.registry->register_to_delete(&promise);
+        promise.registry->mark_for_deletion(&promise);
       }
       _handle = nullptr;
     }

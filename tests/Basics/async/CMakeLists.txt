@@ -5,12 +5,11 @@ target_link_libraries(coro-registry
 	arango_crashhandler_light
 	arango_assertions)
 
-add_executable(coro-test
+add_executable(thread_registry_test
 	CoroutineRegistryTest.cpp)
-target_link_libraries(coro-test
+target_link_libraries(thread_registry_test
 	arango_crashhandler_light
 	arango_assertions
-	arango    # for Result
 	GTest::gtest_main)
 
 add_executable(promise_registry_test
@@ -18,5 +17,4 @@ add_executable(promise_registry_test
 target_link_libraries(promise_registry_test
 	arango_crashhandler_light
 	arango_assertions
-	arango   # for Result
 	GTest::gtest_main)
