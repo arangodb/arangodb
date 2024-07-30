@@ -145,7 +145,13 @@ const AddFilterButton = <Data extends object>({
           }
           return (
             <MenuItem onClick={() => addFilter(filter)} key={filter.id}>
-              <>{filter.header}</>
+              {typeof filter.header === "function"
+                ? filter.header({
+                    column,
+                    header,
+                    table
+                  })
+                : filter.header}
             </MenuItem>
           );
         })}
