@@ -126,6 +126,13 @@ function QueryPlanCacheTestSuite () {
       assertNotCached(query, { attr: "foo" });
     },
     
+    testUpsert : function () {
+      const query = `${uniqid()} UPSERT {foo: "bar"} INSERT {} UPDATE {} IN ${cn1}`;
+
+      // value bind parameters are not supported when defining the lookup values for UPSERT
+      assertNotCached(query, {});
+    },
+    
     testCollectionBindParameter : function () {
       const query = `${uniqid()} FOR doc IN @@collection FILTER doc.value == 25 RETURN doc`;
 
@@ -512,6 +519,46 @@ function QueryPlanCacheTestSuite () {
         assertTrue(res.hasOwnProperty("planCacheKey"));
         let key = res.planCacheKey;
         assertEqual(4, res.toArray().length);
+      } finally {
+        graphs._drop(gn, true);
+      }
+    },
+    
+    testNamedGraphNameAsValueBindParameter : function () {
+      const gn = 'UnitTestsNamedGraph';
+      const en = 'UnitTestsNamedGraphEdge';
+      const vn = 'UnitTestsNamedGraphVertex';
+
+      let g = graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 1, replicationFactor: 1 });
+      try {
+        const query = `${uniqid()} FOR v, e, p IN 1..4 OUTBOUND '${vn}/test0' GRAPH @g RETURN {v, e, p}`;
+        const options = { optimizePlanForCaching: true };
+
+        let res = db._query(query, {g: gn}, options);
+        assertFalse(res.hasOwnProperty("planCacheKey"));
+      
+        res = db._query(query, {g: gn}, options);
+        assertFalse(res.hasOwnProperty("planCacheKey"));
+      } finally {
+        graphs._drop(gn, true);
+      }
+    },
+    
+    testTraversalDepthAsValueBindParameter : function () {
+      const gn = 'UnitTestsNamedGraph';
+      const en = 'UnitTestsNamedGraphEdge';
+      const vn = 'UnitTestsNamedGraphVertex';
+
+      let g = graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 1, replicationFactor: 1 });
+      try {
+        const query = `${uniqid()} FOR v, e, p IN @min..@max OUTBOUND '${vn}/test0' GRAPH '${gn}' RETURN {v, e, p}`;
+        const options = { optimizePlanForCaching: true };
+
+        let res = db._query(query, {min: 1, max: 2}, options);
+        assertFalse(res.hasOwnProperty("planCacheKey"));
+      
+        res = db._query(query, {min: 1, max: 2}, options);
+        assertFalse(res.hasOwnProperty("planCacheKey"));
       } finally {
         graphs._drop(gn, true);
       }

@@ -21,12 +21,21 @@ devel
 
   Additionally, a query is not eligible for plan caching if it uses attribute 
   name bind parameters, e.g. `FILTER doc.@attributeName == ...`.
+  Furthermore, queries will not be eligible for plan caching when using value
+  bind parameters in any of the following places:
+  - specifying the depths for traversals or path queries (e.g. 
+    `FOR v, e IN @min..@max OUTBOUND ...`)
+  - referring to a named graph (e.g. `GRAPH @graphName`)
+  - referring to edge collections used in traversals or path queries 
+    (e.g. `FOR v, e IN 1..2 OUTBOUND 'v/0' @ec...`)
+  - specifying the lookup value for UPSERT operations, e.g. `UPSERT @value...`)
   If a query produces any warnings during parsing or query plan optimization, 
   it is also not eligible for plan caching.
   Query plans are also not eligible for caching if they contain one of the
   following execution node types:
-  - SingleRemoteOperationNode
-  - MultipleRemoteModificationNode
+  - SingleRemoteOperationNode (cluster only)
+  - MultipleRemoteModificationNode (cluster only)
+  - UpsertNode, i.e. the AQL UPSERT functionality.
 
   If a query is eligible for plan caching, the plan cache will be checked using
   the exact same query string and set of collection bind parameter values.
@@ -44,14 +53,6 @@ devel
   - `joinStrategyType`
   - `maxDNFConditionMembers`
   - `maxNodesPerCallstack`
-
-  Some queries will currently fail and produce wrong results when trying 
-  to use the query plan cache.
-  This includes queries that use bind parameters to specify depths for
-  traversals or path queries (e.g. `FOR v, e IN @min..@max OUTBOUND ...`), 
-  bind parameters to refer to a named graph (e.g. `GRAPH @graphName`), 
-  or string value bind parameters to refer to edge collections used in 
-  traversals or path queries (e.g. `FOR v, e IN 1..2 OUTBOUND 'v/0' @ec...`).
 
   Whenever a query uses a cached plan from the plan cache, the query result will
   include an attribute `planCacheKey` on the top level when executing, 

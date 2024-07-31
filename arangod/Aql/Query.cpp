@@ -563,10 +563,15 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   Parser parser(*this, *_ast, _queryString);
   parser.parse();
 
+  // any usage of one of the following features disable query plan caching (for
+  // now)
   if (_queryOptions.optimizePlanForCaching &&
-      (_ast->containsAttributeNameBindParameters() || !_warnings.empty())) {
-    // we found an attribute name bind parameter or warnings occurred during
-    // query parsing. in these cases we must disable query plan caching
+      (_ast->containsUpsertNode() ||
+       _ast->containsAttributeNameValueBindParameters() ||
+       _ast->containsCollectionNameValueBindParameters() ||
+       _ast->containsGraphNameValueBindParameters() ||
+       _ast->containsTraversalDepthValueBindParameters() ||
+       _ast->containsUpsertLookupValueBindParameters() || !_warnings.empty())) {
     _queryOptions.optimizePlanForCaching = false;
     _planCacheKey.reset();
   }

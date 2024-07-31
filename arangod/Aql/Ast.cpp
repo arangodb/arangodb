@@ -367,7 +367,11 @@ Ast::Ast(QueryContext& query,
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),
       _containsBindParameters(false),
-      _containsAttributeNameBindParameters(false),
+      _containsAttributeNameValueBindParameters(false),
+      _containsCollectionNameValueBindParameters(false),
+      _containsGraphNameValueBindParameters(false),
+      _containsTraversalDepthValueBindParameters(false),
+      _containsUpsertLookupValueBindParameters(false),
       _containsModificationNode(false),
       _containsUpsertNode(false),
       _containsParallelNode(false),
@@ -576,6 +580,10 @@ AstNode* Ast::createNodeUpsertFilter(AstNode const* variable,
   AstNode* example = createNodeExample(variable, object);
 
   node->addMember(example);
+
+  if (node->type == NODE_TYPE_PARAMETER) {
+    _containsUpsertLookupValueBindParameters = true;
+  }
 
   return node;
 }
@@ -1197,7 +1205,7 @@ AstNode* Ast::createNodeBoundAttributeAccess(AstNode const* accessed,
   node->addMember(parameter);
 
   _containsBindParameters = true;
-  _containsAttributeNameBindParameters = true;
+  _containsAttributeNameValueBindParameters = true;
 
   return node;
 }
@@ -1693,6 +1701,12 @@ AstNode* Ast::createNodeDirection(uint64_t direction, AstNode const* steps) {
   node->addMember(dir);
   node->addMember(steps);
 
+  traverseReadOnly(node, [this](AstNode const* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      _containsTraversalDepthValueBindParameters = true;
+    }
+  });
+
   TRI_ASSERT(node->numMembers() == 2);
   return node;
 }
@@ -1705,6 +1719,12 @@ AstNode* Ast::createNodeCollectionDirection(uint64_t direction,
 
   node->addMember(dir);
   node->addMember(collection);
+
+  // using an edge collection using a value (i.e. non-collection)
+  // bind parameter. this disables the query plan cache as of now
+  if (collection->type == NODE_TYPE_PARAMETER) {
+    _containsCollectionNameValueBindParameters = true;
+  }
 
   TRI_ASSERT(node->numMembers() == 2);
   return node;
@@ -1980,7 +2000,8 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 /// e.g. @@foo and `doc.@attr`).
 void Ast::injectBindParametersFirstStage(
     BindParameters& parameters, CollectionNameResolver const& resolver) {
-  TRI_ASSERT(!_containsAttributeNameBindParameters || _containsBindParameters);
+  TRI_ASSERT(!_containsAttributeNameValueBindParameters ||
+             _containsBindParameters);
 
   if (_containsBindParameters || _containsTraversal) {
     auto func = [&](AstNode* node) -> AstNode* {
@@ -4507,8 +4528,28 @@ bool Ast::containsBindParameters() const noexcept {
   return _containsBindParameters;
 }
 
-bool Ast::containsAttributeNameBindParameters() const noexcept {
-  return _containsAttributeNameBindParameters;
+bool Ast::containsAttributeNameValueBindParameters() const noexcept {
+  return _containsAttributeNameValueBindParameters;
+}
+
+bool Ast::containsCollectionNameValueBindParameters() const noexcept {
+  return _containsCollectionNameValueBindParameters;
+}
+
+bool Ast::containsGraphNameValueBindParameters() const noexcept {
+  return _containsGraphNameValueBindParameters;
+}
+
+void Ast::setContainsGraphNameValueBindParameters() noexcept {
+  _containsGraphNameValueBindParameters = true;
+}
+
+bool Ast::containsTraversalDepthValueBindParameters() const noexcept {
+  return _containsTraversalDepthValueBindParameters;
+}
+
+bool Ast::containsUpsertLookupValueBindParameters() const noexcept {
+  return _containsUpsertLookupValueBindParameters;
 }
 
 AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
