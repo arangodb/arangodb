@@ -383,7 +383,7 @@ jobs:
             find build/ -iname *.o.d -delete || true
             rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
       - run:
-          name: Build artifacts
+          name: List build artifacts
           command: |
             ls -Ssha build/bin/
       - run:
