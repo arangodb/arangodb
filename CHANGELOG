@@ -1,6 +1,22 @@
 devel
 -----
 
+* Add "useCache" option for graph nodes:
+  The "useCache" AQL option is now supported for the following node types in
+  addition:
+  - TraversalNode
+  - ShortestPathNode
+  - EnumeratePathsNode (K_SHORTEST_PATHS, K_PATHS, ALL_SHORTEST_PATHS)
+  The option controls whether the in-memory cache for edges is used for
+  the graph operation. It defaults to `true`. It can be set to `false` to
+  disable usage of the in-memory edge cache for the graph operation in
+  question.
+
+  Example:
+
+      FOR v, e, p IN 1..2 OUTBOUND 'vertex/123' edges OPTIONS {useCache:false}
+        ...
+
 * Fixed MDS-1225: reloading of AQL user-defined functions inside AQL queries 
   could cause trouble if the `_aqlfunctions` collection is located on different
   DB server than the leader shards of other collections used in the same query.
