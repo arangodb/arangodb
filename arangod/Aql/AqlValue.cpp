@@ -44,8 +44,7 @@
 #error velocypack_malloc must be defined
 #endif
 
-using namespace arangodb;
-using namespace aql;
+namespace arangodb::aql {
 
 void AqlValue::setPointer(uint8_t const* pointer) noexcept {
   setType(AqlValueType::VPACK_SLICE_POINTER);
@@ -1355,8 +1354,12 @@ void const* AqlValue::data() const noexcept {
       return nullptr;
   }
 }
+}  // namespace arangodb::aql
 
-size_t std::hash<AqlValue>::operator()(AqlValue const& x) const noexcept {
+namespace std {
+using arangodb::aql::AqlValue;
+
+size_t hash<AqlValue>::operator()(AqlValue const& x) const noexcept {
   auto t = x.type();
   switch (t) {
     case AqlValue::VPACK_INLINE:
@@ -1380,8 +1383,8 @@ size_t std::hash<AqlValue>::operator()(AqlValue const& x) const noexcept {
   return 0;
 }
 
-bool std::equal_to<AqlValue>::operator()(AqlValue const& a,
-                                         AqlValue const& b) const noexcept {
+bool equal_to<AqlValue>::operator()(AqlValue const& a,
+                                    AqlValue const& b) const noexcept {
   // TODO(MBkkt) can be just compare two uint64_t?
   auto t = a.type();
   if (t != b.type()) {
@@ -1411,3 +1414,5 @@ bool std::equal_to<AqlValue>::operator()(AqlValue const& a,
   }
   return false;
 }
+
+}  // namespace std

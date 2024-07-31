@@ -24,11 +24,12 @@
 #include "SingletonNode.h"
 
 #include "Aql/ConstFetcher.h"
-#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/IdExecutor.h"
 #include "Aql/RegisterPlan.h"
+
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;

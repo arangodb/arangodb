@@ -23,6 +23,8 @@
 
 #include "ClusterRestReplicationHandler.h"
 
+#include "Futures/Future.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;

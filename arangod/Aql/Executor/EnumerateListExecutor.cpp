@@ -29,6 +29,7 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
@@ -43,8 +44,7 @@
 
 #include <optional>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 void throwArrayExpectedException(AqlValue const& value) {
@@ -57,8 +57,6 @@ void throwArrayExpectedException(AqlValue const& value) {
 }
 
 }  // namespace
-
-namespace arangodb::aql {
 
 class EnumerateListExpressionContext final : public QueryExpressionContext {
  public:
@@ -117,8 +115,6 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
   VariableId _outputVariableId;
   AqlValue _currentValue;
 };
-
-}  // namespace arangodb::aql
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
@@ -367,3 +363,6 @@ AqlValue EnumerateListExecutor::getAqlValue(AqlValue const& inVarReg,
 
   return inVarReg.at(pos, mustDestroy, true);
 }
+
+template class ExecutionBlockImpl<EnumerateListExecutor>;
+}  // namespace arangodb::aql
