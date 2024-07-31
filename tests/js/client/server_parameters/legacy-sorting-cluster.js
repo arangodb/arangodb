@@ -196,8 +196,8 @@ function legacySortingTestSuite() {
           if (oneResult.result.errorCode !== 0) { return false; }
           if (!Array.isArray(oneResult.result.affected)) { return false; }
           if (oneResult.result.affected.length !== 0) { return false; }
-          return true;
         }
+        return true;
       };
       let count = 0;
       while (count < 60) {
