@@ -46,6 +46,7 @@ class LogTopic {
 
   static std::vector<std::pair<TopicName, LogLevel>> logLevelTopics();
   static void setLogLevel(TopicName, LogLevel);
+  static LogTopic* topicForId(size_t topicId);
   static LogTopic* lookup(TopicName);
   static TopicName lookup(size_t topicId);
 

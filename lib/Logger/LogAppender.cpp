@@ -22,35 +22,33 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-#include <string>
-#include <string_view>
-#include <type_traits>
-
 #include "LogAppender.h"
+#include <atomic>
 
-#include "Basics/operating-system.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
-#include "Basics/StringUtils.h"
-#include "Basics/WriteLocker.h"
-#include "Basics/voc-errors.h"
-#include "Logger/LogAppenderFile.h"
-#include "Logger/LogAppenderSyslog.h"
-#include "Logger/LogGroup.h"
-#include "Logger/LogMacros.h"
+#include "Logger/LogMessage.h"
 #include "Logger/LogTopic.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
-using namespace arangodb;
-using namespace arangodb::basics;
+namespace arangodb {
 
 void LogAppender::logMessageGuarded(LogMessage const& message) {
-  // Only one thread is allowed to actually write logs to the file.
-  // We use a recusive lock here, just in case writing the log message
-  // causes a crash, in this case we may trigger another force-direct
-  // log. This is not very likely, but it is better to be safe than sorry.
-  RECURSIVE_WRITE_LOCKER(_logOutputMutex, _logOutputMutexOwner);
-  logMessage(message);
+  if (message._level >=
+      _topicLevels[message._topicId].load(std::memory_order_relaxed)) {
+    // Only one thread is allowed to actually write logs to the file.
+    // We use a recusive lock here, just in case writing the log message
+    // causes a crash, in this case we may trigger another force-direct
+    // log. This is not very likely, but it is better to be safe than sorry.
+    RECURSIVE_WRITE_LOCKER(_logOutputMutex, _logOutputMutexOwner);
+    logMessage(message);
+  }
 }
+
+auto LogAppender::getLogLevel(LogTopic const& topic) -> LogLevel {
+  return _topicLevels[topic.id()].load(std::memory_order_relaxed);
+}
+
+void LogAppender::setLogLevel(LogTopic const& topic, LogLevel level) {
+  _topicLevels[topic.id()].store(level);
+}
+
+}  // namespace arangodb

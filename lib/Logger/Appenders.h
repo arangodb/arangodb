@@ -23,6 +23,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -51,7 +52,13 @@ struct Appenders {
   void reopen();
   void shutdown();
 
-  bool haveAppenders(LogGroup const&, size_t topicId);
+  bool haveAppenders(LogGroup const& group, size_t topicId);
+
+  auto getAppender(LogGroup const& group, std::string const& definition)
+      -> std::shared_ptr<LogAppender>;
+
+  void foreach (LogGroup const& logGroup,
+                std::function<void(LogAppender&)> const& f);
 
  private:
   enum class Type {

@@ -40,15 +40,18 @@
 #include "Logger/LogAppenderStdStream.h"
 #include "Logger/LogContext.h"
 #include "Logger/LogGroup.h"
+#include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogMessage.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Logger/LogThread.h"
+#include "Logger/Topics.h"
 
 #include <absl/strings/str_cat.h>
 
 #include <velocypack/Dumper.h>
 #include <velocypack/Sink.h>
+#include <mutex>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -116,6 +119,7 @@ void LogMessage::shrink(std::size_t maxLength) {
 
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
+std::mutex Logger::_appenderModificationMutex;
 logger::Appenders Logger::_appenders;
 bool Logger::_allowStdLogging = true;
 
@@ -227,20 +231,67 @@ void Logger::setLogLevel(std::string const& levelName) {
     // set the log level globally (e.g. `--log.level info`). note that
     // this does not set the log level for all log topics, but only the
     // log level for the "general" log topic.
-    Logger::setLogLevel(level);
+    setLogLevel(level);
     // setting the log level for topic "general" is required here, too,
     // as "fixme" is the previous general log topic...
-    LogTopic::setLogLevel(std::string("general"), level);
-  } else if (v[0] == LogTopic::ALL) {
+    setLogLevel(std::string("general"), level);
+  } else {
+    setLogLevel(v[0], level);
+  }
+}
+
+void Logger::setLogLevel(std::string const& topic, LogLevel level) {
+  std::lock_guard guard(_appenderModificationMutex);
+  if (topic == LogTopic::ALL) {
     // handle pseudo log-topic "all": this will set the log level for
     // all existing topics
-    for (auto const& it : logLevelTopics()) {
-      LogTopic::setLogLevel(it.first, level);
+    for (size_t i = 0; i < logger::kNumTopics; ++i) {
+      auto* logTopic = LogTopic::topicForId(i);
+      logTopic->setLogLevel(level);
+      _appenders.foreach (Logger::defaultLogGroup(),
+                          [level, logTopic](LogAppender& appender) {
+                            appender.setLogLevel(logTopic, level);
+                          });
     }
   } else {
     // handle a topic-specific request (e.g. `--log.level requests=info`).
-    LogTopic::setLogLevel(v[0], level);
+    LogTopic::setLogLevel(topic, level);
+    auto* logTopic = LogTopic::lookup(topic);
+    _appenders.foreach (Logger::defaultLogGroup(),
+                        [level, logTopic](LogAppender& appender) {
+                          appender.setLogLevel(logTopic, level);
+                        });
   }
+}
+
+void Logger::setLogLevel(std::string const& definition,
+                         std::string const& topic, LogLevel level) {
+  std::lock_guard guard(_appenderModificationMutex);
+  auto appender = _appenders.getAppender(Logger::defaultLogGroup(), definition);
+  auto* logTopic = LogTopic::lookup(topic);
+  TRI_ASSERT(logTopic != nullptr);
+  if (appender != nullptr && logTopic != nullptr) {
+    appender->setLogLevel(logTopic, level);
+
+    auto currentLevel = logTopic->level();
+    if (level > currentLevel) {
+      // if the new level is higher than the current level, we can simply
+      // update the global topic to the new level
+      logTopic->setLogLevel(level);
+    } else if (level < currentLevel) {
+      // we have to go through all appenders and check if there are other
+      // appenders with a higher level
+      _appenders.foreach (Logger::defaultLogGroup(),
+                          [&level, logTopic](LogAppender& appender) {
+                            auto l = appender.getLogLevel(logTopic);
+                            if (l > level) {
+                              level = l;
+                            }
+                          });
+      logTopic->setLogLevel(level);
+    }
+  }
+  // TODO
 }
 
 void Logger::setLogStructuredParams(
@@ -860,8 +911,8 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
   }
 
   // first log to all "global" appenders, which are the in-memory ring buffer
-  // logger and the metrics counter. note that these loggers do not require any
-  // configuration so we can always and safely invoke them.
+  // logger and the metrics counter. note that these loggers do not require
+  // any configuration so we can always and safely invoke them.
   _appenders.logGlobal(group, *msg);
 
   if (!_active.load(std::memory_order_acquire)) {

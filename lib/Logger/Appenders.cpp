@@ -304,4 +304,25 @@ bool Appenders::haveAppenders(LogGroup const& logGroup, size_t topicId) {
   }
 }
 
+auto Appenders::getAppender(LogGroup const& logGroup,
+                            std::string const& definition)
+    -> std::shared_ptr<LogAppender> {
+  READ_LOCKER(guard, _appendersLock);
+  auto& group = _groups.at(logGroup.id());
+  auto it = group.definition2appenders.find(definition);
+  if (it != group.definition2appenders.end()) {
+    return it->second;
+  }
+  return nullptr;
+}
+
+void Appenders::foreach (LogGroup const& logGroup,
+                         std::function<void(LogAppender&)> const& f) {
+  READ_LOCKER(guard, _appendersLock);
+  auto& group = _groups.at(logGroup.id());
+  for (auto& v : group.definition2appenders) {
+    f(*v.second);
+  }
+}
+
 }  // namespace arangodb::logger

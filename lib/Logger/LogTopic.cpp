@@ -186,6 +186,11 @@ void LogTopic::setLogLevel(TopicName name, LogLevel level) {
   }
 }
 
+LogTopic* LogTopic::topicForId(size_t topicId) {
+  TRI_ASSERT(topicId < logger::kNumTopics);
+  return Topics::instance().get(topicId);
+}
+
 LogTopic* LogTopic::lookup(TopicName name) {
   return Topics::instance().find(name);
 }

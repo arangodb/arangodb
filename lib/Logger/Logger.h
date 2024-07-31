@@ -202,6 +202,9 @@ class Logger {
   defaultLogLevelTopics();
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
+  static void setLogLevel(std::string const& topic, LogLevel level);
+  static void setLogLevel(std::string const& appender, std::string const& topic,
+                          LogLevel level);
   static void setLogLevel(std::vector<std::string> const&);
   static std::unordered_map<std::string, bool> parseStringParams(
       std::vector<std::string> const&);
@@ -300,6 +303,7 @@ class Logger {
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
 
+  static std::mutex _appenderModificationMutex;
   static logger::Appenders _appenders;
   static bool _allowStdLogging;
 

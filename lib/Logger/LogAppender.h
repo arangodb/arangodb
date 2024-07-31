@@ -23,11 +23,14 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <string>
 #include <thread>
 
 #include "Basics/ReadWriteLock.h"
+#include "Logger/LogLevel.h"
+#include "Logger/Topics.h"
 
 namespace arangodb {
 class LogTopic;
@@ -41,7 +44,9 @@ class LogAppender {
   LogAppender(LogAppender const&) = delete;
   LogAppender& operator=(LogAppender const&) = delete;
 
- public:
+  auto getLogLevel(LogTopic const& topic) -> LogLevel;
+  void setLogLevel(LogTopic const& topic, LogLevel level);
+
   void logMessageGuarded(LogMessage const&);
 
   virtual std::string details() const = 0;
@@ -52,5 +57,6 @@ class LogAppender {
  private:
   basics::ReadWriteLock _logOutputMutex;
   std::atomic<std::thread::id> _logOutputMutexOwner;
+  std::array<std::atomic<LogLevel>, logger::kNumTopics> _topicLevels;
 };
 }  // namespace arangodb
