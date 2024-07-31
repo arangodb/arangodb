@@ -79,7 +79,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(
 // We probably do not need this, because the rule will only be used on the
 // coordinator
 SingleRemoteOperationNode::SingleRemoteOperationNode(
-    ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    ExecutionPlan* plan, arangodb::velocypack::Slice base)
     : ExecutionNode(plan, base), CollectionAccessingNode(plan, base) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,

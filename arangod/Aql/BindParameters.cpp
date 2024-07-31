@@ -34,6 +34,7 @@
 
 #include <utility>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 BindParameters::BindParameters(ResourceMonitor& resourceMonitor)
@@ -44,9 +45,8 @@ BindParameters::BindParameters(ResourceMonitor& resourceMonitor)
       _processed(false) {
 }
 
-BindParameters::BindParameters(
-    ResourceMonitor& resourceMonitor,
-    std::shared_ptr<arangodb::velocypack::Builder> builder)
+BindParameters::BindParameters(ResourceMonitor& resourceMonitor,
+                               std::shared_ptr<velocypack::Builder> builder)
     : _resourceMonitor(resourceMonitor),
       _builder(std::move(builder)),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -120,17 +120,13 @@ void BindParameters::registerNode(std::string_view name, AstNode* node) {
                                    "invalid bind parameter access");
   }
 
-  TRI_ASSERT(!(*it).second.first.isNone());
-  // no node must have been registered before
-  TRI_ASSERT((*it).second.second == nullptr);
   (*it).second.second = node;
 }
 
 /// @brief run a visitor function on all bind parameters
 void BindParameters::visit(
-    std::function<void(std::string const& key,
-                       arangodb::velocypack::Slice value, AstNode* node)> const&
-        visitor) const {
+    std::function<void(std::string const& key, velocypack::Slice value,
+                       AstNode* node)> const& visitor) const {
   for (auto const& it : _parameters) {
     visitor(it.first, it.second.first, it.second.second);
   }
@@ -164,7 +160,7 @@ void BindParameters::stripCollectionNames(VPackSlice keys,
   result.close();
 }
 
-std::shared_ptr<arangodb::velocypack::Builder> BindParameters::builder() const {
+std::shared_ptr<velocypack::Builder> BindParameters::builder() const {
   return _builder;
 }
 

@@ -21,7 +21,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Indexes.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/QueryPlanCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -35,7 +38,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Indexes.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexFactory.h"
 #include "IResearch/IResearchCommon.h"
@@ -551,9 +553,9 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
         for (auto& it : shardKeys) {
           if (indexKeys.find(it) == indexKeys.end()) {
             ensureIndexResult = TRI_ERROR_CLUSTER_UNSUPPORTED;
-            co_return Result(
-                TRI_ERROR_CLUSTER_UNSUPPORTED,
-                "shard key '" + it + "' must be present in unique index");
+            co_return Result(TRI_ERROR_CLUSTER_UNSUPPORTED,
+                             absl::StrCat("shard key '", it,
+                                          "' must be present in unique index"));
           }
         }
       }
@@ -609,6 +611,12 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     res = co_await EnsureIndexLocal(collection, indexDef, create, output,
                                     std::move(progress),
                                     std::move(replicationCb));
+  }
+
+  if (res.ok()) {
+    // we have a new index now, so we can flush all cached query execution plans
+    // so that the next run of a query can take the new index into account
+    collection.vocbase().queryPlanCache().invalidate(collection.guid());
   }
 
   ensureIndexResult = res.errorNumber();
@@ -781,12 +789,22 @@ futures::Future<arangodb::Result> Indexes::dropCoordinator(
   // flush estimates
   collection.getPhysical()->flushClusterIndexEstimates();
 
+  // we have are about to drop an index, so we can now already invalidate
+  // all cached query plans that use the index.
+  collection.vocbase().queryPlanCache().invalidate(collection.guid());
+
 #ifdef USE_ENTERPRISE
   auto res = Indexes::dropCoordinatorEE(collection, indexId);
 #else
   auto res =
       ClusterIndexMethods::dropIndexCoordinator(collection, indexId, 0.0);
 #endif
+
+  // the index is gone now. flush all cached query execution plans for the
+  // collection again in case a query still found the index after we
+  // flushed the cached plans
+  collection.vocbase().queryPlanCache().invalidate(collection.guid());
+
   co_return res;
 }
 
@@ -813,6 +831,11 @@ requires std::is_same_v<IndexSpec, IndexId> or
         futures::Future<arangodb::Result> Indexes::dropDBServer(
             LogicalCollection& col, IndexSpec indexSpec) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  // we have one index less now, so we should flush all cached query execution
+  // plans for the collection
+  col.vocbase().queryPlanCache().invalidate(col.guid());
+
   READ_LOCKER(readLocker, col.vocbase()._inventoryLock);
 
   auto trx = createTrxForDrop(col);
@@ -863,6 +886,12 @@ requires std::is_same_v<IndexSpec, IndexId> or
   auto res = collection.dropIndex(indexId);
   events::DropIndex(collection.vocbase().name(), collection.name(),
                     std::to_string(indexId.id()), res.errorNumber());
+
+  // the index is gone now. flush all cached query execution plans for the
+  // collection again in case a query still found the index after we
+  // flushed the cached plans
+  col.vocbase().queryPlanCache().invalidate(col.guid());
+
   co_return res;
 }
 

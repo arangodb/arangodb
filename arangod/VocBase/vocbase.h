@@ -56,7 +56,8 @@ class ApplicationServer;
 }
 namespace aql {
 class QueryList;
-}
+class QueryPlanCache;
+}  // namespace aql
 namespace replication2 {
 class LogId;
 struct LogIndex;
@@ -188,6 +189,7 @@ struct TRI_vocbase_t {
                                   // ReadWriteLock)
 
   std::unique_ptr<arangodb::aql::QueryList> _queries;
+  std::unique_ptr<arangodb::aql::QueryPlanCache> _queryPlanCache;
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
 
   std::unique_ptr<arangodb::VocbaseMetrics> _metrics;
@@ -289,6 +291,9 @@ struct TRI_vocbase_t {
   void addReplicationApplier();
 
   arangodb::aql::QueryList* queryList() const { return _queries.get(); }
+  arangodb::aql::QueryPlanCache& queryPlanCache() const {
+    return *_queryPlanCache;
+  }
   arangodb::CursorRepository* cursorRepository() const {
     return _cursorRepository.get();
   }

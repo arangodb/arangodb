@@ -24,6 +24,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryPlanCache.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
@@ -547,6 +548,7 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
     r = cluster_helper::properties(*this, true /*means under lock*/);
   } else {
     TRI_ASSERT(ServerState::instance()->isSingleServer());
+    vocbase().queryPlanCache().invalidateAll();
     aql::QueryCache::instance()->invalidate(&vocbase());
     r = storage_helper::properties(*this, true /*means under lock*/);
   }

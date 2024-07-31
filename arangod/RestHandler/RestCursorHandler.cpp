@@ -369,6 +369,11 @@ RestStatus RestCursorHandler::handleQueryResult() {
       } else {
         result.add("extra", _queryResult.extra->slice());
       }
+      if (_queryResult.planCacheKey.has_value()) {
+        result.add(
+            "planCacheKey",
+            VPackValue(std::to_string(_queryResult.planCacheKey.value())));
+      }
       result.add(StaticStrings::Error, VPackValue(false));
       result.add(StaticStrings::Code,
                  VPackValue(static_cast<int>(ResponseCode::CREATED)));

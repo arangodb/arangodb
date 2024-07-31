@@ -17,43 +17,26 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Aql/QueryResult.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-#include <v8.h>
+namespace arangodb {
+class RestQueryPlanCacheHandler : public RestVocbaseBaseHandler {
+ public:
+  explicit RestQueryPlanCacheHandler(ArangodServer&, GeneralRequest*,
+                                     GeneralResponse*);
 
-namespace arangodb::aql {
-
-struct QueryResultV8 : public QueryResult {
-  QueryResultV8(QueryResultV8 const& other) = delete;
-  QueryResultV8& operator=(QueryResultV8 const& other) = delete;
-
-  QueryResultV8(QueryResultV8&& other) = default;
-
-  explicit QueryResultV8(QueryResult&& other) : QueryResult(std::move(other)) {}
-
-  QueryResultV8() : QueryResult() {}
-
-  explicit QueryResultV8(Result const& res) : QueryResult(res) {}
-
-  explicit QueryResultV8(Result&& res) : QueryResult(std::move(res)) {}
-
-  void reset(Result const& result) {
-    QueryResult::reset(result);
-    v8Data.Clear();
+  char const* name() const override final {
+    return "RestQueryPlanCacheHandler";
   }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
+  RestStatus execute() override;
 
-  void reset(Result&& result) {
-    QueryResult::reset(std::move(result));
-    v8Data.Clear();
-  }
-
-  v8::Local<v8::Array> v8Data;
+ private:
+  void readPlans();
+  void clearCache();
 };
-
-}  // namespace arangodb::aql
+}  // namespace arangodb

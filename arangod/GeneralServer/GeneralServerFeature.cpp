@@ -23,10 +23,6 @@
 
 #include "GeneralServerFeature.h"
 
-#include <chrono>
-#include <stdexcept>
-#include <thread>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/RestActionHandler.h"
 #include "Agency/AgencyFeature.h"
@@ -100,6 +96,7 @@
 #include "RestHandler/RestOptionsDescriptionHandler.h"
 #include "RestHandler/RestOptionsHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
+#include "RestHandler/RestQueryPlanCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
@@ -139,6 +136,10 @@
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
+
+#include <chrono>
+#include <stdexcept>
+#include <thread>
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -771,6 +772,10 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler("/_api/query-cache",
                      RestHandlerCreator<RestQueryCacheHandler>::createNoData);
+
+  f.addPrefixHandler(
+      "/_api/query-plan-cache",
+      RestHandlerCreator<RestQueryPlanCacheHandler>::createNoData);
 
   f.addPrefixHandler("/_api/wal",
                      RestHandlerCreator<RestWalAccessHandler>::createNoData);

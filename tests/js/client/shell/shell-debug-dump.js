@@ -332,7 +332,7 @@ function debugDumpGraphTestsuite () {
 function debugDumpViews () {
   return {
     setUp: function () {
-      db._createDatabase(dbName, { replicationFactor: 3, writeConcern: 2 });
+      db._createDatabase(dbName, { replicationFactor: 3, writeConcern: 1 });
       db._useDatabase(dbName);
 
       analyzers.save("my_delimiter", "delimiter", {"delimiter": "@"});
@@ -404,7 +404,6 @@ function debugDumpViews () {
     testDebugDumpWithViewsCollectionIds: function () {
       let query = `for d in view search d.value1 == 42 return d`;
       explainer.debugDump(fileName, query, {}, {examples: 50, anonymize: false});
-//      explainer.inspectDump(fileName, outFileName);
     
       let data = JSON.parse(fs.readFileSync(fileName).toString());
       assertTrue(data.hasOwnProperty("collections"));
@@ -420,10 +419,10 @@ function debugDumpViews () {
       assertTrue(plan.hasOwnProperty("collections"));
 
       assertEqual([
-        { "name" : "collection", "type" : "read" }, 
-        { "name" : "edgeTestCollection", "type" : "read" }, 
+        { "name" : cn, "type" : "read" }, 
+        { "name" : cn1, "type" : "read" }, 
         { "name" : "view", "type" : "read" }, 
-      ], plan.collections.sort((l, r) => {
+      ].sort(), plan.collections.sort((l, r) => {
         if (l.name < r.name) {
           return -1;
         } else if (l.name > r.name) {

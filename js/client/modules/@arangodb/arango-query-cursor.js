@@ -59,6 +59,10 @@ function ArangoQueryCursor(database, data, stream, retriable) {
       this._hasMore = true;
     }
   }
+  
+  if (data.hasOwnProperty('planCacheKey')) {
+    this.planCacheKey = data.planCacheKey;
+  }
 }
 
 exports.ArangoQueryCursor = ArangoQueryCursor;
@@ -82,6 +86,10 @@ ArangoQueryCursor.prototype.toString = function () {
   if (this.data.id) { // should always exist for streaming cursors
     result += ' ' + this.data.id;
   }
+  
+  if (this.planCacheKey !== undefined) {
+    result += ', plan cache key: "' + this.planCacheKey + '"';
+  }
 
   if (this._stream) {
     // a streaming query has no count and will not be cached
@@ -91,7 +99,7 @@ ArangoQueryCursor.prototype.toString = function () {
       result += ', count: ' + this._count;
     }
   }
-  result += ', cached: ' + (this.data.cached ? 'true' : 'false');
+  result += ', results cached: ' + (this.data.cached ? 'true' : 'false');
   result += ', hasMore: ' + (this.hasNext() ? 'true' : 'false');
 
   if (this.data.hasOwnProperty('extra') &&

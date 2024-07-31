@@ -58,15 +58,7 @@ class MultipleRemoteModificationNode final : public ExecutionNode,
                                  Variable const* outVariable,
                                  Variable const* OLD, Variable const* NEW);
 
-  // We probably do not need this, because the rule will only be used on the
-  // coordinator
-  MultipleRemoteModificationNode(ExecutionPlan* plan,
-                                 arangodb::velocypack::Slice const& base)
-      : ExecutionNode(plan, base), CollectionAccessingNode(plan, base) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "multiple remote operation node deserialization not implemented.");
-  }
+  MultipleRemoteModificationNode(ExecutionPlan* plan, velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTE_MULTIPLE; }

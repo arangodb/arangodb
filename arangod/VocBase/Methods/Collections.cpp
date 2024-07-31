@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Aql/QueryPlanCache.h"
 #include "Auth/UserManager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -1281,6 +1282,8 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
     }
   }
 
+  coll.vocbase().queryPlanCache().invalidate(coll.guid());
+
 // If we are a coordinator in a cluster, we have to behave differently:
 #ifdef USE_ENTERPRISE
   res = DropColEnterprise(&coll, options.allowDropSystem);
@@ -1291,6 +1294,10 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), options.allowDropSystem);
   }
 #endif
+
+  if (res.ok()) {
+    coll.vocbase().queryPlanCache().invalidate(coll.guid());
+  }
 
   LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES,
                res.fail() && res.isNot(TRI_ERROR_FORBIDDEN) &&
