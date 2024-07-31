@@ -789,7 +789,7 @@ are stopped to allow compaction to catch up.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100 /*adjust when option is enabled*/);
+      .setIntroducedIn(31202);
 
   TRI_ASSERT(::blockCacheTypes.contains(_blockCacheType));
   options
@@ -798,7 +798,7 @@ are stopped to allow compaction to catch up.)");
                   "type is experimental).",
                   new DiscreteValuesParameter<StringParameter>(
                       &_blockCacheType, ::blockCacheTypes))
-      .setIntroducedIn(31100 /*adjust when option is enabled*/);
+      .setIntroducedIn(31202);
 
   options
       ->addOption(
@@ -1168,7 +1168,7 @@ downgrading.)");
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100 /*adjust when option is enabled*/);
+      .setIntroducedIn(31202);
 
   options
       ->addOption("--rocksdb.min-blob-size",
@@ -1208,7 +1208,7 @@ downgrading.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100 /*adjust when option is enabled*/);
+      .setIntroducedIn(31202);
 
   options
       ->addOption(
@@ -1286,7 +1286,7 @@ downgrading.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31100 /*adjust when option is enabled*/);
+      .setIntroducedIn(31202);
 
   options
       ->addOption(
