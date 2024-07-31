@@ -77,13 +77,13 @@ namespace {
 // return an identifier to a connection configuration, consisting of
 // endpoint, username, password, jwt, authentication and protocol type
 std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
-  auto raw = absl::StrCat(builder.normalizedEndpoint(), "/", builder.user(), "/",
+  std::string raw = absl::StrCat(builder.normalizedEndpoint(), "/", builder.user(), "/",
                           builder.password(), "/", builder.jwtToken(), "/",
                           to_string(builder.authenticationType()), "/",
                           to_string(builder.protocolType()));
   // create md5
   char hash[16];
-  arangodb::rest::SslInterface::sslMD5(*raw, raw.length(), &hash[0]);
+  arangodb::rest::SslInterface::sslMD5(raw.c_str(), raw.length(), &hash[0]);
 
   // as hex
   char hex[32];
