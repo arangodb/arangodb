@@ -41,9 +41,10 @@
 #include "Futures/Future.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Status.h"
+#include "VocBase/vocbase.h"
 
 #include <utility>
 

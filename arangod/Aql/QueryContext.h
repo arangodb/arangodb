@@ -104,6 +104,9 @@ class QueryContext {
   /// warnings access is thread safe
   QueryWarnings& warnings();
 
+  /// warnings access is thread safe
+  QueryWarnings const& warnings() const;
+
   /// @brief look up a graph in the _graphs collection
   ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
 

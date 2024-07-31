@@ -37,7 +37,7 @@ Collections::Collections(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 
 Collections::~Collections() = default;
 
-Collection* Collections::get(std::string_view const name) const {
+Collection* Collections::get(std::string_view name) const {
   auto it = _collections.find(name);
 
   if (it != _collections.end()) {
@@ -50,8 +50,9 @@ Collection* Collections::get(std::string_view const name) const {
 Collection* Collections::add(std::string const& name,
                              AccessMode::Type accessType,
                              Collection::Hint hint) {
-  // check if collection already is in our map
   TRI_ASSERT(!name.empty());
+
+  // check if collection already is in our map
   auto it = _collections.find(name);
 
   if (it == _collections.end()) {
@@ -100,9 +101,15 @@ std::vector<std::string> Collections::collectionNames() const {
 
 bool Collections::empty() const { return _collections.empty(); }
 
-void Collections::toVelocyPack(velocypack::Builder& builder) const {
+void Collections::toVelocyPack(
+    velocypack::Builder& builder,
+    std::function<bool(std::string const&, Collection const&)> const& filter)
+    const {
   builder.openArray();
   for (auto const& c : _collections) {
+    if (!filter(c.first, *c.second)) {
+      continue;
+    }
     builder.openObject();
     builder.add("name", VPackValue(c.first));
     builder.add("type",

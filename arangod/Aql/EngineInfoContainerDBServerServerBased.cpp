@@ -364,7 +364,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   });
 
   // remember which servers we add during our setup request
-  ::arangodb::containers::HashSet<std::string> serversAdded;
+  containers::HashSet<std::string> serversAdded;
 
   transaction::Methods& trx = _query.trxForOptimization();
   std::vector<arangodb::futures::Future<Result>> networkCalls{};

@@ -34,6 +34,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <unordered_set>
 
 using namespace arangodb;
 using namespace arangodb::aql;

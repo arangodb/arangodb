@@ -36,7 +36,6 @@
 #include "Aql/Executor/IResearchViewExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SimpleModifier.h"
 #include "Aql/SkipResult.h"
 #include "Aql/Timing.h"
@@ -867,6 +866,10 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                                   AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   double start = -1.0;
   auto profilingGuard = scopeGuard([&]() noexcept {
     _execNodeStats.fetching += currentSteadyClockValue() - start;
@@ -1079,9 +1082,11 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
 }
 
 template<class Executor>
+template<class E>
 auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
     AqlCallStack& stack, SkipResult& skipResult) -> ExecState {
-  static_assert(executorHasSideEffects<Executor>);
+  static_assert(std::is_same_v<Executor, E> &&
+                executorHasSideEffects<Executor>);
   if (!stack.needToCountSubquery()) {
     // We need to really produce things here
     // fall back to original version as any other executor.

@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/IResearchViewExecutor.h"
+#include "Aql/Executor/IResearchViewMergeExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/GlobalResourceMonitor.h"

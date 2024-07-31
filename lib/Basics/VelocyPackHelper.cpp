@@ -58,9 +58,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
 
-using namespace arangodb;
-using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
-
 namespace {
 
 constexpr std::string_view idRef("id");
@@ -69,9 +66,75 @@ constexpr std::string_view cidRef("cid");
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler> customTypeHandler;
 
-template<bool useUtf8, typename Comparator>
-int compareObjects(VPackSlice lhs, VPackSlice rhs,
-                   VPackOptions const* options) {
+// statically computed table of type weights
+// the weight for type MinKey must be lowest, the weight for type MaxKey must be
+// highest the table contains a special value -50 to indicate that the value is
+// an external which must be resolved further the type Custom has the same
+// weight as the String type, because the Custom type is used to store _id
+// (which is a string)
+static int8_t const typeWeights[256] = {
+    0 /* 0x00 */,   5 /* 0x01 */,  5 /* 0x02 */, 5 /* 0x03 */,  5 /* 0x04 */,
+    5 /* 0x05 */,   5 /* 0x06 */,  5 /* 0x07 */, 5 /* 0x08 */,  5 /* 0x09 */,
+    6 /* 0x0a */,   6 /* 0x0b */,  6 /* 0x0c */, 6 /* 0x0d */,  6 /* 0x0e */,
+    6 /* 0x0f */,   6 /* 0x10 */,  6 /* 0x11 */, 6 /* 0x12 */,  5 /* 0x13 */,
+    6 /* 0x14 */,   0 /* 0x15 */,  0 /* 0x16 */, -1 /* 0x17 */, 0 /* 0x18 */,
+    1 /* 0x19 */,   1 /* 0x1a */,  2 /* 0x1b */, 3 /* 0x1c */,  -50 /* 0x1d */,
+    -99 /* 0x1e */, 99 /* 0x1f */, 2 /* 0x20 */, 2 /* 0x21 */,  2 /* 0x22 */,
+    2 /* 0x23 */,   2 /* 0x24 */,  2 /* 0x25 */, 2 /* 0x26 */,  2 /* 0x27 */,
+    2 /* 0x28 */,   2 /* 0x29 */,  2 /* 0x2a */, 2 /* 0x2b */,  2 /* 0x2c */,
+    2 /* 0x2d */,   2 /* 0x2e */,  2 /* 0x2f */, 2 /* 0x30 */,  2 /* 0x31 */,
+    2 /* 0x32 */,   2 /* 0x33 */,  2 /* 0x34 */, 2 /* 0x35 */,  2 /* 0x36 */,
+    2 /* 0x37 */,   2 /* 0x38 */,  2 /* 0x39 */, 2 /* 0x3a */,  2 /* 0x3b */,
+    2 /* 0x3c */,   2 /* 0x3d */,  2 /* 0x3e */, 2 /* 0x3f */,  4 /* 0x40 */,
+    4 /* 0x41 */,   4 /* 0x42 */,  4 /* 0x43 */, 4 /* 0x44 */,  4 /* 0x45 */,
+    4 /* 0x46 */,   4 /* 0x47 */,  4 /* 0x48 */, 4 /* 0x49 */,  4 /* 0x4a */,
+    4 /* 0x4b */,   4 /* 0x4c */,  4 /* 0x4d */, 4 /* 0x4e */,  4 /* 0x4f */,
+    4 /* 0x50 */,   4 /* 0x51 */,  4 /* 0x52 */, 4 /* 0x53 */,  4 /* 0x54 */,
+    4 /* 0x55 */,   4 /* 0x56 */,  4 /* 0x57 */, 4 /* 0x58 */,  4 /* 0x59 */,
+    4 /* 0x5a */,   4 /* 0x5b */,  4 /* 0x5c */, 4 /* 0x5d */,  4 /* 0x5e */,
+    4 /* 0x5f */,   4 /* 0x60 */,  4 /* 0x61 */, 4 /* 0x62 */,  4 /* 0x63 */,
+    4 /* 0x64 */,   4 /* 0x65 */,  4 /* 0x66 */, 4 /* 0x67 */,  4 /* 0x68 */,
+    4 /* 0x69 */,   4 /* 0x6a */,  4 /* 0x6b */, 4 /* 0x6c */,  4 /* 0x6d */,
+    4 /* 0x6e */,   4 /* 0x6f */,  4 /* 0x70 */, 4 /* 0x71 */,  4 /* 0x72 */,
+    4 /* 0x73 */,   4 /* 0x74 */,  4 /* 0x75 */, 4 /* 0x76 */,  4 /* 0x77 */,
+    4 /* 0x78 */,   4 /* 0x79 */,  4 /* 0x7a */, 4 /* 0x7b */,  4 /* 0x7c */,
+    4 /* 0x7d */,   4 /* 0x7e */,  4 /* 0x7f */, 4 /* 0x80 */,  4 /* 0x81 */,
+    4 /* 0x82 */,   4 /* 0x83 */,  4 /* 0x84 */, 4 /* 0x85 */,  4 /* 0x86 */,
+    4 /* 0x87 */,   4 /* 0x88 */,  4 /* 0x89 */, 4 /* 0x8a */,  4 /* 0x8b */,
+    4 /* 0x8c */,   4 /* 0x8d */,  4 /* 0x8e */, 4 /* 0x8f */,  4 /* 0x90 */,
+    4 /* 0x91 */,   4 /* 0x92 */,  4 /* 0x93 */, 4 /* 0x94 */,  4 /* 0x95 */,
+    4 /* 0x96 */,   4 /* 0x97 */,  4 /* 0x98 */, 4 /* 0x99 */,  4 /* 0x9a */,
+    4 /* 0x9b */,   4 /* 0x9c */,  4 /* 0x9d */, 4 /* 0x9e */,  4 /* 0x9f */,
+    4 /* 0xa0 */,   4 /* 0xa1 */,  4 /* 0xa2 */, 4 /* 0xa3 */,  4 /* 0xa4 */,
+    4 /* 0xa5 */,   4 /* 0xa6 */,  4 /* 0xa7 */, 4 /* 0xa8 */,  4 /* 0xa9 */,
+    4 /* 0xaa */,   4 /* 0xab */,  4 /* 0xac */, 4 /* 0xad */,  4 /* 0xae */,
+    4 /* 0xaf */,   4 /* 0xb0 */,  4 /* 0xb1 */, 4 /* 0xb2 */,  4 /* 0xb3 */,
+    4 /* 0xb4 */,   4 /* 0xb5 */,  4 /* 0xb6 */, 4 /* 0xb7 */,  4 /* 0xb8 */,
+    4 /* 0xb9 */,   4 /* 0xba */,  4 /* 0xbb */, 4 /* 0xbc */,  4 /* 0xbd */,
+    4 /* 0xbe */,   4 /* 0xbf */,  4 /* 0xc0 */, 4 /* 0xc1 */,  4 /* 0xc2 */,
+    4 /* 0xc3 */,   4 /* 0xc4 */,  4 /* 0xc5 */, 4 /* 0xc6 */,  4 /* 0xc7 */,
+    2 /* 0xc8 */,   2 /* 0xc9 */,  2 /* 0xca */, 2 /* 0xcb */,  2 /* 0xcc */,
+    2 /* 0xcd */,   2 /* 0xce */,  2 /* 0xcf */, 2 /* 0xd0 */,  2 /* 0xd1 */,
+    2 /* 0xd2 */,   2 /* 0xd3 */,  2 /* 0xd4 */, 2 /* 0xd5 */,  2 /* 0xd6 */,
+    2 /* 0xd7 */,   0 /* 0xd8 */,  0 /* 0xd9 */, 0 /* 0xda */,  0 /* 0xdb */,
+    0 /* 0xdc */,   0 /* 0xdd */,  0 /* 0xde */, 0 /* 0xdf */,  0 /* 0xe0 */,
+    0 /* 0xe1 */,   0 /* 0xe2 */,  0 /* 0xe3 */, 0 /* 0xe4 */,  0 /* 0xe5 */,
+    0 /* 0xe6 */,   0 /* 0xe7 */,  0 /* 0xe8 */, 0 /* 0xe9 */,  0 /* 0xea */,
+    0 /* 0xeb */,   0 /* 0xec */,  0 /* 0xed */, 0 /* 0xee */,  0 /* 0xef */,
+    4 /* 0xf0 */,   4 /* 0xf1 */,  4 /* 0xf2 */, 4 /* 0xf3 */,  4 /* 0xf4 */,
+    4 /* 0xf5 */,   4 /* 0xf6 */,  4 /* 0xf7 */, 4 /* 0xf8 */,  4 /* 0xf9 */,
+    4 /* 0xfa */,   4 /* 0xfb */,  4 /* 0xfc */, 4 /* 0xfd */,  4 /* 0xfe */,
+    4 /* 0xff */,
+};
+
+}  // namespace
+
+namespace arangodb::basics {
+
+template<bool useUtf8, typename Comparator,
+         VelocyPackHelper::SortingMethod sortingMethod>
+int VelocyPackHelper::compareObjects(VPackSlice lhs, VPackSlice rhs,
+                                     VPackOptions const* options) {
   // compare two velocypack objects
   std::set<std::string_view, Comparator> keys;
   VPackCollection::unorderedKeys(lhs, keys);
@@ -88,8 +151,8 @@ int compareObjects(VPackSlice lhs, VPackSlice rhs,
       rhsValue = VPackSlice::nullSlice();
     }
 
-    int result = VelocyPackHelper::compare(lhsValue, rhsValue, useUtf8, options,
-                                           &lhs, &rhs);
+    int result = VelocyPackHelper::compareInternal<sortingMethod>(
+        lhsValue, rhsValue, useUtf8, options, &lhs, &rhs);
 
     if (result != 0) {
       return result;
@@ -98,69 +161,6 @@ int compareObjects(VPackSlice lhs, VPackSlice rhs,
 
   return 0;
 }
-
-// statically computed table of type weights
-// the weight for type MinKey must be lowest, the weight for type MaxKey must be
-// highest the table contains a special value -50 to indicate that the value is
-// an external which must be resolved further the type Custom has the same
-// weight as the String type, because the Custom type is used to store _id
-// (which is a string)
-static int8_t const typeWeights[256] = {
-    0 /* 0x00 */,   4 /* 0x01 */,  4 /* 0x02 */, 4 /* 0x03 */,  4 /* 0x04 */,
-    4 /* 0x05 */,   4 /* 0x06 */,  4 /* 0x07 */, 4 /* 0x08 */,  4 /* 0x09 */,
-    5 /* 0x0a */,   5 /* 0x0b */,  5 /* 0x0c */, 5 /* 0x0d */,  5 /* 0x0e */,
-    5 /* 0x0f */,   5 /* 0x10 */,  5 /* 0x11 */, 5 /* 0x12 */,  4 /* 0x13 */,
-    5 /* 0x14 */,   0 /* 0x15 */,  0 /* 0x16 */, -1 /* 0x17 */, 0 /* 0x18 */,
-    1 /* 0x19 */,   1 /* 0x1a */,  2 /* 0x1b */, 2 /* 0x1c */,  -50 /* 0x1d */,
-    -99 /* 0x1e */, 99 /* 0x1f */, 2 /* 0x20 */, 2 /* 0x21 */,  2 /* 0x22 */,
-    2 /* 0x23 */,   2 /* 0x24 */,  2 /* 0x25 */, 2 /* 0x26 */,  2 /* 0x27 */,
-    2 /* 0x28 */,   2 /* 0x29 */,  2 /* 0x2a */, 2 /* 0x2b */,  2 /* 0x2c */,
-    2 /* 0x2d */,   2 /* 0x2e */,  2 /* 0x2f */, 2 /* 0x30 */,  2 /* 0x31 */,
-    2 /* 0x32 */,   2 /* 0x33 */,  2 /* 0x34 */, 2 /* 0x35 */,  2 /* 0x36 */,
-    2 /* 0x37 */,   2 /* 0x38 */,  2 /* 0x39 */, 2 /* 0x3a */,  2 /* 0x3b */,
-    2 /* 0x3c */,   2 /* 0x3d */,  2 /* 0x3e */, 2 /* 0x3f */,  3 /* 0x40 */,
-    3 /* 0x41 */,   3 /* 0x42 */,  3 /* 0x43 */, 3 /* 0x44 */,  3 /* 0x45 */,
-    3 /* 0x46 */,   3 /* 0x47 */,  3 /* 0x48 */, 3 /* 0x49 */,  3 /* 0x4a */,
-    3 /* 0x4b */,   3 /* 0x4c */,  3 /* 0x4d */, 3 /* 0x4e */,  3 /* 0x4f */,
-    3 /* 0x50 */,   3 /* 0x51 */,  3 /* 0x52 */, 3 /* 0x53 */,  3 /* 0x54 */,
-    3 /* 0x55 */,   3 /* 0x56 */,  3 /* 0x57 */, 3 /* 0x58 */,  3 /* 0x59 */,
-    3 /* 0x5a */,   3 /* 0x5b */,  3 /* 0x5c */, 3 /* 0x5d */,  3 /* 0x5e */,
-    3 /* 0x5f */,   3 /* 0x60 */,  3 /* 0x61 */, 3 /* 0x62 */,  3 /* 0x63 */,
-    3 /* 0x64 */,   3 /* 0x65 */,  3 /* 0x66 */, 3 /* 0x67 */,  3 /* 0x68 */,
-    3 /* 0x69 */,   3 /* 0x6a */,  3 /* 0x6b */, 3 /* 0x6c */,  3 /* 0x6d */,
-    3 /* 0x6e */,   3 /* 0x6f */,  3 /* 0x70 */, 3 /* 0x71 */,  3 /* 0x72 */,
-    3 /* 0x73 */,   3 /* 0x74 */,  3 /* 0x75 */, 3 /* 0x76 */,  3 /* 0x77 */,
-    3 /* 0x78 */,   3 /* 0x79 */,  3 /* 0x7a */, 3 /* 0x7b */,  3 /* 0x7c */,
-    3 /* 0x7d */,   3 /* 0x7e */,  3 /* 0x7f */, 3 /* 0x80 */,  3 /* 0x81 */,
-    3 /* 0x82 */,   3 /* 0x83 */,  3 /* 0x84 */, 3 /* 0x85 */,  3 /* 0x86 */,
-    3 /* 0x87 */,   3 /* 0x88 */,  3 /* 0x89 */, 3 /* 0x8a */,  3 /* 0x8b */,
-    3 /* 0x8c */,   3 /* 0x8d */,  3 /* 0x8e */, 3 /* 0x8f */,  3 /* 0x90 */,
-    3 /* 0x91 */,   3 /* 0x92 */,  3 /* 0x93 */, 3 /* 0x94 */,  3 /* 0x95 */,
-    3 /* 0x96 */,   3 /* 0x97 */,  3 /* 0x98 */, 3 /* 0x99 */,  3 /* 0x9a */,
-    3 /* 0x9b */,   3 /* 0x9c */,  3 /* 0x9d */, 3 /* 0x9e */,  3 /* 0x9f */,
-    3 /* 0xa0 */,   3 /* 0xa1 */,  3 /* 0xa2 */, 3 /* 0xa3 */,  3 /* 0xa4 */,
-    3 /* 0xa5 */,   3 /* 0xa6 */,  3 /* 0xa7 */, 3 /* 0xa8 */,  3 /* 0xa9 */,
-    3 /* 0xaa */,   3 /* 0xab */,  3 /* 0xac */, 3 /* 0xad */,  3 /* 0xae */,
-    3 /* 0xaf */,   3 /* 0xb0 */,  3 /* 0xb1 */, 3 /* 0xb2 */,  3 /* 0xb3 */,
-    3 /* 0xb4 */,   3 /* 0xb5 */,  3 /* 0xb6 */, 3 /* 0xb7 */,  3 /* 0xb8 */,
-    3 /* 0xb9 */,   3 /* 0xba */,  3 /* 0xbb */, 3 /* 0xbc */,  3 /* 0xbd */,
-    3 /* 0xbe */,   3 /* 0xbf */,  3 /* 0xc0 */, 3 /* 0xc1 */,  3 /* 0xc2 */,
-    3 /* 0xc3 */,   3 /* 0xc4 */,  3 /* 0xc5 */, 3 /* 0xc6 */,  3 /* 0xc7 */,
-    2 /* 0xc8 */,   2 /* 0xc9 */,  2 /* 0xca */, 2 /* 0xcb */,  2 /* 0xcc */,
-    2 /* 0xcd */,   2 /* 0xce */,  2 /* 0xcf */, 2 /* 0xd0 */,  2 /* 0xd1 */,
-    2 /* 0xd2 */,   2 /* 0xd3 */,  2 /* 0xd4 */, 2 /* 0xd5 */,  2 /* 0xd6 */,
-    2 /* 0xd7 */,   0 /* 0xd8 */,  0 /* 0xd9 */, 0 /* 0xda */,  0 /* 0xdb */,
-    0 /* 0xdc */,   0 /* 0xdd */,  0 /* 0xde */, 0 /* 0xdf */,  0 /* 0xe0 */,
-    0 /* 0xe1 */,   0 /* 0xe2 */,  0 /* 0xe3 */, 0 /* 0xe4 */,  0 /* 0xe5 */,
-    0 /* 0xe6 */,   0 /* 0xe7 */,  0 /* 0xe8 */, 0 /* 0xe9 */,  0 /* 0xea */,
-    0 /* 0xeb */,   0 /* 0xec */,  0 /* 0xed */, 0 /* 0xee */,  0 /* 0xef */,
-    3 /* 0xf0 */,   3 /* 0xf1 */,  3 /* 0xf2 */, 3 /* 0xf3 */,  3 /* 0xf4 */,
-    3 /* 0xf5 */,   3 /* 0xf6 */,  3 /* 0xf7 */, 3 /* 0xf8 */,  3 /* 0xf9 */,
-    3 /* 0xfa */,   3 /* 0xfb */,  3 /* 0xfc */, 3 /* 0xfd */,  3 /* 0xfe */,
-    3 /* 0xff */,
-};
-
-}  // namespace
 
 // a default custom type handler that prevents throwing exceptions when
 // custom types are encountered during Slice.toJson() and family
@@ -353,8 +353,13 @@ bool VelocyPackHelper::VPackStringEqual::operator()(
           0);
 }
 
-int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
-                                          VPackSlice lhs, VPackSlice rhs) {
+int VelocyPackHelper::compareNumberValuesLegacy(VPackValueType lhsType,
+                                                VPackSlice lhs,
+                                                VPackSlice rhs) {
+  // This function is only for legacy code. The problem is that it casts
+  // all integer types to double, which can lose precision. See
+  // `VelocyPackHelper::compareNumberValuesCorrectly` for a correct
+  // implementation. This is only used for legacy vpack indexes.
   if (lhsType == rhs.type()) {
     // both types are equal
     if (lhsType == VPackValueType::Int || lhsType == VPackValueType::SmallInt) {
@@ -385,6 +390,223 @@ int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
     return 0;
   }
   return (l < r ? -1 : 1);
+}
+
+namespace {
+
+template<typename T>
+int comp(T a, T b) {
+  if (a == b) {
+    return VelocyPackHelper::cmp_equal;
+  }
+  return a < b ? VelocyPackHelper::cmp_less : VelocyPackHelper::cmp_greater;
+}
+
+// We use the following constants below for case distinctions,
+// we use static asserts to ensure that the `double` implementation
+// is actually IEEE 754 with 64 bits, otherwise our comparison method
+// will be faulty:
+
+constexpr uint64_t uint64_2_63 = uint64_t{1} << 63;
+
+static_assert(53 == std::numeric_limits<double>::digits);
+static_assert(63 == std::numeric_limits<int64_t>::digits);
+
+}  // namespace
+
+// The following function deserves an explanation: We want to compare
+// numerically. If i is negative, we are good, since all unsigned numbers
+// are numerically non-negative. Otherwise, we know that i can be cast
+// statically to uint64_t and we can compare there.
+int VelocyPackHelper::compareInt64UInt64(int64_t i, uint64_t u) {
+  if (i < 0) {
+    return VelocyPackHelper::cmp_less;
+  }
+  return comp<uint64_t>(static_cast<uint64_t>(i), u);
+}
+
+// This function deserves an explanation: Not all possible values of
+// uint64_t can be represented faithfully as double (IEEE 754 64bit).
+// At the same time, there are lots of values of double which cannot
+// be represented as uint64_t. Therefore, proper numerical comparison
+// is somewhat of a challenge. We cannot just cast one to the other
+// and then compare. First we need to handle NaN separately. Then, we
+// need to carefully cast u to double and keep track what we lost due to
+// the limited precision of double. Then we can evaluate the result.
+// This method has been evaluated using godbolt. Only change if you
+// know what you are doing!
+int VelocyPackHelper::compareUInt64Double(uint64_t u, double d) {
+  if (std::isnan(d)) [[unlikely]] {
+    return VelocyPackHelper::cmp_less;
+  }
+  // We essentially want to cast to double, but we want to explicitly
+  // round downwards if necessary and also keep the low bits which we
+  // lose due to limited precision of doubles. Therefore we determine
+  // the number of leading zero bits and from this the number of low bits
+  // we will lose on the conversion. Including the topmost one bit, a
+  // IEEE 754 double can store 53 bits of precision. Therefore, we can
+  // accomodate clz+53 bits in the double (which could be all 64 bits!).
+  // We can then mask the low bits out and do a static cast:
+  //  u    = 0 ... 0 1 ? ... ? 1 0 ... 0
+  //         \ clz / \  <= 53  / \rbits/
+  //  mask = 0 ...         ... 0 1 ... 1
+  auto clz = std::countl_zero(u);
+  auto rbits = 64 - std::min(64, clz + 53);
+  auto const mask = (std::uint64_t{1} << rbits) - 1;
+  auto ud = static_cast<double>(u & ~mask);
+  // Now ud is u cast to double with rounding down. If ud and d are not
+  // equal as doubles, then the comparison result is correct. If not, we
+  // need to distinguish if we lost bits above (in which case u was actually
+  // larger than d numerically), or not (in which case they represent the
+  // same integral value):
+  if (ud == d) {
+    return (mask & u) != 0 ? VelocyPackHelper::cmp_greater
+                           : VelocyPackHelper::cmp_equal;
+  }
+  return ud < d ? VelocyPackHelper::cmp_less : VelocyPackHelper::cmp_greater;
+}
+
+// The following function deserves an explanation. We want to compare
+// numerically. We want to delegate to the above comparison function
+// for unsigned integers by negating both arguments if the integer is
+// negative and then flipping the result. The only difficulty we are
+// facing is for signed integers here, because we cannot just take the
+// negative of an int64_t because of the twos-complement implementation
+// and the one negative value which does not have a positive counterpart.
+// We also have to handle NaN separately.
+int VelocyPackHelper::compareInt64Double(int64_t i, double d) {
+  if (std::isnan(d)) [[unlikely]] {
+    return VelocyPackHelper::cmp_less;
+  }
+  if (i < 0) {
+    uint64_t u =
+        (i == std::numeric_limits<int64_t>::min() ? uint64_2_63
+                                                  : static_cast<uint64_t>(-i));
+    return -compareUInt64Double(u, -d);
+  }
+  return compareUInt64Double(static_cast<uint64_t>(i), d);
+}
+
+int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
+
+                                                   VPackSlice lhs,
+                                                   VPackSlice rhs) {
+  VPackValueType rhsType = rhs.type();
+  if (lhsType == rhsType) {
+    // both types are equal
+    if (lhsType == VPackValueType::Int || lhsType == VPackValueType::SmallInt) {
+      // use exact comparisons. no need to cast to double
+      int64_t l = lhs.getIntUnchecked();
+      int64_t r = rhs.getIntUnchecked();
+      return comp<int64_t>(l, r);
+    }
+
+    if (lhsType == VPackValueType::UInt) {
+      // use exact comparisons. no need to cast to double
+      uint64_t l = lhs.getUIntUnchecked();
+      uint64_t r = rhs.getUIntUnchecked();
+      return comp<uint64_t>(l, r);
+    }
+
+    if (lhsType == VPackValueType::Double) {
+      double l = lhs.getDouble();
+      double r = rhs.getDouble();
+      if (std::isnan(l)) [[unlikely]] {
+        if (std::isnan(r)) [[unlikely]] {
+          return VelocyPackHelper::cmp_equal;
+        }
+        return VelocyPackHelper::cmp_greater;
+      } else if (std::isnan(r)) [[unlikely]] {
+        return VelocyPackHelper::cmp_less;
+      }
+      // No NaN on either side!
+      return comp<double>(l, r);
+    }
+  }
+
+  // Formally, we now have to face 12 different cases, since each side
+  // can be one of SmallInt, Int, UInt, double but the two are
+  // different types. Let's reduce this to only 3 cases by reducing
+  // SmallInt and Int to i64, UInt to u64 and by reordering
+  // to have only I ~ U, I ~ D and U ~ D:
+
+  union Number {
+    int64_t i;
+    uint64_t u;
+    double d;
+  };
+
+  Number l;
+  Number r;
+  enum Type {
+    kSignedIntegral = 0,
+    kUnsignedIntegral = 1,
+    kDouble = 2,
+    kNumTypes = 3
+  };
+  Type lhst;
+  switch (lhsType) {
+    case VPackValueType::SmallInt:
+    case VPackValueType::Int:
+      l.i = lhs.getIntUnchecked();
+      lhst = Type::kSignedIntegral;
+      break;
+    case VPackValueType::UInt:
+      l.u = lhs.getUIntUnchecked();
+      lhst = Type::kUnsignedIntegral;
+      break;
+    case VPackValueType::Double:
+      l.d = lhs.getNumericValue<double>();
+      lhst = Type::kDouble;
+      break;
+    default:    // does not happen, just to please the compiler!
+      l.u = 0;  // treat anything else as 0
+      lhst = Type::kUnsignedIntegral;
+      break;
+  }
+  Type rhst;
+  switch (rhsType) {
+    case VPackValueType::SmallInt:
+    case VPackValueType::Int:
+      r.i = rhs.getIntUnchecked();
+      rhst = Type::kSignedIntegral;
+      break;
+    case VPackValueType::UInt:
+      r.u = rhs.getUIntUnchecked();
+      rhst = Type::kUnsignedIntegral;
+      break;
+    case VPackValueType::Double:
+      r.d = rhs.getNumericValue<double>();
+      rhst = Type::kDouble;
+      break;
+    default:    // does not happen, just to please the compiler!
+      r.u = 0;  // treat anything else as 0
+      rhst = Type::kUnsignedIntegral;
+      break;
+  }
+
+  switch (lhst + rhst * Type::kNumTypes) {
+    case kUnsignedIntegral + kSignedIntegral* Type::kNumTypes:
+      return -compareInt64UInt64(r.i, l.u);
+    case kDouble + kSignedIntegral* Type::kNumTypes:
+      return -compareInt64Double(r.i, l.d);
+    case kSignedIntegral + kUnsignedIntegral* Type::kNumTypes:
+      return compareInt64UInt64(l.i, r.u);
+    case kDouble + kUnsignedIntegral* Type::kNumTypes:
+      return -compareUInt64Double(r.u, l.d);
+    case kSignedIntegral + kDouble* Type::kNumTypes:
+      return compareInt64Double(l.i, r.d);
+    case kUnsignedIntegral + kDouble* Type::kNumTypes:
+      return compareUInt64Double(l.u, r.d);
+    case kSignedIntegral + kSignedIntegral* Type::kNumTypes:
+      // Note that since we have SmallInt and Int it is
+      // indeed possible that both sides are signed integers, although
+      // we have checked before that the types are not equal!
+      return comp<int64_t>(l.i, r.i);
+    default:  // does not happen!
+      TRI_ASSERT(false);
+      return 0;
+  }
 }
 
 /// @brief compares two VelocyPack string values
@@ -447,7 +669,8 @@ void VelocyPackHelper::ensureStringValue(VPackSlice slice,
   }
 }
 
-/// @brief returns a string value, or the default value if it is not a string
+/// @brief returns a string value, or the default value if it is not a
+/// string
 std::string VelocyPackHelper::getStringValue(VPackSlice slice,
                                              std::string const& defaultValue) {
   if (!slice.isString()) {
@@ -618,10 +841,11 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
   return true;
 }
 
-int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
-                              VPackOptions const* options,
-                              VPackSlice const* lhsBase,
-                              VPackSlice const* rhsBase) {
+template<VelocyPackHelper::SortingMethod sortingMethod>
+int VelocyPackHelper::compareInternal(VPackSlice lhs, VPackSlice rhs,
+                                      bool useUTF8, VPackOptions const* options,
+                                      VPackSlice const* lhsBase,
+                                      VPackSlice const* rhsBase) {
   {
     // will resolve externals and modify both lhs & rhs...
     int8_t lWeight = TypeWeight(lhs);
@@ -670,7 +894,19 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     case VPackValueType::Int:
     case VPackValueType::UInt:
     case VPackValueType::SmallInt: {
-      return compareNumberValues(lhsType, lhs, rhs);
+      if (sortingMethod == SortingMethod::Correct) {
+        return compareNumberValuesCorrectly(lhsType, lhs, rhs);
+      } else {
+        return compareNumberValuesLegacy(lhsType, lhs, rhs);
+      }
+    }
+    case VPackValueType::UTCDate: {
+      // We know that the other type also has to be UTCDate, since only
+      // UTCDate has weight 3:
+      TRI_ASSERT(rhs.type() == VPackValueType::UTCDate);
+      int64_t l = lhs.getUTCDate();
+      int64_t r = rhs.getUTCDate();
+      return comp<int64_t>(l, r);
     }
     case VPackValueType::String:
     case VPackValueType::Custom: {
@@ -732,7 +968,8 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
           ar.next();
         }
 
-        int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
+        int result = compareInternal<sortingMethod>(lhsValue, rhsValue, useUTF8,
+                                                    options, &lhs, &rhs);
         if (result != 0) {
           return result;
         }
@@ -742,11 +979,11 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     }
     case VPackValueType::Object: {
       if (useUTF8) {
-        return ::compareObjects<true, AttributeSorterUTF8StringView>(lhs, rhs,
-                                                                     options);
+        return compareObjects<true, AttributeSorterUTF8StringView,
+                              sortingMethod>(lhs, rhs, options);
       }
-      return ::compareObjects<false, AttributeSorterBinaryStringView>(lhs, rhs,
-                                                                      options);
+      return compareObjects<false, AttributeSorterBinaryStringView,
+                            sortingMethod>(lhs, rhs, options);
     }
     case VPackValueType::Illegal:
     case VPackValueType::MinKey:
@@ -761,6 +998,21 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
       return 0;
   }
 }
+
+// Instantiate template functions explicitly:
+template int
+VelocyPackHelper::compareInternal<VelocyPackHelper::SortingMethod::Correct>(
+    arangodb::velocypack::Slice lhs, arangodb::velocypack::Slice rhs,
+    bool useUTF8, arangodb::velocypack::Options const* options,
+    arangodb::velocypack::Slice const* lhsBase,
+    arangodb::velocypack::Slice const* rhsBase);
+
+template int
+VelocyPackHelper::compareInternal<VelocyPackHelper::SortingMethod::Legacy>(
+    arangodb::velocypack::Slice lhs, arangodb::velocypack::Slice rhs,
+    bool useUTF8, arangodb::velocypack::Options const* options,
+    arangodb::velocypack::Slice const* lhsBase,
+    arangodb::velocypack::Slice const* rhsBase);
 
 bool VelocyPackHelper::hasNonClientTypes(velocypack::Slice input) {
   if (input.isExternal()) {
@@ -863,3 +1115,5 @@ arangodb::LoggerStream& operator<<(arangodb::LoggerStream& logger,
   }
   return logger;
 }
+
+}  // namespace arangodb::basics

@@ -146,7 +146,6 @@ class EnumerateListExecutor {
 
   bool checkFilter(AqlValue const& currentValue);
 
- private:
   EnumerateListExecutorInfos& _infos;
   transaction::Methods _trx;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
@@ -155,6 +154,9 @@ class EnumerateListExecutor {
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
   std::unique_ptr<EnumerateListExpressionContext> _expressionContext;
+
+  // note: it is fine if this counter overflows
+  uint_fast16_t _killCheckCounter = 0;
 };
 
 }  // namespace arangodb::aql

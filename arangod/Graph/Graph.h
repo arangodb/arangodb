@@ -208,7 +208,7 @@ class Graph {
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
   uint64_t writeConcern() const;
-  std::string const id() const;
+  std::string id() const;
   std::string const& rev() const;
 
   std::string const& name() const { return _graphName; }

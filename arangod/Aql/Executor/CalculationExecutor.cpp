@@ -26,6 +26,7 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -39,8 +40,7 @@
 #include "V8/v8-globals.h"
 #endif
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 CalculationExecutorInfos::CalculationExecutorInfos(
     RegisterId outputRegister, QueryContext& query, Expression& expression,
@@ -115,6 +115,11 @@ CalculationExecutor<calculationType>::produceRows(
     // by exterior.
     TRI_ASSERT(!shouldExitContextBetweenBlocks() || !_hasEnteredExecutor ||
                state == ExecutorState::HASMORE);
+
+    _killCheckCounter = (_killCheckCounter + 1) % 1024;
+    if (ADB_UNLIKELY(_killCheckCounter == 0 && _infos.getQuery().killed())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
   }
 
   return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
@@ -233,9 +238,15 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
 }
 #endif
 
-template class ::arangodb::aql::CalculationExecutor<CalculationType::Condition>;
+template class CalculationExecutor<CalculationType::Condition>;
+template class ExecutionBlockImpl<
+    CalculationExecutor<CalculationType::Reference>>;
 #ifdef USE_V8
-template class ::arangodb::aql::CalculationExecutor<
-    CalculationType::V8Condition>;
+template class CalculationExecutor<CalculationType::V8Condition>;
+template class ExecutionBlockImpl<
+    CalculationExecutor<CalculationType::V8Condition>>;
 #endif
-template class ::arangodb::aql::CalculationExecutor<CalculationType::Reference>;
+template class CalculationExecutor<CalculationType::Reference>;
+template class ExecutionBlockImpl<
+    CalculationExecutor<CalculationType::Condition>>;
+}  // namespace arangodb::aql

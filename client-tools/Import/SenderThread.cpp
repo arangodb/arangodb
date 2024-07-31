@@ -161,13 +161,12 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
     return;
   }
 
-  std::unique_lock guardError{_condition.mutex};
-
   std::shared_ptr<VPackBuilder> parsedBody;
   try {
     parsedBody = result->getBodyVelocyPack();
     haveBody = true;
   } catch (...) {
+    std::unique_lock guardError{_condition.mutex};
     // no body, likely error situation
     _errorMessage = result->getHttpReturnMessage();
     // will trigger the waiting ImportHelper thread to cancel the import
@@ -216,6 +215,7 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
     // get the "error" flag. This returns a pointer, not a copy
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error",
                                                             false)) {
+      std::unique_lock guardError{_condition.mutex};
       // get the error message
       VPackSlice errorMessage = body.get("errorMessage");
       if (errorMessage.isString()) {
@@ -224,17 +224,21 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
 
       // will trigger the waiting ImportHelper thread to cancel the import
       _hasError = true;
+      return;
     }
   }  // if
 
-  if (!_hasError && !result->getHttpReturnMessage().empty() &&
-      !result->isComplete()) {
-    _errorMessage = result->getHttpReturnMessage();
-    if (0 != _lowLineNumber || 0 != _highLineNumber) {
-      LOG_TOPIC("8add8", WARN, arangodb::Logger::FIXME)
-          << "Error left import lines " << _lowLineNumber << " through "
-          << _highLineNumber << " in unknown state";
+  {
+    std::unique_lock guardError{_condition.mutex};
+    if (!_hasError && !result->getHttpReturnMessage().empty() &&
+        !result->isComplete()) {
+      _errorMessage = result->getHttpReturnMessage();
+      if (0 != _lowLineNumber || 0 != _highLineNumber) {
+        LOG_TOPIC("8add8", WARN, arangodb::Logger::FIXME)
+            << "Error left import lines " << _lowLineNumber << " through "
+            << _highLineNumber << " in unknown state";
+      }  // if
+      _hasError = true;
     }  // if
-    _hasError = true;
-  }  // if
+  }
 }

@@ -24,7 +24,7 @@
 #include "SortNode.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/SortNode.h"

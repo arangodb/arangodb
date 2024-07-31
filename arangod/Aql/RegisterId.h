@@ -24,9 +24,10 @@
 #pragma once
 
 #include <limits>
+#include <stdint.h>
 #include <type_traits>
 
-#include "Basics/debugging.h"
+#include "Assertions/Assert.h"
 
 namespace arangodb::aql {
 
