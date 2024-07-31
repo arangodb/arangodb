@@ -3926,10 +3926,10 @@ anymatch@~3.1.2:
     normalize-path "^3.0.0"
     picomatch "^2.0.4"
 
-arangojs@^9.0.0-preview.4:
-  version "9.0.0-preview.4"
-  resolved "https://registry.yarnpkg.com/arangojs/-/arangojs-9.0.0-preview.4.tgz#ddf00f7ab5a843a5e1db2ab8463d522b471a661d"
-  integrity sha512-t6tjd2MlAKG2hpXigElzpWkLLZTXu7WHjXR4QDlxw4B/z018ujz9a+G4XIUfgW376kpfFE3pPTqR6aDLyipJGg==
+arangojs@^9.0.0:
+  version "9.0.0"
+  resolved "https://registry.yarnpkg.com/arangojs/-/arangojs-9.0.0.tgz#e7577788769c8833c14de8865a61e42c499aa61f"
+  integrity sha512-nFpMTGsb7Vt76pfqR7M5cbKM+FfmTIc+MiMVZ0FDfPYM0tYfrVj9fqk3QDY7F1ZhURPp9SJeLqfx8/H2bsmOIg==
   dependencies:
     "@types/node" "^20.11.26"
 
