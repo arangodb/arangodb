@@ -1320,9 +1320,30 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
 
   switch (leftType) {
     case VPACK_INLINE_INT48:
+      switch (rightType) {
+        case VPACK_INLINE_INT48:
+          return comp<int64_t>(left.toInt64(), right.toInt64());
+        case VPACK_INLINE_INT64:
+          return comp<int64_t>(left.toInt64(), right.asInt64());
+        case VPACK_INLINE_UINT64:
+          return VelocyPackHelper::compareInt64UInt64(left.toInt64(),
+                                                      right.asUInt64());
+        case VPACK_INLINE_DOUBLE: {
+          double d = right.asDouble();
+          if (std::isnan(d)) [[unlikely]] {
+            return basics::VelocyPackHelper::cmp_less;
+          }
+          return VelocyPackHelper::compareInt64Double(left.toInt64(), d);
+        }
+        default:
+          return basics::VelocyPackHelper::compare(left.slice(leftType),
+                                                   right.slice(rightType),
+                                                   compareUtf8, options);
+      }
     case VPACK_INLINE_INT64:
       switch (rightType) {
         case VPACK_INLINE_INT48:
+          return comp<int64_t>(left.asInt64(), right.toInt64());
         case VPACK_INLINE_INT64:
           return comp<int64_t>(left.asInt64(), right.asInt64());
         case VPACK_INLINE_UINT64:
@@ -1343,8 +1364,10 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
     case VPACK_INLINE_UINT64:
       switch (rightType) {
         case VPACK_INLINE_INT48:
-        case VPACK_INLINE_INT64:
           return -VelocyPackHelper::compareInt64UInt64(right.toInt64(),
+                                                       left.asUInt64());
+        case VPACK_INLINE_INT64:
+          return -VelocyPackHelper::compareInt64UInt64(right.asInt64(),
                                                        left.asUInt64());
         case VPACK_INLINE_UINT64:
           return comp<uint64_t>(left.asUInt64(), right.asUInt64());
@@ -1362,7 +1385,13 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
       }
     case VPACK_INLINE_DOUBLE: {
       switch (rightType) {
-        case VPACK_INLINE_INT48:
+        case VPACK_INLINE_INT48: {
+          double ld = left.asDouble();
+          if (std::isnan(ld)) [[unlikely]] {
+            return basics::VelocyPackHelper::cmp_greater;
+          }
+          return -VelocyPackHelper::compareInt64Double(right.toInt64(), ld);
+        }
         case VPACK_INLINE_INT64: {
           double ld = left.asDouble();
           if (std::isnan(ld)) [[unlikely]] {
