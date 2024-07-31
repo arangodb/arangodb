@@ -77,10 +77,20 @@ namespace {
 // return an identifier to a connection configuration, consisting of
 // endpoint, username, password, jwt, authentication and protocol type
 std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
-  return absl::StrCat(builder.normalizedEndpoint(), "/", builder.user(), "/",
-                      builder.password(), "/", builder.jwtToken(), "/",
-                      to_string(builder.authenticationType()), "/",
-                      to_string(builder.protocolType()));
+  auto raw = absl::StrCat(builder.normalizedEndpoint(), "/", builder.user(), "/",
+                          builder.password(), "/", builder.jwtToken(), "/",
+                          to_string(builder.authenticationType()), "/",
+                          to_string(builder.protocolType()));
+  // create md5
+  char hash[16];
+  SslInterface::sslMD5(*raw, raw.length(), &hash[0]);
+
+  // as hex
+  char hex[32];
+  SslInterface::sslHEX(hash, 16, &hex[0]);
+
+  // and return
+  return std::string(hex, 32);
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
