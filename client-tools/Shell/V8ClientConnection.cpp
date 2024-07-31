@@ -83,11 +83,11 @@ std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
                           to_string(builder.protocolType()));
   // create md5
   char hash[16];
-  SslInterface::sslMD5(*raw, raw.length(), &hash[0]);
+  arangodb::rest::SslInterface::sslMD5(*raw, raw.length(), &hash[0]);
 
   // as hex
   char hex[32];
-  SslInterface::sslHEX(hash, 16, &hex[0]);
+  arangodb::rest::SslInterface::sslHEX(hash, 16, &hex[0]);
 
   // and return
   return std::string(hex, 32);
