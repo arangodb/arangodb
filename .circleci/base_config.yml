@@ -51,7 +51,7 @@ parameters:
   # these are basically global constants
   build-targets:
     type: string
-    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench frontend arangovpack"
+    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench arangovpack"
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
@@ -241,6 +241,25 @@ jobs:
               echo "Nothing to cancel"
             fi
 
+  build-frontend:
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: large
+    steps:
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/root/project"
+      - run:
+          name: Build frontend
+          command: |
+            cd js/apps/system/_admin/aardvark/APP/react
+            yarn install
+            yarn build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - js/apps/system/_admin/aardvark/APP/react/build
+
   compile-linux:
     parameters:
       preset:
@@ -363,6 +382,10 @@ jobs:
             find build/ -iname *.o -delete || true
             find build/ -iname *.o.d -delete || true
             rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
+      - run:
+          name: Build artifacts
+          command: |
+            ls -Ssha build/bin/
       - run:
           name: SCCache Statistics
           command: sccache -s
