@@ -205,6 +205,7 @@ class V8ClientConnection {
 
   fuerte::EventLoopService _loop;
   fuerte::ConnectionBuilder _builder;
+  std::string _currentConnectionId;
   std::shared_ptr<fuerte::Connection> _connection;
   velocypack::Options _vpackOptions;
   bool _forceJson;

@@ -151,7 +151,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
 
   auto findConnection = [bypassCache, this]() {
     std::string id = connectionIdentifier(_builder);
-
+    // we will be connected to a connection by that ID
+    _currentConnectionId = id;
     // check if we have a connection for that endpoint in our cache
     auto it = _connectionCache.find(id);
     if (it != _connectionCache.end()) {
@@ -280,6 +281,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
       if (retryCount <= 0) {
         std::string msg(fu::to_string(e));
         setCustomError(503, msg);
+        _currentConnectionId.erase();
         LOG_TOPIC("9daad", DEBUG, arangodb::Logger::HTTPCLIENT)
             << "Connection attempt to endpoint '" << _client.endpoint()
             << "' failed: " << msg;
@@ -407,6 +409,7 @@ void V8ClientConnection::reconnect() {
       // a non-closed connection. now try to insert it into the connection
       // cache for later reuse
       _connectionCache.emplace(oldConnectionId, oldConnection);
+      _currentConnectionId = oldConnectionId;
     }
   }
   oldConnection.reset();
@@ -441,15 +444,12 @@ void V8ClientConnection::reconnect() {
   }
 }
 
-std::string V8ClientConnection::getHandle() {
-  return connectionIdentifier(_builder);
-}
+std::string V8ClientConnection::getHandle() { return _currentConnectionId; }
 
 void V8ClientConnection::connectHandle(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const& handle) {
-  std::string currentConnectionId = connectionIdentifier(_builder);
-  if (currentConnectionId == handle) {
+  if (_currentConnectionId == handle) {
     // its the currently active one
     TRI_V8_RETURN_TRUE();
     return;
@@ -465,6 +465,7 @@ void V8ClientConnection::connectHandle(
     _connection.swap(oldConnection);
     _connectionCache.erase(it);
     _connectionCache.emplace(oldConnectionId, oldConnection);
+    _currentConnectionId = handle;
     TRI_V8_RETURN_TRUE();
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
@@ -488,6 +489,7 @@ void V8ClientConnection::disconnectHandle(
     if (id == handle) {
       // our main connection is the one to trash.
       _connection.reset();
+      _currentConnectionId.erase();
       TRI_V8_RETURN_TRUE();
     } else {
       // we don't know that connection?
