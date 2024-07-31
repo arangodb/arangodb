@@ -79,7 +79,7 @@ static inline int AqlValueComp(AqlValue& a, AqlValue& b) {
 std::string to_string(AqlValue& a) {
   VPackBuilder b;
   arangodb::velocypack::Options opt;
-  a.toVelocyPack(&opt, b, true);
+  a.toVelocyPack(&opt, b, true, true);
   return b.slice().toJson();
 }
 
