@@ -51,7 +51,7 @@ const useAddNodeAction = ({
       onSuccess(response);
     } catch (error) {
       console.log("Error adding this node: ", error);
-      const errorMessage = (error as any)?.response?.body?.errorMessage;
+      const errorMessage = (error as any)?.response?.parsedBody?.errorMessage;
       window.arangoHelper.arangoError(
         "Could not add node",
         errorMessage ? errorMessage : ""

@@ -40,7 +40,7 @@ export type ClusterHealth = {
 export const useFetchClusterHealth = () => {
   return useSWR<ClusterHealth>("cluster/health", async () => {
     const res = await getAdminRouteForCurrentDB().get("cluster/health");
-    const { ClusterId, Health } = res.body;
+    const { ClusterId, Health } = res.parsedBody;
     return { ClusterId, Health };
   });
 };

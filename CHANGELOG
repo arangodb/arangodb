@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-453: Upgrade arangojs version used in web UI.
+
 * Add "useCache" option for graph nodes:
   The "useCache" AQL option is now supported for the following node types in
   addition:

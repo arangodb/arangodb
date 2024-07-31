@@ -36,7 +36,8 @@ export const EditGraphButtons = ({
       onClose();
       return info;
     } catch (e: any) {
-      const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
+      const errorMessage =
+        e?.response?.parsedBody?.errorMessage || "Unknown error";
       notifyError(`Could not reset graph display settings: ${errorMessage}`);
     }
   };
@@ -48,10 +49,20 @@ export const EditGraphButtons = ({
         onSuccess={onClose}
         currentGraph={graph}
       />
-      <Button size="sm" colorScheme="red" type="button" onClick={onOpenDeleteModal}>
+      <Button
+        size="sm"
+        colorScheme="red"
+        type="button"
+        onClick={onOpenDeleteModal}
+      >
         Delete
       </Button>
-      <Button size="sm" colorScheme="gray" type="button" onClick={resetDisplaySettings}>
+      <Button
+        size="sm"
+        colorScheme="gray"
+        type="button"
+        onClick={resetDisplaySettings}
+      >
         Reset display settings
       </Button>
     </>

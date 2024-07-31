@@ -19,7 +19,7 @@ export const useSyncIndexCreationJob = () => {
       mutate(`/collection/${encodedCollectionName}/figures`);
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.body?.errorMessage;
+      const errorMessage = error?.response?.parsedBody?.errorMessage;
       window.arangoHelper.arangoError("Index creation failed", errorMessage);
     },
     jobCollectionName: collectionId

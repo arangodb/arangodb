@@ -1,10 +1,6 @@
-import { Index, ZkdIndex } from "arangojs/indexes";
+import { Index, MdiIndex } from "arangojs/indexes";
 
-type MdiIndex = Omit<ZkdIndex, "type"> & {
-  type: "mdi";
-};
-
-type MdiPrefixed = Omit<ZkdIndex, "type"> & {
+type MdiPrefixed = Omit<MdiIndex, "type"> & {
   type: "mdi-prefixed";
   prefixFields: string[];
 };

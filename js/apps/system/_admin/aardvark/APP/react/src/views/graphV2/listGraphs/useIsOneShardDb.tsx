@@ -7,7 +7,7 @@ const useCurrentDbProperties = () => {
     const currentDb = getCurrentDB();
     return currentDb.route().get("/_api/database/current");
   });
-  return data?.body.result;
+  return data?.parsedBody.result;
 };
 export const useIsOneShardDb = (): boolean => {
   const currentDbProperties = useCurrentDbProperties();

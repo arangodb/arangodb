@@ -32,7 +32,7 @@ export const DeleteViewModal = ({
     } catch (e: any) {
       window.arangoHelper.arangoError(
         "View",
-        `Could not delete view: ${e.response.body.errorMessage}`
+        `Could not delete view: ${e.response.parsedBody.errorMessage}`
       );
       setIsLoading(false);
     }
@@ -43,11 +43,7 @@ export const DeleteViewModal = ({
       <ModalBody>Are you sure you want to delete {view.name}?</ModalBody>
       <ModalFooter>
         <Stack direction="row">
-          <Button
-            isDisabled={isLoading}
-            colorScheme="gray"
-            onClick={onClose}
-          >
+          <Button isDisabled={isLoading} colorScheme="gray" onClick={onClose}>
             Cancel
           </Button>
           <Button isLoading={isLoading} colorScheme="red" onClick={onDelete}>

@@ -44,9 +44,9 @@ export const useQueryExecutors = ({
             "x-arango-async": "store"
           }
         );
-        const asyncJobId = cursorResponse.headers[
+        const asyncJobId = cursorResponse.headers.get(
           "x-arango-async-id"
-        ] as string;
+        ) as string;
         setQueryResults(queryResults => [
           {
             queryValue,
@@ -58,7 +58,7 @@ export const useQueryExecutors = ({
           ...queryResults
         ]);
       } catch (e: any) {
-        const message = e.message || e.response.body.errorMessage;
+        const message = e.message || e.response.parsedBody.errorMessage;
         window.arangoHelper.arangoError(
           `Could not execute query. Error - ${message}`
         );
@@ -104,11 +104,11 @@ export const useQueryExecutors = ({
         queryValue,
         queryBindParams,
         type: "profile",
-        result: profile.body.msg,
+        result: profile.parsedBody.msg,
         status: "success"
       });
     } catch (e: any) {
-      const message = e.message || e.response.body.errorMessage;
+      const message = e.message || e.response.parsedBody.errorMessage;
       setQueryResultById({
         asyncJobId: id,
         queryValue,
@@ -160,11 +160,11 @@ export const useQueryExecutors = ({
           queryValue,
           queryBindParams,
           type: "explain",
-          result: explainResult.body.msg,
+          result: explainResult.parsedBody.msg,
           status: "success"
         });
       } catch (e: any) {
-        const message = e.message || e.response.body.errorMessage;
+        const message = e.message || e.response.parsedBody.errorMessage;
         setQueryResultById({
           asyncJobId: id,
           queryValue,

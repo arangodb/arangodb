@@ -48,7 +48,7 @@ type GraphContextType = {
   graphError?: {
     code: number;
     errorMessage?: string;
-    response?: { body: { errorMessage: string } };
+    response?: { parsedBody: { errorMessage: string } };
   };
 };
 

@@ -14,9 +14,9 @@ import { TTLIndexForm } from "./TTLIndexForm";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
-  const [indexType, setIndexType] = useState<CollectionIndex["type"]>(
-    indexTypeOptions[0].value
-  );
+  const [indexType, setIndexType] = useState<
+    CollectionIndex["type"] | "fulltext"
+  >(indexTypeOptions[0].value);
   let tooltipText = "Type of index to create.";
   return (
     <Box width="100%" paddingY="4" height="full" background="white">
@@ -55,7 +55,7 @@ const IndexTypeForm = ({
   type,
   onClose
 }: {
-  type: CollectionIndex["type"];
+  type: CollectionIndex["type"] | "fulltext";
   onClose: () => void;
 }) => {
   if (type === "inverted") {

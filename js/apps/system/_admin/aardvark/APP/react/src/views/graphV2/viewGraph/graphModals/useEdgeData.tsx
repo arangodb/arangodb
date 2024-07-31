@@ -19,7 +19,7 @@ export const useEdgeData = ({
     const collection = getCurrentDB().collection(collectionName);
     try {
       setIsLoading(true);
-      const [firstDoc] = await collection.lookupByKeys([vertex]);
+      const firstDoc = await collection.document(vertex);
       setEdgeData(firstDoc);
       setIsLoading(false);
     } catch (err) {

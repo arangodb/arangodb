@@ -13,7 +13,7 @@ export const downloadPost = async ({
       method: "POST",
       body
     });
-    const blobUrl = makeBlobUrl(response.body);
+    const blobUrl = makeBlobUrl(response.parsedBody);
     const filename = makeBlobFilename(response.headers) || "download";
     downloadBlob(blobUrl, filename);
   } catch (e: any) {
@@ -30,7 +30,7 @@ export const download = async (url: string) => {
     expectBinary: true,
     method: "GET"
   });
-  const blobUrl = window.URL.createObjectURL(response.body);
+  const blobUrl = window.URL.createObjectURL(response.parsedBody);
   const filename = makeBlobFilename(response.headers) || "download";
   downloadBlob(blobUrl, filename);
 };

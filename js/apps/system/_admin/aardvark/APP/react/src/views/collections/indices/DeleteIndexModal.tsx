@@ -19,8 +19,8 @@ export const DeleteIndexModal = ({
   onClose: () => void;
   onSuccess: () => void;
 }) => {
-  const { collectionId } = useCollectionIndicesContext();
-  const { onDeleteIndex } = useDeleteIndex({ collectionId });
+  const { collectionId, collectionName } = useCollectionIndicesContext();
+  const { onDeleteIndex } = useDeleteIndex({ collectionId, collectionName });
   const onDelete = async () => {
     onDeleteIndex({ id: foundCollectionIndex.id, onSuccess });
   };

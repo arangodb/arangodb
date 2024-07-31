@@ -4,7 +4,7 @@ import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { CollectionIndex } from "./CollectionIndex.types";
 
 interface EngineResponse extends ArangojsResponse {
-  body: {
+  parsedBody: {
     supports: {
       indexes: string[];
       aliases?: {
@@ -21,8 +21,8 @@ export const useSupportedIndexTypes = () => {
     ) as any as Promise<EngineResponse>;
   });
 
-  const indexes = data?.body.supports.indexes;
-  const aliases = data?.body.supports.aliases?.indexes || {};
+  const indexes = data?.parsedBody.supports.indexes;
+  const aliases = data?.parsedBody.supports.aliases?.indexes || {};
   const supported = indexes?.filter(indexType => {
     return !aliases.hasOwnProperty(indexType);
   });
@@ -34,7 +34,7 @@ export const useSupportedIndexTypes = () => {
 
 const indexTypeOptions: {
   label: string;
-  value: CollectionIndex["type"];
+  value: CollectionIndex["type"] | "fulltext";
 }[] = [
   {
     label: "Persistent Index",
