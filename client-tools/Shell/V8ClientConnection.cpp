@@ -447,6 +447,12 @@ std::string V8ClientConnection::getHandle() {
 void V8ClientConnection::connectHandle(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const& handle) {
+  std::string currentConnectionId = connectionIdentifier(_builder);
+  if (currentConnectionId == handle) {
+    // its the currently active one
+    TRI_V8_RETURN_TRUE();
+    return;
+  }
   std::lock_guard<std::recursive_mutex> guard(_lock);
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
