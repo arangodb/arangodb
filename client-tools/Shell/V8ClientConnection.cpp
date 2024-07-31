@@ -24,6 +24,8 @@
 
 #include "V8ClientConnection.h"
 
+#include "Ssl/SslInterface.h"
+#include "Ssl/ssl-helper.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/EncodingUtils.h"
