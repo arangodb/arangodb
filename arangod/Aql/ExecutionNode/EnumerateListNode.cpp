@@ -141,9 +141,15 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   }
   auto executorInfos = EnumerateListExecutorInfos(
       inputRegister, std::move(outRegisters), engine.getQuery(), filter(),
-      _outVariable->id, std::move(varsToRegs));
-  return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
-      &engine, this, std::move(registerInfos), std::move(executorInfos));
+      _outVariable->id, std::move(varsToRegs), _mode);
+
+  if (_mode == EnumerateListNode::kEnumerateArray) {
+    return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<EnumerateListObjectExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  }
 }
 
 /// @brief clone ExecutionNode recursively
