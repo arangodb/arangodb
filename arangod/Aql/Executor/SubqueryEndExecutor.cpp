@@ -24,6 +24,7 @@
 
 #include "SubqueryEndExecutor.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -37,8 +38,7 @@
 
 #include "Logger/LogMacros.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     velocypack::Options const* options,
@@ -220,3 +220,7 @@ size_t SubqueryEndExecutor::Accumulator::numValues() const noexcept {
     AqlItemBlockInputRange const&, AqlCall const&) const noexcept -> size_t {
   return 0;
 }
+
+template class ExecutionBlockImpl<SubqueryEndExecutor>;
+
+}  // namespace arangodb::aql

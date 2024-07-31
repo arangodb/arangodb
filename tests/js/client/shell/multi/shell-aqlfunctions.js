@@ -26,17 +26,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var ERRORS = arangodb.errors;
-var db = arangodb.db;
-
-var aqlfunctions = require("@arangodb/aql/functions");
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const ERRORS = arangodb.errors;
+const db = arangodb.db;
+const aqlfunctions = require("@arangodb/aql/functions");
 
 function AqlFunctionsSuite () {
   'use strict';
@@ -48,7 +42,6 @@ function AqlFunctionsSuite () {
   };
 
   return {
-
     setUp : function () {
       db._useDatabase("_system");
       aqlfunctions.unregisterGroup("UnitTests::");
@@ -700,7 +693,26 @@ function AqlFunctionsSuite () {
       } finally {
         db._drop("UnitTestsFunc");
       }
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test user function reloading during query
+////////////////////////////////////////////////////////////////////////////////
+
+    testUserFunctionReloading : function () {
+      unregister("UnitTests::testFunc");
+      let testFunc = function(val) {
+        require("@arangodb/aql").flush();
+        return val;
+      };
+      aqlfunctions.register("UnitTests::testFunc", testFunc);
+
+      let actual = db._query("FOR i IN 1..100 RETURN UnitTests::testFunc(i)").toArray();
+      assertEqual(100, actual.length);
+      actual.forEach((v, i) => {
+        assertEqual(v, i + 1);
+      });
+    },
 
   };
 }

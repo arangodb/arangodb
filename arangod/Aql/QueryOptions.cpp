@@ -76,6 +76,7 @@ QueryOptions::QueryOptions()
       fullCount(false),
       count(false),
       skipAudit(false),
+      optimizePlanForCaching(false),
       explainRegisters(ExplainRegisterPlan::No),
       desiredJoinStrategy(JoinStrategyType::kDefault) {
   // now set some default values from server configuration options
@@ -207,6 +208,9 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (VPackSlice value = slice.get("cache"); value.isBool()) {
     cache = value.isTrue();
   }
+  if (VPackSlice value = slice.get("optimizePlanForCaching"); value.isBool()) {
+    optimizePlanForCaching = value.isTrue();
+  }
   if (VPackSlice value = slice.get("fullCount"); value.isBool()) {
     fullCount = value.isTrue();
   }
@@ -297,6 +301,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));
+  builder.add("optimizePlanForCaching", VPackValue(optimizePlanForCaching));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
 

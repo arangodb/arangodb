@@ -26,9 +26,10 @@
 #include "Basics/debugging.h"
 
 #include "Aql/AqlCall.h"
+#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/SingleRowFetcher.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 LambdaExecutorInfos::LambdaExecutorInfos(ProduceCall lambda, ResetCall reset)
     : _produceLambda(lambda), _resetLambda(reset) {}
@@ -86,3 +87,8 @@ auto TestLambdaSkipExecutor::skipRowsRange(AqlItemBlockInputRange& input,
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   return _infos.getSkipLambda()(input, call);
 }
+
+template class ExecutionBlockImpl<TestLambdaExecutor>;
+template class ExecutionBlockImpl<TestLambdaSkipExecutor>;
+
+}  // namespace arangodb::aql

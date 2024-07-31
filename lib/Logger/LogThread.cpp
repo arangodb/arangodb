@@ -24,7 +24,7 @@
 #include "LogThread.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
-#include "Logger/LogAppender.h"
+#include "Logger/LogMessage.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -86,7 +86,7 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
 
   // only release message if adding to the queue succeeded
   // otherwise we would leak here
-  message.release();
+  std::ignore = message.release();
 
   if (isDirectLogLevel) {
     this->flush();
@@ -140,7 +140,7 @@ bool LogThread::processPendingMessages() {
     TRI_ASSERT(env.group != nullptr);
     TRI_ASSERT(env.msg != nullptr);
     try {
-      LogAppender::log(*env.group, *env.msg);
+      Logger::log(*env.group, *env.msg);
     } catch (...) {
     }
 

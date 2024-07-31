@@ -29,6 +29,7 @@
 #include "Aql/Aggregator.h"
 #include "Aql/AqlCall.h"
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
@@ -42,8 +43,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 static const AqlValue EmptyValue;
 
@@ -538,3 +538,7 @@ Aggregator& HashedCollectExecutor::ValueAggregators::operator[](
 void HashedCollectExecutor::ValueAggregators::operator delete(void* ptr) {
   ::operator delete(ptr);
 }
+
+template class ExecutionBlockImpl<HashedCollectExecutor>;
+
+}  // namespace arangodb::aql

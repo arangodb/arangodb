@@ -33,6 +33,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
+#include "Basics/ScopeGuard.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>

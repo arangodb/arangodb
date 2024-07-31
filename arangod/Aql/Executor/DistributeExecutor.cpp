@@ -37,8 +37,7 @@
 #include <absl/strings/str_cat.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 DistributeExecutorInfos::DistributeExecutorInfos(
     std::vector<std::string> clientIds, Collection const* collection,
@@ -229,3 +228,5 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
     RegisterInfos registerInfos, DistributeExecutorInfos&& executorInfos)
     : BlocksWithClientsImpl(engine, node, std::move(registerInfos),
                             std::move(executorInfos)) {}
+
+}  // namespace arangodb::aql

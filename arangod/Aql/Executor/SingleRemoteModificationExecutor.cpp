@@ -25,6 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -37,8 +38,7 @@
 
 #include <memory>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
@@ -312,9 +312,18 @@ auto SingleRemoteModificationExecutor<
   }
 }
 
-template struct ::arangodb::aql::SingleRemoteModificationExecutor<IndexTag>;
-template struct ::arangodb::aql::SingleRemoteModificationExecutor<Insert>;
-template struct ::arangodb::aql::SingleRemoteModificationExecutor<Remove>;
-template struct ::arangodb::aql::SingleRemoteModificationExecutor<Replace>;
-template struct ::arangodb::aql::SingleRemoteModificationExecutor<Update>;
-template struct ::arangodb::aql::SingleRemoteModificationExecutor<Upsert>;
+template struct SingleRemoteModificationExecutor<IndexTag>;
+template struct SingleRemoteModificationExecutor<Insert>;
+template struct SingleRemoteModificationExecutor<Remove>;
+template struct SingleRemoteModificationExecutor<Replace>;
+template struct SingleRemoteModificationExecutor<Update>;
+template struct SingleRemoteModificationExecutor<Upsert>;
+
+template class ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>;
+template class ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>;
+template class ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>;
+template class ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>;
+template class ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>;
+template class ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>;
+
+}  // namespace arangodb::aql

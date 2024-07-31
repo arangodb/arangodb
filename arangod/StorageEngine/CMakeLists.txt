@@ -11,7 +11,8 @@ add_library(arango_storage_engine STATIC
   PhysicalCollection.cpp
   TransactionCollection.cpp
   TransactionState.cpp
-  StorageEngine.cpp)
+  StorageEngine.cpp
+  VPackSortMigration.cpp)
 target_link_libraries(arango_storage_engine
   arango_cluster_engine
   arango_cluster_methods

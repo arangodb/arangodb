@@ -86,7 +86,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
   arangodb::DatabaseFeature& databaseFeature =
       vocbase.server().getFeature<DatabaseFeature>();
 
-  std::vector<arangodb::aql::QueryEntryCopy> queries;
+  std::vector<std::shared_ptr<velocypack::String>> queries;
 
   // local case
   if (mode == QueriesMode::Slow) {
@@ -121,7 +121,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
   out.openArray();
 
   for (auto const& q : queries) {
-    q.toVelocyPack(out);
+    out.add(q->slice());
   }
 
   if (ServerState::instance()->isCoordinator() && fanout) {

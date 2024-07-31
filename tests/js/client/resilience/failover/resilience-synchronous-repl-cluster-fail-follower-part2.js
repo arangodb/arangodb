@@ -29,105 +29,13 @@ const jsunity = require("jsunity");
 const fs = require('fs');
 const internal = require('internal');
 
-function SynchronousReplicationFailFollowerSuite () {
+function SynchronousReplicationFailFollowerSuitePart2 () {
   'use strict';
   const suite = internal.load(fs.join(internal.pathForTesting('client'), 'resilience', 'failover', 'resilience-synchronous-repl-cluster.inc'));
 
   return {
     setUp : suite.setUp,
     tearDown : suite.tearDown,
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run a standard check with failures:
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFailureFollower : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.failFollower();
-      suite.runBasicOperations({}, {});
-      suite.healFollower();
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 1
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail1 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:1, follower:true}, {place:18, follower:true});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 2
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail2 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:2, follower:true}, {place:18, follower:true});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 3
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail3 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:3, follower:true}, {place:18, follower:true});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 4
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail4 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:4, follower:true}, {place:18, follower:true});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 5
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail5 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:5, follower:true}, {place:18, follower:true});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 6
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail6 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:6, follower:true}, {place:18, follower:true});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 7
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail7 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:7, follower:true}, {place:18, follower:true});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 8
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail8 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:8, follower:true}, {place:18, follower:true});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fail in place 9
@@ -235,7 +143,7 @@ function SynchronousReplicationFailFollowerSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(SynchronousReplicationFailFollowerSuite);
+jsunity.run(SynchronousReplicationFailFollowerSuitePart2);
 
 return jsunity.done();
 

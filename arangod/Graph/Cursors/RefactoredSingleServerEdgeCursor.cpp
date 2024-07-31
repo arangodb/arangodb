@@ -33,15 +33,14 @@
 #include "Basics/StaticStrings.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
+// TODO: Needed for the IndexAccessor, should be modified
+#include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Indexes/IndexIterator.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-// TODO: Needed for the IndexAccessor, should be modified
-#include "Graph/Providers/SingleServerProvider.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
@@ -52,8 +51,6 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
-IndexIteratorOptions defaultIndexIteratorOptions;
-
 #ifdef USE_ENTERPRISE
 static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
   // for skipInaccessibleCollections we need to check the edge
@@ -101,7 +98,8 @@ uint16_t RefactoredSingleServerEdgeCursor<
 template<class Step>
 void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     VertexType vertex, ResourceMonitor& monitor, transaction::Methods* trx,
-    arangodb::aql::Variable const* tmpVar, aql::TraversalStats& stats) {
+    arangodb::aql::Variable const* tmpVar, aql::TraversalStats& stats,
+    bool useCache) {
   auto* node = _accessor->getCondition();
   // We need to rewire the search condition for the new vertex
   TRI_ASSERT(node->numMembers() > 0);
@@ -141,6 +139,10 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     idNode->setStringValue(vertex.data(), vertex.length());
   }
 
+  IndexIteratorOptions indexIteratorOptions;
+  // forward "useCache" traversal option to actual index iterator
+  indexIteratorOptions.useCache = useCache;
+
   // We need to reset the cursor
 
   // check if the underlying index iterator supports rearming
@@ -148,7 +150,7 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     // rearming supported
     stats.incrCursorsRearmed();
 
-    if (!_cursor->rearm(node, tmpVar, defaultIndexIteratorOptions)) {
+    if (!_cursor->rearm(node, tmpVar, indexIteratorOptions)) {
       _cursor =
           std::make_unique<EmptyIndexIterator>(_cursor->collection(), trx);
     }
@@ -159,8 +161,7 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     auto index = _accessor->indexHandle();
 
     _cursor = trx->indexScanForCondition(
-        monitor, index, node, tmpVar, ::defaultIndexIteratorOptions,
-        ReadOwnWrites::no,
+        monitor, index, node, tmpVar, indexIteratorOptions, ReadOwnWrites::no,
         static_cast<int>(_accessor->getMemberToUpdate().has_value()
                              ? _accessor->getMemberToUpdate().value()
                              : transaction::Methods::kNoMutableConditionIdx));
@@ -212,12 +213,13 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
     std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
         depthBasedIndexConditions,
     arangodb::aql::FixedVarExpressionContext& expressionContext,
-    bool requiresFullDocument)
+    bool requiresFullDocument, bool useCache)
     : _tmpVar(tmpVar),
       _monitor(monitor),
       _trx(trx),
       _expressionCtx(expressionContext),
-      _requiresFullDocument(requiresFullDocument) {
+      _requiresFullDocument(requiresFullDocument),
+      _useCache(useCache) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!globalIndexConditions.empty());
   if (globalIndexConditions.empty()) {
@@ -294,7 +296,7 @@ void RefactoredSingleServerEdgeCursor<Step>::rearm(VertexType vertex,
                                                    uint64_t depth,
                                                    aql::TraversalStats& stats) {
   for (auto& info : getLookupInfos(depth)) {
-    info.rearmVertex(vertex, _monitor, _trx, _tmpVar, stats);
+    info.rearmVertex(vertex, _monitor, _trx, _tmpVar, stats, _useCache);
   }
 }
 

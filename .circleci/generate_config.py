@@ -75,7 +75,9 @@ def parse_arguments():
     parser.add_argument(
         "--ui", type=str, help="whether to run UI test [off|on|only|community]"
     )
-    parser.add_argument("--ui-testsuites", type=str, help="which test of UI job to run [off|on|only]")
+    parser.add_argument(
+        "--ui-testsuites", type=str, help="which test of UI job to run [off|on|only]"
+    )
     parser.add_argument(
         "--ui-deployments", type=str, help="which deployments [CL, SG, ...] to run"
     )
@@ -263,7 +265,7 @@ def get_size(size, arch):
         "medium+": "arm.large",
         "large": "arm.large",
         "xlarge": "arm.xlarge",
-        "2xlarge": "arm.xlarge",
+        "2xlarge": "arm.2xlarge",
     }
     x86_sizes = {
         "small": "small",
@@ -271,7 +273,7 @@ def get_size(size, arch):
         "medium+": "medium+",
         "large": "large",
         "xlarge": "xlarge",
-        "2xlarge": "xlarge",
+        "2xlarge": "2xlarge",
     }
     return aarch64_sizes[size] if arch == "aarch64" else x86_sizes[size]
 
@@ -479,7 +481,7 @@ def add_build_job(workflow, build_config, overrides=None):
         "context": [
             "sccache-aws-bucket"
         ],  # add the environment variables to setup sccache for the S3 bucket
-        "resource-class": get_size("xlarge", build_config.arch),
+        "resource-class": get_size("2xlarge", build_config.arch),
         "name": name,
         "preset": preset,
         "enterprise": build_config.enterprise,

@@ -366,6 +366,16 @@ struct OptimizerRule {
     // for index
     lateDocumentMaterializationRule,
 
+    // push limit from node limit into an index node
+    // this must be before `batchMaterializeDocumentsRule` because
+    // we expect either calculation node or sort and limit node in succession,
+    // and this rule adds a materialization node in between which messes up
+    // with detection.
+    // this must be also after `optimizeProjectionsRule` because we want
+    // calculation node so we can access the attribute path of the sort
+    // attribute, otherwise that is optimized away as an anonymous variable
+    pushLimitIntoIndexRule,
+
     // batch materialization rule
     batchMaterializeDocumentsRule,
 

@@ -361,7 +361,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
   }
 }
 
-GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice base)
+GraphNode::GraphNode(ExecutionPlan* plan, velocypack::Slice base)
     : ExecutionNode(plan, base),
       _vocbase(&(plan->getAst()->query().vocbase())),
       _vertexOutVariable(nullptr),

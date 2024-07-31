@@ -24,7 +24,6 @@
 #include "CalculationNode.h"
 
 #include "Aql/Ast.h"
-#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/CalculationExecutor.h"

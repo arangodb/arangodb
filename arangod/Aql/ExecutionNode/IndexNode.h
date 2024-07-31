@@ -122,6 +122,12 @@ class IndexNode : public ExecutionNode,
   /// @brief set reverse mode
   void setAscending(bool value);
 
+  /// @brief set limit
+  void setLimit(uint64_t value) noexcept;
+
+  /// @brief return if the index node has limit
+  bool hasLimit() const noexcept;
+
   /// @brief whether or not the index node needs a post sort of the results
   /// of multiple shards in the cluster (via a GatherNode).
   /// not all queries that use an index will need to produce a sorted result

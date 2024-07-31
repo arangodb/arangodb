@@ -23,18 +23,16 @@
 
 #include "Aql/ExecutionNode/DistributeNode.h"
 
-#include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/DistributeExecutor.h"
 #include "Aql/Executor/IdExecutor.h"
 #include "Aql/Query.h"
-#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
-#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Iterator.h>

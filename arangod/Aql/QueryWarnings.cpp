@@ -90,7 +90,12 @@ bool QueryWarnings::empty() const {
   return _list.empty();
 }
 
-void QueryWarnings::updateOptions(QueryOptions const& opts) {
+size_t QueryWarnings::count() const {
+  std::lock_guard<std::mutex> guard(_mutex);
+  return _list.size();
+}
+
+void QueryWarnings::updateFromOptions(QueryOptions const& opts) {
   std::lock_guard<std::mutex> guard(_mutex);
   _maxWarningCount = opts.maxWarningCount;
   _failOnWarning = opts.failOnWarning;

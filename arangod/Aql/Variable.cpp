@@ -52,6 +52,9 @@ Variable::Variable(velocypack::Slice slice,
           slice, "isFullDocumentFromCollection", false)),
       _resourceMonitor(resourceMonitor) {
   setConstantValue(AqlValue{slice.get("constantValue")});
+  if (auto s = slice.get("bindParameter"); s.isString()) {
+    setBindParameterReplacement(s.copyString());
+  }
 }
 
 /// @brief destroy the variable
@@ -61,6 +64,7 @@ Variable::~Variable() {
 }
 
 Variable* Variable::clone() const {
+  TRI_ASSERT(type() == Type::Regular);
   return new Variable(name, id, isFullDocumentFromCollection, _resourceMonitor);
 }
 
@@ -100,6 +104,9 @@ void Variable::toVelocyPackCommon(velocypack::Builder& builder) const {
   builder.add("name", VPackValue(name));
   builder.add("isFullDocumentFromCollection",
               VPackValue(isFullDocumentFromCollection));
+  if (type() == Variable::Type::BindParameter) {
+    builder.add("bindParameter", VPackValue(_bindParameterName));
+  }
 }
 
 /// @brief replace a variable by another
@@ -140,6 +147,9 @@ bool Variable::isEqualTo(Variable const& other) const noexcept {
 }
 
 Variable::Type Variable::type() const noexcept {
+  if (!_bindParameterName.empty()) {
+    return Variable::Type::BindParameter;
+  }
   if (_constantValue.isNone()) {
     return Variable::Type::Regular;
   }
@@ -156,4 +166,14 @@ void Variable::setConstantValue(AqlValue value) {
   } catch (...) {
     throw;
   }
+}
+
+std::string_view Variable::bindParameterName() const noexcept {
+  TRI_ASSERT(type() == Type::BindParameter);
+  return _bindParameterName;
+}
+
+void Variable::setBindParameterReplacement(std::string bindName) {
+  TRI_ASSERT(type() == Type::Regular);
+  _bindParameterName = std::move(bindName);
 }

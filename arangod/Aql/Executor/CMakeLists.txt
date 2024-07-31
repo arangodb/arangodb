@@ -13,6 +13,10 @@ target_sources(arango_aql PRIVATE
   HashedCollectExecutor.cpp
   IdExecutor.cpp
   IndexExecutor.cpp
+  IResearchViewExecutor.cpp
+  IResearchViewExecutorBase.cpp
+  IResearchViewHeapSortExecutor.cpp
+  IResearchViewMergeExecutor.cpp
   JoinExecutor.cpp
   LimitExecutor.cpp
   MaterializeExecutor.cpp

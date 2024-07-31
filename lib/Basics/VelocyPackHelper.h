@@ -89,12 +89,31 @@ struct VPackHashedSlice {
   ~VPackHashedSlice() = default;
 };
 
+// Note that the following class has some code duplication, which is
+// intentional. Unfortunately, we had a bug in the sorting functionality
+// for VelocyPack regarding numbers in their different representations.
+// Since we need to retain the old, buggy behaviour, we have the compare
+// method in a "correct" and a "legacy" version. We did not want to
+// expose internal template magic to the user of this class, therefore
+// we have methods
+//   compare       (correctly)
+//   compareLegacy (legacy)
+// We need the legacy methods only for the RocksDB comparator. There is
+// a global switch, such that at server start, we can choose about this
+// switch so that in new database directories can directly use the new
+// sorting method, whereas after an upgrade, we can at first use the old
+// sorting method for backwards compatibility (and to avoid that RocksDB
+// is corrupt).
+
 class VelocyPackHelper {
  private:
   VelocyPackHelper() = delete;
   ~VelocyPackHelper() = delete;
 
  public:
+  // For templating:
+  enum SortingMethod { Legacy = 0, Correct = 1 };
+
   /// @brief static initializer for all VPack values
   static void initialize();
 
@@ -107,6 +126,11 @@ class VelocyPackHelper {
   struct VPackStringHash {
     size_t operator()(arangodb::velocypack::Slice slice) const noexcept;
   };
+
+  /// For better readability of the traditional int comparison result:
+  static constexpr int cmp_less = -1;
+  static constexpr int cmp_equal = 0;
+  static constexpr int cmp_greater = 1;
 
   /// @brief equality comparator for VelocyPack values
   struct VPackEqual {
@@ -142,34 +166,6 @@ class VelocyPackHelper {
                                        rhsBase) < 0;
     }
 
-    arangodb::velocypack::Options const* options;
-    arangodb::velocypack::Slice const* lhsBase;
-    arangodb::velocypack::Slice const* rhsBase;
-  };
-
-  template<bool useUtf8>
-  struct VPackSorted {
-    explicit VPackSorted(bool reverse,
-                         arangodb::velocypack::Options const* options =
-                             &arangodb::velocypack::Options::Defaults,
-                         arangodb::velocypack::Slice const* lhsBase = nullptr,
-                         arangodb::velocypack::Slice const* rhsBase = nullptr)
-        : _reverse(reverse),
-          options(options),
-          lhsBase(lhsBase),
-          rhsBase(rhsBase) {}
-
-    bool operator()(arangodb::velocypack::Slice lhs,
-                    arangodb::velocypack::Slice rhs) const {
-      if (_reverse) {
-        return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase,
-                                         rhsBase) > 0;
-      }
-      return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase,
-                                       rhsBase) < 0;
-    }
-
-    bool _reverse;
     arangodb::velocypack::Options const* options;
     arangodb::velocypack::Slice const* lhsBase;
     arangodb::velocypack::Slice const* rhsBase;
@@ -362,26 +358,96 @@ class VelocyPackHelper {
   static bool velocyPackToFile(std::string const& filename, VPackSlice slice,
                                bool syncFile);
 
-  /// @brief compares two VelocyPack number values
-  static int compareNumberValues(arangodb::velocypack::ValueType,
-                                 arangodb::velocypack::Slice lhs,
-                                 arangodb::velocypack::Slice rhs);
+  /// @brief compares two VelocyPack number values (legacy version, this
+  /// should no longer be used, since it can lead to non-transitive
+  /// behaviour, in particular around NaN, but also for integers larger
+  /// than 2^53, which are compared with doubles or integers in a different
+  /// representation (signed/unsigned)). Use `compareNumberValuesCorrect`
+  /// instead. We keep thisi function to implement the legacy sorting
+  /// behaviour for old vpack indexes.
+  static int compareNumberValuesLegacy(arangodb::velocypack::ValueType,
+                                       arangodb::velocypack::Slice lhs,
+                                       arangodb::velocypack::Slice rhs);
+
+  /// @brief the following few static methods are needed to perform numerical
+  /// sorting with uints, ints and doubles numerically correctly. They are
+  /// exposed here, since they are also used for the sorting of AQLValues.
+  static int compareInt64UInt64(int64_t i, uint64_t u);
+  static int compareUInt64Double(uint64_t u, double d);
+  static int compareInt64Double(int64_t i, double d);
+
+  /// @brief compares two VelocyPack number values, this must only be called
+  /// if the types on either side are either SmallInt, Int, UInt, UTCDate
+  /// or Double. Otherwise the behaviour is undefined.
+  /// For such values, the function implements the numerical total order
+  /// for all possible values, including Double's -Inf, +Inf, +0, -0 and Nan.
+  /// This is to be understood in the following way: First of all,
+  /// NaN is considered to be larger than any number (including +Inf),
+  /// and all NaN values are considered equal. Integers are considered
+  /// equal if they have different representations (for example many
+  /// positive numbers have an unsigned and a signed representation,
+  /// and the SmallInt values also have representations as signed or
+  /// unsigned integers). An integer of whatever representation is
+  /// considered equal to an integer in its representation as Double (if
+  /// it exists). Other than these representation issues, numbers are
+  /// compared numerically as rational numbers would be compared.
+  /// +Inf is larger than any other number of whatever representation (except
+  /// NaN), and -Inf is smaller than any number.
+  static int compareNumberValuesCorrectly(arangodb::velocypack::ValueType,
+                                          arangodb::velocypack::Slice lhs,
+                                          arangodb::velocypack::Slice rhs);
 
   /// @brief compares two VelocyPack string values
   static int compareStringValues(char const* left, VPackValueLength nl,
                                  char const* right, VPackValueLength nr,
                                  bool useUTF8);
 
+ private:
+  template<bool useUtf8, typename Comparator, SortingMethod sortingMethod>
+  static int compareObjects(VPackSlice lhs, VPackSlice rhs,
+                            VPackOptions const* options);
+
+  template<SortingMethod sortingMethod>
+  static int compareInternal(
+      arangodb::velocypack::Slice lhs, arangodb::velocypack::Slice rhs,
+      bool useUTF8,
+      arangodb::velocypack::Options const* options =
+          &arangodb::velocypack::Options::Defaults,
+      arangodb::velocypack::Slice const* lhsBase = nullptr,
+      arangodb::velocypack::Slice const* rhsBase = nullptr)
+      ADB_WARN_UNUSED_RESULT;
+
+ public:
   /// @brief Compares two VelocyPack slices
-  /// returns 0 if the two slices are equal, < 0 if lhs < rhs, and > 0 if rhs >
-  /// lhs
+  /// returns 0 if the two slices are equal, < 0 if lhs < rhs, and > 0
+  /// if rhs > lhs, there is a correct, modern method and a wrong legacy
+  /// method. The legacy method is wrong w.r.t. numeric comparisons and
+  /// NaN and in the case that numbers of different types (unsigned,
+  /// signed or double) are compared and the integers are too large to
+  /// fit in the precision of double.
+  /// This is the "correct" method!
   static int compare(arangodb::velocypack::Slice lhs,
                      arangodb::velocypack::Slice rhs, bool useUTF8,
                      arangodb::velocypack::Options const* options =
                          &arangodb::velocypack::Options::Defaults,
                      arangodb::velocypack::Slice const* lhsBase = nullptr,
                      arangodb::velocypack::Slice const* rhsBase = nullptr)
-      ADB_WARN_UNUSED_RESULT;
+      ADB_WARN_UNUSED_RESULT {
+    return compareInternal<SortingMethod::Correct>(lhs, rhs, useUTF8, options,
+                                                   lhsBase, rhsBase);
+  }
+
+  /// This is the "legacy" method!
+  static int compareLegacy(arangodb::velocypack::Slice lhs,
+                           arangodb::velocypack::Slice rhs, bool useUTF8,
+                           arangodb::velocypack::Options const* options =
+                               &arangodb::velocypack::Options::Defaults,
+                           arangodb::velocypack::Slice const* lhsBase = nullptr,
+                           arangodb::velocypack::Slice const* rhsBase = nullptr)
+      ADB_WARN_UNUSED_RESULT {
+    return compareInternal<SortingMethod::Legacy>(lhs, rhs, useUTF8, options,
+                                                  lhsBase, rhsBase);
+  }
 
   /// @brief Compares two VelocyPack slices for equality
   /// returns true if the slices are equal, false otherwise
@@ -391,7 +457,8 @@ class VelocyPackHelper {
                         &arangodb::velocypack::Options::Defaults,
                     arangodb::velocypack::Slice const* lhsBase = nullptr,
                     arangodb::velocypack::Slice const* rhsBase = nullptr) {
-    return compare(lhs, rhs, useUTF8, options, lhsBase, rhsBase) == 0;
+    return compareInternal<SortingMethod::Correct>(lhs, rhs, useUTF8, options,
+                                                   lhsBase, rhsBase) == 0;
   }
 
   static bool hasNonClientTypes(arangodb::velocypack::Slice input);

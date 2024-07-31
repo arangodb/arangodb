@@ -44,7 +44,6 @@
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
 #include "Basics/threads.h"
-#include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -270,7 +269,7 @@ int DaemonFeature::forkProcess() {
   TRI_ASSERT(pid == 0);  // we are in the child
 
   // child
-  LogAppender::allowStdLogging(false);
+  Logger::allowStdLogging(false);
   Logger::clearCachedPid();
 
   // change the file mode mask

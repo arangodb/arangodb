@@ -80,9 +80,12 @@ add_library(arango_lightweight STATIC
         Basics/threads-posix.cpp
         Basics/tri-strings.cpp
         Containers/ImmerMemoryPolicy.h
+        Logger/Appenders.cpp
         Logger/Escaper.cpp
         Logger/LogAppender.cpp
         Logger/LogAppenderFile.cpp
+        Logger/LogAppenderStdStream.cpp
+        Logger/LogAppenderStream.cpp
         Logger/LogAppenderSyslog.cpp
         Logger/LogContext.cpp
         Logger/LogLevel.cpp

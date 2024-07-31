@@ -38,6 +38,7 @@
 #include "Cluster/ServerState.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LogMacros.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

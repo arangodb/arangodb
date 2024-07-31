@@ -101,6 +101,8 @@ std::string const& QueryContext::user() const { return StaticStrings::Empty; }
 
 QueryWarnings& QueryContext::warnings() { return _warnings; }
 
+QueryWarnings const& QueryContext::warnings() const { return _warnings; }
+
 /// @brief look up a graph either from our cache list or from the _graphs
 ///        collection
 ResultT<graph::Graph const*> QueryContext::lookupGraphByName(

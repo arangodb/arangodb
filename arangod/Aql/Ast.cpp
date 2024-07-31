@@ -236,9 +236,9 @@ bool translateNodeStackToAttributePath(
  *
  * @param resolver CollectionNameResolver to identify category
  * @param accessType Access of this Source, NONE/READ/WRITE/EXCLUSIVE
- * @param failIfDoesNotExist If true => throws error im SourceNotFound. False =>
+ * @param failIfDoesNotExist If true => throws error if SourceNotFound. False =>
  * Treat non-existing like a collection
- * @param name Name of the datasource
+ * @param nameRef Name of the datasource (in/out parameter)
  *
  * @return The Category of this datasource (Collection or View), and a reference
  * to the translated name (cid => name if required).
@@ -247,16 +247,23 @@ LogicalDataSource::Category injectDataSourceInQuery(
     Ast& ast, CollectionNameResolver const& resolver,
     AccessMode::Type accessType, bool failIfDoesNotExist,
     std::string_view& nameRef) {
+  // NOTE nameRef may be modified later if a numeric collection ID is given
+  // instead of a collection Name. Afterwards it will contain the name.
+  if (nameRef.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                                   "empty name collections are not supported");
+  }
+
   std::string const name = std::string(nameRef);
-  // NOTE The name may be modified if a numeric collection ID is given instead
-  // of a collection Name. Afterwards it will contain the name.
   auto const dataSource = resolver.getDataSource(name);
 
   if (dataSource == nullptr) {
     // datasource not found...
     if (failIfDoesNotExist) {
-      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                    "name: %s", name.c_str());
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
+                       ": name: ", name));
     }
 
     // still add datasource to query, simply because the AST will also be built
@@ -274,9 +281,10 @@ LogicalDataSource::Category injectDataSourceInQuery(
   // the collection by its numeric id
   auto const& dataSourceName = dataSource->name();
 
-  if (nameRef != name) {
-    // name has changed by the lookup, so we need to reserve the collection
-    // name on the heap and update our std::string_view
+  if (name != dataSourceName) {
+    TRI_ASSERT(name.front() >= '0' && name.front() <= '9');
+    // name was a numeric collection id, so we need to store the collection
+    // name on the heap and update our std::string_view to point to it
     char* p = ast.resources().registerString(dataSourceName.data(),
                                              dataSourceName.size());
     nameRef = std::string_view(p, dataSourceName.size());
@@ -303,7 +311,7 @@ LogicalDataSource::Category injectDataSourceInQuery(
 
     ast.query().addDataSource(dataSource);
 
-    // Make sure to add all collections now:
+    // Make sure to add all collections from the view now:
     resolver.visitCollections(
         [&ast, accessType](LogicalCollection& col) -> bool {
           ast.query().collections().add(col.name(), accessType,
@@ -2164,7 +2172,52 @@ void Ast::injectBindParametersFirstStage(
 
 /// @brief injects second-stage bind parameter values into the AST
 /// (i.e. all value bind parameters)
-void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
+void Ast::replaceBindParametersWithVariables(BindParameters& parameters) {
+  if (_containsBindParameters) {
+    auto func = [&](AstNode* node) -> AstNode* {
+      if (node->type == NODE_TYPE_PARAMETER) {
+        // found a bind parameter in the query string.
+        // replace it with a variable
+        TRI_ASSERT(node->type == NODE_TYPE_PARAMETER);
+
+        std::string_view param = node->getStringView();
+        TRI_ASSERT(!param.empty());
+
+        auto [value, cachedNode] = parameters.get(param);
+        if (value.isNone()) {
+          // query uses a bind parameter that was not defined by the user
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
+                                param);
+        }
+
+        auto iter = _bindParameterVariables.find(param);
+        if (iter == _bindParameterVariables.end()) {
+          bool inserted = false;
+          auto var = variables()->createTemporaryVariable();
+          std::tie(iter, inserted) =
+              _bindParameterVariables.emplace(param, var);
+          var->setBindParameterReplacement(std::string{param});
+
+          TRI_ASSERT(inserted);
+
+          auto varNode = createNodeReference(iter->second);
+          parameters.registerNode(param, varNode);
+          return varNode;
+        }
+
+        TRI_ASSERT(cachedNode != nullptr);
+        return cachedNode;
+      }
+      return node;
+    };
+
+    _root = traverseAndModify(_root, func);
+  }
+}
+
+/// @brief injects second-stage bind parameter values into the AST
+/// (i.e. all value bind parameters)
+void Ast::replaceBindParametersWithValues(BindParameters& parameters) {
   if (_containsBindParameters) {
     auto func = [&](AstNode* node) -> AstNode* {
       if (node->type == NODE_TYPE_PARAMETER) {
@@ -2176,6 +2229,19 @@ void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
     };
 
     _root = traverseAndModify(_root, func);
+  }
+}
+
+/// @brief injects second-stage bind parameter values into the AST
+/// (i.e. all value bind parameters)
+void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
+  if (_containsBindParameters) {
+    if (query().queryOptions().optimizePlanForCaching) {
+      replaceBindParametersWithVariables(parameters);
+    } else {
+      // put in value bind parameters.
+      replaceBindParametersWithValues(parameters);
+    }
   }
 }
 
@@ -3329,7 +3395,10 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   // - number
   if (converted->value.type == VALUE_TYPE_INT) {
     // int64
-    return createNodeValueInt(-converted->getIntValue());
+    int64_t i = converted->getIntValue();
+    if (i > std::numeric_limits<int64_t>::min()) {
+      return createNodeValueInt(-i);
+    }
   }
 
   // double
@@ -4384,8 +4453,12 @@ AstNode* Ast::endSubQuery() {
 
 bool Ast::isInSubQuery() const noexcept { return (_queries.size() > 1); }
 
-std::unordered_set<std::string> Ast::bindParameters() const {
+std::unordered_set<std::string> Ast::bindParameterNames() const {
   return std::unordered_set<std::string>(_bindParameters);
+}
+
+BindParameterVariableMapping Ast::bindParameterVariables() const {
+  return _bindParameterVariables;
 }
 
 Scopes* Ast::scopes() { return &_scopes; }

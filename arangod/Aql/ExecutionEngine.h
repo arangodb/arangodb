@@ -42,6 +42,7 @@ namespace arangodb::aql {
 class AqlCallStack;
 class AqlItemBlock;
 class AqlItemBlockManager;
+class BindParameters;
 class ExecutionBlock;
 class ExecutionNode;
 class ExecutionPlan;
@@ -152,6 +153,7 @@ class ExecutionEngine {
   void setupEngineRoot(ExecutionBlock& planRoot);
 
   static void initializeConstValueBlock(ExecutionPlan& plan,
+                                        BindParameters const& bindParameters,
                                         AqlItemBlockManager& mgr);
 
   EngineId const _engineId;

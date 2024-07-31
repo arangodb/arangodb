@@ -310,12 +310,15 @@ class Supervision : public ServerThread<ArangodServer> {
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
                                               should run */
 
-  double _frequency;
-  double _gracePeriod;
-  double _okThreshold;
-  uint64_t _delayAddFollower;
-  uint64_t _delayFailedFollower;
-  bool _failedLeaderAddsFollower;
+  // The following variables can be set from the outside during runtime
+  // and can create data races between the rest handler and the supervision
+  // thread.
+  std::atomic<double> _frequency;
+  std::atomic<double> _gracePeriod;
+  std::atomic<double> _okThreshold;
+  std::atomic<uint64_t> _delayAddFollower;
+  std::atomic<uint64_t> _delayFailedFollower;
+  std::atomic<bool> _failedLeaderAddsFollower;
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;

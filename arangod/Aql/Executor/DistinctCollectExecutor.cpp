@@ -27,6 +27,7 @@
 #include "DistinctCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
@@ -40,8 +41,7 @@
 
 #define INTERNAL_LOG_DC LOG_DEVEL_IF(false)
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
     std::pair<RegisterId, RegisterId> groupRegister,
@@ -210,3 +210,7 @@ size_t DistinctCollectExecutor::memoryUsageForGroup(
   }
   return memoryUsage;
 }
+
+template class ExecutionBlockImpl<DistinctCollectExecutor>;
+
+}  // namespace arangodb::aql

@@ -60,8 +60,7 @@ class ShortestPathNode : public virtual GraphNode {
                    AstNode const* graph,
                    std::unique_ptr<graph::BaseOptions> options);
 
-  ShortestPathNode(ExecutionPlan* plan,
-                   arangodb::velocypack::Slice const& base);
+  ShortestPathNode(ExecutionPlan* plan, velocypack::Slice base);
 
   ~ShortestPathNode();
 
@@ -77,7 +76,6 @@ class ShortestPathNode : public virtual GraphNode {
       std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph,
       Variable const* distributeVariable);
 
- public:
   /// @brief return the type of the node
   NodeType getType() const override final { return SHORTEST_PATH; }
 

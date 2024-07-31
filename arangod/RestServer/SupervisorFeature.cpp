@@ -36,7 +36,6 @@
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
-#include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -327,7 +326,7 @@ void SupervisorFeature::daemonize() {
     else {
       Logger::shutdown();
 
-      LogAppender::allowStdLogging(false);
+      Logger::allowStdLogging(false);
       DaemonFeature::remapStandardFileDescriptors();
 
       LOG_TOPIC("abe90", DEBUG, Logger::STARTUP)

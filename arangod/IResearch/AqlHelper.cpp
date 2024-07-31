@@ -34,6 +34,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterContext.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 

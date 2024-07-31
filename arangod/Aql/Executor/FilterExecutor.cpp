@@ -29,6 +29,7 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
@@ -37,8 +38,7 @@
 
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister)
     : _inputRegister(inputRegister) {}
@@ -107,3 +107,7 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   // So we can only overestimate
   return call.getLimit();
 }
+
+template class ExecutionBlockImpl<FilterExecutor>;
+
+}  // namespace arangodb::aql

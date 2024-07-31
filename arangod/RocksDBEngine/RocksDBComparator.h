@@ -27,8 +27,11 @@
 #include <rocksdb/comparator.h>
 #include <rocksdb/slice.h>
 
+#include "Basics/VelocyPackHelper.h"
+
 namespace arangodb {
 
+template<arangodb::basics::VelocyPackHelper::SortingMethod sortingMethod>
 class RocksDBVPackComparator final : public rocksdb::Comparator {
  public:
   RocksDBVPackComparator() = default;

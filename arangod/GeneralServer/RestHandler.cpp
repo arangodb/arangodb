@@ -404,8 +404,8 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
 }
 
 void RestHandler::runHandlerStateMachine() {
-  std::lock_guard lock{_executionMutex};
-  TRI_ASSERT(_callback);
+  // _executionMutex has to be locked here
+  TRI_ASSERT(_sendResponseCallback);
 
   while (true) {
     switch (_state) {
@@ -452,13 +452,13 @@ void RestHandler::runHandlerStateMachine() {
         // compress response if required
         compressResponse();
         // Callback may stealStatistics!
-        _callback(this);
+        _sendResponseCallback(this);
         break;
 
       case HandlerState::FAILED:
         _statistics.SET_REQUEST_END();
         // Callback may stealStatistics!
-        _callback(this);
+        _sendResponseCallback(this);
 
         shutdownExecute(false);
         return;
@@ -515,10 +515,9 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {
 bool RestHandler::wakeupHandler() {
   std::lock_guard lock{_executionMutex};
   if (_state == HandlerState::PAUSED) {
-    runHandlerStateMachine();  // may change _state
-    return _state == HandlerState::PAUSED;
+    runHandlerStateMachine();
   }
-  return false;
+  return _state == HandlerState::PAUSED;
 }
 
 void RestHandler::executeEngine(bool isContinue) {
@@ -788,3 +787,11 @@ futures::Future<futures::Unit> RestHandler::executeAsync() {
 }
 
 RestStatus RestHandler::execute() { return waitForFuture(executeAsync()); }
+
+void RestHandler::runHandler(
+    std::function<void(rest::RestHandler*)> responseCallback) {
+  TRI_ASSERT(_state == HandlerState::PREPARE);
+  _sendResponseCallback = std::move(responseCallback);
+  std::lock_guard guard(_executionMutex);
+  runHandlerStateMachine();
+}

@@ -196,6 +196,8 @@ class SortingGatherExecutor {
       AqlCall const& clientCall) const noexcept -> AqlCallList;
 
  private:
+  bool const _fetchParallel;
+
   // Flag if we are past the initialize phase (fetched one block for every
   // dependency).
   bool _initialized = false;
@@ -218,8 +220,6 @@ class SortingGatherExecutor {
 
   /// @brief sorting strategy
   std::unique_ptr<SortingStrategy> _strategy;
-
-  const bool _fetchParallel;
 
   std::optional<size_t> _depToUpdate = std::nullopt;
 };

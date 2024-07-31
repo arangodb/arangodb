@@ -696,7 +696,7 @@ class CommonGatherExecutorTest
   // We need to retain the memory of this SortElement. Otherwise we have invalid
   // memory access, for sorting nodes.
   aql::Variable _variable{"fuxx", 1, false, _resMonitor};
-  SortElement _sortElement{&_variable, true};
+  SortElement _sortElement = SortElement::create(&_variable, true);
 
 };  // namespace arangodb::tests::aql
 

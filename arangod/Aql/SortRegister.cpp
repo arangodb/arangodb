@@ -25,6 +25,7 @@
 #include "SortRegister.h"
 
 #include "Aql/RegisterPlan.h"
+#include "Aql/SortElement.h"
 #include "Aql/Variable.h"
 
 namespace arangodb::aql {

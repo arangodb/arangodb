@@ -26,6 +26,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/algorithm-aliases.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Providers/ClusterProvider.h"

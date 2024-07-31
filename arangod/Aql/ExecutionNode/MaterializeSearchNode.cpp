@@ -23,7 +23,7 @@
 
 #include "MaterializeSearchNode.h"
 
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/MaterializeExecutor.h"

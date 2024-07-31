@@ -24,7 +24,6 @@
 #include "CollectNode.h"
 
 #include "Aql/Ast.h"
-#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/CountCollectExecutor.h"

@@ -130,18 +130,16 @@ class InputAqlItemRow {
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
   /// Uses the same API as an AqlItemBlock with only a single row
-  void toVelocyPack(velocypack::Options const*,
-                    arangodb::velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Options const*, velocypack::Builder&) const;
 
   void toSimpleVelocyPack(velocypack::Options const*,
-                          arangodb::velocypack::Builder&) const;
+                          velocypack::Builder&) const;
 
  private:
   AqlItemBlock& block() noexcept;
 
   AqlItemBlock const& block() const noexcept;
 
- private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */

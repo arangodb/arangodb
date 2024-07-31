@@ -36,16 +36,17 @@ class BootstrapFeature final : public ArangodFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
+  void stop() override final;
   void unprepare() override final;
 
   bool isReady() const;
 
  private:
+  void killRunningQueries();
   void waitForHealthEntry();
   /// @brief wait for databases to appear in Plan and Current
   void waitForDatabases() const;
 
- private:
   bool _isReady;
   bool _bark;
 };

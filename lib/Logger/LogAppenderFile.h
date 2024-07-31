@@ -23,48 +23,17 @@
 
 #pragma once
 
-#include <stddef.h>
 #include <memory>
 #include <mutex>
 #include <string>
-#include <string_view>
 #include <tuple>
 #include <vector>
 
-#include "Logger/LogAppender.h"
 #include "Logger/LogLevel.h"
+#include "Logger/LogAppenderStream.h"
 
 namespace arangodb {
 struct LogMessage;
-
-class LogAppenderStream : public LogAppender {
- public:
-  LogAppenderStream(std::string const& filename, int fd);
-  ~LogAppenderStream() = default;
-
-  void logMessage(LogMessage const& message) override final;
-
-  virtual std::string details() const override = 0;
-
-  int fd() const { return _fd; }
-
- protected:
-  void updateFd(int fd) { _fd = fd; }
-
-  virtual void writeLogMessage(LogLevel level, size_t topicId,
-                               std::string const& message) = 0;
-
-  /// @brief maximum size for reusable log buffer
-  /// if the buffer exceeds this size, it will be freed after the log
-  /// message was produced. otherwise it will be kept for recycling
-  static constexpr size_t maxBufferSize = 64 * 1024;
-
-  /// @brief file descriptor
-  int _fd;
-
-  /// @brief whether or not we should use colors
-  bool _useColors;
-};
 
 class LogAppenderFile : public LogAppenderStream {
   friend struct LogAppenderFileFactory;
@@ -114,31 +83,6 @@ struct LogAppenderFileFactory {
  private:
   // Static class, never construct it.
   LogAppenderFileFactory() = delete;
-};
-
-class LogAppenderStdStream : public LogAppenderStream {
- public:
-  LogAppenderStdStream(std::string const& filename, int fd);
-  ~LogAppenderStdStream();
-
-  std::string details() const override final { return std::string(); }
-
-  static void writeLogMessage(int fd, bool useColors, LogLevel level,
-                              size_t topicId, std::string const& message);
-
- private:
-  void writeLogMessage(LogLevel level, size_t topicId,
-                       std::string const& message) override final;
-};
-
-class LogAppenderStderr final : public LogAppenderStdStream {
- public:
-  LogAppenderStderr();
-};
-
-class LogAppenderStdout final : public LogAppenderStdStream {
- public:
-  LogAppenderStdout();
 };
 
 }  // namespace arangodb

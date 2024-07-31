@@ -85,7 +85,8 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
         filterConditionVariables,
     MonitoredCollectionToShardMap const& collectionToShardMap,
     aql::Projections const& vertexProjections,
-    aql::Projections const& edgeProjections, bool produceVertices)
+    aql::Projections const& edgeProjections, bool produceVertices,
+    bool useCache)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
@@ -94,7 +95,8 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
       _filterConditionVariables(filterConditionVariables),
       _vertexProjections{vertexProjections},
       _edgeProjections{edgeProjections},
-      _produceVertices(produceVertices) {}
+      _produceVertices(produceVertices),
+      _useCache(useCache) {}
 
 aql::Variable const* SingleServerBaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -123,6 +125,10 @@ bool SingleServerBaseProviderOptions::hasWeightMethod() const noexcept {
 
 bool SingleServerBaseProviderOptions::produceVertices() const noexcept {
   return _produceVertices;
+}
+
+bool SingleServerBaseProviderOptions::useCache() const noexcept {
+  return _useCache;
 }
 
 void SingleServerBaseProviderOptions::setWeightEdgeCallback(

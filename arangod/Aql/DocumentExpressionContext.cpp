@@ -92,7 +92,8 @@ AqlValue GenericDocumentExpressionContext::getVariableValue(
             << ") not found";
         if (ADB_LIKELY(regId != RegisterId::maxRegisterId)) {
           // we can only get here in a post-filter expression
-          TRI_ASSERT(regId < _inputRow.getNumRegisters())
+          TRI_ASSERT(regId.isConstRegister() ||
+                     regId < _inputRow.getNumRegisters())
               << "variable " << variable->name << " (" << variable->id
               << "), register " << regId.value() << " not found";
           if (doCopy) {

@@ -154,13 +154,17 @@ struct BaseOptions {
 
   void setCollectionToShard(std::unordered_map<std::string, ShardID> const&);
 
-  bool produceVertices() const { return _produceVertices; }
+  bool produceVertices() const noexcept { return _produceVertices; }
 
-  bool produceEdges() const { return _produceEdges; }
+  bool produceEdges() const noexcept { return _produceEdges; }
 
-  void setProduceVertices(bool value) { _produceVertices = value; }
+  bool useCache() const noexcept { return _useCache; }
 
-  void setProduceEdges(bool value) { _produceEdges = value; }
+  void setProduceVertices(bool value) noexcept { _produceVertices = value; }
+
+  void setProduceEdges(bool value) noexcept { _produceEdges = value; }
+
+  void setUseCache(bool value) noexcept { _useCache = value; }
 
   transaction::Methods* trx() const;
 
@@ -178,7 +182,7 @@ struct BaseOptions {
 
   /// @brief whether or not an edge collection shall be excluded
   /// this can be overridden in TraverserOptions
-  virtual bool shouldExcludeEdgeCollection(std::string const& name) const {
+  virtual bool shouldExcludeEdgeCollection(std::string const& /*name*/) const {
     return false;
   }
 
@@ -205,7 +209,7 @@ struct BaseOptions {
 
   void setParallelism(size_t p) noexcept { _parallelism = p; }
 
-  size_t parallelism() const { return _parallelism; }
+  size_t parallelism() const noexcept { return _parallelism; }
 
   void isQueryKilledCallback() const;
 
@@ -319,6 +323,10 @@ struct BaseOptions {
   /// query.
   bool _produceEdges{true};
 
+  /// @brief whether or not to use the edge cache or other indexes' caches
+  /// during edge lookups
+  bool _useCache{true};
+
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
 
@@ -330,11 +338,9 @@ struct BaseOptions {
   /// @brief Projections used on edge data (monitored)
   aql::Projections _edgeProjections;
 
+  /// @brief user hint regarding which indexes to use
   aql::IndexHint _hint;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-/// @brief user hint regarding which indexes to use
-
-/// @brief user hint regarding which indexes to use

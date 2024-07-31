@@ -30,8 +30,7 @@
 
 #include <utility>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 template<BlockPassthrough allowsPassThrough>
 class SingleRowFetcher;
@@ -82,5 +81,5 @@ class SubqueryStartExecutor {
   // Cache for the input row we are currently working on
   InputAqlItemRow _inputRow{CreateInvalidInputRowHint{}};
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql

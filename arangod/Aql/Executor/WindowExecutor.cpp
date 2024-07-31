@@ -26,6 +26,8 @@
 #include "Aql/Aggregator.h"
 #include "Aql/AqlCall.h"
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -36,8 +38,7 @@
 
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 static const AqlValue EmptyValue;
@@ -452,3 +453,8 @@ WindowExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   // So we can only overestimate
   return call.getLimit();
 }
+
+template class ExecutionBlockImpl<WindowExecutor>;
+template class ExecutionBlockImpl<AccuWindowExecutor>;
+
+}  // namespace arangodb::aql

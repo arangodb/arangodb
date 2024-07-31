@@ -23,13 +23,6 @@
 
 #include "Graph.h"
 
-#include <Logger/LogMacros.h>
-#include <velocypack/Buffer.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
-#include <array>
-#include <utility>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Query.h"
@@ -40,6 +33,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerDefaults.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -49,6 +43,14 @@
 #include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
+
+#include <absl/strings/str_cat.h>
+#include <velocypack/Buffer.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+
+#include <array>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -279,8 +281,8 @@ uint64_t Graph::replicationFactor() const { return _replicationFactor; }
 
 uint64_t Graph::writeConcern() const { return _writeConcern; }
 
-std::string const Graph::id() const {
-  return std::string(StaticStrings::GraphCollection + "/" + _graphName);
+std::string Graph::id() const {
+  return absl::StrCat(StaticStrings::GraphsCollection, "/", _graphName);
 }
 
 std::string const& Graph::rev() const { return _rev; }

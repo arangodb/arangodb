@@ -142,6 +142,9 @@ class ExecutionBlock {
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
 
+  /// @brief profiling level
+  ProfileLevel _profileLevel;
+
   /// @brief our corresponding ExecutionNode node
   ExecutionNode const* _exeNode;
 
@@ -154,9 +157,6 @@ class ExecutionBlock {
   std::vector<ExecutionBlock*>::iterator _dependencyPos;
 
   ExecutionNodeStats _execNodeStats;
-
-  /// @brief profiling level
-  ProfileLevel _profileLevel;
 
   /// @brief start time of execution of block. initially -1.0 (used only
   /// in assertions). will be reset to -1.0 will be set to current time

@@ -29,13 +29,13 @@
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMessage.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/Logger.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 #include <cstring>
 #include <utility>
@@ -197,7 +197,7 @@ LogBufferFeature::LogBufferFeature(Server& server)
   _metricsCounter = std::make_shared<LogAppenderMetricsCounter>(
       server.getFeature<metrics::MetricsFeature>());
 
-  LogAppender::addGlobalAppender(Logger::defaultLogGroup(), _metricsCounter);
+  Logger::addGlobalAppender(Logger::defaultLogGroup(), _metricsCounter);
 
   Logger::setOnDroppedMessage([mc = _metricsCounter]() noexcept {
     std::static_pointer_cast<LogAppenderMetricsCounter>(mc)
@@ -263,8 +263,7 @@ void LogBufferFeature::prepare() {
     }
 
     _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>(level);
-    LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
-                                   _inMemoryAppender);
+    Logger::addGlobalAppender(Logger::defaultLogGroup(), _inMemoryAppender);
   }
 }
 

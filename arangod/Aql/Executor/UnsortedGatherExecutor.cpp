@@ -23,6 +23,7 @@
 
 #include "UnsortedGatherExecutor.h"
 
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/Executor/IdExecutor.h"  // for IdExecutorInfos
 #include "Aql/MultiAqlItemBlockInputRange.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
@@ -30,8 +31,7 @@
 #include "Aql/Stats.h"
 #include "Basics/debugging.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher&, Infos&) {}
 
@@ -155,3 +155,7 @@ auto UnsortedGatherExecutor::advanceDependency() noexcept -> void {
   TRI_ASSERT(_currentDependency < numDependencies());
   ++_currentDependency;
 }
+
+template class ExecutionBlockImpl<UnsortedGatherExecutor>;
+
+}  // namespace arangodb::aql

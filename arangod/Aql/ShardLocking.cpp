@@ -68,18 +68,18 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
         // artifical key with two colons, to pretend it is a real
         // smart graph key
         return col->getCollection()->getResponsibleShard(
-            forceOneShardAttributeValue +
-            ":test:" + forceOneShardAttributeValue);
+            absl::StrCat(forceOneShardAttributeValue,
+                         ":test:", forceOneShardAttributeValue));
       } else {
         auto const& shardKeys = col->getCollection().get()->shardKeys();
         TRI_ASSERT(!shardKeys.empty());
         auto const& shardKey = shardKeys.at(0);
-        if (shardKey == "_key:") {
+        if (shardKey == StaticStrings::PrefixOfKeyString) {
           return col->getCollection()->getResponsibleShard(
-              forceOneShardAttributeValue + ":test");
-        } else if (shardKey == ":_key") {
+              absl::StrCat(forceOneShardAttributeValue, ":test"));
+        } else if (shardKey == StaticStrings::PostfixOfKeyString) {
           return col->getCollection()->getResponsibleShard(
-              "test:" + forceOneShardAttributeValue);
+              absl::StrCat("test:", forceOneShardAttributeValue));
         } else {
           VPackBuilder builder;
           {
@@ -287,11 +287,12 @@ void ShardLocking::updateLocking(
     } else {
       isRestricted = true;
       for (auto const& s : restrictedShards) {
-        if (info.allShards.find(s) == info.allShards.end()) {
+        if (!info.allShards.contains(s)) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-              "Restricting: " + col->name() + " to shard " + s +
-                  " which it does not have, or is excluded in the query");
+              absl::StrCat(
+                  "Restricting: ", col->name(), " to shard ", std::string(s),
+                  " which it does not have, or is excluded in the query"));
         }
         shards.emplace(s);
       }
@@ -321,7 +322,6 @@ std::vector<ServerID> ShardLocking::getRelevantServers() {
     // server => locktype => [shards]
     // server => collection => [shards](sorted)
     for (auto& lockInfo : _collectionLocking) {
-      std::unordered_set<ShardID> shardsToLock;
       for (auto const& sid : lockInfo.second.allShards) {
         auto server = shardMapping.find(sid);
         if (server != shardMapping.end()) {
@@ -381,7 +381,7 @@ containers::FlatHashMap<ShardID, ServerID> const&
 ShardLocking::getShardMapping() {
   if (_shardMapping.empty() && !_collectionLocking.empty()) {
     containers::FlatHashSet<ShardID> shardIds;
-    for (auto& lockInfo : _collectionLocking) {
+    for (auto const& lockInfo : _collectionLocking) {
       auto& allShards = lockInfo.second.allShards;
       TRI_ASSERT(!allShards.empty());
       for (auto const& rest : lockInfo.second.snippetInfo) {
@@ -434,7 +434,7 @@ ShardLocking::getShardMapping() {
 }
 
 std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(
-    QuerySnippet::Id snippetId, Collection const* col) {
+    QuerySnippet::Id snippetId, Collection const* col) const {
   auto const& lockInfo = _collectionLocking.find(col);
 
   TRI_ASSERT(lockInfo != _collectionLocking.end());

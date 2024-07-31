@@ -36,6 +36,7 @@
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
@@ -85,25 +86,25 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
   if (!shardsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The body requires a " + SHARDS + " attribute.");
+        absl::StrCat("The body requires a ", SHARDS, " attribute."));
   }
 
   VPackSlice edgesSlice = shardsSlice.get(StaticStrings::GraphQueryEdges);
 
   if (!edgesSlice.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The " + SHARDS + " object requires an " +
-                                       StaticStrings::GraphQueryEdges +
-                                       " attribute.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("The ", SHARDS, " object requires an ",
+                     StaticStrings::GraphQueryEdges, " attribute."));
   }
 
   VPackSlice vertexSlice = shardsSlice.get(StaticStrings::GraphQueryVertices);
 
   if (!vertexSlice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The " + SHARDS + " object requires a " +
-                                       StaticStrings::GraphQueryVertices +
-                                       " attribute.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("The ", SHARDS, " object requires a ",
+                     StaticStrings::GraphQueryVertices, " attribute."));
   }
 
   // Add all Edge shards to the transaction
@@ -175,16 +176,16 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_GRAPH_INVALID_EDGE,
-          "edge contains invalid value " + std::string(id));
+          absl::StrCat("edge contains invalid value ", id));
     }
     std::string shardName = std::string(id.substr(0, pos));
     auto shards = _vertexShards.find(shardName);
     if (shards == _vertexShards.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                     "collection not known to traversal: '" +
-                                         shardName + "'. please add 'WITH " +
-                                         shardName +
-                                         "' as the first line in your AQL");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+          absl::StrCat("collection not known to traversal: '", shardName,
+                       "'. please add 'WITH ", shardName,
+                       "' as the first line in your AQL"));
       // The collection is not known here!
       // Maybe handle differently
     }
@@ -388,15 +389,17 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
   if (optsSlice.isNone() || !optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The body requires an " + StaticStrings::GraphOptions + " attribute.");
+        absl::StrCat("The body requires an ", StaticStrings::GraphOptions,
+                     " attribute."));
   }
   VPackSlice shardsSlice = info.get(SHARDS);
   VPackSlice edgesSlice = shardsSlice.get(StaticStrings::GraphQueryEdges);
   VPackSlice type = optsSlice.get(TYPE);
   if (!type.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The " + StaticStrings::GraphOptions +
-                                       " require a " + TYPE + " attribute.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("The ", StaticStrings::GraphOptions, " require a ", TYPE,
+                     " attribute."));
   }
   TRI_ASSERT(type.isEqualString("shortestPath"));
   _opts = std::make_unique<ShortestPathOptions>(_query, optsSlice, edgesSlice);
@@ -483,15 +486,17 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
   if (!optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The body requires an " + StaticStrings::GraphOptions + " attribute.");
+        absl::StrCat("The body requires an ", StaticStrings::GraphOptions,
+                     " attribute."));
   }
   VPackSlice shardsSlice = info.get(SHARDS);
   VPackSlice edgesSlice = shardsSlice.get(StaticStrings::GraphQueryEdges);
   VPackSlice type = optsSlice.get(TYPE);
   if (!type.isString()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The " + StaticStrings::GraphOptions +
-                                       " require a " + TYPE + " attribute.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("The ", StaticStrings::GraphOptions, " require a ", TYPE,
+                     " attribute."));
   }
   TRI_ASSERT(type.isEqualString("traversal"));
   _opts = std::make_unique<TraverserOptions>(_query, optsSlice, edgesSlice);

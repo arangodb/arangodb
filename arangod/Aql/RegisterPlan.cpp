@@ -486,7 +486,8 @@ template<typename T>
 RegisterId RegisterPlanT<T>::registerVariable(
     Variable const* v, std::set<RegisterId>& unusedRegisters) {
   RegisterId regId;
-  if (v->type() == Variable::Type::Const) {
+  if (v->type() == Variable::Type::Const ||
+      v->type() == Variable::Type::BindParameter) {
     regId = RegisterId::makeConst(nrConstRegs++);
   } else if (unusedRegisters.empty()) {
     regId = addRegister();
@@ -495,7 +496,9 @@ RegisterId RegisterPlanT<T>::registerVariable(
     regId = *iter;
     unusedRegisters.erase(iter);
   }
-  TRI_ASSERT(regId.isConstRegister() == (v->type() == Variable::Type::Const));
+  TRI_ASSERT(regId.isConstRegister() ==
+             (v->type() == Variable::Type::Const ||
+              v->type() == Variable::Type::BindParameter));
 
   auto [_, inserted] = varInfo.try_emplace(v->id, VarInfo(depth, regId));
   TRI_ASSERT(inserted);

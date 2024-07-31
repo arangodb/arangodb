@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Basics/operating-system.h"
 #include "Logger/LogAppender.h"
 
 namespace arangodb {

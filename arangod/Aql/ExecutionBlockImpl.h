@@ -29,7 +29,6 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallSet.h"
 #include "Aql/AqlCallStack.h"
-#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/Stats.h"
@@ -56,6 +55,7 @@ class IdExecutor;
 
 struct AqlCall;
 class AqlItemBlock;
+class AqlItemBlockInputRange;
 class ExecutionEngine;
 class ExecutionNode;
 class InputAqlItemRow;
@@ -315,6 +315,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // as soon as we reach a place where there is no skip
   // ordered in the outer shadow rows, this call
   // will fall back to shadowRowForwarding.
+  // We need to make this method a template to prevent it from being implicitly
+  // instantiated for explicit ExecutionBlockImpl instantiations, because that
+  // would cause the static assert in the implementation to fail for executors
+  // that don't have side effects.
+  template<class E = Executor>
   [[nodiscard]] auto sideEffectShadowRowForwarding(AqlCallStack& stack,
                                                    SkipResult& skipResult)
       -> ExecState;

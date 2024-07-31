@@ -32,7 +32,6 @@
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
-#include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -50,15 +49,12 @@
 #include <signal.h>
 #endif
 
-inline void ADB_WindowsEntryFunction() {}
-inline void ADB_WindowsExitFunction(int, void*) {}
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
 
-static void ReopenLog(int) { LogAppender::reopen(); }
+static void ReopenLog(int) { Logger::reopen(); }
 }  // namespace
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
@@ -79,8 +75,6 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
   pthread_setattr_default_np(&a);
 #endif
 
-  ADB_WindowsEntryFunction();
-
   // global initialization
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
 
@@ -97,8 +91,6 @@ ArangoGlobalContext::~ArangoGlobalContext() {
 
   RandomGenerator::shutdown();
   TRI_ShutdownProcess();
-
-  ADB_WindowsExitFunction(_ret, nullptr);
 }
 
 int ArangoGlobalContext::exit(int ret) {

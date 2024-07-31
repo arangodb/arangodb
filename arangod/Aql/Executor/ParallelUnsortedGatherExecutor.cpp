@@ -23,13 +23,13 @@
 
 #include "ParallelUnsortedGatherExecutor.h"
 
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Transaction/Methods.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher&,
                                                                Infos& infos) {}
@@ -165,3 +165,7 @@ auto ParallelUnsortedGatherExecutor::skipRowsRange(
   }
   return {ExecutorState::HASMORE, NoStats{}, skipped, std::move(callSet)};
 }
+
+template class ExecutionBlockImpl<ParallelUnsortedGatherExecutor>;
+
+}  // namespace arangodb::aql

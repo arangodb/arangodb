@@ -23,6 +23,7 @@
 
 #include "MultiAqlItemBlockInputRange.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Aql/RegisterId.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>

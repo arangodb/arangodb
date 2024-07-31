@@ -63,7 +63,6 @@ class SingleServerProvider {
   using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
 
- public:
   SingleServerProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                        arangodb::ResourceMonitor& resourceMonitor);
   SingleServerProvider(SingleServerProvider const&) = delete;
@@ -138,7 +137,6 @@ class SingleServerProvider {
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> buildCursor(
       arangodb::aql::FixedVarExpressionContext& expressionContext);
 
- private:
   ResourceMonitor& _monitor;
   // Unique_ptr to have this class movable, and to keep reference of trx()
   // alive - Note: _trx must be first here because it is used in _cursor

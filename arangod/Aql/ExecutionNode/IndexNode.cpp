@@ -27,7 +27,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
@@ -39,17 +39,15 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/AttributeNameParser.h"
-#include "Basics/StringUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
+#include <cstdint>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -534,6 +532,9 @@ CostEstimate IndexNode::estimateCost() const {
 
   auto root = _condition->root();
   TRI_ASSERT(!_allCoveredByOneIndex || _indexes.size() == 1);
+  // TODO Add estimation for push-limit-into-index rule since
+  // this rule can drastically reduce the number of documents produced
+  // and therefore the cost
   for (size_t i = 0; i < _indexes.size(); ++i) {
     Index::FilterCosts costs =
         Index::FilterCosts::defaultCosts(itemsInCollection);
@@ -622,6 +623,10 @@ Condition* IndexNode::condition() const { return _condition.get(); }
 IndexIteratorOptions IndexNode::options() const { return _options; }
 
 void IndexNode::setAscending(bool value) { _options.ascending = value; }
+
+void IndexNode::setLimit(uint64_t value) noexcept { _options.limit = value; }
+
+bool IndexNode::hasLimit() const noexcept { return _options.limit != 0; }
 
 bool IndexNode::needsGatherNodeSort() const { return _needsGatherNodeSort; }
 

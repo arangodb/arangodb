@@ -42,6 +42,7 @@
 #include "ExpressionContextMock.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/ExpressionFilter.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/VelocyPackHelper.h"

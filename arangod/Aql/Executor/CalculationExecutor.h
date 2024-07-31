@@ -127,7 +127,6 @@ class CalculationExecutor {
 
   [[nodiscard]] bool shouldExitContextBetweenBlocks() const noexcept;
 
- private:
   CalculationExecutorInfos& _infos;
   transaction::Methods _trx;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
@@ -141,6 +140,9 @@ class CalculationExecutor {
   // Necessary for owned executors, which will not be exited when we call
   // exitContext; but only for assertions in maintainer mode.
   bool _hasEnteredExecutor;
+
+  // note: it is fine if this counter overflows
+  uint_fast16_t _killCheckCounter = 0;
 };
 
 }  // namespace aql

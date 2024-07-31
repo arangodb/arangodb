@@ -101,6 +101,7 @@
     "ERROR_ARANGO_DOCUMENT_REV_BAD" : { "code" : 1239, "message" : "illegal document revision" },
     "ERROR_ARANGO_INCOMPLETE_READ" : { "code" : 1240, "message" : "incomplete read" },
     "ERROR_ARANGO_OLD_ROCKSDB_FORMAT" : { "code" : 1241, "message" : "not supported by old legacy data format" },
+    "ERROR_ARANGO_INDEX_HAS_LEGACY_SORTED_KEYS" : { "code" : 1242, "message" : "an index with legacy sorted keys has been found" },
     "ERROR_ARANGO_EMPTY_DATADIR"   : { "code" : 1301, "message" : "server database directory is empty" },
     "ERROR_ARANGO_TRY_AGAIN"       : { "code" : 1302, "message" : "operation should be tried again" },
     "ERROR_ARANGO_BUSY"            : { "code" : 1303, "message" : "engine is busy" },

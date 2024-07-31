@@ -305,7 +305,7 @@ function runQuery(query, queryOptions, testOptions) {
   }
 
   /* Run query */
-  const result = db._createStatement({query: query.queryString, batchSize, options: queryOptions})
+  const result = db._createStatement({query: query.queryString, batchSize, options: queryOptions, ttl: 600})
     .execute();
 
   if (testOptions.enableLogging) {

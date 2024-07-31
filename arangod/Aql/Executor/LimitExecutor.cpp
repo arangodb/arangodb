@@ -27,14 +27,14 @@
 #include "LimitExecutor.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Basics/Exceptions.h"
 
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 LimitExecutorInfos::LimitExecutorInfos(size_t offset, size_t limit,
                                        bool fullCount)
@@ -150,7 +150,8 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           "exactly enough space for all input in the output.");
       auto numRowsWritten = size_t{0};
       if (inputRange.hasDataRow()) {
-        auto const& [_, inputRow] = inputRange.peekDataRow();
+        auto const& [_, inputRow] =
+            inputRange.peekDataRow(AqlItemBlockInputRange::HasDataRow{});
         size_t rows = inputRange.countAndSkipAllRemainingDataRows();
         output.fastForwardAllRows(inputRow, rows);
         numRowsWritten = rows;
@@ -265,3 +266,7 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, call.getSkipCount(),
           calculateUpstreamCall(call)};
 }
+
+template class ExecutionBlockImpl<LimitExecutor>;
+
+}  // namespace arangodb::aql

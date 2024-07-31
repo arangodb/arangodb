@@ -69,6 +69,7 @@
 #include "IResearch/Search.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Topics.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -113,9 +114,8 @@ DECLARE_GAUGE(arangodb_search_columns_cache_size, LimitedResourceManager,
 // Log topic implementation for IResearch
 class IResearchLogTopic final : public LogTopic {
  public:
-  explicit IResearchLogTopic(std::string const& name)
-      : LogTopic(name, kDefaultLevel) {
-    setIResearchLogLevel(kDefaultLevel);
+  IResearchLogTopic() : LogTopic(logger::topic::LibIResearch{}) {
+    setIResearchLogLevel(this->level());
   }
 
   void setLogLevel(LogLevel level) final {
@@ -129,7 +129,7 @@ class IResearchLogTopic final : public LogTopic {
   static void setIResearchLogLevel(LogLevel level);
 };
 
-static IResearchLogTopic LIBIRESEARCH("libiresearch");
+static IResearchLogTopic LIBIRESEARCH{};
 
 template<LogLevel Level>
 static void log(irs::SourceLocation&& source, std::string_view message) {

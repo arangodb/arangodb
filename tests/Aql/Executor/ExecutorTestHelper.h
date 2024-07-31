@@ -35,7 +35,6 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/SingletonNode.h"

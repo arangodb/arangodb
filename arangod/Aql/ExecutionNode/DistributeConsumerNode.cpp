@@ -24,7 +24,6 @@
 #include "DistributeConsumerNode.h"
 
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/Executor/IdExecutor.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"

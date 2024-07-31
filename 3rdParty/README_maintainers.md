@@ -66,11 +66,6 @@ Then copy `temp_modules.h` to `modules.h`, and fix the paths.
 
 ## jemalloc
 
-Only used on Linux/Mac, still uses autofoo.
-
-Updated to the head of the dev branch to make it possible to compile
-ArangoDB with clang 15.0.7 in an 3.18 Alpine container.
-
 The following change has been made to jemalloc compared to upstream commit
 e4817c8d89a2a413e835c4adeab5c5c4412f9235:
 
@@ -89,6 +84,26 @@ index 8cf2fd9f876..11489b3f03d 100644
  #endif
  static bool    os_overcommits;
 ```
+
+This change is necessary to keep, otherwise jemalloc will use different memory protection
+flags when allocating memory than when decommitting it. 
+
+For example, when allocating the memory segment 0x1000 to 0x3fff with protections 
+PROT_READ | PROT_WRITE, the kernel creates a single memory mapping entry with the segment's
+lower and upper bound and the memory protection flags.
+When later decommitting only a part of the segment, e.g. (0x2000 to 0x2fff) with the
+protection flags PROT_NONE, the kernel would split the original memory mapping entry
+into the following 3 entries because of the changed protection flags:
+- 0x1000 to 0x1fff with PROT_READ | PROT_WRITE
+- 0x2000 to 0x2fff with PROT_NONE
+- 0x3000 to 0x3fff with PROT_READ | PROT_WRITE
+That way the kernel's memory mapping table will grow quickly and can easily exceed the 
+amount of memory mappings allowed by vm.max_map_count.
+
+The patch above helps to prevent this, because we are using the same protection flags
+when allocating memory and when decommitting it.
+
+More info can be found in https://github.com/jemalloc/jemalloc/issues/1328.
 
 ## libunwind
 
@@ -126,9 +141,13 @@ RocksDB is pulled in as a submodule - the exact commit can be found there.
 The submodule repository is located at https://github.com/arangodb/rocksdb
 
 We have some changes for usage in arangodb, so we maintain our own branch with
-these changes called "arango-dev".
+these changes called "arango-dev". 
 To update to a new version pull from upstream (https://github.com/facebook/rocksdb)
 and merge the new version into the "arango-dev" branch.
+
+There is also a yet-unmerged branch "feature/rocksdb-latest" in that repo that
+includes the latest version of RocksDB for a future potential upgrade.
+It is based on RocksDB 9.5 as of the time of this writing (July 2024).
 
 ## s2geometry
 

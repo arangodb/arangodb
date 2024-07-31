@@ -23,6 +23,8 @@
 
 #include "Logger/LogAppenderSyslog.h"
 
+#include "Logger/LogMessage.h"
+
 using namespace arangodb;
 
 #ifdef ARANGODB_ENABLE_SYSLOG

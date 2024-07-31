@@ -28,13 +28,13 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Range.h"
 
 #include <velocypack/Builder.h>
 #include <boost/container/flat_set.hpp>
 
 #include <algorithm>
 #include <utility>
+#include <unordered_set>
 
 using namespace arangodb;
 using namespace arangodb::aql;

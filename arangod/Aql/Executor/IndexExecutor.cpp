@@ -32,6 +32,7 @@
 #include "Aql/Collection.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutorExpressionContext.h"
@@ -62,9 +63,6 @@
 
 // Set this to true to activate devel logging
 #define INTERNAL_LOG_IDX LOG_DEVEL_IF(false)
-
-using namespace arangodb;
-using namespace arangodb::aql;
 
 namespace {
 
@@ -174,6 +172,8 @@ IndexIterator::CoveringCallback getCallback(
 }
 
 }  // namespace
+
+namespace arangodb::aql {
 
 IndexExecutorInfos::IndexExecutorInfos(
     IndexNode::Strategy strategy, RegisterId outputRegister,
@@ -387,34 +387,33 @@ IndexExecutor::CursorReader::CursorReader(
     case IndexNode::Strategy::kCovering: {
       _coveringProducer =
           checkUniqueness
-              ? ::getCallback<true, false>(DocumentProducingCallbackVariant::
-                                               WithProjectionsCoveredByIndex{},
-                                           context)
-              : ::getCallback<false, false>(DocumentProducingCallbackVariant::
-                                                WithProjectionsCoveredByIndex{},
-                                            context);
+              ? getCallback<true, false>(DocumentProducingCallbackVariant::
+                                             WithProjectionsCoveredByIndex{},
+                                         context)
+              : getCallback<false, false>(DocumentProducingCallbackVariant::
+                                              WithProjectionsCoveredByIndex{},
+                                          context);
       break;
     }
     case IndexNode::Strategy::kCoveringFilterScanOnly: {
       _coveringProducer =
-          checkUniqueness
-              ? ::getCallback<true, false, /*produceResult*/ false>(
-                    DocumentProducingCallbackVariant::
-                        WithFilterCoveredByIndex{},
-                    context)
-              : ::getCallback<false, false, /*produceResult*/ false>(
-                    DocumentProducingCallbackVariant::
-                        WithFilterCoveredByIndex{},
-                    context);
+          checkUniqueness ? getCallback<true, false, /*produceResult*/ false>(
+                                DocumentProducingCallbackVariant::
+                                    WithFilterCoveredByIndex{},
+                                context)
+                          : getCallback<false, false, /*produceResult*/ false>(
+                                DocumentProducingCallbackVariant::
+                                    WithFilterCoveredByIndex{},
+                                context);
       break;
     }
     case IndexNode::Strategy::kCoveringFilterOnly: {
       _coveringProducer =
-          checkUniqueness ? ::getCallback<true, false, /*produceResult*/ true>(
+          checkUniqueness ? getCallback<true, false, /*produceResult*/ true>(
                                 DocumentProducingCallbackVariant::
                                     WithFilterCoveredByIndex{},
                                 context)
-                          : ::getCallback<false, false, /*produceResult*/ true>(
+                          : getCallback<false, false, /*produceResult*/ true>(
                                 DocumentProducingCallbackVariant::
                                     WithFilterCoveredByIndex{},
                                 context);
@@ -443,45 +442,43 @@ IndexExecutor::CursorReader::CursorReader(
     if (_strategy == IndexNode::Strategy::kCovering) {
       _coveringSkipper =
           checkUniqueness
-              ? ::getCallback<true, true>(DocumentProducingCallbackVariant::
-                                              WithProjectionsCoveredByIndex{},
-                                          context)
-              : ::getCallback<false, true>(DocumentProducingCallbackVariant::
-                                               WithProjectionsCoveredByIndex{},
-                                           context);
+              ? getCallback<true, true>(DocumentProducingCallbackVariant::
+                                            WithProjectionsCoveredByIndex{},
+                                        context)
+              : getCallback<false, true>(DocumentProducingCallbackVariant::
+                                             WithProjectionsCoveredByIndex{},
+                                         context);
     } else if (_strategy == IndexNode::Strategy::kCoveringFilterScanOnly ||
                _strategy == IndexNode::Strategy::kCoveringFilterOnly) {
       _coveringSkipper =
-          checkUniqueness ? ::getCallback<true, true, /*produceResult*/ false>(
+          checkUniqueness ? getCallback<true, true, /*produceResult*/ false>(
                                 DocumentProducingCallbackVariant::
                                     WithFilterCoveredByIndex{},
                                 context)
-                          : ::getCallback<false, true, /*produceResult*/ false>(
+                          : getCallback<false, true, /*produceResult*/ false>(
                                 DocumentProducingCallbackVariant::
                                     WithFilterCoveredByIndex{},
                                 context);
     } else if (_strategy == IndexNode::Strategy::kLateMaterialized) {
       if (_infos.getFilter() != nullptr) {
         _coveringSkipper =
-            checkUniqueness
-                ? ::getCallback<true, true, /*produceResult*/ false>(
-                      DocumentProducingCallbackVariant::
-                          WithFilterCoveredByIndex{},
-                      context)
-                : ::getCallback<false, true, /*produceResult*/ false>(
-                      DocumentProducingCallbackVariant::
-                          WithFilterCoveredByIndex{},
-                      context);
+            checkUniqueness ? getCallback<true, true, /*produceResult*/ false>(
+                                  DocumentProducingCallbackVariant::
+                                      WithFilterCoveredByIndex{},
+                                  context)
+                            : getCallback<false, true, /*produceResult*/ false>(
+                                  DocumentProducingCallbackVariant::
+                                      WithFilterCoveredByIndex{},
+                                  context);
       } else {
         _coveringSkipper =
             checkUniqueness
-                ? ::getCallback<true, true>(DocumentProducingCallbackVariant::
-                                                WithProjectionsCoveredByIndex{},
-                                            context)
-                : ::getCallback<false, true>(
-                      DocumentProducingCallbackVariant::
-                          WithProjectionsCoveredByIndex{},
-                      context);
+                ? getCallback<true, true>(DocumentProducingCallbackVariant::
+                                              WithProjectionsCoveredByIndex{},
+                                          context)
+                : getCallback<false, true>(DocumentProducingCallbackVariant::
+                                               WithProjectionsCoveredByIndex{},
+                                           context);
       }
     }
   } else {
@@ -1051,3 +1048,7 @@ auto IndexExecutor::returnState() const noexcept -> ExecutorState {
   }
   return _state;
 }
+
+template class ExecutionBlockImpl<IndexExecutor>;
+
+}  // namespace arangodb::aql

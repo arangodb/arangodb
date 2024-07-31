@@ -106,6 +106,7 @@ class StaticStrings {
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
   static std::string const FrontendCollection;
+  static std::string const QueriesCollection;
   static std::string const StatisticsCollection;
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
@@ -284,7 +285,6 @@ class StaticStrings {
   static std::string const ReplicatedLogs;
 
   // graph attribute names
-  static std::string const GraphCollection;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;

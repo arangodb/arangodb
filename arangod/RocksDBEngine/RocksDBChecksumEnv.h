@@ -31,9 +31,6 @@
 #include <string>
 #include <string_view>
 
-// necessary, because Windows API defines a DeleteFile macro
-#undef DeleteFile
-
 namespace arangodb::checksum {
 
 class ChecksumCalculator {

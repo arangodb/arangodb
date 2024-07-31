@@ -30,6 +30,7 @@
 #include "gtest/gtest.h"
 
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogMessage.h"
 #include "Logger/Logger.h"
 #include "fmt/format.h"
 

@@ -311,7 +311,7 @@ jobs:
               TARGETS="$TARGETS << pipeline.parameters.test-build-targets >>"
             fi
             echo "Building targets: $TARGETS"
-            cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
+            cmake --build --preset << parameters.preset >> --parallel 16 --target $TARGETS
       - when:
           condition:
             or:
@@ -344,7 +344,7 @@ jobs:
                 command: |
                   mkdir install
                   # Note: ATM this will rebuild the frontend
-                  DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 8 --target install
+                  DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
                   cp build/bin/arangodb ./install/usr/bin/
                   if [ << parameters.enterprise >> = true ]; then
                     cp build/bin/rclone-arangodb ./install/usr/bin/

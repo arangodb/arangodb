@@ -626,6 +626,20 @@ void keepReplacementViewVariables(std::span<ExecutionNode* const> calcNodes,
     for (auto it = beginColumns; it != endColumns; ++it) {
       it->clear();
     }
+
+    // TODO: this optimization is somewhat insufficient:
+    // we are only checking here if the attributes extracted from the view
+    // are used in following nodes of type CalculationNode. only the usage
+    // of view attributes in such nodes will be detected here.
+    // usage of view attributes in other nodes will not be detected.
+    // for example, the following usage of `doc._id` will not be detected:
+    //   FOR doc IN view
+    //     FOR v, e, p IN 1..1 OUTBOUND doc ...
+    // but this one will:
+    //   FOR doc IN view
+    //     FOR v, e, p IN 1..1 OUTBOUND doc._id ...
+    // detecting the usage of view attributes is important to pull of the
+    // storedValues optimization and not materialize the full documents.
     for (auto* cNode : calcNodes) {
       TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
       auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);

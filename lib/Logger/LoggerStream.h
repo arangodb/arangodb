@@ -78,9 +78,9 @@ class LoggerStreamBase {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool const _enabled;
 #endif
-  char const* _logid;
-  char const* _file;
-  char const* _function;
+  std::string_view _logid;
+  std::string_view _file;
+  std::string_view _function;
 };
 
 class LoggerStream : public LoggerStreamBase {

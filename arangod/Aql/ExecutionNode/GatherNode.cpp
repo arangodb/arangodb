@@ -25,7 +25,8 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/EmptyExecutorInfos.h"
@@ -37,9 +38,12 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SortRegister.h"
 #include "Aql/types.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <memory>
 #include <string_view>
@@ -100,11 +104,12 @@ auto arangodb::aql::toString(GatherNode::Parallelism value) noexcept
     case GatherNode::Parallelism::Undefined:
       return kParallelismUndefined;
     default:
-      LOG_TOPIC("c9367", FATAL, Logger::AQL)
-          << "Invalid value for parallelism: "
-          << static_cast<std::underlying_type_t<GatherNode::Parallelism>>(
-                 value);
-      FATAL_ERROR_ABORT();
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat(
+              "invalid value for parallelism: ",
+              static_cast<std::underlying_type_t<GatherNode::Parallelism>>(
+                  value)));
   }
 }
 
@@ -233,17 +238,7 @@ void GatherNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _elements) {
-      VPackObjectBuilder obj(&nodes);
-      nodes.add(VPackValue("inVariable"));
-      it.var->toVelocyPack(nodes);
-      nodes.add("ascending", VPackValue(it.ascending));
-      if (!it.attributePath.empty()) {
-        nodes.add(VPackValue("path"));
-        VPackArrayBuilder arr(&nodes);
-        for (auto const& a : it.attributePath) {
-          nodes.add(VPackValue(a));
-        }
-      }
+      it.toVelocyPack(nodes);
     }
   }
 }
@@ -333,7 +328,7 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(
 void GatherNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& it : _elements) {
-    it.var = Variable::replace(it.var, replacements);
+    it.replaceVariables(replacements);
   }
 }
 
@@ -343,33 +338,7 @@ void GatherNode::replaceAttributeAccess(ExecutionNode const* self,
                                         Variable const* replaceVariable,
                                         size_t /*index*/) {
   for (auto& it : _elements) {
-    if (it.var == searchVariable) {
-      // if the attribute path is  $var.a.b and we replace $var.a by $other,
-      // the attribute path should become just `b`, i.e. $other.b.
-
-      auto it2 = attribute.begin();
-      auto it1 = it.attributePath.begin();
-
-      bool isPrefix = true;
-      while (it2 != attribute.end()) {
-        if (it1 == it.attributePath.end() || *it1 != *it2) {
-          // this path does not match the prefix
-          isPrefix = false;
-          break;
-        }
-        ++it1;
-        ++it2;
-      }
-
-      if (!isPrefix) {
-        continue;
-      }
-
-      // it1 now points to the remainder. Remove the prefix.
-      it.attributePath.erase(it.attributePath.cbegin(), it1);
-
-      it.var = replaceVariable;
-    }
+    it.replaceAttributeAccess(searchVariable, attribute, replaceVariable);
   }
 }
 

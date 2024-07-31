@@ -28,6 +28,7 @@
 #include "SortedCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
@@ -42,10 +43,8 @@
 // Set this to true to activate devel logging
 #define INTERNAL_LOG_SC LOG_DEVEL_IF(false)
 
-using namespace arangodb;
-using namespace arangodb::aql;
-
-static const AqlValue EmptyValue;
+namespace arangodb::aql {
+static const AqlValue EmptyValue;  // TODO
 
 SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
     : groupLength(0),
@@ -476,3 +475,7 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(),
           AqlCall{}};
 }
+
+template class ExecutionBlockImpl<SortedCollectExecutor>;
+
+}  // namespace arangodb::aql

@@ -54,8 +54,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 using arangodb::basics::VelocyPackHelper;
 
@@ -474,3 +473,5 @@ unsigned ExecutionBlockImpl<RemoteExecutor>::generateRequestTicket() {
 
   return _lastTicket;
 }
+
+}  // namespace arangodb::aql

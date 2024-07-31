@@ -31,11 +31,9 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
-using namespace arangodb::rest;
 
 namespace arangodb {
 

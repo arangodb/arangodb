@@ -27,32 +27,22 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 #include "Aql/QueryContext.h"
 #include "Containers/FlatHashMap.h"
+#include "Graph/Providers/TypeAliases.h"
 #include "Indexes/IndexIterator.h"
 
-// Note: only used for NonConstExpressionContainer
-// Could be extracted to it's own file.
-#include "Aql/OptimizerUtils.h"
-
-#include "Graph/Providers/TypeAliases.h"
-#include "Aql/InAndOutRowExpressionContext.h"
-
+#include <cstdint>
 #include <vector>
 
 namespace arangodb {
-
-class LocalDocumentId;
 struct ResourceMonitor;
 
 namespace aql {
 class TraversalStats;
+struct Variable;
 }  // namespace aql
-
-namespace velocypack {
-class Builder;
-class HashedStringRef;
-}  // namespace velocypack
 
 namespace transaction {
 class Methods;
@@ -78,11 +68,6 @@ class RefactoredSingleServerEdgeCursor {
     LookupInfo(LookupInfo&&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    void rearmVertex(VertexType vertex, ResourceMonitor& monitor,
-                     transaction::Methods* trx,
-                     arangodb::aql::Variable const* tmpVar,
-                     aql::TraversalStats& stats);
-
     IndexIterator& cursor();
     aql::Expression* getExpression();
 
@@ -91,6 +76,11 @@ class RefactoredSingleServerEdgeCursor {
     uint16_t coveringIndexPosition() const noexcept;
 
     void calculateIndexExpressions(aql::Ast* ast, aql::ExpressionContext& ctx);
+
+    void rearmVertex(VertexType vertex, ResourceMonitor& monitor,
+                     transaction::Methods* trx,
+                     arangodb::aql::Variable const* tmpVar,
+                     aql::TraversalStats& stats, bool useCache);
 
    private:
     IndexAccessor* _accessor;
@@ -102,7 +92,6 @@ class RefactoredSingleServerEdgeCursor {
 
   enum Direction { FORWARD, BACKWARD };
 
- public:
   RefactoredSingleServerEdgeCursor(
       ResourceMonitor& monitor, transaction::Methods* trx,
       arangodb::aql::Variable const* tmpVar,
@@ -110,14 +99,29 @@ class RefactoredSingleServerEdgeCursor {
       std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
           depthBasedIndexConditions,
       arangodb::aql::FixedVarExpressionContext& expressionContext,
-      bool requiresFullDocument);
+      bool requiresFullDocument, bool useCache);
 
   ~RefactoredSingleServerEdgeCursor();
 
   using Callback = std::function<void(EdgeDocumentToken&&,
                                       arangodb::velocypack::Slice, size_t)>;
 
+  void readAll(SingleServerProvider<StepType>& provider,
+               aql::TraversalStats& stats, size_t depth,
+               Callback const& callback);
+
+  void prepareIndexExpressions(aql::Ast* ast);
+
+  bool evaluateEdgeExpression(arangodb::aql::Expression* expression,
+                              VPackSlice value);
+
+  bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
+
+  void rearm(VertexType vertex, uint64_t depth, aql::TraversalStats& stats);
+
  private:
+  auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;
+
   aql::Variable const* _tmpVar;
   std::vector<LookupInfo> _lookupInfo;
   containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
@@ -129,24 +133,9 @@ class RefactoredSingleServerEdgeCursor {
 
   // TODO [GraphRefactor]: This is currently unused. Ticket: #GORDO-1364
   // Will be implemented in the future (Performance Optimization).
-  bool _requiresFullDocument;
+  bool const _requiresFullDocument;
 
- public:
-  void readAll(SingleServerProvider<StepType>& provider,
-               aql::TraversalStats& stats, size_t depth,
-               Callback const& callback);
-
-  void rearm(VertexType vertex, uint64_t depth, aql::TraversalStats& stats);
-
-  void prepareIndexExpressions(aql::Ast* ast);
-
-  bool evaluateEdgeExpression(arangodb::aql::Expression* expression,
-                              VPackSlice value);
-
-  bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
-
- private:
-  auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;
+  bool const _useCache;
 };
 }  // namespace graph
 }  // namespace arangodb
