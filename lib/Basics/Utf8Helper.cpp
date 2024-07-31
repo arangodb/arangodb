@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
+#include "Basics/files.h"
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Basics/tri-strings.h"
@@ -130,6 +131,15 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   }
 
   std::unique_ptr<icu_64_64::Collator> coll;
+  std::cout << "setCollatorLanguage called with: " << lang;
+  if (lang == "") {
+    std::string l;
+    if (!TRI_GETENV("LC_ALL", l) && !TRI_GETENV("LANG", l) &&
+        !TRI_GETENV("LANGUAGE", l) && !TRI_GETENV("LC_COLLATE", l)) {
+      std::cout << "no environment found, switching to: en_US";
+      lang = "en_US";
+    }
+  }
   if (lang == "") {
     // get default locale for empty language
     coll.reset(icu_64_64::Collator::createInstance(status));
