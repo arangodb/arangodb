@@ -77,10 +77,11 @@ namespace {
 // return an identifier to a connection configuration, consisting of
 // endpoint, username, password, jwt, authentication and protocol type
 std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
-  std::string raw = absl::StrCat(builder.normalizedEndpoint(), "/", builder.user(), "/",
-                          builder.password(), "/", builder.jwtToken(), "/",
-                          to_string(builder.authenticationType()), "/",
-                          to_string(builder.protocolType()));
+  std::string raw =
+      absl::StrCat(builder.normalizedEndpoint(), "/", builder.user(), "/",
+                   builder.password(), "/", builder.jwtToken(), "/",
+                   to_string(builder.authenticationType()), "/",
+                   to_string(builder.protocolType()));
   // create md5
   char hash[16];
   arangodb::rest::SslInterface::sslMD5(raw.c_str(), raw.length(), &hash[0]);
@@ -3117,7 +3118,8 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
 
   connection_proto->Set(isolate, "disconnectHandle",
                         v8::FunctionTemplate::New(
-                            isolate, ClientConnection_disconnectHandle, v8client));
+                          isolate, ClientConnection_disconnectHandle,
+                          v8client));
 
   connection_proto->Set(isolate, "connectedUser",
                         v8::FunctionTemplate::New(
