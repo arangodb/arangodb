@@ -8,7 +8,7 @@ import { useUserPermissionsContext } from "./UserPermissionsContext";
 /**
  * Returns true if the current cell is evaluated as the default,
  * based on the "max level" login
- * @returns 
+ * @returns
  */
 const getIsCellDefaultForCollection = ({
   info,
@@ -45,9 +45,9 @@ export const CollectionPermissionSwitch = ({
   checked: boolean;
   info: CellContext<any, unknown>;
 }) => {
-  const { databaseName, username } = (info.table.options.meta || {}) as any;
+  const { databaseName, isManagedUser, isRootUser } =
+    (info.table.options.meta as any) ?? {};
   const isSystemDatabase = databaseName === "_system";
-  const isRootUser = username === "root";
   const { handleCollectionCellClick } = useUserPermissionsContext();
   const { databaseTable } = useUserPermissionsContext();
   const isDefaultRow = getIsDefaultRow(info);
@@ -77,7 +77,9 @@ export const CollectionPermissionSwitch = ({
     <Flex gap="3">
       <Radio
         isDisabled={
-          isLoading || (isDefaultRow && isSystemDatabase && isRootUser)
+          isLoading ||
+          (isDefaultRow && isSystemDatabase && isRootUser) ||
+          isManagedUser
         }
         isChecked={checked}
         onChange={handleChange}
