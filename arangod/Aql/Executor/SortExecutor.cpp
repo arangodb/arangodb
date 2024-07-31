@@ -23,6 +23,7 @@
 
 #include "SortExecutor.h"
 
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
@@ -33,8 +34,7 @@
 #include "Basics/ResourceUsage.h"
 #include "RestServer/TemporaryStorageFeature.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 SortExecutorInfos::SortExecutorInfos(
     RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
@@ -169,3 +169,7 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
   return {ExecutorState::DONE, NoStats{}, call.getSkipCount(),
           std::move(upstreamCall)};
 }
+
+template class ExecutionBlockImpl<SortExecutor>;
+
+}  // namespace arangodb::aql

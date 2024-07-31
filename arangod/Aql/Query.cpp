@@ -30,7 +30,6 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/GraphNode.h"
@@ -62,27 +61,27 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/StandaloneContext.h"
-#ifdef USE_V8
-#include "Transaction/V8Context.h"
-#endif
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/Events.h"
-#ifdef USE_V8
-#include "V8/JavaScriptSecurityContext.h"
-#include "V8/v8-vpack.h"
-#include "V8Server/V8DealerFeature.h"
-#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+
+#ifdef USE_V8
+#include "Aql/QueryResultV8.h"
+#include "Transaction/V8Context.h"
+#include "V8/JavaScriptSecurityContext.h"
+#include "V8/v8-vpack.h"
+#include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
+#endif
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Dumper.h>

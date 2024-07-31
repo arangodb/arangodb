@@ -23,11 +23,8 @@
 
 #include "RemoteNode.h"
 
-#include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
-#include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.tpp"
-#include "Aql/ExecutionNodeId.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/RemoteExecutor.h"
 #include "Aql/Query.h"
@@ -37,7 +34,6 @@
 
 #include <memory>
 #include <string_view>
-#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::basics;

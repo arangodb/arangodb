@@ -43,6 +43,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
 #include "IResearch/IResearchFeature.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"

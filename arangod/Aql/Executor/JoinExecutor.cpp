@@ -25,6 +25,7 @@
 #include "JoinExecutor.h"
 #include "Aql/Collection.h"
 #include "Aql/DocumentExpressionContext.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/system-compiler.h"
@@ -32,8 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 #define LOG_JOIN LOG_DEVEL_IF(false)
 #define LOG_JOIN_MEMORY LOG_DEVEL_IF(false)
@@ -733,3 +733,7 @@ void JoinExecutor::constructStrategy() {
       std::move(indexDescription),
       _infos.query->queryOptions().desiredJoinStrategy);
 }
+
+template class ExecutionBlockImpl<JoinExecutor>;
+
+}  // namespace arangodb::aql

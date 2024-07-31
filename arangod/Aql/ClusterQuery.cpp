@@ -26,6 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Timing.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
@@ -36,11 +37,10 @@
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 

@@ -28,23 +28,23 @@
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
-#include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
-#include "Aql/InAndOutRowExpressionContext.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Providers/SmartGraphRPCCommunicator.h"
 #endif
 
 #include <optional>
+#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
 
 namespace aql {
 class QueryContext;
-}
+class InputAqlItemRow;
+}  // namespace aql
 
 namespace graph {
 

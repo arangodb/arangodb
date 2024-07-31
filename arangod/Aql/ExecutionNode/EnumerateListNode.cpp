@@ -24,13 +24,14 @@
 #include "EnumerateListNode.h"
 
 #include "Aql/Ast.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/EnumerateListExecutor.h"
 #include "Aql/Expression.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

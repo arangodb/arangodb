@@ -25,6 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -258,4 +259,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
     output.moveValueInto(_info._outputNewRegisterId, input, &guard);
   }
 }
+
+template class ExecutionBlockImpl<MultipleRemoteModificationExecutor>;
+
 }  // namespace arangodb::aql
