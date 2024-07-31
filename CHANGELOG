@@ -1,6 +1,11 @@
 devel
 -----
 
+* Use default language en_US (instead of en_US_POSIX as before in 3.12), if 
+  no LANGUAGE file is found and none of the locale environment variables LANG,
+  LANGUAGE, LC_ALL and LC_COLLATE are set. This ensures more compatibility
+  with 3.11. This fixes https://arangodb.atlassian.net/browse/BTS-1941
+
 * FE-449: write concern is no longer set when creating a sattelite database
 
 * Add "useCache" option for graph nodes:
