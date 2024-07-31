@@ -403,7 +403,6 @@ class ClusterInfo::SyncerThread final
   auto call() noexcept -> std::optional<consensus::index_t>;
   futures::Future<futures::Unit> fetchUpdates();
 
- private:
   std::mutex _m;
   std::condition_variable _cv;
   bool _news;

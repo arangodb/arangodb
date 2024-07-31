@@ -38,9 +38,12 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SortRegister.h"
 #include "Aql/types.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <memory>
 #include <string_view>
@@ -101,11 +104,12 @@ auto arangodb::aql::toString(GatherNode::Parallelism value) noexcept
     case GatherNode::Parallelism::Undefined:
       return kParallelismUndefined;
     default:
-      LOG_TOPIC("c9367", FATAL, Logger::AQL)
-          << "Invalid value for parallelism: "
-          << static_cast<std::underlying_type_t<GatherNode::Parallelism>>(
-                 value);
-      FATAL_ERROR_ABORT();
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat(
+              "invalid value for parallelism: ",
+              static_cast<std::underlying_type_t<GatherNode::Parallelism>>(
+                  value)));
   }
 }
 

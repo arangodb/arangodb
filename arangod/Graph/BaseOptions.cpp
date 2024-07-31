@@ -274,6 +274,8 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _collectionToShard{resourceMonitor()},
       _parallelism(1),
       _produceVertices(true),
+      _produceEdges(true),
+      _useCache(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _vertexProjections{},
       _edgeProjections{} {}
@@ -286,6 +288,8 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _collectionToShard(other._collectionToShard),
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
+      _produceEdges(other._produceEdges),
+      _useCache(other._useCache),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _maxProjections{other._maxProjections},
       _hint(other._hint) {
@@ -333,6 +337,11 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,
   if (VPackSlice hintNode = info.get(StaticStrings::IndexHintOption);
       hintNode.isObject()) {
     setHint(IndexHint(hintNode));
+  }
+
+  if (VPackSlice useCache = info.get(StaticStrings::UseCache);
+      useCache.isBool()) {
+    setUseCache(useCache.isTrue());
   }
 }
 
@@ -685,6 +694,8 @@ void BaseOptions::toVelocyPackBase(VPackBuilder& builder) const {
   if (!_edgeProjections.empty()) {
     _edgeProjections.toVelocyPack(builder, "edgeProjections");
   }
+
+  builder.add(StaticStrings::UseCache, VPackValue(_useCache));
 }
 
 void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
