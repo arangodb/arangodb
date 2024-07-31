@@ -34,6 +34,7 @@
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "IResearch/VelocyPackHelper.h"
 
 #include <search/scorers.hpp>

@@ -3,6 +3,176 @@ devel
 
 * FE-449: write concern is no longer set when creating a sattelite database
 
+* Add "useCache" option for graph nodes:
+  The "useCache" AQL option is now supported for the following node types in
+  addition:
+  - TraversalNode
+  - ShortestPathNode
+  - EnumeratePathsNode (K_SHORTEST_PATHS, K_PATHS, ALL_SHORTEST_PATHS)
+  The option controls whether the in-memory cache for edges is used for
+  the graph operation. It defaults to `true`. It can be set to `false` to
+  disable usage of the in-memory edge cache for the graph operation in
+  question.
+
+  Example:
+
+      FOR v, e, p IN 1..2 OUTBOUND 'vertex/123' edges OPTIONS {useCache:false}
+        ...
+
+* Fixed MDS-1225: reloading of AQL user-defined functions inside AQL queries 
+  could cause trouble if the `_aqlfunctions` collection is located on different
+  DB server than the leader shards of other collections used in the same query.
+
+* Fix comparison of numeric values in AQL to bring it in line with the 
+  now correct VPack numerical sorting.
+
+* Include LANGUAGE file in hotbackups. This is necessary to be able to detect
+  locale changes across a hotbackup create/restore process.
+
+* Fix sorting behaviour of VelocyPack values w.r.t. numbers. This has an
+  impact on indexes indexing VPackValues. Therefore, after an upgrade the 
+  old sorting order will be retained to allow smooth upgrades. Newly started
+  instances with a fresh database directory will only use the new sorting
+  method. There is also a migration API under 
+  GET /_admin/cluster/vpackSortMigration/check and 
+  PUT /_admin/cluster/vpackSortMigration/migrate to check for problematic
+  indexes and - provided there are none - to migrate the instance to 
+  the new sorting order.
+
+* Forcefully kill all running AQL queries on server shutdown.
+  This allows for a faster server shutdown even if there are some long-running
+  AQL queries ongoing.
+
+* Optional logging of AQL query metadata into `_queries` system collection.
+
+  There is now a functionality to optionally log metadata of finished AQL
+  queries into a system collection for later analysis. The query metadata
+  includes the following attributes:
+  - `id`: internal ID of the query
+  - `database`: name of the database the query ran in
+  - `user`: name of the user that executed the query
+  - `query`: query string
+  - `bindVars`: bind parameters values used by the query
+  - `dataSources`: array of collection names / view names that were used in the
+    query.
+  - `started`: date/time the query started executing
+  - `runTime`: total runtime of the query, in seconds
+  - `state`: the state of the query (will always be "finished")
+  - `stream` whether or not the query was a streaming AQL query
+  - `modificationQuery`: whether or not the query was a modification query
+  - `warnings`: number of warnings issued by the query
+  - `exitCode`: exit code of the query (0 = success, any other exit code 
+    indicates a specific error)
+
+  Note the following restrictions for the above attributes:
+  - `query` will only contain the query string if the startup option
+    `--query.tracking-with-querystring` is set to `true`. This is the default.
+    The query string will also be cut off after 
+    `--query.max-artifact-log-length` characters.
+  - `bindVars` will only contain data if the startup option
+    `--query.tracking-with-bindvars` is set to `true`. This is the default.
+    The stringified bind parameters representation will also be cut off after 
+    `--query.max-artifact-log-length` characters.
+  - `dataSources` will only contain data if the startup option
+    `--query.tracking-with-datasources` is set to `true`. This is not the 
+    default.
+  
+  Only finished queries will be logged to the `_queries` system collection.
+  Queries are considered "finished" in case they have executed completely
+  or have failed with an error. In-flight queries will not be logged, but
+  should eventually become finished queries.
+
+  Queries will only be logged to the `_queries` system collection if the
+  startup option `--query.collection-logger-enabled` is set to `true`.
+  Additionally, queries in the `_system` database are only logged if the
+  option `--query.collection-logger-include-system-database` is also set to
+  `true`.
+  The option `--query.collection-logger-probability` can be used to specify a
+  probability for logging queries to the system collection. If set to a value
+  of `100`, all executed queries will be logged. If set to a value less than
+  `100`, only the specified percentage of queries will be logged. This can be
+  used to draw a random sample from the total set of queries on very busy 
+  systems on which tracking every individual query would have prohibitive
+  overhead. For example, using `--query.collection-logger-probability=1` will
+  log approximately every 100th query to the system collection, and ignore all
+  others. 
+  Which exact queries are logged and which aren't is based on randomness.
+  The startup option `--query.collection-logger-all-slow-queries` can be used
+  to make all slow queries be logged, regardless of whether they were selected
+  for sampling or not. The slow query time threshold is configurable as usual
+  via the already existing startup options `--query.slow-threshold` and
+  `--query.slow-streaming-threshold`.
+
+  Query metadata is stored in the `_queries` collection in the `_system`
+  database. This collection will be created automatically when needed. The
+  collection is a normal system collection, so it can be queried by everyone
+  with at least read access to the `_system` database and the `_queries`
+  collection. Keep this in mind when enabling the query logging, as the data
+  may include sensitive information, such as query strings and/or user names.
+  Query metadata can be retrieved by running an AQL query on the `_queries`
+  collection with filters and sort clauses of choice, e.g.
+
+      FOR doc IN queries
+        FILTER doc.runTime >= 10.0
+        FILTER doc.user == @user
+        SORT doc.started
+        RETURN doc
+
+      FOR doc IN queries
+        FILTER doc.started >= @start
+        FILTER doc.started < @end
+        COLLECT db = doc.database, user = doc.user
+        WITH COUNT INTO count
+        RETURN {db, user, count}
+
+  When query logging is enabled, obsolete entries from the `_queries` 
+  collection are purged with a configurable schedule. The startup option
+  `--query.collection-logger-retention-time` is used to determine how long
+  after a query's start time it will be approximately retained in the system
+  collection. For example, `--query.collection-logger-retention-time=86400`
+  will keep query information around for approximately 1 day (86400 seconds).
+  The default retention time is 28800 seconds, i.e. 8 hours.
+  The actual cleanup of the system collection is only executed with a 
+  configurable interval as well, so that the cleanup process does not cause
+  much traffic. The cleanup interval can be controlled by setting the option
+  `--query.collection-logger-cleanup-interval`. The value is in milliseconds.
+
+  The option `--query.collection-logger-push-interval` can be used to set a
+  maximum wait time after which queries are logged to the system collection.
+  This is a performance optimization, which helps to reduce the overhead of
+  query logging. For example, `--query.collection-logger-push-interval=10000`
+  will buffer queries in memory for at most 10000 milliseconds before they
+  are actually written to the system collection. When additional queries
+  arrive within this interval, they will be batched together into a single
+  write operation to the system collection. This can amortize the cost of
+  writing the query metadata to the system collection across multiple user 
+  queries.
+
+  The option `--query.collection-logger-max-buffered-queries` can be used to
+  limit the amount of query metadata buffered in memory before it is flushed
+  to the system collection. Once this limit has been reached, no further
+  query metadata will be buffered in memory and will be lost.
+  To make this relatively unlikely, a flush is triggered automatically once
+  a fourth of the maximum queries limit is reached. It is still possible
+  however that the single-thread flush operation cannot keep up with the
+  rate of incoming queries, so that the limit is reached and some query
+  metadata are not logged.
+
+  Any queries that are buffered in memory and are not yet flushed out to the
+  system collection will be lost upon an instance shutdown or crash.
+  This means that the query logging functionality should not be used for
+  auditing, but rather for debugging and troubleshooting query issues, such
+  as finding long-running queries, queries that produced warnings or errors,
+  users that overuse the database etc.
+
+* FE-457: fix query UI result table headers & table/geo detection.
+
+* Add optimizer rule `push-limit-into-index` that pushes a limit down into index
+  iteration and can optimize the query execution when compound index is used
+  along with SORT and LIMIT clauses.
+
+* FE-423: Add a progress bar to reflect an index creation process.
+
 * Remove unused "mmap" log topic.
 
 * Support array and object destructuring for FOR loops that refer to simple
@@ -28,39 +198,25 @@ devel
         FOR [key, value] IN ENTRIES(doc) 
         RETURN {key, value}
 
-  can be used to destructure all members from the expression `ENTRIES(doc)`
-  and assign the first member to the variable `key`, and the second member
-  to the variable `value`.
+  can be used to destructure all members from the expression `ENTRIES(doc)` and
+  assign the first member to the variable `key`, and the second member to the
+  variable `value`.
 
   This is equivalent to writing:
 
       FOR doc IN collection 
-        FOR entry IN ENTRIES(doc) 
+        FOR entry IN ENTRIES(doc)
           LET key = entry[0]
           LET value = entry[1]
           RETURN {key, value}
 
   Accessing an undefined object attribute or an undefined array members results
-  in a value of `null` being produced. Applying destructuring on any 
+  in a value of `null` being produced. Applying destructuring on any
   incompatible input types produces `null` as well.
 
   Destructuring is not supported for view-based FOR loops, for traversal FOR
   loops, SHORTEST_PATH FOR loops, K_PATHS FOR loops, K_SHORTEST_PATHS FOR loops
   nor ALL_SHORTEST_PATHS FOR loops.
-
-* Fix an "invalid document type" exception when using the AQL ENTRIES function
-  on a database document or edge.
-
-* Updated ArangoDB Starter to v0.19.3.
-
-* Fixed MDS-1216: restoring the previous value of the "padded" key generator
-  could lead to the key generator's sequence being set to a too low value
-  after recovery.
-
-* Fix a nullptr access when aborting a move shard job for a already dropped collection.
-
-* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
-  Add the startup option --honor-nsswitch to cancel the opt-out.
 
 * Make constrained heap sort in AQL report all filtered rows as "filtered" in
   the query profile.
@@ -75,7 +231,7 @@ devel
 
 * Added array and object destructuring to AQL LET statements.
 
-  * Array Destructuring: Array destructuring is the assignment of array values
+  - Array Destructuring: Array destructuring is the assignment of array values
     into one or multiple variables with a single `LET` assignment. This can be
     achieved by putting the target assignment variables of the `LET` assignment
     into angular brackets.
@@ -87,17 +243,17 @@ devel
     will assign the value `1` to variable `y` and the value `2` to variable `z`.
     The mapping of input array members to the target variables is positional.
 
-    It is also possible to skip over unneeded array values. The following 
-    assignment will assign the value `2` to variable `y` and the value `3` to 
-    variable `z`. The array member with value `1` will not be assigned to any 
+    It is also possible to skip over unneeded array values. The following
+    assignment will assign the value `2` to variable `y` and the value `3` to
+    variable `z`. The array member with value `1` will not be assigned to any
     variable:
 
         LET [, y, z] = [1, 2, 3]
 
-    When there are more variables assigned than there are array members, the 
-    target variables that are mapped to non-existing array members are 
-    populated with a value of `null`. The assigned target variables will also
-    receive a value of `null` when the destructuring is used on a non-array.
+    When there are more variables assigned than there are array members, the
+    target variables that are mapped to non-existing array members are populated
+    with a value of `null`. The assigned target variables will also receive a
+    value of `null` when the destructuring is used on a non-array.
 
     Destructuring can also be applied on nested arrays, e.g.
 
@@ -106,7 +262,7 @@ devel
     In the above example, the value of variable `sub1` will be `foo`, the value
     of variable `sub2` will be `1` and the value of variable `sub3` will be `2`.
 
-  * Object Destructuring: Object destructuring is the assignment of multiple
+  - Object Destructuring: Object destructuring is the assignment of multiple
     target variables from a source object value. This is achieved by using the
     curly brackets after the `LET` assignment token:
 
@@ -119,10 +275,11 @@ devel
 
     Object destructuring also works with nested objects, e.g.
 
-        LET { name: {first, last} } = { name: { first: "John", middle: "J", last: "Doe" } }
+        LET { name: {first, last} } =
+        { name: { first: "John", middle: "J", last: "Doe" } }
 
-    The above statement will assign the value `John` to the variable `first` 
-    and the value `Doe` to the variable `last`. The attribute `middle` from the
+    The above statement will assign the value `John` to the variable `first` and
+    the value `Doe` to the variable `last`. The attribute `middle` from the
     source object is ignored.
     Note that here only variables `first` and `last` will be populated, but
     variable `name` is not.
@@ -130,11 +287,12 @@ devel
     It is also possible for the target variable to get a different name than in
     the source object, e.g.
 
-        LET { name: {first: firstName, last: lastName} } = { name: { first: "John", last: "Doe" } }
+        LET { name: {first: firstName, last: lastName} } =
+        { name: { first: "John", last: "Doe" } }
 
     The above statement assigns the value `John` to the target variable
-    `firstName` and the value `Doe` to the target variable `lastName`. Note
-    that neither of these attributes exist in the source object.
+    `firstName` and the value `Doe` to the target variable `lastName`. Note that
+    neither of these attributes exist in the source object.
 
 * Added `verifyCertificates` attribute option for the `requests` JavaScript
   module. This option defaults to false, so that no certificates will be 
@@ -144,8 +302,35 @@ devel
   There is also a `verifyDepth` attribute to limit the maximum length of the 
   certificate chain that counts as valid.
 
+
 3.12.1 (XXXX-XX-XX)
 -------------------
+
+* Fix an "invalid document type" exception when using the AQL ENTRIES function
+  on a database document or edge.
+
+* Fixed MDS-1216: restoring the previous value of the "padded" key generator
+  could lead to the key generator's sequence being set to a too low value after
+  recovery.
+
+* Updated ArangoDB Starter to v0.19.3.
+
+* Fix a nullptr access when aborting a move shard job for a already dropped
+  collection.
+
+* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
+  Add the startup option --honor-nsswitch to cancel the opt-out.
+
+* Fix memory accounting in join executor.
+
+* Fix issues with late materialization being sometimes implicitly dependent on
+  the optimizer rule "optimize-projections" being enabled. Now disable some
+  late materialization optimizations in case this rule is not active.
+  Also fix a specific case in which no results were being materialized in case
+  the optimizer rule "optimize-projections" was disabled.
+
+* Fix serialization of multiple query plans using the `allPlans: true` hint
+  when run `explain` on a query.
 
 * Support indexHint AQL option for traversals.
   The structure of traversal index hints is as follows:

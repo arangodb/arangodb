@@ -23,6 +23,8 @@
 
 #include "MaterializeExecutor.h"
 
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/QueryContext.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
@@ -317,5 +319,8 @@ RegisterId MaterializerExecutorInfos::getRegisterForVariable(
   TRI_ASSERT(iter != _variablesToRegisters.end());
   return iter->second;
 }
+
+template class ExecutionBlockImpl<MaterializeRocksDBExecutor>;
+template class ExecutionBlockImpl<MaterializeSearchExecutor>;
 
 }  // namespace arangodb::aql

@@ -39,6 +39,7 @@ namespace arangodb {
 namespace aql {
 
 struct ModificationExecutorInfos;
+struct Variable;
 
 namespace ModificationExecutorHelpers {
 
