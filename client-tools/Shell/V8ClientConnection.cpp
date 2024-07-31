@@ -3116,10 +3116,10 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
                         v8::FunctionTemplate::New(
                             isolate, ClientConnection_connectHandle, v8client));
 
-  connection_proto->Set(isolate, "disconnectHandle",
-                        v8::FunctionTemplate::New(
-                          isolate, ClientConnection_disconnectHandle,
-                          v8client));
+  connection_proto->Set(
+      isolate, "disconnectHandle",
+      v8::FunctionTemplate::New(isolate, ClientConnection_disconnectHandle,
+                                v8client));
 
   connection_proto->Set(isolate, "connectedUser",
                         v8::FunctionTemplate::New(
