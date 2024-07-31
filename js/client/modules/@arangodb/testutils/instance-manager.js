@@ -187,6 +187,11 @@ class instanceManager {
         }
       });
     }
+    this.arangods.forEach(arangod => {
+      if (this.endpoint === arangod.endpoint) {
+        arangod.setThisConnectionHandle();
+      }
+    });
   }
   getTypeToUrlsMap() {
     let ret = new Map();
@@ -212,7 +217,7 @@ class instanceManager {
       try {
         return arango.connectHandle(this.connectionHandle);
       } catch (ex) {
-        print(`${RED}${Date()}failet to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
+        print(`${RED}${Date()} failed to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
       }
     } 
     return arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
