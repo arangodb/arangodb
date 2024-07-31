@@ -20,9 +20,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
+
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Basics/Exceptions.h"
@@ -47,6 +51,45 @@
 
 namespace arangodb {
 
+auto expandBuckets(std::vector<byte_string> const& hashedStrings,
+                   std::int64_t distance, std::size_t numOfBuckets) {
+  std::set<byte_string> visited;
+  std::vector<byte_string> neghbouringBuckets;
+  std::queue<std::pair<byte_string, std::int64_t>> queue;
+  std::ranges::for_each(hashedStrings, [&queue](const auto& hashString) {
+    queue.push({hashString, 0});
+  });
+
+  while (!queue.empty()) {
+    auto [hashString, currentDistance] = queue.front();
+    queue.pop();
+    if (currentDistance > distance) {
+      return neghbouringBuckets;
+    }
+    if (auto [it, isInserted] = visited.insert(hashString); !isInserted) {
+      continue;
+    }
+    neghbouringBuckets.push_back(hashString);
+
+    // HASH STRING HAS PREFIX THAT MUST NOT BE CHANGED
+    for (std::size_t currentBucket{1}; currentBucket < numOfBuckets + 1;
+         ++currentBucket) {
+      auto biggerHashString = hashString;
+
+      biggerHashString[currentBucket] =
+          std::byte(static_cast<uint8_t>(biggerHashString[currentBucket]) + 1);
+      queue.push({std::move(biggerHashString), currentDistance + 1});
+
+      auto lowerHashString = hashString;
+      lowerHashString[currentBucket] =
+          std::byte(static_cast<uint8_t>(lowerHashString[currentBucket]) - 1);
+      queue.push({std::move(lowerHashString), currentDistance + 1});
+    }
+  }
+
+  return neghbouringBuckets;
+}
+
 class RocksDBVectorIndexIterator final : public IndexIterator {
  public:
   RocksDBVectorIndexIterator(ResourceMonitor& monitor,
@@ -54,13 +97,21 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
                              RocksDBVectorIndex* index,
                              transaction::Methods* trx,
                              std::vector<double>&& input,
-                             ReadOwnWrites readOwnWrites)
+                             ReadOwnWrites readOwnWrites, std::int64_t distance)
       : IndexIterator(collection, trx, readOwnWrites),
         _bound(RocksDBKeyBounds::VectorVPackIndex(index->objectId())),
         _index(index) {
     _hashedStrings =
         vector::calculateHashedStrings(_index->getDefinition(), input);
+
+    if (distance > 0) {
+      _hashedStrings = expandBuckets(_hashedStrings, distance,
+                                     _index->getDefinition().Kparameter);
+    }
+
     _itHashedStrings = _hashedStrings.begin();
+    std::set<byte_string> unique_strs(_hashedStrings.begin(),
+                                      _hashedStrings.end());
 
     _upperBound = _bound.end();
     RocksDBTransactionMethods* mthds =
@@ -285,7 +336,7 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
   TRI_ASSERT(funcNode->name == "APPROX_NEAR");
 
   auto const* functionCallParams = node->getMember(0);
-  TRI_ASSERT(functionCallParams->numMembers() == 2);
+  TRI_ASSERT(functionCallParams->numMembers() == 3);
   TRI_ASSERT(functionCallParams->type == aql::NODE_TYPE_ARRAY);
 
   auto const* rhs = functionCallParams->getMember(1);
@@ -314,8 +365,11 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
     input.push_back(dv);
   }
 
+  auto const distance = functionCallParams->getMember(2)->getIntValue();
+
   return std::make_unique<RocksDBVectorIndexIterator>(
-      monitor, &_collection, this, trx, std::move(input), readOwnWrites);
+      monitor, &_collection, this, trx, std::move(input), readOwnWrites,
+      distance);
 }
 
 // Remove conditions covered by this index

@@ -596,7 +596,7 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::SelectSmartDistributeGraphInput});
-  add({"APPROX_NEAR", ".,.",
+  add({"APPROX_NEAR", ".,.,.",
        Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::ApproxNear});
