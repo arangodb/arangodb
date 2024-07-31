@@ -40,7 +40,7 @@ devel
   - `started`: date/time the query started executing
   - `runTime`: total runtime of the query, in seconds
   - `state`: the state of the query (will always be "finished")
-  - `stream` whether or not the query was a streaming AQL query
+  - `stream`: whether or not the query was a streaming AQL query
   - `modificationQuery`: whether or not the query was a modification query
   - `warnings`: number of warnings issued by the query
   - `exitCode`: exit code of the query (0 = success, any other exit code 
@@ -53,8 +53,6 @@ devel
     `--query.max-artifact-log-length` characters.
   - `bindVars` will only contain data if the startup option
     `--query.tracking-with-bindvars` is set to `true`. This is the default.
-    The stringified bind parameters representation will also be cut off after 
-    `--query.max-artifact-log-length` characters.
   - `dataSources` will only contain data if the startup option
     `--query.tracking-with-datasources` is set to `true`. This is not the 
     default.
