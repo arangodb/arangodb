@@ -239,7 +239,6 @@ class instance {
 
   setThisConnectionHandle() {
     this.connectionHandle = arango.getConnectionHandle();
-    print('set connection handle ' + this.connectionHandle)
   }
   isRole(compareRole) {
     // print(this.instanceRole + ' ==? ' + compareRole);
