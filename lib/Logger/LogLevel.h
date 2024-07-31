@@ -26,8 +26,6 @@
 
 #include <iosfwd>
 
-#include "Basics/operating-system.h"
-
 namespace arangodb {
 enum class LogLevel {
   DEFAULT = 0,

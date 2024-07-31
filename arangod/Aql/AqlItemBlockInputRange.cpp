@@ -71,10 +71,18 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow()
                         InputAqlItemRow{CreateInvalidInputRowHint{}});
 }
 
+/// @brief: this is a performance-optimized version of peekDataRow() that must
+/// only be used if it is sure that there is another data row
+std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow(
+    HasDataRow /*tag unused*/) const {
+  return std::make_pair(nextState<LookAhead::NEXT, RowType::DATA>(),
+                        InputAqlItemRow{_block, _rowIndex});
+}
+
 std::pair<ExecutorState, InputAqlItemRow>
 AqlItemBlockInputRange::nextDataRow() {
-  // this is an optimized version that intentionally does not call peekDataRow()
-  // in order to save a few if conditions
+  // this is an optimized version that intentionally does not call
+  // peekDataRow() in order to save a few if conditions
   if (hasDataRow()) {
     TRI_ASSERT(_block != nullptr);
     auto state = nextState<LookAhead::NEXT, RowType::DATA>();
