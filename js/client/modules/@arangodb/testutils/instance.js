@@ -56,7 +56,7 @@ const {
 } = internal;
 
 /* Constants: */
-// const BLUE = internal.COLORS.COLOR_BLUE;
+const BLUE = internal.COLORS.COLOR_BLUE;
 const CYAN = internal.COLORS.COLOR_CYAN;
 const GREEN = internal.COLORS.COLOR_GREEN;
 const RED = internal.COLORS.COLOR_RED;
@@ -237,6 +237,10 @@ class instance {
     this.serverCrashedLocal = struct['serverCrashedLocal'];
   }
 
+  setThisConnectionHandle() {
+    this.connectionHandle = arango.getConnectionHandle();
+    print('set connection handle ' + this.connectionHandle)
+  }
   isRole(compareRole) {
     // print(this.instanceRole + ' ==? ' + compareRole);
     return this.instanceRole === compareRole;
@@ -718,6 +722,9 @@ class instance {
 
   connect() {
     if (this.connectionHandle !== undefined) {
+      if (this.connectionHandle !== arango.getConnectionHandle()) {
+        return true;
+      }
       try {
         return arango.connectHandle(this.connectionHandle);
       } catch (ex) {
@@ -726,10 +733,12 @@ class instance {
       }
     }
     if (this.JWT) {
+      print(Date() + " re/connecting with JWT " + this.url);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
       this.connectionHandle = arango.getConnectionHandle();
       return ret;
     } else {
+      print(Date() + " re/connecting " + this.url);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
       this.connectionHandle = arango.getConnectionHandle();
       return ret;
@@ -1329,9 +1338,18 @@ class instance {
     if (!this.connect()) {
       throw new Error(`failed to connect my instance {JSON.stringify(this.getStructure())}`);
     }
-    let reply = arango.DELETE_RAW(`/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`);
+    let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`;
+    let reply = arango.DELETE_RAW(deleteUrl);
     if (reply.code !== 200) {
-      throw new Error(`Failed to remove FP: '${failurePoint}' =>  ${reply.parsedBody}`);
+      // we may no longer be able to work on a database as forced by fuerte
+      print(`${BLUE} fallback to internal.download to clear failurepoint${RESET}`);
+      let httpOptions = _.clone(this.authHeaders);
+      httpOptions.method = 'DELETE';
+      httpOptions.returnBodyOnError = true;
+      const reply = download(deleteUrl, '', httpOptions);
+      if (reply.code !== 200) {
+        throw new Error(`Failed to remove FP: '${failurePoint}' =>  ${JSON.stringify(reply.parsedBody)}`);
+      }
     }
     return true;
   }
