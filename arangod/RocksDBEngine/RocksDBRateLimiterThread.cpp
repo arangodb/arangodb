@@ -31,6 +31,7 @@
 #include <rocksdb/statistics.h>
 #include <rocksdb/utilities/transaction_db.h>
 
+// from original RocksDBThrottle.cpp implementation:
 // NOT public rocksdb headers
 // ugliness starts here ... this will go away if rocksdb adds pluggable
 // write_controller.
@@ -282,6 +283,11 @@ void RocksDBRateLimiterThread::run() {
 
           setRateInRocksDB(newRate, "rate limiter calculation");
           if (_delayToken == nullptr) {
+            // from original RocksDBThrottle.cpp implementation:
+            // we directly access RocksDB's internal write_controller
+            // here. this is technically not supported, but there is
+            // no better way to set the write rate for RocksDB from
+            // the outside.
             _delayToken =
                 ((rocksdb::WriteController&)internalRocksDB->write_controller())
                     .GetDelayToken(newRate);

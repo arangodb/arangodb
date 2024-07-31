@@ -1130,7 +1130,7 @@ downgrading.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31201);
+      .setIntroducedIn(31202);
 
   options
       ->addOption("--rocksdb.enable-index-compression",

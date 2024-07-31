@@ -1,5 +1,5 @@
 name: rocksdb_num_blob_files
-introducedIn: "3.12.1"
+introducedIn: "3.12.2"
 help: |
   Number of live RocksDB .blob files.
 unit: number
