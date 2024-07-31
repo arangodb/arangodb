@@ -25,12 +25,12 @@
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Executor/IdExecutor.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 ScatterExecutorInfos::ScatterExecutorInfos(std::vector<std::string> clientIds)
     : ClientsExecutorInfos(std::move(clientIds)) {}
@@ -139,3 +139,5 @@ ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(
     RegisterInfos registerInfos, ScatterExecutor::Infos&& executorInfos)
     : BlocksWithClientsImpl(engine, node, std::move(registerInfos),
                             std::move(executorInfos)) {}
+
+}  // namespace arangodb::aql

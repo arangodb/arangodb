@@ -32,7 +32,6 @@
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionNode/GraphNode.h"
@@ -47,13 +46,11 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
-#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
-#include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -61,13 +58,10 @@
 
 #include <absl/strings/str_cat.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-using namespace arangodb;
-using namespace arangodb::aql;
 
 // Validating fullCount usage.
 // For fullCount the following applies:
@@ -946,3 +940,5 @@ ExecutionEngine::rebootTrackers() {
 std::shared_ptr<SharedQueryState> const& ExecutionEngine::sharedState() const {
   return _sharedState;
 }
+
+}  // namespace arangodb::aql

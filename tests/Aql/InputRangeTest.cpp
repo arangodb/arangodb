@@ -27,6 +27,7 @@
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/MultiAqlItemBlockInputRange.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 #if GTEST_HAS_TYPED_TEST_P
 

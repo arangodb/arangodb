@@ -62,7 +62,7 @@ class EnumeratePathsNode : public virtual GraphNode {
                      AstNode const* target, AstNode const* graph,
                      std::unique_ptr<graph::BaseOptions> options);
 
-  EnumeratePathsNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
+  EnumeratePathsNode(ExecutionPlan* plan, velocypack::Slice base);
 
   ~EnumeratePathsNode();
 
@@ -79,7 +79,6 @@ class EnumeratePathsNode : public virtual GraphNode {
       std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph,
       Variable const* distributeVariable);
 
- public:
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_PATHS; }
 

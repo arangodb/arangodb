@@ -29,6 +29,7 @@
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
@@ -43,8 +44,7 @@
 
 #include <optional>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 void throwArrayExpectedException(AqlValue const& value) {
@@ -57,8 +57,6 @@ void throwArrayExpectedException(AqlValue const& value) {
 }
 
 }  // namespace
-
-namespace arangodb::aql {
 
 class EnumerateListExpressionContext final : public QueryExpressionContext {
  public:
@@ -117,8 +115,6 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
   VariableId _outputVariableId;
   AqlValue _currentValue;
 };
-
-}  // namespace arangodb::aql
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
@@ -262,6 +258,11 @@ EnumerateListExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       stats.incrFiltered();
     }
     ++_inputArrayPosition;
+
+    _killCheckCounter = (_killCheckCounter + 1) % 1024;
+    if (ADB_UNLIKELY(_killCheckCounter == 0 && _infos.getQuery().killed())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
   }
 
   if (_inputArrayLength == _inputArrayPosition) {
@@ -324,6 +325,11 @@ EnumerateListExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
       // the call to skipArrayElement has advanced the input position already
       call.didSkip(skipped);
     }
+
+    _killCheckCounter = (_killCheckCounter + 1) % 1024;
+    if (ADB_UNLIKELY(_killCheckCounter == 0 && _infos.getQuery().killed())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
   }
 
   if (_inputArrayPosition < _inputArrayLength) {
@@ -357,3 +363,6 @@ AqlValue EnumerateListExecutor::getAqlValue(AqlValue const& inVarReg,
 
   return inVarReg.at(pos, mustDestroy, true);
 }
+
+template class ExecutionBlockImpl<EnumerateListExecutor>;
+}  // namespace arangodb::aql
