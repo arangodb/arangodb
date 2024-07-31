@@ -1,7 +1,7 @@
 import { toNumber } from "lodash";
-import { useCreateIndex } from "./useCreateIndex";
-import { commonFieldsMap, commonSchema } from "./IndexFieldsHelper";
 import * as Yup from "yup";
+import { commonFieldsMap, commonSchema } from "./IndexFieldsHelper";
+import { useCreateIndex } from "./useCreateIndex";
 
 export const INITIAL_VALUES = {
   type: "fulltext",
