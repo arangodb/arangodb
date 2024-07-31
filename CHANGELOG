@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-449: write concern is no longer set when creating a sattelite database
+
 * Add "useCache" option for graph nodes:
   The "useCache" AQL option is now supported for the following node types in
   addition:
