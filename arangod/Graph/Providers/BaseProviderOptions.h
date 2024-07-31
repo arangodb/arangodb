@@ -29,7 +29,6 @@
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
-#include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
 
@@ -48,6 +47,7 @@ namespace arangodb {
 namespace aql {
 class QueryContext;
 struct AstNode;
+class InputAqlItemRow;
 }  // namespace aql
 
 namespace graph {

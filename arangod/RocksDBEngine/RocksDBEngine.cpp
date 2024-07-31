@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBEngine.h"
+#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Exceptions.h"
@@ -4238,12 +4239,20 @@ SortingMethod RocksDBEngine::readSortingFile() {
     sortingMethod =
         (value == "LEGACY") ? SortingMethod::Legacy : SortingMethod::Correct;
   } catch (std::exception const& ex) {
+    // To find out if we are an agent, we need to check if the AgencyFeature
+    // is activated! Note that we cannot use ServerState::isAgent here for
+    // the following reason: When we run an upgraded version for the first
+    // time, we almost certainly run with --database.auto-upgrade=true .
+    // But in this case, the AgencyFeature and the ClusterFeature are
+    // disabled! Therefore, the role of the server is not correctly
+    // reported to the ServerState class!
+    auto& agencyFeature = server().getFeature<AgencyFeature>();
     // When we see a database directory without SORTING file, we fall back
     // to legacy mode, except for agents. Since agents have never used
     // VPackIndexes before we fixed the sorting order, we might as well
     // directly consider them to be migrated to the CORRECT sorting order:
-    sortingMethod = ServerState::instance()->isAgent() ? SortingMethod::Correct
-                                                       : SortingMethod::Legacy;
+    sortingMethod = agencyFeature.activated() ? SortingMethod::Correct
+                                              : SortingMethod::Legacy;
     LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
         << "unable to read 'SORTING' file '" << path << "': " << ex.what()
         << ". This is expected directly after an upgrade and will then be "

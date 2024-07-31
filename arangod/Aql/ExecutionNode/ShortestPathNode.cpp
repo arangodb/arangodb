@@ -33,6 +33,7 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
 

@@ -27,15 +27,16 @@
 #include "CountCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
 
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 CountCollectExecutorInfos::CountCollectExecutorInfos(RegisterId collectRegister)
     : _collectRegister(collectRegister) {}
@@ -117,3 +118,7 @@ const CountCollectExecutor::Infos& CountCollectExecutor::infos()
 }
 
 CountCollectExecutor::~CountCollectExecutor() = default;
+
+template class ExecutionBlockImpl<CountCollectExecutor>;
+
+}  // namespace arangodb::aql

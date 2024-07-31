@@ -66,6 +66,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Containers/SmallVector.h"
 #include "Graph/PathType.h"
 #include "Graph/ShortestPathOptions.h"

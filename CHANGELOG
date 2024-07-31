@@ -17,6 +17,10 @@ devel
       FOR v, e, p IN 1..2 OUTBOUND 'vertex/123' edges OPTIONS {useCache:false}
         ...
 
+* Fixed MDS-1225: reloading of AQL user-defined functions inside AQL queries 
+  could cause trouble if the `_aqlfunctions` collection is located on different
+  DB server than the leader shards of other collections used in the same query.
+
 * Fix comparison of numeric values in AQL to bring it in line with the 
   now correct VPack numerical sorting.
 
@@ -77,9 +81,9 @@ devel
   should eventually become finished queries.
 
   Queries will only be logged to the `_queries` system collection if the
-  startup option `--query.collection-logger.enabled` is set to `true`.
+  startup option `--query.collection-logger-enabled` is set to `true`.
   Additionally, queries in the `_system` database are only logged if the
-  option `--query.collection-logger.include-system-database` is also set to
+  option `--query.collection-logger-include-system-database` is also set to
   `true`.
   The option `--query.collection-logger-probability` can be used to specify a
   probability for logging queries to the system collection. If set to a value

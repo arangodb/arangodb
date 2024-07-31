@@ -46,6 +46,7 @@
 #include "RestServer/TemporaryStorageFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+#include "VocBase/vocbase.h"
 
 #include "VelocypackUtils/VelocyPackStringLiteral.h"
 

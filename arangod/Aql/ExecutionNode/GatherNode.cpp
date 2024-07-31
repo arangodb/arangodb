@@ -25,9 +25,8 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
-#include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/EmptyExecutorInfos.h"

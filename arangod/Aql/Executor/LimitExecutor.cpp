@@ -27,14 +27,14 @@
 #include "LimitExecutor.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Basics/Exceptions.h"
 
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 LimitExecutorInfos::LimitExecutorInfos(size_t offset, size_t limit,
                                        bool fullCount)
@@ -266,3 +266,7 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, call.getSkipCount(),
           calculateUpstreamCall(call)};
 }
+
+template class ExecutionBlockImpl<LimitExecutor>;
+
+}  // namespace arangodb::aql

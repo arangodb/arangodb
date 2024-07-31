@@ -29,6 +29,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
+#include "Basics/StaticStrings.h"
 #include "Containers/SmallVector.h"
 
 using namespace arangodb;
