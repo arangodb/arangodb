@@ -147,8 +147,8 @@ class V8ClientConnection {
                      std::string const& handle);
 
   void disconnectHandle(v8::Isolate* isolate,
-                       v8::FunctionCallbackInfo<v8::Value> const& args,
-                       std::string const& handle);
+                        v8::FunctionCallbackInfo<v8::Value> const& args,
+                        std::string const& handle);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   uint32_t sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer);
