@@ -25,8 +25,8 @@
 
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/RegisterId.h"
-#include "Basics/debugging.h"
-#include "Cluster/ClusterTypes.h"
+#include "Aql/RegIdFlatSet.h"
+#include "Basics/RebootId.h"
 #include "Containers/HashSetFwd.h"
 
 #include <cstdint>
@@ -37,20 +37,9 @@
 #include <unordered_map>
 #include <vector>
 
-namespace boost::container {
-template<class T>
-class new_allocator;
-template<class Key, class Compare, class AllocatorOrContainer>
-class flat_set;
-}  // namespace boost::container
+#include <absl/container/flat_hash_map.h>
 
 namespace arangodb {
-
-namespace containers {
-template<class Key, class Compare = std::less<Key>,
-         class AllocatorOrContainer = boost::container::new_allocator<Key>>
-using flat_set = boost::container::flat_set<Key, Compare, AllocatorOrContainer>;
-}
 
 namespace aql {
 struct Collection;
@@ -93,8 +82,6 @@ using RegIdSet = containers::HashSet<RegisterId>;
 using RegIdSetStack = std::vector<RegIdSet>;
 using RegIdOrderedSet = std::set<RegisterId>;
 using RegIdOrderedSetStack = std::vector<RegIdOrderedSet>;
-// Note: #include <boost/container/flat_set.hpp> to use the following types
-using RegIdFlatSet = containers::flat_set<RegisterId>;
 using RegIdFlatSetStack = std::vector<containers::flat_set<RegisterId>>;
 
 using BindParameterVariableMapping =

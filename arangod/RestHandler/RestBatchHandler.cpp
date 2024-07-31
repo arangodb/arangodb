@@ -37,6 +37,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "Utils/ExecContext.h"
 
 #include <absl/strings/str_cat.h>

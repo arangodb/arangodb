@@ -44,6 +44,7 @@
 #include "Aql/Executor/SubqueryEndExecutor.h"
 #include "Aql/Executor/SubqueryStartExecutor.h"
 #include "Aql/Query.h"
+#include "Basics/ScopeGuard.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Transaction/Context.h"

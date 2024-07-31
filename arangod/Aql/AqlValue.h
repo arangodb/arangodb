@@ -25,9 +25,9 @@
 #pragma once
 
 #include "Aql/AqlValueFwd.h"
-#include "Aql/types.h"
+#include "Aql/RegisterId.h"
+#include "Aql/RegIdFlatSet.h"
 #include "Basics/Endian.h"
-#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "IResearch/Misc.h"
 
 #include <velocypack/Slice.h>

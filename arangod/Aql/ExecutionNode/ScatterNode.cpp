@@ -23,23 +23,19 @@
 
 #include "ScatterNode.h"
 
-#include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
-#include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode/DistributeConsumerNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/ScatterExecutor.h"
 #include "Aql/Query.h"
-#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Iterator.h>
 
 #include <string_view>
-#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::basics;

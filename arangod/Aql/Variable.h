@@ -31,6 +31,8 @@
 #include "Aql/types.h"
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace velocypack {
 class Builder;
 class Slice;

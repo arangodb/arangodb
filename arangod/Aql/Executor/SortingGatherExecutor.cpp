@@ -23,6 +23,7 @@
 
 #include "SortingGatherExecutor.h"
 
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SortRegister.h"
@@ -33,8 +34,7 @@
 
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 
@@ -550,3 +550,7 @@ auto SortingGatherExecutor::limitReached() const noexcept -> bool {
   TRI_ASSERT(upstreamCall.offset == 0);
   return AqlCallList{upstreamCall};
 }
+
+template class ExecutionBlockImpl<SortingGatherExecutor>;
+
+}  // namespace arangodb::aql
