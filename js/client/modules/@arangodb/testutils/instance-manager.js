@@ -957,6 +957,7 @@ class instanceManager {
           print(`Server reply to ${url}: ${JSON.stringify(reply)}`);
         }
         if (!reply.error && reply.code === 200) {
+          arangod.pingUntilReady(arangod.authHeaders, time() + seconds(60));
           arangod.upAndRunning = true;
           return true;
         }

@@ -251,6 +251,13 @@ class instance {
              (this.instanceRole === instanceRole.failover)      );
   }
 
+  _disconnect() {
+    if (this.connectionHandle !== undefined) {
+      arango.disconnectHandle(this.connectionHandle);
+    }
+    this.connectionHandle = undefined;
+  }
+
   resetAuthHeaders(authHeaders, JWT) {
     this.authHeaders = authHeaders;
     this.JWT = JWT;
@@ -511,7 +518,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   startArango (subEnv) {
-    this.connectionHandle = undefined;
+    this._disconnect();
     try {
       this._executeArangod({}, subEnv);
     } catch (x) {
@@ -526,7 +533,7 @@ class instance {
       throw new Error("kill the instance before relaunching it!");
       return;
     }
-    this.connectionHandle = undefined;
+    this._disconnect();
     try {
       let args = {...this.args, ...moreArgs};
       this._executeArangod(args);
@@ -549,7 +556,8 @@ class instance {
     this.exitStatus = null;
     this.pid = null;
     this.upAndRunning = false;
-
+    this._disconnect();
+    
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs);
     this.pingUntilReady(this.authHeaders, time() + seconds(60));
@@ -568,7 +576,7 @@ class instance {
     if (ret.status !== 'RUNNING') {
       this.processSanitizerReports();
     }
-    this.connectionHandle = undefined;
+    this._disconnect();
     return ret;
   }
 
@@ -662,21 +670,23 @@ class instance {
         if (this.options.useReconnect && this.isFrontend()) {
           if (this.JWT) {
             print(Date() + " reconnecting with JWT " + this.url);
-            arango.reconnect(this.endpoint,
-                           '_system',
-                           this.options.username,
-                           this.options.password,
-                           time() < deadline,
-                             this.JWT);
-            this.connectionHandle = arango.getConnectionHandle();
+            if (arango.reconnect(this.endpoint,
+                                   '_system',
+                                   this.options.username,
+                                   this.options.password,
+                                   true,
+                                 this.JWT)) {
+              this.connectionHandle = arango.getConnectionHandle();
+            }
           } else {
             print(Date() + " reconnecting " + this.url);
-            arango.reconnect(this.endpoint,
-                           '_system',
-                           this.options.username,
-                           this.options.password,
-                           time() < deadline);
-            this.connectionHandle = arango.getConnectionHandle();
+            if (arango.reconnect(this.endpoint,
+                                 '_system',
+                                 this.options.username,
+                                 this.options.password,
+                                 true)) {
+              this.connectionHandle = arango.getConnectionHandle();
+            }
           }
           return;
         } else {
@@ -708,17 +718,21 @@ class instance {
 
   connect() {
     if (this.connectionHandle !== undefined) {
-      return arango.connectHandle(this.connectionHandle);
-    } else {
-      if (this.JWT) {
-        const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
-        this.connectionHandle = arango.getConnectionHandle();
-        return ret;
-      } else {
-        const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
-        this.connectionHandle = arango.getConnectionHandle();
-        return ret;
+      try {
+        return arango.connectHandle(this.connectionHandle);
+      } catch (ex) {
+        print(`Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
+        this.connectionHandle = undefined;
       }
+    }
+    if (this.JWT) {
+      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
+      this.connectionHandle = arango.getConnectionHandle();
+      return ret;
+    } else {
+      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
+      this.connectionHandle = arango.getConnectionHandle();
+      return ret;
     }
   }
   checkArangoConnection(count, overrideVerbosity=false) {
@@ -734,7 +748,7 @@ class instance {
         if (this.options.extremeVerbosity || overrideVerbosity) {
           print(`no... ${e.message}`);
         }
-        this.connectionHandle = undefined;
+        this._disconnect();
         sleep(0.5);
       }
       count --;
@@ -758,7 +772,7 @@ class instance {
         killExternal(this.pid, abortSignal);
         print(statusExternal(this.pid, true));
       }
-      this.connectionHandle = undefined;
+      this._disconnect();
    } catch(ex) {
       print(ex);
     }
@@ -772,7 +786,7 @@ class instance {
       return;
     }
     this.exitStatus = statusExternal(this.pid, true);
-    this.connectionHandle = undefined;
+    this._disconnect();
     if (this.exitStatus.status !== 'TERMINATED') {
       this.processSanitizerReports();
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
@@ -850,12 +864,12 @@ class instance {
       if (forceTerminate) {
         let sockStat = this.getSockStat(Date() + "Force killing - sockstat before: ");
         this.killWithCoreDump('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
-        this.connectionHandle = undefined;
+        this._disconnect();
         this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
-        this.connectionHandle = undefined;
+        this._disconnect();
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -876,7 +890,7 @@ class instance {
           this.serverCrashedLocal = true;
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
-          this.connectionHandle = undefined;
+          this._disconnect();
         } else {
           this.processSanitizerReports();
           if (!this.options.noStartStopLogs) {
@@ -927,7 +941,7 @@ class instance {
     while (timeout > 0) {
       this.exitStatus = statusExternal(this.pid, false);
       if (this.exitStatus.status === 'TERMINATED') {
-        this.connectionHandle = undefined;
+        this._disconnect();
         return true;
       }
       sleep(1);
@@ -936,7 +950,7 @@ class instance {
     this.shutDownOneInstance({nonAgenciesCount: 1}, true, 0);
     crashUtils.aggregateDebugger(this, this.options);
     this.waitForExitAfterDebugKill();
-    this.connectionHandle = undefined;
+    this._disconnect();
     this.pid = null;
     return false;
   }
