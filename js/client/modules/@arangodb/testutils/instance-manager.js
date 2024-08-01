@@ -1055,16 +1055,13 @@ class instanceManager {
         arangod.id = res['id'];
       }
     });
-
-    print(arango.getConnectionHandle())
-    print(arango.getEndpoint())
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks whether any instance has failure points set
   // //////////////////////////////////////////////////////////////////////////////
 
   checkServerFailurePoints() {
-    this.rememberConnection()
+    this.rememberConnection();
     let failurePoints = [];
     this.arangods.forEach(arangod => {
       // we don't have JWT success atm, so if, skip:
