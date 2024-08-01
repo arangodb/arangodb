@@ -38,6 +38,7 @@
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include <velocypack/Iterator.h>
 #include "Basics/VelocyPackHelper.h"
 #include <absl/strings/str_cat.h>
@@ -200,7 +201,6 @@ void EnumerateListExecutor::initializeNewRow(
 
   // fetch new row, put it in local state
   AqlValue const& inputList = _currentRow.getValue(_infos.getInputRegister());
-
   // store the length into a local variable
   // so we don't need to calculate length every time
   if (!inputList.isArray()) {
@@ -217,9 +217,6 @@ bool EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
   AqlValue innerValue =
       getAqlValue(inputList, _inputArrayPosition, mustDestroy);
   // auto str_val = innerValue.slice().stringView();
-  std::cout << innerValue.isArray() << std::endl;
-  auto strval = innerValue.slice().toString();
-  std::cout << "<" << strval << ">" << std::endl;
   AqlValueGuard guard(innerValue, mustDestroy);
 
   TRI_IF_FAILURE("EnumerateListBlock::getSome") {
@@ -431,7 +428,15 @@ bool EnumerateListObjectExecutor::processElement(OutputAqlItemRow& output) {
 
   velocypack::ObjectIteratorPair innerValue = *_objIterator;
   AqlValue key = AqlValue(innerValue.key);
-  AqlValue value = AqlValue(innerValue.value);
+  AqlValue value;
+  if (innerValue.key.stringView() == arangodb::StaticStrings::IdString &&
+      innerValue.value.isCustom()) {
+    value = AqlValue(_trx.extractIdString(
+        _currentRow.getValue(_infos.getInputRegister()).slice()));
+  } else {
+    value = AqlValue(innerValue.value);
+  }
+
   AqlValueGuard guardKey(key, mustDestroy);
   AqlValueGuard guardValue(value, mustDestroy);
 
