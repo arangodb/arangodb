@@ -1,7 +1,8 @@
 #pragma once
 
 #include "Assertions/ProdAssert.h"
-#include "promise.hpp"
+#include "promise.h"
+
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -22,7 +23,7 @@ namespace arangodb::coroutine {
    collection cannot happen concurrently. The garbage collection can also not
    run during an iteration over all promises in the list.
  */
-struct PromiseRegistry {
+struct ThreadRegistry {
   /**
      Adds a promise on the registry's thread to the registry.
 

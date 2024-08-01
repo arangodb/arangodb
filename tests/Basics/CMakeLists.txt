@@ -40,4 +40,4 @@ target_sources(arangodbtests
   UnshackledMutexTest.cpp
   VelocyPackHelperTest.cpp)
 
-add_subdirectory(async)
+add_subdirectory(coroutine)

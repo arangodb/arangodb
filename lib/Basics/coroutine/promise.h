@@ -7,7 +7,7 @@
 
 namespace arangodb::coroutine {
 
-struct PromiseRegistry;
+struct ThreadRegistry;
 
 enum class State {
   Initialized = 0,
@@ -52,7 +52,7 @@ struct PromiseInList : Observables {
   virtual ~PromiseInList() = default;
 
   // identifies the promise list it belongs to
-  PromiseRegistry* registry;
+  ThreadRegistry* registry;
   std::atomic<PromiseInList*> next;
   // only needed to remove an item
   std::atomic<PromiseInList*> previous;

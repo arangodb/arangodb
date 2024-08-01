@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Basics/async/promise_registry.hpp"
-#include "Basics/async/promise.hpp"
-#include "Basics/async/feature.hpp"
+#include "Basics/coroutine/feature.hpp"
+#include "Basics/coroutine/thread_registry.h"
+#include "Basics/coroutine/promise.h"
 #include "Basics/expected.h"
 #include <coroutine>
 #include <atomic>

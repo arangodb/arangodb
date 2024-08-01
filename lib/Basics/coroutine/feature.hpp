@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Basics/async/promise_registry.hpp"
+#include "Basics/coroutine/thread_registry.h"
 
 namespace arangodb::coroutine {
 
 /**
    Registry of all active promises on this thread.
  */
-thread_local PromiseRegistry* promise_registry;
+thread_local ThreadRegistry* promise_registry;
 
 }  // namespace arangodb::coroutine

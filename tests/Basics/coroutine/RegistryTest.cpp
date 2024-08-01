@@ -1,6 +1,6 @@
-#include "Basics/async/async.h"
-#include "Basics/async/promise.hpp"
-#include "Basics/async/thread_registry.hpp"
+#include "Basics/async.h"
+#include "Basics/coroutine/promise.h"
+#include "Basics/coroutine/registry.h"
 #include <gtest/gtest.h>
 #include <thread>
 
@@ -17,8 +17,7 @@ auto baz() -> async<int> { co_return 2; }
 
 namespace {
 
-auto all_function_names(ThreadRegistryForPromises& registry)
-    -> std::vector<std::string> {
+auto all_function_names(Registry& registry) -> std::vector<std::string> {
   std::vector<std::string> names;
   registry.for_promise([&](PromiseInList* promise) {
     names.push_back(promise->_where.function_name());
@@ -29,7 +28,7 @@ auto all_function_names(ThreadRegistryForPromises& registry)
 }  // namespace
 
 TEST(CoroutineRegistryTest, registers_one_coroutine) {
-  ThreadRegistryForPromises registry;
+  Registry registry;
   registry.add_thread();
 
   auto coro = coroutine_test::foo();
@@ -39,7 +38,7 @@ TEST(CoroutineRegistryTest, registers_one_coroutine) {
 }
 
 TEST(CoroutineRegistryTest, registers_coroutines_running_on_differen_threads) {
-  ThreadRegistryForPromises registry;
+  Registry registry;
   registry.add_thread();
 
   std::jthread([&]() {
@@ -54,7 +53,7 @@ TEST(CoroutineRegistryTest, registers_coroutines_running_on_differen_threads) {
 
 TEST(CoroutineRegistryTest,
      iterates_over_coroutines_on_same_thread_in_reverse_order) {
-  ThreadRegistryForPromises registry;
+  Registry registry;
   registry.add_thread();
   auto f = coroutine_test::foo();
   auto b = coroutine_test::bar();
@@ -70,7 +69,7 @@ TEST(CoroutineRegistryTest,
 }
 
 TEST(CoroutineRegistryTest, iterates_over_coroutines_on_differen_threads) {
-  ThreadRegistryForPromises registry;
+  Registry registry;
   registry.add_thread();
   auto f = coroutine_test::foo();
 

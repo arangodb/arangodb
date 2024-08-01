@@ -1,15 +1,18 @@
+#pragma once
+
+#include "thread_registry.h"
+#include "feature.hpp"
+
 #include <functional>
-#include "Basics/async/promise_registry.hpp"
-#include "Basics/async/feature.hpp"
 
 namespace arangodb::coroutine {
 
 // the single owner of all promise registries
-struct ThreadRegistryForPromises {
+struct Registry {
   // all threads can call this
   auto add_thread() -> void {
     auto guard = std::lock_guard(mutex);
-    registries.push_back(std::make_shared<PromiseRegistry>());
+    registries.push_back(std::make_shared<ThreadRegistry>());
     promise_registry = registries.back().get();
   }
 
@@ -26,7 +29,7 @@ struct ThreadRegistryForPromises {
     }
   }
 
-  std::vector<std::shared_ptr<PromiseRegistry>> registries;
+  std::vector<std::shared_ptr<ThreadRegistry>> registries;
   std::mutex mutex;
 };
 

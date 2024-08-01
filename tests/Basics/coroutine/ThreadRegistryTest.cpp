@@ -1,5 +1,5 @@
-#include "Basics/async/promise.hpp"
-#include "Basics/async/promise_registry.hpp"
+#include "Basics/coroutine/promise.h"
+#include "Basics/coroutine/thread_registry.h"
 #include "Basics/Result.h"
 
 #include <gtest/gtest.h>
@@ -19,7 +19,7 @@ struct MyTestPromise : PromiseInList {
   uint64_t id;
 };
 
-auto all_ids(PromiseRegistry& registry) -> std::vector<uint64_t> {
+auto all_ids(ThreadRegistry& registry) -> std::vector<uint64_t> {
   std::vector<uint64_t> ids;
   registry.for_promise([&](PromiseInList* promise) {
     ids.push_back(dynamic_cast<MyTestPromise*>(promise)->id);
@@ -28,8 +28,8 @@ auto all_ids(PromiseRegistry& registry) -> std::vector<uint64_t> {
 }
 }  // namespace
 
-TEST(PromiseRegistryTest, adds_a_promise) {
-  auto registry = PromiseRegistry{};
+TEST(CoroutineThreadRegistryTest, adds_a_promise) {
+  auto registry = ThreadRegistry{};
 
   auto promise = MyTestPromise{1};
   registry.add(&promise);
@@ -37,9 +37,9 @@ TEST(PromiseRegistryTest, adds_a_promise) {
   EXPECT_EQ(all_ids(registry), std::vector<uint64_t>{promise.id});
 }
 
-TEST(PromiseRegistryDeathTest, another_thread_cannot_add_a_promise) {
+TEST(CoroutineThreadRegistryDeathTest, another_thread_cannot_add_a_promise) {
   GTEST_FLAG_SET(death_test_style, "threadsafe");
-  auto registry = PromiseRegistry{};
+  auto registry = ThreadRegistry{};
 
   std::jthread([&]() {
     auto promise = MyTestPromise{1};
@@ -48,8 +48,8 @@ TEST(PromiseRegistryDeathTest, another_thread_cannot_add_a_promise) {
   });
 }
 
-TEST(PromiseRegistryTest, iterates_over_all_promises) {
-  auto registry = PromiseRegistry{};
+TEST(CoroutineThreadRegistryTest, iterates_over_all_promises) {
+  auto registry = ThreadRegistry{};
   auto first_promise = MyTestPromise{1};
   registry.add(&first_promise);
   auto second_promise = MyTestPromise{2};
@@ -67,8 +67,9 @@ TEST(PromiseRegistryTest, iterates_over_all_promises) {
                                    first_promise.id}));
 }
 
-TEST(PromiseRegistryTest, iterates_in_another_thread_over_all_promises) {
-  auto registry = PromiseRegistry{};
+TEST(CoroutineThreadRegistryTest,
+     iterates_in_another_thread_over_all_promises) {
+  auto registry = ThreadRegistry{};
   auto first_promise = MyTestPromise{1};
   registry.add(&first_promise);
   auto second_promise = MyTestPromise{2};
@@ -87,8 +88,8 @@ TEST(PromiseRegistryTest, iterates_in_another_thread_over_all_promises) {
   });
 }
 
-TEST(PromiseRegistryTest, mark_for_deletion_does_not_delete_promise) {
-  auto registry = PromiseRegistry{};
+TEST(CoroutineThreadRegistryTest, mark_for_deletion_does_not_delete_promise) {
+  auto registry = ThreadRegistry{};
   auto promise = MyTestPromise{1};
   registry.add(&promise);
 
@@ -97,8 +98,8 @@ TEST(PromiseRegistryTest, mark_for_deletion_does_not_delete_promise) {
   EXPECT_EQ(all_ids(registry).size(), 1);
 }
 
-TEST(PromiseRegistryTest, garbage_collection_deletes_marked_promises) {
-  auto registry = PromiseRegistry{};
+TEST(CoroutineThreadRegistryTest, garbage_collection_deletes_marked_promises) {
+  auto registry = ThreadRegistry{};
   auto promise = MyTestPromise{1};
   registry.add(&promise);
 
@@ -108,9 +109,9 @@ TEST(PromiseRegistryTest, garbage_collection_deletes_marked_promises) {
   EXPECT_EQ(all_ids(registry).size(), 0);
 }
 
-TEST(PromiseRegistryTest,
+TEST(CoroutineThreadRegistryTest,
      garbage_collection_does_not_delete_unmarked_promises) {
-  auto registry = PromiseRegistry{};
+  auto registry = ThreadRegistry{};
   auto promise = MyTestPromise{1};
   registry.add(&promise);
 
@@ -119,18 +120,19 @@ TEST(PromiseRegistryTest,
   EXPECT_EQ(all_ids(registry).size(), 1);
 }
 
-TEST(PromiseRegistryDeathTest,
+TEST(CoroutineThreadRegistryDeathTest,
      unrelated_promise_cannot_be_marked_for_deletion) {
   GTEST_FLAG_SET(death_test_style, "threadsafe");
 
-  auto registry = PromiseRegistry{};
+  auto registry = ThreadRegistry{};
   auto promise = MyTestPromise{1};
 
   EXPECT_DEATH(registry.mark_for_deletion(&promise), "Assertion failed");
 }
 
-TEST(PromiseRegistryTest, another_thread_can_mark_a_promise_for_deletion) {
-  auto registry = PromiseRegistry{};
+TEST(CoroutineThreadRegistryTest,
+     another_thread_can_mark_a_promise_for_deletion) {
+  auto registry = ThreadRegistry{};
   auto promise = MyTestPromise{1};
   registry.add(&promise);
 
@@ -140,11 +142,11 @@ TEST(PromiseRegistryTest, another_thread_can_mark_a_promise_for_deletion) {
   EXPECT_EQ(all_ids(registry).size(), 0);
 }
 
-TEST(PromiseRegistryDeathTest,
+TEST(CoroutineThreadRegistryDeathTest,
      garbage_collection_cannot_be_called_on_different_thread) {
   GTEST_FLAG_SET(death_test_style, "threadsafe");
 
-  auto registry = PromiseRegistry{};
+  auto registry = ThreadRegistry{};
 
   std::jthread(
       [&] { EXPECT_DEATH(registry.garbage_collect(), "Assertion failed"); });
