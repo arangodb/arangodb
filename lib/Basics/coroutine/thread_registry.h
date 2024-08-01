@@ -14,14 +14,19 @@
 namespace arangodb::coroutine {
 
 /**
+   Registry of all active promises on this thread.
+ */
+inline thread_local ThreadRegistry* thread_registry;
+
+/**
    This registry belongs to a specific thread (the owning thread) and owns a
    list of promises that live on this thread.
 
    A promise can be marked for deletion on any thread, the garbage collection
-   can only be called on the owning thread and destroys all marked promises. A
-   promise can only be added on the owning thread, therefore adding and garbage
-   collection cannot happen concurrently. The garbage collection can also not
-   run during an iteration over all promises in the list.
+   needs to be called manually on the owning thread and destroys all marked
+   promises. A promise can only be added on the owning thread, therefore adding
+   and garbage collection cannot happen concurrently. The garbage collection can
+   also not run during an iteration over all promises in the list.
  */
 struct ThreadRegistry {
   /**
@@ -30,7 +35,7 @@ struct ThreadRegistry {
      Can only be called on the owning thread, crashes
      otherwise.
    */
-  auto add(PromiseInList* promise) -> void {
+  auto add(PromiseInList* promise) noexcept -> void {
     // promise needs to live on the same thread as this registry
     ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
     auto current_head = promise_head.load(std::memory_order_relaxed);
@@ -51,7 +56,7 @@ struct ThreadRegistry {
    */
   template<typename F>
   requires requires(F f, PromiseInList* promise) { {f(promise)}; }
-  auto for_promise(F&& function) -> void {
+  auto for_promise(F&& function) noexcept -> void {
     auto guard = std::lock_guard(mutex);
     // (2) - this load synchronizes with store in (1)
     for (auto current = promise_head.load(std::memory_order_acquire);
@@ -68,7 +73,7 @@ struct ThreadRegistry {
      Can be called from any thread. The promise needs to be included in
      the registry list, crashes otherwise.
    */
-  auto mark_for_deletion(PromiseInList* promise) -> void {
+  auto mark_for_deletion(PromiseInList* promise) noexcept -> void {
     // makes sure that promise is really in this list
     ADB_PROD_ASSERT(promise->registry == this);
     // (1) - this load synchronizes with compare_exchange_weak in (2)
@@ -86,7 +91,7 @@ struct ThreadRegistry {
 
      Can only be called on the owning thread, crashes otheriwse.
    */
-  auto garbage_collect() -> void {
+  auto garbage_collect() noexcept -> void {
     ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
     PromiseInList* head;
     {

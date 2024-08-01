@@ -1,7 +1,6 @@
 #pragma once
 
 #include "thread_registry.h"
-#include "feature.hpp"
 
 #include <functional>
 
@@ -13,7 +12,7 @@ struct Registry {
   auto add_thread() -> void {
     auto guard = std::lock_guard(mutex);
     registries.push_back(std::make_shared<ThreadRegistry>());
-    promise_registry = registries.back().get();
+    thread_registry = registries.back().get();
   }
 
   template<typename F>

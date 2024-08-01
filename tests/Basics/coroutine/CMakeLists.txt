@@ -1,3 +1,8 @@
+target_sources(arangodbtests
+  PRIVATE
+	ThreadRegistryTest.cpp
+	RegistryTest.cpp)
+
 add_executable(registry_test
 	RegistryTest.cpp)
 target_link_libraries(registry_test

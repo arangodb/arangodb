@@ -1,4 +1,5 @@
-#include "Basics/async/async.h"
+#include "Basics/async.h"
+#include "Basics/coroutine/registry.h"
 #include <gtest/gtest.h>
 #include <thread>
 #include <deque>
@@ -21,6 +22,9 @@ struct WaitSlot {
     _continuation = continuation;
   }
 
+  WaitSlot(auto) {}
+  void stop() {}
+
   bool ready = false;
 };
 
@@ -29,6 +33,8 @@ struct NoWait {
   void await() {}
 
   auto operator co_await() { return std::suspend_never{}; }
+  NoWait(auto) {}
+  void stop() {}
 };
 
 struct ConcurrentNoWait {
@@ -47,8 +53,9 @@ struct ConcurrentNoWait {
     }
     _cv.notify_one();
   }
-  ConcurrentNoWait()
-      : _thread([&] {
+  ConcurrentNoWait(arangodb::coroutine::Registry* registry)
+      : _thread([&, registry] {
+          registry->add_thread();
           bool stopping = false;
           while (true) {
             std::coroutine_handle<> handle;
@@ -66,9 +73,10 @@ struct ConcurrentNoWait {
             }
             handle.resume();
           }
+          arangodb::coroutine::thread_registry->garbage_collect();
         }) {}
 
-  ~ConcurrentNoWait() {
+  auto stop() -> void {
     if (_thread.joinable()) {
       await_suspend(std::noop_coroutine());
       _thread.join();
@@ -126,12 +134,19 @@ struct AsyncTest;
 
 template<typename WaitType, typename ValueType>
 struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
-  void SetUp() override { InstanceCounterValue::instanceCounter = 0; }
+  AsyncTest() : wait{&coroutine_registry} {}
+  void SetUp() override {
+    InstanceCounterValue::instanceCounter = 0;
+    coroutine_registry.add_thread();
+  }
 
   void TearDown() override {
+    arangodb::coroutine::thread_registry->garbage_collect();
+    wait.stop();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
   }
 
+  arangodb::coroutine::Registry coroutine_registry;
   WaitType wait;
 };
 
@@ -332,3 +347,5 @@ TYPED_TEST(AsyncTest, multiple_suspension_points) {
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 0);
 }
+
+// TODO test that coroutines cannot be called after beeing destroyed

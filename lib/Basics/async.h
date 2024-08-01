@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Basics/coroutine/feature.hpp"
 #include "Basics/coroutine/thread_registry.h"
 #include "Basics/coroutine/promise.h"
 #include "Basics/expected.h"
@@ -11,6 +10,10 @@
 #include <source_location>
 
 namespace arangodb {
+
+// requires the thread_local ptr promise_registry to be set
+// e.g. via a global coroutine::Registry
+// which also needs to be garbage collected at the end
 
 template<typename T>
 struct async_promise;
@@ -48,12 +51,13 @@ struct async_promise_base : coroutine::PromiseInList {
   }
   void unhandled_exception() { _value.set_exception(std::current_exception()); }
   auto get_return_object() {
-    coroutine::promise_registry->add(this);
+    coroutine::thread_registry->add(this);
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
   }
 
-  auto destroy() -> void override {
+  auto destroy() noexcept -> void override {
+    // TODO do some exception handling (add some logging)
     std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))
         .destroy();
@@ -97,7 +101,7 @@ struct async {
       auto await_resume() {
         auto& promise = _handle.promise();
         expected<T> r = std::move(promise._value);
-        promise->registry->mark_for_deletion(promise);
+        promise.registry->mark_for_deletion(&promise);
         return std::move(r).get();
       }
       explicit awaitable(std::coroutine_handle<promise_type> handle)

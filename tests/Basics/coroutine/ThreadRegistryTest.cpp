@@ -14,7 +14,7 @@ struct MyTestPromise : PromiseInList {
   MyTestPromise(uint64_t id,
                 std::source_location loc = std::source_location::current())
       : PromiseInList(loc), id{id} {}
-  auto destroy() -> void override { destroyed = true; }
+  auto destroy() noexcept -> void override { destroyed = true; }
   bool destroyed = false;
   uint64_t id;
 };
