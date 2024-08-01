@@ -7,6 +7,6 @@ namespace arangodb::coroutine {
 /**
    Registry of all active promises on this thread.
  */
-thread_local std::shared_ptr<coroutine::PromiseRegistry> promise_registry;
+thread_local PromiseRegistry* promise_registry;
 
 }  // namespace arangodb::coroutine
