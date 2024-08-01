@@ -634,7 +634,7 @@ class instanceManager {
           download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
         }
       } catch (err) {
-        print(Date() + " error while setting cluster maintenance mode:", err);
+        print(`${Date()} error while setting cluster maintenance mode:${err}\n${err.stack}`);
         shutdownSuccess = false;
       }
     }
@@ -752,7 +752,7 @@ class instanceManager {
     return shutdownSuccess;
   }
   launchFinalize(startTime) {
-    if (!this.options.cluster && !this.options.agency) {
+    {//if (!this.options.cluster && !this.options.agency) {
       let deadline = time() + seconds(this.startupMaxCount);
       this.arangods.forEach(arangod => {
         try {
@@ -842,7 +842,7 @@ class instanceManager {
         return ret[1];
       });
     } catch(e) {
-      print(`${RED} Error checking cluster health '${name}' => '${e}'\n${e.stack}${RESET}`);
+      print(`${RED} Error checking cluster health '${name}' => '${e}'\n${e.stack}\n${arango.getEndpoint()}${RESET}`);
       return false;
     }
     return true;
@@ -1056,18 +1056,17 @@ class instanceManager {
       }
     });
 
+    print(arango.getConnectionHandle())
+    print(arango.getEndpoint())
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks whether any instance has failure points set
   // //////////////////////////////////////////////////////////////////////////////
 
-  checkServerFailurePoints(instanceMgr = null) {
+  checkServerFailurePoints() {
+    this.rememberConnection()
     let failurePoints = [];
-    let im = this;
-    if (instanceMgr !== null) {
-      im = instanceMgr;
-    }
-    im.arangods.forEach(arangod => {
+    this.arangods.forEach(arangod => {
       // we don't have JWT success atm, so if, skip:
       if ((!arangod.isAgent()) &&
           !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
@@ -1083,6 +1082,7 @@ class instanceManager {
         }
       }
     });
+    this.reconnectMe();
     return failurePoints;
   }
 
@@ -1234,6 +1234,12 @@ class instanceManager {
     }
     let count = 0;
     this.arangods.forEach(arangod => {
+      if (!this.options.sniffAgency && arangod.isAgent()){
+        return;
+      }
+      if (!this.options.sniffDBServers && arangod.isRole(instanceRole.dbServer)) {
+        return;
+      }
       if (count > 0) {
         args.push('or');
       }
