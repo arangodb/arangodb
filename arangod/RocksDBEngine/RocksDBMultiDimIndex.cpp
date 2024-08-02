@@ -32,7 +32,6 @@
 #include "ClusterEngine/ClusterIndex.h"
 #include "Containers/Enumerate.h"
 #include "Containers/FlatHashSet.h"
-#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -423,7 +422,6 @@ std::vector<std::vector<basics::AttributeName>> const& getSortedPrefixFields(
 }  // namespace
 
 void useAsBound(size_t idx, aql::AstNode* bound_value, bool isLower,
-                bool isStrict,
                 std::unordered_map<size_t, arangodb::mdi::ExpressionBounds>&
                     extractedBounds) {
   const auto ensureBounds = [&](size_t idx) -> auto& {
@@ -436,10 +434,8 @@ void useAsBound(size_t idx, aql::AstNode* bound_value, bool isLower,
   auto& bounds = ensureBounds(idx);
   if (isLower) {
     bounds.lower.bound_value = nodeExtractDouble(bound_value);
-    bounds.lower.isStrict = isStrict;
   } else {
     bounds.upper.bound_value = nodeExtractDouble(bound_value);
-    bounds.upper.isStrict = isStrict;
   }
 }
 
@@ -448,7 +444,7 @@ bool checkIsBoundForAttributeForInRange(
     aql::AstNode* other,
     std::unordered_map<size_t, arangodb::mdi::ExpressionBounds>&
         extractedBounds,
-    bool isLower, bool isStrict) {
+    bool isLower) {
   std::pair<aql::Variable const*, std::vector<basics::AttributeName>>
       attributeData;
   if (!access->isAttributeAccessForVariable(attributeData) ||
@@ -457,12 +453,12 @@ bool checkIsBoundForAttributeForInRange(
     return false;
   }
 
-  for (auto&& [idx, field] : enumerate(index->fields())) {
+  for (auto const& [idx, field] : enumerate(index->fields())) {
     if (attributeData.second != field) {
       continue;
     }
 
-    useAsBound(idx, other, isLower, isStrict, extractedBounds);
+    useAsBound(idx, other, isLower, extractedBounds);
     return true;
   }
 
@@ -496,20 +492,20 @@ bool checkIsBoundForAttribute(
 
     switch (op->type) {
       case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-        useAsBound(idx, other, true, false, extractedBounds);
-        useAsBound(idx, other, false, false, extractedBounds);
+        useAsBound(idx, other, true, extractedBounds);
+        useAsBound(idx, other, false, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_LE:
-        useAsBound(idx, other, reverse, false, extractedBounds);
+        useAsBound(idx, other, reverse, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_GE:
-        useAsBound(idx, other, !reverse, false, extractedBounds);
+        useAsBound(idx, other, !reverse, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_LT:
-        useAsBound(idx, other, reverse, true, extractedBounds);
+        useAsBound(idx, other, reverse, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_GT:
-        useAsBound(idx, other, !reverse, true, extractedBounds);
+        useAsBound(idx, other, !reverse, extractedBounds);
         return true;
       default:
         break;
@@ -591,17 +587,19 @@ void mdi::extractBoundsFromCondition(
           auto* nodeUpperBound = nodeFunctionCallMember->getMember(2);
 
           // TODO Can be expression as well
-          auto const nodeLowerBoundStrict =
-              nodeFunctionCallMember->getMember(3)->getBoolValue();
-          auto const nodeUpperBoundStrict =
-              nodeFunctionCallMember->getMember(4)->getBoolValue();
+          if (!nodeFunctionCallMember->getMember(3)->isValueType(
+                  aql::AstNodeValueType::VALUE_TYPE_BOOL) ||
+              !nodeFunctionCallMember->getMember(4)->isValueType(
+                  aql::AstNodeValueType::VALUE_TYPE_BOOL)) {
+            break;
+          }
 
           ok |= checkIsBoundForAttributeForInRange(
               index, reference, nodeAttributeAccess, nodeLowerBound,
-              extractedBounds, true, nodeLowerBoundStrict);
+              extractedBounds, true);
           ok |= checkIsBoundForAttributeForInRange(
               index, reference, nodeAttributeAccess, nodeUpperBound,
-              extractedBounds, false, nodeUpperBoundStrict);
+              extractedBounds, false);
 
           break;
         }
@@ -700,9 +698,35 @@ auto mdi::specializeCondition(Index const* index, aql::AstNode* condition,
           op->type = aql::NODE_TYPE_OPERATOR_BINARY_GE;
           children.emplace_back(op);
           break;
-        case aql::NODE_TYPE_FCALL:
-          children.emplace_back(op);
+        case aql::NODE_TYPE_FCALL: {
+          if (aql::functions::getFunctionName(*op) == "IN_RANGE") {
+            auto* nodeFunctionCallMember = op->getMember(0);
+            TRI_ASSERT(nodeFunctionCallMember->numMembers() == 5);
+
+            if (!nodeFunctionCallMember->getMember(3)->isValueType(
+                    aql::AstNodeValueType::VALUE_TYPE_BOOL) ||
+                !nodeFunctionCallMember->getMember(4)->isValueType(
+                    aql::AstNodeValueType::VALUE_TYPE_BOOL)) {
+              break;
+            }
+
+            {
+              auto nodeLeftStrict =
+                  nodeFunctionCallMember->getMemberUnchecked(3);
+              TEMPORARILY_UNLOCK_NODE(nodeLeftStrict);
+              nodeLeftStrict->setBoolValue(true);
+            }
+
+            {
+              auto nodeRightStrict =
+                  nodeFunctionCallMember->getMemberUnchecked(4);
+              TEMPORARILY_UNLOCK_NODE(nodeRightStrict);
+              nodeRightStrict->setBoolValue(true);
+              children.emplace_back(op);
+            }
+          }
           break;
+        }
         default:
           break;
       }

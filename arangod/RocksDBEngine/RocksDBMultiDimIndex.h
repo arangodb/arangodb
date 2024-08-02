@@ -130,7 +130,6 @@ namespace mdi {
 struct ExpressionBounds {
   struct Bound {
     std::optional<zkd::byte_string> bound_value;
-    bool isStrict = false;
   };
 
   Bound lower;

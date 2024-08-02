@@ -1039,7 +1039,6 @@ void Condition::collectOverlappingMembers(
       }
     }
 
-    // Check all the nodes in IN_RANGE function
     if (operand->type == NODE_TYPE_FCALL &&
         functions::getFunctionName(*operand) == "IN_RANGE") {
       if (andNode == nullptr || otherAndNode == nullptr) {
