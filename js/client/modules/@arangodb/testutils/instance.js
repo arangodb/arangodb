@@ -720,7 +720,6 @@ class instance {
   }
 
   connect() {
-    // print(`${this.name} my: ${this.connectionHandle} current: ${arango.getConnectionHandle()}`)
     if (this.connectionHandle !== undefined) {
       if (this.connectionHandle === arango.getConnectionHandle()) {
         return true;
@@ -1336,7 +1335,19 @@ class instance {
       throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
     }
     let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`;
-    let reply = arango.DELETE_RAW(deleteUrl);
+    let reply;
+    let count = 0;
+    while (count < 10) {
+      try {
+        reply = arango.DELETE_RAW(deleteUrl);
+        break;
+      } catch (ex) {
+        count += 1;
+        print(`${RED} ${this.name}: failed to delete failurepoint by ${ex}`);
+        this._disconnect();
+        this.connect();
+      }
+    }
     if (reply.code !== 200) {
       // we may no longer be able to work on a database as forced by fuerte
       print(`${BLUE}${this.name}: fallback to internal.download to clear failurepoint${RESET}`);
