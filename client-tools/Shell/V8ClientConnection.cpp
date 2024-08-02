@@ -398,7 +398,7 @@ void V8ClientConnection::connect() {
 void V8ClientConnection::reconnect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
-  std::string oldConnectionId = connectionIdentifier(_builder);
+  std::string oldConnectionId = connectionIdentifier(_connectedBuilder);
 
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
   _databaseName = _client.databaseName();
@@ -466,6 +466,7 @@ void V8ClientConnection::connectHandle(
     v8::Isolate* isolate, v8::FunctionCallbackInfo<v8::Value> const& args,
     std::string const& handle) {
   if (_currentConnectionId == handle) {
+    _builder = _connectedBuilder;
     // its the currently active one
     TRI_V8_RETURN_TRUE();
     return;
@@ -484,7 +485,7 @@ void V8ClientConnection::connectHandle(
     _connectionCache.emplace(oldConnectionId, oldConnection);
     _currentConnectionId = handle;
     _builder = (*iit).second;
-    _connectedBuilder = (*iit).second;
+    _connectedBuilder = _builder;
 
     TRI_V8_RETURN_TRUE();
   } else {
