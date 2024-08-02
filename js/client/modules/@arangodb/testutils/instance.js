@@ -682,7 +682,7 @@ class instance {
               this.connectionHandle = arango.getConnectionHandle();
             }
           } else {
-            print(Date() + " reconnecting " + this.url);
+            print(`${Date()} ${this.name} reconnecting ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  this.options.username,
@@ -720,24 +720,25 @@ class instance {
   }
 
   connect() {
+    // print(`${this.name} my: ${this.connectionHandle} current: ${arango.getConnectionHandle()}`)
     if (this.connectionHandle !== undefined) {
-      if (this.connectionHandle !== arango.getConnectionHandle()) {
+      if (this.connectionHandle === arango.getConnectionHandle()) {
         return true;
       }
       try {
         return arango.connectHandle(this.connectionHandle);
       } catch (ex) {
-        print(`Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
+        print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
         this.connectionHandle = undefined;
       }
     }
     if (this.JWT) {
-      print(Date() + " re/connecting with JWT " + this.url);
+      print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
       this.connectionHandle = arango.getConnectionHandle();
       return ret;
     } else {
-      print(Date() + " re/connecting " + this.url);
+      print(`${Date()} ${this.name} re/connecting ${this.url}`);
       const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
       this.connectionHandle = arango.getConnectionHandle();
       return ret;
@@ -748,20 +749,20 @@ class instance {
     while (count > 0) {
       try {
         if (this.options.extremeVerbosity || overrideVerbosity) {
-          print(`${Date()} tickeling ${this.endpoint}`);
+          print(`${Date()} ${this.name}: tickeling ${this.endpoint}`);
         }
         this.connect();
         return;
       } catch (e) {
         if (this.options.extremeVerbosity || overrideVerbosity) {
-          print(`no... ${e.message}`);
+          print(`${this.name}:  no... ${e.message}`);
         }
         this._disconnect();
         sleep(0.5);
       }
       count --;
     }
-    throw new Error(`unable to connect in ${count}s`);
+    throw new Error(`${this.name}:  unable to connect in ${count}s`);
   }
 
   waitForExitAfterDebugKill() {
@@ -770,12 +771,12 @@ class instance {
     }
     // Crashutils debugger kills our instance, but we neet to get
     // testing.js spawned-PID-monitoring adjusted.
-    print(this.name + " waiting for exit - " + this.pid);
+    print(`${this.name}:  waiting for exit - ${this.pid}`);
     try {
       let ret = statusExternal(this.pid, false);
       // OK, something has gone wrong, process still alive. announce and force kill:
       if (ret.status !== "ABORTED") {
-        print(RED + `was expecting the ${this.name} process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+        print(`${RED}was expecting the ${this.name} process ${this.pid} to be gone, but ${JSON.stringify(ret)}${RESET}`);
         this.processSanitizerReports();
         killExternal(this.pid, abortSignal);
         print(statusExternal(this.pid, true));
@@ -785,7 +786,7 @@ class instance {
       print(ex);
     }
     this.pid = null;
-    print('done');
+    print(`${this.name}: done`);
   }
 
   waitForExit() {
@@ -815,7 +816,7 @@ class instance {
     this.serverCrashedLocal = true;
     if (this.pid === null) {
       this.pid = pid;
-      print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
+      print(`${RED}${Date()} ${this.name}: instance already gone? ${JSON.stringify(this.exitStatus)}${RESET}`);
       this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
       this.pid = null;
     } else {
@@ -853,7 +854,7 @@ class instance {
       forceTerminate = false;
     }
     if (this.options.hasOwnProperty('server')) {
-      print(Date() + ' running with external server');
+      print(`${Date()} ${this.name}: running with external server`);
       return;
     }
 
@@ -1322,32 +1323,29 @@ class instance {
   }
   debugSetFailAt(failurePoint) {
     if (!this.connect()) {
-      throw new Error(`failed to connect my instance {JSON.stringify(this.getStructure())}`);
+      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
     }
     let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
     if (reply.code !== 200) {
-      throw new Error(`Failed to set ${failurePoint}: ${reply.parsedBody}`);
+      throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
     }
     return true;
   }
   debugClearFailAt(failurePoint, shortName) {
-    if (shortName !== undefined && this.shortName !== shortName) {
-      return false;
-    }
     if (!this.connect()) {
-      throw new Error(`failed to connect my instance {JSON.stringify(this.getStructure())}`);
+      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
     }
     let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`;
     let reply = arango.DELETE_RAW(deleteUrl);
     if (reply.code !== 200) {
       // we may no longer be able to work on a database as forced by fuerte
-      print(`${BLUE} fallback to internal.download to clear failurepoint${RESET}`);
+      print(`${BLUE}${this.name}: fallback to internal.download to clear failurepoint${RESET}`);
       let httpOptions = _.clone(this.authHeaders);
       httpOptions.method = 'DELETE';
       httpOptions.returnBodyOnError = true;
       const reply = download(deleteUrl, '', httpOptions);
       if (reply.code !== 200) {
-        throw new Error(`Failed to remove FP: '${failurePoint}' =>  ${JSON.stringify(reply.parsedBody)}`);
+        throw new Error(`${this.name}: Failed to remove FP: '${failurePoint}' =>  ${JSON.stringify(reply.parsedBody)}`);
       }
     }
     return true;
@@ -1356,7 +1354,7 @@ class instance {
     let reply = arango.GET_RAW('/_admin/debug/failat/');
     if (reply.code !== 200) {
       if (reply.code === 401) {
-        throw new Error(`Failed to alsk for failurepoint: ${reply.parsedBody}`);
+        throw new Error(`${this.name}: Failed to ask for failurepoint: ${reply.parsedBody}`);
       }
       return false;
     }
