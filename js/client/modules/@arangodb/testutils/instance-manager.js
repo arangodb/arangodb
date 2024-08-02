@@ -211,11 +211,14 @@ class instanceManager {
     } catch (e) {}
     this.userName = arango.connectedUser();
     this.connectedEndpoint = arango.getEndpoint();
+    db._useDatabase('_system');
   }
   reconnectMe() {
     if (this.connectionHandle !== undefined) {
       try {
-        return arango.connectHandle(this.connectionHandle);
+        let ret = arango.connectHandle(this.connectionHandle);
+        db._useDatabase(this.dbName);
+        return ret;
       } catch (ex) {
         print(`${RED}${Date()} failed to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
       }
