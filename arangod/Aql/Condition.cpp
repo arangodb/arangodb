@@ -1110,17 +1110,19 @@ void Condition::collectOverlappingMembers(
             }
             break;
           }
-          case NODE_TYPE_VALUE:
+          case NODE_TYPE_VALUE: {
             if (aql::compareAstNodes(functionCallNodeElement,
                                      functionCallNodeOtherElement, true) != 0) {
               safeToRemove = false;
-              break;
             }
-          default:
+            break;
+          }
+          default: {
             // We are being extremely pessimistic, meaning if we encounter
             // anything else we will not remove the expression
             safeToRemove = false;
             break;
+          }
         }
       }
 
