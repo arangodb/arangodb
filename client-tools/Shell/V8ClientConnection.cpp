@@ -159,7 +159,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
     auto iit = _connectionBuilderCache.find(id);
     if (it != _connectionCache.end()) {
       std::shared_ptr<fu::Connection> oldConnection;
-      auto haveOld = (_connection && _connection->state() == fu::Connection::State::Connected);
+      auto haveOld = (_connection &&
+                      _connection->state() == fu::Connection::State::Connected);
       if (haveOld) {
         _connection.swap(oldConnection);
       }
