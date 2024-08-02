@@ -463,6 +463,7 @@ bool checkIsBoundForAttributeForInRange(
     }
 
     useAsBound(idx, other, isLower, isStrict, extractedBounds);
+    return true;
   }
 
   return false;
@@ -577,25 +578,32 @@ void mdi::extractBoundsFromCondition(
         break;
       case aql::NODE_TYPE_FCALL:
         if (aql::functions::getFunctionName(*op) == "IN_RANGE") {
-          auto* mem = op->getMember(0);
+          auto* nodeFunctionCallMember = op->getMember(0);
 
           // There must be five elements in IN_RANGE function
-          TRI_ASSERT(mem->numMembers() == 5);
-          auto* nodeAttributeAccess = mem->getMember(0);
+          TRI_ASSERT(nodeFunctionCallMember->numMembers() == 5);
+          auto* nodeAttributeAccess = nodeFunctionCallMember->getMember(0);
           // First is attribute access
           TRI_ASSERT(nodeAttributeAccess->type ==
                      aql::NODE_TYPE_ATTRIBUTE_ACCESS);
 
-          auto* nodeLowerBound = mem->getMember(1);
-          auto* nodeUpperBound = mem->getMember(2);
-          auto nodeLowerBoundStrict = mem->getMember(3)->getBoolValue();
-          auto nodeUpperBoundStrict = mem->getMember(4)->getBoolValue();
+          auto* nodeLowerBound = nodeFunctionCallMember->getMember(1);
+          auto* nodeUpperBound = nodeFunctionCallMember->getMember(2);
+
+          // TODO Can be expression as well
+          auto const nodeLowerBoundStrict =
+              nodeFunctionCallMember->getMember(3)->getBoolValue();
+          auto const nodeUpperBoundStrict =
+              nodeFunctionCallMember->getMember(4)->getBoolValue();
+
           ok |= checkIsBoundForAttributeForInRange(
               index, reference, nodeAttributeAccess, nodeLowerBound,
               extractedBounds, true, nodeLowerBoundStrict);
           ok |= checkIsBoundForAttributeForInRange(
               index, reference, nodeAttributeAccess, nodeUpperBound,
-              extractedBounds, true, nodeUpperBoundStrict);
+              extractedBounds, false, nodeUpperBoundStrict);
+
+          break;
         }
       default:
         break;
@@ -690,6 +698,9 @@ auto mdi::specializeCondition(Index const* index, aql::AstNode* condition,
           break;
         case aql::NODE_TYPE_OPERATOR_BINARY_GT:
           op->type = aql::NODE_TYPE_OPERATOR_BINARY_GE;
+          children.emplace_back(op);
+          break;
+        case aql::NODE_TYPE_FCALL:
           children.emplace_back(op);
           break;
         default:
