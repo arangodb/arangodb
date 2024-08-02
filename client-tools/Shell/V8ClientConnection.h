@@ -205,6 +205,7 @@ class V8ClientConnection {
 
   fuerte::EventLoopService _loop;
   fuerte::ConnectionBuilder _builder;
+  fuerte::ConnectionBuilder _connectedBuilder;
   std::string _currentConnectionId;
   std::shared_ptr<fuerte::Connection> _connection;
   velocypack::Options _vpackOptions;
@@ -219,5 +220,7 @@ class V8ClientConnection {
   // -> "connect-to-leader" etc.
   std::unordered_map<std::string, std::shared_ptr<fuerte::Connection>>
       _connectionCache;
+  std::unordered_map<std::string, fuerte::ConnectionBuilder>
+      _connectionBuilderCache;
 };
 }  // namespace arangodb

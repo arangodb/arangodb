@@ -152,18 +152,32 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
   auto findConnection = [bypassCache, this]() {
     std::string id = connectionIdentifier(_builder);
     // we will be connected to a connection by that ID
+    std::string oldConnectionId = _currentConnectionId;
     _currentConnectionId = id;
     // check if we have a connection for that endpoint in our cache
     auto it = _connectionCache.find(id);
+    auto iit = _connectionBuilderCache.find(id);
     if (it != _connectionCache.end()) {
+      std::shared_ptr<fu::Connection> oldConnection;
+      auto haveOld = (_connection && _connection->state() == fu::Connection::State::Connected);
+      if (haveOld) {
+        _connection.swap(oldConnection);
+      }
       auto c = (*it).second;
       // cache hit. remove the connection from the cache and return it!
+      _connectedBuilder = (*iit).second;
       _connectionCache.erase(it);
+      if (haveOld) {
+        _connectionCache.emplace(oldConnectionId, oldConnection);
+      }
       if (!bypassCache) {
         return std::make_pair(c, true);
       }
     }
     // no connection found in cache. create a new one
+    // remember the current builder for later use
+    _connectionBuilderCache.emplace(id, _builder);
+    _connectedBuilder = _builder;
     return std::make_pair(_builder.connect(_loop), false);
   };
 
@@ -410,6 +424,7 @@ void V8ClientConnection::reconnect() {
       // cache for later reuse
       _connectionCache.emplace(oldConnectionId, oldConnection);
       _currentConnectionId = oldConnectionId;
+      _connectionBuilderCache.emplace(oldConnectionId, _connectedBuilder);
     }
   }
   oldConnection.reset();
@@ -457,15 +472,19 @@ void V8ClientConnection::connectHandle(
   std::lock_guard<std::recursive_mutex> guard(_lock);
   // check if we have a connection for that endpoint in our cache
   auto it = _connectionCache.find(handle);
+  auto iit = _connectionBuilderCache.find(handle);
   if (it != _connectionCache.end()) {
     auto c = (*it).second;
     // cache hit. remove the connection from the cache and return it!
     std::shared_ptr<fu::Connection> oldConnection;
-    std::string oldConnectionId = connectionIdentifier(_builder);
+    std::string oldConnectionId = _currentConnectionId;
     _connection.swap(oldConnection);
     _connectionCache.erase(it);
     _connectionCache.emplace(oldConnectionId, oldConnection);
     _currentConnectionId = handle;
+    _builder = (*iit).second;
+    _currentBuilder = (*iit).second;
+
     TRI_V8_RETURN_TRUE();
   } else {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
