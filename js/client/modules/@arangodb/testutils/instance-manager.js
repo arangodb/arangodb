@@ -284,6 +284,9 @@ class instanceManager {
       if (url !== undefined && arangod.url !== url && arangod.endpoint !== url) {
         return;
       }
+      if (shortName !== undefined && arangod.shortName !== shortName) {
+        return;
+      }
       arangod.debugClearFailAt(failurePoint, shortName);
     });
     this.reconnectMe();
