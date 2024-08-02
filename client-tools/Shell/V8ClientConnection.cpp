@@ -484,7 +484,7 @@ void V8ClientConnection::connectHandle(
     _connectionCache.emplace(oldConnectionId, oldConnection);
     _currentConnectionId = handle;
     _builder = (*iit).second;
-    _currentBuilder = (*iit).second;
+    _connectedBuilder = (*iit).second;
 
     TRI_V8_RETURN_TRUE();
   } else {
