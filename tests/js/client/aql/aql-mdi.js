@@ -86,21 +86,24 @@ function optimizerRuleMdi2dIndexTestSuite() {
     },
 
     test2: function () {
-      const query = aql`
-        FOR d IN ${col}
-          FILTER 0 <= d.x && d.x <= 1
-          RETURN d.x
-      `;
-      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-      const appliedRules = explainRes.plan.rules;
-      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-      assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-      assertTrue(appliedRules.includes(useIndexes));
-      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-      const executeRes = db._query(query.query, query.bindVars);
-      const res = executeRes.toArray();
-      res.sort();
-      assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
+      const queries = [
+        aql`FOR d IN ${col} FILTER 0 <= d.x && d.x <= 1 RETURN d.x`,
+        aql`FOR d IN ${col} FILTER IN_RANGE(d.x, 0, 1, true, true) RETURN d.x`,
+      ];
+
+      for (let i = 0; i < queries.length; ++i) {
+        const query = queries[i];
+        const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+        const appliedRules = explainRes.plan.rules;
+        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+        assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+        assertTrue(appliedRules.includes(useIndexes));
+        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+        const executeRes = db._query(query.query, query.bindVars);
+        const res = executeRes.toArray();
+        res.sort();
+        assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
+      }
     },
 
     test3: function () {
@@ -122,41 +125,45 @@ function optimizerRuleMdi2dIndexTestSuite() {
     },
 
     test4: function () {
-      const query = aql`
-        FOR d IN ${col}
-          FILTER 0 >= d.x
-          FILTER 10 <= d.y && d.y <= 16
-          RETURN d.x
-      `;
-      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-      const appliedRules = explainRes.plan.rules;
-      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-      assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-      assertTrue(appliedRules.includes(useIndexes));
-      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-      const executeRes = db._query(query.query, query.bindVars);
-      const res = executeRes.toArray();
-      res.sort();
-      assertEqual([], res);
+      const queries = [
+        aql`FOR d IN ${col} FILTER 0 >= d.x FILTER 10 <= d.y && d.y <= 16 RETURN d.x`,
+        aql`FOR d IN ${col} FILTER 0 >= d.x FILTER IN_RANGE(d.y, 10, 16, true, true) RETURN d.x`,
+      ];
+
+     for (let i = 0; i < queries.length; ++i) {
+        const query = queries[i];
+        const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+        const appliedRules = explainRes.plan.rules;
+        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+        assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+        assertTrue(appliedRules.includes(useIndexes));
+        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+        const executeRes = db._query(query.query, query.bindVars);
+        const res = executeRes.toArray();
+        res.sort();
+        assertEqual([], res);
+      }  
     },
 
     test5: function () {
-      const query = aql`
-        FOR d IN ${col}
-          FILTER 0 >= d.x || d.x >= 10
-          FILTER d.y >= 0 && d.y <= 11
-          RETURN d.x
-      `;
-      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
-      const appliedRules = explainRes.plan.rules;
-      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-      assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode"], nodeTypes);
-      assertTrue(appliedRules.includes(useIndexes));
-      //assertTrue(appliedRules.includes(removeFilterCoveredByIndex)); -- TODO
-      const executeRes = db._query(query.query, query.bindVars);
-      const res = executeRes.toArray();
-      res.sort();
-      assertEqual([-0.1, -0.2, -0.3, -0.4, -0.5, 0, 10, 10.1, 10.2, 10.3, 10.4, 10.5].sort(), res);
+      const queries = [
+        aql`FOR d IN ${col} FILTER 0 >= d.x || d.x >= 10 FILTER d.y >= 0 && d.y <= 11 RETURN d.x`,
+        aql`FOR d IN ${col} FILTER 0 >= d.x || d.x >= 10 FILTER IN_RANGE(d.y, 0, 11, true, true) RETURN d.x`,
+      ];
+
+     for (let i = 0; i < queries.length; ++i) {
+        const query = queries[i];
+        const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+        const appliedRules = explainRes.plan.rules;
+        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+        assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "ReturnNode"], nodeTypes);
+        assertTrue(appliedRules.includes(useIndexes));
+        //assertTrue(appliedRules.includes(removeFilterCoveredByIndex)); -- TODO
+        const executeRes = db._query(query.query, query.bindVars);
+        const res = executeRes.toArray();
+        res.sort();
+        assertEqual([-0.1, -0.2, -0.3, -0.4, -0.5, 0, 10, 10.1, 10.2, 10.3, 10.4, 10.5].sort(), res);
+      }
     },
 
     test6: function () {
@@ -321,7 +328,101 @@ function optimizerRuleMdi2dIndexTestSuite() {
       assertEqual(idx2.type, 'zkd');
 
       col.drop();
+    },
+
+    testInRangeNonStrict: function() {
+      const queries = [
+        aql`FOR d IN ${col} FILTER 0 < d.x && d.x < 1 RETURN d.x`,
+        aql`FOR d IN ${col} FILTER IN_RANGE(d.x, 0, 1, false, false) RETURN d.x`,
+      ];
+
+      for (let i = 0; i < queries.length; ++i) {
+        const query = queries[i];
+        const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+        const appliedRules = explainRes.plan.rules;
+        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+        assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+        assertTrue(appliedRules.includes(useIndexes));
+        assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
+        const executeRes = db._query(query.query, query.bindVars);
+        const res = executeRes.toArray();
+        res.sort();
+        assertEqual([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], res);
+      }
+    },
+
+    testInRangeLeftStrict: function() {
+     const queries = [
+        {q: aql`FOR d IN ${col} FILTER 0 <= d.x && d.x < 1 RETURN d.x`, inRange: false},
+        {q: aql`FOR d IN ${col} FILTER IN_RANGE(d.x, 0, 1, true, false) RETURN d.x`, inRange: true},
+      ];
+ 
+      for (let i = 0; i < queries.length; ++i) {
+        const query = queries[i].q;
+        const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+        const appliedRules = explainRes.plan.rules;
+        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+        assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+        if (queries[i].inRange) {
+          assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
+        } else {
+          assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+        }
+        assertTrue(appliedRules.includes(useIndexes));
+        const executeRes = db._query(query.query, query.bindVars);
+        const res = executeRes.toArray();
+        res.sort();
+        assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9], res);
+      }
+    },
+
+    testInRangeRightStrict: function() {
+     const queries = [
+        {q: aql`FOR d IN ${col} FILTER 0 < d.x && d.x <= 1 RETURN d.x`, inRange: false},
+        {q: aql`FOR d IN ${col} FILTER IN_RANGE(d.x, 0, 1, false, true) RETURN d.x`, inRange: true},
+      ];
+ 
+      for (let i = 0; i < queries.length; ++i) {
+        const query = queries[i].q;
+        const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+        const appliedRules = explainRes.plan.rules;
+        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+        assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+        if (queries[i].inRange) {
+          assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
+        } else {
+          assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+        }
+        assertTrue(appliedRules.includes(useIndexes));
+        const executeRes = db._query(query.query, query.bindVars);
+        const res = executeRes.toArray();
+        res.sort();
+        assertEqual([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
+      }
+    },
+
+    testInRangeStrict: function() {
+     const queries = [
+        aql`FOR d IN ${col} FILTER 0 <= d.x && d.x <= 1 RETURN d.x`,
+        aql`FOR d IN ${col} FILTER IN_RANGE(d.x, 0, 1, true, true) RETURN d.x`,
+      ];
+ 
+      for (let i = 0; i < queries.length; ++i) {
+        const query = queries[i];
+        const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+        const appliedRules = explainRes.plan.rules;
+        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+        assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
+        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+        assertTrue(appliedRules.includes(useIndexes));
+        const executeRes = db._query(query.query, query.bindVars);
+        const res = executeRes.toArray();
+        res.sort();
+        assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
+      }
     }
+
   };
 }
 

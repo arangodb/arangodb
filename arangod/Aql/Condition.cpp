@@ -1127,7 +1127,6 @@ void Condition::collectOverlappingMembers(
 
       if (safeToRemove) {
         toRemove.emplace(i);
-        continue;
       }
     }
   }

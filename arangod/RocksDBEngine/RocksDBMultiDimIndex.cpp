@@ -711,19 +711,18 @@ auto mdi::specializeCondition(Index const* index, aql::AstNode* condition,
             }
 
             {
-              auto nodeLeftStrict =
+              auto* nodeLeftStrict =
                   nodeFunctionCallMember->getMemberUnchecked(3);
               TEMPORARILY_UNLOCK_NODE(nodeLeftStrict);
               nodeLeftStrict->setBoolValue(true);
             }
-
             {
-              auto nodeRightStrict =
+              auto* nodeRightStrict =
                   nodeFunctionCallMember->getMemberUnchecked(4);
               TEMPORARILY_UNLOCK_NODE(nodeRightStrict);
               nodeRightStrict->setBoolValue(true);
-              children.emplace_back(op);
             }
+            children.emplace_back(op);
           }
           break;
         }
