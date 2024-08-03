@@ -2272,8 +2272,8 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
       uint32_t pos = 0;
 
       for (auto const& level : levels) {
-        std::string output =
-            level.first + "=" + Logger::translateLogLevel(level.second);
+        std::string output = absl::StrCat(
+            level.first, "=", Logger::translateLogLevel(level.second));
         v8::Handle<v8::String> val = TRI_V8_STD_STRING(isolate, output);
 
         object->Set(context, pos++, val).FromMaybe(false);
@@ -2286,7 +2286,7 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_RETURN_UNDEFINED();
     }
   } else {
-    auto level = Logger::translateLogLevel(Logger::logLevel());
+    std::string level{Logger::translateLogLevel(Logger::logLevel())};
     TRI_V8_RETURN_STD_STRING(level);
   }
 

@@ -1475,14 +1475,14 @@ std::string const& TRI_vocbase_t::shardingPrototypeName() const {
       return StaticStrings::UsersCollection;
     case ShardingPrototype::Graphs:
       // Specifically set defaults should win
-      return StaticStrings::GraphCollection;
+      return StaticStrings::GraphsCollection;
     case ShardingPrototype::Undefined:
       if (isSystem()) {
         // The sharding Prototype for system databases is always the users
         return StaticStrings::UsersCollection;
       } else {
         // All others should follow _graphs
-        return StaticStrings::GraphCollection;
+        return StaticStrings::GraphsCollection;
       }
   }
 }

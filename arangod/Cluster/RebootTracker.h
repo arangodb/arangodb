@@ -26,7 +26,6 @@
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Containers/FlatHashMap.h"
-#include "Scheduler/Scheduler.h"
 
 #include <string>
 #include <function2.hpp>
@@ -36,6 +35,8 @@
 #include <mutex>
 
 namespace arangodb {
+
+class Scheduler;
 
 namespace velocypack {
 

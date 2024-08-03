@@ -455,6 +455,11 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindMissing : function () {
+      // when specifying an empty collection name, using a bind parameter or without a 
+      // bind parameter, we should get "illegal name" back
+      assertQueryError(errors.ERROR_ARANGO_ILLEGAL_NAME.code, "FOR doc IN @@collection RETURN doc", { "@collection": "" });
+      assertQueryError(errors.ERROR_ARANGO_ILLEGAL_NAME.code, "FOR doc IN `` RETURN doc", { });
+
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR u IN [ 1, 2 ] RETURN @", { });
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR u IN [ 1, 2 ] RETURN @@", { });
       assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "FOR u IN [ 1, 2 ] RETURN @value", { }); 

@@ -33,8 +33,6 @@
 
 namespace arangodb {
 
-class RocksDBVPackComparator;
-
 struct RocksDBOptionsProvider {
   RocksDBOptionsProvider();
   virtual ~RocksDBOptionsProvider() = default;
@@ -44,6 +42,10 @@ struct RocksDBOptionsProvider {
   rocksdb::BlockBasedTableOptions const& getTableOptions() const;
   virtual rocksdb::ColumnFamilyOptions getColumnFamilyOptions(
       RocksDBColumnFamilyManager::Family family) const;
+  void resetVPackComparator(
+      std::unique_ptr<rocksdb::Comparator> newComparator) {
+    _vpackCmp = std::move(newComparator);
+  }
 
   virtual bool useFileLogging() const noexcept { return false; }
   virtual bool limitOpenFilesAtStartup() const noexcept { return false; }
@@ -58,7 +60,7 @@ struct RocksDBOptionsProvider {
 
  private:
   /// arangodb comparator - required because of vpack in keys
-  std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
+  std::unique_ptr<rocksdb::Comparator> _vpackCmp;
   mutable std::optional<rocksdb::Options> _options;
   mutable std::optional<rocksdb::BlockBasedTableOptions> _tableOptions;
 };
