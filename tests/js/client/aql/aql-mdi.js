@@ -509,7 +509,6 @@ function optimizerRuleMdi2dIndexTestSuite() {
           .filter((n) => !["GatherNode", "RemoteNode"].includes(n));
         assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
         assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
         assertTrue(appliedRules.includes(useIndexes));
         const executeRes = db._query(query.query, query.bindVars);
         const res = executeRes.toArray();

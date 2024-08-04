@@ -1015,9 +1015,7 @@ void Condition::collectOverlappingMembers(
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_LEFT, nullptr);
 
-          bool canRemoveVar =
-              canRemove(plan, current, otherAndNode, isFromTraverser);
-          if (canRemoveVar) {
+          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
             toRemove.emplace(i);
           }
         }
@@ -1041,9 +1039,6 @@ void Condition::collectOverlappingMembers(
 
     if (operand->type == NODE_TYPE_FCALL &&
         functions::getFunctionName(*operand) == "IN_RANGE") {
-      if (andNode == nullptr || otherAndNode == nullptr) {
-        continue;
-      }
       auto* arrayNode = andNode;
       auto* otherArrayNode = otherAndNode;
       while (arrayNode != nullptr && otherArrayNode != nullptr) {
@@ -1053,8 +1048,11 @@ void Condition::collectOverlappingMembers(
         arrayNode = arrayNode->getMember(0);
         otherArrayNode = otherArrayNode->getMember(0);
       }
+
+      if (andNode == nullptr || otherAndNode == nullptr) {
+        continue;
+      }
       if (arrayNode->type != otherArrayNode->type) {
-        // Not the same type
         continue;
       }
       arrayNode = arrayNode->getMember(0);
@@ -1065,8 +1063,9 @@ void Condition::collectOverlappingMembers(
         continue;
       }
 
-      // Check if the checked element from InRangeFunction is part of the index
-      auto* firstElemInRangeFunction = arrayNode->getMember(0);
+      // Check if the checked element from IN_RANGE function is part of the
+      // index
+      auto const* firstElemInRangeFunction = arrayNode->getMember(0);
       if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
           !firstElemInRangeFunction->isAttributeAccessForVariable(
               result, isFromTraverser) ||
@@ -1080,8 +1079,9 @@ void Condition::collectOverlappingMembers(
 
       bool safeToRemove = true;
       for (size_t i = 0; i < arrayNode->numMembers() && safeToRemove; ++i) {
-        auto const* functionCallNodeElement = arrayNode->getMember(i);
-        auto const* functionCallNodeOtherElement = otherArrayNode->getMember(i);
+        auto const* functionCallNodeElement = arrayNode->getMemberUnchecked(i);
+        auto const* functionCallNodeOtherElement =
+            otherArrayNode->getMemberUnchecked(i);
 
         if (functionCallNodeElement->type !=
             functionCallNodeOtherElement->type) {
