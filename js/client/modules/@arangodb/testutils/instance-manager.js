@@ -897,6 +897,7 @@ class instanceManager {
         const start = Date.now();
         !rc && Date.now() < start + seconds(60) && checkAllAlive();
       ) {
+        this.reconnect();
         rc = this._checkServersGOOD();
         if (first) {
           if (!this.options.noStartStopLogs) {
