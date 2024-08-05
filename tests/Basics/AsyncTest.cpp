@@ -1,5 +1,6 @@
 #include "Basics/async.h"
 #include "Basics/coroutine/registry.h"
+#include "Basics/coroutine/thread_registry.h"
 #include <gtest/gtest.h>
 #include <thread>
 #include <deque>
@@ -158,6 +159,12 @@ using MyTypes = ::testing::Types<
 TYPED_TEST_SUITE(AsyncTest, MyTypes);
 
 using namespace arangodb;
+
+TEST(AsyncTest, thread_requires_a_coroutine_registry) {
+  arangodb::coroutine::Registry registry;
+  auto coro = []() -> async<int> { co_return 1; };
+  EXPECT_EXIT(coro(), testing::KilledBySignal(SIGSEGV), "");
+}
 
 TYPED_TEST(AsyncTest, async_return) {
   using ValueType = TypeParam::second_type;
@@ -348,4 +355,30 @@ TYPED_TEST(AsyncTest, multiple_suspension_points) {
   EXPECT_EQ(awaitable.await_resume(), 0);
 }
 
-// TODO test that coroutines cannot be called after beeing destroyed
+TYPED_TEST(AsyncTest, promises_are_only_removed_after_garbage_collection) {
+  using ValueType = TypeParam::second_type;
+
+  auto coro = []() -> async<ValueType> { co_return 12; };
+
+  {
+    coro().reset();
+
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
+    arangodb::coroutine::thread_registry->garbage_collect();
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+  }
+  {
+    std::move(coro()).operator co_await().await_resume();
+
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
+    arangodb::coroutine::thread_registry->garbage_collect();
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+  }
+  {
+    { coro(); }
+
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
+    arangodb::coroutine::thread_registry->garbage_collect();
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+  }
+}

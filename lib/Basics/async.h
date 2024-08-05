@@ -3,6 +3,10 @@
 #include "Basics/coroutine/thread_registry.h"
 #include "Basics/coroutine/promise.h"
 #include "Basics/expected.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
 #include <coroutine>
 #include <atomic>
 #include <stdexcept>
@@ -57,10 +61,15 @@ struct async_promise_base : coroutine::PromiseInList {
   }
 
   auto destroy() noexcept -> void override {
-    // TODO do some exception handling (add some logging)
-    std::coroutine_handle<promise_type>::from_promise(
-        *static_cast<promise_type*>(this))
-        .destroy();
+    try {
+      std::coroutine_handle<promise_type>::from_promise(
+          *static_cast<promise_type*>(this))
+          .destroy();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("6784f", WARN, Logger::CRASH)
+          << "caught exception when destorying coroutine promise: "
+          << ex.what();
+    }
   }
 
   std::atomic<void*> _continuation = nullptr;
@@ -130,10 +139,7 @@ struct async {
   bool valid() const noexcept { return _handle != nullptr; }
   operator bool() const noexcept { return valid(); }
 
-  ~async() {
-    // TODO add to free list
-    reset();
-  }
+  ~async() { reset(); }
 
   explicit async(std::coroutine_handle<promise_type> h) : _handle(h) {}
 
