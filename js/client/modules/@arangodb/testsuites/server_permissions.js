@@ -292,7 +292,6 @@ function server_parameters(options) {
 }
 
 function server_secrets(options) {
-
   let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
   fs.makeDirectory(secretsDir);
   let secretFiles = [

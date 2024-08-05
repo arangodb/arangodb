@@ -152,6 +152,7 @@ class instance {
     }
     this.JWT = null;
     this.jwtFiles = null;
+    this.jwtSecrets = [];
     this.sanHandler = new sanHandler('arangod', this.options);
 
     this._makeArgsArangod();
@@ -332,7 +333,13 @@ class instance {
     }
     else if (this.options.hasOwnProperty('jwtFiles')) {
       this.jwtFiles = this.options['jwtFiles'];
-    // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
+      // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
+      this.jwtFiles.forEach(file => {
+        this.jwtSecrets.push(fs.read(file));
+      });
+    }
+    if (this.jwtSecrets.length > 0) {
+      this.JWT = this.jwtSecrets[0];
     }
 
     if (this.options.hasOwnProperty("replicationVersion")) {
