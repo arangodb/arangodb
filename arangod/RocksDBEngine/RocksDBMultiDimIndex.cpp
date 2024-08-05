@@ -377,8 +377,8 @@ auto boundsForIterator(RocksDBMdiIndexBase const* index,
   for (auto&& [idx, field] : enumerate(index->fields())) {
     if (auto it = extractedBounds.find(idx); it != extractedBounds.end()) {
       auto const& bounds = it->second;
-      min[idx] = bounds.lower.bound_value.value_or(ByteStringNegInfinity);
-      max[idx] = bounds.upper.bound_value.value_or(ByteStringPosInfinity);
+      min[idx] = bounds.lower.value_or(ByteStringNegInfinity);
+      max[idx] = bounds.upper.value_or(ByteStringPosInfinity);
     } else {
       min[idx] = ByteStringNegInfinity;
       max[idx] = ByteStringPosInfinity;
@@ -433,9 +433,9 @@ void useAsBound(size_t idx, aql::AstNode* bound_value, bool isLower,
 
   auto& bounds = ensureBounds(idx);
   if (isLower) {
-    bounds.lower.bound_value = nodeExtractDouble(bound_value);
+    bounds.lower = nodeExtractDouble(bound_value);
   } else {
-    bounds.upper.bound_value = nodeExtractDouble(bound_value);
+    bounds.upper = nodeExtractDouble(bound_value);
   }
 }
 

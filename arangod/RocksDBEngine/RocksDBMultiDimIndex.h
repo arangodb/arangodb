@@ -128,12 +128,8 @@ class RocksDBUniqueMdiIndex final : public RocksDBMdiIndexBase {
 namespace mdi {
 
 struct ExpressionBounds {
-  struct Bound {
-    std::optional<zkd::byte_string> bound_value;
-  };
-
-  Bound lower;
-  Bound upper;
+  std::optional<zkd::byte_string> lower;
+  std::optional<zkd::byte_string> upper;
 };
 
 void extractBoundsFromCondition(
