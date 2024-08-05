@@ -248,7 +248,7 @@ class instanceManager {
         skipped.push("url");
         return;
       }
-      if (shortName !== undefined && this.arangod.shortName !== shortName) {
+      if (shortName !== undefined && arangod.shortName !== shortName) {
         skipped.push("shortName");
         return false;
       }
