@@ -31,6 +31,7 @@ const jsunity = require('jsunity');
 if (runSetup === true) {
   'use strict';
   // intentionall do nothing, so we will see a normal shutdown!
+  global.instanceManager.shutdownInstance();
   return 0;
 }
 
