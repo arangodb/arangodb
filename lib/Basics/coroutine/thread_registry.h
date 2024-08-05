@@ -4,17 +4,14 @@
 #include "promise.h"
 
 #include <atomic>
-#include <functional>
 #include <memory>
 #include <mutex>
-#include <source_location>
-#include <unordered_set>
 #include <thread>
 
 namespace arangodb::coroutine {
 
 /**
-   Registry of all active promises on this thread.
+   Registry of all active coroutine promises on this thread.
  */
 inline thread_local ThreadRegistry* thread_registry;
 

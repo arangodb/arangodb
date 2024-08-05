@@ -2,19 +2,34 @@
 
 #include "thread_registry.h"
 
-#include <functional>
-
 namespace arangodb::coroutine {
 
-// the single owner of all promise registries
+/**
+   Registry of all active coroutines.
+
+   Includes a list of coroutine thread registries, one for each initialized
+   thread.
+ */
 struct Registry {
-  // all threads can call this
-  auto add_thread() -> void {
+  /**
+     Initializes the coroutine thread registry of the current thread and adds it
+     to this registry.
+
+     Each thread needs to call this once before executing any async<T>
+     coroutine.
+   */
+  auto initialize_current_thread() -> void {
     auto guard = std::lock_guard(mutex);
     registries.push_back(std::make_shared<ThreadRegistry>());
     thread_registry = registries.back().get();
   }
 
+  /**
+     Executes a function on each coroutine in the registry.
+
+     Can be called from any thread. It makes sure that all
+     items stay valid during iteration (i.e. are not deleted in the meantime).
+   */
   template<typename F>
   requires requires(F f, PromiseInList* promise) { {f(promise)}; }
   auto for_promise(F&& function) -> void {

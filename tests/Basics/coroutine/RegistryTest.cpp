@@ -64,6 +64,7 @@ struct CoroutineRegistryTest : ::testing::Test {
 using CoroutineRegistryDeathTest = CoroutineRegistryTest;
 
 TEST_F(CoroutineRegistryDeathTest, thread_requires_a_coroutine_registry) {
+  GTEST_FLAG_SET(death_test_style, "threadsafe");
   Registry registry;
 
   EXPECT_EXIT(coroutine_test::foo(), testing::KilledBySignal(SIGSEGV), "");
@@ -71,7 +72,7 @@ TEST_F(CoroutineRegistryDeathTest, thread_requires_a_coroutine_registry) {
 
 TEST_F(CoroutineRegistryTest, registers_one_coroutine) {
   Registry registry;
-  registry.add_thread();
+  registry.initialize_current_thread();
 
   auto coro = coroutine_test::foo();
 
@@ -84,10 +85,10 @@ TEST_F(CoroutineRegistryTest, registers_one_coroutine) {
 
 TEST_F(CoroutineRegistryTest, registers_coroutines_running_on_other_threads) {
   Registry registry;
-  registry.add_thread();
+  registry.initialize_current_thread();
 
   std::jthread([&]() {
-    registry.add_thread();
+    registry.initialize_current_thread();
 
     auto coro = coroutine_test::foo();
 
@@ -102,7 +103,7 @@ TEST_F(CoroutineRegistryTest, registers_coroutines_running_on_other_threads) {
 TEST_F(CoroutineRegistryTest,
        iterates_over_coroutines_on_same_thread_in_reverse_order) {
   Registry registry;
-  registry.add_thread();
+  registry.initialize_current_thread();
   auto foo = coroutine_test::foo();
   auto bar = coroutine_test::bar();
 
@@ -121,11 +122,11 @@ TEST_F(CoroutineRegistryTest,
 
 TEST_F(CoroutineRegistryTest, iterates_over_coroutines_on_differen_threads) {
   Registry registry;
-  registry.add_thread();
+  registry.initialize_current_thread();
   { coroutine_test::foo(); }
 
   std::jthread([&]() {
-    registry.add_thread();
+    registry.initialize_current_thread();
     auto coro = coroutine_test::bar();
 
     std::vector<std::string> function_names;
@@ -147,7 +148,7 @@ TEST_F(CoroutineRegistryTest, iterates_over_coroutines_on_differen_threads) {
 TEST_F(CoroutineRegistryTest,
        iteration_after_executed_garbage_collection_is_empty) {
   Registry registry;
-  registry.add_thread();
+  registry.initialize_current_thread();
 
   auto coro = coroutine_test::foo();
 

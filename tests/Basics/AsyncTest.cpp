@@ -56,7 +56,7 @@ struct ConcurrentNoWait {
   }
   ConcurrentNoWait(arangodb::coroutine::Registry* registry)
       : _thread([&, registry] {
-          registry->add_thread();
+          registry->initialize_current_thread();
           bool stopping = false;
           while (true) {
             std::coroutine_handle<> handle;
@@ -138,7 +138,7 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
   AsyncTest() : wait{&coroutine_registry} {}
   void SetUp() override {
     InstanceCounterValue::instanceCounter = 0;
-    coroutine_registry.add_thread();
+    coroutine_registry.initialize_current_thread();
   }
 
   void TearDown() override {
