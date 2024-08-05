@@ -173,7 +173,7 @@ class instance {
   get pid() { return this.#pid; }
 
   _flushPid() {
-      if (this.pid) {
+      if (this.pid === null) {
         return;
       }
       this.exitStatus = null;
