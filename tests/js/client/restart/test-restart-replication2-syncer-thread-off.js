@@ -1,3 +1,4 @@
+/* global arango */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -40,9 +41,9 @@ const disableMaintenanceMode = function () {
   }
 };
 const enableMaintenanceMode = function () {
-  const response = db._connection.PUT('/_admin/cluster/maintenance', '"on"');
-  assertIdentical(false, response.error);
-  assertIdentical(200, response.code);
+  const response = arango.PUT('/_admin/cluster/maintenance', '"on"');
+  assertIdentical(false, response.error, JSON.stringify(response));
+  assertIdentical(200, response.code, JSON.stringify(response));
   if (response.hasOwnProperty('warning')) {
     console.warn(response.warning);
   }
