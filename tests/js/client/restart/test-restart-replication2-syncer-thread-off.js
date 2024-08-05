@@ -33,7 +33,7 @@ const {getCtrlDBServers} = require('@arangodb/test-helper');
 const {sleep, time} = require('internal');
 
 const disableMaintenanceMode = function () {
-  const response = db._connection.PUT('/_admin/cluster/maintenance', '"off"');
+  const response = arango.PUT('/_admin/cluster/maintenance', '"off"');
   assertIdentical(false, response.error, JSON.stringify(response));
   assertIdentical(200, response.code, JSON.stringify(response));
   if (response.hasOwnProperty('warning')) {
@@ -148,6 +148,7 @@ function testSuite() {
     },
 
     testRestartDisabled: function () {
+      let conn = arango.getConnectionHandle();
       db._createDatabase(databaseNameR2, {'replicationVersion': '2'});
 
       // It should not be possible to start a cluster with the syncer thread off, if there are replication2 databases
@@ -181,6 +182,7 @@ function testSuite() {
         assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
       }
 
+      arango.connectHandle(conn);
       disableMaintenanceMode();
     }
   };
