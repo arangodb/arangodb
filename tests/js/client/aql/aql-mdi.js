@@ -397,7 +397,7 @@ function optimizerRuleMdi2dIndexTestSuite() {
       col.drop();
     },
 
-    testInRangeNonStrict: function () {
+    testInRangeStrict: function () {
       const queries = [
         aql`FOR d IN ${col} FILTER 0 < d.x && d.x < 1 RETURN d.x`,
         aql`FOR d IN ${col} FILTER IN_RANGE(d.x, 0, 1, false, false) RETURN d.x`,
@@ -415,6 +415,13 @@ function optimizerRuleMdi2dIndexTestSuite() {
         assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
         assertTrue(appliedRules.includes(useIndexes));
         assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
+
+        const indexNodes = explainRes.plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(indexNodes.length, 1);
+
+        const indexNode = indexNodes[0];
+        assertNotEqual(indexNode.filter, undefined);
+
         const executeRes = db._query(query.query, query.bindVars);
         const res = executeRes.toArray();
         res.sort();
@@ -422,7 +429,7 @@ function optimizerRuleMdi2dIndexTestSuite() {
       }
     },
 
-    testInRangeLeftStrict: function () {
+    testInRangeRightStrict: function () {
       const queries = [
         {
           q: aql`FOR d IN ${col} FILTER 0 <= d.x && d.x < 1 RETURN d.x`,
@@ -450,6 +457,13 @@ function optimizerRuleMdi2dIndexTestSuite() {
           assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
         }
         assertTrue(appliedRules.includes(useIndexes));
+
+        const indexNodes = explainRes.plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(indexNodes.length, 1);
+
+        const indexNode = indexNodes[0];
+        assertNotEqual(indexNode.filter, undefined);
+
         const executeRes = db._query(query.query, query.bindVars);
         const res = executeRes.toArray();
         res.sort();
@@ -457,7 +471,7 @@ function optimizerRuleMdi2dIndexTestSuite() {
       }
     },
 
-    testInRangeRightStrict: function () {
+    testInRangeLefttStrict: function () {
       const queries = [
         {
           q: aql`FOR d IN ${col} FILTER 0 < d.x && d.x <= 1 RETURN d.x`,
@@ -485,6 +499,13 @@ function optimizerRuleMdi2dIndexTestSuite() {
           assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
         }
         assertTrue(appliedRules.includes(useIndexes));
+
+        const indexNodes = explainRes.plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(indexNodes.length, 1);
+
+        const indexNode = indexNodes[0];
+        assertNotEqual(indexNode.filter, undefined);
+
         const executeRes = db._query(query.query, query.bindVars);
         const res = executeRes.toArray();
         res.sort();
@@ -492,7 +513,7 @@ function optimizerRuleMdi2dIndexTestSuite() {
       }
     },
 
-    testInRangeStrict: function () {
+    testInRange: function () {
       const queries = [
         aql`FOR d IN ${col} FILTER 0 <= d.x && d.x <= 1 RETURN d.x`,
         aql`FOR d IN ${col} FILTER IN_RANGE(d.x, 0, 1, true, true) RETURN d.x`,
@@ -512,6 +533,13 @@ function optimizerRuleMdi2dIndexTestSuite() {
         assertTrue(appliedRules.includes(useIndexes));
         const executeRes = db._query(query.query, query.bindVars);
         const res = executeRes.toArray();
+
+        const indexNodes = explainRes.plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(indexNodes.length, 1);
+
+        const indexNode = indexNodes[0];
+        assertEqual(indexNode.filter, undefined);
+
         res.sort();
         assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
       }
