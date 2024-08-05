@@ -24,7 +24,7 @@
 
 #include <bitset>
 #include <cstring>
-#include <cstring>
+#include <thread>
 
 #include <fmt/core.h>
 #include <velocypack/Builder.h>
@@ -345,37 +345,49 @@ static auto compareAqlValue(VPackHelperRandomTest::Number const& left,
 }
 
 TEST_F(VPackHelperRandomTest, test_vpackcmps) {
-  SCOPED_TRACE(fmt::format("seed={}", seed));
-  constexpr auto num = 10000;
-  auto numbers = std::multiset<Number>{};
-  for (auto i = 0; i < num; ++i) {
-    auto n = genNumber();
-    // TODO generate and add a few numbers near `n`, also of different types
-    numbers.emplace(n);
-  }
-
-  auto groupedNumbers = std::vector<std::vector<Number>>();
-
-  auto last = std::optional<Number>();
-  for (auto const& n : numbers) {
-    if (last.has_value() and (n <=> *last) == 0) {
-      groupedNumbers.back().emplace_back(n);
-    } else {
-      groupedNumbers.emplace_back(std::vector({n}));
+  auto lambda = [&](std::uint64_t seed) {
+    RandomGenerator::seed(seed);
+    SCOPED_TRACE(fmt::format("seed={}", seed));
+    constexpr auto num = 10000;
+    auto numbers = std::multiset<Number>{};
+    for (auto i = 0; i < num; ++i) {
+      auto n = genNumber();
+      // TODO generate and add a few numbers near `n`, also of different types
+      numbers.emplace(n);
     }
-    last = n;
-  }
 
-  for (auto const& [li, leftGroup] : enumerate(groupedNumbers)) {
-    for (auto const& left : leftGroup) {
-      for (auto const& [ri, rightGroup] : enumerate(groupedNumbers)) {
-        for (auto const& right : rightGroup) {
-          EXPECT_EQ(compareVPack(left, right), li <=> ri)
-              << left << " " << right;
-          EXPECT_EQ(compareAqlValue(left, right), li <=> ri)
-              << left << " " << right;
+    auto groupedNumbers = std::vector<std::vector<Number>>();
+
+    auto last = std::optional<Number>();
+    for (auto const& n : numbers) {
+      if (last.has_value() and (n <=> *last) == 0) {
+        groupedNumbers.back().emplace_back(n);
+      } else {
+        groupedNumbers.emplace_back(std::vector({n}));
+      }
+      last = n;
+    }
+
+    for (auto const& [li, leftGroup] : enumerate(groupedNumbers)) {
+      for (auto const& left : leftGroup) {
+        for (auto const& [ri, rightGroup] : enumerate(groupedNumbers)) {
+          for (auto const& right : rightGroup) {
+            EXPECT_EQ(compareVPack(left, right), li <=> ri)
+                << left << " " << right;
+            EXPECT_EQ(compareAqlValue(left, right), li <=> ri)
+                << left << " " << right;
+          }
         }
       }
     }
-  }
+  };
+
+  constexpr auto numberOfThreads = 8;
+
+  std::vector<std::jthread> _threads;
+  _threads.reserve(numberOfThreads);
+  std::generate_n(std::back_inserter(_threads), numberOfThreads,
+                  [&, i = 0]() mutable {
+                    return std::jthread{lambda, seed + i++};
+                  });
 }
