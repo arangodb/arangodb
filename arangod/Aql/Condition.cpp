@@ -951,6 +951,100 @@ AstNode* Condition::createSimpleCondition(AstNode* node) const {
   return orNode;
 }
 
+bool areInRangeCallsIdentical(auto const* arrayNode, auto const* otherArrayNode,
+                              bool isFromTraverser) {
+  for (size_t i = 0; i < arrayNode->numMembers(); ++i) {
+    auto const* functionCallNodeElement = arrayNode->getMemberUnchecked(i);
+    auto const* functionCallNodeOtherElement =
+        otherArrayNode->getMemberUnchecked(i);
+
+    if (functionCallNodeElement->type != functionCallNodeOtherElement->type) {
+      return false;
+    }
+
+    switch (functionCallNodeElement->type) {
+      case NODE_TYPE_ATTRIBUTE_ACCESS: {
+        std::pair<Variable const*, std::vector<basics::AttributeName>>
+            attributeAccessForVariableResult;
+        std::pair<Variable const*, std::vector<basics::AttributeName>>
+            attributeAccessForVariableOtherResult;
+
+        if (!functionCallNodeElement->isAttributeAccessForVariable(
+                attributeAccessForVariableResult, isFromTraverser) ||
+            !functionCallNodeOtherElement->isAttributeAccessForVariable(
+                attributeAccessForVariableOtherResult, isFromTraverser) ||
+            attributeAccessForVariableResult.first !=
+                attributeAccessForVariableOtherResult.first ||
+            !basics::AttributeName::isIdentical(
+                attributeAccessForVariableResult.second,
+                attributeAccessForVariableOtherResult.second, false)) {
+          return false;
+        }
+        break;
+      }
+      case NODE_TYPE_VALUE: {
+        if (aql::compareAstNodes(functionCallNodeElement,
+                                 functionCallNodeOtherElement, true) != 0) {
+          return false;
+        }
+        break;
+      }
+      default: {
+        // We are being extremely pessimistic, meaning if we encounter
+        // anything else we will not remove the expression
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool canInRangeBeRemoved(auto const* andNode, auto const* otherAndNode,
+                         bool isFromTraverser, Variable const* variable,
+                         Index const* index) {
+  auto* arrayNode = andNode;
+  auto* otherArrayNode = otherAndNode;
+  while (arrayNode != nullptr && otherArrayNode != nullptr) {
+    if (arrayNode->type == NODE_TYPE_FCALL) {
+      break;
+    }
+    arrayNode = arrayNode->getMember(0);
+    otherArrayNode = otherArrayNode->getMember(0);
+  }
+
+  if (andNode == nullptr || otherAndNode == nullptr) {
+    return false;
+  }
+  if (arrayNode->type != otherArrayNode->type) {
+    return false;
+  }
+  arrayNode = arrayNode->getMember(0);
+  otherArrayNode = otherArrayNode->getMember(0);
+
+  TRI_ASSERT(arrayNode->numMembers() == 5);
+  if (arrayNode->numMembers() != otherArrayNode->numMembers()) {
+    return false;
+  }
+
+  // Check if the checked element from IN_RANGE function is part of the
+  // index
+  auto const* firstElemInRangeFunction = arrayNode->getMember(0);
+  std::pair<Variable const*, std::vector<basics::AttributeName>> result;
+  if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
+      !firstElemInRangeFunction->isAttributeAccessForVariable(
+          result, isFromTraverser) ||
+      result.first != variable ||
+      !basics::AttributeName::isIdentical(result.second, index->fields()[0],
+                                          false)) {
+    ::clearAttributeAccess(result);
+    return false;
+  }
+  ::clearAttributeAccess(result);
+
+  return areInRangeCallsIdentical(arrayNode, otherArrayNode, isFromTraverser);
+}
+
 void Condition::collectOverlappingMembers(
     ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
     AstNode const* otherAndNode, containers::HashSet<size_t>& toRemove,
@@ -1039,93 +1133,8 @@ void Condition::collectOverlappingMembers(
 
     if (operand->type == NODE_TYPE_FCALL &&
         functions::getFunctionName(*operand) == "IN_RANGE") {
-      auto* arrayNode = andNode;
-      auto* otherArrayNode = otherAndNode;
-      while (arrayNode != nullptr && otherArrayNode != nullptr) {
-        if (arrayNode->type == NODE_TYPE_FCALL) {
-          break;
-        }
-        arrayNode = arrayNode->getMember(0);
-        otherArrayNode = otherArrayNode->getMember(0);
-      }
-
-      if (andNode == nullptr || otherAndNode == nullptr) {
-        continue;
-      }
-      if (arrayNode->type != otherArrayNode->type) {
-        continue;
-      }
-      arrayNode = arrayNode->getMember(0);
-      otherArrayNode = otherArrayNode->getMember(0);
-
-      TRI_ASSERT(arrayNode->numMembers() == 5);
-      if (arrayNode->numMembers() != otherArrayNode->numMembers()) {
-        continue;
-      }
-
-      // Check if the checked element from IN_RANGE function is part of the
-      // index
-      auto const* firstElemInRangeFunction = arrayNode->getMember(0);
-      if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
-          !firstElemInRangeFunction->isAttributeAccessForVariable(
-              result, isFromTraverser) ||
-          result.first != variable ||
-          !basics::AttributeName::isIdentical(result.second, index->fields()[0],
-                                              false)) {
-        ::clearAttributeAccess(result);
-        continue;
-      }
-      ::clearAttributeAccess(result);
-
-      bool safeToRemove = true;
-      for (size_t i = 0; i < arrayNode->numMembers() && safeToRemove; ++i) {
-        auto const* functionCallNodeElement = arrayNode->getMemberUnchecked(i);
-        auto const* functionCallNodeOtherElement =
-            otherArrayNode->getMemberUnchecked(i);
-
-        if (functionCallNodeElement->type !=
-            functionCallNodeOtherElement->type) {
-          safeToRemove = false;
-          break;
-        }
-
-        switch (functionCallNodeElement->type) {
-          case NODE_TYPE_ATTRIBUTE_ACCESS: {
-            std::pair<Variable const*, std::vector<basics::AttributeName>>
-                attributeAccessForVariableResult;
-            std::pair<Variable const*, std::vector<basics::AttributeName>>
-                attributeAccessForVariableOtherResult;
-
-            if (!functionCallNodeElement->isAttributeAccessForVariable(
-                    attributeAccessForVariableResult, isFromTraverser) ||
-                !functionCallNodeOtherElement->isAttributeAccessForVariable(
-                    attributeAccessForVariableOtherResult, isFromTraverser) ||
-                attributeAccessForVariableResult.first !=
-                    attributeAccessForVariableOtherResult.first ||
-                !basics::AttributeName::isIdentical(
-                    attributeAccessForVariableResult.second,
-                    attributeAccessForVariableOtherResult.second, false)) {
-              safeToRemove = false;
-            }
-            break;
-          }
-          case NODE_TYPE_VALUE: {
-            if (aql::compareAstNodes(functionCallNodeElement,
-                                     functionCallNodeOtherElement, true) != 0) {
-              safeToRemove = false;
-            }
-            break;
-          }
-          default: {
-            // We are being extremely pessimistic, meaning if we encounter
-            // anything else we will not remove the expression
-            safeToRemove = false;
-            break;
-          }
-        }
-      }
-
-      if (safeToRemove) {
+      if (canInRangeBeRemoved(andNode, otherAndNode, isFromTraverser, variable,
+                              index)) {
         toRemove.emplace(i);
       }
     }
