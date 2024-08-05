@@ -222,7 +222,7 @@ class instanceManager {
       } catch (ex) {
         print(`${RED}${Date()} failed to reconnect handle ${this.connectionHandle} ${ex} - trying conventional reconnect.${RESET}`);
       }
-    } 
+    }
     return arango.reconnect(this.connectedEndpoint, this.dbName, this.userName, '');
   }
   debugCanUseFailAt() {
@@ -1096,8 +1096,8 @@ class instanceManager {
       let deadline = time() + seconds(60);
       arango.reconnect(this.endpoint,
                        '_system',
-                       this.options.username,
-                       this.options.password,
+                       `${this.options.username}`,
+                       `${this.options.password}`,
                        time() < deadline,
                        this.JWT);
       return true;
