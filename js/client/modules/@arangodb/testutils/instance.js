@@ -681,10 +681,10 @@ class instance {
           if (this.JWT) {
             print(Date() + " reconnecting with JWT " + this.url);
             if (arango.reconnect(this.endpoint,
-                                   '_system',
-                                   this.options.username,
-                                   this.options.password,
-                                   true,
+                                 '_system',
+                                 `${this.options.username}`,
+                                 this.options.password,
+                                 true,
                                  this.JWT)) {
               this.connectionHandle = arango.getConnectionHandle();
             }
@@ -692,7 +692,7 @@ class instance {
             print(`${Date()} ${this.name} reconnecting ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
-                                 this.options.username,
+                                 `${this.options.username}`,
                                  this.options.password,
                                  true)) {
               this.connectionHandle = arango.getConnectionHandle();
