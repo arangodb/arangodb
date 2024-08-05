@@ -62,7 +62,7 @@ struct async_promise_base : coroutine::PromiseInList {
           *static_cast<promise_type*>(this))
           .destroy();
     } catch (std::exception const& ex) {
-      LOG_TOPIC("6784f", WARN, Logger::CRASH)
+      LOG_TOPIC("4b96e", WARN, Logger::CRASH)
           << "caught exception when destorying coroutine promise: "
           << ex.what();
     }
