@@ -39,8 +39,11 @@ const cn = "UnitTestsCollection";
 
 const {
   getCoordinators,
-  getDBServers
+  getDBServers,
+  versionHas
 } = require('@arangodb/test-helper');
+
+const isCoverage = versionHas('coverage');
 
 function abortReplicationSuite () {
   'use strict';
@@ -70,7 +73,7 @@ function abortReplicationSuite () {
 
       const servers = getDBServers();
       assertTrue(servers.length >= 2, servers);
-
+      const factor = (isCoverage)?3:1;
       try {
         servers.forEach((server) => {
           // set failure point on each DB server, which will trigger an error in replication
@@ -83,7 +86,7 @@ function abortReplicationSuite () {
 
         // give servers some time to run into the problem
         console.warn("waiting for servers to run into problems...");
-        require("internal").sleep(45);
+        require("internal").sleep(45 * factor);
 
         // clear the failure points
         servers.forEach((server) => {
@@ -92,7 +95,7 @@ function abortReplicationSuite () {
         });
       
         // wait for shards to get into sync - this really can take long on a slow CI
-        waitForShardsInSync(cn, 180, servers.length - 1);
+        waitForShardsInSync(cn, 180 * factor, servers.length - 1);
 
       } finally {
         servers.forEach((server) => {

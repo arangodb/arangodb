@@ -76,7 +76,8 @@
     let collDistribution = {};
     let collDistributionPlan = {};
     let collDistributionCurrent = {};
-    const numSecsLimit = 16;
+    const isCov = require("@arangodb/test-helper").versionHas('coverage');
+    const numSecsLimit = (isCov)? 32:16;
     while (true) {
       const dbName = db._name();
       const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution");
