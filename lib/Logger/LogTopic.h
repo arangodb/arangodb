@@ -44,7 +44,7 @@ class LogTopic {
   // pseudo topic to address all log topics
   static constexpr TopicName ALL = "all";
 
-  static std::vector<std::pair<TopicName, LogLevel>> logLevelTopics();
+  static auto logLevelTopics() -> std::vector<std::pair<LogTopic&, LogLevel>>;
   static void setLogLevel(TopicName, LogLevel);
   static LogTopic* topicForId(size_t topicId);
   static LogTopic* lookup(TopicName);
@@ -53,7 +53,9 @@ class LogTopic {
   virtual ~LogTopic() = default;
 
   template<typename Topic>
-  LogTopic(Topic);
+  LogTopic(Topic) requires requires(Topic) {
+    Topic::name;
+  };
 
   LogTopic(LogTopic const& that)
       : _id(that._id), _name(that._name), _displayName(that._displayName) {

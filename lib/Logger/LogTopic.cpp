@@ -163,18 +163,16 @@ LogTopic AuditFeature::AUDIT_SERVICE(logger::audit::Service{});
 LogTopic AuditFeature::AUDIT_HOTBACKUP(logger::audit::HotBackup{});
 #endif
 
-std::vector<std::pair<TopicName, LogLevel>> LogTopic::logLevelTopics() {
-  std::vector<std::pair<TopicName, LogLevel>> levels;
+auto LogTopic::logLevelTopics() -> std::vector<std::pair<LogTopic&, LogLevel>> {
+  std::vector<std::pair<LogTopic&, LogLevel>> levels;
   levels.reserve(logger::kNumTopics);
 
-  auto visitor = [&levels](TopicName name, LogTopic const* topic) {
+  for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
+    auto* topic = Topics::instance().get(i);
     if (topic) {
-      levels.emplace_back(name, topic->level());
+      levels.emplace_back(*topic, topic->level());
     }
-    return true;
-  };
-
-  Topics::instance().visit(visitor);
+  }
 
   return levels;
 }
@@ -201,9 +199,10 @@ TopicName LogTopic::lookup(size_t topicId) {
 }
 
 template<typename Topic>
-LogTopic::LogTopic(Topic)
-    : LogTopic(Topic::name, Topic::defaultLevel,
-               logger::TopicList::index<Topic>()) {
+LogTopic::LogTopic(Topic) requires requires(Topic) {
+  Topic::name;
+} : LogTopic(Topic::name, Topic::defaultLevel,
+             logger::TopicList::index<Topic>()) {
   static_assert(logger::TopicList::contains<Topic>(),
                 "Topic not found in TopicList");
 }

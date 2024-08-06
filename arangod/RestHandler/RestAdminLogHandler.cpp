@@ -510,17 +510,20 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
 
   auto const type = _request->requestType();
 
-  if (type == rest::RequestType::GET) {
-    // report log level
-    VPackBuilder builder;
+  auto getLogLevels = [](VPackBuilder& builder) {
     builder.openObject();
     auto const& levels = Logger::logLevelTopics();
     for (auto const& level : levels) {
-      builder.add(level.first,
+      builder.add(level.first.name(),
                   VPackValue(Logger::translateLogLevel(level.second)));
     }
     builder.close();
+  };
 
+  if (type == rest::RequestType::GET) {
+    // report log level
+    VPackBuilder builder;
+    getLogLevels(builder);
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else if (type == rest::RequestType::PUT) {
     // set log level
@@ -551,33 +554,19 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
 
     // now report current log levels
     VPackBuilder builder;
-    builder.openObject();
-    auto const& levels = Logger::logLevelTopics();
-    for (auto const& level : levels) {
-      builder.add(level.first,
-                  VPackValue(Logger::translateLogLevel(level.second)));
-    }
-    builder.close();
-
+    getLogLevels(builder);
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else if (type == rest::RequestType::DELETE_REQ) {
     // reset log levels to defaults
     for (auto const& it : Logger::defaultLogLevelTopics()) {
-      std::string l =
-          absl::StrCat(it.first, "=", Logger::translateLogLevel(it.second));
+      std::string l = absl::StrCat(it.first.name(), "=",
+                                   Logger::translateLogLevel(it.second));
       Logger::setLogLevel(l);
     }
 
     // now report resetted log levels
     VPackBuilder builder;
-    builder.openObject();
-    auto const& levels = Logger::logLevelTopics();
-    for (auto const& level : levels) {
-      builder.add(level.first,
-                  VPackValue(Logger::translateLogLevel(level.second)));
-    }
-    builder.close();
-
+    getLogLevels(builder);
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else {
     // invalid method

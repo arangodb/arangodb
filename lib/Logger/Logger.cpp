@@ -127,7 +127,7 @@ std::function<void()> Logger::_onDroppedMessage;
 
 // default log levels, captured once at startup. these can be used
 // to reset the log levels back to defaults.
-std::vector<std::pair<TopicName, LogLevel>> Logger::_defaultLogLevelTopics{};
+std::vector<std::pair<LogTopic&, LogLevel>> Logger::_defaultLogLevelTopics{};
 
 std::unordered_set<std::string> Logger::_structuredLogParams({});
 arangodb::basics::ReadWriteLock Logger::_structuredParamsLock;
@@ -178,12 +178,12 @@ std::unordered_set<std::string> Logger::structuredLogParams() {
   return _structuredLogParams;
 }
 
-std::vector<std::pair<TopicName, LogLevel>> Logger::logLevelTopics() {
+auto Logger::logLevelTopics() -> std::vector<std::pair<LogTopic&, LogLevel>> {
   return LogTopic::logLevelTopics();
 }
 
-std::vector<std::pair<TopicName, LogLevel>> const&
-Logger::defaultLogLevelTopics() {
+auto Logger::defaultLogLevelTopics()
+    -> std::vector<std::pair<LogTopic&, LogLevel>> const& {
   return _defaultLogLevelTopics;
 }
 
@@ -240,7 +240,7 @@ void Logger::setLogLevel(std::string const& levelName) {
   }
 }
 
-void Logger::setLogLevel(std::string const& topic, LogLevel level) {
+void Logger::setLogLevel(TopicName topic, LogLevel level) {
   std::lock_guard guard(_appenderModificationMutex);
   if (topic == LogTopic::ALL) {
     // handle pseudo log-topic "all": this will set the log level for
@@ -250,7 +250,7 @@ void Logger::setLogLevel(std::string const& topic, LogLevel level) {
       logTopic->setLogLevel(level);
       _appenders.foreach (Logger::defaultLogGroup(),
                           [level, logTopic](LogAppender& appender) {
-                            appender.setLogLevel(logTopic, level);
+                            appender.setLogLevel(*logTopic, level);
                           });
     }
   } else {
@@ -259,19 +259,19 @@ void Logger::setLogLevel(std::string const& topic, LogLevel level) {
     auto* logTopic = LogTopic::lookup(topic);
     _appenders.foreach (Logger::defaultLogGroup(),
                         [level, logTopic](LogAppender& appender) {
-                          appender.setLogLevel(logTopic, level);
+                          appender.setLogLevel(*logTopic, level);
                         });
   }
 }
 
-void Logger::setLogLevel(std::string const& definition,
-                         std::string const& topic, LogLevel level) {
+void Logger::setLogLevel(std::string const& definition, TopicName topic,
+                         LogLevel level) {
   std::lock_guard guard(_appenderModificationMutex);
   auto appender = _appenders.getAppender(Logger::defaultLogGroup(), definition);
   auto* logTopic = LogTopic::lookup(topic);
   TRI_ASSERT(logTopic != nullptr);
   if (appender != nullptr && logTopic != nullptr) {
-    appender->setLogLevel(logTopic, level);
+    appender->setLogLevel(*logTopic, level);
 
     auto currentLevel = logTopic->level();
     if (level > currentLevel) {
@@ -283,7 +283,7 @@ void Logger::setLogLevel(std::string const& definition,
       // appenders with a higher level
       _appenders.foreach (Logger::defaultLogGroup(),
                           [&level, logTopic](LogAppender& appender) {
-                            auto l = appender.getLogLevel(logTopic);
+                            auto l = appender.getLogLevel(*logTopic);
                             if (l > level) {
                               level = l;
                             }

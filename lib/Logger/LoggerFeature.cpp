@@ -230,7 +230,7 @@ the more general option `--log.output requests=file://...`.)");
   std::vector<std::string> topicsVector;
   auto const& levels = Logger::logLevelTopics();
   for (auto const& level : levels) {
-    topicsVector.emplace_back(level.first);
+    topicsVector.emplace_back(level.first.name());
   }
   std::string topicsJoined = StringUtils::join(topicsVector, ", ");
 
