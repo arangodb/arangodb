@@ -146,9 +146,7 @@
           }
 
           // react unmounting
-          const reactRoot = document.getElementById('content-react');
-          if (reactRoot) ReactDOM.unmountComponentAtNode(reactRoot);
-          ReactDOM.unmountComponentAtNode(document.getElementById('content'));
+          window.unmountReactComponents();
         }
       }
 
@@ -344,16 +342,20 @@
 
     analyzers: function () {
       this.checkUser();
-
-      this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
-        document.getElementById('content-react')));
+      this.init.then(() =>
+        window.renderReactComponent(
+          React.createElement(window.AnalyzersReactView)
+        )
+      );
     },
 
     showV2Graph: function (name) {
       this.checkUser();
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.GraphV2ReactView),
-        document.getElementById('content-react'))
+      this.init.then(() =>
+        window.renderReactComponent(
+          React.createElement(window.GraphV2ReactView),
+        )
       );
     },
 
@@ -457,11 +459,10 @@
           return;
         }
 
-        ReactDOM.render(
+        window.renderReactComponent(
           React.createElement(window.ShardDistributionReactView, {
             readOnly: this.userCollection.authOptions.ro
           }),
-          document.getElementById("content")
         );
 
         arangoHelper.buildClusterSubNav('Distribution');
@@ -705,9 +706,12 @@
     collections: function () {
       this.checkUser();
 
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.CollectionsReactView),
-          document.getElementById('content-react')));
+      this.init.then(() => {
+     
+        window.renderReactComponent(
+          React.createElement(window.CollectionsReactView)
+        );
+      });
     },
 
     cIndices: function (colname) {
@@ -720,14 +724,13 @@
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            ReactDOM.render(
+            window.renderReactComponent(
               React.createElement(window.CollectionIndicesReactView, {
                 collectionName: colname,
                 collection: self.arangoCollectionsStore.findWhere({
                   name: colname,
                 }),
-              }),
-              document.getElementById("content-react")
+              })
             );
           },
         });
@@ -882,9 +885,8 @@
       this.checkUser();
 
       this.init.then(() => {
-        ReactDOM.render(
-          React.createElement(window.QueryReactView),
-          document.getElementById("content-react")
+        window.renderReactComponent(
+          React.createElement(window.QueryReactView)
         );
       });
     },
@@ -953,8 +955,11 @@
     databases: function () {
       this.checkUser();
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.DatabasesReactView),
-        document.getElementById('content-react')));
+      this.init.then(() => 
+        window.renderReactComponent(
+          React.createElement(window.DatabasesReactView)
+        )
+      );
     },
 
     dashboard: function () {
@@ -999,8 +1004,11 @@
     graphManagement: function () {
       this.checkUser();
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.GraphsListReactView),
-        document.getElementById('content-react')));
+      this.init.then(() => 
+        window.renderReactComponent(
+          React.createElement(window.GraphsListReactView)
+        )
+      );
     },
 
     showGraph: function (name) {
@@ -1031,8 +1039,9 @@
           return;
         }
         
-        ReactDOM.render(React.createElement(window.ServicesReactView),
-          document.getElementById('content-react'));
+        window.renderReactComponent(
+          React.createElement(window.ServicesReactView)
+        );
 
         if (this.applicationsView === undefined) {
           this.applicationsView = new window.ApplicationsView({
@@ -1180,9 +1189,8 @@
     userPermission: function (name) {
       this.checkUser();
       this.init.then(() =>
-        ReactDOM.render(
-          React.createElement(window.UserPermissionsReactView),
-          document.getElementById("content-react")
+        window.renderReactComponent(
+          React.createElement(window.UserPermissionsReactView)
         )
       );
     },
@@ -1202,16 +1210,16 @@
     userManagement: function () {
       this.checkUser();
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.UsersReactView),
-        document.getElementById('content-react')));
+      this.init.then(() =>  window.renderReactComponent(React.createElement(window.UsersReactView))
+      );
     },
 
     views: function () {
       this.checkUser();
       
-      this.init.then(
-       () => ReactDOM.render(React.createElement(window.ViewsReactView),
-         document.getElementById('content-react')));
+      this.init.then(() => 
+        window.renderReactComponent(React.createElement(window.ViewsReactView))
+      );
     },
 
     fetchDBS: function (callback) {

@@ -14,17 +14,19 @@ export const QueryViewWrap = () => {
   useDisableNavBar();
   useGlobalStyleReset();
   return (
-    <ChakraCustomProvider overrideNonReact>
-      <QueryContextProvider>
-        <HashRouter basename="/" hashType={"noslash"}>
-          <Switch>
-            <Route path="/queries">
-              <QueryViewWrapInner />
-            </Route>
-          </Switch>
-        </HashRouter>
-      </QueryContextProvider>
-    </ChakraCustomProvider>
+    <Box width="100%">
+      <ChakraCustomProvider overrideNonReact>
+        <QueryContextProvider>
+          <HashRouter basename="/" hashType={"noslash"}>
+            <Switch>
+              <Route path="/queries">
+                <QueryViewWrapInner />
+              </Route>
+            </Switch>
+          </HashRouter>
+        </QueryContextProvider>
+      </ChakraCustomProvider>
+    </Box>
   );
 };
 

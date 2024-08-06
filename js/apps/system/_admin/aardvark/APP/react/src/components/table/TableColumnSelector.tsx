@@ -42,6 +42,12 @@ export const TableColumnSelector = <Data extends object>({
                 ? table.getColumn(column.id)
                 : undefined;
               const isVisible = tableColumn?.getIsVisible();
+              const header = table
+                .getFlatHeaders()
+                .find(header => header.id === column.id);
+              if (!header || !tableColumn) {
+                return null;
+              }
               return (
                 <Checkbox
                   isChecked={isVisible}
@@ -50,7 +56,9 @@ export const TableColumnSelector = <Data extends object>({
                   }}
                   key={column.id}
                 >
-                  {column.header}
+                  {typeof column.header === "function"
+                    ? column.header({ column: tableColumn, header, table })
+                    : column.header}
                 </Checkbox>
               );
             })}
