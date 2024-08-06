@@ -155,14 +155,14 @@ function moveShardSynchronizeShardFailureSuite() {
         fs.writeFileSync(pcPath, "");
 
         // Activate failure points in leader and follower:
-        IM.debugSetFailAt("HandleLeadership::before", undefined, undefined, followerEndpoint);
-        IM.debugSetFailAt("HandleLeadership::after", undefined, undefined, followerEndpoint);
-        IM.debugSetFailAt("Maintenance::BeforePhaseTwo", undefined, undefined, followerEndpoint);
-        IM.debugSetFailAt("SynchronizeShard::beginning", undefined, undefined, leaderEndpoint);
-        IM.debugSetFailAt("SynchronizeShard::beforeSetTheLeader", undefined, undefined, leaderEndpoint);
-        IM.debugSetFailAt("ClusterInfo::loadCurrentSeesLeader", undefined, undefined, leaderEndpoint);
-        IM.debugSetFailAt("ClusterInfo::loadCurrentDone", undefined, undefined, leaderEndpoint);
-        IM.debugSetFailAt("SynchronizeShard::fail", undefined, undefined, leaderEndpoint);
+        IM.debugSetFailAt("HandleLeadership::before", '', followerEndpoint);
+        IM.debugSetFailAt("HandleLeadership::after", '', followerEndpoint);
+        IM.debugSetFailAt("Maintenance::BeforePhaseTwo", '', followerEndpoint);
+        IM.debugSetFailAt("SynchronizeShard::beginning", '', leaderEndpoint);
+        IM.debugSetFailAt("SynchronizeShard::beforeSetTheLeader", '', leaderEndpoint);
+        IM.debugSetFailAt("ClusterInfo::loadCurrentSeesLeader", '', leaderEndpoint);
+        IM.debugSetFailAt("ClusterInfo::loadCurrentDone", '', leaderEndpoint);
+        IM.debugSetFailAt("SynchronizeShard::fail", '', leaderEndpoint);
 
         // Now move the shard:
         let res = moveShard("_system", cn, collInfo.shard, collInfo.leader, collInfo.follower, false /* dontwait */);

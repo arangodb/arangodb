@@ -293,31 +293,31 @@ function BaseChaosSuite(testOpts) {
 
       if (testOpts.withFailurePoints) {
         let IM = getInstanceInfo();
-        IM.debugSetFailAt("replicateOperations_randomize_timeout", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("delayed_synchronous_replication_request_processing", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("Query::setupTimeout", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("Query::setupLockTimeout", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("Query::setupTimeoutFailSequence", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("Query::setupTimeoutFailSequenceRandom", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("Query::finishTimeout", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("RocksDBCollection::insertFail1", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("RocksDBCollection::insertFail2", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("RocksDBCollection::modifyFail1", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("RocksDBCollection::modifyFail2", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("RocksDBCollection::modifyFail3", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("RocksDBCollection::removeFail1", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("RocksDBCollection::removeFail2", undefined, instanceRole.dbServer);
+        IM.debugSetFailAt("replicateOperations_randomize_timeout", instanceRole.dbServer);
+        IM.debugSetFailAt("delayed_synchronous_replication_request_processing", instanceRole.dbServer);
+        IM.debugSetFailAt("Query::setupTimeout", instanceRole.dbServer);
+        IM.debugSetFailAt("Query::setupLockTimeout", instanceRole.dbServer);
+        IM.debugSetFailAt("Query::setupTimeoutFailSequence", instanceRole.dbServer);
+        IM.debugSetFailAt("Query::setupTimeoutFailSequenceRandom", instanceRole.dbServer);
+        IM.debugSetFailAt("Query::finishTimeout", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::insertFail1", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::insertFail2", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::modifyFail1", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::modifyFail2", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::modifyFail3", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::removeFail1", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::removeFail2", instanceRole.dbServer);
 
-        IM.debugSetFailAt("Query::setupTimeout", undefined, instanceRole.coordinator);
-        IM.debugSetFailAt("Query::setupTimeoutFailSequence", undefined, instanceRole.coordinator);
-        IM.debugSetFailAt("lowCountCacheTimeout", undefined, instanceRole.coordinator);
+        IM.debugSetFailAt("Query::setupTimeout", instanceRole.coordinator);
+        IM.debugSetFailAt("Query::setupTimeoutFailSequence", instanceRole.coordinator);
+        IM.debugSetFailAt("lowCountCacheTimeout", instanceRole.coordinator);
       }
       if (testOpts.withDelays) {
         let IM = getInstanceInfo();
-        IM.debugSetFailAt("TransactionChaos::blockerOnSync", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("TransactionChaos::randomSleep", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("TransactionChaos::randomSync", undefined, instanceRole.dbServer);
-        IM.debugSetFailAt("RocksDBMetaCollection::forceSerialization", undefined, instanceRole.dbServer);
+        IM.debugSetFailAt("TransactionChaos::blockerOnSync", instanceRole.dbServer);
+        IM.debugSetFailAt("TransactionChaos::randomSleep", instanceRole.dbServer);
+        IM.debugSetFailAt("TransactionChaos::randomSync", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBMetaCollection::forceSerialization", instanceRole.dbServer);
       }
     },
 

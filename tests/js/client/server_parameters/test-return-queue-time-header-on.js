@@ -80,9 +80,9 @@ function testSuite() {
   return {
     setUpAll: function() {
       if (isCluster) {
-        IM.debugSetFailAt("Scheduler::alwaysSetDequeueTime", undefined, instanceRole.coordinator);
+        IM.debugSetFailAt("Scheduler::alwaysSetDequeueTime", instanceRole.coordinator);
       } else {
-        IM.debugSetFailAt("Scheduler::alwaysSetDequeueTime", undefined, instanceRole.single);
+        IM.debugSetFailAt("Scheduler::alwaysSetDequeueTime", instanceRole.single);
       }
     },
 

@@ -28,6 +28,7 @@
 const jsunity = require("jsunity");
 let db = require("@arangodb").db;
 let internal = require("internal");
+let IM = global.instanceManager;
 
 function FollowersSuite () {
   'use strict';
@@ -36,12 +37,12 @@ function FollowersSuite () {
 
   return {
     setUp : function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
     },
     
     tearDown : function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
     },
     
@@ -128,11 +129,11 @@ function FollowersSuite () {
     },
 
     testWithReplicationAndFailure : function () {
-      if (!global.instanceManager.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
 
-      global.instanceManager.debugSetFailAt("FollowerInfo::add");
+      IM.debugSetFailAt("FollowerInfo::add");
 
       // Note that with waitForSyncReplication: true, the collection creation
       // will run into a timeout while waiting for the followers to come in

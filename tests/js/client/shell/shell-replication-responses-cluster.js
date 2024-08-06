@@ -54,7 +54,7 @@ function followerResponsesSuite() {
     },
 
     tearDown: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
@@ -70,7 +70,7 @@ function followerResponsesSuite() {
       
       let endpoint = getEndpointById(follower);
       let url = getUrlById(follower);
-      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", undefined, instanceRole.dbServer, endpoint);
+      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", instanceRole.dbServer, endpoint);
 
       // send a single document replication insert request
       let response = request({
@@ -120,7 +120,7 @@ function followerResponsesSuite() {
       
       let endpoint = getEndpointById(follower);
       let url = getUrlById(follower);
-      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", undefined, instanceRole.dbServer, endpoint);
+      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", instanceRole.dbServer, endpoint);
 
       // send a single document replication update request
       let response = request({
@@ -170,7 +170,7 @@ function followerResponsesSuite() {
       
       let endpoint = getEndpointById(follower);
       let url = getUrlById(follower);
-      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", undefined, instanceRole.dbServer, endpoint);
+      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", instanceRole.dbServer, endpoint);
 
       // send a single document replication remove request
       let response = request({
@@ -205,7 +205,7 @@ function followerResponsesSuite() {
   };
 }
 
-if (global.instanceManager.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(followerResponsesSuite);
 }
 return jsunity.done();

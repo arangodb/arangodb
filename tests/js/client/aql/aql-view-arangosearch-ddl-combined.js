@@ -138,7 +138,7 @@ function IResearchFeatureDDLTestSuite1() {
       let { instanceRole } = require('@arangodb/testutils/instance');
       let IM = global.instanceManager;
       if (isCluster) {
-        IM.debugSetFailAt("search::AlwaysIsBuildingCluster", undefined, instanceRole.coordinator);
+        IM.debugSetFailAt("search::AlwaysIsBuildingCluster", instanceRole.coordinator);
       } else {
         IM.debugSetFailAt("search::AlwaysIsBuildingSingle");
       }
@@ -161,7 +161,7 @@ function IResearchFeatureDDLTestSuite1() {
         "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
       }]);
       if (isCluster) {
-        IM.debugRemoveFailAt("search::AlwaysIsBuildingCluster", undefined, instanceRole.coordinator);
+        IM.debugRemoveFailAt("search::AlwaysIsBuildingCluster", instanceRole.coordinator);
       } else {
         IM.debugRemoveFailAt("search::AlwaysIsBuildingSingle");
       }

@@ -78,14 +78,14 @@ function storageEngineErrorSuite() {
       });
     
       // set failure point that triggers a storage engine error
-      global.instanceManager.debugSetFailAt("RocksDBEngine::healthCheck", dbservers[0].shortName);
+      global.instanceManager.debugSetFailAt("RocksDBEngine::healthCheck", '', dbservers[0].shortName);
       try {
         // wait until the DB server went into status BAD
         let result = waitUntil(coordinators[0], "BAD", dbservers[0].id, 20);
         assertEqual("BAD", result.Status);
       } finally {
         // remove failure point
-        global.instanceManager.debugClearFailAt(undefined, instanceRole.dbServer);
+        global.instanceManager.debugClearFailAt('', instanceRole.dbServer);
         // wait until it is good again
         waitUntil(coordinators[0], "GOOD", dbservers[0].id, 30);
       }

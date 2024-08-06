@@ -121,7 +121,7 @@ function SynchronousReplicationSuite() {
   
     assertTrue(pos >= 0, pos);
     if (failAt) {
-      IM.debugSetFailAt(failAt, undefined, undefined, endpoint);
+      IM.debugSetFailAt(failAt, '', endpoint);
       console.info("Have added failure in follower", follower, " at ", failAt);
     } else {
       assertTrue(suspendExternal(arangods[pos].pid));
@@ -143,7 +143,7 @@ function SynchronousReplicationSuite() {
       x => x.url === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
-      IM.debugSetFailAt(failAt, undefined, undefined, endpoint);
+      IM.debugSetFailAt(failAt, '', endpoint);
       console.info("Have removed failure in follower", follower, " at ", failAt);
     } else {
       assertTrue(continueExternal(arangods[pos].pid));
@@ -165,7 +165,7 @@ function SynchronousReplicationSuite() {
       x => x.url === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
-      IM.debugSetFailAt(failAt, undefined, undefined, endpoint);
+      IM.debugSetFailAt(failAt, '', endpoint);
       console.info("Have failed leader", leader, " at ", failAt);
     } else {
       assertTrue(suspendExternal(arangods[pos].pid));
@@ -188,7 +188,7 @@ function SynchronousReplicationSuite() {
       x => x.url === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
-      IM.debugSetFailAt(failAt, undefined, undefined, endpoint);
+      IM.debugSetFailAt(failAt, '', endpoint);
       console.info("Have removed failure in leader", leader, " at ", failAt);
     } else {
       assertTrue(continueExternal(arangods[pos].pid));

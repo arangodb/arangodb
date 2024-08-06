@@ -235,62 +235,69 @@ class instanceManager {
     }
     return res.parsedBody === true;
   }
-  debugSetFailAt(failurePoint, shortName, role, url) {
+  debugSetFailAt(failurePoint, role, urlIDOrShortName) {
     let count = 0;
-    let skipped = [];
     this.rememberConnection();
     this.arangods.forEach(arangod => {
-      if (role !== undefined && !arangod.isRole(role)) {
-        skipped.push("role");
+      if (!arangod.matches(role, urlIDOrShortName)) {
         return;
-      }
-      if (url !== undefined && arangod.url !== url && arangod.endpoint !== url) {
-        skipped.push("url");
-        return;
-      }
-      if (shortName !== undefined && arangod.shortName !== shortName) {
-        skipped.push("shortName");
-        return false;
       }
       if (arangod.debugSetFailAt(failurePoint)) {
         count += 1;
-      } else {
-        skipped.push("instance");
       }
     });
     if (count === 0) {
       let msg = "";
       this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
-      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${shortName}, ${role}, ${url}${msg} \n${JSON.stringify(skipped)}`);
+      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${urlIDOrShortName}, ${role},${msg}`);
     }
     this.reconnectMe();
   }
-  debugRemoveFailAt(failurePoint, shortName, role, url) {
+  debugShouldFailAt(failurePoint, role, urlIDOrShortName) {
+    let count = 0;
     this.rememberConnection();
     this.arangods.forEach(arangod => {
-      if (role !== undefined && !arangod.isRole(role)) {
+      if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      if (url !== undefined && arangod.url !== url && arangod.endpoint !== url) {
+      if (arangod.debugShouldFailAt(failurePoint)) {
+        count += 1;
+      }
+    });
+    if (count === 0) {
+      let msg = "";
+      this.arangods.forEach(arangod => {msg += `\n Name => ${arangod.name}  ShortName => ${arangod.shortName} Role=> ${arangod.instanceRole} URL => ${arangod.url} Endpoint: => ${arangod.endpoint}`;});
+      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${urlIDOrShortName}, ${role},${msg}`);
+    }
+    this.reconnectMe();
+  }
+  debugResetRaceControl(role, urlIDOrShortName) {
+    this.rememberConnection();
+    this.arangods.forEach(arangod => {
+      if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      arangod.debugClearFailAt(failurePoint, shortName);
+      arangod.debugResetRaceControl();
     });
     this.reconnectMe();
   }
-  debugClearFailAt(failurePoint, shortName, role, url) {
+  debugRemoveFailAt(failurePoint, role, urlIDOrShortName) {
     this.rememberConnection();
     this.arangods.forEach(arangod => {
-      if (role !== undefined && !arangod.isRole(role)) {
+      if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      if (url !== undefined && arangod.url !== url && arangod.endpoint !== url) {
+      arangod.debugClearFailAt(failurePoint);
+    });
+    this.reconnectMe();
+  }
+  debugClearFailAt(failurePoint, role, urlIDOrShortName) {
+    this.rememberConnection();
+    this.arangods.forEach(arangod => {
+      if (!arangod.matches(role, urlIDOrShortName)) {
         return;
       }
-      if (shortName !== undefined && arangod.shortName !== shortName) {
-        return;
-      }
-      arangod.debugClearFailAt(failurePoint, shortName);
+      arangod.debugClearFailAt(failurePoint);
     });
     this.reconnectMe();
   }

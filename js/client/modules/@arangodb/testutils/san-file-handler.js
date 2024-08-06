@@ -71,7 +71,8 @@ class sanHandler {
       }
     }
   }
-  getSanOptions(subProcesEnv) {
+  getSanOptions() {
+    let subProcesEnv = [];
     if (this.enabled) {
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
@@ -192,6 +193,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     }
     if (options.isCov && process.env.hasOwnProperty(coverage_name)) {
       options.covOptions[coverage_name] = process.env[coverage_name];
+      delete process.env[coverage_name];
     }
   });
 };

@@ -100,7 +100,7 @@ function detachSchedulerThreadsSuite2() {
       try {
         // Block replication in the follower, such that it can be released
         // later on (nested failure points).
-        IM.debugSetFailAt("synchronousReplication::blockReplication", collInfo.follower);
+        IM.debugSetFailAt("synchronousReplication::blockReplication", '', collInfo.follower);
 
         // Create a transaction T writing to the replicated collection
         let trx = arango.POST_RAW("/_api/transaction/begin", {collections:{write:[cn]}});
@@ -129,7 +129,7 @@ function detachSchedulerThreadsSuite2() {
         c.document("K1");
 
         // Unblock everything:
-        IM.debugSetFailAt("synchronousReplication::unblockReplication", collInfo.follower);
+        IM.debugSetFailAt("synchronousReplication::unblockReplication", '', collInfo.follower);
 
         // And now expect that all ops terminate:
         let waitForJob = function(id) {
@@ -154,7 +154,7 @@ function detachSchedulerThreadsSuite2() {
         let res = arango.DELETE_RAW(`/_api/transaction/${trx}`);
         assertEqual(200, res.code);
       } finally {
-        IM.debugClearFailAt(collInfo.follower);
+        IM.debugClearFailAt('', '', collInfo.follower);
       }
     }
   };

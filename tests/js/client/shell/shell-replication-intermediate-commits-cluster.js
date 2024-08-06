@@ -68,11 +68,11 @@ function replicationIntermediateCommitsSuite() {
 
   return {
     setUp: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
     },
 
     tearDown: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
@@ -99,7 +99,7 @@ function replicationIntermediateCommitsSuite() {
         }
         if (count === n / 2) {
           // do not replicate from leader to follower after half of documents
-          IM.debugSetFailAt("replicateOperations::skip", undefined, instanceRole.dbServer, leader);
+          IM.debugSetFailAt("replicateOperations::skip", instanceRole.dbServer, leader);
         }
         c.insert(docs);
       }
@@ -116,9 +116,9 @@ function replicationIntermediateCommitsSuite() {
         assertEqual(n / 2, result.json.count);
       }
       
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, leader);
+      IM.debugClearFailAt('', instanceRole.dbServer, leader);
       // this will trigger a drop-follower operation on the next insert on the leader
-      IM.debugSetFailAt("replicateOperationsDropFollower", undefined, instanceRole.dbServer, leader);
+      IM.debugSetFailAt("replicateOperationsDropFollower", instanceRole.dbServer, leader);
 
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits_total");
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");

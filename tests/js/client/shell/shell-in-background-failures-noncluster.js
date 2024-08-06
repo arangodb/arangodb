@@ -29,6 +29,7 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const db = internal.db;
 const versionHas = require("@arangodb/test-helper").versionHas;
+let IM = global.instanceManager;
 
 function IndexInBackgroundFailuresSuite () {
   'use strict';
@@ -75,13 +76,13 @@ function IndexInBackgroundFailuresSuite () {
   return {
 
     setUp : function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
       collection = db._create(cn);
     },
 
     tearDown : function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
     },
 
@@ -109,7 +110,7 @@ function IndexInBackgroundFailuresSuite () {
 
       internal.wal.flush(true, true);
 
-      global.instanceManager.debugSetFailAt("BuilderIndex::purgeWal");
+      IM.debugSetFailAt("BuilderIndex::purgeWal");
 
       // create an index in background. note that due to the failure point,
       // index creation will block until we remove the failure point
@@ -135,7 +136,7 @@ function IndexInBackgroundFailuresSuite () {
       run(insertData, getRanges);
 
       // resume index creation
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
 
       // wait until index is there...
       let tries = 0;
@@ -158,7 +159,7 @@ function IndexInBackgroundFailuresSuite () {
   };
 }
 
-if (global.instanceManager.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(IndexInBackgroundFailuresSuite);
 }
 

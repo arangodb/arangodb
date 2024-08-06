@@ -51,12 +51,12 @@ function quickKeysSuite() {
   };
 
   let runTestForCount = function(n, quick, adjustQuickLimit) {
-    IM.debugSetFailAt("disableRevisionsAsDocumentIds", undefined, instanceRole.single, primaryEndpoint);
+    IM.debugSetFailAt("disableRevisionsAsDocumentIds", instanceRole.single, primaryEndpoint);
     createCollection(n);
     
     let quickLimit = 1000000;
     if (adjustQuickLimit) {
-      IM.debugSetFailAt("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100", undefined, instanceRole.single, primaryEndpoint);
+      IM.debugSetFailAt("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100", instanceRole.single, primaryEndpoint);
       quickLimit = 100;
     }
 
@@ -141,7 +141,7 @@ function quickKeysSuite() {
   };
 }
 
-if (global.instanceManager.debugCanUseFailAt(primaryEndpoint)) {
+if (IM.debugCanUseFailAt(primaryEndpoint)) {
   // only execute if failure tests are available
   jsunity.run(quickKeysSuite);
 }

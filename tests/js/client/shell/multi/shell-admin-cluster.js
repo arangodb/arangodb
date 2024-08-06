@@ -42,11 +42,11 @@ function adminClusterSuite() {
 
     setUp: function () {
       IM.rememberConnection();
-      IM.debugClearFailAt(undefined, undefined, instanceRole.coordinator);
+      IM.debugClearFailAt('', instanceRole.coordinator);
     },
 
     tearDown: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.coordinator);
+      IM.debugClearFailAt('', instanceRole.coordinator);
     },
 
     testRemoveServerNonExisting: function () {
@@ -73,7 +73,7 @@ function adminClusterSuite() {
       let ep = coords[0].endpoint;
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-        IM.debugSetFailAt("removeServer::noRetry", undefined, instanceRole.coordinator, ep);
+        IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
         reconnectRetry(ep, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                   new Buffer('"' + coordinatorId + '"'), {
@@ -95,7 +95,7 @@ function adminClusterSuite() {
       let ep = coords[0].endpoint;
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-        IM.debugSetFailAt("removeServer::noRetry", undefined, instanceRole.coordinator, ep);
+        IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
         reconnectRetry(ep, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                   new Buffer('"' + coordinatorId + '"'), {
@@ -117,7 +117,7 @@ function adminClusterSuite() {
       let ep = coords[0].endpoint;
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-        IM.debugSetFailAt("removeServer::noRetry", undefined, instanceRole.coordinator, ep);
+        IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
 
         let dbservers = getDBServers();
         assertTrue(dbservers.length > 0);
@@ -143,7 +143,7 @@ function adminClusterSuite() {
       let ep = coords[0].endpoint;
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-        IM.debugSetFailAt("removeServer::noRetry", undefined, instanceRole.coordinator, ep);
+        IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
 
         let dbservers = getDBServers();
         assertTrue(dbservers.length > 0);

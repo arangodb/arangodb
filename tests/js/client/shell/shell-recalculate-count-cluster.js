@@ -41,19 +41,19 @@ function RecalculateCountSuite() {
   return {
 
     setUp : function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
 
     tearDown : function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
     testFixBrokenCounts : function () {
       let c = db._create(cn, { numberOfShards: 5 });
 
-      IM.debugSetFailAt("DisableCommitCounts", undefined, instanceRole.dbServer);
+      IM.debugSetFailAt("DisableCommitCounts", instanceRole.dbServer);
 
       for (let i = 0; i < 1000; ++i) {
         c.insert({});
@@ -62,7 +62,7 @@ function RecalculateCountSuite() {
       assertNotEqual(1000, c.count());
       assertEqual(1000, c.toArray().length);
 
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
  
       c.recalculateCount();
       
@@ -73,7 +73,7 @@ function RecalculateCountSuite() {
   };
 }
 
-if (global.instanceManager.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(RecalculateCountSuite);
 }
 return jsunity.done();
