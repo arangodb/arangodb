@@ -15,9 +15,9 @@ class Feature final : public application_features::ApplicationFeature {
             server, Server::template id<Feature>(), name()} {
     // startsAfter<Bla, Server>();
   }
-
- private:
-  coroutine::Registry registry;
 };
+
+// TODO later make this a property of Feature
+extern coroutine::Registry coroutine_registry;
 
 }  // namespace arangodb::coroutine

@@ -2,6 +2,8 @@
 
 #include "thread_registry.h"
 
+#include <vector>
+
 namespace arangodb::coroutine {
 
 /**
@@ -12,16 +14,27 @@ namespace arangodb::coroutine {
  */
 struct Registry {
   /**
-     Initializes the coroutine thread registry of the current thread and adds it
-     to this registry.
+     Creates a new coroutine thread registry and adds it to this registry.
 
-     Each thread needs to call this once before executing any async<T>
-     coroutine.
+     Each thread needs to call this once to be able to add promises to the
+     coroutine registry.
    */
-  auto initialize_current_thread() -> void {
+  auto add_thread() -> ThreadRegistry* {
     auto guard = std::lock_guard(mutex);
     registries.push_back(std::make_shared<ThreadRegistry>());
-    thread_registry = registries.back().get();
+    return registries.back().get();
+  }
+
+  /**
+     Removes a coroutine thread registry from this registry.
+   */
+  auto remove_thread(ThreadRegistry* registry) -> void {
+    auto guard = std::lock_guard(mutex);
+    // TODO does this not invalidate the thread_local registry ptr in
+    // thrad_registry.cpp?
+    std::erase_if(registries, [registry](std::shared_ptr<ThreadRegistry> r) {
+      return registry == r.get();
+    });
   }
 
   /**
@@ -43,6 +56,7 @@ struct Registry {
     }
   }
 
+ private:
   std::vector<std::shared_ptr<ThreadRegistry>> registries;
   std::mutex mutex;
 };

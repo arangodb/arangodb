@@ -51,7 +51,7 @@ struct async_promise_base : coroutine::PromiseInList {
   }
   void unhandled_exception() { _value.set_exception(std::current_exception()); }
   auto get_return_object() {
-    coroutine::thread_registry->add(this);
+    coroutine::get_thread_registry().add(this);
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
   }
