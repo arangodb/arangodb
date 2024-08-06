@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed BTS-1742: `IN_RANGE` function now uses MDI index if possible.
+
 * FE-456: upgrade web UI to React 18.
 
 * FE-449: write concern is no longer set when creating a sattelite database
