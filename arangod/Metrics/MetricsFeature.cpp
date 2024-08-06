@@ -91,11 +91,12 @@ void MetricsFeature::collectOptions(
       new options::BooleanParameter(&_export),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options->addOption(
-      "--server.export-read-write-metrics",
-      "Whether to enable metrics for document reads and writes.",
-      new options::BooleanParameter(&_exportReadWriteMetrics),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon))
+  options
+      ->addOption("--server.export-read-write-metrics",
+                  "Whether to enable metrics for document reads and writes.",
+                  new options::BooleanParameter(&_exportReadWriteMetrics),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
       .setLongDescription(R"(Enabling this option exposes the following
 additional metrics via the `GET /_admin/metrics/v2` endpoint:
 
