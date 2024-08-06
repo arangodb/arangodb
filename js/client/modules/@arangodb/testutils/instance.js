@@ -261,6 +261,7 @@ class instance {
     }
     if (urlIDOrShortName !== undefined &&
         this.url !== urlIDOrShortName &&
+        this.shortName !== urlIDOrShortName &&
         this.endpoint !== urlIDOrShortName &&
         this.id !== urlIDOrShortName) {
         return false;
