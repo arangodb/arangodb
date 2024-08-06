@@ -247,7 +247,7 @@ function replicationAutoRepairSuite() {
         assertEqual(n / 2, result.json.count);
       }
       
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, leader);
+      IM.debugClearFailAt('', instanceRole.dbServer, leader);
     
       // corrupt the followers's revision tree
       {
