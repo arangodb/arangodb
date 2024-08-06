@@ -457,6 +457,11 @@ function iterateTests(cases, options) {
       delete result.shutdown;
     }
 
+    if (currentTest === "auto") {
+      Object.keys(result).forEach(key => {
+        results[key] = result[key];
+      });
+    }
     status = rp.gatherStatus(result) && shutdownSuccess;
     let failed = rp.gatherFailed(result);
     if (!status) {
@@ -464,7 +469,9 @@ function iterateTests(cases, options) {
     }
     result.failed = failed;
     result.status = status;
-    results[resultTestName] = result;
+    if (currentTest !== "auto") {
+      results[resultTestName] = result;
+    }
   }
 
   results.status = globalStatus;
