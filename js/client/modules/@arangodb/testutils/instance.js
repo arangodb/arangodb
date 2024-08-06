@@ -1365,9 +1365,6 @@ class instance {
     if (!this.connect()) {
       throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
     }
-    if (failurePoint === "") {
-      failurePoint = undefined;
-    }
     let deleteUrl = '/_admin/debug/raceControl';
     let reply;
     let count = 0;
@@ -1390,7 +1387,7 @@ class instance {
       httpOptions.returnBodyOnError = true;
       const reply = download(deleteUrl, '', httpOptions);
       if (reply.code !== 200) {
-        throw new Error(`${this.name}: Failed to remove race control: '${failurePoint}' =>  ${JSON.stringify(reply.parsedBody)}`);
+        throw new Error(`${this.name}: Failed to remove race control: =>  ${JSON.stringify(reply.parsedBody)}`);
       }
     }
     return true;

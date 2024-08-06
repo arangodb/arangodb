@@ -5,7 +5,7 @@
 const internal = require('internal');
 const tasks = require('@arangodb/tasks');
 const expect = require('chai').expect;
-let IM = global.instanceManager
+let IM = global.instanceManager;
 
 const isServer = typeof arango === 'undefined';
 const query = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
