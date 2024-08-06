@@ -1,11 +1,5 @@
 import { MinusIcon } from "@chakra-ui/icons";
-import {
-  FormLabel,
-  Grid,
-  IconButton,
-  Input,
-  Stack
-} from "@chakra-ui/react";
+import { FormLabel, Grid, IconButton, Input, Stack } from "@chakra-ui/react";
 import { Column, ColumnDef, Table as TableType } from "@tanstack/react-table";
 import * as React from "react";
 import MultiSelect from "../select/MultiSelect";
@@ -38,7 +32,7 @@ export const FilterComponent = <Data extends object>({
       alignItems="center"
       gap="2"
     >
-      <FilterLabel<Data> columnInstance={columnInstance} />
+      <FilterLabel<Data> table={table} columnInstance={columnInstance} />
       <FilterInput<Data>
         column={column}
         columnInstance={columnInstance}
@@ -55,14 +49,28 @@ export const FilterComponent = <Data extends object>({
   );
 };
 const FilterLabel = <Data extends object>({
-  columnInstance
+  columnInstance,
+  table
 }: {
   columnInstance: Column<Data, unknown>;
+  table: TableType<Data>;
 }) => {
+  const header = table
+    .getFlatHeaders()
+    .find(header => header.id === columnInstance.id);
+  if (!header) {
+    return null;
+  }
   return (
     <Stack direction="row" alignItems="center">
       <FormLabel margin="0" htmlFor={columnInstance.id}>
-        {columnInstance.columnDef.header}
+        {typeof columnInstance.columnDef.header === "function"
+          ? columnInstance.columnDef.header({
+              column: columnInstance,
+              table: table,
+              header
+            })
+          : columnInstance.columnDef.header}
       </FormLabel>
     </Stack>
   );

@@ -1,3 +1,4 @@
+import { Box } from "@chakra-ui/react";
 import React from "react";
 import { HashRouter, Route, Switch } from "react-router-dom";
 import { ChakraCustomProvider } from "../../../theme/ChakraCustomProvider";
@@ -14,19 +15,21 @@ export const CollectionIndicesViewWrap = ({
 }) => {
   useGlobalStyleReset();
   return (
-    <ChakraCustomProvider overrideNonReact>
-      <CollectionIndicesProvider
-        collectionName={collectionName}
-        collectionId={collectionId}
-      >
-        <HashRouter basename="/" hashType={"noslash"}>
-          <Switch>
-            <Route path="/cIndices/:collectionName">
-              <CollectionIndicesView />
-            </Route>
-          </Switch>
-        </HashRouter>
-      </CollectionIndicesProvider>
-    </ChakraCustomProvider>
+    <Box width="100%">
+      <ChakraCustomProvider overrideNonReact>
+        <CollectionIndicesProvider
+          collectionName={collectionName}
+          collectionId={collectionId}
+        >
+          <HashRouter basename="/" hashType={"noslash"}>
+            <Switch>
+              <Route path="/cIndices/:collectionName">
+                <CollectionIndicesView />
+              </Route>
+            </Switch>
+          </HashRouter>
+        </CollectionIndicesProvider>
+      </ChakraCustomProvider>
+    </Box>
   );
 };
