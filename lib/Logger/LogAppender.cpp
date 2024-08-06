@@ -37,8 +37,11 @@ namespace arangodb {
 LogAppender::LogAppender() {
   for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
     auto* topic = LogTopic::topicForId(i);
-    TRI_ASSERT(topic != nullptr);
-    _topicLevels[i].store(topic->level(), std::memory_order_relaxed);
+    if (topic != nullptr) {
+      _topicLevels[i].store(topic->level(), std::memory_order_relaxed);
+    } else {
+      _topicLevels[i].store(LogLevel::DEFAULT, std::memory_order_relaxed);
+    }
   }
 }
 void LogAppender::logMessageGuarded(LogMessage const& message) {

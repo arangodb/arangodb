@@ -976,15 +976,17 @@ void Logger::calculateEffectiveLogLevels() {
   // configured log level
   for (size_t i = 0; i < logger::kNumTopics; ++i) {
     auto* topic = LogTopic::topicForId(i);
-    auto level = topic->level();
-    _appenders.foreach (Logger::defaultLogGroup(),
-                        [&level, &topic](LogAppender& appender) {
-                          auto l = appender.getLogLevel(*topic);
-                          if (l > level) {
-                            level = l;
-                          }
-                        });
-    topic->setLogLevel(level);
+    if (topic != nullptr) {
+      auto level = topic->level();
+      _appenders.foreach (Logger::defaultLogGroup(),
+                          [&level, &topic](LogAppender& appender) {
+                            auto l = appender.getLogLevel(*topic);
+                            if (l > level) {
+                              level = l;
+                            }
+                          });
+      topic->setLogLevel(level);
+    }
   }
 }
 
