@@ -284,7 +284,7 @@ class agencyMgr {
         this.moreIsAlreadyRunning()) {
       return;
     }
-    let count = 20;
+    let count = 25;
     while (count > 0) {
       let haveConfig = 0;
       let haveLeader = 0;
