@@ -1145,7 +1145,7 @@ function KeyGenerationLocationSuite() {
 
       let c = db._create(cn, {keyOptions: {type: "traditional"}, numberOfShards: 1});
 
-      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", '', filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
       try {
         c.insert({});
       } catch (err) {
@@ -1160,7 +1160,7 @@ function KeyGenerationLocationSuite() {
 
       let c = db._create(cn, {keyOptions: {type: "traditional"}, numberOfShards: 2});
 
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
       try {
         c.insert({});
       } catch (err) {
@@ -1174,7 +1174,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
 
       generators().forEach((generator) => {
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1});
@@ -1210,7 +1210,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
 
       generators().forEach((generator) => {
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1, shardKeys: ["id"]});
@@ -1247,7 +1247,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
 
       db._createDatabase(cn, {sharding: "single"});
       try {
@@ -1294,7 +1294,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a DB server
-      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", '', filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
 
       generators().forEach((generator) => {
         if (generator === "autoincrement") {
@@ -1333,7 +1333,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a DB server
-      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", '', filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
 
       generators().forEach((generator) => {
         if (generator === "autoincrement") {
