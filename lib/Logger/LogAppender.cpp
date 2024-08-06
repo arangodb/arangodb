@@ -24,16 +24,30 @@
 
 #include "LogAppender.h"
 #include <atomic>
+#include <cstddef>
 
 #include "Basics/RecursiveLocker.h"
+#include "Logger/LogLevel.h"
 #include "Logger/LogMessage.h"
 #include "Logger/LogTopic.h"
+#include "Logger/Topics.h"
 
 namespace arangodb {
 
+LogAppender::LogAppender() {
+  for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
+    auto* topic = LogTopic::topicForId(i);
+    TRI_ASSERT(topic != nullptr);
+    _topicLevels[i].store(topic->level(), std::memory_order_relaxed);
+  }
+}
 void LogAppender::logMessageGuarded(LogMessage const& message) {
-  if (message._level >=
-      _topicLevels[message._topicId].load(std::memory_order_relaxed)) {
+  auto level = _topicLevels[message._topicId].load(std::memory_order_relaxed);
+  if (level == LogLevel::DEFAULT) {
+    level = LogLevel::INFO;
+  }
+
+  if (message._level <= level) {
     // Only one thread is allowed to actually write logs to the file.
     // We use a recusive lock here, just in case writing the log message
     // causes a crash, in this case we may trigger another force-direct
@@ -48,7 +62,7 @@ auto LogAppender::getLogLevel(LogTopic const& topic) -> LogLevel {
 }
 
 void LogAppender::setLogLevel(LogTopic const& topic, LogLevel level) {
-  _topicLevels[topic.id()].store(level);
+  _topicLevels[topic.id()].store(level, std::memory_order_relaxed);
 }
 
 }  // namespace arangodb

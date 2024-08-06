@@ -954,6 +954,7 @@ void Logger::initialize(bool threaded, uint32_t maxQueuedLogMessages) {
   }
 
   _defaultLogLevelTopics = logLevelTopics();
+  calculateEffectiveLogLevels();
 
   // logging is now active
   if (threaded) {
@@ -967,6 +968,23 @@ void Logger::initialize(bool threaded, uint32_t maxQueuedLogMessages) {
 
     // (4) - this release-store synchronizes with the acquire-load (2)
     _loggingThread.store(loggingThread.release(), std::memory_order_release);
+  }
+}
+
+void Logger::calculateEffectiveLogLevels() {
+  // for each topic we have to go through all appenders and find the highest
+  // configured log level
+  for (size_t i = 0; i < logger::kNumTopics; ++i) {
+    auto* topic = LogTopic::topicForId(i);
+    auto level = topic->level();
+    _appenders.foreach (Logger::defaultLogGroup(),
+                        [&level, &topic](LogAppender& appender) {
+                          auto l = appender.getLogLevel(*topic);
+                          if (l > level) {
+                            level = l;
+                          }
+                        });
+    topic->setLogLevel(level);
   }
 }
 

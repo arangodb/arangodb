@@ -286,6 +286,7 @@ class Logger {
   static void onDroppedMessage() noexcept;
 
  private:
+  static void calculateEffectiveLogLevels();
   static void buildJsonLogMessage(std::string& out, std::string_view logid,
                                   std::string_view function,
                                   std::string_view file, int line,

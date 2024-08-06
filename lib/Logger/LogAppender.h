@@ -38,7 +38,7 @@ struct LogMessage;
 
 class LogAppender {
  public:
-  LogAppender() = default;
+  LogAppender();
   virtual ~LogAppender() = default;
 
   LogAppender(LogAppender const&) = delete;

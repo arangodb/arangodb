@@ -23,6 +23,7 @@
 #include "Appenders.h"
 
 #include "Assertions/Assert.h"
+#include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -30,11 +31,13 @@
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderStdStream.h"
 #include "Logger/LogAppenderSyslog.h"
+#include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogMessage.h"
 #include "Logger/Logger.h"
 
 #include <absl/strings/str_cat.h>
+#include <vector>
 
 namespace arangodb::logger {
 
@@ -81,6 +84,9 @@ void Appenders::addAppender(LogGroup const& logGroup,
       return;
     }
     definitionsMap.emplace(key, appender);
+    for (auto& [topic, level] : config.levels) {
+      appender->setLogLevel(*topic, level);
+    }
   }
 
   TRI_ASSERT(appender != nullptr);
@@ -217,12 +223,26 @@ void Appenders::reopen() {
   LogAppenderFileFactory::reopenAll();
 }
 
-ResultT<Appenders::AppenderConfig> Appenders::parseDefinition(
-    std::string const& definition) {
+auto Appenders::parseDefinition(std::string definition)
+    -> ResultT<Appenders::AppenderConfig> {
   AppenderConfig result;
 
+  std::vector<std::string> v = basics::StringUtils::split(definition, ';');
+  if (v.size() == 2) {
+    definition = v[0];
+    auto res = parseLogLevels(v[1]);
+    if (res.fail()) {
+      return res.result();
+    }
+    result.levels = res.get();
+  } else if (v.size() > 2) {
+    return Result(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("strange definition '", definition, "' ignored"));
+  }
+
   // split into parts and do some basic validation
-  std::vector<std::string> v = basics::StringUtils::split(definition, '=');
+  v = basics::StringUtils::split(definition, '=');
   std::string topicName;
 
   if (v.size() == 1) {
@@ -274,6 +294,34 @@ ResultT<Appenders::AppenderConfig> Appenders::parseDefinition(
     return Result(
         TRI_ERROR_BAD_PARAMETER,
         absl::StrCat("unknown output definition '", result.output, "'"));
+  }
+
+  return result;
+}
+
+auto Appenders::parseLogLevels(std::string const& levels)
+    -> ResultT<std::vector<std::pair<LogTopic*, LogLevel>>> {
+  std::vector<std::pair<LogTopic*, LogLevel>> result;
+  auto v = basics::StringUtils::split(levels, ',');
+  for (auto const& s : v) {
+    auto p = basics::StringUtils::split(s, '=');
+    if (p.size() != 2) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("strange level definition '", s, "'"));
+    }
+    auto* topic = LogTopic::lookup(p[0]);
+    if (topic == nullptr) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("unknown topic '", p[0], "'"));
+    }
+    LogLevel level;
+    bool isValid = Logger::translateLogLevel(p[1], false, level);
+
+    if (!isValid) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("strange log level '", p[1], "'"));
+    }
+    result.emplace_back(topic, level);
   }
 
   return result;
