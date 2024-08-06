@@ -74,11 +74,11 @@ struct Appenders {
     std::string output;
     LogTopic* topic = nullptr;
     Type type = Type::kUnknown;
-    std::vector<std::pair<LogTopic*, LogLevel>> levels;
+    std::unordered_map<LogTopic*, LogLevel> levels;
   };
   auto parseDefinition(std::string definition) -> ResultT<AppenderConfig>;
   auto parseLogLevels(std::string const& definition)
-      -> ResultT<std::vector<std::pair<LogTopic*, LogLevel>>>;
+      -> ResultT<std::unordered_map<LogTopic*, LogLevel>>;
 
   std::shared_ptr<LogAppender> buildAppender(LogGroup const&,
                                              AppenderConfig const& config);

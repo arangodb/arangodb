@@ -34,7 +34,9 @@
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogMessage.h"
+#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "Logger/Topics.h"
 
 #include <absl/strings/str_cat.h>
 #include <vector>
@@ -56,7 +58,9 @@ void Appenders::addAppender(LogGroup const& logGroup,
                             std::string const& definition) {
   auto res = parseDefinition(definition);
   if (res.fail()) {
-    LOG_TOPIC("658e0", ERR, Logger::FIXME) << res.errorMessage();
+    LOG_TOPIC("658e0", ERR, Logger::FIXME)
+        << "Failed to configure log appender " << definition << " - "
+        << res.errorMessage();
     return;
   }
 
@@ -300,8 +304,8 @@ auto Appenders::parseDefinition(std::string definition)
 }
 
 auto Appenders::parseLogLevels(std::string const& levels)
-    -> ResultT<std::vector<std::pair<LogTopic*, LogLevel>>> {
-  std::vector<std::pair<LogTopic*, LogLevel>> result;
+    -> ResultT<std::unordered_map<LogTopic*, LogLevel>> {
+  std::unordered_map<LogTopic*, LogLevel> result;
   auto v = basics::StringUtils::split(levels, ',');
   for (auto const& s : v) {
     auto p = basics::StringUtils::split(s, '=');
@@ -309,21 +313,29 @@ auto Appenders::parseLogLevels(std::string const& levels)
       return Result(TRI_ERROR_BAD_PARAMETER,
                     absl::StrCat("strange level definition '", s, "'"));
     }
-    auto* topic = LogTopic::lookup(p[0]);
-    if (topic == nullptr) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    absl::StrCat("unknown topic '", p[0], "'"));
-    }
     LogLevel level;
     bool isValid = Logger::translateLogLevel(p[1], false, level);
-
     if (!isValid) {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     absl::StrCat("strange log level '", p[1], "'"));
     }
-    result.emplace_back(topic, level);
-  }
 
+    if (p[0] == LogTopic::ALL) {
+      for (std::size_t i = 0; i < kNumTopics; ++i) {
+        auto* topic = LogTopic::topicForId(i);
+        if (topic != nullptr) {
+          result[topic] = level;
+        }
+      }
+    } else {
+      auto* topic = LogTopic::lookup(p[0]);
+      if (topic == nullptr) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      absl::StrCat("unknown topic '", p[0], "'"));
+      }
+      result[topic] = level;
+    }
+  }
   return result;
 }
 
