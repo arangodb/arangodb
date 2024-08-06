@@ -30,6 +30,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -55,27 +56,27 @@ function queryFailureSuite () {
   return {
 
     setUpAll: function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
     },
 
     setUp: function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
     tearDownAll: function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
       c = null;
     },
 
     tearDown: function() {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
     testThatQueryIsntStuckAtShutdown: function() {
-      global.instanceManager.debugSetFailAt("Query::finalize_before_done");
+      IM.debugSetFailAt("Query::finalize_before_done");
       assertFailingQuery(`INSERT {Hallo:12} INTO ${cn}`);
     },
   };
@@ -85,7 +86,7 @@ function queryFailureSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-if (global.instanceManager.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(queryFailureSuite);
 }
 

@@ -27,6 +27,7 @@
 
 const jsunity = require("jsunity");
 const internal = require("internal");
+let IM = global.instanceManager;
 
 function UniqueIndexFailuresSuite () {
   'use strict';
@@ -37,13 +38,13 @@ function UniqueIndexFailuresSuite () {
 
     setUp : function () {
       internal.db._drop(cn);
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       collection = internal.db._create(cn);
       collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
     },
 
     tearDown : function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       internal.db._drop(cn);
     },
 
@@ -52,7 +53,7 @@ function UniqueIndexFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateIndexElementOOM : function () {
-      global.instanceManager.debugSetFailAt("FillElementOOM");
+      IM.debugSetFailAt("FillElementOOM");
       try {
         collection.save({a: 1});
         fail();
@@ -69,7 +70,7 @@ function UniqueIndexFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateIndexElementOOMOther : function () {
-      global.instanceManager.debugSetFailAt("FillElementOOM2");
+      IM.debugSetFailAt("FillElementOOM2");
       try {
         collection.save({a: 1});
         fail();
@@ -96,14 +97,14 @@ function IndexMultiFailuresSuite () {
   return {
 
     setUp : function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       internal.db._drop(cn);
       collection = internal.db._create(cn);
       collection.ensureIndex({ type: "persistent", fields: ["a"] });
     },
 
     tearDown : function () {
-      global.instanceManager.debugClearFailAt();
+      IM.debugClearFailAt();
       internal.db._drop(cn);
     },
 
@@ -113,7 +114,7 @@ function IndexMultiFailuresSuite () {
 
     testMultiFailCreateIndexElementOOM : function () {
       collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
-      global.instanceManager.debugSetFailAt("FillElementOOM");
+      IM.debugSetFailAt("FillElementOOM");
       try {
         collection.save({a: 1});
         fail();
@@ -131,7 +132,7 @@ function IndexMultiFailuresSuite () {
 
     testMultiFailCreateIndexElementOOMOther : function () {
       collection.ensureIndex({ type: "persistent", fields: ["a"], unique: true });
-      global.instanceManager.debugSetFailAt("FillElementOOM2");
+      IM.debugSetFailAt("FillElementOOM2");
       try {
         collection.save({a: 1});
         fail();
@@ -262,7 +263,7 @@ function IndexMultiBugsSuite() {
   };
 }
 
-if (global.instanceManager.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(UniqueIndexFailuresSuite);
   jsunity.run(IndexMultiFailuresSuite);
 }

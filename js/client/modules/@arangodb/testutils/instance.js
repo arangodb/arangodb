@@ -255,6 +255,19 @@ class instance {
              (this.instanceRole === instanceRole.failover)      );
   }
 
+  matches(role, urlIDOrShortName) {
+    if (role !== undefined && role !== '' && !this.isRole(role)) {
+      return false;
+    }
+    if (urlIDOrShortName !== undefined &&
+        this.url !== urlIDOrShortName &&
+        this.endpoint !== urlIDOrShortName &&
+        this.id !== urlIDOrShortName) {
+        return false;
+      }
+    return true;
+  }
+  
   _disconnect() {
     if (this.connectionHandle !== undefined) {
       arango.disconnectHandle(this.connectionHandle);
@@ -1337,9 +1350,57 @@ class instance {
     }
     return true;
   }
-  debugClearFailAt(failurePoint, shortName) {
+  debugShouldFailAt(failurePoint) {
+    throw new Error("not implemented!");
     if (!this.connect()) {
       throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
+    }
+    let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
+    if (reply.code !== 200) {
+      throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
+    }
+    return true;
+  }
+  debugResetRaceControl() {
+    if (!this.connect()) {
+      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
+    }
+    if (failurePoint === "") {
+      failurePoint = undefined;
+    }
+    let deleteUrl = '/_admin/debug/raceControl';
+    let reply;
+    let count = 0;
+    while (count < 10) {
+      try {
+        reply = arango.DELETE_RAW(deleteUrl);
+        break;
+      } catch (ex) {
+        count += 1;
+        print(`${RED} ${this.name}: failed to reset race control by ${ex}`);
+        this._disconnect();
+        this.connect();
+      }
+    }
+    if (reply.code !== 200) {
+      // we may no longer be able to work on a database as forced by fuerte
+      print(`${BLUE}${this.name}: fallback to internal.download to clear race control${RESET}`);
+      let httpOptions = _.clone(this.authHeaders);
+      httpOptions.method = 'DELETE';
+      httpOptions.returnBodyOnError = true;
+      const reply = download(deleteUrl, '', httpOptions);
+      if (reply.code !== 200) {
+        throw new Error(`${this.name}: Failed to remove race control: '${failurePoint}' =>  ${JSON.stringify(reply.parsedBody)}`);
+      }
+    }
+    return true;
+  }
+  debugClearFailAt(failurePoint) {
+    if (!this.connect()) {
+      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
+    }
+    if (failurePoint === "") {
+      failurePoint = undefined;
     }
     let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`;
     let reply;

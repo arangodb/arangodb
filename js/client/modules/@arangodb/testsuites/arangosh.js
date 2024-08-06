@@ -114,9 +114,7 @@ function arangosh (options) {
     const startTime = time();
     let sh = new sanHandler(pu.ARANGOSH_BIN, options);
     sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
-    let subProcessEnv = [];
-    sh.getSanOptions(subProcessEnv);
-    let rc = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args), false, 0, subProcessEnv);
+    let rc = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args), false, 0, sh.getSanOptions());
     sh.fetchSanFileAfterExit(rc.pid);
     const deltaTime = time() - startTime;
     const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === expectedReturnCode);
@@ -163,9 +161,7 @@ function arangosh (options) {
 
     const startTime2 = time();
 
-    subProcessEnv = [];
-    sh.getSanOptions(subProcessEnv);
-    let rc2 = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args2), false, 0, subProcessEnv);
+    let rc2 = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args2), false, 0, sh.getSanOptions());
     sh.fetchSanFileAfterExit(rc2.pid);
     const deltaTime2 = time() - startTime;
     const failSuccess2 = (rc2.hasOwnProperty('exit') && rc2.exit === expectedReturnCode);
@@ -275,9 +271,7 @@ function arangosh (options) {
   let tmpMgr = new tmpDirMngr('arangosh_tests_pipe', options);
   let sh = new sanHandler(pu.ARANGOSH_BIN, options);
   sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
-  let subProcessEnv = [];
-  sh.getSanOptions(subProcessEnv);
-  let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0, subProcessEnv);
+  let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0, sh.getSanOptions());
   const deltaTime = time() - startTime;
 
   fs.writePipe(res.pid, "bla\n");
@@ -333,9 +327,7 @@ function arangosh (options) {
     executeExternalAndWait('sh', ['-c', 'chmod a+x ' + execFile]);
 
     const startTime2 = time();
-    let subProcessEnv = [];
-    sh.getSanOptions(subProcessEnv);
-    let rc = executeExternalAndWait('sh', ['-c', execFile], false, 0, subProcessEnv);
+    let rc = executeExternalAndWait('sh', ['-c', execFile], false, 0, sh.getSanOptions());
     sh.fetchSanFileAfterExit(rc.pid);
     deltaTime2 = time() - startTime2;
 
@@ -382,9 +374,7 @@ function arangosh (options) {
 
     const startTime3 = time();
     sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
-    let subProcessEnv = [];
-    sh.getSanOptions(subProcessEnv);
-    rc = executeExternalAndWait('sh', ['-c', shebangFile], false, subProcessEnv);
+    rc = executeExternalAndWait('sh', ['-c', shebangFile], false, sh.getSanOptions());
     sh.fetchSanFileAfterExit(rc.pid);
     deltaTime3 = time() - startTime3;
 

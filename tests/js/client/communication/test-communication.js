@@ -207,8 +207,7 @@ function GenericAqlSetupPathSuite(type) {
   const activateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
-      const endpoint = getEndpointById(servers[0]);
-      IM.debugSetFailAt(`WaitOnLock::${shard}`, undefined, instanceRole.dbServer, endpoint);
+      IM.debugSetFailAt(`WaitOnLock::${shard}`, instanceRole.dbServer, servers[0]);
     }
   };
 
@@ -216,9 +215,8 @@ function GenericAqlSetupPathSuite(type) {
   const deactivateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
-      const endpoint = getEndpointById(servers[0]);
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, endpoint);
-      debugResetRaceControl(endpoint);
+      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, servers[0]);
+      IM.debugResetRaceControl(instanceRole.dbServer, servers[0]);
     }
   };
 

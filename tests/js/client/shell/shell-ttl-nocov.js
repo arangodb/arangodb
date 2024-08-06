@@ -60,7 +60,7 @@ function TtlSuite () {
 
     setUp : function () {
       if (isCluster) {
-        IM.debugSetFailAt("allow-low-ttl-frequency", undefined, instanceRole.dbServer);
+        IM.debugSetFailAt("allow-low-ttl-frequency", instanceRole.dbServer);
       } else {
         IM.debugSetFailAt("allow-low-ttl-frequency");
       }

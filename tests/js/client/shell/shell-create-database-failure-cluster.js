@@ -42,7 +42,7 @@ function createDatabaseFailureSuite() {
   return {
 
     setUp: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       try {
         db._dropDatabase(cn);
       } catch (err) {
@@ -50,13 +50,13 @@ function createDatabaseFailureSuite() {
     },
 
     tearDown: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
     },
     
     // make follower execute intermediate commits (before the leader), but let the
     // transaction succeed
     testCreateDatabaseWithFailure: function () {
-      IM.debugSetFailAt("CreateDatabase::first", undefined, instanceRole.dbServer);
+      IM.debugSetFailAt("CreateDatabase::first", instanceRole.dbServer);
 
       try {
         db._createDatabase(cn);

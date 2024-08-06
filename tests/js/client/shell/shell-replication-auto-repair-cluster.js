@@ -112,7 +112,7 @@ function replicationAutoRepairSuite() {
 
   return {
     setUp: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       getEndpointsByType("dbserver").forEach((ep) => {
         // store original log levels
         let result = request({ method: "GET", url: ep + "/_admin/log/level" });
@@ -123,7 +123,7 @@ function replicationAutoRepairSuite() {
     },
 
     tearDown: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       getEndpointsByType("dbserver").forEach((ep) => {
         // restore original log level
         request({ method: "PUT", url: ep + "/_admin/log/level", body: logLevels[ep], json: true });
@@ -150,7 +150,7 @@ function replicationAutoRepairSuite() {
         }
         if (count === n / 2) {
           // do not replicate from leader to follower after half of documents
-          IM.debugSetFailAt("replicateOperations::skip", undefined, instanceRole.dbServer, leader);
+          IM.debugSetFailAt("replicateOperations::skip", instanceRole.dbServer, leader);
         }
         c.insert(docs);
       }
@@ -179,16 +179,16 @@ function replicationAutoRepairSuite() {
         assertEqual(200, result.status);
       }
       
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, leader);
+      IM.debugClearFailAt('', instanceRole.dbServer, leader);
 
       // this will trigger a drop-follower operation on the next insert on the leader
-      IM.debugSetFailAt("replicateOperationsDropFollower", undefined, instanceRole.dbServer, leader);
+      IM.debugSetFailAt("replicateOperationsDropFollower", instanceRole.dbServer, leader);
      
       // enable sending of revision-tree data from follower to leader for comparison
-      IM.debugSetFailAt("synchronizeShardSendTreeData", undefined, instanceRole.dbServer, follower);
+      IM.debugSetFailAt("synchronizeShardSendTreeData", instanceRole.dbServer, follower);
 
       // disable intentional delays of subsequent replication attempts on follower
-      IM.debugSetFailAt("SynchronizeShard::noSleepOnSyncError", undefined, instanceRole.dbServer, follower);
+      IM.debugSetFailAt("SynchronizeShard::noSleepOnSyncError", instanceRole.dbServer, follower);
 
       let leaderRebuildsBefore = getMetric(leader, "arangodb_sync_tree_rebuilds_total");
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
@@ -197,7 +197,7 @@ function replicationAutoRepairSuite() {
       // the follower will need to get in sync using the incremental sync protocol
       c.insert({});
       
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, leader);
+      IM.debugClearFailAt('', instanceRole.dbServer, leader);
     
       // follower must have been dropped by the insert
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
@@ -230,7 +230,7 @@ function replicationAutoRepairSuite() {
         }
         if (count === n / 2) {
           // do not replicate from leader to follower after half of documents
-           IM.debugSetFailAt("replicateOperations::skip", undefined, instanceRole.dbServer, leader);
+           IM.debugSetFailAt("replicateOperations::skip", instanceRole.dbServer, leader);
         }
         c.insert(docs);
       }
@@ -262,13 +262,13 @@ function replicationAutoRepairSuite() {
       }
 
       // this will trigger a drop-follower operation on the next insert on the leader
-      IM.debugSetFailAt("replicateOperationsDropFollower", undefined, instanceRole.dbServer, leader);
+      IM.debugSetFailAt("replicateOperationsDropFollower", instanceRole.dbServer, leader);
      
       // enable sending of revision-tree data from follower to leader for comparison
-      IM.debugSetFailAt("synchronizeShardSendTreeData", undefined, instanceRole.dbServer, follower);
+      IM.debugSetFailAt("synchronizeShardSendTreeData", instanceRole.dbServer, follower);
 
       // disable intentional delays of subsequent replication attempts on follower
-      IM.debugSetFailAt("SynchronizeShard::noSleepOnSyncError", undefined, instanceRole.dbServer, follower);
+      IM.debugSetFailAt("SynchronizeShard::noSleepOnSyncError", instanceRole.dbServer, follower);
 
       let followerRebuildsBefore = getMetric(follower, "arangodb_sync_tree_rebuilds_total");
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
@@ -277,7 +277,7 @@ function replicationAutoRepairSuite() {
       // the follower will need to get in sync using the incremental sync protocol
       c.insert({});
       
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, leader);
+      IM.debugClearFailAt('', instanceRole.dbServer, leader);
     
       // follower must have been dropped by the insert
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
@@ -294,7 +294,7 @@ function replicationAutoRepairSuite() {
   };
 }
 
-if (global.instanceManager.debugCanUseFailAt() && db._properties().replicationVersion !== "2") {
+if (IM.debugCanUseFailAt() && db._properties().replicationVersion !== "2") {
   // only execute if failure tests are available
   jsunity.run(replicationAutoRepairSuite);
 }

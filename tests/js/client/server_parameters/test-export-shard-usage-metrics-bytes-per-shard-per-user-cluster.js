@@ -1408,11 +1408,12 @@ function BaseTestSuite(targetUser) {
     testHasMetricsWhenUsingStreamingTrx : function () {
       [1, 2].forEach((replicationFactor) => {
         const cn = getUniqueCollectionName();
+
         let c = db._create(cn, {numberOfShards: 3, replicationFactor});
         try {
           let shards = c.shards();
           assertEqual(3, shards.length);
-          
+
           const n = 50;
           let trx = db._createTransaction({ collections: { write: cn } });
 

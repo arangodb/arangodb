@@ -58,8 +58,8 @@ function aqlQuerySetupTimeout() {
       // which will add a tombstone for the query
       // once the DB server will execute the (delayed) query, it will see the
       // tombstone and fail
-      IM.debugSetFailAt("Query::setupTimeoutFailSequence", undefined, instanceRole.dbServer);
-      IM.debugSetFailAt("Query::setupTimeoutFailSequence", undefined, instanceRole.coordinator);
+      IM.debugSetFailAt("Query::setupTimeoutFailSequence", instanceRole.dbServer);
+      IM.debugSetFailAt("Query::setupTimeoutFailSequence", instanceRole.coordinator);
 
       try {
         db._query("FOR i IN 1..1000 INSERT {} INTO " + cn);

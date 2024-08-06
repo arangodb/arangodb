@@ -524,12 +524,12 @@ function InsertMultipleDocumentsSuite(params) {
           docs.push({d: i});
         }
         try {
-          IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfFalse", undefined, instanceRole.dbServer);
+          IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfFalse", instanceRole.dbServer);
           // insert should just work
           db._query(`FOR d IN @docs INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true} RETURN d`, {docs});
           assertEqual(db[cn].count(), numDocs);
         } finally {
-          IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+          IM.debugClearFailAt('', instanceRole.dbServer);
         }
       }
     },

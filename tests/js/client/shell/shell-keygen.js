@@ -98,10 +98,10 @@ const runSmartEdgeInserts = (graphProperties) => {
   // Helper method to either insert edges into SmartGraphs or EnterpriseGraphs
   if (cluster) {
     // fail if we generate a key on a DB server
-    IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", undefined, filter);
+    IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", '', filter);
   } else {
     // single server: we can actually get here with the SmartGraph simulator!
-    IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", undefined, filter);
+    IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
   }
 
   graphs._create(gn, [graphs._relation(en, vn, vn)], null, graphProperties);
@@ -1145,7 +1145,7 @@ function KeyGenerationLocationSuite() {
 
       let c = db._create(cn, {keyOptions: {type: "traditional"}, numberOfShards: 1});
 
-      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", undefined, filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", '', filter);
       try {
         c.insert({});
       } catch (err) {
@@ -1160,7 +1160,7 @@ function KeyGenerationLocationSuite() {
 
       let c = db._create(cn, {keyOptions: {type: "traditional"}, numberOfShards: 2});
 
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", undefined, filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
       try {
         c.insert({});
       } catch (err) {
@@ -1174,7 +1174,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", undefined, filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
 
       generators().forEach((generator) => {
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1});
@@ -1210,7 +1210,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", undefined, filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
 
       generators().forEach((generator) => {
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1, shardKeys: ["id"]});
@@ -1247,7 +1247,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", undefined, filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
 
       db._createDatabase(cn, {sharding: "single"});
       try {
@@ -1294,7 +1294,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a DB server
-      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", undefined, filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", '', filter);
 
       generators().forEach((generator) => {
         if (generator === "autoincrement") {
@@ -1333,7 +1333,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a DB server
-      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", undefined, filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", '', filter);
 
       generators().forEach((generator) => {
         if (generator === "autoincrement") {
@@ -1409,10 +1409,10 @@ function KeyGenerationLocationSmartGraphSuite() {
     testSingleShardSmartVertexInserts: function () {
       if (cluster) {
         // fail if we generate a key on a coordinator
-        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", undefined, filter);
+        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
       } else {
         // single server: we can actually get here with the SmartGraph simulator!
-        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", undefined, filter);
+        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
       }
 
       // note: test can run in single server as well!
@@ -1426,7 +1426,7 @@ function KeyGenerationLocationSmartGraphSuite() {
     testSingleShardEnterpriseVertexInserts: function () {
       if (!cluster) {
         // single server: we can actually get here with the SmartGraph simulator!
-        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", undefined, filter);
+        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
       }
       // Note: To cluster tests and why we're not setting any failure point here:
       // We cannot declare a failure point here because both, that means:
@@ -1447,10 +1447,10 @@ function KeyGenerationLocationSmartGraphSuite() {
     testMultiShardSmartVertexInserts: function () {
       if (cluster) {
         // fail if we generate a key on a DB server
-        IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", undefined, filter);
+        IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", '', filter);
       } else {
         // single server: we can actually get here with the SmartGraph simulator!
-        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", undefined, filter);
+        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", '', filter);
       }
 
       // note: test can run in single server as well!

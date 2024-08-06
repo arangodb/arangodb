@@ -70,14 +70,14 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
   return {
 
     setUp: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
       db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
       isReplication2 = db._properties().replicationVersion === "2";
     },
 
     tearDown: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
@@ -102,7 +102,7 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
     testAqlIntermediateCommitsWithFailurePoint: function () {
       let [shardId, leader, follower] = collectionInfo();
       // trigger a certain failure point on the leader
-      IM.debugSetFailAt("insertLocal::fakeResult1", undefined, instanceRole.dbServer, leader);
+      IM.debugSetFailAt("insertLocal::fakeResult1", instanceRole.dbServer, leader);
 
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
@@ -129,7 +129,7 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
     testAqlIntermediateCommitsWithOtherFailurePoint: function () {
       let [shardId, leader, follower] = collectionInfo();
       // trigger a certain failure point on the leader
-      IM.debugSetFailAt("insertLocal::fakeResult2", undefined, instanceRole.dbServer, leader);
+      IM.debugSetFailAt("insertLocal::fakeResult2", instanceRole.dbServer, leader);
       
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
@@ -205,13 +205,13 @@ function transactionIntermediateCommitsBabiesSuite() {
   return {
 
     setUp: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
       db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
     },
 
     tearDown: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
@@ -232,7 +232,7 @@ function transactionIntermediateCommitsBabiesSuite() {
     testDocumentsSingleArrayIntermediateCommitsSuppressed: function () {
       let leader = collectionInfo();
       // trigger a certain failure point on the leader
-      IM.debugSetFailAt("TransactionState::intermediateCommitCount100", undefined, instanceRole.dbServer, leader);
+      IM.debugSetFailAt("TransactionState::intermediateCommitCount100", instanceRole.dbServer, leader);
       
       let docs = buildDocuments();
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");

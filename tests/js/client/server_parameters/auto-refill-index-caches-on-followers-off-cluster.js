@@ -53,7 +53,7 @@ function AutoRefillIndexCachesOnFollowers() {
     },
 
     tearDown: function() {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       try {
         c.remove("test");
       } catch (err) {}
@@ -64,21 +64,21 @@ function AutoRefillIndexCachesOnFollowers() {
     },
     
     testInsertDefaultOk: function() {
-      IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfTrue", undefined, instanceRole.dbServer);
+      IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfTrue", instanceRole.dbServer);
       // insert should just work
       c.insert({_key: "test"});
       assertEqual(1, c.count());
     },
     
     testInsertRequestedOk: function() {
-      IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfTrue", undefined, instanceRole.dbServer);
+      IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfTrue", instanceRole.dbServer);
       // insert should just work
       c.insert({_key: "test"}, { refillIndexCaches: true });
       assertEqual(1, c.count());
     },
     
     testInsertOptOutOk: function() {
-      IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfTrue", undefined, instanceRole.dbServer);
+      IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfTrue", instanceRole.dbServer);
       // insert should just work
       c.insert({_key: "test"}, { refillIndexCaches: false });
       assertEqual(1, c.count());

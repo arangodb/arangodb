@@ -60,8 +60,8 @@ function IndexSuite() {
     },
 
     tearDown: function() {
-      IM.debugRemoveFailAt("fillIndex::pause", undefined, filter);
-      IM.debugRemoveFailAt("fillIndex::unpause", undefined, filter);
+      IM.debugRemoveFailAt("fillIndex::pause", filter);
+      IM.debugRemoveFailAt("fillIndex::unpause", filter);
       c.drop();
     },
 
@@ -70,7 +70,7 @@ function IndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexProgressIsReported : function () {
-      IM.debugSetFailAt("fillIndex::pause", undefined, filter);
+      IM.debugSetFailAt("fillIndex::pause", filter);
       let idxdesc = { name: "progress", type: "persistent", fields: ["name"], inBackground: true};
 
       let job = arango.POST_RAW(`/_api/index?collection=${cn}`, idxdesc,
@@ -102,7 +102,7 @@ function IndexSuite() {
           if (progress > 0 && !seenProgress) {
             // Only release index building once we have seen at least
             // once an isBuilding state with non-zero progress
-            IM.debugSetFailAt("fillIndex::unpause", undefined, filter);
+            IM.debugSetFailAt("fillIndex::unpause", filter);
             seenProgress = true;
           }
         } else if (seenProgress) {
@@ -121,7 +121,7 @@ function IndexSuite() {
     },
     
     testIndexProgressIsNotReported : function () {
-      IM.debugSetFailAt("fillIndex::pause", undefined, filter);
+      IM.debugSetFailAt("fillIndex::pause", filter);
       let idxdesc = { name: "progress", type: "persistent", fields: ["name"], inBackground: true};
 
       let job = arango.POST_RAW(`/_api/index?collection=${cn}`, idxdesc,
@@ -142,7 +142,7 @@ function IndexSuite() {
         }
       }
             
-      IM.debugSetFailAt("fillIndex::unpause", undefined, filter);
+      IM.debugSetFailAt("fillIndex::unpause", filter);
       
       count = 0;
       // wait until index appears, at most 30 seconds

@@ -46,7 +46,7 @@ function ReplicationDeadLockSuite() {
     },
 
     tearDown: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       try {
         db._drop(collectionName);
       } catch (e) {
@@ -70,22 +70,20 @@ function ReplicationDeadLockSuite() {
       // Insert some random documents, to avoid getting away with a fast-path sync
       col.save([{}, {}, {}, {}]);
 
-      IM.debugSetFailAt(`LeaderWrongChecksumOnSoftLock${shardName}`, undefined, instanceRole.dbServer);
-      IM.debugSetFailAt(`FollowerBlockRequestsLanesForSyncOnShard${shardName}`, undefined, instanceRole.dbServer);
-      IM.debugSetFailAt(`LeaderBlockRequestsLanesForSyncOnShard${shardName}`, undefined, instanceRole.dbServer);
+      IM.debugSetFailAt(`LeaderWrongChecksumOnSoftLock${shardName}`, instanceRole.dbServer);
+      IM.debugSetFailAt(`FollowerBlockRequestsLanesForSyncOnShard${shardName}`, instanceRole.dbServer);
+      IM.debugSetFailAt(`LeaderBlockRequestsLanesForSyncOnShard${shardName}`, instanceRole.dbServer);
 
       /* Increase replication factor, this will trigger the failurePointCascade */
       col.properties({replicationFactor: 2});
       // This should now wait until the collection get back into sync using only HIGH lanes
-      print('waitForShardsInSync');
       waitForShardsInSync(collectionName, 20, 1);
       // Unlock medium lanes again. The collections are synced
       // so we can revert back to normal state.
       print('clearing');
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       try {
         // Should be able to insert documents again
-        print('saving');
         col.save({});
       } catch (e) {
         fail();

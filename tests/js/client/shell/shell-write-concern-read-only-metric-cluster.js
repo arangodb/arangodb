@@ -64,8 +64,8 @@ function WriteConcernReadOnlyMetricSuite() {
       assertEqual(metricValue, 0);
 
       // suspend the follower
-      global.instanceManager.debugSetFailAt("LogicalCollection::insert", undefined, undefined, getUrlById(follower));
-      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", undefined, undefined, getUrlById(follower));
+      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
+      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
 
       // trigger a follower drop
       c.insert({});

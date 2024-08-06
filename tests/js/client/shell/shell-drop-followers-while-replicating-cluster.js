@@ -49,22 +49,22 @@ function dropFollowersWhileReplicatingSuite() {
   return {
 
     setUp: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
 
     tearDown: function () {
-      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
     testSingleOperationDropFollowerWhileReplicating: function() {
       let { c, leader, follower } = setupCollection();
-      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
+      IM.debugSetFailAt("replicateOperationsDropFollower", '', leader);
       
       c.insert({});
       
-      IM.debugClearFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
+      IM.debugClearFailAt("replicateOperationsDropFollower", '', leader);
 
       assertEqual(1, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -73,11 +73,11 @@ function dropFollowersWhileReplicatingSuite() {
     testMultiOperationDropFollowerWhileReplicating: function() {
       let { c, leader, follower } = setupCollection();
      
-      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
+      IM.debugSetFailAt("replicateOperationsDropFollower", '', leader);
       
       c.insert([{}, {}, {}, {}]);
       
-      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
+      IM.debugSetFailAt("replicateOperationsDropFollower", '', leader);
       
       assertEqual(4, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -86,11 +86,11 @@ function dropFollowersWhileReplicatingSuite() {
     testAqlDropFollowerWhileReplicating: function() {
       let { c, leader, follower } = setupCollection();
      
-      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
+      IM.debugSetFailAt("replicateOperationsDropFollower", '', leader);
      
       db._query("FOR i IN 1..10 INSERT {} INTO " + cn);
       
-      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
+      IM.debugSetFailAt("replicateOperationsDropFollower", '', leader);
       
       assertEqual(10, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -99,11 +99,11 @@ function dropFollowersWhileReplicatingSuite() {
     testSingleOperationBuildEmptyTransactionBody: function() {
       let { c, leader, follower } = setupCollection();
      
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       c.insert({});
       
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       assertEqual(1, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -112,11 +112,11 @@ function dropFollowersWhileReplicatingSuite() {
     testMultiOperationBuildEmptyTransactionBody: function() {
       let { c, leader, follower } = setupCollection();
      
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       c.insert([{}, {}, {}, {}]);
       
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       assertEqual(4, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -125,11 +125,11 @@ function dropFollowersWhileReplicatingSuite() {
     testAqlBuildEmptyTransactionBody: function() {
       let { c, leader, follower } = setupCollection();
      
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       db._query("FOR i IN 1..10 INSERT {} INTO " + cn);
       
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       assertEqual(10, c.count());
       waitForShardsInSync(cn, 60, 1);
