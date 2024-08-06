@@ -1,6 +1,8 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* FE-378: fix fields containing spaces during index creation on web UI.
+
 * Fixed MDS-1225: reloading of AQL user-defined functions inside AQL queries 
   could cause trouble if the `_aqlfunctions` collection is located on different
   DB server than the leader shards of other collections used in the same query.

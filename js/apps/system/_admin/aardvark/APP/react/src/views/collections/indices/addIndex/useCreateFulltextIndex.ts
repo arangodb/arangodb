@@ -1,7 +1,7 @@
 import { toNumber } from "lodash";
-import { useCreateIndex } from "./useCreateIndex";
-import { commonFieldsMap, commonSchema } from "./IndexFieldsHelper";
 import * as Yup from "yup";
+import { commonFieldsMap, commonSchema } from "./IndexFieldsHelper";
+import { useCreateIndex } from "./useCreateIndex";
 
 export const INITIAL_VALUES = {
   type: "fulltext",
@@ -38,7 +38,7 @@ export const useCreateFulltextIndex = () => {
     return onCreateIndex({
       ...values,
       minLength: toNumber(values.minLength),
-      fields: values.fields.split(",")
+      fields: values.fields.split(",").map(field => field.trim())
     });
   };
   return { onCreate };

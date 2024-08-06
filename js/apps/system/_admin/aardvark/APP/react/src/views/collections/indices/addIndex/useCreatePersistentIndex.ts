@@ -76,8 +76,10 @@ export const useCreatePersistentIndex = () => {
   const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
       ...values,
-      storedValues: values.storedValues ? values.storedValues.split(",") : undefined,
-      fields: values.fields.split(",")
+      storedValues: values.storedValues
+        ? values.storedValues.split(",")
+        : undefined,
+      fields: values.fields.split(",").map(field => field.trim())
     });
   };
   return { onCreate };
