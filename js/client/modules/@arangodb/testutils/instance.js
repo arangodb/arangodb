@@ -1438,8 +1438,8 @@ class instance {
     return reply.parsedBody === true;   
   }
 
-  checkDebugTerminated() {
-    let res = statusExternal(this.pid, false);
+  checkDebugTerminated(waitForExit) {
+    let res = statusExternal(this.pid, waitForExit);
     if (res.status === 'NOT-FOUND') {
       print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
       sleep(0.2);
@@ -1462,7 +1462,7 @@ class instance {
     if (this.pid === null) {
       return;
     }
-    if (!this.checkDebugTerminated()){
+    if (!this.checkDebugTerminated(false)){
       let reply;
       try {
         this.connect();
@@ -1472,7 +1472,7 @@ class instance {
           (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
             (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code))) {
           print(`Terminated instance ${this.name} - ${ex}`);
-          return this.checkDebugTerminated();
+          return this.checkDebugTerminated(true);
         }
         throw new Error(`Failed to crash ${this.name}: ${ex}`);
       }
@@ -1480,9 +1480,16 @@ class instance {
         throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
       }
     }
-    if (!this.checkDebugTerminated()) {
-      throw new Error(`instance wouldn't crash ${this.name}`);
+    let count = 0;
+    while (count < 10) {
+      if (this.checkDebugTerminated(false)) {
+        return;
+      }
+      count += 1;
+      sleep(1);
+      print('T?');
     }
+    throw new Error(`instance wouldn't crash ${this.name}`);
   }
 }
 
