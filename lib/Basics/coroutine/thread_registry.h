@@ -36,10 +36,10 @@ struct ThreadRegistry {
     // promise needs to live on the same thread as this registry
     ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
     auto current_head = promise_head.load(std::memory_order_relaxed);
-    promise->next.store(current_head, std::memory_order_relaxed);
+    promise->next = current_head;
     promise->registry = this;
     if (current_head != nullptr) {
-      current_head->previous.store(promise, std::memory_order_relaxed);
+      current_head->previous = promise;
     }
     // (1) - this store synchronizes with load in (2)
     promise_head.store(promise, std::memory_order_release);
@@ -55,11 +55,9 @@ struct ThreadRegistry {
   requires requires(F f, PromiseInList* promise) { {f(promise)}; }
   auto for_promise(F&& function) noexcept -> void {
     auto guard = std::lock_guard(mutex);
-    // (2) - this load synchronizes with store in (1)
+    // (2) - this load synchronizes with store in (1) and (3)
     for (auto current = promise_head.load(std::memory_order_acquire);
-         current != nullptr;
-         // (5) - this load synchronizes with store in (3) and (4)
-         current = current->next.load(std::memory_order_acquire)) {
+         current != nullptr; current = current->next) {
       function(current);
     }
   }
@@ -73,14 +71,13 @@ struct ThreadRegistry {
   auto mark_for_deletion(PromiseInList* promise) noexcept -> void {
     // makes sure that promise is really in this list
     ADB_PROD_ASSERT(promise->registry == this);
-    // (1) - this load synchronizes with compare_exchange_weak in (2)
-    auto current_head = free_head.load(std::memory_order_acquire);
+    auto current_head = free_head.load(std::memory_order_relaxed);
     do {
-      promise->next_to_free.store(current_head, std::memory_order_relaxed);
-      // (2) - this compare_exchange_weak synchronizes with load in (1)
+      promise->next_to_free = current_head;
+      // (4) - this compare_exchange_weak synchronizes with exchange in (5)
     } while (not free_head.compare_exchange_weak(current_head, promise,
                                                  std::memory_order_release,
-                                                 std::memory_order_relaxed));
+                                                 std::memory_order_acquire));
   }
 
   /**
@@ -90,17 +87,13 @@ struct ThreadRegistry {
    */
   auto garbage_collect() noexcept -> void {
     ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
-    PromiseInList* head;
-    {
-      auto guard = std::lock_guard(mutex);
-      // (7) - this exchange synchronizes with load in (1) and store in (2)
-      head = free_head.exchange(nullptr, std::memory_order_acq_rel);
-    }
-    for (auto current = head; current != nullptr;) {
-      auto next = current->next_to_free.load(std::memory_order_relaxed);
+    // (5) - this exchange synchronizes with compare_exchange_weak in (4)
+    auto head = free_head.exchange(nullptr, std::memory_order_acquire);
+    auto guard = std::lock_guard(mutex);
+    for (auto current = head; current != nullptr;
+         current = current->next_to_free) {
       remove(current);
       current->destroy();
-      current = next;
     }
   }
 
@@ -118,17 +111,16 @@ struct ThreadRegistry {
      thread.)
    */
   auto remove(PromiseInList* promise) -> void {
-    auto next = promise->next.load(std::memory_order_relaxed);
-    auto previous = promise->previous.load(std::memory_order_relaxed);
+    auto next = promise->next;
+    auto previous = promise->previous;
     if (previous == nullptr) {  // promise is current head
-      // (3) - this store synchronizes with the load in (5)
+      // (3) - this store synchronizes with the load in (2)
       promise_head.store(next, std::memory_order_release);
     } else {
-      // (4) - this store synchronizes with the load in (5)
-      previous->next.store(next, std::memory_order_release);
+      previous->next = next;
     }
     if (next != nullptr) {
-      next->previous.store(previous, std::memory_order_relaxed);
+      next->previous = previous;
     }
   }
 };

@@ -103,14 +103,60 @@ TEST_F(CoroutineThreadRegistryTest, mark_for_deletion_does_not_delete_promise) {
 
 TEST_F(CoroutineThreadRegistryTest,
        garbage_collection_deletes_marked_promises) {
-  auto registry = ThreadRegistry{};
-  auto promise = MyTestPromise{1};
-  registry.add(&promise);
+  {
+    auto registry = ThreadRegistry{};
+    auto first_promise = MyTestPromise{1};
+    registry.add(&first_promise);
+    auto second_promise = MyTestPromise{2};
+    registry.add(&second_promise);
+    auto third_promise = MyTestPromise{3};
+    registry.add(&third_promise);
+    EXPECT_EQ(all_ids(registry),
+              (std::vector<uint64_t>{third_promise.id, second_promise.id,
+                                     first_promise.id}));
 
-  registry.mark_for_deletion(&promise);
-  registry.garbage_collect();
+    registry.mark_for_deletion(&first_promise);
+    registry.garbage_collect();
 
-  EXPECT_EQ(all_ids(registry).size(), 0);
+    EXPECT_EQ(all_ids(registry),
+              (std::vector<uint64_t>{third_promise.id, second_promise.id}));
+  }
+  {
+    auto registry = ThreadRegistry{};
+    auto first_promise = MyTestPromise{1};
+    registry.add(&first_promise);
+    auto second_promise = MyTestPromise{2};
+    registry.add(&second_promise);
+    auto third_promise = MyTestPromise{3};
+    registry.add(&third_promise);
+    EXPECT_EQ(all_ids(registry),
+              (std::vector<uint64_t>{third_promise.id, second_promise.id,
+                                     first_promise.id}));
+
+    registry.mark_for_deletion(&second_promise);
+    registry.garbage_collect();
+
+    EXPECT_EQ(all_ids(registry),
+              (std::vector<uint64_t>{third_promise.id, first_promise.id}));
+  }
+  {
+    auto registry = ThreadRegistry{};
+    auto first_promise = MyTestPromise{1};
+    registry.add(&first_promise);
+    auto second_promise = MyTestPromise{2};
+    registry.add(&second_promise);
+    auto third_promise = MyTestPromise{3};
+    registry.add(&third_promise);
+    EXPECT_EQ(all_ids(registry),
+              (std::vector<uint64_t>{third_promise.id, second_promise.id,
+                                     first_promise.id}));
+
+    registry.mark_for_deletion(&third_promise);
+    registry.garbage_collect();
+
+    EXPECT_EQ(all_ids(registry),
+              (std::vector<uint64_t>{second_promise.id, first_promise.id}));
+  }
 }
 
 TEST_F(CoroutineThreadRegistryTest,

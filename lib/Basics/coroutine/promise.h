@@ -22,12 +22,12 @@ struct PromiseInList : Observables {
   virtual ~PromiseInList() = default;
 
   // identifies the promise list it belongs to
-  ThreadRegistry* registry;
-  std::atomic<PromiseInList*> next;
+  ThreadRegistry* registry = nullptr;
+  PromiseInList* next = nullptr;
   // only needed to remove an item
-  std::atomic<PromiseInList*> previous;
+  PromiseInList* previous = nullptr;
   // only needed to garbage collect promises
-  std::atomic<PromiseInList*> next_to_free;
+  PromiseInList* next_to_free = nullptr;
 };
 
 }  // namespace arangodb::coroutine
