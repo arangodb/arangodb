@@ -83,7 +83,7 @@ const optionsDefaults = {
   'cleanup': true,
   'concurrency': 3,
   'duration': 10,
-  'extremeVerbosity': true,
+  'extremeVerbosity': false,
   'force': true,
   'forceJson': false,
   'forceNoCompress': false,
@@ -351,7 +351,15 @@ function translateTestList(cases, options) {
         caselist.push(which);
       } else {
         if (which.startsWith('./')) {
+          // strip relative ./
           which = which.slice(2);
+        } else if (which.startsWith('/')) {
+          // Strip absolute path
+          let p = fs.makeAbsolute('.');
+          p = p.substring(0, p.length - 1);
+          if (which.startsWith(p)) {
+            which = which.slice(p.length);
+          }
         }
         if (fs.exists(which)) {
           options.test = which;
