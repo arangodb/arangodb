@@ -1,4 +1,4 @@
-import { Avatar, Link, Tag } from "@chakra-ui/react";
+import { Avatar, Icon, Link, Tag } from "@chakra-ui/react";
 import { CellContext } from "@tanstack/react-table";
 import _ from "lodash";
 import React from "react";
@@ -54,7 +54,7 @@ export const AvatarCell = ({
   const isRole = info.row.original.user?.substring(0, 6) === ":role:";
   const hasImage = !_.isEmpty(info.row.original.extra.img);
   if (isRole) {
-    return <Avatar size="xs" icon={<Group />} />;
+    return <Icon as={Group} width="24px" height="24px" color="gray.400" />;
   }
   if (hasImage) {
     return (
@@ -65,5 +65,5 @@ export const AvatarCell = ({
     );
   }
 
-  return <Avatar size="xs" icon={<AccountCircle />} />;
+  return <Icon as={AccountCircle} width="24px" height="24px" color="gray.400" />;
 };
