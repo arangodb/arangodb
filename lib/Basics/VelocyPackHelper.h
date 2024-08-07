@@ -346,6 +346,13 @@ class VelocyPackHelper {
                                        arangodb::velocypack::Slice lhs,
                                        arangodb::velocypack::Slice rhs);
 
+  /// @brief the following few static methods are needed to perform numerical
+  /// sorting with uints, ints and doubles numerically correctly. They are
+  /// exposed here, since they are also used for the sorting of AQLValues.
+  static int compareInt64UInt64(int64_t i, uint64_t u);
+  static int compareUInt64Double(uint64_t u, double d);
+  static int compareInt64Double(int64_t i, double d);
+
   /// @brief compares two VelocyPack number values, this must only be called
   /// if the types on either side are either SmallInt, Int, UInt, UTCDate
   /// or Double. Otherwise the behaviour is undefined.
