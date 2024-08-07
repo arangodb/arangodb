@@ -380,6 +380,9 @@ void Appenders::foreach (LogGroup const& logGroup,
                          std::function<void(LogAppender&)> const& f) {
   READ_LOCKER(guard, _appendersLock);
   auto& group = _groups.at(logGroup.id());
+  for (auto& v : group.globalAppenders) {
+    f(*v);
+  }
   for (auto& v : group.definition2appenders) {
     f(*v.second);
   }

@@ -953,8 +953,8 @@ void Logger::initialize(bool threaded, uint32_t maxQueuedLogMessages) {
                                    "Logger already initialized");
   }
 
-  _defaultLogLevelTopics = logLevelTopics();
   calculateEffectiveLogLevels();
+  _defaultLogLevelTopics = logLevelTopics();
 
   // logging is now active
   if (threaded) {

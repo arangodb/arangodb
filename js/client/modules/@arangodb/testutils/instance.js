@@ -379,7 +379,14 @@ class instance {
       this.args['log.level'] = 'debug';
     } else if (this.options.noStartStopLogs) {
       // set the stdout appender to error only
-      this.args['log.output'] = '-;all=error';
+      let output = this.args['log.output'];
+      if (output === undefined) {
+        output = [];
+      } else if (typeof output === 'string') {
+        output = [output];
+      }
+      output.push('-;all=error');
+      this.args['log.output'] = output;
       let logs = ['crash=info'];
       if (this.args['log.level'] !== undefined) {
         if (Array.isArray(this.args['log.level'])) {
