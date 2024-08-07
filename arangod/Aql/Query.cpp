@@ -301,6 +301,10 @@ void Query::kill() {
   }
 }
 
+void Query::setKillFlag() {
+  _queryKilled.store(true, std::memory_order_acq_rel);
+}
+
 /// @brief return the start time of the query (steady clock value)
 double Query::startTime() const noexcept { return _startTime; }
 
