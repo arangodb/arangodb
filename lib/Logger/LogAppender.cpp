@@ -38,12 +38,14 @@ LogAppender::LogAppender() {
   for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
     auto* topic = LogTopic::topicForId(i);
     if (topic != nullptr) {
-      _topicLevels[i].store(topic->level(), std::memory_order_relaxed);
+      _defaultLevels[i] = topic->level();
     } else {
-      _topicLevels[i].store(LogLevel::DEFAULT, std::memory_order_relaxed);
+      _defaultLevels[i] = LogLevel::DEFAULT;
     }
   }
+  resetLevelsToDefault();
 }
+
 void LogAppender::logMessageGuarded(LogMessage const& message) {
   auto level = _topicLevels[message._topicId].load(std::memory_order_relaxed);
   if (level == LogLevel::DEFAULT) {
@@ -57,6 +59,18 @@ void LogAppender::logMessageGuarded(LogMessage const& message) {
     // log. This is not very likely, but it is better to be safe than sorry.
     RECURSIVE_WRITE_LOCKER(_logOutputMutex, _logOutputMutexOwner);
     logMessage(message);
+  }
+}
+
+void LogAppender::setCurrentLevelsAsDefault() {
+  for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
+    _defaultLevels[i] = _topicLevels[i].load(std::memory_order_relaxed);
+  }
+}
+
+void LogAppender::resetLevelsToDefault() {
+  for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
+    _topicLevels[i].store(_defaultLevels[i], std::memory_order_relaxed);
   }
 }
 

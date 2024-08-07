@@ -74,9 +74,7 @@ class LogTopic {
   std::string const& displayName() const { return _displayName; }
   LogLevel level() const { return _level.load(std::memory_order_relaxed); }
 
-  virtual void setLogLevel(LogLevel level) {
-    _level.store(level, std::memory_order_relaxed);
-  }
+  virtual void setLogLevel(LogLevel level);
 
  private:
   LogTopic(TopicName name, LogLevel level, size_t id);

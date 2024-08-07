@@ -198,8 +198,7 @@ class Logger {
   static LogLevel logLevel();
   static std::unordered_set<std::string> structuredLogParams();
   static auto logLevelTopics() -> std::vector<std::pair<LogTopic&, LogLevel>>;
-  static auto defaultLogLevelTopics()
-      -> std::vector<std::pair<LogTopic&, LogLevel>> const&;
+  static void resetLevelsToDefault();
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
   static void setLogLevel(TopicName topic, LogLevel level);
@@ -308,10 +307,6 @@ class Logger {
   static std::mutex _appenderModificationMutex;
   static logger::Appenders _appenders;
   static bool _allowStdLogging;
-
-  // default log levels, captured once at startup. these can be used
-  // to reset the log levels back to defaults.
-  static std::vector<std::pair<LogTopic&, LogLevel>> _defaultLogLevelTopics;
 
   // these variables must be set before calling initialized
   static std::unordered_set<std::string>

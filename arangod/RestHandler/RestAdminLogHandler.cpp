@@ -557,10 +557,7 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
     VPackBuilder builder = getLogLevels();
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else if (type == rest::RequestType::DELETE_REQ) {
-    // reset log levels to defaults
-    for (auto const& [topic, level] : Logger::defaultLogLevelTopics()) {
-      Logger::setLogLevel(topic, level);
-    }
+    Logger::resetLevelsToDefault();
 
     // now report resetted log levels
     VPackBuilder builder = getLogLevels();

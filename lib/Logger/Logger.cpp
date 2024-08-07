@@ -125,10 +125,6 @@ bool Logger::_allowStdLogging = true;
 
 std::function<void()> Logger::_onDroppedMessage;
 
-// default log levels, captured once at startup. these can be used
-// to reset the log levels back to defaults.
-std::vector<std::pair<LogTopic&, LogLevel>> Logger::_defaultLogLevelTopics{};
-
 std::unordered_set<std::string> Logger::_structuredLogParams({});
 arangodb::basics::ReadWriteLock Logger::_structuredParamsLock;
 LogTimeFormats::TimeFormat Logger::_timeFormat(
@@ -182,9 +178,11 @@ auto Logger::logLevelTopics() -> std::vector<std::pair<LogTopic&, LogLevel>> {
   return LogTopic::logLevelTopics();
 }
 
-auto Logger::defaultLogLevelTopics()
-    -> std::vector<std::pair<LogTopic&, LogLevel>> const& {
-  return _defaultLogLevelTopics;
+void Logger::resetLevelsToDefault() {
+  std::lock_guard guard(_appenderModificationMutex);
+  _appenders.foreach (
+      [](LogAppender& appender) { appender.resetLevelsToDefault(); });
+  calculateEffectiveLogLevels();
 }
 
 void Logger::setShowIds(bool show) { _showIds = show; }
@@ -957,7 +955,6 @@ void Logger::initialize(bool threaded, uint32_t maxQueuedLogMessages) {
   }
 
   calculateEffectiveLogLevels();
-  _defaultLogLevelTopics = logLevelTopics();
 
   // logging is now active
   if (threaded) {
@@ -980,16 +977,16 @@ void Logger::calculateEffectiveLogLevels() {
   for (size_t i = 0; i < logger::kNumTopics; ++i) {
     auto* topic = LogTopic::topicForId(i);
     if (topic != nullptr) {
-      auto level = topic->level();
-      auto oldLevel = level;
-      _appenders.foreach ([&level, &topic](LogAppender& appender) {
+      auto maxLevel = LogLevel::DEFAULT;
+      auto curLevel = topic->level();
+      _appenders.foreach ([&maxLevel, &topic](LogAppender& appender) {
         auto l = appender.getLogLevel(*topic);
-        if (l > level) {
-          level = l;
+        if (l > maxLevel) {
+          maxLevel = l;
         }
       });
-      if (level != oldLevel) {
-        topic->setLogLevel(level);
+      if (curLevel != maxLevel) {
+        topic->setLogLevel(maxLevel);
       }
     }
   }

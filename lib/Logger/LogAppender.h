@@ -44,6 +44,8 @@ class LogAppender {
   LogAppender(LogAppender const&) = delete;
   LogAppender& operator=(LogAppender const&) = delete;
 
+  void setCurrentLevelsAsDefault();
+  void resetLevelsToDefault();
   auto getLogLevel(LogTopic const& topic) -> LogLevel;
   void setLogLevel(LogTopic const& topic, LogLevel level);
 
@@ -58,5 +60,6 @@ class LogAppender {
   basics::ReadWriteLock _logOutputMutex;
   std::atomic<std::thread::id> _logOutputMutexOwner;
   std::array<std::atomic<LogLevel>, logger::kNumTopics> _topicLevels;
+  std::array<LogLevel, logger::kNumTopics> _defaultLevels;
 };
 }  // namespace arangodb

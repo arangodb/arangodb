@@ -224,6 +224,10 @@ LogTopic::LogTopic(TopicName name, LogLevel level, size_t id)
   TRI_ASSERT(_id < GLOBAL_LOG_TOPIC);
 }
 
+void LogTopic::setLogLevel(LogLevel level) {
+  _level.store(level, std::memory_order_relaxed);
+}
+
 // those two log topics are created in other files, so we have to explicitly
 // instantiate them here
 template LogTopic::LogTopic(logger::topic::ArangoSearch);
