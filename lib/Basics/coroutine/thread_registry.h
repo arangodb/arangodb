@@ -97,12 +97,12 @@ struct ThreadRegistry {
     }
   }
 
+ private:
   const std::thread::id owning_thread = std::this_thread::get_id();
   std::atomic<PromiseInList*> free_head = nullptr;
   std::atomic<PromiseInList*> promise_head = nullptr;
   std::mutex mutex;
 
- private:
   /**
      Removes the promise from the registry.
 
