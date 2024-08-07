@@ -1,6 +1,21 @@
 v3.11.7.6 (XXXX-XX-XX)
 ---------------------
 
+* FE-378: fix fields containing spaces during index creation on web UI.
+
+* Fixed MDS-1225: reloading of AQL user-defined functions inside AQL queries 
+  could cause trouble if the `_aqlfunctions` collection is located on different
+  DB server than the leader shards of other collections used in the same query.
+
+* Fixed FE-435: drop collections checkbox in graph settings modal was not
+  aligned.
+
+* Fix comparison of numeric values in AQL to bring it in line with the 
+  now correct VPack numerical sorting.
+
+* Include LANGUAGE file in hotbackups. This is necessary to be able to detect
+  locale changes across a hotbackup create/restore process.
+
 * Fix sorting behaviour of VelocyPack values w.r.t. numbers. This has an
   impact on indexes indexing VPackValues. Therefore, after an upgrade the 
   old sorting order will be retained to allow smooth upgrades. Newly started
