@@ -41,65 +41,6 @@
 using namespace arangodb;
 using namespace arangodb::zkd;
 
-zkd::byte_string zkd::operator"" _bs(const char* const str, std::size_t len) {
-  using namespace std::string_literals;
-
-  std::string normalizedInput{};
-  normalizedInput.reserve(len);
-  for (char const* p = str; *p != '\0'; ++p) {
-    switch (*p) {
-      case '0':
-      case '1':
-        normalizedInput += *p;
-        break;
-      case ' ':
-      case '\'':
-        // skip whitespace and single quotes
-        break;
-      default:
-        throw std::invalid_argument{"Unexpected character "s + *p +
-                                    " in byte string: " + str};
-    }
-  }
-
-  if (normalizedInput.empty()) {
-    throw std::invalid_argument{"Empty byte string"};
-  }
-
-  auto result = byte_string{};
-
-  char const* p = normalizedInput.c_str();
-  for (auto bitIdx = 0; *p != '\0'; bitIdx = 0) {
-    result += std::byte{0};
-    for (; *p != '\0' && bitIdx < 8; ++bitIdx) {
-      switch (*p) {
-        case '0':
-          break;
-        case '1': {
-          auto const bitPos = 7 - bitIdx;
-          result.back() |= (std::byte{1} << bitPos);
-          break;
-        }
-        default:
-          throw std::invalid_argument{"Unexpected character "s + *p +
-                                      " in byte string: " + str};
-      }
-
-      ++p;
-      // skip whitespace and single quotes
-      while (*p == ' ' || *p == '\'') {
-        ++p;
-      }
-    }
-  }
-
-  return result;
-}
-
-zkd::byte_string zkd::operator"" _bss(const char* str, std::size_t len) {
-  return byte_string{reinterpret_cast<const std::byte*>(str), len};
-}
-
 zkd::BitReader::BitReader(zkd::BitReader::iterator begin,
                           zkd::BitReader::iterator end)
     : _current(begin), _end(end) {}
@@ -160,7 +101,7 @@ void zkd::BitWriter::write_big_endian_bits(uint64_t v, unsigned bits) {
   }
 }
 
-auto zkd::BitWriter::str() && -> zkd::byte_string {
+auto zkd::BitWriter::str() && -> byte_string {
   if (_nibble > 0) {
     _buffer.push_back(_value);
   }
@@ -222,8 +163,7 @@ auto zkd::RandomBitManipulator::bits() const -> std::size_t {
   return 8 * _ref.size();
 }
 
-auto zkd::interleave(std::vector<zkd::byte_string> const& vec)
-    -> zkd::byte_string {
+auto zkd::interleave(std::vector<byte_string> const& vec) -> byte_string {
   std::size_t max_size = 0;
   std::vector<BitReader> reader;
   reader.reserve(vec.size());
@@ -249,7 +189,7 @@ auto zkd::interleave(std::vector<zkd::byte_string> const& vec)
 }
 
 auto zkd::transpose(byte_string_view bs, std::size_t dimensions)
-    -> std::vector<zkd::byte_string> {
+    -> std::vector<byte_string> {
   assert(dimensions > 0);
   BitReader reader(bs);
   std::vector<BitWriter> writer;
@@ -266,7 +206,7 @@ auto zkd::transpose(byte_string_view bs, std::size_t dimensions)
   }
 break_loops:
 
-  std::vector<zkd::byte_string> result;
+  std::vector<byte_string> result;
   std::transform(writer.begin(), writer.end(), std::back_inserter(result),
                  [](auto& bs) { return std::move(bs).str(); });
   return result;
@@ -501,7 +441,7 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
 }
 
 template<typename T>
-auto zkd::to_byte_string_fixed_length(T v) -> zkd::byte_string {
+auto zkd::to_byte_string_fixed_length(T v) -> byte_string {
   byte_string result;
   static_assert(std::is_integral_v<T>);
   if constexpr (std::is_unsigned_v<T>) {
@@ -527,13 +467,11 @@ auto zkd::to_byte_string_fixed_length(T v) -> zkd::byte_string {
 }
 
 template auto zkd::to_byte_string_fixed_length<uint64_t>(uint64_t)
-    -> zkd::byte_string;
-template auto zkd::to_byte_string_fixed_length<int64_t>(int64_t)
-    -> zkd::byte_string;
+    -> byte_string;
+template auto zkd::to_byte_string_fixed_length<int64_t>(int64_t) -> byte_string;
 template auto zkd::to_byte_string_fixed_length<uint32_t>(uint32_t)
-    -> zkd::byte_string;
-template auto zkd::to_byte_string_fixed_length<int32_t>(int32_t)
-    -> zkd::byte_string;
+    -> byte_string;
+template auto zkd::to_byte_string_fixed_length<int32_t>(int32_t) -> byte_string;
 
 inline constexpr auto fp_infinity_expo_biased = (1u << 11) - 1;
 inline constexpr auto fp_denorm_expo_biased = 0;
@@ -671,8 +609,7 @@ auto zkd::from_byte_string_fixed_length<double>(byte_string_view bs) -> double {
   return from_bit_reader_fixed_length<double>(r);
 }
 
-std::ostream& operator<<(std::ostream& ostream,
-                         zkd::byte_string const& string) {
+std::ostream& operator<<(std::ostream& ostream, byte_string const& string) {
   return ::operator<<(ostream, byte_string_view{string});
 }
 

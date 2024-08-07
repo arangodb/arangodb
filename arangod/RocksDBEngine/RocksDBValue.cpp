@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBValue.h"
+#include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -97,6 +98,10 @@ RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId docId) {
 RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId docId,
                                                  VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, data);
+}
+
+RocksDBValue RocksDBValue::VectorIndexValue() {
+  return RocksDBValue(RocksDBEntryType::VectorVPackIndexValue);
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice data) {

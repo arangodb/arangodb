@@ -1432,6 +1432,9 @@ void RocksDBCollection::figuresSpecific(
                 db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), snapshot,
                 true);
             break;
+          case Index::TRI_IDX_TYPE_VECTOR_INDEX:
+            // TODO
+            break;
           default:
             // we should not get here
             TRI_ASSERT(false);

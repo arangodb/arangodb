@@ -64,6 +64,7 @@ class RocksDBValue {
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId);
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId,
                                             VPackSlice data);
+  static RocksDBValue VectorIndexValue();
   static RocksDBValue View(VPackSlice data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);

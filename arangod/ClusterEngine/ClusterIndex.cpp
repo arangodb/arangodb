@@ -28,6 +28,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterIndex.h"
+#include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
@@ -334,6 +335,10 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       return mdi::supportsFilterCondition(this, allIndexes, node, reference,
                                           itemsInIndex);
 
+    case TRI_IDX_TYPE_VECTOR_INDEX: {
+      // TODO
+      break;
+    }
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }
@@ -379,6 +384,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
     case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+    case TRI_IDX_TYPE_VECTOR_INDEX:
       // Sorting not supported
       return Index::SortCosts{};
 
@@ -436,6 +442,9 @@ aql::AstNode* ClusterIndex::specializeCondition(
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::specializeCondition(this, node, reference);
+    case TRI_IDX_TYPE_VECTOR_INDEX:
+      // TODO
+      break;
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;

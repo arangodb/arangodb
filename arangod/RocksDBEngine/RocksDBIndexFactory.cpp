@@ -39,6 +39,7 @@
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "RocksDBEngine/RocksDBTtlIndex.h"
 #include "RocksDBIndexFactory.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -340,6 +341,39 @@ struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
   }
 };
 
+struct VectorIndexFactory : public DefaultIndexFactory {
+  explicit VectorIndexFactory(ArangodServer& server, Index::IndexType type)
+      : DefaultIndexFactory(server, type) {}
+
+  std::shared_ptr<arangodb::Index> instantiate(
+      arangodb::LogicalCollection& collection,
+      arangodb::velocypack::Slice definition, IndexId id,
+      bool /*isClusterConstructor*/) const override {
+    return std::make_shared<RocksDBVectorIndex>(id, collection, definition);
+  }
+
+  virtual arangodb::Result normalize(
+      velocypack::Builder& normalized, velocypack::Slice definition,
+      bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(_type)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey(StaticStrings::ObjectId)) {
+      normalized.add(
+          StaticStrings::ObjectId,
+          arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    // a vector index never uses index estimates
+    normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
+
+    return IndexFactory::enhanceJsonIndexVector(definition, normalized,
+                                                isCreation);
+  }
+};
+
 struct TtlIndexFactory : public DefaultIndexFactory {
   TtlIndexFactory(ArangodServer& server, Index::IndexType type)
       : DefaultIndexFactory(server, type) {}
@@ -429,6 +463,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
                                                Index::TRI_IDX_TYPE_ZKD_INDEX);
   static const MdiIndexFactory mdiIndexFactory(server,
                                                Index::TRI_IDX_TYPE_MDI_INDEX);
+  static const VectorIndexFactory vectorIndexFactory(
+      server, Index::TRI_IDX_TYPE_VECTOR_INDEX);
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
@@ -447,6 +483,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   emplace("zkd", zkdIndexFactory);
   emplace("mdi", mdiIndexFactory);
   emplace("mdi-prefixed", mdiPrefixedIndexFactory);
+  emplace("vector", vectorIndexFactory);
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
           iresearchInvertedIndexFactory);
 }

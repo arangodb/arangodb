@@ -23,16 +23,17 @@
 
 #pragma once
 
+#include <s2/base/integral_types.h>
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/Result.h"
 #include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <iosfwd>
 #include <string_view>
 #include <vector>
@@ -106,7 +107,8 @@ class Index {
     TRI_IDX_TYPE_ZKD_INDEX,
     TRI_IDX_TYPE_MDI_INDEX,
     TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
-    TRI_IDX_TYPE_INVERTED_INDEX
+    TRI_IDX_TYPE_INVERTED_INDEX,
+    TRI_IDX_TYPE_VECTOR_INDEX,
   };
 
   /// @brief: helper struct returned by index methods that determine the costs

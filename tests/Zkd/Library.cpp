@@ -23,13 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
-#include <array>
 #include <iostream>
 #include <utility>
 #include <vector>
 #include <functional>
 #include <algorithm>
 #include "Zkd/ZkdHelper.h"
+#include "Utils/ByteString.h"
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/slice.h>
@@ -37,7 +37,7 @@
 using namespace arangodb;
 
 static std::ostream& operator<<(std::ostream& os,
-                                std::vector<zkd::byte_string> const& bsvec) {
+                                std::vector<byte_string> const& bsvec) {
   os << "{";
   if (!bsvec.empty()) {
     auto it = bsvec.begin();
@@ -370,7 +370,7 @@ TEST(Zkd_getNextZValue, testFigure41) {
   auto test =
       [&pMin, &pMax](
           std::vector<byte_string> const& inputCoords,
-          std::optional<std::vector<zkd::byte_string>> const& expectedCoords) {
+          std::optional<std::vector<byte_string>> const& expectedCoords) {
         auto const input = interleave(inputCoords);
         auto const expected = std::invoke([&]() -> std::optional<byte_string> {
           if (expectedCoords.has_value()) {
