@@ -58,8 +58,7 @@ struct Appenders {
   auto getAppender(LogGroup const& group, std::string const& definition)
       -> std::shared_ptr<LogAppender>;
 
-  void foreach (LogGroup const& logGroup,
-                std::function<void(LogAppender&)> const& f);
+  void foreach (std::function<void(LogAppender&)> const& f);
 
  private:
   enum class Type {

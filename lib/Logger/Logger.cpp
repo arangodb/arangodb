@@ -241,27 +241,32 @@ void Logger::setLogLevel(std::string const& levelName) {
 }
 
 void Logger::setLogLevel(TopicName topic, LogLevel level) {
-  std::lock_guard guard(_appenderModificationMutex);
   if (topic == LogTopic::ALL) {
+    std::lock_guard guard(_appenderModificationMutex);
     // handle pseudo log-topic "all": this will set the log level for
     // all existing topics
     for (size_t i = 0; i < logger::kNumTopics; ++i) {
       auto* logTopic = LogTopic::topicForId(i);
       logTopic->setLogLevel(level);
-      _appenders.foreach (Logger::defaultLogGroup(),
-                          [level, logTopic](LogAppender& appender) {
-                            appender.setLogLevel(*logTopic, level);
-                          });
+      _appenders.foreach ([level, logTopic](LogAppender& appender) {
+        appender.setLogLevel(*logTopic, level);
+      });
     }
   } else {
     // handle a topic-specific request (e.g. `--log.level requests=info`).
-    LogTopic::setLogLevel(topic, level);
     auto* logTopic = LogTopic::lookup(topic);
-    _appenders.foreach (Logger::defaultLogGroup(),
-                        [level, logTopic](LogAppender& appender) {
-                          appender.setLogLevel(*logTopic, level);
-                        });
+    if (logTopic != nullptr) {
+      setLogLevel(*logTopic, level);
+    }
   }
+}
+
+void Logger::setLogLevel(LogTopic& topic, LogLevel level) {
+  std::lock_guard guard(_appenderModificationMutex);
+  topic.setLogLevel(level);
+  _appenders.foreach ([level, &topic](LogAppender& appender) {
+    appender.setLogLevel(topic, level);
+  });
 }
 
 void Logger::setLogLevel(std::string const& definition, TopicName topic,
@@ -281,17 +286,15 @@ void Logger::setLogLevel(std::string const& definition, TopicName topic,
     } else if (level < currentLevel) {
       // we have to go through all appenders and check if there are other
       // appenders with a higher level
-      _appenders.foreach (Logger::defaultLogGroup(),
-                          [&level, logTopic](LogAppender& appender) {
-                            auto l = appender.getLogLevel(*logTopic);
-                            if (l > level) {
-                              level = l;
-                            }
-                          });
+      _appenders.foreach ([&level, logTopic](LogAppender& appender) {
+        auto l = appender.getLogLevel(*logTopic);
+        if (l > level) {
+          level = l;
+        }
+      });
       logTopic->setLogLevel(level);
     }
   }
-  // TODO
 }
 
 void Logger::setLogStructuredParams(
@@ -978,14 +981,16 @@ void Logger::calculateEffectiveLogLevels() {
     auto* topic = LogTopic::topicForId(i);
     if (topic != nullptr) {
       auto level = topic->level();
-      _appenders.foreach (Logger::defaultLogGroup(),
-                          [&level, &topic](LogAppender& appender) {
-                            auto l = appender.getLogLevel(*topic);
-                            if (l > level) {
-                              level = l;
-                            }
-                          });
-      topic->setLogLevel(level);
+      auto oldLevel = level;
+      _appenders.foreach ([&level, &topic](LogAppender& appender) {
+        auto l = appender.getLogLevel(*topic);
+        if (l > level) {
+          level = l;
+        }
+      });
+      if (level != oldLevel) {
+        topic->setLogLevel(level);
+      }
     }
   }
 }

@@ -203,6 +203,7 @@ class Logger {
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
   static void setLogLevel(TopicName topic, LogLevel level);
+  static void setLogLevel(LogTopic&, LogLevel level);
   static void setLogLevel(std::string const& appender, TopicName topic,
                           LogLevel level);
   static void setLogLevel(std::vector<std::string> const&);
