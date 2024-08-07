@@ -147,13 +147,12 @@
       var downloadUrl = arangoHelper.databaseUrl(
         "/_api/foxx/download?mount=" + this.encodedMount()
       );
-      window
-        .fetch(downloadUrl, {
-          method: "POST",
-          headers: {
-            Authorization: "bearer " + window.arangoHelper.getCurrentJwt(),
-          },
-        })
+      fetch(downloadUrl, {
+        method: "POST",
+        headers: {
+          Authorization: "bearer " + window.arangoHelper.getCurrentJwt(),
+        },
+      })
         .then((response) => {
           if (response.ok) {
             return response.blob();
