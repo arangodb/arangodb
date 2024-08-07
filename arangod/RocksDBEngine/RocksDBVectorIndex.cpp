@@ -249,7 +249,8 @@ Result RocksDBVectorIndex::processDocument(velocypack::Slice doc,
 
   if (input.size() != _definition.dimensions) {
     // TODO Find better error code
-    return {TRI_ERROR_BAD_PARAMETER, "sasa"};
+    return {TRI_ERROR_BAD_PARAMETER,
+            "input vector does not have correct dimensions"};
   }
   // TODO Maybe check all values withing <min, max>
   auto hashes = vector::calculateHashedStrings(_definition, input);
