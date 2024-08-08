@@ -645,7 +645,7 @@ function swaggerifyBody (schema, optional) {
     return {required: typeof optional === "boolean" ? !optional : false};
   }
   if (!schema.isJoi) {
-    return {schema: schema === true ? undefined : schema, required: !optional};
+    return {schema, required: !optional};
   }
   return {
     required: typeof optional === "boolean" ? !optional : schema._flags.presence === 'required',
