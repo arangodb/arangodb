@@ -29,7 +29,6 @@ const arangodb = require('@arangodb');
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
-const crypto = require('@arangodb/crypto');
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
 const store = require('@arangodb/foxx/store');
