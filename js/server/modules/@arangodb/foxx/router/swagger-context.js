@@ -38,7 +38,7 @@ const MATCH_OPT_STRINGS_MODEL = check.validateModel({schema: {type: 'string'}, o
 const DEFAULT_ERROR_MODEL = check.validateSchema({
   type: 'object',
   properties: {
-    error: {const: true},
+    error: {enum: [true]},
     errorNum: {type: 'integer'},
     errorMessage: {type: 'string'},
     code: {type: 'integer'}
