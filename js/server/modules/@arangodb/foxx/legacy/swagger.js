@@ -125,9 +125,9 @@ function swaggerJson (req, res, opts) {
       swagger: '2.0',
       info: {
         description: service && service.manifest.description,
-        version: service && service.manifest.version,
-        title: service && service.manifest.name,
-        license: service && service.manifest.license && {name: service.manifest.license}
+        version: service && service.manifest.version || '',
+        title: service && service.manifest.name || '',
+        license: {name: service && service.manifest.license || ''}
       },
       basePath: '/_db/' + encodeURIComponent(req.database) + (service ? service.mount : mount),
       schemes: [req.protocol],
