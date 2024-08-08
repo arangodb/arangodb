@@ -24,8 +24,21 @@ auto get_thread_registry() noexcept -> ThreadRegistry&;
    promises. A promise can only be added on the owning thread, therefore adding
    and garbage collection cannot happen concurrently. The garbage collection can
    also not run during an iteration over all promises in the list.
+
+   This registry destroys itself when its ref counter is decremented to 0.
  */
 struct ThreadRegistry {
+  static auto make() -> ThreadRegistry* { return new ThreadRegistry{}; }
+
+  auto decrement_ref_count() noexcept {
+    auto old = ref_count.fetch_sub(1);
+    if (old == 1) {
+      garbage_collect();
+      delete this;
+    }
+  }
+  auto increment_ref_count() noexcept { ref_count.fetch_add(1); }
+
   /**
      Adds a promise on the registry's thread to the registry.
 
@@ -43,6 +56,7 @@ struct ThreadRegistry {
     }
     // (1) - this store synchronizes with load in (2)
     promise_head.store(promise, std::memory_order_release);
+    increment_ref_count();
   }
 
   /**
@@ -78,15 +92,18 @@ struct ThreadRegistry {
     } while (not free_head.compare_exchange_weak(current_head, promise,
                                                  std::memory_order_release,
                                                  std::memory_order_acquire));
+    decrement_ref_count();
   }
 
   /**
      Deletes all promises that are marked for deletion.
 
-     Can only be called on the owning thread, crashes otheriwse.
+     Can only be called on the owning thread or last thread working with this
+     registry, crashes otheriwse.
    */
   auto garbage_collect() noexcept -> void {
-    ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
+    ADB_PROD_ASSERT(ref_count == 0 ||
+                    std::this_thread::get_id() == owning_thread);
     // (5) - this exchange synchronizes with compare_exchange_weak in (4)
     auto head = free_head.exchange(nullptr, std::memory_order_acquire);
     auto guard = std::lock_guard(mutex);
@@ -101,7 +118,10 @@ struct ThreadRegistry {
   const std::thread::id owning_thread = std::this_thread::get_id();
   std::atomic<PromiseInList*> free_head = nullptr;
   std::atomic<PromiseInList*> promise_head = nullptr;
+  std::atomic<size_t> ref_count = 0;
   std::mutex mutex;
+
+  ThreadRegistry() = default;
 
   /**
      Removes the promise from the registry.

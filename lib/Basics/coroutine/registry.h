@@ -21,8 +21,10 @@ struct Registry {
    */
   auto add_thread() -> ThreadRegistry* {
     auto guard = std::lock_guard(mutex);
-    registries.push_back(std::make_shared<ThreadRegistry>());
-    return registries.back().get();
+    registries.push_back(ThreadRegistry::make());
+    auto registry = registries.back();
+    registry->increment_ref_count();
+    return registry;
   }
 
   /**
@@ -32,9 +34,9 @@ struct Registry {
     auto guard = std::lock_guard(mutex);
     // TODO does this not invalidate the thread_local registry ptr in
     // thrad_registry.cpp?
-    std::erase_if(registries, [registry](std::shared_ptr<ThreadRegistry> r) {
-      return registry == r.get();
-    });
+    std::erase_if(registries,
+                  [registry](ThreadRegistry* r) { return registry == r; });
+    registry->decrement_ref_count();
   }
 
   /**
@@ -57,7 +59,7 @@ struct Registry {
   }
 
  private:
-  std::vector<std::shared_ptr<ThreadRegistry>> registries;
+  std::vector<ThreadRegistry*> registries;
   std::mutex mutex;
 };
 

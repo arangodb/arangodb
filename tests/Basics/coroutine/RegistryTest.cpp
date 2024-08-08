@@ -143,7 +143,26 @@ TEST_F(
   EXPECT_EQ(all_ids(registry), (std::vector<uint64_t>{}));
 
   thread_registry->mark_for_deletion(&promise);
-  thread_registry->garbage_collect();
+  EXPECT_TRUE(promise.destroyed);
+}
+
+TEST_F(CoroutineRegistryTest,
+       different_thread_deletes_promise_after_thread_already_ended) {
+  Registry registry;
+  ThreadRegistry* thread_registry_on_different_thread;
+  auto promise = MyTestPromise{1};
+
+  std::jthread([&]() {
+    thread_registry_on_different_thread = registry.add_thread();
+    thread_registry_on_different_thread->add(&promise);
+    registry.remove_thread(thread_registry_on_different_thread);
+  });
+
+  EXPECT_EQ(all_ids(registry).size(), 0);
+  EXPECT_FALSE(promise.destroyed);
+
+  thread_registry_on_different_thread->mark_for_deletion(&promise);
+  EXPECT_TRUE(promise.destroyed);
 }
 
 // TODO necessary?
