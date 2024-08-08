@@ -278,7 +278,6 @@ const detectGeo = ({
     isGeo = true;
   } else {
     isGeo = false;
-    isTable = true;
   }
   return {
     isGeo,
