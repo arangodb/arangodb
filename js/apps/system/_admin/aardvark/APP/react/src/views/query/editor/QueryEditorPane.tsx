@@ -42,7 +42,7 @@ export const QueryEditorPane = () => {
           <QueryEditorTopBar />
           <Grid
             gridTemplateColumns="1.4fr 4px 0.6fr"
-            height="calc(100% - 58px)"
+            height="calc(100% - 58px - 58px)"
             flexShrink={1}
           >
             <AQLEditor
