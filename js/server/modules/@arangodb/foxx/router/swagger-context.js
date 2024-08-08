@@ -656,6 +656,9 @@ function swaggerifyBody (schema, optional) {
 
 function joi2schema (schema) {
   if (!schema.isJoi) {
+    if (typeof schema !== "object") {
+      return;
+    }
     return schema;
   }
   return joiToJsonSchema(schema);
