@@ -64,6 +64,20 @@ function adminLogSuite() {
     setUp: function () {
       arango.DELETE("/_admin/log");
     },
+
+    testPutInvalidLevelReturnsError: function () {        
+      let res = arango.PUT("/_admin/log/level", {all: "invalidLevel"});
+      assertEqual(res.error, true);
+      assertEqual(res.code, 400);
+      assertEqual(res.errorMessage, "Failed to parse log levels: Unknown enum value invalidlevel at path ['all']");
+    },
+    
+    testPutInvalidTopicReturnsError: function () {        
+      let res = arango.PUT("/_admin/log/level", {invalidTopic: "error"});
+      assertEqual(res.error, true);
+      assertEqual(res.code, 400);
+      assertEqual(res.errorMessage, "Unknown log topic invalidTopic");
+    },
     
     testPutAdminSetAllLevels: function () {
       let previous = arango.GET("/_admin/log/level");

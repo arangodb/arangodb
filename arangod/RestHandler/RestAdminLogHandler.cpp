@@ -30,6 +30,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Inspection/VPack.h"
+#include "Logger/LogLevel.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/LogMacros.h"
@@ -537,19 +539,41 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
-      if (VPackSlice all = slice.get("all"); all.isString()) {
+      std::unordered_map<std::string_view, LogLevel> parsedLevels;
+      auto res = velocypack::deserializeWithStatus(slice, parsedLevels);
+      if (!res.ok()) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      absl::StrCat("Failed to parse log levels: ", res.error(),
+                                   " at path ", res.path()));
+        return RestStatus::DONE;
+      }
+
+      std::unordered_map<LogTopic*, LogLevel> logLevels;
+      bool containsAll = false;
+      LogLevel allLevel;
+      for (auto& [topicName, level] : parsedLevels) {
+        if (topicName == LogTopic::ALL) {
+          containsAll = true;
+          allLevel = level;
+        } else {
+          auto topic = LogTopic::lookup(topicName);
+          if (topic == nullptr) {
+            generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                          absl::StrCat("Unknown log topic ", topicName));
+            return RestStatus::DONE;
+          }
+          logLevels[topic] = level;
+        }
+      }
+
+      if (containsAll) {
         // handle "all" first, so we can do
         // {"all":"info","requests":"debug"} or such
-        std::string l = absl::StrCat("all=", all.stringView());
-        Logger::setLogLevel(l);
+        Logger::setLogLevel(LogTopic::ALL, allLevel);
       }
       // now process all log topics except "all"
-      for (auto it : VPackObjectIterator(slice, true)) {
-        if (it.value.isString() && !it.key.isEqualString(LogTopic::ALL)) {
-          std::string l =
-              absl::StrCat(it.key.stringView(), "=", it.value.stringView());
-          Logger::setLogLevel(l);
-        }
+      for (auto& [topic, level] : logLevels) {
+        Logger::setLogLevel(*topic, level);
       }
     }
 
@@ -557,6 +581,7 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
     VPackBuilder builder = getLogLevels();
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else if (type == rest::RequestType::DELETE_REQ) {
+    std::cout << "Resetting to default log levels" << std::endl;
     Logger::resetLevelsToDefault();
 
     // now report resetted log levels
