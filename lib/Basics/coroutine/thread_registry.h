@@ -52,7 +52,7 @@ struct ThreadRegistry {
      items stay valid during iteration (i.e. are not deleted in the meantime).
    */
   template<typename F>
-  requires requires(F f, PromiseInList* promise) { {f(promise)}; }
+  requires std::invocable<F, PromiseInList*>
   auto for_promise(F&& function) noexcept -> void {
     auto guard = std::lock_guard(mutex);
     // (2) - this load synchronizes with store in (1) and (3)

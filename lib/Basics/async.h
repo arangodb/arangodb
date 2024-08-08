@@ -89,16 +89,6 @@ struct async_promise<void> : async_promise_base<void> {
   void return_void() { async_promise_base<void>::_value.emplace(); }
 };
 
-/**
-   Coroutine type for asynchronous operations.
-
-   This type requires the thread_local ptr coroutine::promise_registry to be set
-   (e.g. via coroutine::Registry::initialize_current_thread()), otherwise
-   creation (and deletion) of this object will result in a segmentation fault.
-   You also need to take care of the garbage collection of these initialized
-   registries by calling coroutine::promise_registry::garbage_collect() at the
-   end of each thread.
- */
 template<typename T>
 struct async {
   using promise_type = async_promise<T>;

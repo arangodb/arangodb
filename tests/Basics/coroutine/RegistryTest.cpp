@@ -28,12 +28,10 @@ auto all_ids(Registry& registry) -> std::vector<uint64_t> {
 
 }  // namespace
 
-
 struct CoroutineRegistryTest : ::testing::Test {
   void SetUp() override {}
 
-  void TearDown() override {
-  }
+  void TearDown() override {}
 };
 using CoroutineRegistryDeathTest = CoroutineRegistryTest;
 
@@ -129,8 +127,9 @@ TEST_F(CoroutineRegistryTest,
   registry.remove_thread(thread_registry);
 }
 
-TEST_F(CoroutineRegistryTest,
-       promises_on_removed_thread_dont_show_in_iteration_but_are_not_destroyed_automatically) {
+TEST_F(
+    CoroutineRegistryTest,
+    promises_on_removed_thread_dont_show_in_iteration_but_are_not_destroyed_automatically) {
   Registry registry;
   auto thread_registry = registry.add_thread();
   auto promise = MyTestPromise{1};
