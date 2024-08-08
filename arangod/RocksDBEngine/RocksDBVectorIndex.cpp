@@ -110,9 +110,6 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
     }
 
     _itHashedStrings = _hashedStrings.begin();
-    std::set<byte_string> unique_strs(_hashedStrings.begin(),
-                                      _hashedStrings.end());
-
     _upperBound = _bound.end();
     RocksDBTransactionMethods* mthds =
         RocksDBTransactionState::toMethods(trx, _collection->id());
