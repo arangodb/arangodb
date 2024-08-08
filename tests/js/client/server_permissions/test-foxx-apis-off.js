@@ -95,7 +95,7 @@ function testSuite() {
         arango.reconnect(endpoint, db._name(), user, "testi");
 
         let routes = [
-          "tests", "download/nonce"
+          "tests"
         ];
 
         routes.forEach(function(route) {

@@ -472,16 +472,6 @@ router.get('/fishbowl', function (req, res) {
   This function contacts the fishbowl and reports which services are available for install.
 `);
 
-router.post('/download/nonce', function (req, res) {
-  const nonce = crypto.createNonce();
-  res.status('created');
-  res.json({nonce});
-})
-.response('created', joi.object({nonce: joi.string().required()}).required(), 'The created nonce.')
-.summary('Creates a nonce for downloading the service')
-.description(dd`
-  Creates a cryptographic nonce that can be used to download the service without authentication.
-`);
 
 anonymousRouter.use('/docs/standalone', module.context.createDocumentationRouter((req, res) => {
   if (req.suffix === 'swagger.json' && !req.authorized && internal.authenticationEnabled()) {
