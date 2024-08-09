@@ -1,6 +1,8 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* Updated ArangoDB Starter to v0.18.8-preview-1 and arangosync to v2.19.8.
+
 * FE-378: fix fields containing spaces during index creation on web UI.
 
 * Fixed MDS-1225: reloading of AQL user-defined functions inside AQL queries 
@@ -29,8 +31,6 @@ v3.11.11 (XXXX-XX-XX)
 * Forcefully kill all running AQL queries on server shutdown.
   This allows for a faster server shutdown even if there are some long-running
   AQL queries ongoing.
-
-* Updated ArangoDB Starter to v0.18.7 and arangosync to v2.19.8.
 
 * Fixed MDS-1216: restoring the previous value of the "padded" key generator
   could lead to the key generator's sequence being set to a too low value after
