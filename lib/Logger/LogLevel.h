@@ -48,10 +48,10 @@ auto inspect(Inspector& f, LogLevel& l) {
       },
       LogLevel::DEFAULT, "DEFAULT",  //
       LogLevel::FATAL, "FATAL",      //
-      LogLevel::ERR, "ERR",          //
       LogLevel::ERR, "ERROR",        //
-      LogLevel::WARN, "WARN",        //
+      LogLevel::ERR, "ERR",          //
       LogLevel::WARN, "WARNING",     //
+      LogLevel::WARN, "WARN",        //
       LogLevel::INFO, "INFO",        //
       LogLevel::DEBUG, "DEBUG",      //
       LogLevel::TRACE, "TRACE");

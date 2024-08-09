@@ -116,7 +116,7 @@ function adminLogSuite() {
       assertEqual(res.appenders["-"].queries, "TRACE");
       assertEqual(res.global.queries, "TRACE");
       res = arango.PUT("/_admin/log/level?withAppenders=true", { appenders: { "-": { queries: "error" } } });
-      assertEqual(res.appenders["-"].queries, "ERR");
+      assertEqual(res.appenders["-"].queries, "ERROR");
       assertEqual(res.global.queries, "DEBUG");
 
       // restore old levels
