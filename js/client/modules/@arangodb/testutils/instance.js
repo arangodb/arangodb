@@ -518,7 +518,8 @@ class instance {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
 
-    this.sanHandler.getSanOptions(subEnv);
+    let subEnv = this.sanHandler.getSanOptions();
+
     if ((this.useableMemory === undefined) && (this.options.memory !== undefined)){
       throw new Error(`${this.name} don't have planned memory though its configured!`);
     }
