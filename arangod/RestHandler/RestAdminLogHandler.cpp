@@ -47,9 +47,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
-using namespace arangodb::basics;
-using namespace arangodb::rest;
+namespace arangodb {
+
+using namespace basics;
 
 RestAdminLogHandler::RestAdminLogHandler(arangodb::ArangodServer& server,
                                          GeneralRequest* request,
@@ -510,20 +510,23 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
     }
   }
 
-  auto const type = _request->requestType();
+  auto withAppenders =
+      basics::StringUtils::tolower(_request->value("withAppenders")) == "true";
 
-  auto getLogLevels = []() {
-    VPackBuilder builder;
-    builder.openObject();
-    auto const& levels = Logger::logLevelTopics();
-    for (auto const& level : levels) {
-      builder.add(level.first.name(),
-                  VPackValue(Logger::translateLogLevel(level.second)));
+  auto getLogLevels = [withAppenders]() {
+    auto buildResult = [](auto const& config) {
+      VPackBuilder builder;
+      velocypack::serialize(builder, config);
+      return builder;
+    };
+    if (withAppenders) {
+      return buildResult(Logger::getAppendersConfig());
+    } else {
+      return buildResult(Logger::getLogLevels());
     }
-    builder.close();
-    return builder;
   };
 
+  auto const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     // report log level
     VPackBuilder builder = getLogLevels();
@@ -539,41 +542,39 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
-      std::unordered_map<std::string_view, LogLevel> parsedLevels;
-      auto res = velocypack::deserializeWithStatus(slice, parsedLevels);
-      if (!res.ok()) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      absl::StrCat("Failed to parse log levels: ", res.error(),
-                                   " at path ", res.path()));
-        return RestStatus::DONE;
-      }
-
-      std::unordered_map<LogTopic*, LogLevel> logLevels;
-      bool containsAll = false;
-      LogLevel allLevel;
-      for (auto& [topicName, level] : parsedLevels) {
-        if (topicName == LogTopic::ALL) {
-          containsAll = true;
-          allLevel = level;
-        } else {
-          auto topic = LogTopic::lookup(topicName);
-          if (topic == nullptr) {
-            generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                          absl::StrCat("Unknown log topic ", topicName));
-            return RestStatus::DONE;
+      auto parseConfig = [&](auto& config) {
+        if (auto res = velocypack::deserializeWithStatus(slice, config);
+            !res.ok()) {
+          auto msg = absl::StrCat("Failed to update log levels: ", res.error());
+          if (!res.path().empty()) {
+            msg = absl::StrCat(msg, " at path ", res.path());
           }
-          logLevels[topic] = level;
+          generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                        msg);
+          return false;
         }
-      }
+        return true;
+      };
 
-      if (containsAll) {
-        // handle "all" first, so we can do
-        // {"all":"info","requests":"debug"} or such
-        Logger::setLogLevel(LogTopic::ALL, allLevel);
-      }
-      // now process all log topics except "all"
-      for (auto& [topic, level] : logLevels) {
-        Logger::setLogLevel(*topic, level);
+      if (withAppenders) {
+        AppendersLogLevelConfig config;
+        if (!parseConfig(config)) {
+          return RestStatus::DONE;
+        }
+
+        auto res = Logger::setLogLevel(config);
+        if (res.fail()) {
+          generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                        absl::StrCat("Failed to update log levels: ",
+                                     res.errorMessage()));
+          return RestStatus::DONE;
+        }
+      } else {
+        LogLevels config;
+        if (!parseConfig(config)) {
+          return RestStatus::DONE;
+        }
+        Logger::setLogLevel(config);
       }
     }
 
@@ -581,7 +582,6 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
     VPackBuilder builder = getLogLevels();
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else if (type == rest::RequestType::DELETE_REQ) {
-    std::cout << "Resetting to default log levels" << std::endl;
     Logger::resetLevelsToDefault();
 
     // now report resetted log levels
@@ -643,3 +643,5 @@ void RestAdminLogHandler::handleLogStructuredParams() {
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 }
+
+}  // namespace arangodb

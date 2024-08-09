@@ -57,6 +57,8 @@ struct Appenders {
 
   auto getAppender(LogGroup const& group, std::string const& definition)
       -> std::shared_ptr<LogAppender>;
+  auto getAppenders(LogGroup const& group)
+      -> std::unordered_map<std::string, std::shared_ptr<LogAppender>>;
 
   void foreach (std::function<void(LogAppender&)> const& f);
 

@@ -66,12 +66,13 @@
 #include <utility>
 #include <vector>
 
+#include "Basics/ReadWriteLock.h"
 #include "Basics/threads.h"
+#include "Inspection/Status.h"
 #include "Logger/Appenders.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
-#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 namespace application_features {
@@ -79,6 +80,57 @@ class ApplicationServer;
 }
 class LogGroup;
 class LogThread;
+
+struct LogLevels {
+  std::optional<LogLevel> all;
+  std::unordered_map<LogTopic*, LogLevel> topics;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, LogLevels& levels)
+      -> inspection::Status {
+    if constexpr (Inspector::isLoading) {
+      std::unordered_map<std::string_view, LogLevel> map;
+      auto res = f.apply(map);
+      if (!res.ok()) {
+        return res;
+      }
+
+      for (auto const& [topicName, value] : map) {
+        if (topicName == "all") {
+          levels.all = value;
+        } else {
+          auto topic = LogTopic::lookup(topicName);
+          if (topic == nullptr) {
+            return inspection::Status("Unknown log topic " +
+                                      std::string(topicName));
+          }
+          levels.topics[topic] = value;
+        }
+      }
+      return {};
+    } else {
+      TRI_ASSERT(!levels.all.has_value());
+      std::unordered_map<std::string_view, LogLevel> map;
+      for (auto& v : levels.topics) {
+        map.emplace(v.first->name(), v.second);
+      }
+      return f.apply(map);
+    }
+  }
+};
+
+struct AppendersLogLevelConfig {
+  LogLevels global;
+  std::unordered_map<std::string, LogLevels> appenders;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, AppendersLogLevelConfig& value) {
+    return f.object(value).fields(
+        f.field("global", value.global).fallback(decltype(value.global){}),
+        f.field("appenders", value.appenders)
+            .fallback(decltype(value.appenders){}));
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Logger
@@ -198,14 +250,18 @@ class Logger {
   static LogLevel logLevel();
   static std::unordered_set<std::string> structuredLogParams();
   static auto logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel>;
+  static auto getLogLevels() -> LogLevels;
+  static auto getAppendersConfig() -> AppendersLogLevelConfig;
+
   static void resetLevelsToDefault();
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
   static void setLogLevel(TopicName topic, LogLevel level);
   static void setLogLevel(LogTopic&, LogLevel level);
-  static void setLogLevel(std::string const& appender, TopicName topic,
-                          LogLevel level);
   static void setLogLevel(std::vector<std::string> const&);
+  static void setLogLevel(LogLevels const&);
+  [[nodiscard]] static Result setLogLevel(AppendersLogLevelConfig const&);
+
   static std::unordered_map<std::string, bool> parseStringParams(
       std::vector<std::string> const&);
   static void setLogStructuredParamsOnServerStart(

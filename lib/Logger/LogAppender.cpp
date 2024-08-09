@@ -82,4 +82,16 @@ void LogAppender::setLogLevel(LogTopic const& topic, LogLevel level) {
   _topicLevels[topic.id()].store(level, std::memory_order_relaxed);
 }
 
+auto LogAppender::getLogLevels() -> std::unordered_map<LogTopic*, LogLevel> {
+  std::unordered_map<LogTopic*, LogLevel> result;
+  result.reserve(logger::kNumTopics);
+  for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
+    auto* topic = LogTopic::topicForId(i);
+    if (topic != nullptr) {
+      result.emplace(topic, _topicLevels[i].load(std::memory_order_relaxed));
+    }
+  }
+  return result;
+}
+
 }  // namespace arangodb

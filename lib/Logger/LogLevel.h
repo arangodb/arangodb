@@ -44,17 +44,17 @@ auto inspect(Inspector& f, LogLevel& l) {
   return f.enumeration(l).transformedValues(
       [](std::string& s) {
         std::transform(s.begin(), s.end(), s.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
+                       [](unsigned char c) { return std::toupper(c); });
       },
-      LogLevel::DEFAULT, "default",  //
-      LogLevel::FATAL, "fatal",      //
-      LogLevel::ERR, "err",          //
-      LogLevel::ERR, "error",        //
-      LogLevel::WARN, "warn",        //
-      LogLevel::WARN, "warning",     //
-      LogLevel::INFO, "info",        //
-      LogLevel::DEBUG, "debug",      //
-      LogLevel::TRACE, "trace");
+      LogLevel::DEFAULT, "DEFAULT",  //
+      LogLevel::FATAL, "FATAL",      //
+      LogLevel::ERR, "ERR",          //
+      LogLevel::ERR, "ERROR",        //
+      LogLevel::WARN, "WARN",        //
+      LogLevel::WARN, "WARNING",     //
+      LogLevel::INFO, "INFO",        //
+      LogLevel::DEBUG, "DEBUG",      //
+      LogLevel::TRACE, "TRACE");
 }
 }  // namespace arangodb
 

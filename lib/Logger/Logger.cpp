@@ -45,6 +45,7 @@
 #include "Logger/LogMessage.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Logger/LogThread.h"
+#include "Logger/LogTopic.h"
 #include "Logger/Topics.h"
 
 #include <absl/strings/str_cat.h>
@@ -178,6 +179,20 @@ auto Logger::logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel> {
   return LogTopic::logLevelTopics();
 }
 
+auto Logger::getLogLevels() -> LogLevels {
+  return {.topics = LogTopic::logLevelTopics()};
+}
+
+auto Logger::getAppendersConfig() -> AppendersLogLevelConfig {
+  AppendersLogLevelConfig result;
+  result.global = getLogLevels();
+  for (auto& [definition, appender] :
+       _appenders.getAppenders(defaultLogGroup())) {
+    result.appenders[definition].topics = appender->getLogLevels();
+  }
+  return result;
+}
+
 void Logger::resetLevelsToDefault() {
   std::lock_guard guard(_appenderModificationMutex);
   _appenders.foreach (
@@ -264,6 +279,86 @@ void Logger::setLogLevel(std::vector<std::string> const& levels) {
   }
 }
 
+void Logger::setLogLevel(LogLevels const& levels) {
+  std::lock_guard guard(_appenderModificationMutex);
+  // handle "all" first, so we can do
+  // {"all":"info","requests":"debug"} or such
+  if (levels.all.has_value()) {
+    doSetAllLevels(levels.all.value());
+  }
+  for (auto& [topic, level] : levels.topics) {
+    doSetGlobalLevel(*topic, level);
+  }
+}
+
+Result Logger::setLogLevel(AppendersLogLevelConfig const& config) {
+  std::lock_guard guard(_appenderModificationMutex);
+
+  // we want this function to be all or nothing, so we first check if all
+  // appenders from the input are valid - if not we bail out without changing
+  // anything
+  auto appenders = _appenders.getAppenders(defaultLogGroup());
+  for (auto& [definition, levels] : config.appenders) {
+    if (!appenders.contains(definition)) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("Unknown appender ", definition));
+    }
+  }
+
+  // all good, so now actually apply the changes.
+  // we first apply the global settings (these will be applied to _all_
+  // appenders) then we change the settings for the individual appenders. That
+  // will in turn also adjust the global settings again, but without affecting
+  // the other appenders.
+  if (config.global.all.has_value()) {
+    doSetAllLevels(config.global.all.value());
+  }
+  for (auto& [topic, level] : config.global.topics) {
+    doSetGlobalLevel(*topic, level);
+  }
+
+  auto setAppenderTopicLevel = [](LogAppender& appender, LogTopic& topic,
+                                  LogLevel level) {
+    // the appender specific levels must be less or equal to the global
+    // level, so if we change the level for an appender, we might also have to
+    // adjust the global level.
+    appender.setLogLevel(topic, level);
+    auto currentLevel = topic.level();
+    if (level > currentLevel) {
+      // if the new level is higher than the current level, we can simply
+      // update the global topic to the new level
+      topic.setLogLevel(level);
+    } else if (level < currentLevel) {
+      // we have to go through all appenders and check if there are other
+      // appenders with a higher level
+      _appenders.foreach ([&level, &topic](LogAppender& appender) {
+        auto l = appender.getLogLevel(topic);
+        if (l > level) {
+          level = l;
+        }
+      });
+      topic.setLogLevel(level);
+    }
+  };
+
+  for (auto& [definition, levels] : config.appenders) {
+    auto& appender = *appenders[definition];
+    if (levels.all.has_value()) {
+      auto level = levels.all.value();
+      for (size_t i = 0; i < logger::kNumTopics; ++i) {
+        auto* topic = LogTopic::topicForId(i);
+        if (topic != nullptr) {
+          setAppenderTopicLevel(appender, *topic, level);
+        }
+      }
+    }
+    for (auto& [topic, level] : levels.topics) {
+      setAppenderTopicLevel(appender, *topic, level);
+    }
+  }
+  return {};
+}
+
 void Logger::doSetAllLevels(LogLevel level) {
   for (size_t i = 0; i < logger::kNumTopics; ++i) {
     auto* topic = LogTopic::topicForId(i);
@@ -296,12 +391,6 @@ void Logger::setLogStructuredParams(
     } else {
       _structuredLogParams.erase(paramName);
     }
-  }
-}
-
-void Logger::setLogLevel(std::vector<std::string> const& levels) {
-  for (auto const& level : levels) {
-    setLogLevel(level);
   }
 }
 

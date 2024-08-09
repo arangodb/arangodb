@@ -376,6 +376,13 @@ auto Appenders::getAppender(LogGroup const& logGroup,
   return nullptr;
 }
 
+auto Appenders::getAppenders(LogGroup const& logGroup)
+    -> std::unordered_map<std::string, std::shared_ptr<LogAppender>> {
+  READ_LOCKER(guard, _appendersLock);
+  auto& group = _groups.at(logGroup.id());
+  return group.definition2appenders;
+}
+
 void Appenders::foreach (std::function<void(LogAppender&)> const& f) {
   READ_LOCKER(guard, _appendersLock);
   for (auto& group : _groups) {

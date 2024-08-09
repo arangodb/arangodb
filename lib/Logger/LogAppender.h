@@ -27,6 +27,7 @@
 #include <atomic>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 #include "Basics/ReadWriteLock.h"
 #include "Logger/LogLevel.h"
@@ -48,6 +49,7 @@ class LogAppender {
   void resetLevelsToDefault();
   auto getLogLevel(LogTopic const& topic) -> LogLevel;
   void setLogLevel(LogTopic const& topic, LogLevel level);
+  auto getLogLevels() -> std::unordered_map<LogTopic*, LogLevel>;
 
   void logMessageGuarded(LogMessage const&);
 
