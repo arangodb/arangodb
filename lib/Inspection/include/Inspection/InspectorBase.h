@@ -44,7 +44,7 @@ namespace arangodb::inspection {
 struct NoContext {};
 
 namespace detail {
-struct NoOpt {
+struct NoOp {
   template<class T>
   constexpr void operator()(T& v) const noexcept {}
 };
@@ -290,7 +290,7 @@ struct InspectorBase : detail::ContextContainer<Context> {
 
     template<class... Args>
     [[nodiscard]] Status values(Args&&... args) {
-      return transformedValues(detail::NoOpt{}, std::forward<Args>(args)...);
+      return transformedValues(detail::NoOp{}, std::forward<Args>(args)...);
     }
 
    private:
