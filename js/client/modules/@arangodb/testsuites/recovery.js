@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -43,7 +43,7 @@ const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const _ = require('lodash');
 const { isEnterprise, versionHas } = require("@arangodb/test-helper");
 
-const toArgv = require('internal').toArgv;
+const toArgv = internal.toArgv;
 const ArangoError = require('@arangodb').ArangoError;
 
 const RED = require('internal').COLORS.COLOR_RED;
@@ -243,7 +243,7 @@ function _recovery (options, recoveryTests) {
       status: false
     };
   }
-  if (options.isInstrumented()) {
+  if (options.isInstrumented) {
     arango.timeout(arango.timeout() * 4);
   }
   let localOptions = _.clone(options);
