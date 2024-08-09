@@ -38,8 +38,8 @@ describe('Cluster collection creation options', function() {
     });
     it('should wait for all followers to get in sync when waiting for replication', function() {
         db._create("testi", {replicationFactor: 2, numberOfShards: 32}, {waitForSyncReplication: true});
-        let current = global.instanceManager.getFromPlan('Current/Collections/_system');
-        let plan = global.instanceManager.getFromPlan('Plan/Collections/_system');
+        let current = global.instanceManager.agencyMgr.getFromPlan('Current/Collections/_system');
+        let plan = global.instanceManager.agencyMgr.getFromPlan('Plan/Collections/_system');
         
         let collectionId = Object.values(plan.arango.Plan.Collections['_system']).reduce((result, collectionDef) => {
             if (result) {

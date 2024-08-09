@@ -31,12 +31,10 @@ const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const globalProperties = internal.ttlProperties();
-const { versionHas,
-  getEndpointsByType,
-  debugSetFailAt,
-  debugClearFailAt
-} = require('@arangodb/test-helper');
+const { versionHas } = require('@arangodb/test-helper');
 const isCluster = require("internal").isCluster();
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 let deltaTimeout = 30;
 let divisor = 1;
@@ -62,9 +60,9 @@ function TtlSuite () {
 
     setUp : function () {
       if (isCluster) {
-        getEndpointsByType("dbserver").forEach(ep => debugSetFailAt(ep, "allow-low-ttl-frequency"));
+        IM.debugSetFailAt("allow-low-ttl-frequency", instanceRole.dbServer);
       } else {
-        debugSetFailAt(arangodb.arango.getEndpoint(), "allow-low-ttl-frequency");
+        IM.debugSetFailAt("allow-low-ttl-frequency");
       }
       db._drop(cn);
       internal.ttlProperties(globalProperties);
@@ -72,9 +70,9 @@ function TtlSuite () {
 
     tearDown : function () {
       if (isCluster) {
-        getEndpointsByType("dbserver").forEach(ep => debugClearFailAt(ep));
+        IM.debugClearFailAt();
       } else {
-        debugClearFailAt(arangodb.arango.getEndpoint());
+        IM.debugClearFailAt();
       }
       db._drop(cn);
       internal.ttlProperties(globalProperties);

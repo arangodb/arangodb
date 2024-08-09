@@ -35,16 +35,16 @@ const request = require("@arangodb/request");
 const db = arangodb.db;
 const {
   clearAllFailurePoints,
-  debugSetFailAt,
-  debugClearFailAt,
   deriveTestSuite,
   getEndpointById,
   getServersByType,
   getCoordinators,
   getDBServers,
   runParallelArangoshTests,
-  waitForShardsInSync
+  waitForShardsInSync,
+  getInstanceInfo
 } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 const fetchRevisionTree = (serverUrl, shardId) => {
   let result = request({ method: "POST", url: serverUrl + "/_api/replication/batch", body: {ttl : 3600}, json: true });
@@ -292,41 +292,32 @@ function BaseChaosSuite(testOpts) {
       db._create(coordination_cn);
 
       if (testOpts.withFailurePoints) {
-        let servers = getDBServers();
-        assertTrue(servers.length > 0);
-        for (const server of servers) {
-          debugSetFailAt(getEndpointById(server.id), "replicateOperations_randomize_timeout");
-          debugSetFailAt(getEndpointById(server.id), "delayed_synchronous_replication_request_processing");
-          debugSetFailAt(getEndpointById(server.id), "Query::setupTimeout");
-          debugSetFailAt(getEndpointById(server.id), "Query::setupLockTimeout");
-          debugSetFailAt(getEndpointById(server.id), "Query::setupTimeoutFailSequence");
-          debugSetFailAt(getEndpointById(server.id), "Query::setupTimeoutFailSequenceRandom");
-          debugSetFailAt(getEndpointById(server.id), "Query::finishTimeout");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail1");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::insertFail2");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail1");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail2");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::modifyFail3");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::removeFail1");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBCollection::removeFail2");
-        }
-        servers = getCoordinators();
-        assertTrue(servers.length > 0);
-        for (const server of servers) {
-          debugSetFailAt(getEndpointById(server.id), "Query::setupTimeout");
-          debugSetFailAt(getEndpointById(server.id), "Query::setupTimeoutFailSequence");
-          debugSetFailAt(getEndpointById(server.id), "lowCountCacheTimeout");
-        }
+        let IM = getInstanceInfo();
+        IM.debugSetFailAt("replicateOperations_randomize_timeout", instanceRole.dbServer);
+        IM.debugSetFailAt("delayed_synchronous_replication_request_processing", instanceRole.dbServer);
+        IM.debugSetFailAt("Query::setupTimeout", instanceRole.dbServer);
+        IM.debugSetFailAt("Query::setupLockTimeout", instanceRole.dbServer);
+        IM.debugSetFailAt("Query::setupTimeoutFailSequence", instanceRole.dbServer);
+        IM.debugSetFailAt("Query::setupTimeoutFailSequenceRandom", instanceRole.dbServer);
+        IM.debugSetFailAt("Query::finishTimeout", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::insertFail1", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::insertFail2", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::modifyFail1", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::modifyFail2", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::modifyFail3", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::removeFail1", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBCollection::removeFail2", instanceRole.dbServer);
+
+        IM.debugSetFailAt("Query::setupTimeout", instanceRole.coordinator);
+        IM.debugSetFailAt("Query::setupTimeoutFailSequence", instanceRole.coordinator);
+        IM.debugSetFailAt("lowCountCacheTimeout", instanceRole.coordinator);
       }
       if (testOpts.withDelays) {
-        let servers = getDBServers();
-        assertTrue(servers.length > 0);
-        for (const server of servers) {
-          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::blockerOnSync");
-          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::randomSleep");
-          debugSetFailAt(getEndpointById(server.id), "TransactionChaos::randomSync");
-          debugSetFailAt(getEndpointById(server.id), "RocksDBMetaCollection::forceSerialization");
-        }
+        let IM = getInstanceInfo();
+        IM.debugSetFailAt("TransactionChaos::blockerOnSync", instanceRole.dbServer);
+        IM.debugSetFailAt("TransactionChaos::randomSleep", instanceRole.dbServer);
+        IM.debugSetFailAt("TransactionChaos::randomSync", instanceRole.dbServer);
+        IM.debugSetFailAt("RocksDBMetaCollection::forceSerialization", instanceRole.dbServer);
       }
     },
 

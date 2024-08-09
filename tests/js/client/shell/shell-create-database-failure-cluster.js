@@ -31,10 +31,9 @@ let db = arangodb.db;
 let errors = arangodb.errors;
 let { getEndpointById,
       getEndpointsByType,
-      debugCanUseFailAt,
-      debugSetFailAt,
-      debugClearFailAt
     } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function createDatabaseFailureSuite() {
   'use strict';
@@ -43,7 +42,7 @@ function createDatabaseFailureSuite() {
   return {
 
     setUp: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       try {
         db._dropDatabase(cn);
       } catch (err) {
@@ -51,17 +50,13 @@ function createDatabaseFailureSuite() {
     },
 
     tearDown: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
     },
     
     // make follower execute intermediate commits (before the leader), but let the
     // transaction succeed
     testCreateDatabaseWithFailure: function () {
-      let endpoints = getEndpointsByType('dbserver');
-      assertTrue(endpoints.length > 1, endpoints);
-      endpoints.forEach((endpoint) => {
-        debugSetFailAt(endpoint, "CreateDatabase::first");
-      });
+      IM.debugSetFailAt("CreateDatabase::first", instanceRole.dbServer);
 
       try {
         db._createDatabase(cn);
@@ -74,8 +69,7 @@ function createDatabaseFailureSuite() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
-if (ep.length && debugCanUseFailAt(ep[0])) {
+if (IM.debugCanUseFailAt()) {
   // only execute if failure tests are available
   jsunity.run(createDatabaseFailureSuite);
 }

@@ -286,23 +286,10 @@ class SupervisionWatcher extends Watcher {
 
 
 describe('_admin/metrics', () => {
-
-  const getServers = () => {
-    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    const list = new Map();
-    list.set("coordinator", []);
-    list.set("dbserver", []);
-    list.set("agent", []);
-    for (const d of instanceInfo.arangods) {
-      list.get(d.instanceRole).push(d.url);
-    }
-    return list;
-  };
-
   let servers;
 
   before(() => {
-    servers = getServers();
+    servers = global.instanceManager.getTypeToUrlsMap();
   });
 
   const extractKeyAndLabel = (key) => {

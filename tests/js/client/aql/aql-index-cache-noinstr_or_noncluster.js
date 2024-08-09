@@ -31,8 +31,8 @@ const jsunity = require("jsunity");
 const internal = require('internal');
 const { deriveTestSuite } = require('@arangodb/test-helper');
 const isCluster = require("internal").isCluster();
-const canUseFailAt =  internal.debugCanUseFailAt();
-  
+let IM = global.instanceManager;
+const canUseFailAt = IM.debugCanUseFailAt();  
 // we do not want to run these tests for cluster sanitizer runs since they are very resource intensive
 
 const cn = "UnitTestsCollection";
@@ -212,7 +212,7 @@ function VPackIndexCacheModifySuite (unique) {
   
   let setFailurePointForPointLookup = () => {
     if (canUseFailAt) {
-      internal.debugSetFailAt("VPackIndexFailWithoutCache");
+      IM.debugSetFailAt("VPackIndexFailWithoutCache");
     }
   };
 
@@ -236,7 +236,7 @@ function VPackIndexCacheModifySuite (unique) {
       insertDocuments();
       
       if (canUseFailAt) {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
 
       c.ensureIndex({ type: "persistent", fields: ["value"], name: "UnitTestsIndex", unique, cacheEnabled: true });
@@ -244,7 +244,7 @@ function VPackIndexCacheModifySuite (unique) {
     
     tearDown: function () {
       if (canUseFailAt) {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
       db._drop(cn);
     },
@@ -406,7 +406,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
   let setFailurePointIfCacheUsed = () => {
     if (canUseFailAt) {
       // fails whenever the cache is used
-      internal.debugSetFailAt("VPackIndexFailWithCache");
+      IM.debugSetFailAt("VPackIndexFailWithCache");
     }
   };
 
@@ -414,7 +414,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
     if (canUseFailAt) {
       // if cacheEnabled == true,  fails if the cache is not used.
       // if cacheEnabled == false, fails if the cache is used.
-      internal.debugSetFailAt("VPackIndexFail" + (cacheEnabled ? "Without" : "With") + "Cache");
+      IM.debugSetFailAt("VPackIndexFail" + (cacheEnabled ? "Without" : "With") + "Cache");
     }
   };
 
@@ -435,7 +435,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
       }
       
       if (canUseFailAt) {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
 
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2"], name: "UnitTestsIndex", unique, cacheEnabled });
@@ -443,7 +443,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
     
     tearDown: function () {
       if (canUseFailAt) {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
       db._drop(cn);
     },
@@ -452,9 +452,9 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
       if (canUseFailAt) {
         // test opposite failure point
         if (cacheEnabled) {
-          internal.debugSetFailAt("VPackIndexFailWithCache");
+          IM.debugSetFailAt("VPackIndexFailWithCache");
         } else {
-          internal.debugSetFailAt("VPackIndexFailWithoutCache");
+          IM.debugSetFailAt("VPackIndexFailWithoutCache");
         }
 
         try {
@@ -728,13 +728,13 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
   let setFailurePointIfCacheUsed = () => {
     if (canUseFailAt) {
       // fails whenever the cache is used
-      internal.debugSetFailAt("VPackIndexFailWithCache");
+      IM.debugSetFailAt("VPackIndexFailWithCache");
     }
   };
 
   let setFailurePointForPointLookup = () => {
     if (canUseFailAt) {
-      internal.debugSetFailAt("VPackIndexFailWithoutCache");
+      IM.debugSetFailAt("VPackIndexFailWithoutCache");
     }
   };
 
@@ -755,7 +755,7 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
       }
       
       if (canUseFailAt) {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
 
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2"], storedValues: ["value3", "value4"], name: "UnitTestsIndex", unique, cacheEnabled: true });
@@ -763,7 +763,7 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
     
     tearDown: function () {
       if (canUseFailAt) {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
       db._drop(cn);
     },
@@ -895,7 +895,7 @@ function PersistentIndexNonUniqueHugeValueSuite () {
   
   let setFailurePointForPointLookup = () => {
     if (canUseFailAt) {
-      internal.debugSetFailAt("VPackIndexFailWithoutCache");
+      IM.debugSetFailAt("VPackIndexFailWithoutCache");
     }
   };
 

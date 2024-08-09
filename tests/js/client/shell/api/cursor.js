@@ -33,7 +33,7 @@ const api = "/_api/cursor";
 const reId = /^\d+$/;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" : "application/x-velocypack";
-
+let IM = global.instanceManager;
 ////////////////////////////////////////////////////////////////////////////////;
 // error handling;
 ////////////////////////////////////////////////////////////////////////////////;
@@ -1252,7 +1252,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
     },
 
     tearDownAll: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
     },
 
@@ -1386,7 +1386,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       let nextBatchId = doc.parsedBody['nextBatchId'];
       assertEqual(nextBatchId, "2");
 
-      internal.debugSetFailAt("MakeConnectionErrorForRetry");
+      IM.debugSetFailAt("MakeConnectionErrorForRetry");
 
       cmd = api + `/${cursorId}`;
       doc = arango.POST_RAW(cmd, "");
@@ -1394,7 +1394,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.code, 500);
       assertTrue(doc.error);
 
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
 
       cmd = api + `/${cursorId}/${nextBatchId}`;
       doc = arango.POST_RAW(cmd, "");
@@ -1577,7 +1577,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       let nextBatchId = doc.parsedBody['nextBatchId'];
       assertEqual(nextBatchId, 2);
 
-      internal.debugSetFailAt("MakeConnectionErrorForRetry");
+      IM.debugSetFailAt("MakeConnectionErrorForRetry");
 
       cmd = api + `/${cursorId}`;
       doc = arango.POST_RAW(cmd, "");
@@ -1585,7 +1585,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.code, 500);
       assertTrue(doc.error);
 
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
 
       cmd = api + `/${cursorId}/${nextBatchId}`;
       doc = arango.POST_RAW(cmd, "");
@@ -1751,7 +1751,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       const nextBatchId = doc.parsedBody['nextBatchId'];
       assertEqual(nextBatchId, 2);
 
-      internal.debugSetFailAt("MakeConnectionErrorForRetry");
+      IM.debugSetFailAt("MakeConnectionErrorForRetry");
 
       cmd = api + `/${cursorId}`;
       doc = arango.POST_RAW(cmd, "");
@@ -1759,7 +1759,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.code, 500);
       assertTrue(doc.error);
 
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       // as we can fetch the next batch id and advance the cursor with /<cursorId>/<nextBatchId>, but can't retry the
       // latest batch, we try to get the former batch again
       cmd = api + `/${cursorId}/2`;
@@ -1784,7 +1784,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
         batchSize: 100
       });
       let cursor = stmt.execute();
-      internal.debugSetFailAt("MakeConnectionErrorForRetry");
+      IM.debugSetFailAt("MakeConnectionErrorForRetry");
 
       // the batches in between will also be retrieved with `/_api/cursor/<cursorId>/<latestBatchId>` because
       // the failure point is located in a place in which the server would return an error, hence not returning
@@ -1793,7 +1793,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
         const nextValue = cursor.next();
         // last batch not returning will close the cursor, won't be able to fetch the latest batch
         if (i === 1900) {
-          internal.debugClearFailAt();
+          IM.debugClearFailAt();
         }
         assertEqual("test" + i, nextValue._key);
         assertEqual(i !== 2000, cursor.hasNext());
@@ -1809,13 +1809,13 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
         batchSize: 100
       });
       let cursor = stmt.execute();
-      internal.debugSetFailAt("MakeConnectionErrorForRetry");
+      IM.debugSetFailAt("MakeConnectionErrorForRetry");
 
       for (let i = 0; i < 2001; ++i) {
         const nextValue = cursor.next();
         // last batch not returning will close the cursor, won't be able to fetch the latest batch
         if (i === 1900) {
-          internal.debugClearFailAt();
+          IM.debugClearFailAt();
         }
         assertEqual("test" + i, nextValue._key);
         assertEqual(i !== 2000, cursor.hasNext());
@@ -1832,7 +1832,7 @@ jsunity.run(dealing_with_cursorsSuite_handling_a_cursor_with_continuationSuite);
 jsunity.run(dealing_with_cursorsSuite_handling_a_cursorSuite);
 jsunity.run(dealing_with_cursorsSuite_checking_a_querySuite);
 jsunity.run(dealing_with_cursorsSuite_fetching_floating_point_valuesSuite);
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(dealing_with_cursorsSuite_retriable_request_last_batch);
 }
 return jsunity.done();

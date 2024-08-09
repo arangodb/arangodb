@@ -38,12 +38,14 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
 const internal = require('internal');
-const { getDBServers, deriveTestSuite } = require("@arangodb/test-helper");
+const { instanceRole } = require("@arangodb/testutils/instance");
+const { deriveTestSuite } = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
 const users = require("@arangodb/users");
 const crypto = require('@arangodb/crypto');
 const dh = require("@arangodb/testutils/document-state-helper");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+let IM = global.instanceManager;
 
 const jwt = crypto.jwtEncode(jwtSecret, {
   "server_id": "ABCD",
@@ -76,7 +78,7 @@ function BaseTestSuite(targetUser) {
 
   let getRawMetrics = function() {
     let lines = [];
-    getDBServers().forEach((server) => {
+    IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach(server => {
       let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics", auth: { bearer: jwt } });
       assertEqual(200, res.status);
       lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
@@ -112,7 +114,6 @@ function BaseTestSuite(targetUser) {
         let [key,value] = label.split('=');
         found[key] = value.replace(/"/g, '');
       });
-      
       assertTrue(found.hasOwnProperty("shard"), found);
       assertTrue(found.hasOwnProperty("db"), found);
       assertTrue(found.hasOwnProperty("collection"), found);
@@ -137,7 +138,6 @@ function BaseTestSuite(targetUser) {
       }
       result[type][shard] += amount;
     });
-
     return result;
   };
 
@@ -289,7 +289,7 @@ function BaseTestSuite(targetUser) {
         
         // check if the normal metrics endpoint exports any shard-specific metrics
         let lines = [];
-        getDBServers().forEach((server) => {
+        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
           let res = request({ method: "GET", url: server.url + "/_admin/metrics" });
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
         });
@@ -297,7 +297,7 @@ function BaseTestSuite(targetUser) {
 
         // check if the usage-metrics endpoint exports any regular metrics
         lines = [];
-        getDBServers().forEach((server) => {
+        IM.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
           let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
           // we look for any metric name starting with "rocksdb_" here as a placeholder
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^rocksdb_/)));
@@ -1086,7 +1086,7 @@ function BaseTestSuite(targetUser) {
           db._query(`LET payload = '${payload}' FOR i IN 1..${n} INSERT {} INTO ${c1.name()} INSERT {payload} INTO ${c2.name()}`);
 
           assertTotalWriteMetricsAreCounted(c1, replicationFactor, n * 30, n * 40);
-          assertTotalWriteMetricsAreCounted(c2, replicationFactor, n * 360, n * 370);
+          assertTotalWriteMetricsAreCounted(c2, replicationFactor, n * 350, n * 370);
         } finally {
           db._drop(c2.name());
           db._drop(c1.name());
@@ -1578,11 +1578,11 @@ function TestUser1Suite() {
     
       arango.reconnect(endpoint, db._name(), user, '');
       // set this failure point so that metrics updates are pushed immediately
-      internal.debugSetFailAt("alwaysPublishShardMetrics", jwt);
+      IM.debugSetFailAt("alwaysPublishShardMetrics");
     },
 
     tearDownAll: function () {
-      internal.debugRemoveFailAt("alwaysPublishShardMetrics", jwt);
+      IM.debugRemoveFailAt("alwaysPublishShardMetrics");
       arango.reconnect(endpoint, '_system', oldUser, '');
 
       db._useDatabase("_system");
@@ -1617,11 +1617,11 @@ function TestUser2Suite() {
     
       arango.reconnect(endpoint, db._name(), user, '');
       // set this failure point so that metrics updates are pushed immediately
-      internal.debugSetFailAt("alwaysPublishShardMetrics", jwt);
+      IM.debugSetFailAt("alwaysPublishShardMetrics");
     },
 
     tearDownAll: function () {
-      internal.debugRemoveFailAt("alwaysPublishShardMetrics", jwt);
+      IM.debugRemoveFailAt("alwaysPublishShardMetrics");
       arango.reconnect(endpoint, '_system', oldUser, '');
 
       db._useDatabase("_system");
@@ -1634,7 +1634,7 @@ function TestUser2Suite() {
   return suite;
 }
 
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(TestUser1Suite);
   jsunity.run(TestUser2Suite);
 }

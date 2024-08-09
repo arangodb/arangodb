@@ -31,14 +31,14 @@ const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertException, as
   = jsunity.jsUnity.assertions;
 
 const internal = require("internal");
-const {debugSetFailAt, debugCanUseFailAt, debugRemoveFailAt, db, isEnterprise} = internal;
+const {db, isEnterprise} = internal;
 const {aql, errors} = require("@arangodb");
 const protoGraphs = require('@arangodb/testutils/aql-graph-traversal-generic-graphs').protoGraphs;
 const _ = require("lodash");
 const {getCompactStatsNodes, TraversalBlock} = require("@arangodb/testutils/aql-profiler-test-helper");
 const {findExecutionNodes} = require("@arangodb/aql-helper");
 const isCluster = require("internal").isCluster();
-
+let IM = global.instanceManager;
 /*
   TODO:
     We need more tests to cover the following things:
@@ -2747,10 +2747,10 @@ const testParallelism = (testGraph, mode) => {
       `;
   };
 
-  if (debugCanUseFailAt()) {
+  if (IM.debugCanUseFailAt()) {
     const query = makeQuery(true, 1001);
     // Dry run, try to hit the MutexExecutor, a sign that parallelism is triggereds
-    debugSetFailAt("MutexExecutor::distributeBlock");
+    IM.debugSetFailAt("MutexExecutor::distributeBlock");
     if (isEnterprise()) {
       try {
         db._query(query);
@@ -2761,7 +2761,7 @@ const testParallelism = (testGraph, mode) => {
     } else {
       db._query(query);
     }
-    debugRemoveFailAt("MutexExecutor::distributeBlock");
+    IM.debugRemoveFailAt("MutexExecutor::distributeBlock");
   }
 
   executeParallelQuery(makeQuery);
@@ -3516,14 +3516,14 @@ function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
 }
 
 function testCompleteGraphDfsUniqueVerticesPathD3NotHasExtra(testGraph) {
-  if (!internal.debugCanUseFailAt()) {
+  if (!IM.debugCanUseFailAt()) {
     return;
   }
-  internal.debugSetFailAt("RocksDBEdgeIndex::disableHasExtra");
+  IM.debugSetFailAt("RocksDBEdgeIndex::disableHasExtra");
   try {
     completeGraphDfsUniqueVerticesPathD3Helper(testGraph);
   } finally {
-    internal.debugRemoveFailAt("RocksDBEdgeIndex::disableHasExtra");
+    IM.debugRemoveFailAt("RocksDBEdgeIndex::disableHasExtra");
   }
 }
 

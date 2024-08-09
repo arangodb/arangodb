@@ -31,13 +31,12 @@ let db = arangodb.db;
 let errors = arangodb.errors;
 let { getEndpointById,
       getEndpointsByType,
-      debugCanUseFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
       getChecksum,
       getMetric
     } = require('@arangodb/test-helper');
-  
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
+
 const cn = 'UnitTestsTransaction';
 
 function assertInSync(leader, follower, shardId) {
@@ -71,14 +70,14 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
   return {
 
     setUp: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
       db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
       isReplication2 = db._properties().replicationVersion === "2";
     },
 
     tearDown: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
@@ -103,7 +102,7 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
     testAqlIntermediateCommitsWithFailurePoint: function () {
       let [shardId, leader, follower] = collectionInfo();
       // trigger a certain failure point on the leader
-      debugSetFailAt(leader, "insertLocal::fakeResult1");
+      IM.debugSetFailAt("insertLocal::fakeResult1", instanceRole.dbServer, leader);
 
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
@@ -130,7 +129,7 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
     testAqlIntermediateCommitsWithOtherFailurePoint: function () {
       let [shardId, leader, follower] = collectionInfo();
       // trigger a certain failure point on the leader
-      debugSetFailAt(leader, "insertLocal::fakeResult2");
+      IM.debugSetFailAt("insertLocal::fakeResult2", instanceRole.dbServer, leader);
       
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
@@ -206,13 +205,13 @@ function transactionIntermediateCommitsBabiesSuite() {
   return {
 
     setUp: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
       db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
     },
 
     tearDown: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
@@ -233,7 +232,7 @@ function transactionIntermediateCommitsBabiesSuite() {
     testDocumentsSingleArrayIntermediateCommitsSuppressed: function () {
       let leader = collectionInfo();
       // trigger a certain failure point on the leader
-      debugSetFailAt(leader, "TransactionState::intermediateCommitCount100");
+      IM.debugSetFailAt("TransactionState::intermediateCommitCount100", instanceRole.dbServer, leader);
       
       let docs = buildDocuments();
       let intermediateCommitsBefore = getMetric(leader, "arangodb_intermediate_commits_total");
@@ -292,8 +291,7 @@ function transactionIntermediateCommitsBabiesSuite() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
-if (ep.length && debugCanUseFailAt(ep[0])) {
+if (IM.debugCanUseFailAt()) {
   // only execute if failure tests are available
   jsunity.run(transactionIntermediateCommitsBabiesFollowerSuite);
   jsunity.run(transactionIntermediateCommitsBabiesSuite);

@@ -24,7 +24,7 @@
 /// @author Andrei Lobov
 /// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
-
+let IM = global.instanceManager;
 
 (function() {
   var db = require("@arangodb").db;
@@ -517,18 +517,18 @@
           });
           assertTrue(materializeNodeFound);
         
-          if (!internal.debugCanUseFailAt()) {
+          if (!IM.debugCanUseFailAt()) {
             return;
           }
-          internal.debugClearFailAt();
-          internal.debugSetFailAt('MaterializeExecutor::all_fail');
+          IM.debugClearFailAt();
+          IM.debugSetFailAt('MaterializeExecutor::all_fail');
           res = db._createStatement({query: query, bindVars:  {limit: 100}, options}).execute();
           result = res.toArray();
           assertEqual(0, result.length);
           assertEqual(500, res.getExtra().stats.fullCount);
         
-          internal.debugClearFailAt();
-          internal.debugSetFailAt('MaterializeExecutor::only_one');
+          IM.debugClearFailAt();
+          IM.debugSetFailAt('MaterializeExecutor::only_one');
           res = db._createStatement({query: query, bindVars:  {limit: 100}, options}).execute();
           result = res.toArray();
           if (isCluster) {
@@ -541,7 +541,7 @@
           }
           assertEqual(500, res.getExtra().stats.fullCount);
         } finally {
-          internal.debugClearFailAt();
+          IM.debugClearFailAt();
         }
       }
     };

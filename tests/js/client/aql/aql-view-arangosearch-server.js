@@ -35,6 +35,8 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const {
   getDbPath
 } = require('@arangodb/test-helper');
+let IM = global.instanceManager;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,16 +49,16 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
     tearDownAll : function () {
     },
     testViewWithInterruptedInserts : function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
 
       let docsCollectionName = "docs";
       let docsViewName  = "docs_view";
       try { db._drop(docsCollectionName); } catch(e) {}
       try { db._dropView(docsViewName); } catch(e) {}
-      internal.debugSetFailAt('HashIndexAlwaysLast'); 
+      IM.debugSetFailAt('HashIndexAlwaysLast'); 
       let docsCollection = db._create(docsCollectionName);
       let docsView;
       let i;
@@ -234,19 +236,19 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
       db._drop(docsCollectionName);
       db._dropView(docsViewName);
-      internal.debugRemoveFailAt('HashIndexAlwaysLast');
+      IM.debugRemoveFailAt('HashIndexAlwaysLast');
     },
 
     testViewWithInterruptedUpdates : function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       let docsCollectionName = "docs";
       let docsViewName  = "docs_view";
       try { db._drop(docsCollectionName); } catch(e) {}
       try { db._dropView(docsViewName); } catch(e) {}
-      internal.debugSetFailAt('HashIndexAlwaysLast'); 
+      IM.debugSetFailAt('HashIndexAlwaysLast'); 
       let docsCollection = db._create(docsCollectionName);
       let docsView;
       if (isSearchAlias) {
@@ -352,19 +354,19 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       }
       db._drop(docsCollectionName);
       db._dropView(docsViewName);
-      internal.debugRemoveFailAt('HashIndexAlwaysLast');
+      IM.debugRemoveFailAt('HashIndexAlwaysLast');
     },
 
     testViewWithInterruptedRemoves : function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       let docsCollectionName = "docs";
       let docsViewName  = "docs_view";
       try { db._drop(docsCollectionName); } catch(e) {}
       try { db._dropView(docsViewName); } catch(e) {}
-      internal.debugSetFailAt('HashIndexAlwaysLast'); 
+      IM.debugSetFailAt('HashIndexAlwaysLast'); 
       let docsCollection = db._create(docsCollectionName);
       let docsView;
       if (isSearchAlias) {
@@ -456,9 +458,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       let docsRemoveIds = [];
       docsRemoveIds.push(docs[2]._id);
       docsRemoveIds.push(docs[3]._id);
-      internal.debugSetFailAt('BreakHashIndexRemove'); 
+      IM.debugSetFailAt('BreakHashIndexRemove'); 
       docsCollection.remove(docsRemoveIds); 
-      internal.debugRemoveFailAt('BreakHashIndexRemove');
+      IM.debugRemoveFailAt('BreakHashIndexRemove');
       // documents should stay consistent
       let collectionDocs =  db._query("FOR d IN " + docsCollectionName + " SORT d._id ASC RETURN d").toArray();
       let viewDocs = db._query("FOR  d IN " + docsViewName + " OPTIONS { waitForSync : true }  SORT d._id ASC RETURN d").toArray();
@@ -470,18 +472,18 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       
       db._drop(docsCollectionName);
       db._dropView(docsViewName);
-      internal.debugRemoveFailAt('HashIndexAlwaysLast');
+      IM.debugRemoveFailAt('HashIndexAlwaysLast');
     },
     testViewLinkCreationHint : function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       let docsCollectionName = "docs";
       let docsViewName  = "docs_view";
       try { db._drop(docsCollectionName); } catch(e) {}
       try { db._dropView(docsViewName); } catch(e) {}
-      internal.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint'); 
+      IM.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint'); 
       let docsCollection = db._create(docsCollectionName);
       docsCollection.save({"some_field": "some_value"});
       try {
@@ -568,14 +570,14 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       } finally {
         db._drop(docsCollectionName);
         db._dropView(docsViewName);
-        internal.debugRemoveFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
+        IM.debugRemoveFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
       }
     },
     testViewNoLinkCreationHint : function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       let docsCollectionName = "docs";
       let docsViewName  = "docs_view";
       try { db._drop(docsCollectionName); } catch(e) {}
@@ -664,7 +666,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           } 
         }
 
-        internal.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
+        IM.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
         // now regular save to collection should trigger fail on index insert
         // as there should be no hint!
         try {
@@ -676,14 +678,14 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       } finally {
         db._drop(docsCollectionName);
         db._dropView(docsViewName);
-        internal.debugRemoveFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
+        IM.debugRemoveFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
       }
     },
     testRemoveIndexOnCreationFail : function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       let docsCollectionName = "docs";
       let docsViewName  = "docs_view";
       try { db._drop(docsCollectionName); } catch(e) {}
@@ -719,7 +721,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
       try {
         let beforeLinkCount = getLinksCount();
-        internal.debugSetFailAt('ArangoSearch::MisreportCreationInsertAsFailed'); 
+        IM.debugSetFailAt('ArangoSearch::MisreportCreationInsertAsFailed'); 
         let meta = {};
         if (isEnterprise) {
           meta = {
@@ -785,7 +787,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       } finally {
         db._drop(docsCollectionName);
         db._dropView(docsViewName);
-        internal.debugRemoveFailAt('ArangoSearch::MisreportCreationInsertAsFailed');
+        IM.debugRemoveFailAt('ArangoSearch::MisreportCreationInsertAsFailed');
       }
     }
   };

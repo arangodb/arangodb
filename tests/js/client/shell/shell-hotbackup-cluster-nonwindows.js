@@ -24,7 +24,7 @@
 const jsunity = require('jsunity');
 const serverHelper = require('@arangodb/test-helper');
 const {readAgencyValueAt} = require("@arangodb/testutils/replicated-logs-helper");
-const {debugSetFailAt, debugCanUseFailAt, debugClearFailAt, errors} = require('internal');
+const {errors} = require('internal');
 
 'use strict';
 
@@ -102,7 +102,7 @@ function HotBackupSuite () {
     },
 
     testRegressionFailedReplanIsReported: function() {
-      if (debugCanUseFailAt()) {
+      if (global.instanceManager.debugCanUseFailAt()) {
         const req = arango.POST("/_admin/backup/create", {});
         if (!require("internal").isEnterprise()) {
           // Hotbackup is an enterprise feature this call should respond with 404.
@@ -114,12 +114,12 @@ function HotBackupSuite () {
         const colName = "additionalCollection";
         db._create(colName);
         try {
-          debugSetFailAt("ClusterInfo::failReplanAgency");
+          global.instanceManager.debugSetFailAt("ClusterInfo::failReplanAgency");
           const response = arango.POST("/_admin/backup/restore", {id: backup.id});
           assertEqual(response.errorNum, errors.ERROR_DEBUG.code);
           assertNotEqual(db._collections().map(c => c.name()).indexOf(colName), -1, "Collection was removed on failed restore");
         } finally {
-          debugClearFailAt();
+          global.instanceManager.debugClearFailAt();
           db._drop(colName);
         }
 

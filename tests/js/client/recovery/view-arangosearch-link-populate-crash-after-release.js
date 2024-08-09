@@ -25,7 +25,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
-var internal = require('internal');
+const internal = require('internal');
 var jsunity = require('jsunity');
 
 if (runSetup === true) {
@@ -42,7 +42,7 @@ if (runSetup === true) {
   db._view('UnitTestsRecoveryView').properties(meta);
 
   internal.wal.flush(true, true);
-  global.instanceManager.debugSetFailAt("FlushCrashBeforeSyncingMinTick");
+  global.instanceManager.debugSetFailAt("FlushCrashAfterReleasingMinTick");
 
   if (global.hasOwnProperty('arango')) {
     // we intend to crash, so we should get to know quickly:
@@ -56,12 +56,14 @@ if (runSetup === true) {
     c.save({ name: 'crashme' }, { waitForSync: true });
   } catch (ex) {
     if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
-        (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code)) {
+        (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code) &&
+        (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code)) {
       print(ex);
       throw ex;
     }
   }
 
+  global.instanceManager.debugTerminate('crashing server');
   return 0;
 }
 

@@ -139,11 +139,11 @@ function lateDocumentMaterializationRuleTestSuite () {
 
       // usually the batch materialize rule only does something if there are enough documents in the collection
       // by enabling this failure point we can trick the optimizer into always applying the optimization
-      require('internal').debugSetFailAt("batch-materialize-no-estimation");
+      global.instanceManager.debugSetFailAt("batch-materialize-no-estimation");
     },
 
     tearDownAll : function () {
-      require('internal').debugClearFailAt("batch-materialize-no-estimation");
+      global.instanceManager.debugClearFailAt("batch-materialize-no-estimation");
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         try { db._drop(collectionNames[i]); } catch(e) {}
         for (j = 0; j < numOfExpCollections; ++j) {
@@ -558,7 +558,7 @@ function lateDocumentMaterializationRuleTestSuite () {
                 
       } finally {
         db._drop(withIndexCollectionName);
-        internal.debugClearFailAt();
+        global.instanceManager.debugClearFailAt();
       }
     },
 

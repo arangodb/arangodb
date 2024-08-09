@@ -27,14 +27,10 @@
 let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-let { getEndpointsByType,
-      getEndpointById,
-      debugCanUseFailAt,
-      debugClearFailAt,
-      debugSetFailAt,
-      waitForShardsInSync
-    } = require('@arangodb/test-helper');
-      
+let { getServerById, waitForShardsInSync } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
+
 function dropFollowersWhileReplicatingSuite() {
   'use strict';
   const cn = 'UnitTestsReplication';
@@ -53,23 +49,22 @@ function dropFollowersWhileReplicatingSuite() {
   return {
 
     setUp: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
 
     tearDown: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
     testSingleOperationDropFollowerWhileReplicating: function() {
       let { c, leader, follower } = setupCollection();
-     
-      debugSetFailAt(getEndpointById(leader), "replicateOperationsDropFollower");
+      IM.debugSetFailAt("replicateOperationsDropFollower", '', leader);
       
       c.insert({});
       
-      debugClearFailAt(getEndpointById(leader), "replicateOperationsDropFollower");
+      IM.debugClearFailAt("replicateOperationsDropFollower", '', leader);
 
       assertEqual(1, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -78,11 +73,11 @@ function dropFollowersWhileReplicatingSuite() {
     testMultiOperationDropFollowerWhileReplicating: function() {
       let { c, leader, follower } = setupCollection();
      
-      debugSetFailAt(getEndpointById(leader), "replicateOperationsDropFollower");
+      IM.debugSetFailAt("replicateOperationsDropFollower", '', leader);
       
       c.insert([{}, {}, {}, {}]);
       
-      debugClearFailAt(getEndpointById(leader), "replicateOperationsDropFollower");
+      IM.debugSetFailAt("replicateOperationsDropFollower", '', leader);
       
       assertEqual(4, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -91,11 +86,11 @@ function dropFollowersWhileReplicatingSuite() {
     testAqlDropFollowerWhileReplicating: function() {
       let { c, leader, follower } = setupCollection();
      
-      debugSetFailAt(getEndpointById(leader), "replicateOperationsDropFollower");
+      IM.debugSetFailAt("replicateOperationsDropFollower", '', leader);
      
       db._query("FOR i IN 1..10 INSERT {} INTO " + cn);
       
-      debugClearFailAt(getEndpointById(leader), "replicateOperationsDropFollower");
+      IM.debugSetFailAt("replicateOperationsDropFollower", '', leader);
       
       assertEqual(10, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -104,11 +99,11 @@ function dropFollowersWhileReplicatingSuite() {
     testSingleOperationBuildEmptyTransactionBody: function() {
       let { c, leader, follower } = setupCollection();
      
-      debugSetFailAt(getEndpointById(leader), "buildTransactionBodyEmpty");
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       c.insert({});
       
-      debugClearFailAt(getEndpointById(leader), "buildTransactionBodyEmpty");
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       assertEqual(1, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -117,11 +112,11 @@ function dropFollowersWhileReplicatingSuite() {
     testMultiOperationBuildEmptyTransactionBody: function() {
       let { c, leader, follower } = setupCollection();
      
-      debugSetFailAt(getEndpointById(leader), "buildTransactionBodyEmpty");
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       c.insert([{}, {}, {}, {}]);
       
-      debugClearFailAt(getEndpointById(leader), "buildTransactionBodyEmpty");
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       assertEqual(4, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -130,11 +125,11 @@ function dropFollowersWhileReplicatingSuite() {
     testAqlBuildEmptyTransactionBody: function() {
       let { c, leader, follower } = setupCollection();
      
-      debugSetFailAt(getEndpointById(leader), "buildTransactionBodyEmpty");
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       db._query("FOR i IN 1..10 INSERT {} INTO " + cn);
       
-      debugClearFailAt(getEndpointById(leader), "buildTransactionBodyEmpty");
+      IM.debugSetFailAt("buildTransactionBodyEmpty", '', leader);
       
       assertEqual(10, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -142,8 +137,7 @@ function dropFollowersWhileReplicatingSuite() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
-if (ep.length && debugCanUseFailAt(ep[0])) {
+if (IM.debugCanUseFailAt()) {
   // only execute if failure tests are available
   jsunity.run(dropFollowersWhileReplicatingSuite);
 }

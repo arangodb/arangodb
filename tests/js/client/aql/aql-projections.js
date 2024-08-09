@@ -31,6 +31,7 @@ const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const ruleName = "reduce-extraction-to-projection";
 const cn = "UnitTestsOptimizer";
 const internal = require('internal');
+let IM = global.instanceManager;
 
 function projectionsPlansTestSuite () {
   let c = null;
@@ -42,8 +43,8 @@ function projectionsPlansTestSuite () {
     
     tearDownAll : function () {
       db._dropView(cn + "View");
-      if (internal.debugCanUseFailAt()) {
-        internal.debugClearFailAt();
+      if (IM.debugCanUseFailAt()) {
+        IM.debugClearFailAt();
       }
     },
 
@@ -490,12 +491,12 @@ function projectionsPlansTestSuite () {
     },
     
     testMaterialize : function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         // cant execute this test as failure points are not available here
         return;
       }
 
-      internal.debugSetFailAt('batch-materialize-no-estimation');
+      IM.debugSetFailAt('batch-materialize-no-estimation');
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2", "value3"] });
       let queries = [
         [`FOR doc IN ${cn} FILTER doc.value1 == 93 SORT doc.value3 LIMIT 5 RETURN doc`, 'persistent', ["value3"], true, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
@@ -554,12 +555,12 @@ function projectionsPlansTestSuite () {
     },
     
     testMaterializeMaxProjections : function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         // cant execute this test as failure points are not available here
         return;
       }
 
-      internal.debugSetFailAt('batch-materialize-no-estimation');
+      IM.debugSetFailAt('batch-materialize-no-estimation');
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
       let queries = [
         [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN [doc.a, doc.b]`, 'persistent', [], false, ["a", "b"] ],

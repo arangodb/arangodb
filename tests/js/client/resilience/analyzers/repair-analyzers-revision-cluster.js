@@ -33,8 +33,8 @@ var internal = require('internal');
 const {
   arangoClusterInfoFlush,
   arangoClusterInfoGetAnalyzersRevision,
-  agency
 } = require("@arangodb/test-helper");
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -82,7 +82,7 @@ function repairAnalyzersRevisionTestSuite () {
 
     while (unfinishedJobs > 0 && ! timeout) {
       const duration = (Date.now() - start) / 1000;
-      const result = agency.call("read", [paths]);
+      const result = IM.agencyMgr.call("read", [paths]);
       const target = result[0][prefix]["Target"];
 
       timeout = duration > maxWaitTime;
@@ -145,9 +145,9 @@ function repairAnalyzersRevisionTestSuite () {
           coordinator: coordinator,
           coordinatorRebootId: rebootId + 1};
       for (let i = 0; i < n; i++) {
-        agency.set("Plan/Analyzers/" + dbName + i, value);
+        IM.agencyMgr.set("Plan/Analyzers/" + dbName + i, value);
       }
-      agency.increaseVersion("Plan/Version");
+      IM.agencyMgr.increaseVersion("Plan/Version");
 
       // Repair analyzers revision
       expect(waitForAllAgencyJobs(), 'Timeout while waiting for agency jobs to finish');
@@ -176,9 +176,9 @@ function repairAnalyzersRevisionTestSuite () {
           coordinator: coordinator,
           coordinatorRebootId: rebootId + 1};
       for (let i = 0; i < n; i++) {
-        agency.set("Plan/Analyzers/" + dbName + i, value2);
+        IM.agencyMgr.set("Plan/Analyzers/" + dbName + i, value2);
       }
-      agency.increaseVersion("Plan/Version");
+      IM.agencyMgr.increaseVersion("Plan/Version");
 
       // Repair analyzers revision
       expect(waitForAllAgencyJobs(), 'Timeout while waiting for agency jobs to finish');

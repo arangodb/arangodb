@@ -33,10 +33,8 @@ const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
 const expect = require('chai').expect;
 const ERRORS = require('internal').errors;
-const {
-  debugCanUseFailAt,
-  debugSetFailAt,
-} = require('@arangodb/test-helper');
+
+let IM = require('@arangodb/test-helper').getInstanceInfo();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -79,17 +77,7 @@ function AuthSuite() {
         "server_id": "arangosh",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
       }, 'HS256');
-      const res = request.delete({
-        url: baseUrl() + "/_admin/debug/failat",
-        auth: {bearer: jwt}
-      });
 
-      // in case of 404 we are running a release build
-      if (res.statusCode !== 200 && res.statusCode !== 404) {
-        throw "Error removing failure points";
-      }
-
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
       try {
         users.remove(user);
       } catch (err) {
@@ -209,17 +197,21 @@ function AuthSuite() {
     },
 
     testAuthenticationErrorDuringStartup: function () {
-      if (!debugCanUseFailAt(arango.getEndpoint())) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      debugSetFailAt(arango.getEndpoint(), "QueryAllUsers");
-      debugSetFailAt(arango.getEndpoint(), "BootstrapFeature_not_ready");
+      try {
+        IM.debugSetFailAt("QueryAllUsers");
+        IM.debugSetFailAt("BootstrapFeature_not_ready");
 
-      users.reload();
+        users.reload();
 
-      const result = arango.GET('/_api/version');
-      require('internal').print(result);
-      assertEqual(503, result.code);
+        const result = arango.GET('/_api/version');
+        require('internal').print(result);
+        assertEqual(503, result.code);
+      } finally {
+        IM.debugClearFailAt();
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////

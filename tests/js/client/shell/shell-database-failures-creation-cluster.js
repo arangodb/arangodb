@@ -33,6 +33,7 @@ const request = require('@arangodb/request');
 const expect = require('chai').expect;
 const wait = internal.wait;
 
+let IM = global.instanceManager;
 let coordinator = instanceManager.arangods.filter(arangod => {
   return arangod.instanceRole === 'coordinator';
 })[0];
@@ -92,7 +93,7 @@ function databaseFailureSuite() {
   return {
 
     setUp: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase('_system');
       try {
         db._dropDatabase(dn);
@@ -101,7 +102,7 @@ function databaseFailureSuite() {
     },
 
     tearDown: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase('_system');
       try {
         db._dropDatabase(dn);
@@ -115,7 +116,7 @@ function databaseFailureSuite() {
 
     testHideDatabaseUntilCreationIsFinished: function () {
       // this will trigger an internal sleep of 5 seconds during db creation
-      internal.debugSetFailAt("UpgradeTasks::HideDatabaseUntilCreationIsFinished");
+      IM.debugSetFailAt("UpgradeTasks::HideDatabaseUntilCreationIsFinished");
       
       // this should fail now
       try {
@@ -154,7 +155,7 @@ function databaseFailureSuite() {
       if (db._properties().replicationVersion === "2") {
         return;
       }
-      internal.debugSetFailAt("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions");
+      IM.debugSetFailAt("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions");
 
       db._createDatabase(dn);
       db._useDatabase(dn);
@@ -177,7 +178,7 @@ function databaseFailureSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(databaseFailureSuite);
 }
 

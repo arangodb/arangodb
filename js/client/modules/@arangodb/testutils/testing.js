@@ -346,6 +346,17 @@ function translateTestList(cases, options) {
       if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
+        if (which.startsWith('./')) {
+          // strip relative ./
+          which = which.slice(2);
+        } else if (which.startsWith('/')) {
+          // Strip absolute path
+          let p = fs.makeAbsolute('.');
+          p = p.substring(0, p.length - 1);
+          if (which.startsWith(p)) {
+            which = which.slice(p.length);
+          }
+        }
         if (fs.exists(which)) {
           options.test = which;
           return translateTestList(['auto'], options);
@@ -438,6 +449,11 @@ function iterateTests(cases, options) {
       delete result.shutdown;
     }
 
+    if (currentTest === "auto") {
+      Object.keys(result).forEach(key => {
+        results[key] = result[key];
+      });
+    }
     status = rp.gatherStatus(result) && shutdownSuccess;
     let failed = rp.gatherFailed(result);
     if (!status) {
@@ -445,7 +461,9 @@ function iterateTests(cases, options) {
     }
     result.failed = failed;
     result.status = status;
-    results[currentTest] = result;
+    if (currentTest !== "auto") {
+      results[currentTest] = result;
+    }
   }
 
   results.status = globalStatus;

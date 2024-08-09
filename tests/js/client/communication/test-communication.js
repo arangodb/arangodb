@@ -37,14 +37,10 @@ const graphModule = require('@arangodb/general-graph');
 const { expect } = require('chai');
 const toArgv = require('internal').toArgv;
 
-let { debugCanUseFailAt,
-      debugSetFailAt,
-      debugResetRaceControl,
-      debugRemoveFailAt,
-      debugClearFailAt
-    } = require('@arangodb/test-helper');
-
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
+let { debugResetRaceControl } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 const endpointToURL = (endpoint) => {
   if (endpoint.substr(0, 6) === 'ssl://') {
@@ -305,8 +301,7 @@ function GenericAqlSetupPathSuite(type) {
   const activateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
-      const endpoint = getEndpointById(servers[0]);
-      debugSetFailAt(endpoint, `WaitOnLock::${shard}`);
+      IM.debugSetFailAt(`WaitOnLock::${shard}`, instanceRole.dbServer, servers[0]);
     }
   };
 
@@ -314,9 +309,8 @@ function GenericAqlSetupPathSuite(type) {
   const deactivateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
-      const endpoint = getEndpointById(servers[0]);
-      debugClearFailAt(endpoint);
-      debugResetRaceControl(endpoint);
+      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, servers[0]);
+      IM.debugResetRaceControl(instanceRole.dbServer, servers[0]);
     }
   };
 

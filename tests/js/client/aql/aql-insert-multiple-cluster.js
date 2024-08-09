@@ -516,25 +516,20 @@ function InsertMultipleDocumentsSuite(params) {
     },
 
     testFillIndexCache: function () {
-      let {
-        getEndpointsByType,
-        debugCanUseFailAt,
-        debugSetFailAt,
-        debugClearFailAt,
-      } = require('@arangodb/test-helper');
-      let ep = getEndpointsByType('dbserver');
-      if (ep && debugCanUseFailAt(ep[0])) {
+      let { instanceRole } = require('@arangodb/testutils/instance');
+      let IM = global.instanceManager;
+      if (IM.debugCanUseFailAt()) {
         let docs = [];
         for (let i = 0; i < numDocs; ++i) {
           docs.push({d: i});
         }
         try {
-          getEndpointsByType("dbserver").forEach((ep) => debugSetFailAt(ep, "RefillIndexCacheOnFollowers::failIfFalse"));
+          IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfFalse", instanceRole.dbServer);
           // insert should just work
           db._query(`FOR d IN @docs INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true} RETURN d`, {docs});
           assertEqual(db[cn].count(), numDocs);
         } finally {
-          getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+          IM.debugClearFailAt('', instanceRole.dbServer);
         }
       }
     },

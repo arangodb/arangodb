@@ -30,6 +30,7 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require("internal");
 const request = require('@arangodb/request');
+let IM = global.instanceManager;
 
 const {ERROR_QUERY_COLLECTION_LOCK_FAILED, ERROR_CLUSTER_AQL_COMMUNICATION} = internal.errors;
 
@@ -46,7 +47,7 @@ const endpointToURL = (endpoint) => {
 
 const getEndpointById = (id) => {
   const toEndpoint = (d) => (d.endpoint);
-  return global.instanceManager.arangods.filter((d) => (d.id === id))
+  return IM.arangods.filter((d) => (d.id === id))
     .map(toEndpoint)
     .map(endpointToURL)[0];
 };
@@ -100,28 +101,28 @@ function aqlFailureSuite () {
         
   return {
     setUpAll: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
       db._create(cn, { numberOfShards: 3 });
     },
 
     setUp: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
     tearDownAll: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
     },
 
     tearDown: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
     testThatQueryIsntStuckAtShutdownIfFinishDBServerPartsThrows: function() {
       // Force cleanup to fail.
       // This should result in a positive query, but may leave locks on DBServers.
-      internal.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
+      IM.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
       // NOTE we need to insert two documents here to not end up with a single remote operation node.
       const {stats, warnings} = db._query(`FOR value IN 1..2 INSERT {value} INTO ${cn}`).getExtra();
       try {
@@ -145,15 +146,15 @@ function aqlFailureSuite () {
       // Force commit and cleanup to fail.
       // This should result in a failed commit (error reported)
       // It should also leave locks on DBServers.
-      internal.debugSetFailAt("Query::finalize_before_done");
-      internal.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
+      IM.debugSetFailAt("Query::finalize_before_done");
+      IM.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
       assertFailingQuery(`FOR value IN 1..2 INSERT {value} INTO ${cn}`);
     },
     */
   };
 }
  
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(aqlFailureSuite);
 }
 

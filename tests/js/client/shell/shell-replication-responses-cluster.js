@@ -33,6 +33,8 @@ const { debugCanUseFailAt, debugClearFailAt, debugSetFailAt, getEndpointById, ge
 const request = require('@arangodb/request');
 const isReplication2 = db._properties().replicationVersion === "2";
 const {ERROR_HTTP_NOT_ACCEPTABLE, ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE} = internal.errors;
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function followerResponsesSuite() {
   'use strict';
@@ -52,7 +54,7 @@ function followerResponsesSuite() {
     },
 
     tearDown: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
@@ -68,7 +70,7 @@ function followerResponsesSuite() {
       
       let endpoint = getEndpointById(follower);
       let url = getUrlById(follower);
-      debugSetFailAt(endpoint, "synchronousReplication::neverRefuseOnFollower");
+      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", instanceRole.dbServer, endpoint);
 
       // send a single document replication insert request
       let response = request({
@@ -118,7 +120,7 @@ function followerResponsesSuite() {
       
       let endpoint = getEndpointById(follower);
       let url = getUrlById(follower);
-      debugSetFailAt(endpoint, "synchronousReplication::neverRefuseOnFollower");
+      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", instanceRole.dbServer, endpoint);
 
       // send a single document replication update request
       let response = request({
@@ -168,7 +170,7 @@ function followerResponsesSuite() {
       
       let endpoint = getEndpointById(follower);
       let url = getUrlById(follower);
-      debugSetFailAt(endpoint, "synchronousReplication::neverRefuseOnFollower");
+      IM.debugSetFailAt("synchronousReplication::neverRefuseOnFollower", instanceRole.dbServer, endpoint);
 
       // send a single document replication remove request
       let response = request({
@@ -203,8 +205,7 @@ function followerResponsesSuite() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
-if (ep.length && debugCanUseFailAt(ep[0])) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(followerResponsesSuite);
 }
 return jsunity.done();

@@ -1,6 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail */
-
+/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail, print, arango */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -22,10 +21,11 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 /// @author Andrey Abramov
+/// @author Copyright 2022, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
-var internal = require('internal');
+const internal = require('internal');
 var jsunity = require('jsunity');
 
 if (runSetup === true) {
@@ -34,18 +34,37 @@ if (runSetup === true) {
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
+  var i1 = c.ensureIndex({ type: "inverted", name: "i1", includeAllFields:true });
 
   db._dropView('UnitTestsRecoveryView');
+  db._createView('UnitTestsRecoveryView', 'search-alias', {});
 
-  for (let i = 0; i < 10000; i++) {
-    c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+  var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
+  db._view('UnitTestsRecoveryView').properties(meta);
+
+  internal.wal.flush(true, true);
+  global.instanceManager.debugSetFailAt("FlushCrashAfterReleasingMinTick");
+
+  if (global.hasOwnProperty('arango')) {
+    // we intend to crash, so we should get to know quickly:
+    print('setting short timeout');
+    arango.timeout(10);
+  }
+  try {
+    for (let i = 0; i < 100000; i++) {
+      c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+    }
+    c.save({ name: 'crashme' }, { waitForSync: true });
+  } catch (ex) {
+    if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
+        (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code) &&
+        (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code)) {
+      print(ex);
+      throw ex;
+    }
   }
 
-  c.ensureIndex({ type: "inverted", name: "pupa", includeAllFields:true });
-
-  db._createView('UnitTestsRecoveryView', 'search-alias', { indexes: [ { collection: c.name(), index: "pupa" } ] });
-
-  c.save({ name: 'crashme' }, { waitForSync: true });
+  global.instanceManager.debugTerminate('crashing server');
   return 0;
 }
 
@@ -56,7 +75,7 @@ function recoverySuite () {
   return {
 
 
-    testIResearchLinkPopulate: function () {
+    testIResearchLinkPopulateNoRelease: function () {
       let checkView = function(viewName, indexName) {
         let v = db._view(viewName);
         assertEqual(v.name(), viewName);
@@ -66,9 +85,9 @@ function recoverySuite () {
         assertEqual(indexName, indexes[0].index);
         assertEqual("UnitTestsRecoveryDummy", indexes[0].collection);
       };
-      checkView("UnitTestsRecoveryView", "pupa");
+      checkView("UnitTestsRecoveryView", "i1");
 
-      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
       var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
       assertEqual(expectedResult[0], result[0]);
     }

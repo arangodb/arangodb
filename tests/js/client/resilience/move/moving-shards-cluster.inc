@@ -41,16 +41,16 @@ const helper = require("@arangodb/testutils/replicated-logs-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const {
   agency,
-  debugSetFailAt, 
   arangoClusterInfoGetCollectionInfo,
   arangoClusterInfoGetCollectionInfoCurrent,
-  debugClearFailAt, 
   arangoClusterInfoFlush,
   getDBServers,
   getAgents,
   getEndpointById,
   getCoordinators
 } = require('@arangodb/test-helper');
+const { instanceRole } = require("@arangodb/testutils/instance");
+let IM = global.instanceManager;
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
@@ -1157,7 +1157,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromFollowerRepl3_failoverCands: function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         console.log("Skipping test for failoverCandidates because failure points are not compiled in!");
         return;
       }
@@ -1176,7 +1176,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       // below will leave the old server in Current/servers and
       // Current/failoverCandidates.
       try {
-        debugSetFailAt(leaderUrl, "Maintenance::doNotRemoveUnPlannedFollowers");
+        IM.debugSetFailAt("Maintenance::doNotRemoveUnPlannedFollowers", instanceRole.dbServer, leaderUrl);
 
         var toServer = findServerNotOnList(servers);
         var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -1190,14 +1190,14 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         // failoverCandidates (and indeed in Current/servers). Let's now
         // try to move the shard back, this ought to be denied:
         assertTrue(moveShard(dbn, c[1]._id, shard, toServer, fromServer, false, "Failed"));
-        debugClearFailAt(leaderUrl);
+        IM.debugClearFailAt();
         // Now we should go back to only 3 servers in Current.
         assertTrue(waitForSynchronousReplication(dbn));
         assertTrue(testServerEmpty(fromServer, false, 1, 1));
         assertTrue(waitForSupervision());
         checkCollectionContents();
       } catch (err) {
-        debugClearFailAt(leaderUrl);
+        IM.debugClearFailAt();
         throw err;
       }
     },

@@ -43,10 +43,10 @@ function getEndpointsByType(type) {
     return 'http' + endpoint.substr(pos);
   };
 
-  const instanceManager = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceManager.arangods.filter(isType)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
+  const IM = global.instanceManager;
+  return IM.arangods.filter(isType)
+    .map(toEndpoint)
+    .map(endpointToURL);
 }
 
 function processMetricsSuite() {

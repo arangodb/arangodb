@@ -30,11 +30,12 @@ const isCluster = require("internal").isCluster();
 const analyzers = require("@arangodb/analyzers");
 var internal = require("internal");
 let db = require("@arangodb").db;
+let IM = global.instanceManager;
 
 function ArangoSearchParallelisationTestSuite () {
     return {
     setUpAll : function () {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
         analyzers.save("mygeojson", "geojson", {type:"shape"});
         let c = db._create("UnitTestCollection");
         db._createView("UnitTestView", "arangosearch",
@@ -73,10 +74,10 @@ function ArangoSearchParallelisationTestSuite () {
         c.save(data);
         data = [];
         db._query("FOR d IN UnitTestView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
-        internal.debugSetFailAt("IResearchFeature::failNonParallelQuery");
+        IM.debugSetFailAt("IResearchFeature::failNonParallelQuery");
     },
     tearDownAll : function() {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
         db._dropView("UnitTestView");
         db._drop("UnitTestCollection");
         analyzers.remove("mygeojson", true);

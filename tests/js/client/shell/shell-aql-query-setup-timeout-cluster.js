@@ -27,14 +27,10 @@
 let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-let { getEndpointsByType,
-      getEndpointById,
-      debugCanUseFailAt,
-      debugClearFailAt,
-      debugSetFailAt,
-    } = require('@arangodb/test-helper');
 const ERRORS = arangodb.errors;
-      
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
+
 function aqlQuerySetupTimeout() {
   'use strict';
   const cn = 'UnitTestsReplication';
@@ -42,14 +38,12 @@ function aqlQuerySetupTimeout() {
   return {
 
     setUp: function () {
-      getEndpointsByType("coordinator").forEach((ep) => debugClearFailAt(ep));
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt();
       db._drop(cn);
     },
 
     tearDown: function () {
-      getEndpointsByType("coordinator").forEach((ep) => debugClearFailAt(ep));
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt();
       db._drop(cn);
     },
     
@@ -64,15 +58,15 @@ function aqlQuerySetupTimeout() {
       // which will add a tombstone for the query
       // once the DB server will execute the (delayed) query, it will see the
       // tombstone and fail
-      getEndpointsByType("coordinator").forEach((ep) => debugSetFailAt(ep, "Query::setupTimeoutFailSequence"));
-      getEndpointsByType("dbserver").forEach((ep) => debugSetFailAt(ep, "Query::setupTimeoutFailSequence"));
+      IM.debugSetFailAt("Query::setupTimeoutFailSequence", instanceRole.dbServer);
+      IM.debugSetFailAt("Query::setupTimeoutFailSequence", instanceRole.coordinator);
 
       try {
         db._query("FOR i IN 1..1000 INSERT {} INTO " + cn);
         fail();
       } catch (e) {
         assertTrue(e.errorNum === ERRORS.ERROR_CLUSTER_TIMEOUT.code ||
-                   e.errorNum === ERRORS.ERROR_CLUSTER_CONNECTION_LOST.code);
+                   e.errorNum === ERRORS.ERROR_CLUSTER_CONNECTION_LOST.code, JSON.stringify(e));
       }
 
       assertEqual(0, c.count());
@@ -84,8 +78,7 @@ function aqlQuerySetupTimeout() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
-if (ep.length && debugCanUseFailAt(ep[0])) {
+if (IM.debugCanUseFailAt()) {
   // only execute if failure tests are available
   jsunity.run(aqlQuerySetupTimeout);
 }

@@ -30,7 +30,7 @@ let jsunity = require("jsunity");
 let arangodb = require("@arangodb");
 let db = arangodb.db;
 let tasks = require("@arangodb/tasks");
-const {debugClearFailAt, debugSetFailAt, debugCanUseFailAt} = require('internal');
+let IM = global.instanceManager;
 
 function IndexUsageSuite () {
   const cnData = "UnitTestsCollection"; // used for test data
@@ -54,8 +54,8 @@ function IndexUsageSuite () {
     tearDown : function () {
       db._drop(cnData);
       db._drop(cnComm);
-      if (debugCanUseFailAt()) {
-        debugClearFailAt();
+      if (IM.debugCanUseFailAt()) {
+        IM.debugClearFailAt();
       }
     },
 
@@ -125,8 +125,8 @@ function IndexUsageSuite () {
     },
 
     testPrimaryIndexLookupConsistency : function () {
-      if (debugCanUseFailAt()) {
-        debugSetFailAt("RocksDBCollection::read-delay");
+      if (IM.debugCanUseFailAt()) {
+        IM.debugSetFailAt("RocksDBCollection::read-delay");
 
         const task = tasks.register({
           command: function(params) {

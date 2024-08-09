@@ -174,7 +174,7 @@ function BaseTestConfig() {
     tearDownAll: function() {
       db._flushCache();
       db._users.toArray().forEach(user => {
-        if (user.user !== "root") {
+        if (user.user !== "root" && user.user !== "replicator-user") {
           userManager.remove(user.user);
         }
       });

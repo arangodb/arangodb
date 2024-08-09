@@ -28,25 +28,12 @@ const jsunity = require('jsunity');
 let { getEndpointById,
       getEndpointsByType,
       getServersByType,
-      debugCanUseFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
       reconnectRetry,
       getCoordinators,
       getDBServers
     } = require('@arangodb/test-helper');
-const primaryEndpoint = arango.getEndpoint();
-
-function endpointToURL(endpoint) {
-  if (endpoint.substr(0, 6) === 'ssl://') {
-    return 'https://' + endpoint.substr(6);
-  }
-  let pos = endpoint.indexOf('://');
-  if (pos === -1) {
-    return 'http://' + endpoint;
-  }
-  return 'http' + endpoint.substr(pos);
-}
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function adminClusterSuite() {
   'use strict';
@@ -54,11 +41,12 @@ function adminClusterSuite() {
   return {
 
     setUp: function () {
-      getCoordinators().forEach((ep) => debugClearFailAt(ep.endpoint));
+      IM.rememberConnection();
+      IM.debugClearFailAt('', instanceRole.coordinator);
     },
 
     tearDown: function () {
-      getCoordinators().forEach((ep) => debugClearFailAt(ep.endpoint));
+      IM.debugClearFailAt('', instanceRole.coordinator);
     },
 
     testRemoveServerNonExisting: function () {
@@ -73,7 +61,7 @@ function adminClusterSuite() {
         });
         assertEqual(404, res.code);
       } finally {
-        reconnectRetry(primaryEndpoint, "_system", "root", "");
+        IM.reconnectMe();
       }
     },
 
@@ -85,7 +73,7 @@ function adminClusterSuite() {
       let ep = coords[0].endpoint;
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-        debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
+        IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
         reconnectRetry(ep, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                   new Buffer('"' + coordinatorId + '"'), {
@@ -95,7 +83,7 @@ function adminClusterSuite() {
         // as the coordinator is still in use, we expect "precondition failed"
         assertEqual(412, res.code);
       } finally {
-        reconnectRetry(primaryEndpoint, "_system", "root", "");
+        IM.reconnectMe();
       }
     },
     
@@ -107,7 +95,7 @@ function adminClusterSuite() {
       let ep = coords[0].endpoint;
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-        debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
+        IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
         reconnectRetry(ep, db._name(), "root", "");
         let res = arango.POST_RAW("/_admin/cluster/removeServer",
                                   new Buffer('"' + coordinatorId + '"'), {
@@ -117,7 +105,7 @@ function adminClusterSuite() {
         // as the coordinator is still in use, we expect "precondition failed"
         assertEqual(412, res.code);
       } finally {
-        reconnectRetry(primaryEndpoint, "_system", "root", "");
+        IM.reconnectMe();
       }
     },
     
@@ -129,7 +117,7 @@ function adminClusterSuite() {
       let ep = coords[0].endpoint;
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-        debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
+        IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
 
         let dbservers = getDBServers();
         assertTrue(dbservers.length > 0);
@@ -143,7 +131,7 @@ function adminClusterSuite() {
           assertEqual(412, res.code);
         });
       } finally {
-        reconnectRetry(primaryEndpoint, "_system", "root", "");
+        IM.reconnectMe();
       }
     },
     
@@ -155,7 +143,7 @@ function adminClusterSuite() {
       let ep = coords[0].endpoint;
       try {
         // make removeServer fail quickly in case precondition is not met. if we don't set this, it will cycle for 60s
-        debugSetFailAt(endpointToURL(ep), "removeServer::noRetry");
+        IM.debugSetFailAt("removeServer::noRetry", instanceRole.coordinator, ep);
 
         let dbservers = getDBServers();
         assertTrue(dbservers.length > 0);
@@ -170,7 +158,7 @@ function adminClusterSuite() {
           assertEqual(412, res.code);
         });
       } finally {
-        reconnectRetry(primaryEndpoint, "_system", "root", "");
+        IM.reconnectMe();
       }
     },
     
@@ -190,7 +178,7 @@ function adminClusterSuite() {
         // the server expects an object with a "server" attribute, but no string
         assertEqual(400, res.code);
       } finally {
-        reconnectRetry(primaryEndpoint, "_system", "root", "");
+        IM.reconnectMe();
       }
     },
 
@@ -235,15 +223,13 @@ function adminClusterSuite() {
         }
         assertEqual(200, res);   // will fail if loop ends
       } finally {
-        reconnectRetry(primaryEndpoint, "_system", "root", "");
+        IM.reconnectMe();
       }
     }
   };
 }
 
-let coords = getCoordinators();
-
-if (coords.length && debugCanUseFailAt(coords[0].endpoint)) {
+if (IM.debugCanUseFailAt()) {
   // only run when failure tests are available
   jsunity.run(adminClusterSuite);
 }

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, fail */
+/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -31,9 +31,9 @@ const jsunity = require('jsunity');
 const cn = 'UnitTestsTruncateDummy';
 const vn = cn + 'View';
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   db._drop(cn);
   var c = db._create(cn);
@@ -50,11 +50,12 @@ function runSetup () {
   }
 
   c.save({ name: "crashme" }, { waitForSync: true });
-  internal.debugSetFailAt("ArangoSearchTruncateFailure");
+  global.instanceManager.debugSetFailAt("ArangoSearchTruncateFailure");
 
   try {
     c.truncate();
   } catch (ex) {}
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -89,12 +90,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    return runSetup();
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

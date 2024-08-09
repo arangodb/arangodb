@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertTrue */
+/* global runSetup assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,14 +29,13 @@ var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   var replication = require("@arangodb/replication");
   replication.applier.stop(); // should not be running anyway
   replication.applier.properties({ endpoint: "tcp://ignoreme.arangodb.com:9999", autoStart: true });
-
   return 0;
 }
 
@@ -55,7 +54,7 @@ function recoverySuite () {
       var replication = require("@arangodb/replication");
       var state = replication.applier.state().state;
       // must be either still running or have some failed connections errors
-      assertTrue(state.running || state.totalFailedConnects > 0); 
+      assertTrue(state.running || state.totalFailedConnects > 0);
     }
 
   };
@@ -65,12 +64,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    return runSetup();
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

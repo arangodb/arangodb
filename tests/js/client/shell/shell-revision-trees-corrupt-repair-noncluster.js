@@ -80,10 +80,10 @@ function corruptRepairSuite () {
       // Not let's corrupt the tree:
       db._connection.POST("/_admin/execute?returnAsJSON=true",
         `require("internal").db._collection("${colName1}")._revisionTreeCorrupt(17, 17); return true;`);
-      helper.debugSetFailAt(primaryEndpoint, "MerkleTree::skipConsistencyCheck");
+      global.instanceManager.debugSetFailAt("MerkleTree::skipConsistencyCheck", '', primaryEndpoint);
       trees = c1._revisionTreeVerification();
       assertFalse(trees.equal);
-      helper.debugClearFailAt(primaryEndpoint);
+      global.instanceManager.debugClearFailAt();
 
       // And repair it again:
       db._connection.POST("/_admin/execute?returnAsJSON=true",
@@ -95,7 +95,7 @@ function corruptRepairSuite () {
   };
 }
 
-if (helper.debugCanUseFailAt(primaryEndpoint)) {
+if (global.instanceManager.debugCanUseFailAt()) {
   jsunity.run(corruptRepairSuite);
 }
 

@@ -32,11 +32,10 @@ const primaryEndpoint = arango.getEndpoint();
 let { getEndpointById,
       getEndpointsByType,
       getServersByType,
-      debugCanUseFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
       reconnectRetry
     } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function quickKeysSuite() {
   'use strict';
@@ -52,12 +51,12 @@ function quickKeysSuite() {
   };
 
   let runTestForCount = function(n, quick, adjustQuickLimit) {
-    debugSetFailAt(primaryEndpoint, "disableRevisionsAsDocumentIds");
+    IM.debugSetFailAt("disableRevisionsAsDocumentIds", instanceRole.single, primaryEndpoint);
     createCollection(n);
     
     let quickLimit = 1000000;
     if (adjustQuickLimit) {
-      debugSetFailAt(primaryEndpoint, "RocksDBRestReplicationHandler::quickKeysNumDocsLimit100");
+      IM.debugSetFailAt("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100", instanceRole.single, primaryEndpoint);
       quickLimit = 100;
     }
 
@@ -83,12 +82,12 @@ function quickKeysSuite() {
   return {
 
     setUp: function () {
-      debugClearFailAt(primaryEndpoint);
+      IM.debugClearFailAt();
       db._drop(cn);
     },
 
     tearDown: function () {
-      debugClearFailAt(primaryEndpoint);
+      IM.debugClearFailAt();
       db._drop(cn);
     },
     
@@ -142,7 +141,7 @@ function quickKeysSuite() {
   };
 }
 
-if (debugCanUseFailAt(primaryEndpoint)) {
+if (IM.debugCanUseFailAt(primaryEndpoint)) {
   // only execute if failure tests are available
   jsunity.run(quickKeysSuite);
 }

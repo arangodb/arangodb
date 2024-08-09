@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, fail */
+/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -28,9 +28,9 @@ const internal = require('internal');
 const jsunity = require('jsunity');
 const tasks = require("@arangodb/tasks");
 
-function runSetup() {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   db._drop('UnitTestsRecoveryDummy');
   let c = db._create('UnitTestsRecoveryDummy');
@@ -89,6 +89,7 @@ function runSetup() {
     db._query("FOR d IN UnitTestsRecoveryDummy LIMIT 1 RETURN d");
   }
   // kill it for sure in case of it does not die itself
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,13 +131,5 @@ function recoverySuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function main(argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

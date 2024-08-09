@@ -32,7 +32,7 @@ const tasks = require("@arangodb/tasks");
 const internal = require("internal");
 const { deriveTestSuite } = require('@arangodb/test-helper');
 const ERRORS = arangodb.errors;
-  
+let IM = global.instanceManager;
 const cn = "UnitTestsCollection";
 const taskName = "UnitTestsTask";
   
@@ -110,11 +110,11 @@ function BaseTestConfig (dropCb, expectedError) {
     },
     
     testWarmupAborts : function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
 
-      internal.debugSetFailAt("warmup::executeDirectly");
+      IM.debugSetFailAt("warmup::executeDirectly");
       
       let c = setupCollection('edge');
       let task = dropCb();
@@ -170,7 +170,7 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
   let suite = {
     tearDown: function () {
       shutdownTask();
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
     }
   };
@@ -230,7 +230,7 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
     },
     tearDown: function () {
       shutdownTask();
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase('_system');
       try {
         db._dropDatabase(cn);
