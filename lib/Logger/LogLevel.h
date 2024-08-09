@@ -24,7 +24,9 @@
 
 #pragma once
 
+#include <algorithm>
 #include <iosfwd>
+#include <string>
 
 namespace arangodb {
 enum class LogLevel {
@@ -36,6 +38,24 @@ enum class LogLevel {
   DEBUG = 5,
   TRACE = 6
 };
+
+template<typename Inspector>
+auto inspect(Inspector& f, LogLevel& l) {
+  return f.enumeration(l).transformedValues(
+      [](std::string& s) {
+        std::transform(s.begin(), s.end(), s.begin(),
+                       [](unsigned char c) { return std::toupper(c); });
+      },
+      LogLevel::DEFAULT, "DEFAULT",  //
+      LogLevel::FATAL, "FATAL",      //
+      LogLevel::ERR, "ERROR",        //
+      LogLevel::ERR, "ERR",          //
+      LogLevel::WARN, "WARNING",     //
+      LogLevel::WARN, "WARN",        //
+      LogLevel::INFO, "INFO",        //
+      LogLevel::DEBUG, "DEBUG",      //
+      LogLevel::TRACE, "TRACE");
 }
+}  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::LogLevel);

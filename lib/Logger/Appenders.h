@@ -23,6 +23,7 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -31,6 +32,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Logger/LogGroup.h"
+#include "Logger/LogLevel.h"
 
 namespace arangodb {
 class LogAppender;
@@ -51,7 +53,14 @@ struct Appenders {
   void reopen();
   void shutdown();
 
-  bool haveAppenders(LogGroup const&, size_t topicId);
+  bool haveAppenders(LogGroup const& group, size_t topicId);
+
+  auto getAppender(LogGroup const& group, std::string const& definition)
+      -> std::shared_ptr<LogAppender>;
+  auto getAppenders(LogGroup const& group)
+      -> std::unordered_map<std::string, std::shared_ptr<LogAppender>>;
+
+  void foreach (std::function<void(LogAppender&)> const& f);
 
  private:
   enum class Type {
@@ -66,8 +75,11 @@ struct Appenders {
     std::string output;
     LogTopic* topic = nullptr;
     Type type = Type::kUnknown;
+    std::unordered_map<LogTopic*, LogLevel> levels;
   };
-  ResultT<AppenderConfig> parseDefinition(std::string const& definition);
+  auto parseDefinition(std::string definition) -> ResultT<AppenderConfig>;
+  auto parseLogLevels(std::string const& definition)
+      -> ResultT<std::unordered_map<LogTopic*, LogLevel>>;
 
   std::shared_ptr<LogAppender> buildAppender(LogGroup const&,
                                              AppenderConfig const& config);

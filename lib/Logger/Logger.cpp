@@ -40,15 +40,19 @@
 #include "Logger/LogAppenderStdStream.h"
 #include "Logger/LogContext.h"
 #include "Logger/LogGroup.h"
+#include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogMessage.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Logger/LogThread.h"
+#include "Logger/LogTopic.h"
+#include "Logger/Topics.h"
 
 #include <absl/strings/str_cat.h>
 
 #include <velocypack/Dumper.h>
 #include <velocypack/Sink.h>
+#include <mutex>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -116,14 +120,11 @@ void LogMessage::shrink(std::size_t maxLength) {
 
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
+std::mutex Logger::_appenderModificationMutex;
 logger::Appenders Logger::_appenders;
 bool Logger::_allowStdLogging = true;
 
 std::function<void()> Logger::_onDroppedMessage;
-
-// default log levels, captured once at startup. these can be used
-// to reset the log levels back to defaults.
-std::vector<std::pair<TopicName, LogLevel>> Logger::_defaultLogLevelTopics{};
 
 std::unordered_set<std::string> Logger::_structuredLogParams({});
 arangodb::basics::ReadWriteLock Logger::_structuredParamsLock;
@@ -174,13 +175,29 @@ std::unordered_set<std::string> Logger::structuredLogParams() {
   return _structuredLogParams;
 }
 
-std::vector<std::pair<TopicName, LogLevel>> Logger::logLevelTopics() {
+auto Logger::logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel> {
   return LogTopic::logLevelTopics();
 }
 
-std::vector<std::pair<TopicName, LogLevel>> const&
-Logger::defaultLogLevelTopics() {
-  return _defaultLogLevelTopics;
+auto Logger::getLogLevels() -> LogLevels {
+  return {.topics = LogTopic::logLevelTopics()};
+}
+
+auto Logger::getAppendersConfig() -> AppendersLogLevelConfig {
+  AppendersLogLevelConfig result;
+  result.global = getLogLevels();
+  for (auto& [definition, appender] :
+       _appenders.getAppenders(defaultLogGroup())) {
+    result.appenders[definition].topics = appender->getLogLevels();
+  }
+  return result;
+}
+
+void Logger::resetLevelsToDefault() {
+  std::lock_guard guard(_appenderModificationMutex);
+  _appenders.foreach (
+      [](LogAppender& appender) { appender.resetLevelsToDefault(); });
+  calculateEffectiveLogLevels();
 }
 
 void Logger::setShowIds(bool show) { _showIds = show; }
@@ -227,20 +244,138 @@ void Logger::setLogLevel(std::string const& levelName) {
     // set the log level globally (e.g. `--log.level info`). note that
     // this does not set the log level for all log topics, but only the
     // log level for the "general" log topic.
-    Logger::setLogLevel(level);
+    setLogLevel(level);
     // setting the log level for topic "general" is required here, too,
     // as "fixme" is the previous general log topic...
-    LogTopic::setLogLevel(std::string("general"), level);
-  } else if (v[0] == LogTopic::ALL) {
+    setLogLevel(std::string("general"), level);
+  } else {
+    setLogLevel(v[0], level);
+  }
+}
+
+void Logger::setLogLevel(TopicName topic, LogLevel level) {
+  if (topic == LogTopic::ALL) {
+    std::lock_guard guard(_appenderModificationMutex);
     // handle pseudo log-topic "all": this will set the log level for
     // all existing topics
-    for (auto const& it : logLevelTopics()) {
-      LogTopic::setLogLevel(it.first, level);
-    }
+    doSetAllLevels(level);
   } else {
     // handle a topic-specific request (e.g. `--log.level requests=info`).
-    LogTopic::setLogLevel(v[0], level);
+    auto* logTopic = LogTopic::lookup(topic);
+    if (logTopic != nullptr) {
+      setLogLevel(*logTopic, level);
+    }
   }
+}
+
+void Logger::setLogLevel(LogTopic& topic, LogLevel level) {
+  std::lock_guard guard(_appenderModificationMutex);
+  doSetGlobalLevel(topic, level);
+}
+
+void Logger::setLogLevel(std::vector<std::string> const& levels) {
+  for (auto const& level : levels) {
+    setLogLevel(level);
+  }
+}
+
+void Logger::setLogLevel(LogLevels const& levels) {
+  std::lock_guard guard(_appenderModificationMutex);
+  // handle "all" first, so we can do
+  // {"all":"info","requests":"debug"} or such
+  if (levels.all.has_value()) {
+    doSetAllLevels(levels.all.value());
+  }
+  for (auto& [topic, level] : levels.topics) {
+    doSetGlobalLevel(*topic, level);
+  }
+}
+
+Result Logger::setLogLevel(AppendersLogLevelConfig const& config) {
+  std::lock_guard guard(_appenderModificationMutex);
+
+  // we want this function to be all or nothing, so we first check if all
+  // appenders from the input are valid - if not we bail out without changing
+  // anything
+  auto appenders = _appenders.getAppenders(defaultLogGroup());
+  for (auto& [definition, levels] : config.appenders) {
+    if (!appenders.contains(definition)) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("Unknown appender ", definition));
+    }
+  }
+
+  // all good, so now actually apply the changes.
+  // we first apply the global settings (these will be applied to _all_
+  // appenders) then we change the settings for the individual appenders. That
+  // will in turn also adjust the global settings again, but without affecting
+  // the other appenders.
+  if (config.global.all.has_value()) {
+    doSetAllLevels(config.global.all.value());
+  }
+  for (auto& [topic, level] : config.global.topics) {
+    doSetGlobalLevel(*topic, level);
+  }
+
+  auto setAppenderTopicLevel = [](LogAppender& appender, LogTopic& topic,
+                                  LogLevel level) {
+    // the appender specific levels must be less or equal to the global
+    // level, so if we change the level for an appender, we might also have to
+    // adjust the global level.
+    appender.setLogLevel(topic, level);
+    auto currentLevel = topic.level();
+    if (level > currentLevel) {
+      // if the new level is higher than the current level, we can simply
+      // update the global topic to the new level
+      topic.setLogLevel(level);
+    } else if (level < currentLevel) {
+      // we have to go through all appenders and check if there are other
+      // appenders with a higher level
+      _appenders.foreach ([&level, &topic](LogAppender& appender) {
+        auto l = appender.getLogLevel(topic);
+        if (l > level) {
+          level = l;
+        }
+      });
+      topic.setLogLevel(level);
+    }
+  };
+
+  for (auto& [definition, levels] : config.appenders) {
+    auto& appender = *appenders[definition];
+    if (levels.all.has_value()) {
+      auto level = levels.all.value();
+      for (size_t i = 0; i < logger::kNumTopics; ++i) {
+        auto* topic = LogTopic::topicForId(i);
+        if (topic != nullptr) {
+          setAppenderTopicLevel(appender, *topic, level);
+        }
+      }
+    }
+    for (auto& [topic, level] : levels.topics) {
+      setAppenderTopicLevel(appender, *topic, level);
+    }
+  }
+  return {};
+}
+
+void Logger::doSetAllLevels(LogLevel level) {
+  for (size_t i = 0; i < logger::kNumTopics; ++i) {
+    auto* topic = LogTopic::topicForId(i);
+    if (topic != nullptr) {
+      topic->setLogLevel(level);
+      _appenders.foreach ([level, topic](LogAppender& appender) {
+        appender.setLogLevel(*topic, level);
+      });
+    }
+  }
+}
+
+void Logger::doSetGlobalLevel(LogTopic& topic, LogLevel level) {
+  topic.setLogLevel(level);
+  _appenders.foreach ([level, &topic](LogAppender& appender) {
+    appender.setLogLevel(topic, level);
+  });
 }
 
 void Logger::setLogStructuredParams(
@@ -256,12 +391,6 @@ void Logger::setLogStructuredParams(
     } else {
       _structuredLogParams.erase(paramName);
     }
-  }
-}
-
-void Logger::setLogLevel(std::vector<std::string> const& levels) {
-  for (auto const& level : levels) {
-    setLogLevel(level);
   }
 }
 
@@ -860,8 +989,8 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
   }
 
   // first log to all "global" appenders, which are the in-memory ring buffer
-  // logger and the metrics counter. note that these loggers do not require any
-  // configuration so we can always and safely invoke them.
+  // logger and the metrics counter. note that these loggers do not require
+  // any configuration so we can always and safely invoke them.
   _appenders.logGlobal(group, *msg);
 
   if (!_active.load(std::memory_order_acquire)) {
@@ -902,7 +1031,7 @@ void Logger::initialize(bool threaded, uint32_t maxQueuedLogMessages) {
                                    "Logger already initialized");
   }
 
-  _defaultLogLevelTopics = logLevelTopics();
+  calculateEffectiveLogLevels();
 
   // logging is now active
   if (threaded) {
@@ -916,6 +1045,27 @@ void Logger::initialize(bool threaded, uint32_t maxQueuedLogMessages) {
 
     // (4) - this release-store synchronizes with the acquire-load (2)
     _loggingThread.store(loggingThread.release(), std::memory_order_release);
+  }
+}
+
+void Logger::calculateEffectiveLogLevels() {
+  // for each topic we have to go through all appenders and find the highest
+  // configured log level
+  for (size_t i = 0; i < logger::kNumTopics; ++i) {
+    auto* topic = LogTopic::topicForId(i);
+    if (topic != nullptr) {
+      auto maxLevel = LogLevel::DEFAULT;
+      auto curLevel = topic->level();
+      _appenders.foreach ([&maxLevel, &topic](LogAppender& appender) {
+        auto l = appender.getLogLevel(*topic);
+        if (l > maxLevel) {
+          maxLevel = l;
+        }
+      });
+      if (curLevel != maxLevel) {
+        topic->setLogLevel(maxLevel);
+      }
+    }
   }
 }
 

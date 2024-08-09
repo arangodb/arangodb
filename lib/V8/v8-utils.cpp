@@ -2273,7 +2273,7 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       for (auto const& level : levels) {
         std::string output = absl::StrCat(
-            level.first, "=", Logger::translateLogLevel(level.second));
+            level.first->name(), "=", Logger::translateLogLevel(level.second));
         v8::Handle<v8::String> val = TRI_V8_STD_STRING(isolate, output);
 
         object->Set(context, pos++, val).FromMaybe(false);

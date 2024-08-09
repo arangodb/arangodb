@@ -21,10 +21,12 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cctype>
 #include <list>
 #include <map>
 #include <optional>
 #include <string>
+#include <type_traits>
 #include <variant>
 #include <vector>
 #include <set>
@@ -617,6 +619,22 @@ template<class Inspector>
 auto inspect(Inspector& f, MyStringEnum& x) {
   return f.enumeration(x).values(MyStringEnum::kValue1, "value1",  //
                                  MyStringEnum::kValue2, "value2");
+}
+
+enum class MyTransformedStringEnum {
+  kValue1,
+  kValue2,
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyTransformedStringEnum& x) {
+  return f.enumeration(x).transformedValues(
+      [](std::string& s) {
+        std::transform(s.begin(), s.end(), s.begin(),
+                       [](unsigned char c) { return std::toupper(c); });
+      },
+      MyTransformedStringEnum::kValue1, "VALUE1",  //
+      MyTransformedStringEnum::kValue2, "VALUE2");
 }
 }  // namespace
 

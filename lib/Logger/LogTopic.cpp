@@ -163,18 +163,16 @@ LogTopic AuditFeature::AUDIT_SERVICE(logger::audit::Service{});
 LogTopic AuditFeature::AUDIT_HOTBACKUP(logger::audit::HotBackup{});
 #endif
 
-std::vector<std::pair<TopicName, LogLevel>> LogTopic::logLevelTopics() {
-  std::vector<std::pair<TopicName, LogLevel>> levels;
+auto LogTopic::logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel> {
+  std::unordered_map<LogTopic*, LogLevel> levels;
   levels.reserve(logger::kNumTopics);
 
-  auto visitor = [&levels](TopicName name, LogTopic const* topic) {
+  for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
+    auto* topic = Topics::instance().get(i);
     if (topic) {
-      levels.emplace_back(name, topic->level());
+      levels.emplace(topic, topic->level());
     }
-    return true;
-  };
-
-  Topics::instance().visit(visitor);
+  }
 
   return levels;
 }
@@ -184,6 +182,11 @@ void LogTopic::setLogLevel(TopicName name, LogLevel level) {
     LOG_TOPIC("5363d", WARN, arangodb::Logger::FIXME)
         << "strange topic '" << name << "'";
   }
+}
+
+LogTopic* LogTopic::topicForId(size_t topicId) {
+  TRI_ASSERT(topicId < logger::kNumTopics);
+  return Topics::instance().get(topicId);
 }
 
 LogTopic* LogTopic::lookup(TopicName name) {
@@ -196,9 +199,10 @@ TopicName LogTopic::lookup(size_t topicId) {
 }
 
 template<typename Topic>
-LogTopic::LogTopic(Topic)
-    : LogTopic(Topic::name, Topic::defaultLevel,
-               logger::TopicList::index<Topic>()) {
+LogTopic::LogTopic(Topic) requires requires(Topic) {
+  Topic::name;
+} : LogTopic(Topic::name, Topic::defaultLevel,
+             logger::TopicList::index<Topic>()) {
   static_assert(logger::TopicList::contains<Topic>(),
                 "Topic not found in TopicList");
 }
@@ -218,6 +222,10 @@ LogTopic::LogTopic(TopicName name, LogLevel level, size_t id)
 
   Topics::instance().emplace(name, this);
   TRI_ASSERT(_id < GLOBAL_LOG_TOPIC);
+}
+
+void LogTopic::setLogLevel(LogLevel level) {
+  _level.store(level, std::memory_order_relaxed);
 }
 
 // those two log topics are created in other files, so we have to explicitly

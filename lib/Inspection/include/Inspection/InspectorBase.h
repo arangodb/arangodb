@@ -44,6 +44,13 @@ namespace arangodb::inspection {
 struct NoContext {};
 
 namespace detail {
+struct NoOp {
+  template<class T>
+  constexpr void operator()(T& v) const noexcept {}
+};
+}  // namespace detail
+
+namespace detail {
 template<class ContextT>
 struct ContextContainer {
   static constexpr bool hasContext = true;
@@ -244,8 +251,9 @@ struct InspectorBase : detail::ContextContainer<Context> {
 
   template<class T>
   struct Enum {
-    template<class... Args>
-    [[nodiscard]] Status values(Args&&... args) {
+    template<class Transformer, class... Args>
+    [[nodiscard]] Status transformedValues(Transformer transformer,
+                                           Args&&... args) {
       if constexpr (Derived::isLoading) {
         constexpr bool hasStringValues =
             (std::is_constructible_v<std::string, Args> || ...);
@@ -257,15 +265,17 @@ struct InspectorBase : detail::ContextContainer<Context> {
         Status res;
         bool retryDifferentType = false;
         if constexpr (hasStringValues) {
+          static_assert(std::is_invocable_v<Transformer, std::string&>);
           // TODO - read std::string_view
-          res = load<std::string>(retryDifferentType,
+          res = load<std::string>(transformer, retryDifferentType,
                                   std::forward<Args>(args)...);
           assert(retryDifferentType == false || !res.ok());
         }
         if constexpr (hasIntValues) {
+          static_assert(std::is_invocable_v<Transformer, std::uint64_t&>);
           if (!hasStringValues || retryDifferentType) {
             retryDifferentType = false;
-            res = load<std::uint64_t>(retryDifferentType,
+            res = load<std::uint64_t>(transformer, retryDifferentType,
                                       std::forward<Args>(args)...);
             if (hasStringValues && retryDifferentType) {
               return Status{"Expecting type String or Int"};
@@ -276,6 +286,11 @@ struct InspectorBase : detail::ContextContainer<Context> {
       } else {
         return store(std::forward<Args>(args)...);
       }
+    }
+
+    template<class... Args>
+    [[nodiscard]] Status values(Args&&... args) {
+      return transformedValues(detail::NoOp{}, std::forward<Args>(args)...);
     }
 
    private:
@@ -289,14 +304,17 @@ struct InspectorBase : detail::ContextContainer<Context> {
           "Enum values can only be mapped to string or unsigned values");
     }
 
-    template<class ValueType, class... Args>
-    Status load(bool& retryDifferentType, Args&&... args) {
+    template<class ValueType, class Transformer, class... Args>
+    Status load(Transformer transformer, bool& retryDifferentType,
+                Args&&... args) {
       ValueType read{};
       auto result = _inspector.apply(read);
       if (!result.ok()) {
         retryDifferentType = true;
         return result;
       }
+
+      transformer(read);
       if (loadValue(read, std::forward<Args>(args)...)) {
         return Status{};
       } else if constexpr (std::is_integral_v<ValueType>) {
