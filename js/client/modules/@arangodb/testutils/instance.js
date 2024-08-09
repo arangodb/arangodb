@@ -465,12 +465,9 @@ class instance {
   // / @brief executes a command, possible with valgrind
   // //////////////////////////////////////////////////////////////////////////////
 
-  _executeArangod (moreArgs, subEnv) {
+  _executeArangod (moreArgs) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
-    }
-    if (subEnv === undefined) {
-      subEnv = [];
     }
 
     let cmd = pu.ARANGOD_BIN;
@@ -520,10 +517,6 @@ class instance {
     }
     subEnv.push(`ARANGODB_SERVER_DIR=${this.rootDir}`);
     let ret = executeExternal(cmd, argv, false, subEnv);
-    this.pid = ret.pid;
-    if (this.options.enableAliveMonitor) {
-      internal.addPidToMonitor(this.pid);
-    }    
     return ret;
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -531,10 +524,13 @@ class instance {
   // /
   // //////////////////////////////////////////////////////////////////////////////
 
-  startArango (subEnv) {
+  startArango () {
     this._disconnect();
     try {
-      this._executeArangod({}, subEnv);
+      this.pid = this._executeArangod().pid;
+      if (this.options.enableAliveMonitor) {
+        internal.addPidToMonitor(this.pid);
+      }
     } catch (x) {
       print(`${RED}${Date()} failed to run arangod - ${x.message}\n${x.stack}${RESET}`);
       throw x;
@@ -550,7 +546,7 @@ class instance {
     this._disconnect();
     try {
       let args = {...this.args, ...moreArgs};
-      this._executeArangod(args);
+      this.pid = this._executeArangod(args).pid;
     } catch (x) {
       print(`${RED}${Date()} failed to run arangod - ${x.message} - ${JSON.stringify(this.getStructure())}`);
       throw x;
