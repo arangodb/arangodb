@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.4-preview-1.
+
 * FE-459: fix failing foxx service download.
 
 * Fixed BTS-1742: `IN_RANGE` function now uses MDI index if possible.
