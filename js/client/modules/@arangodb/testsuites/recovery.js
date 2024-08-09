@@ -44,6 +44,7 @@ const _ = require('lodash');
 const { isEnterprise, versionHas } = require("@arangodb/test-helper");
 
 const toArgv = require('internal').toArgv;
+const ArangoError = require('@arangodb').ArangoError;
 
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
@@ -186,14 +187,20 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
       };
     }
   } catch (ex) {
-    print(`${RED}test '${params.script} failed to parse: - ${ex}${RESET}`);
+    let msg;
+    if (ex instanceof ArangoError) {
+      msg = `test '${params.script} Arango Error during test execution:\n${ex}\n${ex.stack}`;
+    } else {
+      msg = `test '${params.script} failed by javascript error: \n${ex.stack}`;
+    }
+    print(`${RED}${msg}${RESET}`);
     if (!params.instanceManager.checkDebugTerminated()) {
       params.instanceManager.shutdownInstance(false);
     }
     params.instanceManager.destructor(false);
     return {
       status: false,
-      message: "test doesn't parse! '" + params.script + "' - " + ex.message || String(ex),
+      message: `Error from: '${params.script}'\n${msg}`,
       stack: ex.stack
     };
   }
@@ -235,6 +242,9 @@ function _recovery (options, recoveryTests) {
       },
       status: false
     };
+  }
+  if (options.isInstrumented()) {
+    arango.timeout(arango.timeout() * 4);
   }
   let localOptions = _.clone(options);
   localOptions.enableAliveMonitor = false;
