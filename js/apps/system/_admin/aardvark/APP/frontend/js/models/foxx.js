@@ -144,13 +144,38 @@
     },
 
     download: function () {
-      sendRequest(this, function (err, data) {
-        if (err) {
-          console.error(err.responseJSON);
-          return;
-        }
-        window.location.href = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/download/zip?mount=' + this.encodedMount() + '&nonce=' + data.nonce);
-      }.bind(this), 'POST', 'download/nonce');
+      var downloadUrl = arangoHelper.databaseUrl(
+        "/_api/foxx/download?mount=" + this.encodedMount()
+      );
+      fetch(downloadUrl, {
+        method: "POST",
+        headers: {
+          Authorization: "bearer " + window.arangoHelper.getCurrentJwt(),
+        },
+      })
+        .then((response) => {
+          if (response.ok) {
+            return response.blob();
+          }
+          return response.json();
+        })
+        .then((blob) => {
+          if (blob.error) {
+            console.error("Failed to download Foxx service");
+            return console.error(blob.error);
+          }
+          var url = window.URL.createObjectURL(blob);
+          var a = document.createElement("a");
+          a.href = url;
+          var fileName =
+            this.get("mount").slice(1) + "_" + this.attributes.version + ".zip";
+          a.download = fileName;
+          a.click();
+          window.URL.revokeObjectURL(url);
+        })
+        .catch((err) => {
+          console.error("Failed to download Foxx service");
+        });
     },
 
     fetchThumbnail: function (cb) {

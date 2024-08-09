@@ -545,7 +545,7 @@ bool Index::validateHandleName(bool extendedNames,
 IndexId Index::generateId() { return IndexId{TRI_NewTickServer()}; }
 
 /// @brief check if two index definitions share any identifiers (_id, name)
-bool Index::CompareIdentifiers(velocypack::Slice const& lhs,
+bool Index::compareIdentifiers(velocypack::Slice const& lhs,
                                velocypack::Slice const& rhs) {
   VPackSlice lhsId = lhs.get(arangodb::StaticStrings::IndexId);
   VPackSlice rhsId = rhs.get(arangodb::StaticStrings::IndexId);
@@ -566,7 +566,7 @@ bool Index::CompareIdentifiers(velocypack::Slice const& lhs,
 
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
-bool Index::Compare(StorageEngine& engine, VPackSlice const& lhs,
+bool Index::compare(StorageEngine& engine, VPackSlice const& lhs,
                     VPackSlice const& rhs, std::string const& dbname) {
   auto normalizeType = [](VPackSlice s) -> std::string_view {
     TRI_ASSERT(s.isString());
