@@ -197,7 +197,7 @@ class Logger {
   static LogGroup& defaultLogGroup();
   static LogLevel logLevel();
   static std::unordered_set<std::string> structuredLogParams();
-  static auto logLevelTopics() -> std::vector<std::pair<LogTopic&, LogLevel>>;
+  static auto logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel>;
   static void resetLevelsToDefault();
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
@@ -286,6 +286,9 @@ class Logger {
   static void onDroppedMessage() noexcept;
 
  private:
+  static void doSetAllLevels(LogLevel);
+  static void doSetGlobalLevel(LogTopic&, LogLevel);
+
   static void calculateEffectiveLogLevels();
   static void buildJsonLogMessage(std::string& out, std::string_view logid,
                                   std::string_view function,

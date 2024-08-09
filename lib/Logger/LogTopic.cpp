@@ -163,14 +163,14 @@ LogTopic AuditFeature::AUDIT_SERVICE(logger::audit::Service{});
 LogTopic AuditFeature::AUDIT_HOTBACKUP(logger::audit::HotBackup{});
 #endif
 
-auto LogTopic::logLevelTopics() -> std::vector<std::pair<LogTopic&, LogLevel>> {
-  std::vector<std::pair<LogTopic&, LogLevel>> levels;
+auto LogTopic::logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel> {
+  std::unordered_map<LogTopic*, LogLevel> levels;
   levels.reserve(logger::kNumTopics);
 
   for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
     auto* topic = Topics::instance().get(i);
     if (topic) {
-      levels.emplace_back(*topic, topic->level());
+      levels.emplace(topic, topic->level());
     }
   }
 

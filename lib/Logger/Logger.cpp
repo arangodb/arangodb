@@ -174,7 +174,7 @@ std::unordered_set<std::string> Logger::structuredLogParams() {
   return _structuredLogParams;
 }
 
-auto Logger::logLevelTopics() -> std::vector<std::pair<LogTopic&, LogLevel>> {
+auto Logger::logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel> {
   return LogTopic::logLevelTopics();
 }
 
@@ -243,13 +243,7 @@ void Logger::setLogLevel(TopicName topic, LogLevel level) {
     std::lock_guard guard(_appenderModificationMutex);
     // handle pseudo log-topic "all": this will set the log level for
     // all existing topics
-    for (size_t i = 0; i < logger::kNumTopics; ++i) {
-      auto* logTopic = LogTopic::topicForId(i);
-      logTopic->setLogLevel(level);
-      _appenders.foreach ([level, logTopic](LogAppender& appender) {
-        appender.setLogLevel(*logTopic, level);
-      });
-    }
+    doSetAllLevels(level);
   } else {
     // handle a topic-specific request (e.g. `--log.level requests=info`).
     auto* logTopic = LogTopic::lookup(topic);
@@ -261,38 +255,32 @@ void Logger::setLogLevel(TopicName topic, LogLevel level) {
 
 void Logger::setLogLevel(LogTopic& topic, LogLevel level) {
   std::lock_guard guard(_appenderModificationMutex);
+  doSetGlobalLevel(topic, level);
+}
+
+void Logger::setLogLevel(std::vector<std::string> const& levels) {
+  for (auto const& level : levels) {
+    setLogLevel(level);
+  }
+}
+
+void Logger::doSetAllLevels(LogLevel level) {
+  for (size_t i = 0; i < logger::kNumTopics; ++i) {
+    auto* topic = LogTopic::topicForId(i);
+    if (topic != nullptr) {
+      topic->setLogLevel(level);
+      _appenders.foreach ([level, topic](LogAppender& appender) {
+        appender.setLogLevel(*topic, level);
+      });
+    }
+  }
+}
+
+void Logger::doSetGlobalLevel(LogTopic& topic, LogLevel level) {
   topic.setLogLevel(level);
   _appenders.foreach ([level, &topic](LogAppender& appender) {
     appender.setLogLevel(topic, level);
   });
-}
-
-void Logger::setLogLevel(std::string const& definition, TopicName topic,
-                         LogLevel level) {
-  std::lock_guard guard(_appenderModificationMutex);
-  auto appender = _appenders.getAppender(Logger::defaultLogGroup(), definition);
-  auto* logTopic = LogTopic::lookup(topic);
-  TRI_ASSERT(logTopic != nullptr);
-  if (appender != nullptr && logTopic != nullptr) {
-    appender->setLogLevel(*logTopic, level);
-
-    auto currentLevel = logTopic->level();
-    if (level > currentLevel) {
-      // if the new level is higher than the current level, we can simply
-      // update the global topic to the new level
-      logTopic->setLogLevel(level);
-    } else if (level < currentLevel) {
-      // we have to go through all appenders and check if there are other
-      // appenders with a higher level
-      _appenders.foreach ([&level, logTopic](LogAppender& appender) {
-        auto l = appender.getLogLevel(*logTopic);
-        if (l > level) {
-          level = l;
-        }
-      });
-      logTopic->setLogLevel(level);
-    }
-  }
 }
 
 void Logger::setLogStructuredParams(
