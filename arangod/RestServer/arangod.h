@@ -66,6 +66,13 @@ class ClusterFeature;
 class ClusterUpgradeFeature;
 class ConfigFeature;
 class ConsoleFeature;
+
+namespace coroutine {
+
+class Feature;
+
+}  // namespace coroutine
+
 class CpuUsageFeature;
 class DatabaseFeature;
 class DatabasePathFeature;
@@ -212,6 +219,7 @@ using ArangodFeaturesList = TypeList<
 #ifdef USE_V8
     ConsoleFeature,
 #endif
+    coroutine::Feature,
     CpuUsageFeature,
     DatabasePathFeature,
     DumpLimitsFeature,
