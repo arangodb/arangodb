@@ -105,10 +105,13 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
     instanceArgs = Object.assign(instanceArgs, {
       'rocksdb.wal-file-timeout-initial': 10,
       'replication.auto-start': 'true',
-      'log.output': 'file://' + params.crashLog,
-      'log.level': 'INFO'
     });
-
+    if (!params.options.cluster) {
+      instanceArgs = Object.assign(instanceArgs, {
+        'log.output': 'file://' + params.crashLog,
+        'log.level': 'INFO'
+      });
+    }
     if (useEncryption) {
       params.keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
       if (!fs.exists(params.keyDir)) {
@@ -135,7 +138,9 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   }
 
   process.env["state-file"] = params.stateFile;
-  process.env["crash-log"] = params.crashLog;
+  if (params.options.cluster) {
+    process.env["crash-log"] = params.crashLog;
+  }
   process.env["isSan"] = params.options.isSan;
 
   if (params.setup) {
