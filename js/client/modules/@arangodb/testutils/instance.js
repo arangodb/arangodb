@@ -450,7 +450,6 @@ class instance {
         'replication.connect-timeout':  20,
       });
     }
-      if (this.instanceRole === instanceRole.coordinator) {
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
     }
