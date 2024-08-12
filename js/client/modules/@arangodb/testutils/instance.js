@@ -442,6 +442,15 @@ class instance {
         this.args['cluster.default-replication-factor'] = '2';
       }
     }
+    if (this.options.isInstrumented && this.instanceRole in [
+      instanceRole.dbServer,
+      instanceRole.coordinator,
+      instanceRole.agent]) {
+      this.args = Object.assign(this.args, {
+        'replication.connect-timeout':  20,
+      });
+    }
+      if (this.instanceRole === instanceRole.coordinator) {
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
     }
