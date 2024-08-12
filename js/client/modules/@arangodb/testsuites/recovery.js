@@ -138,7 +138,7 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   }
 
   process.env["state-file"] = params.stateFile;
-  if (params.options.cluster) {
+  if (!params.options.cluster) {
     process.env["crash-log"] = params.crashLog;
   }
   process.env["isSan"] = params.options.isSan;
