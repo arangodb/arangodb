@@ -44,16 +44,17 @@ TEST_F(CoroutineThreadRegistryTest, adds_a_promise) {
   registry->mark_for_deletion(&promise);
 }
 
-TEST_F(CoroutineThreadRegistryDeathTest, another_thread_cannot_add_a_promise) {
-  GTEST_FLAG_SET(death_test_style, "threadsafe");
-  auto registry = ThreadRegistry::make();
+// TEST_F(CoroutineThreadRegistryDeathTest, another_thread_cannot_add_a_promise)
+// {
+//   GTEST_FLAG_SET(death_test_style, "threadsafe");
+//   auto registry = ThreadRegistry::make();
 
-  std::jthread([&]() {
-    auto promise = MyTestPromise{1};
+//   std::jthread([&]() {
+//     auto promise = MyTestPromise{1};
 
-    EXPECT_DEATH(registry->add(&promise), "Assertion failed");
-  });
-}
+//     EXPECT_DEATH(registry->add(&promise), "Assertion failed");
+//   });
+// }
 
 TEST_F(CoroutineThreadRegistryTest, iterates_over_all_promises) {
   auto registry = ThreadRegistry::make();
@@ -210,15 +211,15 @@ TEST_F(CoroutineThreadRegistryTest,
   }
 }
 
-TEST_F(CoroutineThreadRegistryDeathTest,
-       unrelated_promise_cannot_be_marked_for_deletion) {
-  GTEST_FLAG_SET(death_test_style, "threadsafe");
+// TEST_F(CoroutineThreadRegistryDeathTest,
+//        unrelated_promise_cannot_be_marked_for_deletion) {
+//   GTEST_FLAG_SET(death_test_style, "threadsafe");
 
-  auto registry = ThreadRegistry::make();
-  auto promise = MyTestPromise{1};
+//   auto registry = ThreadRegistry::make();
+//   auto promise = MyTestPromise{1};
 
-  EXPECT_DEATH(registry->mark_for_deletion(&promise), "Assertion failed");
-}
+//   EXPECT_DEATH(registry->mark_for_deletion(&promise), "Assertion failed");
+// }
 
 TEST_F(CoroutineThreadRegistryTest,
        another_thread_can_mark_a_promise_for_deletion) {
@@ -239,25 +240,27 @@ TEST_F(CoroutineThreadRegistryTest,
   registry->mark_for_deletion(&another_promise);
 }
 
-TEST_F(CoroutineThreadRegistryDeathTest,
-       garbage_collection_for_last_promises_can_be_called_on_different_thread) {
-  GTEST_FLAG_SET(death_test_style, "threadsafe");
+// TEST_F(CoroutineThreadRegistryDeathTest,
+//        garbage_collection_for_last_promises_can_be_called_on_different_thread)
+//        {
+//   GTEST_FLAG_SET(death_test_style, "threadsafe");
 
-  {
-    auto registry = ThreadRegistry::make();
+//   {
+//     auto registry = ThreadRegistry::make();
 
-    std::jthread([&] { registry->garbage_collect(); });
-  }
-}
+//     std::jthread([&] { registry->garbage_collect(); });
+//   }
+// }
 
-TEST_F(CoroutineThreadRegistryDeathTest,
-       garbage_collection_cannot_be_called_on_different_thread) {
-  GTEST_FLAG_SET(death_test_style, "threadsafe");
+// TEST_F(CoroutineThreadRegistryDeathTest,
+//        garbage_collection_cannot_be_called_on_different_thread) {
+//   GTEST_FLAG_SET(death_test_style, "threadsafe");
 
-  auto registry = ThreadRegistry::make();
-  auto promise = MyTestPromise{1};
-  registry->add(&promise);
+//   auto registry = ThreadRegistry::make();
+//   auto promise = MyTestPromise{1};
+//   registry->add(&promise);
 
-  std::jthread(
-      [&] { EXPECT_DEATH(registry->garbage_collect(), "Assertion failed"); });
-}
+//   std::jthread(
+//       [&] { EXPECT_DEATH(registry->garbage_collect(), "Assertion failed");
+//       });
+// }

@@ -33,7 +33,6 @@ struct CoroutineRegistryTest : ::testing::Test {
 
   void TearDown() override {}
 };
-using CoroutineRegistryDeathTest = CoroutineRegistryTest;
 
 TEST_F(CoroutineRegistryTest, registers_promise_on_same_thread) {
   Registry registry;
