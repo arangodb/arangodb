@@ -261,12 +261,12 @@ class Index {
   static IndexId generateId();
 
   /// @brief check if two index definitions share any identifiers (_id, name)
-  static bool CompareIdentifiers(velocypack::Slice const& lhs,
+  static bool compareIdentifiers(velocypack::Slice const& lhs,
                                  velocypack::Slice const& rhs);
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
+  static bool compare(StorageEngine&, velocypack::Slice const& lhs,
                       velocypack::Slice const& rhs, std::string const& dbname);
 
   static void normalizeFilterCosts(Index::FilterCosts& costs,

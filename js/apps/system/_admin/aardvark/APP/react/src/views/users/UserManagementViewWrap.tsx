@@ -13,15 +13,17 @@ export const UserManagementViewWrap = () => {
   useDisableNavBar();
   useGlobalStyleReset();
   return (
-    <ChakraCustomProvider overrideNonReact>
-      <HashRouter basename="/" hashType={"noslash"}>
-        <Switch>
-          <Route path="/users">
-            <UserManagementView />
-          </Route>
-        </Switch>
-      </HashRouter>
-    </ChakraCustomProvider>
+    <Box width="100%">
+      <ChakraCustomProvider overrideNonReact>
+        <HashRouter basename="/" hashType={"noslash"}>
+          <Switch>
+            <Route path="/users">
+              <UserManagementView />
+            </Route>
+          </Switch>
+        </HashRouter>
+      </ChakraCustomProvider>
+    </Box>
   );
 };
 
