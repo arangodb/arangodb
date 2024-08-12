@@ -1,6 +1,54 @@
 v3.11.12 (XXXX-XX-XX)
 ---------------------
 
+* We already had the concept of individual log appenders (e.g., stdout, stderr,
+  files, syslog). but log levels could only be configured globally. That is,
+  all appenders always used the same log levels for all topics.
+
+  This PR introduces appender specific log levels. For example, it is now
+  possible to set the log levels for all topics to `error`, but leave the log
+  levels for the log file unchanged. This is particularly useful for test runs
+  because we avoid flooding the console with log messages, but still have all
+  the information in the log files in case of test failures.
+
+  The log level can be specified per appender via the command line by adding a
+  comma separated list of topics with their respective level after the output
+  definition, separated by a semicolon:
+    `--log.output file:///path/to/file;queries=trace,requests=info`
+    `--log.output -;all=error`
+
+  The `_admin/log/level` endpoint has also been extended to with an optional
+  parameter `withAppenders`. If that parameter is set to `true`, the response
+  has the following form:
+  ```
+  {
+    "global": {
+      <topic>: <level>,
+      ...
+    },
+    "appenders": {
+      <appender>: {
+        <topic>: <level>,
+        ...
+      },
+      ...
+    }
+  }
+  ```
+  A `PUT` request to `_admin/log/level` with `withAppenders` set to true
+  requires an input of the same format.
+
+  Previously, requests to the `_admin/log/level` endpoint where not fully
+  validated. A `PUT`' request that specified invalid topics or log levels
+  would silently ignore those. This has been improved, so that invalid input
+  is now always rejected with a proper error message - in that case _no_
+  changes are applied at all.
+
+  The global level for some topic is always identical to the highest log level
+  for that topic of all appenders. Thus, changing the log level for an appender
+  will implicitly also adjust the global level accordingly. When a global level
+  is set explicitly, this change is also applied to all appenders.
+
 * Change dumping of VPack to JSON for large double values with absolute
   value between 2^53 and 2^64. This ensures that dumps to JSON followed
   by parsing of the JSON back to VPack retain the right numerical values.

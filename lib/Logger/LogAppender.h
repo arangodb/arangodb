@@ -23,22 +23,16 @@
 
 #pragma once
 
-#include <stddef.h>
 #include <array>
-#include <functional>
-#include <map>
-#include <memory>
+#include <atomic>
 #include <string>
 #include <thread>
-#include <typeindex>
-#include <utility>
-#include <vector>
+#include <unordered_map>
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
-#include "Logger/LogGroup.h"
 #include "Logger/LogLevel.h"
+#include "Logger/Topics.h"
 
 namespace arangodb {
 class LogTopic;
@@ -46,29 +40,18 @@ struct LogMessage;
 
 class LogAppender {
  public:
-  static void addAppender(LogGroup const&, std::string const& definition);
-
-  static void addGlobalAppender(LogGroup const&, std::shared_ptr<LogAppender>);
-
-  static std::shared_ptr<LogAppender> buildAppender(LogGroup const&,
-                                                    std::string const& output);
-
-  static void logGlobal(LogGroup const&, LogMessage const&);
-  static void log(LogGroup const&, LogMessage const&);
-
-  static void reopen();
-  static void shutdown();
-
-  static bool haveAppenders(LogGroup const&, size_t topicId);
-
- public:
-  LogAppender() = default;
+  LogAppender();
   virtual ~LogAppender() = default;
 
   LogAppender(LogAppender const&) = delete;
   LogAppender& operator=(LogAppender const&) = delete;
 
- public:
+  void setCurrentLevelsAsDefault();
+  void resetLevelsToDefault();
+  auto getLogLevel(LogTopic const& topic) -> LogLevel;
+  void setLogLevel(LogTopic const& topic, LogLevel level);
+  auto getLogLevels() -> std::unordered_map<LogTopic*, LogLevel>;
+
   void logMessageGuarded(LogMessage const&);
 
   virtual std::string details() const = 0;
@@ -97,5 +80,7 @@ class LogAppender {
 
   basics::ReadWriteLock _logOutputMutex;
   std::atomic<std::thread::id> _logOutputMutexOwner;
+  std::array<std::atomic<LogLevel>, logger::kNumTopics> _topicLevels;
+  std::array<LogLevel, logger::kNumTopics> _defaultLevels;
 };
 }  // namespace arangodb

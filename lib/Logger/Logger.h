@@ -56,6 +56,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -65,12 +66,13 @@
 #include <utility>
 #include <vector>
 
-#include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/threads.h"
+#include "Inspection/Status.h"
+#include "Logger/Appenders.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
-#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 namespace application_features {
@@ -79,47 +81,55 @@ class ApplicationServer;
 class LogGroup;
 class LogThread;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief message container
-////////////////////////////////////////////////////////////////////////////////
+struct LogLevels {
+  std::optional<LogLevel> all;
+  std::unordered_map<LogTopic*, LogLevel> topics;
 
-struct LogMessage {
-  LogMessage(LogMessage const&) = delete;
-  LogMessage& operator=(LogMessage const&) = delete;
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, LogLevels& levels)
+      -> inspection::Status {
+    if constexpr (Inspector::isLoading) {
+      std::unordered_map<std::string_view, LogLevel> map;
+      auto res = f.apply(map);
+      if (!res.ok()) {
+        return res;
+      }
 
-  LogMessage(char const* function, char const* file, int line, LogLevel level,
-             size_t topicId, std::string&& message, uint32_t offset,
-             bool shrunk) noexcept;
+      for (auto const& [topicName, value] : map) {
+        if (topicName == "all") {
+          levels.all = value;
+        } else {
+          auto topic = LogTopic::lookup(topicName);
+          if (topic == nullptr) {
+            return inspection::Status("Unknown log topic " +
+                                      std::string(topicName));
+          }
+          levels.topics[topic] = value;
+        }
+      }
+      return {};
+    } else {
+      TRI_ASSERT(!levels.all.has_value());
+      std::unordered_map<std::string_view, LogLevel> map;
+      for (auto& v : levels.topics) {
+        map.emplace(v.first->name(), v.second);
+      }
+      return f.apply(map);
+    }
+  }
+};
 
-  /// @brief whether or no the message was already shrunk
-  bool shrunk() const noexcept { return _shrunk; }
+struct AppendersLogLevelConfig {
+  LogLevels global;
+  std::unordered_map<std::string, LogLevels> appenders;
 
-  /// @brief shrink log message to at most maxLength bytes (plus "..." appended)
-  void shrink(std::size_t maxLength);
-
-  /// @brief all details about the log message. we need to
-  /// keep all this data around and not just the big log
-  /// message string, because some LogAppenders will refer
-  /// to individual components such as file, line etc.
-
-  /// @brief function name of log message source code location
-  char const* _function;
-  /// @brief file of log message source code location
-  char const* _file;
-  /// @brief line of log message source code location
-  int const _line;
-  /// @brief log level
-  LogLevel const _level;
-
-  /// @brief id of log topic
-  size_t const _topicId;
-  /// @biref the actual log message
-  std::string _message;
-  /// @brief byte offset where actual message starts (i.e. excluding prologue)
-  uint32_t _offset;
-  /// @brief whether or not the log message was already shrunk (used to
-  /// prevent duplicate shrinking of message)
-  bool _shrunk;
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, AppendersLogLevelConfig& value) {
+    return f.object(value).fields(
+        f.field("global", value.global).fallback(decltype(value.global){}),
+        f.field("appenders", value.appenders)
+            .fallback(decltype(value.appenders){}));
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,6 +198,7 @@ class Logger {
   static LogTopic REPLICATION;
   static LogTopic REPLICATION2;
   static LogTopic REPLICATED_STATE;
+  static LogTopic REPLICATED_WAL;
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
@@ -203,6 +214,7 @@ class Logger {
   static LogTopic VALIDATION;
   static LogTopic V8;
   static LogTopic VIEWS;
+  static LogTopic DEPRECATION;
 
  public:
   struct FIXED {
@@ -218,18 +230,19 @@ class Logger {
   };
 
   struct FILE {
-    explicit FILE(char const* file) noexcept : _file(file) {}
-    char const* _file;
+    explicit FILE(std::string_view file) noexcept : _file(file) {}
+    std::string_view _file;
   };
 
   struct FUNCTION {
-    explicit FUNCTION(char const* function) noexcept : _function(function) {}
-    char const* _function;
+    explicit FUNCTION(std::string_view function) noexcept
+        : _function(function) {}
+    std::string_view _function;
   };
 
   struct LOGID {
-    explicit LOGID(char const* logid) noexcept : _logid(logid) {}
-    char const* _logid;
+    explicit LOGID(std::string_view logid) noexcept : _logid(logid) {}
+    std::string_view _logid;
   };
 
  public:
@@ -238,12 +251,19 @@ class Logger {
   static LogGroup& defaultLogGroup();
   static LogLevel logLevel();
   static std::unordered_set<std::string> structuredLogParams();
-  static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
-  static std::vector<std::pair<std::string, LogLevel>> const&
-  defaultLogLevelTopics();
+  static auto logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel>;
+  static auto getLogLevels() -> LogLevels;
+  static auto getAppendersConfig() -> AppendersLogLevelConfig;
+
+  static void resetLevelsToDefault();
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
+  static void setLogLevel(TopicName topic, LogLevel level);
+  static void setLogLevel(LogTopic&, LogLevel level);
   static void setLogLevel(std::vector<std::string> const&);
+  static void setLogLevel(LogLevels const&);
+  [[nodiscard]] static Result setLogLevel(AppendersLogLevelConfig const&);
+
   static std::unordered_map<std::string, bool> parseStringParams(
       std::vector<std::string> const&);
   static void setLogStructuredParamsOnServerStart(
@@ -278,6 +298,16 @@ class Logger {
   static void setUseJson(bool);
   static LogTimeFormats::TimeFormat timeFormat() { return _timeFormat; }
 
+  static void reopen();
+  static void addAppender(LogGroup const& group, std::string const& definition);
+  static void addGlobalAppender(LogGroup const& group,
+                                std::shared_ptr<LogAppender> appender);
+  static bool haveAppenders(LogGroup const& group, size_t topicId);
+  static void log(LogGroup const& group, LogMessage const& message);
+
+  static bool allowStdLogging() { return _allowStdLogging; }
+  static void allowStdLogging(bool value) { _allowStdLogging = value; }
+
   // can be called after fork()
   static void clearCachedPid() {
     _cachedPid.store(0, std::memory_order_relaxed);
@@ -286,11 +316,11 @@ class Logger {
   static bool translateLogLevel(std::string const& l, bool isGeneral,
                                 LogLevel& level) noexcept;
 
-  static std::string const& translateLogLevel(LogLevel) noexcept;
+  static std::string_view translateLogLevel(LogLevel) noexcept;
 
-  static void log(char const* logid, char const* function, char const* file,
-                  int line, LogLevel level, size_t topicId,
-                  std::string_view message);
+  static void log(std::string_view logid, std::string_view function,
+                  std::string_view file, int line, LogLevel level,
+                  size_t topicId, std::string_view message);
 
   static void append(
       LogGroup&, std::unique_ptr<LogMessage> msg, bool forceDirect,
@@ -306,19 +336,38 @@ class Logger {
                                    : topic.level());
   }
 
-  static void initialize(application_features::ApplicationServer& server,
-                         bool threaded, uint32_t maxQueuedLogMessages);
+  static void initialize(bool threaded, uint32_t maxQueuedLogMessages);
   static void shutdown();
   static void flush() noexcept;
 
+  static void setOnDroppedMessage(std::function<void()> cb);
+  static void onDroppedMessage() noexcept;
+
  private:
+  static void doSetAllLevels(LogLevel);
+  static void doSetGlobalLevel(LogTopic&, LogLevel);
+
+  static void calculateEffectiveLogLevels();
+  static void buildJsonLogMessage(std::string& out, std::string_view logid,
+                                  std::string_view function,
+                                  std::string_view file, int line,
+                                  LogLevel level, size_t topicId,
+                                  std::string_view message, bool& shrunk);
+
+  static void buildTextLogMessage(std::string& out, std::string_view logid,
+                                  std::string_view function,
+                                  std::string_view file, int line,
+                                  LogLevel level, size_t topicId,
+                                  std::string_view message, uint32_t& offset,
+                                  bool& shrunk);
+
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
 
-  // default log levels, captured once at startup. these can be used
-  // to reset the log levels back to defaults.
-  static std::vector<std::pair<std::string, LogLevel>> _defaultLogLevelTopics;
+  static std::mutex _appenderModificationMutex;
+  static logger::Appenders _appenders;
+  static bool _allowStdLogging;
 
   // these variables must be set before calling initialized
   static std::unordered_set<std::string>
@@ -349,9 +398,9 @@ class Logger {
     ThreadRef();
     ~ThreadRef();
 
-    ThreadRef(const ThreadRef&) = delete;
+    ThreadRef(ThreadRef const&) = delete;
     ThreadRef(ThreadRef&&) = delete;
-    ThreadRef& operator=(const ThreadRef&) = delete;
+    ThreadRef& operator=(ThreadRef const&) = delete;
     ThreadRef& operator=(ThreadRef&&) = delete;
 
     LogThread* operator->() const noexcept { return _thread; }
@@ -363,8 +412,10 @@ class Logger {
 
   // logger thread. only populated when threaded logging is selected.
   // the pointer must only be used with atomic accessors after the ref counter
-  // has been increased. Best to usethe ThreadRef class for this!
+  // has been increased. Best to use the ThreadRef class for this!
   static std::atomic<std::size_t> _loggingThreadRefs;
   static std::atomic<LogThread*> _loggingThread;
+
+  static std::function<void()> _onDroppedMessage;
 };
 }  // namespace arangodb

@@ -22,29 +22,29 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-#include <string>
-#include <string_view>
-#include <type_traits>
-
 #include "LogAppender.h"
+#include <atomic>
+#include <cstddef>
 
-#include "Basics/operating-system.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
-#include "Basics/StringUtils.h"
-#include "Basics/WriteLocker.h"
-#include "Basics/voc-errors.h"
-#include "Logger/LogAppenderFile.h"
-#include "Logger/LogAppenderSyslog.h"
-#include "Logger/LogGroup.h"
-#include "Logger/LogMacros.h"
+#include "Logger/LogLevel.h"
+#include "Logger/LogMessage.h"
 #include "Logger/LogTopic.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "Logger/Topics.h"
 
-using namespace arangodb;
-using namespace arangodb::basics;
+namespace arangodb {
+
+LogAppender::LogAppender() {
+  for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
+    auto* topic = LogTopic::topicForId(i);
+    if (topic != nullptr) {
+      _defaultLevels[i] = topic->level();
+    } else {
+      _defaultLevels[i] = LogLevel::DEFAULT;
+    }
+  }
+  resetLevelsToDefault();
+}
 
 namespace {
 constexpr std::string_view filePrefix("file://");
@@ -248,94 +248,51 @@ void LogAppender::reopen() {
 }
 
 void LogAppender::logMessageGuarded(LogMessage const& message) {
-  // Only one thread is allowed to actually write logs to the file.
-  // We use a recusive lock here, just in case writing the log message
-  // causes a crash, in this case we may trigger another force-direct
-  // log. This is not very likely, but it is better to be safe than sorry.
-  RECURSIVE_WRITE_LOCKER(_logOutputMutex, _logOutputMutexOwner);
-  logMessage(message);
-}
-
-Result LogAppender::parseDefinition(std::string const& definition,
-                                    std::string& topicName, std::string& output,
-                                    LogTopic*& topic) {
-  topicName.clear();
-  output.clear();
-  topic = nullptr;
-
-  // split into parts and do some basic validation
-  std::vector<std::string> v = StringUtils::split(definition, '=');
-
-  if (v.size() == 1) {
-    output = v[0];
-  } else if (v.size() == 2) {
-    topicName = StringUtils::tolower(v[0]);
-
-    if (topicName.empty()) {
-      output = v[0];
-    } else {
-      output = v[1];
-    }
-  } else {
-    return Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("strange output definition '") + definition + "' ignored");
+  auto level = _topicLevels[message._topicId].load(std::memory_order_relaxed);
+  if (level == LogLevel::DEFAULT) {
+    level = LogLevel::INFO;
   }
 
-  if (!topicName.empty()) {
-    topic = LogTopic::lookup(topicName);
-
-    if (topic == nullptr) {
-      return Result(TRI_ERROR_BAD_PARAMETER, std::string("strange topic '") +
-                                                 topicName +
-                                                 "', ignoring whole defintion");
-    }
-  }
-
-  bool handled = false;
-#ifdef ARANGODB_ENABLE_SYSLOG
-  if (output.starts_with(::syslogPrefix)) {
-    handled = true;
-    auto s = StringUtils::split(output.substr(::syslogPrefix.size()), '/');
-
-    if (s.size() < 1 || s.size() > 2) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    std::string("unknown syslog definition '") + output +
-                        "', expecting 'syslog://facility/identifier'");
-    }
-  }
-#endif
-
-  if (!handled) {
-    // not yet handled. must be a file-based logger now.
-    if (output != "+" && output != "-" && !output.starts_with(::filePrefix)) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    std::string("unknown output definition '") + output + "'");
-    }
-  }
-
-  return Result();
-}
-
-bool LogAppender::haveAppenders(LogGroup const& group, size_t topicId) {
-  // It might be preferable if we could avoid the lock here, but ATM this is not
-  // possible. If this actually causes performance issues we have to think about
-  // other solutions.
-  READ_LOCKER(guard, _appendersLock);
-  try {
-    auto const& appenders = _topics2appenders.at(group.id());
-    auto haveTopicAppenders = [&appenders](size_t topicId) {
-      auto it = appenders.find(topicId);
-      return it != appenders.end() && !it->second.empty();
-    };
-    return haveTopicAppenders(topicId) ||
-           haveTopicAppenders(LogTopic::MAX_LOG_TOPICS) ||
-           !_globalAppenders.at(group.id()).empty();
-  } catch (std::out_of_range const&) {
-    // no topic 2 appenders entry for this group.
-    TRI_ASSERT(false) << "no topic 2 appender match for group " << group.id();
-    // This should never happen, however if it does we should not crash
-    // but we also cannot log anything, as we are the logger.
-    return false;
+  if (message._level <= level) {
+    // Only one thread is allowed to actually write logs to the file.
+    // We use a recusive lock here, just in case writing the log message
+    // causes a crash, in this case we may trigger another force-direct
+    // log. This is not very likely, but it is better to be safe than sorry.
+    RECURSIVE_WRITE_LOCKER(_logOutputMutex, _logOutputMutexOwner);
+    logMessage(message);
   }
 }
+
+void LogAppender::setCurrentLevelsAsDefault() {
+  for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
+    _defaultLevels[i] = _topicLevels[i].load(std::memory_order_relaxed);
+  }
+}
+
+void LogAppender::resetLevelsToDefault() {
+  for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
+    _topicLevels[i].store(_defaultLevels[i], std::memory_order_relaxed);
+  }
+}
+
+auto LogAppender::getLogLevel(LogTopic const& topic) -> LogLevel {
+  return _topicLevels[topic.id()].load(std::memory_order_relaxed);
+}
+
+void LogAppender::setLogLevel(LogTopic const& topic, LogLevel level) {
+  _topicLevels[topic.id()].store(level, std::memory_order_relaxed);
+}
+
+auto LogAppender::getLogLevels() -> std::unordered_map<LogTopic*, LogLevel> {
+  std::unordered_map<LogTopic*, LogLevel> result;
+  result.reserve(logger::kNumTopics);
+  for (std::size_t i = 0; i < logger::kNumTopics; ++i) {
+    auto* topic = LogTopic::topicForId(i);
+    if (topic != nullptr) {
+      result.emplace(topic, _topicLevels[i].load(std::memory_order_relaxed));
+    }
+  }
+  return result;
+}
+
+}  // namespace arangodb
