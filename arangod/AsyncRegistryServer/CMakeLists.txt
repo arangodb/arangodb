@@ -1,0 +1,1 @@
+add_library(arango_async_registry_server INTERFACE)
