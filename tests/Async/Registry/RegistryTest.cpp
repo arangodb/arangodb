@@ -5,7 +5,7 @@
 #include <thread>
 
 using namespace arangodb;
-using namespace arangodb::coroutine;
+using namespace arangodb::async_registry;
 
 namespace {
 

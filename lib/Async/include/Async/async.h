@@ -21,7 +21,7 @@ template<typename T>
 struct async;
 
 template<typename T>
-struct async_promise_base : coroutine::PromiseInList {
+struct async_promise_base : async_registry::PromiseInList {
   using promise_type = async_promise<T>;
 
   async_promise_base(std::source_location loc)
@@ -51,7 +51,7 @@ struct async_promise_base : coroutine::PromiseInList {
   }
   void unhandled_exception() { _value.set_exception(std::current_exception()); }
   auto get_return_object() {
-    coroutine::get_thread_registry().add(this);
+    async_registry::get_thread_registry().add(this);
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
   }

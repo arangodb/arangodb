@@ -2,7 +2,7 @@
 
 #include "registry.h"
 
-namespace arangodb::coroutine {
+namespace arangodb::async_registry {
 
 // TODO somehow get rid of this global variable
 /**
@@ -15,4 +15,4 @@ extern Registry coroutine_registry;
  */
 auto get_thread_registry() noexcept -> ThreadRegistry&;
 
-}  // namespace arangodb::coroutine
+}  // namespace arangodb::async_registry

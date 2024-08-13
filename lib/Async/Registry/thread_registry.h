@@ -8,7 +8,7 @@
 #include <mutex>
 #include <thread>
 
-namespace arangodb::coroutine {
+namespace arangodb::async_registry {
 
 /**
    This registry belongs to a specific thread (the owning thread) and owns a
@@ -140,4 +140,4 @@ struct ThreadRegistry {
   }
 };
 
-}  // namespace arangodb::coroutine
+}  // namespace arangodb::async_registry

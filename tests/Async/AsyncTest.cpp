@@ -351,21 +351,21 @@ TYPED_TEST(AsyncTest, promises_are_only_removed_after_garbage_collection) {
     coro().reset();
 
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::coroutine::get_thread_registry().garbage_collect();
+    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
   }
   {
     std::move(coro()).operator co_await().await_resume();
 
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::coroutine::get_thread_registry().garbage_collect();
+    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
   }
   {
     { coro(); }
 
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::coroutine::get_thread_registry().garbage_collect();
+    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
   }
 }
@@ -381,8 +381,8 @@ TEST(AsyncTest, promises_are_registered) {
     auto coro_baz = baz();
 
     std::vector<std::string> names;
-    arangodb::coroutine::coroutine_registry.for_promise(
-        [&](arangodb::coroutine::PromiseInList* promise) {
+    arangodb::async_registry::coroutine_registry.for_promise(
+        [&](arangodb::async_registry::PromiseInList* promise) {
           names.push_back(promise->_where.function_name());
         });
     EXPECT_EQ(names.size(), 3);
@@ -392,9 +392,9 @@ TEST(AsyncTest, promises_are_registered) {
 
     coro_bar.reset();
     coro_baz.reset();
-    arangodb::coroutine::get_thread_registry().garbage_collect();
+    arangodb::async_registry::get_thread_registry().garbage_collect();
   });
 
   coro_foo.reset();
-  arangodb::coroutine::get_thread_registry().garbage_collect();
+  arangodb::async_registry::get_thread_registry().garbage_collect();
 }

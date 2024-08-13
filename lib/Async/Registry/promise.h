@@ -5,7 +5,7 @@
 #include <string>
 #include <atomic>
 
-namespace arangodb::coroutine {
+namespace arangodb::async_registry {
 
 struct ThreadRegistry;
 
@@ -30,4 +30,4 @@ struct PromiseInList : Observables {
   PromiseInList* next_to_free = nullptr;
 };
 
-}  // namespace arangodb::coroutine
+}  // namespace arangodb::async_registry

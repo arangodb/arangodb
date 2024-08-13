@@ -1,6 +1,6 @@
 #include "registry_variable.h"
 
-namespace arangodb::coroutine {
+namespace arangodb::async_registry {
 
 Registry coroutine_registry;
 
@@ -15,4 +15,4 @@ auto get_thread_registry() noexcept -> ThreadRegistry& {
   return *registry_guard._registry;
 }
 
-}  // namespace arangodb::coroutine
+}  // namespace arangodb::async_registry

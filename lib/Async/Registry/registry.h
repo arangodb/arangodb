@@ -4,7 +4,7 @@
 
 #include <vector>
 
-namespace arangodb::coroutine {
+namespace arangodb::async_registry {
 
 /**
    Registry of all active coroutines.
@@ -60,4 +60,4 @@ struct Registry {
   std::mutex mutex;
 };
 
-}  // namespace arangodb::coroutine
+}  // namespace arangodb::async_registry
