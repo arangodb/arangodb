@@ -56,7 +56,6 @@
 #include "Basics/directories.h"
 #include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
-#include "Basics/coroutine/feature.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/CacheOptionsFeature.h"
 #include "Cluster/ClusterFeature.h"

@@ -114,9 +114,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<LoggerFeature>) {
           return std::make_unique<LoggerFeature>(server, true);
         },
-        [](auto& server, TypeTag<coroutine::Feature>) {
-          return std::make_unique<coroutine::Feature>(server);
-        },
         [](auto& server, TypeTag<metrics::MetricsFeature>) {
           return std::make_unique<metrics::MetricsFeature>(
               server,
