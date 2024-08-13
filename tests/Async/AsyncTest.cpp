@@ -1,7 +1,6 @@
-#include "Basics/async.h"
-#include "Basics/coroutine/feature.h"
-#include "Basics/coroutine/registry.h"
-#include "Basics/coroutine/thread_registry.h"
+#include "Async/async.h"
+#include "Async/Registry/registry.h"
+#include "Async/Registry/thread_registry.h"
 
 #include <gtest/gtest.h>
 #include <thread>

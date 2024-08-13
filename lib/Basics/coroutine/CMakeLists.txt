@@ -1,5 +1,0 @@
-add_library(arango_coroutine_registry STATIC
-	registry_variable.cpp)
-target_link_libraries(arango_coroutine_registry
-	PRIVATE
-	arango_assertions)

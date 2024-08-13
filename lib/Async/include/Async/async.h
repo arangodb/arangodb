@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Basics/coroutine/registry_variable.h"
-#include "Basics/coroutine/promise.h"
-#include "Basics/expected.h"
+#include "Async/Registry/registry_variable.h"
+#include "Async/Registry/promise.h"
+#include "Async/expected.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"

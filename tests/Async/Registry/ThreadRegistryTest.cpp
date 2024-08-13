@@ -1,6 +1,5 @@
-#include "Basics/coroutine/promise.h"
-#include "Basics/coroutine/thread_registry.h"
-#include "Basics/Result.h"
+#include "Async/Registry/promise.h"
+#include "Async/Registry/thread_registry.h"
 
 #include <gtest/gtest.h>
 #include <cstdint>

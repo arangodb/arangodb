@@ -1,5 +1,5 @@
-#include "Basics/coroutine/promise.h"
-#include "Basics/coroutine/registry.h"
+#include "Async/Registry/promise.h"
+#include "Async/Registry/registry.h"
 
 #include <gtest/gtest.h>
 #include <thread>
