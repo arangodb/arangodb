@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Basics/coroutine/thread_registry.h"
+#include "Basics/coroutine/registry_variable.h"
 #include "Basics/coroutine/promise.h"
 #include "Basics/expected.h"
 #include "Logger/LogMacros.h"

@@ -1,7 +1,8 @@
-#include "thread_registry.h"
-#include "feature.h"
+#include "registry_variable.h"
 
 namespace arangodb::coroutine {
+
+Registry coroutine_registry;
 
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {

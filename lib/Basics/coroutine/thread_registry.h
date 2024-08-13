@@ -11,11 +11,6 @@
 namespace arangodb::coroutine {
 
 /**
-   Get registry of all active coroutine promises on this thread.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
-
-/**
    This registry belongs to a specific thread (the owning thread) and owns a
    list of promises that live on this thread.
 

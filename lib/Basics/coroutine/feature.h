@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/coroutine/registry.h"
 
 namespace arangodb::coroutine {
 
@@ -16,8 +15,5 @@ class Feature final : public application_features::ApplicationFeature {
     // startsAfter<Bla, Server>();
   }
 };
-
-// TODO later make this a property of Feature
-extern coroutine::Registry coroutine_registry;
 
 }  // namespace arangodb::coroutine
