@@ -25,14 +25,12 @@
 #include "SingleServerProvider.h"
 
 #include "Aql/QueryContext.h"
-#include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
-#include "Graph/Steps/SingleServerProviderStep.h"
-#include "Transaction/Helpers.h"
-
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
-
+#include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Logger/LogMacros.h"
+#include "Transaction/Helpers.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
@@ -150,7 +148,7 @@ auto SingleServerProvider<Step>::expand(
   _cursor->readAll(
       *this, _stats, step.getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
-        VertexType id = _cache.persistString(([&]() -> auto {
+        VertexType id = _cache.persistString(([&]() -> auto{
           if (edge.isString()) {
             return VertexType(edge);
           } else {
@@ -251,7 +249,7 @@ SingleServerProvider<Step>::buildCursor(
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
       monitor(), trx(), _opts.tmpVar(), _opts.indexInformations().first,
       _opts.indexInformations().second, expressionContext,
-      _opts.hasWeightMethod() /*, requiresFullDocument*/);
+      /*requiresFullDocument*/ _opts.hasWeightMethod(), _opts.useCache());
 }
 
 template<class Step>

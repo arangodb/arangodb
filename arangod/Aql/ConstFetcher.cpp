@@ -29,6 +29,7 @@
 #include "Aql/SkipResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Containers/SmallVector.h"
 
 #include <algorithm>
 

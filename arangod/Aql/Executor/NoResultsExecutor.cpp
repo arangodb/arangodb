@@ -24,11 +24,11 @@
 #include "NoResultsExecutor.h"
 
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 NoResultsExecutor::NoResultsExecutor(Fetcher&, Infos&) {}
 NoResultsExecutor::~NoResultsExecutor() = default;
@@ -53,3 +53,7 @@ auto NoResultsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   // Well nevermind the input, but we will always return 0 rows here.
   return 0;
 }
+
+template class ExecutionBlockImpl<NoResultsExecutor>;
+
+}  // namespace arangodb::aql

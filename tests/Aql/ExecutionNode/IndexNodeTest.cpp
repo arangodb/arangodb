@@ -26,6 +26,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -567,31 +568,27 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     }
 
     // clone
-    {  // without properties
-      {
-        auto indNodeClone =
-            dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
-                const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
-                true));
+    {// without properties
+     {auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
+          const_cast<arangodb::aql::ExecutionPlan*>(query->plan()), true));
 
-        EXPECT_EQ(indNode.getType(), indNodeClone->getType());
-        EXPECT_EQ(indNode.outVariable(), indNodeClone->outVariable());
-        EXPECT_EQ(indNode.plan(), indNodeClone->plan());
-        EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
-        EXPECT_EQ(indNode.isLateMaterialized(),
-                  indNodeClone->isLateMaterialized());
+    EXPECT_EQ(indNode.getType(), indNodeClone->getType());
+    EXPECT_EQ(indNode.outVariable(), indNodeClone->outVariable());
+    EXPECT_EQ(indNode.plan(), indNodeClone->plan());
+    EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
+    EXPECT_EQ(indNode.isLateMaterialized(), indNodeClone->isLateMaterialized());
 
-        ASSERT_TRUE(indNodeClone->isLateMaterialized());
-      }
-    }
+    ASSERT_TRUE(indNodeClone->isLateMaterialized());
+  }
+}
 
-    // not materialized
-    {
-      indNode.setLateMaterialized(nullptr, arangodb::IndexId::primary(),
-                                  arangodb::aql::IndexNode::IndexVarsInfo());
-      ASSERT_FALSE(indNode.isLateMaterialized());
-    }
-  }  // namespace
+// not materialized
+{
+  indNode.setLateMaterialized(nullptr, arangodb::IndexId::primary(),
+                              arangodb::aql::IndexNode::IndexVarsInfo());
+  ASSERT_FALSE(indNode.isLateMaterialized());
+}
+}  // namespace
 }
 
 TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {

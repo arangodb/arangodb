@@ -27,7 +27,7 @@
 #include <atomic>
 #include <string>
 #include <utility>
-#include <vector>
+#include <unordered_map>
 
 #include "Logger/LogLevel.h"
 
@@ -44,15 +44,18 @@ class LogTopic {
   // pseudo topic to address all log topics
   static constexpr TopicName ALL = "all";
 
-  static std::vector<std::pair<TopicName, LogLevel>> logLevelTopics();
+  static auto logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel>;
   static void setLogLevel(TopicName, LogLevel);
+  static LogTopic* topicForId(size_t topicId);
   static LogTopic* lookup(TopicName);
   static TopicName lookup(size_t topicId);
 
   virtual ~LogTopic() = default;
 
   template<typename Topic>
-  LogTopic(Topic);
+  LogTopic(Topic) requires requires(Topic) {
+    Topic::name;
+  };
 
   LogTopic(LogTopic const& that)
       : _id(that._id), _name(that._name), _displayName(that._displayName) {
@@ -71,9 +74,7 @@ class LogTopic {
   std::string const& displayName() const { return _displayName; }
   LogLevel level() const { return _level.load(std::memory_order_relaxed); }
 
-  virtual void setLogLevel(LogLevel level) {
-    _level.store(level, std::memory_order_relaxed);
-  }
+  virtual void setLogLevel(LogLevel level);
 
  private:
   LogTopic(TopicName name, LogLevel level, size_t id);

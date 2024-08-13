@@ -56,6 +56,7 @@
 #include <string_view>
 #include <function2/function2.hpp>
 #include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-common.h>
 
 namespace arangodb {

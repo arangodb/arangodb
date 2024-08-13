@@ -25,7 +25,6 @@
 
 #include "VocBase/LogicalView.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/ViewSnapshot.h"

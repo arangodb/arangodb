@@ -47,6 +47,7 @@ return require('internal').options()["log.output"];
 `);
 
       assertTrue(Array.isArray(res));
+      res = res.filter((x) => x.startsWith('file://'));
       assertTrue(res.length > 0);
 
       let logfile = res[0].replace(/^file:\/\//, '');

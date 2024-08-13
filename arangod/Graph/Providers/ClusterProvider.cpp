@@ -25,6 +25,7 @@
 #include "ClusterProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -36,6 +37,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Transaction/Helpers.h"
+#include "VocBase/vocbase.h"
 
 #include <utility>
 #include <vector>
