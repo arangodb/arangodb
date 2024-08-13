@@ -53,7 +53,7 @@ struct DoubleValue {
   }
 };
 
-DoubleValue makeDoubleValue(uint8_t sign, uint16_t E, uint64_t M) {
+static DoubleValue makeDoubleValue(uint8_t sign, uint16_t E, uint64_t M) {
   EXPECT_LT(sign, 2);
   EXPECT_LT(E, 2048);
   EXPECT_LT(M, uint64_t{1} << 52);
