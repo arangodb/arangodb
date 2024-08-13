@@ -99,8 +99,8 @@ function adminLogSuite() {
     testIncreaseLogLevelForAppenderAdjustsGlobalLevel: function () {
       let old = arango.GET("/_admin/log/level?withAppenders=true");
       let res = arango.PUT("/_admin/log/level?withAppenders=true", { appenders: { "-": { queries: "trace" } } });
-      assertEqual(res.appenders["-"].queries, "TRACE");
-      assertEqual(res.global.queries, "TRACE");
+      assertEqual(res.appenders["-"].queries, "TRACE", JSON.stringify(res));
+      assertEqual(res.global.queries, "TRACE", JSON.stringify(res));
 
       // restore old levels
       arango.PUT("/_admin/log/level?withAppenders=true", old);
