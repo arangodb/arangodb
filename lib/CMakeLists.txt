@@ -123,6 +123,7 @@ target_link_libraries(arango_lightweight
          arango_inspection
          absl::flat_hash_set
          absl::synchronization
+         arango_coroutine_registry
   PRIVATE date_interface
           fmt
           arango_assertions
