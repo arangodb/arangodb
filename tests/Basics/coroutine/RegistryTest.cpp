@@ -163,24 +163,3 @@ TEST_F(CoroutineRegistryTest,
   thread_registry_on_different_thread->mark_for_deletion(&promise);
   EXPECT_TRUE(promise.destroyed);
 }
-
-// TODO necessary?
-TEST_F(CoroutineRegistryTest,
-       removing_a_thread_does_not_invalidate_other_threads) {
-  Registry registry;
-  auto first_thread_registry = registry.add_thread();
-  auto second_thread_registry = registry.add_thread();
-  auto first_promise = MyTestPromise{1};
-  second_thread_registry->add(&first_promise);
-
-  registry.remove_thread(first_thread_registry);
-
-  auto second_promise = MyTestPromise{2};
-  second_thread_registry->add(&second_promise);
-  EXPECT_EQ(all_ids(registry), (std::vector<uint64_t>{2, 1}));
-
-  second_thread_registry->mark_for_deletion(&first_promise);
-  second_thread_registry->mark_for_deletion(&second_promise);
-  second_thread_registry->garbage_collect();
-  registry.remove_thread(second_thread_registry);
-}

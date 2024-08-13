@@ -32,10 +32,7 @@ struct Registry {
    */
   auto remove_thread(ThreadRegistry* registry) -> void {
     auto guard = std::lock_guard(mutex);
-    // TODO does this not invalidate the thread_local registry ptr in
-    // thrad_registry.cpp?
-    std::erase_if(registries,
-                  [registry](ThreadRegistry* r) { return registry == r; });
+    std::erase(registries, registry);
     registry->decrement_ref_count();
   }
 
