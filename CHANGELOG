@@ -1,7 +1,7 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
-* Updated ArangoDB Starter to v0.18.8-preview-1 and arangosync to v2.19.8.
+* Updated ArangoDB Starter to v0.18.8 and arangosync to v2.19.8.
 
 * FE-378: fix fields containing spaces during index creation on web UI.
 
