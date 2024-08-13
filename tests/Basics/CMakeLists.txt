@@ -38,6 +38,7 @@ target_sources(arangodbtests
   StringUtilsTest.cpp
   TypeListTests.cpp
   UnshackledMutexTest.cpp
-  VelocyPackHelperTest.cpp)
+  VelocyPackHelperTest.cpp
+  VelocyPackHelperCompareRandomTest.cpp)
 
 add_subdirectory(coroutine)

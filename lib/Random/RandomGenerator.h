@@ -107,6 +107,7 @@ class RandomGenerator {
   static int32_t interval(int32_t, int32_t);
   static int64_t interval(int64_t, int64_t);
 
+  // return a nonnegative number lower or equal to the argument
   static uint16_t interval(uint16_t);
   static uint32_t interval(uint32_t);
   static uint64_t interval(uint64_t);
