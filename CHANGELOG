@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.4.
+
 * We already had the concept of individual log appenders (e.g., stdout, stderr,
   files, syslog). but log levels could only be configured globally. That is,
   all appenders always used the same log levels for all topics.
@@ -48,8 +50,6 @@ devel
   for that topic of all appenders. Thus, changing the log level for an appender
   will implicitly also adjust the global level accordingly. When a global level
   is set explicitly, this change is also applied to all appenders.
-
-* Updated ArangoDB Starter to v0.19.4-preview-1.
 
 * FE-459: fix failing foxx service download.
 
