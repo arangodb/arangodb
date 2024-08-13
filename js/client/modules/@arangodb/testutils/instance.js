@@ -450,6 +450,11 @@ class instance {
         'replication.connect-timeout':  20,
       });
     }
+    if (this.optios.forceNoCompress) {
+      this.args = Object.assign(this.args, {
+        'http.compress-response-threshold':  99999999999,
+      });
+    }
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
     }
