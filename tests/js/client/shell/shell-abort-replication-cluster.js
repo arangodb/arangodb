@@ -65,7 +65,7 @@ function abortReplicationSuite () {
     testAbortReplication : function () {
       let c = db._collection(cn);
       const isCov = require("@arangodb/test-helper").versionHas('coverage');
-      let factor = (isCov) 4 : 1;
+      let factor = (isCov) ? 4 : 1;
 
       const servers = getDBServers();
       assertTrue(servers.length >= 2, servers);
