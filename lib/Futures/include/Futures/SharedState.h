@@ -25,9 +25,11 @@
 
 #include <atomic>
 #include <function2.hpp>
+#include <source_location>
 
 #include "Assertions/Assert.h"
-
+#include "Async/Registry/promise.h"
+#include "Async/Registry/registry_variable.h"
 #include "Futures/Try.h"
 
 namespace arangodb {
@@ -49,7 +51,7 @@ namespace detail {
 ///   |                    ---> OnlyCallback ---                    |
 ///   +-------------------------------------------------------------+
 template<typename T>
-class SharedState {
+class SharedState : async_registry::PromiseInList {
   enum class State : uint8_t {
     Start = 1 << 0,
     OnlyResult = 1 << 1,
@@ -78,11 +80,17 @@ class SharedState {
 
  public:
   /// State will be Start
-  static SharedState* make() { return new SharedState(); }
+  static SharedState* make(
+      std::source_location loc = std::source_location::current()) {
+    return new SharedState(std::move(loc));
+  }
 
   /// State will be OnlyResult
   /// Result held will be move-constructed from `t`
-  static SharedState* make(Try<T>&& t) { return new SharedState(std::move(t)); }
+  static SharedState* make(
+      Try<T>&& t, std::source_location loc = std::source_location::current()) {
+    return new SharedState(std::move(t), std::move(loc));
+  }
 
   /// State will be OnlyResult
   /// Result held will be the `T` constructed from forwarded `args`
@@ -231,19 +239,33 @@ class SharedState {
 
  private:
   /// empty shared state
-  SharedState() : _state(State::Start), _attached(2) {}
+  SharedState(std::source_location loc)
+      : async_registry::PromiseInList(std::move(loc)),
+        _state(State::Start),
+        _attached(2) {
+    async_registry::get_thread_registry().add(this);
+  }
 
   /// use to construct a ready future
-  explicit SharedState(Try<T>&& t)
-      : _result(std::move(t)), _state(State::OnlyResult), _attached(1) {}
+  explicit SharedState(Try<T>&& t, std::source_location loc)
+      : async_registry::PromiseInList(std::move(loc)),
+        _result(std::move(t)),
+        _state(State::OnlyResult),
+        _attached(1) {
+    async_registry::get_thread_registry().add(this);
+  }
 
   /// use to construct a ready future
   template<typename... Args>
   explicit SharedState(std::in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<T, Args&&...>::value)
-      : _result(std::in_place, std::forward<Args>(args)...),
+      : async_registry::PromiseInList(std::source_location::current()),
+        _result(std::in_place, std::forward<Args>(args)...),
         _state(State::OnlyResult),
-        _attached(1) {}
+        _attached(1) {
+    // is not added to coroutine thread registry because it is immediately
+    // resolved
+  }
 
   ~SharedState() {
     TRI_ASSERT(_attached == 0);
@@ -257,7 +279,9 @@ class SharedState {
     TRI_ASSERT(a >= 1);
     if (a == 1) {
       _callback = nullptr;
-      delete this;
+      if (registry != nullptr) {
+        registry->mark_for_deletion(this);
+      }
     }
   }
 
@@ -270,6 +294,8 @@ class SharedState {
     SharedStateScope scope(this);  // will call detachOne()
     _callback(std::move(_result));
   }
+
+  auto destroy() noexcept -> void override { delete this; }
 
  private:
   using Callback = fu2::unique_function<void(Try<T>&&)>;
