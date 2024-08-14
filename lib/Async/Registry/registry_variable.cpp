@@ -7,9 +7,11 @@ Registry coroutine_registry;
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
     ThreadRegistryGuard() : _registry{coroutine_registry.add_thread()} {}
-    ~ThreadRegistryGuard() { coroutine_registry.remove_thread(_registry); }
+    ~ThreadRegistryGuard() {
+      coroutine_registry.remove_thread(std::move(_registry));
+    }
 
-    ThreadRegistry* _registry;
+    std::shared_ptr<ThreadRegistry> _registry;
   };
   static thread_local auto registry_guard = ThreadRegistryGuard{};
   return *registry_guard._registry;
