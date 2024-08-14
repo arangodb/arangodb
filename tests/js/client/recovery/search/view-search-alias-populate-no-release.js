@@ -56,7 +56,7 @@ function runSetup () {
     }
     c.save({ name: 'crashme' }, { waitForSync: true });
   } catch (ex) {
-    if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
+    if ((ex.errorNum !== internal.errors.ERROR_HTTP_REQUEST_TIMEOUT.code) &&
         (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code)) {
       print(ex);
       throw ex;

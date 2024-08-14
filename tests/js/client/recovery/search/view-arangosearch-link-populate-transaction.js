@@ -55,6 +55,7 @@ function runSetup () {
     waitForSync: true
   };
 
+  print('trx')
   db._executeTransaction(tx);
 
 }
