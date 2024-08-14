@@ -100,7 +100,7 @@ function enumerateObjectTestSuite() {
       `;
 
       const stmt = db._createStatement({query});
-      checkPlan(stmt.explain().plan)
+      checkPlan(stmt.explain().plan);
     },
 
     testOutput1 : function() {
