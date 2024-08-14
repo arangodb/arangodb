@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Result.h"
-#include "Basics/async.h"
+#include "Async/async.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
