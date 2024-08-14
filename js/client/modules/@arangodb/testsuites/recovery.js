@@ -251,6 +251,7 @@ function _recovery (options, recoveryTests) {
   if (options.isInstrumented) {
     arango.timeout(arango.timeout() * 4);
   }
+  let timeout = arango.timeout();
   let localOptions = _.clone(options);
   localOptions.enableAliveMonitor = false;
 
@@ -267,6 +268,7 @@ function _recovery (options, recoveryTests) {
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
     let filtered = {};
+    arango.timeout(timeout);
 
     if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
       count += 1;
