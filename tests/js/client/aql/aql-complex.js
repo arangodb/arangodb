@@ -30,6 +30,7 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
+const isCov = require("@arangodb/test-helper").versionHas('coverage');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -156,7 +157,9 @@ function ahuacatlComplexTestSuite () {
     testListNesting1 : function () {
       var list = [ 0 ];
       var last = list;
-      for (var i = 1; i < 75; ++i) {
+      let depth = (isCov) ? 50:75;
+
+      for (var i = 1; i < depth; ++i) {
         last.push([ i ]);
         last = last[last.length - 1];
       }
@@ -188,7 +191,8 @@ function ahuacatlComplexTestSuite () {
     testArrayNesting1 : function () {
       var array = { };
       var last = array;
-      for (var i = 1; i < 75; ++i) {
+      let depth = (isCov) ? 50:75;
+      for (var i = 1; i < depth; ++i) {
         last["level" + i] = { };
         last = last["level" + i];
       }

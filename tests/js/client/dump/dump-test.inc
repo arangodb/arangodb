@@ -73,7 +73,8 @@
     let collDistribution = {};
     let collDistributionPlan = {};
     let collDistributionCurrent = {};
-    const numSecsLimit = 16;
+    const isCov = require("@arangodb/test-helper").versionHas('coverage');
+    const numSecsLimit = (isCov)? 64:16;
     while (true) {
       const dbName = db._name();
       const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution");
@@ -413,7 +414,7 @@
         assertEqual(3, c.type()); // edges
         assertFalse(p.waitForSync);
 
-        assertEqual(args.edgesIndexCount,  c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // primary index + edges index
+        assertEqual(args.edgesIndexCount, c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // primary index + edges index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual("edge", c.getIndexes()[1].type);
         if (args.edgesIndexCount > 2) {
@@ -445,7 +446,7 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
 
-        assertEqual(1,  c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
+        assertEqual(1, c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual(3, c.count());
       },
@@ -461,7 +462,7 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
 
-        assertEqual(args.removedSingleIndices,  c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
+        assertEqual(args.removedSingleIndices, c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual(args.removedCount, c.count());
 
@@ -490,7 +491,7 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
 
-        assertEqual(1,  c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
+        assertEqual(1, c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual(10000, c.count());
 
@@ -511,7 +512,7 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
 
-        assertEqual(args.indexesCount,  c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`);
+        assertEqual(args.indexesCount, c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`);
         assertEqual("primary", c.getIndexes()[0].type);
 
         assertEqual("hash", c.getIndexes()[1].type);
@@ -571,7 +572,7 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
 
-        assertEqual(1,  c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
+        assertEqual(1, c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual(0, c.count());
       },
@@ -588,7 +589,7 @@
         assertFalse(p.waitForSync);
         assertEqual(getNoShards(9), p.numberOfShards);
 
-        assertEqual(1,  c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
+        assertEqual(1, c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual(1000, c.count());
 
@@ -641,7 +642,7 @@
         assertEqual(7, p.keyOptions.offset);
         assertEqual(42, p.keyOptions.increment);
 
-        assertEqual(1,  c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
+        assertEqual(1, c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual(args.autoIncDocCount, c.count());
 
