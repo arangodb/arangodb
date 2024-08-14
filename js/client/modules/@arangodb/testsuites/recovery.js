@@ -194,7 +194,7 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   } catch (ex) {
     let msg;
     if (ex instanceof ArangoError) {
-      msg = `test '${params.script} Arango Error during test execution:\n${ex}\n${ex.stack}`;
+     msg = `test '${params.script} Arango Error during test execution:\n${ex.errorNum}: ${ex.message}\n${ex.stack}`;
     } else {
       msg = `test '${params.script} failed by javascript error: \n${ex.stack}`;
     }
