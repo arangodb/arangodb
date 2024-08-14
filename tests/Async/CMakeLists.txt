@@ -1,3 +1,4 @@
 target_sources(arangodbtests
   PRIVATE
-  AsyncTest.cpp)
+  AsyncTest.cpp
+  ExpectedTest.cpp)
