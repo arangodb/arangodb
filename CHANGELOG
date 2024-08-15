@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-453: Upgrade arangojs version used in web UI.
+
 * FE-460: Query editor UI - fix buttons overlap when 'Options' tab is open.
 
 * Updated ArangoDB Starter to v0.19.4.
