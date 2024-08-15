@@ -100,10 +100,12 @@ struct ThreadRegistry {
     ADB_PROD_ASSERT(ref_count == 0 ||
                     std::this_thread::get_id() == owning_thread);
     // (5) - this exchange synchronizes with compare_exchange_weak in (4)
-    auto head = free_head.exchange(nullptr, std::memory_order_acquire);
+    PromiseInList *current,
+        *next = free_head.exchange(nullptr, std::memory_order_acquire);
     auto guard = std::lock_guard(mutex);
-    for (auto current = head; current != nullptr;
-         current = current->next_to_free) {
+    while (next != nullptr) {
+      current = next;
+      next = next->next_to_free;
       remove(current);
       current->destroy();
     }

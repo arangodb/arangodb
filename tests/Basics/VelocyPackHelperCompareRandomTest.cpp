@@ -181,7 +181,7 @@ struct VPackHelperRandomTest : public testing::Test {
                                 : (std::uint64_t{1} << significantBits) - 1;
       number.significand = RandomGenerator::interval(maxSignificand);
       number.significand <<=
-          RandomGenerator::interval(std::uint32_t{remainingBits});
+          RandomGenerator::interval(std::min<std::uint32_t>(remainingBits, 63));
     }
 
     // exponent
