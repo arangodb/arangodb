@@ -57,10 +57,10 @@ class SingleRowFetcher;
 class EnumerateListExecutorInfos {
  public:
   EnumerateListExecutorInfos(
-       RegisterId inputRegister, const std::vector<RegisterId>&& outputRegisters,
-       QueryContext& query, Expression* filter, VariableId outputVariableId,
-       std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs,
-       EnumerateListNode::Mode mode = EnumerateListNode::Mode::kEnumerateArray);
+      RegisterId inputRegister, const std::vector<RegisterId>&& outputRegisters,
+      QueryContext& query, Expression* filter, VariableId outputVariableId,
+      std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs,
+      EnumerateListNode::Mode mode = EnumerateListNode::Mode::kEnumerateArray);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos&&) = default;
@@ -77,6 +77,7 @@ class EnumerateListExecutorInfos {
       const noexcept;
 
   EnumerateListNode::Mode getMode() const noexcept;
+
  private:
   QueryContext& _query;
   // These two are exactly the values in the parent members
@@ -230,6 +231,5 @@ class EnumerateListObjectExecutor {
   // note: it is fine if this counter overflows
   uint_fast16_t _killCheckCounter = 0;
 };
-
 
 }  // namespace arangodb::aql
