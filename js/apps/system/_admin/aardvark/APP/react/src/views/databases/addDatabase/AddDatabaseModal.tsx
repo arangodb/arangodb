@@ -42,7 +42,7 @@ export const AddDatabaseModal = ({
               users,
               replicationFactor: isSatellite ? "satellite" : replicationFactor,
               sharding: isOneShard ? "single" : "",
-              writeConcern
+              writeConcern: isSatellite ? undefined : writeConcern
             }
           : { users }
       );

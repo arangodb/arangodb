@@ -3,6 +3,66 @@ devel
 
 * FE-453: Upgrade arangojs version used in web UI.
 
+* FE-460: Query editor UI - fix buttons overlap when 'Options' tab is open.
+
+* Updated ArangoDB Starter to v0.19.4.
+
+* We already had the concept of individual log appenders (e.g., stdout, stderr,
+  files, syslog). but log levels could only be configured globally. That is,
+  all appenders always used the same log levels for all topics.
+
+  This PR introduces appender specific log levels. For example, it is now
+  possible to set the log levels for all topics to `error`, but leave the log
+  levels for the log file unchanged. This is particularly useful for test runs
+  because we avoid flooding the console with log messages, but still have all
+  the information in the log files in case of test failures.
+
+  The log level can be specified per appender via the command line by adding a
+  comma separated list of topics with their respective level after the output
+  definition, separated by a semicolon:
+    `--log.output file:///path/to/file;queries=trace,requests=info`
+    `--log.output -;all=error`
+
+  The `_admin/log/level` endpoint has also been extended to with an optional
+  parameter `withAppenders`. If that parameter is set to `true`, the response
+  has the following form:
+  ```
+  {
+    "global": {
+      <topic>: <level>,
+      ...
+    },
+    "appenders": {
+      <appender>: {
+        <topic>: <level>,
+        ...
+      },
+      ...
+    }
+  }
+  ```
+  A `PUT` request to `_admin/log/level` with `withAppenders` set to true
+  requires an input of the same format.
+
+  Previously, requests to the `_admin/log/level` endpoint where not fully
+  validated. A `PUT`' request that specified invalid topics or log levels
+  would silently ignore those. This has been improved, so that invalid input
+  is now always rejected with a proper error message - in that case _no_
+  changes are applied at all.
+
+  The global level for some topic is always identical to the highest log level
+  for that topic of all appenders. Thus, changing the log level for an appender
+  will implicitly also adjust the global level accordingly. When a global level
+  is set explicitly, this change is also applied to all appenders.
+
+* FE-459: fix failing foxx service download.
+
+* Fixed BTS-1742: `IN_RANGE` function now uses MDI index if possible.
+
+* FE-456: upgrade web UI to React 18.
+
+* FE-449: write concern is no longer set when creating a sattelite database
+
 * Add "useCache" option for graph nodes:
   The "useCache" AQL option is now supported for the following node types in
   addition:
@@ -58,7 +118,7 @@ devel
   - `started`: date/time the query started executing
   - `runTime`: total runtime of the query, in seconds
   - `state`: the state of the query (will always be "finished")
-  - `stream` whether or not the query was a streaming AQL query
+  - `stream`: whether or not the query was a streaming AQL query
   - `modificationQuery`: whether or not the query was a modification query
   - `warnings`: number of warnings issued by the query
   - `exitCode`: exit code of the query (0 = success, any other exit code 
@@ -71,8 +131,6 @@ devel
     `--query.max-artifact-log-length` characters.
   - `bindVars` will only contain data if the startup option
     `--query.tracking-with-bindvars` is set to `true`. This is the default.
-    The stringified bind parameters representation will also be cut off after 
-    `--query.max-artifact-log-length` characters.
   - `dataSources` will only contain data if the startup option
     `--query.tracking-with-datasources` is set to `true`. This is not the 
     default.

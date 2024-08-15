@@ -220,7 +220,7 @@ static VPackBuilder compareIndexes(
             // should be fine. However, for robustness sake, we compare,
             // if the local index found actually has the right properties,
             // if not, we schedule a dropIndex action:
-            if (!arangodb::Index::Compare(engine, pindex, lindex, dbname)) {
+            if (!arangodb::Index::compare(engine, pindex, lindex, dbname)) {
               // To achieve this, we remove the long version of the ID
               // from the indis set. This way, the local index will be
               // dropped further down in handleLocalShard:
