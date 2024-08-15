@@ -24,7 +24,7 @@ export const UserPermissionsTable = () => {
 
 const UserPermissionsTableInner = () => {
   const { tableInstance } = useUserPermissionsContext();
-  const username = useUsername();
+  const { username } = useUsername();
   useEffect(() => {
     window.arangoHelper.buildUserSubNav(username, "Permissions");
   }, [username]);
