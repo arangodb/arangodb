@@ -18,7 +18,10 @@ import {
   DatabasePermissionSwitch,
   getIsDefaultRow
 } from "./DatabasePermissionSwitch";
-import { useFetchDatabasePermissions } from "./useFetchDatabasePermissions";
+import {
+  useFetchDatabasePermissions,
+  useUsername
+} from "./useFetchDatabasePermissions";
 import {
   SystemDatabaseActionState,
   usePermissionChangeHandlers
@@ -297,6 +300,7 @@ export const UserPermissionsContextProvider = ({
     refetchDatabasePermissions
   });
 
+  const { username } = useUsername();
   const rawUsername = decodeURIComponent(username);
   const isManagedUser = rawUsername.includes("|");
   const isRootUser = rawUsername === "root";
