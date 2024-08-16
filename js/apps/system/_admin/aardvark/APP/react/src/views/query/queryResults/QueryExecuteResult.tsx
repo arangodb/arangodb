@@ -230,7 +230,7 @@ export const getAllowCSVDownload = (queryResult: QueryResultType) => {
         }
       });
     }
-    if(typeof row === 'number' || typeof row === 'string') {
+    if (typeof row === "number" || typeof row === "string") {
       allowCSVDownload = false;
     }
   });
