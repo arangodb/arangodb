@@ -64,7 +64,7 @@ inline auto inspect(Inspector& f, SimilarityMetric& x) {
 
 // TODO Extract Specific vector index params from general vector definition
 struct VectorIndexDefinition {
-  std::size_t dimensions;
+  std::int64_t dimensions;
   double min;
   double max;
   SimilarityMetric metric;
