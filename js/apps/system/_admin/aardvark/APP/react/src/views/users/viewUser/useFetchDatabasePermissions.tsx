@@ -23,7 +23,7 @@ export const useFetchDatabasePermissions = () => {
       const url = `/_api/user/${username}/database`;
       const route = getRouteForCurrentDB(url);
       const data = await route.get({ full: "true" });
-      return data.body.result as FullDatabasePermissionsType;
+      return data.parsedBody.result as FullDatabasePermissionsType;
     }
   });
   return { databasePermissions: data, refetchDatabasePermissions: refetch };

@@ -14,7 +14,7 @@
     "ajv": "^8.12.0",
     "ajv-errors": "^3.0.0",
     "ansi-html-community": "0.0.8",
-    "arangojs": "^8.7.0",
+    "arangojs": "^9.0.0",
     "axios": "^0.21.2",
     "backbone": "^1.4.1",
     "crypto-js": "^3.3.0",
@@ -112,5 +112,6 @@
     "presets": [
       "react-app"
     ]
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
