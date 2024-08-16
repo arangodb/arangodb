@@ -224,12 +224,7 @@ bool EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
   }
 
   auto outputRegs = _infos.getOutputRegister();
-  if (outputRegs.size() == 1) {
-    output.moveValueInto(outputRegs[0], _currentRow, &guard);
-  } else {
-    output.moveValueInto(outputRegs[0], _currentRow, &guard);
-    output.moveValueInto(outputRegs[1], _currentRow, &guard);
-  }
+  output.moveValueInto(outputRegs[0], _currentRow, &guard);
 
   output.advanceRow();
 
@@ -459,6 +454,12 @@ size_t EnumerateListObjectExecutor::skipElement(size_t toSkip) {
   size_t pos = _objIterator.index();
   size_t length = _objIterator.size();
 
+  auto makeSkip = [&](size_t toSkip) -> void {
+    for (size_t skip = 0; skip < toSkip; ++skip) {
+      _objIterator.next();
+    }
+  };
+
   if (toSkip <= length - pos) {
     // if we're skipping less or exact the amount of elements we can skip with
     // toSkip
@@ -467,6 +468,7 @@ size_t EnumerateListObjectExecutor::skipElement(size_t toSkip) {
     // we can only skip the max amount of values we've in our array
     skipped = length - pos;
   }
+  makeSkip(skipped);
   return skipped;
 }
 
@@ -560,7 +562,7 @@ EnumerateListObjectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
         }
       });
       auto const skipped = skipElement(skip);
-      // the call to skipArrayElement has advanced the input position already
+      // the call to skipElement has advanced the input position already
       call.didSkip(skipped);
     }
 

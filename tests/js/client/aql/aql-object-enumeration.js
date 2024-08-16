@@ -36,36 +36,54 @@ const edgeColl = "edgeColl";
 
 function enumerateObjectTestSuite() {
 
-  function checkPlan(plan, isOptimized) {
+  function checkPlan(plan, isOptimized = true) {
     const nodes = plan.nodes;
 
     // get the EnumerateListNode
     const enumerate = nodes.filter(x => x.type === "EnumerateListNode");
     assertEqual(enumerate.length, 1);
-    // check that the mode is set to object
-    assertEqual(enumerate[0].mode, "object");
+
 
     if (isOptimized) {
+      // check that the mode is set to object
+      assertEqual(enumerate[0].mode, "object");
       // test that the optimizer rule replace-entries-with-object-iteration triggered
       assertTrue(plan.rules.includes("replace-entries-with-object-iteration"));
+    } else {
+      assertEqual(enumerate[0].mode, undefined);
     }
   };
 
-  function queryDocuments(coll, isOptimized = true) {
+  function queryDocuments(coll, query, isOptimized = true) {
+    let rules = {optimizer: {rules: ["+replace-entries-with-object-iteration"]}};
+    if (!isOptimized) {
+      rules = {optimizer: {rules: ["-replace-entries-with-object-iteration"]}};
+    }
+    const stmt = db._createStatement({query: query, bindVars: null, options: rules});
+    checkPlan(stmt.explain().plan, isOptimized);
+
+    return stmt.execute().toArray();
+  }
+
+  function queryDocumentsWithLimit(coll, isOptimized = true) {
+    const query = `
+    FOR doc IN ${coll}
+      FOR [key, value] IN ENTRIES(doc)
+      LIMIT 12, 40
+      RETURN [key, value]
+    `;
+
+    return queryDocuments(coll, query, isOptimized);
+  }
+
+  function queryDocumentsNoLimit(coll, isOptimized = true) {
     const query = `
     FOR doc IN ${coll}
       FOR [key, value] IN ENTRIES(doc)
       RETURN [key, value]
     `;
 
-    let rules = {optimizer: {rules: ["+replace-entries-with-object-iteration"]}};
-    if (!isOptimized) {
-      rules = {optimizer: {rules: ["-replace-entries-with-object-iteration"]}};
-    }
-    const stmt = db._createStatement(query, {}, rules);
-    checkPlan(stmt.explain().plan, isOptimized);
-
-    return stmt.execute().toArray();
+    return queryDocuments(coll, query, isOptimized);
   }
 
   return {
@@ -99,20 +117,12 @@ function enumerateObjectTestSuite() {
           RETURN [key, value]
       `;
 
-      const stmt = db._createStatement({query});
+      const stmt = db._createStatement({query: query, bindVars: null, options: null});
       checkPlan(stmt.explain().plan);
     },
 
-    testOutput1 : function() {
-
-
-      const query = `
-        FOR doc IN C
-          FOR [key, value] IN ENTRIES(doc)
-          RETURN [key, value]
-      `;
-
-      let actual = queryDocuments(docCollection);
+    testOutputDocumentCollection : function() {
+      let actual = queryDocumentsNoLimit(docCollection);
 
       // Check that system fields are present
       let systemFields = actual.filter((e) => ["_key", "_rev", "_id"].includes(e[0]));
@@ -139,9 +149,8 @@ function enumerateObjectTestSuite() {
       assertEqual(actual, expected);
     },
 
-    testOutput2 : function() {
-      let actual = queryDocuments(edgeColl);
-
+    testOutputEdgeCollection : function() {
+      let actual = queryDocumentsNoLimit(edgeColl);
       // Check that system fields are present
       let systemFields = actual.filter((e) => ["_key", "_rev", "_id", "_from", "_to"].includes(e[0]));
       assertEqual(systemFields.length, 5 * 3); // 5 system fields * 3 documents in collection
@@ -156,7 +165,30 @@ function enumerateObjectTestSuite() {
         {"c": 3}
       ];
       assertEqual(actual, expected);
+    },
+
+    testOutputDocumentCollectionWithLimit : function() {
+      let actual = queryDocumentsWithLimit(docCollection);
+      
+      // Check that system fields are present
+      let systemFields = actual.filter((e) => ["_key", "_rev", "_id"].includes(e[0]));
+      assertEqual(systemFields.length, 3 * 3); // 3 system fields * 3 non-skipped documents in collection
+      actual = actual.filter((e) => !["_key", "_rev", "_id"].includes(e[0])).flat();
+      let expected = [
+        "key4", 
+        "e", 
+        "key5", 
+        "f", 
+        "key6", 
+        [ 
+          1, 
+          2, 
+          3
+        ] 
+      ];
+      assertEqual(actual, expected);
     }
+
   };
 }
 
