@@ -82,7 +82,8 @@ target_link_libraries(arango_rocksdb
   boost_boost
   rocksdb
   rocksdb_interface
-  snappy)
+  snappy
+  faiss)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})

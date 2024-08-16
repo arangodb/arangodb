@@ -315,6 +315,19 @@ add_subdirectory(taocpp-json)
 add_subdirectory(json-schema-validation)
 
 ################################################################################
+## faiss
+################################################################################
+
+find_package(Threads REQUIRED)
+find_package(OpenMP REQUIRED)
+find_package(ZLIB REQUIRED)
+
+set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
+set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
+set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
+add_subdirectory(faiss)
+
+################################################################################
 ## tzdata
 ################################################################################
 
