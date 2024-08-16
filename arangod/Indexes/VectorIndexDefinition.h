@@ -62,14 +62,13 @@ inline auto inspect(Inspector& f, SimilarityMetric& x) {
                                  SimilarityMetric::kCosine, "cosine");
 }
 
+// TODO Extract Specific vector index params from general vector definition
 struct VectorIndexDefinition {
   std::size_t dimensions;
   double min;
   double max;
   SimilarityMetric metric;
-  std::size_t Kparameter;
-  std::size_t Lparameter;
-  std::vector<VectorHashFunction> randomFunctions;
+  std::int64_t nLists;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, VectorIndexDefinition& x) {
@@ -77,25 +76,13 @@ struct VectorIndexDefinition {
         .fields(
             f.field("dimensions", x.dimensions), f.field("min", x.min),
             f.field("metric", x.metric).fallback(SimilarityMetric::kEuclidian),
-            f.field("max", x.max), f.field("Kparameter", x.Kparameter),
-            f.field("Lparameter", x.Lparameter),
-            f.field("randomFunctions", x.randomFunctions))
+            f.field("max", x.max), f.field("nLists", x.nLists))
         .invariant([](VectorIndexDefinition& x) -> inspection::Status {
           if (x.dimensions < 1) {
             return {"Dimensions must be greater then 0!"};
           }
-          if (x.Kparameter < 1) {
-            return {"K parameter must be greater then 0!"};
-          }
-          if (x.Lparameter < 1 || x.Lparameter >= 256) {
-            return {"L parameter must be greater then 0 and lower then 256!"};
-          }
           if (x.min > x.max) {
             return {"Min cannot be greater then max!"};
-          }
-          if (x.randomFunctions.size() != x.Kparameter * x.Lparameter) {
-            return fmt::format("Number of `randomFunctions` must be equal {}!",
-                               x.Kparameter * x.Lparameter);
           }
           return inspection::Status::Success{};
         });
