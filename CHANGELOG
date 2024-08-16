@@ -1,5 +1,5 @@
-devel
------
+3.12.2 (XXXX-XX-XX)
+-------------------
 
 * FE-461: fix JSON/table detection, disable CSV download when not a table.
 
