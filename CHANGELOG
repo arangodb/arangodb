@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-461: fix JSON/table detection, disable CSV download when not a table.
+
 * FE-442: fix user avatar on user table.
 
 * FE-453: Upgrade arangojs version used in web UI.
