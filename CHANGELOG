@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-442: fix user avatar on user table.
+
 * FE-453: Upgrade arangojs version used in web UI.
 
 * FE-460: Query editor UI - fix buttons overlap when 'Options' tab is open.
