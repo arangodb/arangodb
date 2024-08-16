@@ -155,7 +155,8 @@ void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
                                            byte_string_view value,
                                            LocalDocumentId documentId) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
-  size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t);
+  size_t keyLength =
+      sizeof(uint64_t) + value.size() + sizeof(LocalDocumentId::BaseType);
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
@@ -167,15 +168,32 @@ void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
-                                           byte_string_view value) {
+                                           std::size_t listNumber) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
-  size_t keyLength = sizeof(uint64_t) + value.size();
+  // Key contains: indexId(uint64_t) + listNumber(size_t)
+  size_t keyLength = sizeof(uint64_t) + sizeof(std::size_t);
   _buffer->clear();
   _buffer->reserve(keyLength);
+
   uint64ToPersistent(*_buffer, indexId);
-  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
-                             value.size()};
-  _buffer->append(sv.data(), sv.size());
+  uint64ToPersistent(*_buffer, listNumber);
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
+                                           std::size_t listNumber,
+                                           LocalDocumentId documentId) {
+  _type = RocksDBEntryType::VectorVPackIndexValue;
+  // Key contains: indexId(uint64_t) + listNumber(size_t) +
+  // containsLocalDocumentId()
+  size_t keyLength = sizeof(uint64_t) + sizeof(std::size_t) +
+                     sizeof(LocalDocumentId::BaseType);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+
+  uint64ToPersistent(*_buffer, indexId);
+  uint64ToPersistent(*_buffer, listNumber);
+  uint64ToPersistent(*_buffer, documentId.id());
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 

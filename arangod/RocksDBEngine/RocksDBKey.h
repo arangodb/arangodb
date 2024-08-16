@@ -201,6 +201,11 @@ class RocksDBKey {
 
   void constructVectorIndexValue(uint64_t objectId, byte_string_view value);
 
+  void constructVectorIndexValue(uint64_t indexId, std::size_t listNumber);
+
+  void constructVectorIndexValue(uint64_t indexId, std::size_t listNumber,
+                                 LocalDocumentId documentId);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for revision tree for a collection
   //////////////////////////////////////////////////////////////////////////////
