@@ -796,7 +796,7 @@ auto ensureIndexCoordinatorReplication2Inner(
   VPackSlice indexes = collectionFromTarget.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
-    if (arangodb::Index::Compare(engine, index, other,
+    if (arangodb::Index::compare(engine, index, other,
                                  collection.vocbase().name())) {
       VPackBuilder resultBuilder;
       {  // found an existing index... Copy over all elements in slice.
@@ -807,7 +807,7 @@ auto ensureIndexCoordinatorReplication2Inner(
       return resultBuilder;
     }
 
-    if (arangodb::Index::CompareIdentifiers(index, other)) {
+    if (arangodb::Index::compareIdentifiers(index, other)) {
       // found an existing index with a same identifier (i.e. name)
       // but different definition, throw an error
       return Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
@@ -1003,7 +1003,7 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
   VPackSlice indexes = collectionFromPlan.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
-    if (arangodb::Index::Compare(engine, slice, other,
+    if (arangodb::Index::compare(engine, slice, other,
                                  collection.vocbase().name())) {
       {  // found an existing index... Copy over all elements in slice.
         VPackObjectBuilder b(&resultBuilder);
@@ -1013,7 +1013,7 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
       return Result(TRI_ERROR_NO_ERROR);
     }
 
-    if (arangodb::Index::CompareIdentifiers(slice, other)) {
+    if (arangodb::Index::compareIdentifiers(slice, other)) {
       // found an existing index with a same identifier (i.e. name)
       // but different definition, throw an error
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

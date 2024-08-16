@@ -1,19 +1,17 @@
 import { mutate } from "swr";
-import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { getCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 
 export const useDeleteView = ({ name }: { name: string }) => {
   const handleDelete = async () => {
     try {
       const { encoded: encodedViewName } = encodeHelper(name);
-      const result = await getApiRouteForCurrentDB().delete(
-        `/view/${encodedViewName}`
-      );
+      const result = await getCurrentDB().view(encodedViewName).drop();
 
-      if (result.body.error) {
+      if (!result) {
         window.arangoHelper.arangoError(
           "Failure",
-          `Got unexpected server response: ${result.body.errorMessage}`
+          `Failed to delete View: ${name}`
         );
       } else {
         mutate("/view");

@@ -1,21 +1,22 @@
 import { useDisclosure } from "@chakra-ui/react";
+import { Index } from "arangojs/indexes";
 import React, { createContext, ReactNode, useContext, useState } from "react";
 import { useFetchCollectionFigures } from "../figures/useFetchCollectionFigures";
 import { CollectionIndex } from "./CollectionIndex.types";
-import {
-  IndexWithFigures,
-  useFetchCollectionIndices
-} from "./useFetchCollectionIndices";
+import { useFetchCollectionIndices } from "./useFetchCollectionIndices";
 import { usePermissionsCheck } from "./usePermissionsCheck";
 import { useSetupIndicesViewBreadcrumbs } from "./useSetupIndicesViewBreadcrumbs";
 import { useSetupNav } from "./useSetupNav";
 import { useSupportedIndexTypes } from "./useSupportedIndexTypes";
 
 type CollectionIndicesContextType = {
-  collectionIndices: IndexWithFigures[] | undefined;
+  collectionIndices: Index[] | undefined;
   collectionName: string;
   collectionId: string;
-  indexTypeOptions: { value: CollectionIndex["type"]; label: string }[];
+  indexTypeOptions: {
+    value: CollectionIndex["type"] | "fulltext";
+    label: string;
+  }[];
   onOpenForm: () => void;
   onCloseForm: () => void;
   isFormOpen: boolean;
