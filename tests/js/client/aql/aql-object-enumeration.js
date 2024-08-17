@@ -55,11 +55,11 @@ function enumerateObjectTestSuite() {
   };
 
   function queryDocuments(coll, query, isOptimized = true) {
-    let rules = {optimizer: {rules: ["+replace-entries-with-object-iteration"]}};
+    let options = {fullCount: true, optimizer: {rules: ["+replace-entries-with-object-iteration"]}};
     if (!isOptimized) {
-      rules = {optimizer: {rules: ["-replace-entries-with-object-iteration"]}};
+      options["optimizer"]["rules"] = ["-replace-entries-with-object-iteration"];
     }
-    const stmt = db._createStatement({query: query, bindVars: null, options: rules});
+    const stmt = db._createStatement({query: query, bindVars: null, options: options});
     checkPlan(stmt.explain().plan, isOptimized);
 
     return stmt.execute().toArray();
@@ -69,6 +69,7 @@ function enumerateObjectTestSuite() {
     const query = `
     FOR doc IN ${coll}
       FOR [key, value] IN ENTRIES(doc)
+      SORT doc._key, key
       LIMIT 12, 40
       RETURN [key, value]
     `;
@@ -80,6 +81,7 @@ function enumerateObjectTestSuite() {
     const query = `
     FOR doc IN ${coll}
       FOR [key, value] IN ENTRIES(doc)
+      SORT doc._key, key
       RETURN [key, value]
     `;
 
