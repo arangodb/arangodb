@@ -31,6 +31,7 @@ const arangodb = require('@arangodb');
 const console = require('console');
 const db = arangodb.db;
 const _ = require('lodash');
+const isCov = require("@arangodb/test-helper").versionHas('coverage');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
@@ -39,8 +40,8 @@ const _ = require('lodash');
 function aqlKillSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
-
-  function tryForUntil({sleepFor = 0.001, stopAfter = 30, until}) {
+  const defaultStop = isCov ? 120:30;
+  function tryForUntil({sleepFor = 0.001, stopAfter = defaultStop, until}) {
     // Remember that Date.now() returns ms, but internal.wait() takes s.
     // Units <3
     for (
@@ -109,10 +110,10 @@ function aqlKillSuite () {
     assertTrue(queryId > 0);
 
     const killResult = arango.DELETE("/_api/query/" + queryId);
-    assertEqual(killResult.code, 200);
+    assertEqual(killResult.code, 200, JSON.stringify(result));
 
     const putResult = tryForUntil({until: jobGone(jobId)});
-    assertEqual(410, putResult.code);
+    assertEqual(410, putResult.code, JSON.stringify(putResult));
   }
 
   function runCancelQueryTest(query) {
@@ -129,7 +130,7 @@ function aqlKillSuite () {
     // cancel the async job
 
     const result = arango.PUT_RAW("/_api/job/" + jobId + "/cancel", {});
-    assertEqual(result.code, 200);
+    assertEqual(result.code, 200, JSON.stringify(result));
 
     // make sure the query is no longer in the list of running queries
 
