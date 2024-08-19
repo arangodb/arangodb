@@ -2927,9 +2927,9 @@ RestAdminClusterHandler::handleVPackSortMigration(
   if (!((request()->requestType() == rest::RequestType::GET &&
          subCommand == VPackSortMigrationCheck) ||
         (request()->requestType() == rest::RequestType::PUT &&
-         subCommand == VPackSortMigrationMigrate)) ||
-      (request()->requestType() == rest::RequestType::GET &&
-       subCommand == VPackSortMigrationStatus)) {
+         subCommand == VPackSortMigrationMigrate) ||
+        (request()->requestType() == rest::RequestType::GET &&
+         subCommand == VPackSortMigrationStatus))) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     co_return;
@@ -2955,9 +2955,9 @@ RestAdminClusterHandler::handleVPackSortMigration(
     }
   } else {
     // Coordinators from here:
-    RestVerb verb = request()->requestType() == rest::RequestType::GET
-                        ? fuerte::RestVerb::Get
-                        : fuerte::RestVert::PUT;
+    fuerte::RestVerb verb = request()->requestType() == rest::RequestType::GET
+                                ? fuerte::RestVerb::Get
+                                : fuerte::RestVerb::Put;
     res = co_await ::fanOutRequests(_vocbase, verb, subCommand, result);
   }
   if (res.fail()) {
