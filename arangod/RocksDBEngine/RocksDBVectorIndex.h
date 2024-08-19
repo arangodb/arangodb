@@ -63,7 +63,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return Index::emptyCoveredFields;
   }
 
-  VectorIndexDefinition const& getDefinition() const noexcept {
+  FullVectorIndexDefinition const& getDefinition() const noexcept {
     return _definition;
   }
 
@@ -96,7 +96,13 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   template<typename F>
   Result processDocument(velocypack::Slice doc, LocalDocumentId id, F func);
 
-  VectorIndexDefinition _definition;
+  FullVectorIndexDefinition _definition;
+  faiss::IndexFlatL2 _quantizer;
+  faiss::IndexIVFFlat _flatIndex;
+  RocksDBInvertedLists _ril;
+  std::vector<float> _trainingData;
+  std::vector<faiss::idx_t> _trainingDataIds;
+  std::size_t _trainedCount;
 };
 
 }  // namespace arangodb

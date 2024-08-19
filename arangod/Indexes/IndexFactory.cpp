@@ -902,7 +902,7 @@ Result IndexFactory::enhanceJsonIndexVector(
     arangodb::velocypack::Slice definition,
     arangodb::velocypack::Builder& builder, bool create) {
   auto const paramsSlice = definition.get("params");
-  VectorIndexDefinition vectorIndexDefinition;
+  UserVectorIndexDefinition vectorIndexDefinition;
   if (auto const res =
           velocypack::deserializeWithStatus(paramsSlice, vectorIndexDefinition);
       !res.ok()) {
