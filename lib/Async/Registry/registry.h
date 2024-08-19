@@ -1,7 +1,10 @@
 #pragma once
 
+#include "Async/Registry/Metrics.h"
 #include "thread_registry.h"
 
+#include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace arangodb::async_registry {
@@ -21,7 +24,7 @@ struct Registry {
    */
   auto add_thread() -> std::shared_ptr<ThreadRegistry> {
     auto guard = std::lock_guard(mutex);
-    registries.push_back(std::make_shared<ThreadRegistry>());
+    registries.push_back(std::make_shared<ThreadRegistry>(_metrics));
     return registries.back();
   }
 
@@ -52,9 +55,14 @@ struct Registry {
     }
   }
 
+  auto set_metrics(std::shared_ptr<const Metrics> metrics) -> void {
+    _metrics = metrics;
+  }
+
  private:
   std::vector<std::shared_ptr<ThreadRegistry>> registries;
   std::mutex mutex;
+  std::shared_ptr<const Metrics> _metrics = nullptr;
 };
 
 }  // namespace arangodb::async_registry

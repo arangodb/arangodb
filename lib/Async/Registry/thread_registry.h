@@ -1,9 +1,12 @@
 #pragma once
 
 #include "Assertions/ProdAssert.h"
+#include "Metrics/GaugeCounterGuard.h"
 #include "promise.h"
+#include "Metrics.h"
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <thread>
@@ -23,7 +26,10 @@ namespace arangodb::async_registry {
    This registry destroys itself when its ref counter is decremented to 0.
  */
 struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
-  ThreadRegistry() = default;
+  ThreadRegistry(std::shared_ptr<const Metrics> metrics)
+      : thread_registries_count{*metrics->coroutine_thread_registries, 1},
+        running_coroutines{metrics->running_coroutines},
+        coroutines_ready_for_deletion{metrics->coroutines_ready_for_deletion} {}
 
   ~ThreadRegistry() noexcept { garbage_collect(); }
 
@@ -44,6 +50,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
     }
     // (1) - this store synchronizes with load in (2)
     promise_head.store(promise, std::memory_order_release);
+    running_coroutines->fetch_add(1);
   }
 
   /**
@@ -81,6 +88,8 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
                                                  std::memory_order_acquire));
     // decrement the registries ref-count
     promise->registry.reset();
+    running_coroutines->fetch_sub(1);
+    coroutines_ready_for_deletion->fetch_add(1);
   }
 
   /**
@@ -101,6 +110,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
       next = next->next_to_free;
       remove(current);
       current->destroy();
+      coroutines_ready_for_deletion->fetch_sub(1);
     }
   }
 
@@ -109,6 +119,9 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   std::atomic<PromiseInList*> free_head = nullptr;
   std::atomic<PromiseInList*> promise_head = nullptr;
   std::mutex mutex;
+  metrics::GaugeCounterGuard<uint64_t> thread_registries_count;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> running_coroutines;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> coroutines_ready_for_deletion;
 
   /**
      Removes the promise from the registry.
