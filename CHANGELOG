@@ -1,6 +1,10 @@
 3.12.2 (XXXX-XX-XX)
 -------------------
 
+* Add API GET /_admin/cluster/vpackSortMigration/status to query the status
+  of the vpack sorting migration on dbservers, single servers and
+  coordinators.
+
 * Use default language en_US (instead of en_US_POSIX as before in 3.12), if 
   no LANGUAGE file is found and none of the locale environment variables LANG,
   LANGUAGE, LC_ALL and LC_COLLATE are set. This ensures more compatibility
