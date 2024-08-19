@@ -144,8 +144,8 @@ function legacySortingTestSuite() {
         let oneResult = res.result[dbserver];
         assertFalse(oneResult.error);
         assertEqual(200, oneResult.code);
-        assertEqual("LEGACY", oneResult.next);
-        assertEqual("LEGACY", oneResult.current);
+        assertEqual("LEGACY", oneResult.result.next);
+        assertEqual("LEGACY", oneResult.result.current);
       }
 
       let c = db._collection(cn);
@@ -241,8 +241,8 @@ function legacySortingTestSuite() {
         let oneResult = res.result[dbserver];
         assertFalse(oneResult.error);
         assertEqual(200, oneResult.code);
-        assertEqual("CORRECT", oneResult.next);
-        assertEqual("LEGACY", oneResult.current);
+        assertEqual("CORRECT", oneResult.result.next);
+        assertEqual("LEGACY", oneResult.result.current);
       }
     }
   };
