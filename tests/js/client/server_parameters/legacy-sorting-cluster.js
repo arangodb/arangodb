@@ -135,6 +135,19 @@ function legacySortingTestSuite() {
       poisonCollection("_system", cn, "a", "b");
       poisonCollection(dn, cn, "a", "b");
 
+      // Check info API:
+      let res = arango.GET("/_admin/cluster/vpackSortMigration/status");
+      assertFalse(res.error);
+      assertEqual(200, res.code);
+      assertEqual("object", typeof(res.result));
+      for (let dbserver in res.result) {
+        let oneResult = res.result[dbserver];
+        assertFalse(oneResult.error);
+        assertEqual(200, oneResult.code);
+        assertEqual("LEGACY", oneResult.next);
+        assertEqual("LEGACY", oneResult.current);
+      }
+
       let c = db._collection(cn);
       let indexes = c.getIndexes();
       let names = indexes.map(x => x.name);
@@ -200,17 +213,37 @@ function legacySortingTestSuite() {
         return true;
       };
       let count = 0;
-      while (count < 60) {
+      while (true) {
         r = arango.GET("/_admin/cluster/vpackSortMigration/check");
         let res = tester(r);
         if (res === true) {
-          return;
+          break;
         }
         console.error("Bad result:", JSON.stringify(r));
         require("internal").wait(1.0);
         count += 1;
+        if (count > 60) {
+          assertTrue(false, "Test not good after 60s.");
+        }
       }
-      assertTrue(false, "Test not good after 60s.");
+
+      // Migrate:
+      res = arango.PUT("/_admin/cluster/vpackSortMigration/migrate", {});
+      assertFalse(res.error);
+      assertEqual(200, res.code);
+
+      // Check info API:
+      res = arango.GET("/_admin/cluster/vpackSortMigration/status");
+      assertFalse(res.error);
+      assertEqual(200, res.code);
+      assertEqual("object", typeof(res.result));
+      for (let dbserver in res.result) {
+        let oneResult = res.result[dbserver];
+        assertFalse(oneResult.error);
+        assertEqual(200, oneResult.code);
+        assertEqual("CORRECT", oneResult.next);
+        assertEqual("LEGACY", oneResult.current);
+      }
     }
   };
 }
