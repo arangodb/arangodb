@@ -22,17 +22,10 @@ namespace arangodb::async_registry {
 
    This registry destroys itself when its ref counter is decremented to 0.
  */
-struct ThreadRegistry {
-  static auto make() -> ThreadRegistry* { return new ThreadRegistry{}; }
+struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
+  ThreadRegistry() = default;
 
-  auto decrement_ref_count() noexcept {
-    auto old = ref_count.fetch_sub(1);
-    if (old == 1) {
-      garbage_collect();
-      delete this;
-    }
-  }
-  auto increment_ref_count() noexcept { ref_count.fetch_add(1); }
+  ~ThreadRegistry() noexcept { garbage_collect(); }
 
   /**
      Adds a promise on the registry's thread to the registry.
@@ -45,13 +38,12 @@ struct ThreadRegistry {
     ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
     auto current_head = promise_head.load(std::memory_order_relaxed);
     promise->next = current_head;
-    promise->registry = this;
+    promise->registry = shared_from_this();
     if (current_head != nullptr) {
       current_head->previous = promise;
     }
     // (1) - this store synchronizes with load in (2)
     promise_head.store(promise, std::memory_order_release);
-    increment_ref_count();
   }
 
   /**
@@ -79,7 +71,7 @@ struct ThreadRegistry {
    */
   auto mark_for_deletion(PromiseInList* promise) noexcept -> void {
     // makes sure that promise is really in this list
-    ADB_PROD_ASSERT(promise->registry == this);
+    ADB_PROD_ASSERT(promise->registry.get() == this);
     auto current_head = free_head.load(std::memory_order_relaxed);
     do {
       promise->next_to_free = current_head;
@@ -87,7 +79,8 @@ struct ThreadRegistry {
     } while (not free_head.compare_exchange_weak(current_head, promise,
                                                  std::memory_order_release,
                                                  std::memory_order_acquire));
-    decrement_ref_count();
+    // decrement the registries ref-count
+    promise->registry.reset();
   }
 
   /**
@@ -97,7 +90,7 @@ struct ThreadRegistry {
      registry, crashes otheriwse.
    */
   auto garbage_collect() noexcept -> void {
-    ADB_PROD_ASSERT(ref_count == 0 ||
+    ADB_PROD_ASSERT(weak_from_this().expired() ||
                     std::this_thread::get_id() == owning_thread);
     // (5) - this exchange synchronizes with compare_exchange_weak in (4)
     PromiseInList *current,
@@ -115,10 +108,7 @@ struct ThreadRegistry {
   const std::thread::id owning_thread = std::this_thread::get_id();
   std::atomic<PromiseInList*> free_head = nullptr;
   std::atomic<PromiseInList*> promise_head = nullptr;
-  std::atomic<size_t> ref_count = 0;
   std::mutex mutex;
-
-  ThreadRegistry() = default;
 
   /**
      Removes the promise from the registry.

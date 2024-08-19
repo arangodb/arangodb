@@ -3,7 +3,7 @@
 #include <iostream>
 #include <source_location>
 #include <string>
-#include <atomic>
+#include <memory>
 
 namespace arangodb::async_registry {
 
@@ -22,7 +22,7 @@ struct PromiseInList : Observables {
   virtual ~PromiseInList() = default;
 
   // identifies the promise list it belongs to
-  ThreadRegistry* registry = nullptr;
+  std::shared_ptr<ThreadRegistry> registry = nullptr;
   PromiseInList* next = nullptr;
   // only needed to remove an item
   PromiseInList* previous = nullptr;

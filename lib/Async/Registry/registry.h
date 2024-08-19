@@ -19,21 +19,18 @@ struct Registry {
      Each thread needs to call this once to be able to add promises to the
      coroutine registry.
    */
-  auto add_thread() -> ThreadRegistry* {
+  auto add_thread() -> std::shared_ptr<ThreadRegistry> {
     auto guard = std::lock_guard(mutex);
-    registries.push_back(ThreadRegistry::make());
-    auto registry = registries.back();
-    registry->increment_ref_count();
-    return registry;
+    registries.push_back(std::make_shared<ThreadRegistry>());
+    return registries.back();
   }
 
   /**
      Removes a coroutine thread registry from this registry.
    */
-  auto remove_thread(ThreadRegistry* registry) -> void {
+  auto remove_thread(std::shared_ptr<ThreadRegistry> registry) -> void {
     auto guard = std::lock_guard(mutex);
     std::erase(registries, registry);
-    registry->decrement_ref_count();
   }
 
   /**
@@ -56,7 +53,7 @@ struct Registry {
   }
 
  private:
-  std::vector<ThreadRegistry*> registries;
+  std::vector<std::shared_ptr<ThreadRegistry>> registries;
   std::mutex mutex;
 };
 
