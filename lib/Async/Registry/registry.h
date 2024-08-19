@@ -55,6 +55,11 @@ struct Registry {
     }
   }
 
+  /**
+     Exchange metrics.
+
+     New and existing threads will use this new metrics objects.
+   */
   auto set_metrics(std::shared_ptr<const Metrics> metrics) -> void {
     _metrics = metrics;
   }
