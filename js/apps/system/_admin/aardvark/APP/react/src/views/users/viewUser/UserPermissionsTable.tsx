@@ -1,5 +1,5 @@
 import { Stack } from "@chakra-ui/react";
-import React from "react";
+import React, { useEffect } from "react";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { TableControl } from "../../../components/table/TableControl";
 import {
@@ -7,6 +7,7 @@ import {
   DatabaseTableType
 } from "./CollectionsPermissionsTable";
 import { SystemDatabaseWarningModal } from "./SystemDatabaseWarningModal";
+import { useUsername } from "./useFetchDatabasePermissions";
 import {
   TABLE_COLUMNS,
   UserPermissionsContextProvider,
@@ -23,6 +24,10 @@ export const UserPermissionsTable = () => {
 
 const UserPermissionsTableInner = () => {
   const { tableInstance } = useUserPermissionsContext();
+  const { username } = useUsername();
+  useEffect(() => {
+    window.arangoHelper.buildUserSubNav(username, "Permissions");
+  }, [username]);
 
   return (
     <Stack padding="4">

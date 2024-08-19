@@ -2315,6 +2315,7 @@ int fuerteToArangoErrorCode(fu::Error ec) {
   ErrorCode errorNumber = TRI_ERROR_NO_ERROR;
   switch (ec) {
     case fu::Error::CouldNotConnect:
+    case fu::Error::CloseRequested:
     case fu::Error::ConnectionClosed:
       errorNumber = TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT;
       break;
@@ -2327,6 +2328,13 @@ int fuerteToArangoErrorCode(fu::Error ec) {
       errorNumber = TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE;
       break;
 
+    case fu::Error::RequestTimeout:
+      errorNumber = TRI_ERROR_HTTP_REQUEST_TIMEOUT;
+      break;
+
+    case fu::Error::QueueCapacityExceeded:
+    case fu::Error::ConnectionCanceled:
+    case fu::Error::ProtocolError:
     default:
       errorNumber = TRI_ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR;
       break;

@@ -23,6 +23,7 @@
 #include "Appenders.h"
 
 #include "Assertions/Assert.h"
+#include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -30,11 +31,15 @@
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderStdStream.h"
 #include "Logger/LogAppenderSyslog.h"
+#include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogMessage.h"
+#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "Logger/Topics.h"
 
 #include <absl/strings/str_cat.h>
+#include <vector>
 
 namespace arangodb::logger {
 
@@ -53,7 +58,9 @@ void Appenders::addAppender(LogGroup const& logGroup,
                             std::string const& definition) {
   auto res = parseDefinition(definition);
   if (res.fail()) {
-    LOG_TOPIC("658e0", ERR, Logger::FIXME) << res.errorMessage();
+    LOG_TOPIC("658e0", ERR, Logger::FIXME)
+        << "Failed to configure log appender " << definition << " - "
+        << res.errorMessage();
     return;
   }
 
@@ -81,6 +88,9 @@ void Appenders::addAppender(LogGroup const& logGroup,
       return;
     }
     definitionsMap.emplace(key, appender);
+    for (auto& [topic, level] : config.levels) {
+      appender->setLogLevel(*topic, level);
+    }
   }
 
   TRI_ASSERT(appender != nullptr);
@@ -217,12 +227,26 @@ void Appenders::reopen() {
   LogAppenderFileFactory::reopenAll();
 }
 
-ResultT<Appenders::AppenderConfig> Appenders::parseDefinition(
-    std::string const& definition) {
+auto Appenders::parseDefinition(std::string definition)
+    -> ResultT<Appenders::AppenderConfig> {
   AppenderConfig result;
 
+  std::vector<std::string> v = basics::StringUtils::split(definition, ';');
+  if (v.size() == 2) {
+    definition = v[0];
+    auto res = parseLogLevels(v[1]);
+    if (res.fail()) {
+      return res.result();
+    }
+    result.levels = res.get();
+  } else if (v.size() > 2) {
+    return Result(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("strange definition '", definition, "' ignored"));
+  }
+
   // split into parts and do some basic validation
-  std::vector<std::string> v = basics::StringUtils::split(definition, '=');
+  v = basics::StringUtils::split(definition, '=');
   std::string topicName;
 
   if (v.size() == 1) {
@@ -279,6 +303,42 @@ ResultT<Appenders::AppenderConfig> Appenders::parseDefinition(
   return result;
 }
 
+auto Appenders::parseLogLevels(std::string const& levels)
+    -> ResultT<std::unordered_map<LogTopic*, LogLevel>> {
+  std::unordered_map<LogTopic*, LogLevel> result;
+  auto v = basics::StringUtils::split(levels, ',');
+  for (auto const& s : v) {
+    auto p = basics::StringUtils::split(s, '=');
+    if (p.size() != 2) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("strange level definition '", s, "'"));
+    }
+    LogLevel level;
+    bool isValid = Logger::translateLogLevel(p[1], false, level);
+    if (!isValid) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("strange log level '", p[1], "'"));
+    }
+
+    if (p[0] == LogTopic::ALL) {
+      for (std::size_t i = 0; i < kNumTopics; ++i) {
+        auto* topic = LogTopic::topicForId(i);
+        if (topic != nullptr) {
+          result[topic] = level;
+        }
+      }
+    } else {
+      auto* topic = LogTopic::lookup(p[0]);
+      if (topic == nullptr) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      absl::StrCat("unknown topic '", p[0], "'"));
+      }
+      result[topic] = level;
+    }
+  }
+  return result;
+}
+
 bool Appenders::haveAppenders(LogGroup const& logGroup, size_t topicId) {
   // It might be preferable if we could avoid the lock here, but ATM this is
   // not possible. If this actually causes performance issues we have to think
@@ -301,6 +361,37 @@ bool Appenders::haveAppenders(LogGroup const& logGroup, size_t topicId) {
     // This should never happen, however if it does we should not crash
     // but we also cannot log anything, as we are the logger.
     return false;
+  }
+}
+
+auto Appenders::getAppender(LogGroup const& logGroup,
+                            std::string const& definition)
+    -> std::shared_ptr<LogAppender> {
+  READ_LOCKER(guard, _appendersLock);
+  auto& group = _groups.at(logGroup.id());
+  auto it = group.definition2appenders.find(definition);
+  if (it != group.definition2appenders.end()) {
+    return it->second;
+  }
+  return nullptr;
+}
+
+auto Appenders::getAppenders(LogGroup const& logGroup)
+    -> std::unordered_map<std::string, std::shared_ptr<LogAppender>> {
+  READ_LOCKER(guard, _appendersLock);
+  auto& group = _groups.at(logGroup.id());
+  return group.definition2appenders;
+}
+
+void Appenders::foreach (std::function<void(LogAppender&)> const& f) {
+  READ_LOCKER(guard, _appendersLock);
+  for (auto& group : _groups) {
+    for (auto& v : group.globalAppenders) {
+      f(*v);
+    }
+    for (auto& v : group.definition2appenders) {
+      f(*v.second);
+    }
   }
 }
 

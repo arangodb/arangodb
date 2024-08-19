@@ -1,23 +1,16 @@
-import { ArangojsResponse } from "arangojs/lib/request";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
+import { getCurrentDB } from "../../utils/arangoClient";
 import { ViewDescription } from "./View.types";
 
 export interface LockableViewDescription extends ViewDescription {
   isLocked?: boolean;
 }
-interface ListViewsResponse extends ArangojsResponse {
-  body: { result: Array<LockableViewDescription> };
-}
 
 export const useFetchViews = () => {
-  const { data, ...rest } = useSWR<ListViewsResponse>("/view", path => {
-    return getApiRouteForCurrentDB().get(
-      path
-    ) as any as Promise<ListViewsResponse>;
-  });
-  const result = data?.body?.result;
+  const { data: result, ...rest } = useSWR("/view", () =>
+    getCurrentDB().listViews()
+  );
 
   const [views, setViews] = useState<LockableViewDescription[] | undefined>(
     result
