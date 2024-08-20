@@ -360,7 +360,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     print(argv);
   }
   
-  let timeout = (options.isInstrumented) ? 60 * 22 : 60 * 15;
+  let timeout = (options.isInstrumented) ? 60 * 26 : 60 * 15;
   return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
 }
 function rtaWaitShardsInSync(options, instanceManager) {
