@@ -800,6 +800,65 @@ const IndexPrimaryJoinTestSuite = function () {
         assertEqual(second.x, 1);
       });
       assertEqual(qResult.length, 0);
+    },
+    testSimpleUserSample: function() {
+      let userSequence = [
+        {
+          "_key": "31671466",
+          "userKey": "31670337"
+        },
+        {
+          "_key": "31785223",
+          "userKey": "31670337"
+        },
+        {
+          "_key": "31785379",
+          "userKey": "31670337"
+        },
+        {
+          "_key": "32149302",
+          "userKey": "31670337"
+        },
+        {
+          "_key": "32149560",
+          "userKey": "31670337"
+        }
+      ];
+      let users = [
+        {
+          "_key": "31670337",
+          "firstName": "John"
+        },
+        {
+          "_key": "32249974",
+          "firstName": "Elizabeth"
+        },
+        {
+          "_key": "32251928",
+          "firstName": "Jonathan"
+        }
+      ];
+      try {
+        let seq = db._create("userSequences");
+        let user = db._create("users");
+        seq.save(userSequence);
+        user.save(users);
+        seq.ensureIndex({fields: ["_key", "userKey", "name"], type: 'persistent'});
+        let q = (`
+        FOR userSequence IN userSequences
+          FOR user IN users
+            FILTER userSequence._key == "32250146" && user._key == userSequence.userKey
+              RETURN userSequence`);
+        db._explain(q)
+        let res = db._query(q).toArray();
+        print(res)
+        assertEqual(res.length, 0, JSON.stringify(res));
+
+      } finally {
+        db._drop("userSequence");
+        db._drop("user");
+      }
+
     }
   };
 };
