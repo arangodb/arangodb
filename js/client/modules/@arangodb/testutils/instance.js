@@ -375,10 +375,18 @@ class instance {
       }
     }
 
+    let output = this.args.hasOwnProperty('log.output') ? this.args['log.output'] : [];
+    if (typeof output === 'string') {
+      output = [output];
+    }
+
     if (this.options.verbose) {
       this.args['log.level'] = 'debug';
+      output.push('-'); // make sure we always have a stdout appender
     } else if (this.options.noStartStopLogs) {
-      let logs = ['all=error', 'crash=info'];
+      // set the stdout appender to error only
+      output.push('-;all=error');
+      let logs = ['crash=info'];
       if (this.args['log.level'] !== undefined) {
         if (Array.isArray(this.args['log.level'])) {
           logs = logs.concat(this.args['log.level']);
@@ -387,7 +395,10 @@ class instance {
         }
       }
       this.args['log.level'] = logs;
+    } else {
+      output.push('-'); // make sure we always have a stdout appender
     }
+    this.args['log.output'] = output;
     if (this.isAgent()) {
       this.args = Object.assign(this.args, {
         'agency.activate': 'true',

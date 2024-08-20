@@ -1,4 +1,5 @@
 import { Button, Checkbox, HStack, Stack } from "@chakra-ui/react";
+import { aql } from "arangojs";
 import React, { useState } from "react";
 import {
   Modal,
@@ -42,7 +43,10 @@ const useDeleteNodeAction = ({ deleteEdges }: { deleteEdges: boolean }) => {
       const keys = data.keys;
       const dbCollection = db.collection(collection);
       try {
-        await dbCollection.removeByKeys(keys);
+        await db.query(aql`
+          FOR k IN ${keys}
+          REMOVE k IN ${dbCollection}
+        `);
         window.arangoHelper.arangoNotification(
           `The node ${nodeId} was successfully deleted`
         );
