@@ -32,6 +32,7 @@ const jsunity = require('jsunity');
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const arangosh = require('@arangodb/arangosh');
 const request = require('@arangodb/request');
+const isArm = require("@arangodb/test-helper").versionHas('arm');
 
 const internal = require('internal');
 const {
@@ -284,7 +285,7 @@ class agencyMgr {
         this.moreIsAlreadyRunning()) {
       return;
     }
-    let count = 25;
+    let count = isArm ? 50 : 25;
     while (count > 0) {
       let haveConfig = 0;
       let haveLeader = 0;
