@@ -32,7 +32,7 @@ const jsunity = require('jsunity');
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const arangosh = require('@arangodb/arangosh');
 const request = require('@arangodb/request');
-const isArm = require("@arangodb/test-helper").versionHas('arm');
+const isArm = require("@arangodb/test-helper-common").versionHas('arm');
 
 const internal = require('internal');
 const {
