@@ -51,16 +51,15 @@ parameters:
   # these are basically global constants
   build-targets:
     type: string
-    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench arangovpack"
+    default: "arangodb"
+    # The arangodb target consists of arangod and the list of client-tools which already
+    # conditionally contains arangobackup and arangosh, depending on whether we build in
+    # enterprise mode, and whether we build with V8 or not.
+    # This should also improve build times because this way the individual targets can be
+    # built in parallel (a list of individual targets is built serially).
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
-  enterprise-build-targets:
-    type: string
-    default: "arangobackup"
-  v8-build-targets:
-    type: string
-    default: "arangosh"
 
 commands:
   checkout-arangodb:
@@ -320,12 +319,6 @@ jobs:
           name: Build
           command: |
             TARGETS="<< pipeline.parameters.build-targets >>"
-            if [ << parameters.build-v8 >> = true ]; then
-              TARGETS="$TARGETS << pipeline.parameters.v8-build-targets >>"
-            fi
-            if [ << parameters.enterprise >> = true ]; then
-              TARGETS="$TARGETS << pipeline.parameters.enterprise-build-targets >>"
-            fi
             if [ << parameters.build-tests >> = true ]; then
               TARGETS="$TARGETS << pipeline.parameters.test-build-targets >>"
             fi
