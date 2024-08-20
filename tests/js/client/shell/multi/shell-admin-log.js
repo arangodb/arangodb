@@ -99,10 +99,9 @@ function adminLogSuite() {
     testIncreaseLogLevelForAppenderAdjustsGlobalLevel: function () {
       let old = arango.GET("/_admin/log/level?withAppenders=true");
       let res = arango.PUT("/_admin/log/level?withAppenders=true", { appenders: { "-": { queries: "trace" } } });
-      if (res.code !== 400 && res.hasOwnProperty('appenders')) {
-        assertEqual(res.appenders["-"].queries, "TRACE", JSON.stringify(res));
-        assertEqual(res.global.queries, "TRACE", JSON.stringify(res));
-      }
+      assertEqual(res.appenders["-"].queries, "TRACE", JSON.stringify(res));
+      assertEqual(res.global.queries, "TRACE", JSON.stringify(res));
+
       // restore old levels
       arango.PUT("/_admin/log/level?withAppenders=true", old);
     },
@@ -114,13 +113,12 @@ function adminLogSuite() {
       // we first set queries globally to debug (i.e., all appenders), but for the stdout appender we set it to trace.
       // This implicitly also sets the global level to trace.
       let res = arango.PUT("/_admin/log/level?withAppenders=true", { global: { queries: "debug" }, appenders: { "-": { queries: "trace" } } });
-      if (res.code !== 400 && res.hasOwnProperty('appenders')) {
-        assertEqual(res.appenders["-"].queries, "TRACE", JSON.stringify(res));
-        assertEqual(res.global.queries, "TRACE", JSON.stringify(res));
-        res = arango.PUT("/_admin/log/level?withAppenders=true", { appenders: { "-": { queries: "error" } } });
-        assertEqual(res.appenders["-"].queries, "ERROR");
-        assertEqual(res.global.queries, "DEBUG");
-      }
+      assertEqual(res.appenders["-"].queries, "TRACE");
+      assertEqual(res.global.queries, "TRACE");
+      res = arango.PUT("/_admin/log/level?withAppenders=true", { appenders: { "-": { queries: "error" } } });
+      assertEqual(res.appenders["-"].queries, "ERROR");
+      assertEqual(res.global.queries, "DEBUG");
+
       // restore old levels
       arango.PUT("/_admin/log/level?withAppenders=true", old);
     },
