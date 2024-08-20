@@ -110,7 +110,7 @@ function aqlKillSuite () {
     assertTrue(queryId > 0);
 
     const killResult = arango.DELETE("/_api/query/" + queryId);
-    assertEqual(killResult.code, 200, JSON.stringify(result));
+    assertEqual(killResult.code, 200, JSON.stringify(killResult));
 
     const putResult = tryForUntil({until: jobGone(jobId)});
     assertEqual(410, putResult.code, JSON.stringify(putResult));
