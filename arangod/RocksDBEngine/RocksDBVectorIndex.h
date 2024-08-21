@@ -20,11 +20,18 @@
 
 #pragma once
 
+#include <faiss/invlists/InvertedLists.h>
+#include <faiss/IndexFlat.h>
+#include <faiss/IndexIVFFlat.h>
+#include <cstdint>
+
 #include "RocksDBIndex.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "faiss/MetricType.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -34,6 +41,56 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
+
+class RocksDBVectorIndex;
+
+struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
+  RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
+                               std::size_t listNumber, std::size_t codeSize);
+  virtual bool is_available() const override;
+  virtual void next() override;
+  virtual std::pair<std::int64_t, const uint8_t*> get_id_and_codes() override;
+
+ private:
+  RocksDBKey _rocksdbKey;
+  arangodb::RocksDBVectorIndex* _index = nullptr;
+
+  std::unique_ptr<rocksdb::Iterator> _it;
+  std::size_t _listNumber;
+  std::size_t _codeSize;
+  std::vector<uint8_t> _codes;  // buffer for returning codes in next()
+};
+
+struct RocksDBInvertedLists : faiss::InvertedLists {
+  RocksDBInvertedLists(RocksDBVectorIndex* index,
+                       RocksDBMethods* rocksDBMethods,
+                       rocksdb::ColumnFamilyHandle* cf, std::size_t nlist,
+                       size_t codeSize);
+
+  std::size_t list_size(std::size_t listNumber) const override;
+
+  const std::uint8_t* get_codes(std::size_t listNumber) const override;
+
+  const faiss::idx_t* get_ids(std::size_t listNumber) const override;
+
+  size_t add_entries(std::size_t listNumber, std::size_t n_entry,
+                     const faiss::idx_t* ids,
+                     const std::uint8_t* code) override;
+
+  void update_entries(std::size_t listNumber, std::size_t offset,
+                      std::size_t n_entry, const faiss::idx_t* ids,
+                      const std::uint8_t* code) override;
+
+  void resize(std::size_t listNumber, std::size_t new_size) override;
+
+  faiss::InvertedListsIterator* get_iterator(
+      std::size_t listNumber, void* inverted_list_context) const override;
+
+ private:
+  RocksDBVectorIndex* _index;
+  RocksDBMethods* _rocksDBMethods;
+  rocksdb::ColumnFamilyHandle* _cf;
+};
 
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
@@ -52,6 +109,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   char const* typeName() const override { return "rocksdb-vector"; }
 
   bool matchesDefinition(VPackSlice const&) const override;
+
+  void prepareIndex(std::unique_ptr<rocksdb::Iterator> it, rocksdb::Slice upper,
+                    RocksDBMethods* methods) override;
 
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
@@ -93,16 +153,11 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       int) override;
 
  private:
-  template<typename F>
-  Result processDocument(velocypack::Slice doc, LocalDocumentId id, F func);
+  void finishTraining();
 
   FullVectorIndexDefinition _definition;
   faiss::IndexFlatL2 _quantizer;
-  faiss::IndexIVFFlat _flatIndex;
-  RocksDBInvertedLists _ril;
-  std::vector<float> _trainingData;
-  std::vector<faiss::idx_t> _trainingDataIds;
-  std::size_t _trainedCount;
+  int count{0};
 };
 
 }  // namespace arangodb
