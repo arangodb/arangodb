@@ -56,7 +56,7 @@ function aqlKillSuite () {
       }
     }
     console.warn(`Giving up after ${stopAfter}s in ` + JSON.stringify(new Error().stack));
-    return undefined;
+    return { code: 500, error: true, errorMessage: `Giving up after ${stopAfter}s in ${JSON.stringify(new Error().stack)}`};
   }
 
   function queryGone (queryId) {
@@ -113,7 +113,6 @@ function aqlKillSuite () {
     assertEqual(killResult.code, 200, { httpres: JSON.stringify(killResult), sleepForMs });
 
     const putResult = tryForUntil({until: jobGone(jobId)});
-    assertTrue(putResult.hasOwnProperty('code'), JSON.stringify(putResult));
     assertEqual(410, putResult.code, JSON.stringify(putResult));
   }
 
