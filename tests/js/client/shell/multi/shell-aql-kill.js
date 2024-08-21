@@ -113,6 +113,7 @@ function aqlKillSuite () {
     assertEqual(killResult.code, 200, JSON.stringify(killResult));
 
     const putResult = tryForUntil({until: jobGone(jobId)});
+    assertTrue(putResult.hasOwnProperty('code'), JSON.stringify(putResult));
     assertEqual(410, putResult.code, JSON.stringify(putResult));
   }
 
