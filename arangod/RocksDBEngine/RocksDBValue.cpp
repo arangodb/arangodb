@@ -100,9 +100,9 @@ RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId docId,
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, data);
 }
 
-RocksDBValue RocksDBValue::VectorIndexValue(const char* code,
+RocksDBValue RocksDBValue::VectorIndexValue(const char* codeData,
                                             std::size_t codeSize) {
-  return RocksDBValue(code, codeSize);
+  return RocksDBValue(codeData, codeSize);
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice data) {
@@ -320,10 +320,12 @@ RocksDBValue::RocksDBValue(S2Point const& p)
   uint64ToPersistent(_buffer, ::doubleToInt(p.z()));
 }
 
-RocksDBValue::RocksDBValue(const char* data, std::size_t codeSize)
+RocksDBValue::RocksDBValue(char const* codeData, std::size_t codeSize)
     : _type(RocksDBEntryType::VectorVPackIndexValue), _buffer() {
+  TRI_ASSERT(codeData != nullptr);
+  TRI_ASSERT(codeSize >= 0);
   _buffer.reserve(sizeof(char) * codeSize);
-  _buffer.append(data, codeSize);
+  _buffer.append(codeData, codeSize);
 }
 
 LocalDocumentId RocksDBValue::documentId(char const* data, uint64_t size) {

@@ -120,7 +120,6 @@ size_t RocksDBInvertedLists::add_entries(std::size_t listNumber,
     // Is this code neccessary... I think it is to represent vector
     auto value = RocksDBValue::VectorIndexValue(
         reinterpret_cast<const char*>(code + i * code_size), code_size);
-    // auto value = RocksDBValue::VectorIndexValue();
 
     _rocksDBMethods->PutUntracked(_cf, rocksdbKey, value.string());
 
@@ -233,11 +232,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   }
 }
 
-RocksDBVectorIndex::~RocksDBVectorIndex() {
-  LOG_DEVEL << "RocksDBVectorIndex dtor";
-  LOG_DEVEL << "Totally inserted " << count;
-}
-
 /// @brief Test if this index matches the definition
 bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
   return false;
@@ -277,7 +271,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   bool performChecks) {
 #ifdef USE_ENTERPRISE
   TRI_ASSERT(_fields.size() == 1);
-  LOG_DEVEL << "Inserting...";
   faiss::IndexIVFFlat flatIndex(&_quantizer, _definition.dimensions,
                                 _definition.nLists);
   RocksDBInvertedLists ril(this, methods, _cf, _definition.nLists,

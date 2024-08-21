@@ -184,8 +184,7 @@ void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
                                            std::size_t listNumber,
                                            LocalDocumentId documentId) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
-  // Key contains: indexId(uint64_t) + listNumber(size_t) +
-  // containsLocalDocumentId()
+  // Key contains: indexId(uint64_t) + listNumber(size_t) + documentId(uint64_t)
   size_t keyLength = sizeof(uint64_t) + sizeof(std::size_t) +
                      sizeof(LocalDocumentId::BaseType);
   _buffer->clear();
