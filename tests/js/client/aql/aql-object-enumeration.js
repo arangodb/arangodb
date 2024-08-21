@@ -129,7 +129,7 @@ function enumerateObjectTestSuite() {
       checkPlan(stmt.explain().plan, true);
 
       // without optimization
-      stmt = prepareStatement(query, null, { optimizer: { rules: ["-replace-entries-with-object-iteration"] } })
+      stmt = prepareStatement(query, null, { optimizer: { rules: ["-replace-entries-with-object-iteration"] } });
       checkPlan(stmt.explain().plan, false);
     },
 
@@ -264,7 +264,7 @@ function enumerateObjectTestSuite() {
       assertEqual(actual.getExtra()["stats"]["fullCount"], db[docCollection].count() * 4);
 
       actual = actual.toArray();
-      assertTrue(actual.length == 0);
+      assertTrue(actual.length === 0);
     }
   };
 }
