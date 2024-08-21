@@ -9,8 +9,7 @@ Registry::Registry() : _metrics{std::make_shared<Metrics>()} {}
 
 auto Registry::add_thread() -> std::shared_ptr<ThreadRegistry> {
   auto guard = std::lock_guard(mutex);
-  ADB_PROD_ASSERT(_metrics != nullptr);
-  registries.push_back(std::make_shared<ThreadRegistry>(_metrics));
+  registries.push_back(ThreadRegistry::make(_metrics));
   return registries.back();
 }
 

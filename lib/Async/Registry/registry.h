@@ -39,7 +39,7 @@ struct Registry {
      items stay valid during iteration (i.e. are not deleted in the meantime).
    */
   template<typename F>
-  requires requires(F f, PromiseInList* promise) { {f(promise)}; }
+  requires std::invocable<F, PromiseInList*>
   auto for_promise(F&& function) -> void {
     auto regs = [&] {
       auto guard = std::lock_guard(mutex);

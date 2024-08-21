@@ -30,7 +30,8 @@ struct Metrics;
    This registry destroys itself when its ref counter is decremented to 0.
  */
 struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
-  ThreadRegistry(std::shared_ptr<const Metrics> metrics);
+  static auto make(std::shared_ptr<const Metrics> metrics)
+      -> std::shared_ptr<ThreadRegistry>;
 
   ~ThreadRegistry() noexcept { garbage_collect(); }
 
@@ -81,8 +82,10 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   std::atomic<PromiseInList*> promise_head = nullptr;
   std::mutex mutex;
   metrics::GaugeCounterGuard<uint64_t> thread_registries_count;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> running_coroutines;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> coroutines_ready_for_deletion;
+  metrics::GaugeCounterGuard<uint64_t> running_coroutines;
+  metrics::GaugeCounterGuard<uint64_t> coroutines_ready_for_deletion;
+
+  ThreadRegistry(std::shared_ptr<const Metrics> metrics);
 
   /**
      Removes the promise from the registry.

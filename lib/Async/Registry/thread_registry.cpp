@@ -8,10 +8,15 @@
 
 using namespace arangodb::async_registry;
 
+auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics)
+    -> std::shared_ptr<ThreadRegistry> {
+  return std::shared_ptr<ThreadRegistry>(new ThreadRegistry{metrics});
+}
+
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
     : thread_registries_count{*metrics->coroutine_thread_registries, 1},
-      running_coroutines{metrics->running_coroutines},
-      coroutines_ready_for_deletion{metrics->coroutines_ready_for_deletion} {
+      running_coroutines{*metrics->running_coroutines},
+      coroutines_ready_for_deletion{*metrics->coroutines_ready_for_deletion} {
   if (metrics->coroutine_thread_registries == nullptr) {
     LOG_TOPIC("4be6e", WARN, Logger::STARTUP)
         << "An async thread registry was created with empty metrics.";
@@ -29,7 +34,7 @@ auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
   }
   // (1) - this store synchronizes with load in (2)
   promise_head.store(promise, std::memory_order_release);
-  running_coroutines->fetch_add(1);
+  running_coroutines.add(1);
 }
 
 auto ThreadRegistry::mark_for_deletion(PromiseInList* promise) noexcept
@@ -45,8 +50,8 @@ auto ThreadRegistry::mark_for_deletion(PromiseInList* promise) noexcept
                                                std::memory_order_acquire));
   // decrement the registries ref-count
   promise->registry.reset();
-  running_coroutines->fetch_sub(1);
-  coroutines_ready_for_deletion->fetch_add(1);
+  running_coroutines.sub(1);
+  coroutines_ready_for_deletion.add(1);
 }
 
 auto ThreadRegistry::garbage_collect() noexcept -> void {
@@ -61,7 +66,7 @@ auto ThreadRegistry::garbage_collect() noexcept -> void {
     next = next->next_to_free;
     remove(current);
     current->destroy();
-    coroutines_ready_for_deletion->fetch_sub(1);
+    coroutines_ready_for_deletion.sub(1);
   }
 }
 
