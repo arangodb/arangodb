@@ -32,6 +32,7 @@ const isEnterprise = require("internal").isEnterprise();
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
+const isCov = require("@arangodb/test-helper").versionHas('coverage');
 
 const graphModule = require('@arangodb/general-graph');
 const { expect } = require('chai');
@@ -155,7 +156,8 @@ function CommunicationSuite() {
       db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
       let tries = 0;
       let done = 0;
-      while (++tries < 60) {
+      const waitFor = isCov ? 60 * 4 : 60;
+      while (++tries < waitFor) {
         clients.forEach(function (client) {
           if (!client.done) {
             let status = internal.statusExternal(client.pid);

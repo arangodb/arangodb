@@ -33,6 +33,7 @@ const functionsDocumentation = {
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const trs = require('@arangodb/testutils/testrunners');
+const isCov = require("@arangodb/test-helper").versionHas('coverage');
 
 const testPaths = {
   'communication': [ tu.pathForTesting('client/communication') ],
@@ -41,6 +42,9 @@ const testPaths = {
 function communication (options) {
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
+  if (isCov) {
+    options.oneTestTimeout *= 2;
+  }
 
   return new trs.runLocalInArangoshRunner(options, 'communication', {}).run(testCases);
 }
@@ -51,6 +55,9 @@ function communicationSsl (options) {
     'protocol': 'ssl'
   };
   _.defaults(opts, options);
+  if (isCov) {
+    opts.oneTestTimeout *= 2;
+  }
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
 
