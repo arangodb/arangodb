@@ -1,4 +1,4 @@
-3.12.2 (XXXX-XX-XX)
+3.12.2 (2024-08-21)
 -------------------
 
 * Add API GET /_admin/cluster/vpackSortMigration/status to query the status of
