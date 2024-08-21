@@ -1,7 +1,15 @@
-devel
------
+3.12.2 (XXXX-XX-XX)
+-------------------
 
 * FE-422: Permissions of users managed by ArangoGraph are now shown as read-only
+
+* Add API GET /_admin/cluster/vpackSortMigration/status to query the status of
+  the vpack sorting migration on dbservers, single servers and coordinators.
+
+* Use default language en_US (instead of en_US_POSIX as before in 3.12), if no
+  LANGUAGE file is found and none of the locale environment variables LANG,
+  LANGUAGE, LC_ALL and LC_COLLATE are set. This ensures more compatibility with
+  3.11. This fixes BTS-1941.
 
 * FE-461: fix JSON/table detection, disable CSV download when not a table.
 
