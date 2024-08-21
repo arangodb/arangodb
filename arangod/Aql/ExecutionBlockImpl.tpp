@@ -113,6 +113,7 @@ class CountCollectExecutor;
 class DistinctCollectExecutor;
 class EnumerateCollectionExecutor;
 class EnumerateListExecutor;
+class EnumerateListObjectExecutor;
 }  // namespace aql
 
 namespace graph {
@@ -795,7 +796,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   ModificationExecutor<
                       SingleRowFetcher<BlockPassthrough::Disable>,
                       UpsertModifier>,
-                  TraversalExecutor, EnumerateListExecutor,
+                  TraversalExecutor, EnumerateListObjectExecutor,
                   SubqueryStartExecutor, SubqueryEndExecutor,
                   SortedCollectExecutor, LimitExecutor, UnsortedGatherExecutor,
                   SortingGatherExecutor, SortExecutor, TraversalExecutor,
