@@ -336,7 +336,7 @@ class instance {
       this.args['cluster.force-one-shard'] = true;
     }
     if (require("@arangodb/test-helper").isEnterprise()) {
-      this.args['arangosearch.columns-cache-limit'] = '100000';
+//      this.args['arangosearch.columns-cache-limit'] = '100000';
     }
     if (this.options.auditLoggingEnabled) {
       this.args['audit.output'] = 'file://' + fs.join(this.rootDir, 'audit.log');

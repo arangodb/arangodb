@@ -33,7 +33,8 @@ const functionsDocumentation = {
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const trs = require('@arangodb/testutils/testrunners');
-const isCov = require("@arangodb/test-helper").versionHas('coverage');
+const { versionHas } = require("@arangodb/test-helper");
+const isCov = versionHas('coverage');
 
 const testPaths = {
   'communication': [ tu.pathForTesting('client/communication') ],
@@ -65,9 +66,11 @@ function communicationSsl (options) {
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['communication'] = communication;
-  testFns['communication_ssl'] = communicationSsl;
+  if (versionHas('maintainer-mode')) {
+    Object.assign(allTestPaths, testPaths);
+    testFns['communication'] = communication;
+    testFns['communication_ssl'] = communicationSsl;
 
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+    tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  }
 };

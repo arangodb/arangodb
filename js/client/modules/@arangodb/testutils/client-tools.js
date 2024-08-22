@@ -30,7 +30,7 @@ const internal = require('internal');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
-
+const executeExternal = internal.executeExternal;
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -323,6 +323,24 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false
   return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
 }
 
+function runArangoshCmdBg (options, instanceInfo, addArgs, cmds, coreCheck = false) {
+  let args = makeArgsArangosh(options);
+  args['server.endpoint'] = instanceInfo.endpoint;
+
+  if (addArgs !== undefined) {
+    args = Object.assign(args, addArgs);
+  }
+
+  let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
+  sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
+  let env = sh.getSanOptions();
+  env['INSTANCEINFO'] = JSON.stringify(instanceInfo.getStructure());
+  const argv = toArgv(args).concat(cmds);
+  let ret = executeExternal(cmd, args, false, timeout * 1000,  env);
+  ret.sh = sh;
+  return ret;
+}
+
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
   let args = Object.assign(makeArgsArangosh(options), {
     'server.endpoint': instanceManager.findEndpoint(),
@@ -500,6 +518,7 @@ exports.makeArgs = {
 exports.createBaseConfig = createBaseConfigBuilder;
 exports.run = {
   arangoshCmd: runArangoshCmd,
+  runArangoshCmdBg: runArangoshCmdBg,
   arangoImport: runArangoImportCfg,
   arangoDumpRestore: runArangoDumpRestore,
   arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,

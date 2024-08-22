@@ -33,6 +33,8 @@ let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 const isCov = require("@arangodb/test-helper").versionHas('coverage');
+const { runArangoshCmdBg } = require('@arangodb/testutils/client-tools');
+
 
 const graphModule = require('@arangodb/general-graph');
 const { expect } = require('chai');
@@ -46,6 +48,7 @@ let { debugCanUseFailAt,
     } = require('@arangodb/test-helper');
 
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
+let IM = global.instanceManager;
 
 const endpointToURL = (endpoint) => {
   if (endpoint.substr(0, 6) === 'ssl://') {
@@ -72,32 +75,18 @@ function getEndpointById(id) {
 }
 
 const runShell = function (args, prefix) {
-  let options = internal.options();
-
-  let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
   let moreArgs = {
-    'javascript.startup-directory': options['javascript.startup-directory'],
-    'server.endpoint': endpoint,
     'server.database': arango.getDatabaseName(),
-    'server.username': arango.connectedUser(),
-    'server.password': '',
     'server.request-timeout': '30',
     'log.foreground-tty': 'false',
-    'log.output': 'file://' + prefix + '.log'
+    'log.output': `file://${prefix}.log`
   };
   _.assign(args, moreArgs);
-  let argv = toArgv(args);
-
-  for (let o in options['javascript.module-directory']) {
-    argv.push('--javascript.module-directory');
-    argv.push(options['javascript.module-directory'][o]);
-  }
-
-  let result = internal.executeExternal(arangosh, argv, false /*usePipes*/);
+  let result = runArangoshCmdBg(IM.options, IM, args);
   assertTrue(result.hasOwnProperty('pid'));
   let status = internal.statusExternal(result.pid);
   assertEqual(status.status, "RUNNING");
-  return result.pid;
+  return result;
 };
 
 
@@ -105,9 +94,6 @@ function CommunicationSuite() {
   'use strict';
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
-
-  assertTrue(fs.isFile(arangosh), "arangosh executable not found!");
-
   let buildCode = function (key, command) {
     let file = fs.getTempFile() + "-" + key;
     fs.write(file, `
@@ -126,9 +112,9 @@ function CommunicationSuite() {
     `);
 
     let args = {'javascript.execute': file};
-    let pid = runShell(args, file);
-    debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-    return { key, file, pid };
+    let client = runShell(args, file);
+    debug("started client with key '" + key + "', pid " + client.pid + ", args: " + JSON.stringify(args));
+    return { key, file, client };
   };
 
   let runTests = function (tests, duration) {
@@ -160,11 +146,14 @@ function CommunicationSuite() {
       while (++tries < waitFor) {
         clients.forEach(function (client) {
           if (!client.done) {
-            let status = internal.statusExternal(client.pid);
+            let status = internal.statusExternal(client.client.pid);
             if (status.status === 'NOT-FOUND' || status.status === 'TERMINATED') {
-              client.done = true;
+              let success = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+              IM.serverCrashedLocal |= success;
+              client.done = true && success;
             }
             if (status.status === 'TERMINATED' && status.exit === 0) {
+              IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
               client.failed = false;
             }
           }
@@ -202,9 +191,9 @@ function CommunicationSuite() {
         const logfile = client.file + '.log';
         if (client.failed) {
           if (fs.exists(logfile)) {
-            debug("test client with pid " + client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
+            debug("test client with pid " + client.client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
           } else {
-            debug("test client with pid " + client.pid + " has failed and did not write a logfile");
+            debug("test client with pid " + client.client.pid + " has failed and did not write a logfile");
           }
         }
         try {
@@ -214,10 +203,10 @@ function CommunicationSuite() {
         if (!client.done) {
           // hard-kill all running instances
           try {
-            let status = internal.statusExternal(client.pid).status;
+            let status = internal.statusExternal(client.client.pid).status;
             if (status === 'RUNNING') {
-              debug("forcefully killing test client with pid " + client.pid);
-              internal.killExternal(client.pid, 9 /*SIGKILL*/);
+              debug("forcefully killing test client with pid " + client.client.pid);
+              internal.killExternal(client.client.pid, 9 /*SIGKILL*/);
             }
           } catch (err) { }
         }
@@ -517,9 +506,9 @@ function GenericAqlSetupPathSuite(type) {
     `;
 
     let args = {'javascript.execute-string': cmd};
-    let pid = runShell(args, key);
-    debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-    return { key, pid };
+    let client = runShell(args, key);
+    debug("started client with key '" + key + "', pid " + client.pid + ", args: " + JSON.stringify(args));
+    return { key, client };
   };
 
   const singleRun = (tests) => {
@@ -541,11 +530,14 @@ function GenericAqlSetupPathSuite(type) {
       while (++tries < 60) {
         clients.forEach((client) => {
           if (!client.done) {
-            let status = internal.statusExternal(client.pid);
+            let status = internal.statusExternal(client.client.pid);
             if (status.status === 'NOT-FOUND' || status.status === 'TERMINATED') {
-              client.done = true;
+              let success = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+              IM.serverCrashedLocal |= success;
+              client.done = true && success;
             }
             if (status.status === 'TERMINATED' && status.exit === 0) {
+              IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
               client.failed = false;
             }
           }
@@ -579,9 +571,9 @@ function GenericAqlSetupPathSuite(type) {
         const logfile = client.file + '.log';
         if (client.failed) {
           if (fs.exists(logfile)) {
-            debug("test client with pid " + client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
+            debug("test client with pid " + client.client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
           } else {
-            debug("test client with pid " + client.pid + " has failed and did not write a logfile");
+            debug("test client with pid " + client.client.pid + " has failed and did not write a logfile");
           }
         }
         try {
@@ -591,10 +583,10 @@ function GenericAqlSetupPathSuite(type) {
         if (!client.done) {
           // hard-kill all running instances
           try {
-            let status = internal.statusExternal(client.pid).status;
+            let status = internal.statusExternal(client.client.pid).status;
             if (status === 'RUNNING') {
-              debug("forcefully killing test client with pid " + client.pid);
-              internal.killExternal(client.pid, 9 /*SIGKILL*/);
+              debug("forcefully killing test client with pid " + client.client.pid);
+              internal.killExternal(client.client.pid, 9 /*SIGKILL*/);
             }
           } catch (err) { }
         }
@@ -688,22 +680,22 @@ function GenericAqlSetupPathSuite(type) {
           db._create(vertexName, { numberOfShards: 3 });
           let meta = {};
           if (isEnterprise) {
-            meta = { links: { [vertexName]: { 
-              includeAllFields: true, 
+            meta = { links: { [vertexName]: {
+              includeAllFields: true,
               fields: {
                 "b": {
                   "nested": {
                     "c": {
                       "nested":{
                         "d": {}
-                      } 
+                      }
                     }
                   }
                 }
-              } 
+              }
             }}};
           } else {
-            meta = { links: { [vertexName]: { 
+            meta = { links: { [vertexName]: {
               includeAllFields: true
             }}};
           }
@@ -745,7 +737,7 @@ function GenericAqlSetupPathSuite(type) {
               type: 'inverted', name: 'inverted', includeAllFields: true
             };
           }
-          
+
           let i1 = c.ensureIndex(meta);;
           let i2 = c2.ensureIndex(meta);
 
