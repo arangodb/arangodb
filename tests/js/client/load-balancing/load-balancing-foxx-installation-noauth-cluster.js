@@ -107,6 +107,7 @@ const installFoxxZipFile = (databaseName, usePrimary, fileName, coordinatorId, e
 
   const installPath = `/_db/${databaseName}/_admin/aardvark/foxxes/zip?mount=${encodeURIComponent(installMountPath)}&setup=true`;
   const installResult = sendRequest('PUT', installPath, JSON.stringify(installBody), usePrimary);
+  assertTrue(installResult.hasOwnProperty('error'), JSON.stringify(installResult));
   if (expectedFailureCode) {
     // TODO: We want to be able to test this in more detail. But currently, foxx does not deliver proper ArangoErrors
     // in some failure cases. Created BTS-Ticket: https://arangodb.atlassian.net/browse/BTS-1345 needs to be resolved
