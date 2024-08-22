@@ -3,6 +3,8 @@ devel
 
 * FE-422: Permissions of users managed by ArangoGraph are now shown as read-only.
 
+* FE-462: saved query view scrollbar is not visible.
+
 
 3.12.2 (XXXX-XX-XX)
 -------------------
