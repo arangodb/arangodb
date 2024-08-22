@@ -1899,7 +1899,9 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       trx.truncate(collection, options);
       trx.insert(collection, VPackParser::fromJson("{}")->slice(), options);
       trx.insert(collection,
@@ -1970,7 +1972,9 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       trx.truncate(collection, options);
       trx.insert(collection,
                  VPackParser::fromJson(
@@ -2008,7 +2012,9 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       trx.truncate(collection, options);
       trx.insert(collection,
                  VPackParser::fromJson(
@@ -2123,7 +2129,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
 
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       trx.truncate(collection, options);
       trx.insert(collection,
                  VPackParser::fromJson("{\"name\": \"valid\", \"type\": "
@@ -2274,7 +2282,9 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       trx.truncate(collection, options);
       auto res = trx.commit();
       EXPECT_TRUE(res.ok());

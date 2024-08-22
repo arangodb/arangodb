@@ -1373,9 +1373,9 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
     auto cid = std::to_string(collection.id().id());
     auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
     OperationOptions options(ExecContext::current());
-    auto res = checksumOnCoordinator(feature, collection.vocbase().name(), cid,
-                                     options, withRevisions, withData)
-                   .waitAndGet();
+    auto res =
+        co_await checksumOnCoordinator(feature, collection.vocbase().name(),
+                                       cid, options, withRevisions, withData);
     if (res.ok()) {
       revId = RevisionId::fromSlice(res.slice().get("revision"));
       checksum = res.slice().get("checksum").getUInt();
@@ -1405,9 +1405,9 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
   checksum = 0;
 
   // We directly read the entire cursor. so batchsize == limit
-  auto iterator =
-      trx.indexScan(monitor, collection.name(),
-                    transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+  auto iterator = co_await trx.indexScan(collection.name(),
+                                         transaction::Methods::CursorType::ALL,
+                                         ReadOwnWrites::no);
 
   iterator->allDocuments([&](LocalDocumentId, aql::DocumentData&&,
                              VPackSlice slice) {

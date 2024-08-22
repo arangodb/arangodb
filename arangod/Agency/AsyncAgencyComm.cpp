@@ -30,6 +30,7 @@
 #include "Endpoint/Endpoint.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include <chrono>

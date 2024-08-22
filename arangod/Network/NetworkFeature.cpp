@@ -351,9 +351,6 @@ NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
 }
 
 NetworkFeature::~NetworkFeature() {
-  if (_retryThread) {
-    _retryThread->beginShutdown();
-  }
   if (_pool) {
     _pool->stop();
   }
@@ -589,23 +586,12 @@ void NetworkFeature::stop() {
   if (_pool) {
     _pool->shutdownConnections();
     _pool->drainConnections();
-  }
-  if (_retryThread) {
-    _retryThread->beginShutdown();
-    _retryThread.reset();
-  }
-}
-
-void NetworkFeature::unprepare() {
-  cancelGarbageCollection();
-  if (_pool) {
     _pool->stop();
   }
-  if (_retryThread) {
-    _retryThread->beginShutdown();
-    _retryThread.reset();
-  }
+  _retryThread.reset();
 }
+
+void NetworkFeature::unprepare() { cancelGarbageCollection(); }
 
 void NetworkFeature::cancelGarbageCollection() noexcept try {
   std::lock_guard<std::mutex> guard(_workItemMutex);

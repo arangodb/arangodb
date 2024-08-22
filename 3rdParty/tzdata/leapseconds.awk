@@ -1,4 +1,4 @@
-# Generate zic format 'leapseconds' from NIST format 'leap-seconds.list'.
+# Generate zic format 'leapseconds' from NIST/IERS format 'leap-seconds.list'.
 
 # This file is in the public domain.
 
@@ -21,13 +21,10 @@ BEGIN {
   print "# This file is in the public domain."
   print ""
   print "# This file is generated automatically from the data in the public-domain"
-  print "# NIST format leap-seconds.list file, which can be copied from"
-  print "# <ftp://ftp.nist.gov/pub/time/leap-seconds.list>"
-  print "# or <ftp://ftp.boulder.nist.gov/pub/time/leap-seconds.list>."
-  print "# The NIST file is used instead of its IERS upstream counterpart"
+  print "# NIST/IERS format leap-seconds.list file, which can be copied from"
   print "# <https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list>"
-  print "# because under US law the NIST file is public domain"
-  print "# whereas the IERS file's copyright and license status is unclear."
+  print "# or, in a variant with different comments, from"
+  print "# <ftp://ftp.boulder.nist.gov/pub/time/leap-seconds.list>."
   print "# For more about leap-seconds.list, please see"
   print "# The NTP Timescale and Leap Seconds"
   print "# <https://www.eecis.udel.edu/~mills/leap.html>."

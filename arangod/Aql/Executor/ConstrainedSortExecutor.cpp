@@ -25,6 +25,7 @@
 #include "ConstrainedSortExecutor.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
@@ -36,30 +37,28 @@
 
 #include <algorithm>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
   auto const nrRegs = block->numRegisters();
-  for (arangodb::aql::RegisterId::value_t i = 0; i < nrRegs; i++) {
+  for (RegisterId::value_t i = 0; i < nrRegs; i++) {
     block->destroyValue(row, i);
   }
 }
 
 }  // namespace
 
-class arangodb::aql::ConstrainedLessThan {
+class ConstrainedLessThan {
  public:
-  ConstrainedLessThan(
-      velocypack::Options const* options,
-      std::vector<arangodb::aql::SortRegister> const& sortRegisters) noexcept
+  ConstrainedLessThan(velocypack::Options const* options,
+                      std::vector<SortRegister> const& sortRegisters) noexcept
       : _vpackOptions(options),
         _heapBuffer(nullptr),
         _sortRegisters(sortRegisters) {}
 
-  void setBuffer(arangodb::aql::AqlItemBlock* heap) { _heapBuffer = heap; }
+  void setBuffer(AqlItemBlock* heap) { _heapBuffer = heap; }
 
   bool operator()(size_t const& a, size_t const& b) const {
     TRI_ASSERT(_heapBuffer);
@@ -68,8 +67,7 @@ class arangodb::aql::ConstrainedLessThan {
       auto const& lhs = _heapBuffer->getValueReference(a, sortReg.reg);
       auto const& rhs = _heapBuffer->getValueReference(b, sortReg.reg);
 
-      int const cmp =
-          arangodb::aql::AqlValue::Compare(_vpackOptions, lhs, rhs, true);
+      int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
 
       if (cmp < 0) {
         return sortReg.asc;
@@ -83,11 +81,12 @@ class arangodb::aql::ConstrainedLessThan {
 
  private:
   velocypack::Options const* const _vpackOptions;
-  arangodb::aql::AqlItemBlock* _heapBuffer;
-  std::vector<arangodb::aql::SortRegister> const& _sortRegisters;
+  AqlItemBlock* _heapBuffer;
+  std::vector<SortRegister> const& _sortRegisters;
 };  // ConstrainedLessThan
 
-void ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) {
+void ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input,
+                                      Stats& stats) {
   size_t dRow = _rowsPushed;
 
   if (dRow >= _infos.limit()) {
@@ -95,6 +94,7 @@ void ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input) {
     std::pop_heap(_rows.begin(), _rows.end(), *_cmpHeap);
     dRow = _rows.back();
     eraseRow(_heapBuffer, dRow);
+    stats.incrFiltered();
   } else {
     _rows.emplace_back(dRow);  // add to heap vector
   }
@@ -120,8 +120,7 @@ bool ConstrainedSortExecutor::compareInput(size_t rowPos,
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
     auto const& rhs = row.getValue(reg.reg);
 
-    int const cmp =
-        arangodb::aql::AqlValue::Compare(_infos.vpackOptions(), lhs, rhs, true);
+    int cmp = AqlValue::Compare(_infos.vpackOptions(), lhs, rhs, true);
 
     if (cmp < 0) {
       return reg.asc;
@@ -191,7 +190,7 @@ bool ConstrainedSortExecutor::doneSkipping() const noexcept {
 }
 
 ExecutorState ConstrainedSortExecutor::consumeInput(
-    AqlItemBlockInputRange& inputRange) {
+    AqlItemBlockInputRange& inputRange, Stats& stats) {
   while (inputRange.hasDataRow()) {
     TRI_IF_FAILURE("SortBlock::doSorting") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -204,7 +203,9 @@ ExecutorState ConstrainedSortExecutor::consumeInput(
     ++_rowsRead;
     if (_rowsPushed < _infos.limit() || !compareInput(_rows.front(), input)) {
       // Push this row into the heap
-      pushRow(input);
+      pushRow(input, stats);
+    } else {
+      stats.incrFiltered();
     }
   }
   if (inputRange.upstreamState() == ExecutorState::DONE) {
@@ -220,19 +221,20 @@ ExecutorState ConstrainedSortExecutor::consumeInput(
 auto ConstrainedSortExecutor::produceRows(AqlItemBlockInputRange& input,
                                           OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  if (consumeInput(input) == ExecutorState::HASMORE) {
+  FilterStats stats{};
+
+  if (consumeInput(input, stats) == ExecutorState::HASMORE) {
     // Input could not be fully consumed, executor is more hungry!
     // Get more.
-    AqlCall upstreamCall{};
     // We need to fetch everything form upstream.
     // Unlimited, no offset call.
-    return {ExecutorState::HASMORE, NoStats{}, upstreamCall};
+    return {ExecutorState::HASMORE, stats, AqlCall{}};
   };
 
   while (!output.isFull() && !doneProducing()) {
     // Now our heap is full and sorted, we just need to return it line by line
     TRI_ASSERT(_returnNext < _rows.size());
-    auto const heapRowPosition = _rows[_returnNext];
+    auto heapRowPosition = _rows[_returnNext];
     ++_returnNext;
     InputAqlItemRow heapRow(_heapBuffer, heapRowPosition);
     TRI_ASSERT(heapRow.isInitialized());
@@ -241,22 +243,23 @@ auto ConstrainedSortExecutor::produceRows(AqlItemBlockInputRange& input,
     output.advanceRow();
   }
   if (doneProducing() && doneSkipping()) {
-    return {ExecutorState::DONE, NoStats{}, AqlCall{}};
+    return {ExecutorState::DONE, stats, AqlCall{}};
   }
-  return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
+  return {ExecutorState::HASMORE, stats, AqlCall{}};
 }
 
 auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                             AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  if (consumeInput(inputRange) == ExecutorState::HASMORE) {
+  FilterStats stats{};
+
+  if (consumeInput(inputRange, stats) == ExecutorState::HASMORE) {
     // Input could not be fully consumed, executor is more hungry!
     // Get more.
-    AqlCall upstreamCall{};
     // We need to fetch everything form upstream.
     // Unlimited, no offset call.
-    return {ExecutorState::HASMORE, NoStats{}, 0, upstreamCall};
-  };
+    return {ExecutorState::HASMORE, stats, 0, AqlCall{}};
+  }
 
   while (!doneProducing()) {
     if (call.getOffset() > 0) {
@@ -274,16 +277,15 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
       _returnNext = _rows.size();
     } else {
       // We still have something, but cannot continue to skip.
-      return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
-              AqlCall{}};
+      return {ExecutorState::HASMORE, stats, call.getSkipCount(), AqlCall{}};
     }
   }
 
   while (call.needSkipMore() && !doneSkipping()) {
-    auto const rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
+    auto rowsLeftToSkip = _rowsRead - (_rows.size() + _skippedAfter);
     // unlikely, but for backwards compatibility.
     if (call.getOffset() > 0) {
-      auto const skipNum = (std::min)(call.getOffset(), rowsLeftToSkip);
+      auto skipNum = (std::min)(call.getOffset(), rowsLeftToSkip);
       call.didSkip(skipNum);
       _skippedAfter += skipNum;
     } else {
@@ -294,10 +296,9 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  auto const state =
-      doneSkipping() ? ExecutorState::DONE : ExecutorState::HASMORE;
+  auto state = doneSkipping() ? ExecutorState::DONE : ExecutorState::HASMORE;
 
-  return {state, NoStats{}, call.getSkipCount(), AqlCall{}};
+  return {state, stats, call.getSkipCount(), AqlCall{}};
 }
 
 [[nodiscard]] auto ConstrainedSortExecutor::expectedNumberOfRows(
@@ -328,3 +329,7 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 size_t ConstrainedSortExecutor::memoryUsageForSort() const noexcept {
   return _infos.limit() * sizeof(decltype(_rows)::value_type);
 }
+
+template class ExecutionBlockImpl<ConstrainedSortExecutor>;
+
+}  // namespace arangodb::aql

@@ -41,9 +41,10 @@
 #include "Futures/Future.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Status.h"
+#include "VocBase/vocbase.h"
 
 #include <utility>
 
@@ -139,6 +140,8 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
     // no need to revert last insert
     throw;
   }
+  // we want to release the ptr before releasing the lock!
+  query.reset();
 }
 
 /// @brief open

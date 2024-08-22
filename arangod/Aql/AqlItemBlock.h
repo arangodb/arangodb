@@ -24,15 +24,13 @@
 #pragma once
 
 #include "Aql/AqlValue.h"
+#include "Aql/RegisterId.h"
 #include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
-
-#include "Containers/SmallVector.h"
 
 #include <limits>
 #include <span>
 #include <thread>
-#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -70,10 +68,6 @@ class AqlItemBlock {
   AqlItemBlock() = delete;
   AqlItemBlock(AqlItemBlock const&) = delete;
   AqlItemBlock& operator=(AqlItemBlock const&) = delete;
-
-  /// @brief create the block
-  AqlItemBlock(AqlItemBlockManager&, size_t numRows,
-               RegisterCount numRegisters);
 
   void initFromSlice(arangodb::velocypack::Slice);
 
@@ -113,8 +107,13 @@ class AqlItemBlock {
   using ShadowRowIterator = std::vector<uint32_t>::const_iterator;
 
  protected:
+  /// @brief create the block
+  /// Should only ever be called by AqlItemBlockManager, so it's protected
+  AqlItemBlock(AqlItemBlockManager&, size_t numRows,
+               RegisterCount numRegisters);
+
   /// @brief destroy the block
-  /// Should only ever be deleted by AqlItemManager::returnBlock, so the
+  /// Should only ever be deleted by AqlItemBlockManager::returnBlock, so the
   /// destructor is protected.
   ~AqlItemBlock();
 
@@ -299,7 +298,7 @@ class AqlItemBlock {
   /// @brief get the ShadowRowDepth
   /// Does only work if this row is a shadow row
   /// Asserts on Maintainer, returns 0 on production
-  size_t getShadowRowDepth(size_t row) const;
+  size_t getShadowRowDepth(size_t row) const noexcept;
 
   /// @brief Transform the given row into a ShadowRow.
   void makeShadowRow(size_t row, size_t depth);
@@ -407,11 +406,12 @@ class AqlItemBlock {
     explicit OwnershipChecker(std::atomic<std::thread::id>& v) : _v(v) {
       auto old =
           _v.exchange(std::this_thread::get_id(), std::memory_order_relaxed);
-      TRI_ASSERT(old == std::thread::id());
+      TRI_ASSERT(old == std::thread::id()) << "old=" << old;
     }
     ~OwnershipChecker() {
       auto old = _v.exchange(std::thread::id(), std::memory_order_relaxed);
-      TRI_ASSERT(old == std::this_thread::get_id());
+      TRI_ASSERT(old == std::this_thread::get_id())
+          << "old=" << old << ", this=" << std::this_thread::get_id();
     }
     std::atomic<std::thread::id>& _v;
   };

@@ -102,7 +102,7 @@ const putUser = async ({
     onSuccess();
     return info;
   } catch (e: any) {
-    const errorMessage = e?.response?.body?.errorMessage || e.message;
+    const errorMessage = e?.response?.parsedBody?.errorMessage || e.message;
     const finalMessage = errorMessage
       ? `Could not create user: ${errorMessage}`
       : `Could not create user`;

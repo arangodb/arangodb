@@ -26,10 +26,12 @@ const TABLE_COLUMNS = [
             color: "blue.600"
           }}
         >
-          {cellValue}
-          {info.row.getValue("isLocked") && (
-            <Spinner size={"xs"} marginLeft={1} />
-          )}
+          <>
+            {cellValue}
+            {info.row.getValue("isLocked") && (
+              <Spinner size={"xs"} marginLeft={1} />
+            )}
+          </>
         </Link>
       );
     },

@@ -75,7 +75,9 @@ def parse_arguments():
     parser.add_argument(
         "--ui", type=str, help="whether to run UI test [off|on|only|community]"
     )
-    parser.add_argument("--ui-testsuites", type=str, help="which test of UI job to run")
+    parser.add_argument(
+        "--ui-testsuites", type=str, help="which test of UI job to run [off|on|only]"
+    )
     parser.add_argument(
         "--ui-deployments", type=str, help="which deployments [CL, SG, ...] to run"
     )
@@ -263,7 +265,7 @@ def get_size(size, arch):
         "medium+": "arm.large",
         "large": "arm.large",
         "xlarge": "arm.xlarge",
-        "2xlarge": "arm.xlarge",
+        "2xlarge": "arm.2xlarge",
     }
     x86_sizes = {
         "small": "small",
@@ -271,7 +273,7 @@ def get_size(size, arch):
         "medium+": "medium+",
         "large": "large",
         "xlarge": "xlarge",
-        "2xlarge": "xlarge",
+        "2xlarge": "2xlarge",
     }
     return aarch64_sizes[size] if arch == "aarch64" else x86_sizes[size]
 
@@ -286,7 +288,7 @@ def get_test_size(size, build_config, cluster):
     return get_size(size, build_config.arch)
 
 
-def create_test_job(test, cluster, build_config, build_job, replication_version=1):
+def create_test_job(test, cluster, build_config, build_jobs, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     edition = "ee" if build_config.enterprise else "ce"
     params = test["params"]
@@ -309,7 +311,7 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
         "suites": test["suites"],
         "size": get_test_size(size, build_config, cluster),
         "cluster": cluster,
-        "requires": [build_job],
+        "requires": build_jobs,
     }
     if suite_name == "chaos" and build_config.isNightly:
         # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
@@ -340,7 +342,7 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
     return {"run-linux-tests": job}
 
 
-def create_rta_test_job(build_config, build_job, deployment_mode, filter_statement):
+def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement):
     edition = "ee" if build_config.enterprise else "ce"
     job = {
         "name": f"test-{filter_statement}-{edition}-{deployment_mode}-UI",
@@ -349,30 +351,30 @@ def create_rta_test_job(build_config, build_job, deployment_mode, filter_stateme
         "browser": "Remote_CHROME",
         "enterprise": "EP" if build_config.enterprise else "C",
         "filterStatement": f"--ui-include-test-suite {filter_statement}",
-        "requires": [build_job],
+        "requires": build_jobs,
     }
     return {"run-rta-tests": job}
 
 
 def add_test_definition_jobs_to_workflow(
-    workflow, tests, build_config, build_job, repl2
+    workflow, tests, build_config, build_jobs, repl2
 ):
     jobs = workflow["jobs"]
     for test in tests:
         if "cluster" in test["flags"]:
-            jobs.append(create_test_job(test, True, build_config, build_job))
+            jobs.append(create_test_job(test, True, build_config, build_jobs))
             if repl2:
-                jobs.append(create_test_job(test, True, build_config, build_job, 2))
+                jobs.append(create_test_job(test, True, build_config, build_jobs, 2))
         elif "single" in test["flags"]:
-            jobs.append(create_test_job(test, False, build_config, build_job))
+            jobs.append(create_test_job(test, False, build_config, build_jobs))
         else:
-            jobs.append(create_test_job(test, True, build_config, build_job))
+            jobs.append(create_test_job(test, True, build_config, build_jobs))
             if repl2:
-                jobs.append(create_test_job(test, True, build_config, build_job, 2))
-            jobs.append(create_test_job(test, False, build_config, build_job))
+                jobs.append(create_test_job(test, True, build_config, build_jobs, 2))
+            jobs.append(create_test_job(test, False, build_config, build_jobs))
 
 
-def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job):
+def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
     jobs = workflow["jobs"]
     ui_testsuites = [
         "UserPageTestSuite",
@@ -399,30 +401,27 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job):
     for deployment in deployments:
         for test_suite in ui_testsuites:
             jobs.append(
-                create_rta_test_job(build_config, build_job, deployment, test_suite)
+                create_rta_test_job(build_config, build_jobs, deployment, test_suite)
             )
 
 
-def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2):
+def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs, repl2):
     if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
-        if build_config.enterprise:
-            add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job)
-        elif args.ui == "community":
-            add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job)
-        if args.ui == "only":
-            return
+        add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs)
+    if args.ui == "only":
+        return
     if build_config.enterprise:
         workflow["jobs"].append(
             {
                 "run-hotbackup-tests": {
                     "name": f"run-hotbackup-tests-{build_config.arch}",
                     "size": get_test_size("medium", build_config, True),
-                    "requires": [build_job],
+                    "requires": build_jobs,
                 }
             }
         )
     add_test_definition_jobs_to_workflow(
-        workflow, tests, build_config, build_job, repl2
+        workflow, tests, build_config, build_jobs, repl2
     )
 
 
@@ -437,7 +436,7 @@ def add_cppcheck_job(workflow, build_job):
     )
 
 
-def add_create_docker_image_job(workflow, build_config, build_job, args):
+def add_create_docker_image_job(workflow, build_config, build_jobs, args):
     if not args.create_docker_images:
         return
     edition = "ee" if build_config.enterprise else "ce"
@@ -465,7 +464,7 @@ def add_create_docker_image_job(workflow, build_config, build_job, args):
                 "resource-class": get_size("large", build_config.arch),
                 "arch": arch,
                 "tag": f"{image}:{tag}",
-                "requires": [build_job],
+                "requires": build_jobs,
             }
         }
     )
@@ -482,7 +481,7 @@ def add_build_job(workflow, build_config, overrides=None):
         "context": [
             "sccache-aws-bucket"
         ],  # add the environment variables to setup sccache for the S3 bucket
-        "resource-class": get_size("xlarge", build_config.arch),
+        "resource-class": get_size("2xlarge", build_config.arch),
         "name": name,
         "preset": preset,
         "enterprise": build_config.enterprise,
@@ -495,10 +494,21 @@ def add_build_job(workflow, build_config, overrides=None):
     return name
 
 
+def add_frontend_build_job(workflow, build_config, overrides=None):
+    edition = "ee" if build_config.enterprise else "ce"
+    preset = "enterprise-pr" if build_config.enterprise else "community-pr"
+    if build_config.sanitizer != "":
+        preset += f"-{build_config.sanitizer}"
+    suffix = "" if build_config.sanitizer == "" else f"-{build_config.sanitizer}"
+    name = f"build-{edition}-{build_config.arch}{suffix}-frontend"
+    workflow["jobs"].append({"build-frontend": {"name": name}})
+    return name
+
+
 def add_workflow(workflows, tests, build_config, args):
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
-    if args.ui != "" and args.ui != "off":
+    if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
         ui = True
         if args.ui == "only":
             suffix = "only_ui_tests-" + suffix
@@ -516,18 +526,18 @@ def add_workflow(workflows, tests, build_config, args):
     workflows[name] = {"jobs": []}
     workflow = workflows[name]
     build_job = add_build_job(workflow, build_config)
+    frontend_job = add_frontend_build_job(workflow, build_config)
+    build_jobs = [build_job, frontend_job]
     if build_config.arch == "x64" and not ui:
         add_cppcheck_job(workflow, build_job)
-    add_create_docker_image_job(workflow, build_config, build_job, args)
+    add_create_docker_image_job(workflow, build_config, build_jobs, args)
 
     tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
-    add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2)
+    add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs, repl2)
     return workflow
 
 
 def add_x64_community_workflow(workflows, tests, args):
-    if args.ui != "" and args.ui != "community" and args.ui != "off":
-        return
     if args.sanitizer != "" and args.nightly:
         # for nightly sanitizer runs we skip community and only test enterprise
         return
@@ -556,7 +566,7 @@ def add_x64_enterprise_workflow(workflows, tests, args):
 
 
 def add_aarch64_community_workflow(workflows, tests, args):
-    if args.ui == "" or args.ui == "off":
+    if args.ui != "only":
         add_workflow(
             workflows,
             tests,
@@ -566,7 +576,7 @@ def add_aarch64_community_workflow(workflows, tests, args):
 
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
-    if args.ui == "" or args.ui == "off":
+    if args.ui != "only":
         add_workflow(
             workflows,
             tests,

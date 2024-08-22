@@ -1966,12 +1966,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     // the shared status will wait in its destructor until all posted
     // requests have been completed/canceled!
     auto self = shared_from_this();
-    auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
+    Syncer::JobSynchronizerScope sharedStatus(self);
 
     // order initial chunk. this will block until the initial response
     // has arrived
-    fetchRevisionsChunk(sharedStatus, url, coll, leaderColl, requestPayload,
-                        requestResume);
+    fetchRevisionsChunk(sharedStatus.clone(), url, coll, leaderColl,
+                        requestPayload, requestResume);
 
     // Builder will be recycled
     VPackBuilder responseBuilder;
@@ -2064,8 +2064,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       if (requestResume < RevisionId::max() && !isAborted()) {
         // already fetch next chunk in the background, by posting the
         // request to the scheduler, which can run it asynchronously
-        sharedStatus->request([self, url, sharedStatus, coll, leaderColl,
-                               requestResume, &requestPayload]() {
+        sharedStatus->request([self, url, sharedStatus = sharedStatus.clone(),
+                               coll, leaderColl, requestResume,
+                               &requestPayload]() {
           std::static_pointer_cast<DatabaseInitialSyncer>(self)
               ->fetchRevisionsChunk(sharedStatus, url, coll, leaderColl,
                                     requestPayload, requestResume);

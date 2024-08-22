@@ -217,11 +217,11 @@ double ClusterIndex::selectivityEstimate(std::string_view) const {
 
   // floating-point tolerance
   TRI_ASSERT(_clusterSelectivity >= 0.0 && _clusterSelectivity <= 1.00001);
-  return _clusterSelectivity;
+  return _clusterSelectivity.load(std::memory_order_relaxed);
 }
 
 void ClusterIndex::updateClusterSelectivityEstimate(double estimate) {
-  _clusterSelectivity = estimate;
+  _clusterSelectivity.store(estimate, std::memory_order_relaxed);
 }
 
 bool ClusterIndex::isSorted() const {
@@ -270,7 +270,7 @@ void ClusterIndex::updateProperties(velocypack::Slice slice) {
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
   auto& engine = _collection.vocbase().engine();
-  return Index::Compare(engine, _info.slice(), info,
+  return Index::compare(engine, _info.slice(), info,
                         _collection.vocbase().name());
 }
 

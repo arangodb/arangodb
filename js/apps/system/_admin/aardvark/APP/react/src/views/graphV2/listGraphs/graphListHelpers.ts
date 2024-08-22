@@ -29,7 +29,8 @@ export const createGraph = async <
     onSuccess();
     return response;
   } catch (e: any) {
-    const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
+    const errorMessage =
+      e?.response?.parsedBody?.errorMessage || "Unknown error";
     notifyError(`Could not create graph: ${errorMessage}`);
     return {
       error: errorMessage
@@ -205,7 +206,8 @@ export const updateGraph = async ({
       initialGraph
     });
   } catch (e: any) {
-    const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
+    const errorMessage =
+      e?.response?.parsedBody?.errorMessage || "Unknown error";
     notifyError(`Could not update orphans: ${errorMessage}`);
     return;
   }
@@ -215,7 +217,8 @@ export const updateGraph = async ({
       initialGraph
     });
   } catch (e: any) {
-    const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
+    const errorMessage =
+      e?.response?.parsedBody?.errorMessage || "Unknown error";
     notifyError(`Could not update edge definitions: ${errorMessage}`);
     return;
   }

@@ -83,4 +83,5 @@ struct GeneralResponseMock : public arangodb::GeneralResponse {
   virtual ErrorCode zlibDeflate(bool onlyIfSmaller) override;
   virtual ErrorCode gzipCompress(bool onlyIfSmaller) override;
   virtual ErrorCode lz4Compress(bool onlyIfSmaller) override;
+  void clearBody() noexcept override { _payload.clear(); }
 };

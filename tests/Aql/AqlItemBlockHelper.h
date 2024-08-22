@@ -113,8 +113,8 @@ SharedAqlItemBlockPtr buildBlock(
   if (matrix.size() == 0) {
     return nullptr;
   }
-  SharedAqlItemBlockPtr block{
-      new AqlItemBlock(manager, matrix.size(), columns)};
+
+  auto block = manager.requestBlock(matrix.size(), columns);
 
   if constexpr (columns > 0) {
     for (size_t row = 0; row < matrix.size(); row++) {

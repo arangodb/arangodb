@@ -30,6 +30,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fpconv.h"
+#include "Basics/StaticStrings.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Transaction/Context.h"
@@ -801,7 +802,14 @@ AqlValue functions::Entries(ExpressionContext* expressionContext,
   for (auto [key, value] : VPackObjectIterator(objectSlice, true)) {
     VPackArrayBuilder pair(builder.get(), true);
     builder->add(key);
-    builder->add(value);
+    if (value.isCustom()) {
+      TRI_ASSERT(key.stringView() == StaticStrings::IdString)
+          << "found custom value for key " << key.toJson();
+      builder->add(VPackValue(transaction::helpers::extractIdString(
+          trx->resolver(), value, objectSlice)));
+    } else {
+      builder->add(value);
+    }
   }
 
   builder->close();

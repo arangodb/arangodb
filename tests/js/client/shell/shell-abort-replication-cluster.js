@@ -64,6 +64,8 @@ function abortReplicationSuite () {
 
     testAbortReplication : function () {
       let c = db._collection(cn);
+      const isCov = require("@arangodb/test-helper").versionHas('coverage');
+      let factor = (isCov) ? 4 : 1;
 
       const servers = getDBServers();
       assertTrue(servers.length >= 2, servers);
@@ -89,7 +91,7 @@ function abortReplicationSuite () {
         });
       
         // wait for shards to get into sync - this really can take long on a slow CI
-        waitForShardsInSync(cn, 180, servers.length - 1);
+        waitForShardsInSync(cn, 180 * factor, servers.length - 1);
 
       } finally {
         servers.forEach((server) => {

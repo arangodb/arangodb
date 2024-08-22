@@ -25,6 +25,8 @@ require('./views/query/QueryReactView');
 require('./views/shards/distribution/ShardDistributionReactView');
 require('./views/services/ServicesReactView');
 
+require('./reactUtils');
+
 // old libraries
 const jQuery = require('jquery');
 

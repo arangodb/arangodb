@@ -20,7 +20,7 @@ async function rebalanceShards(opts: {
       version: 1,
       ...opts
     });
-    const result = res.body.result;
+    const result = res.parsedBody.result;
     if (result.moves.length === 0) {
       window.arangoHelper.arangoNotification(
         "No move shard operations were performed."

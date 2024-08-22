@@ -32,6 +32,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

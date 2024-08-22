@@ -169,6 +169,11 @@ auto asResult(Future<ResultT<T>>&& f) noexcept {
 template<typename T, typename... Args>
 struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
   struct promise_type {
+    // For some reason, non-maintainer compilation fails with a linker error
+    // if these are missing or defaulted.
+    promise_type() {}
+    ~promise_type() {}
+
     arangodb::futures::Promise<T> promise;
     arangodb::futures::Try<T> result;
 
