@@ -2,9 +2,11 @@
 
 #include "Assertions/ProdAssert.h"
 #include "Async/Registry/Metrics.h"
+#include "Inspection/Format.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/Counter.h"
 
 using namespace arangodb::async_registry;
 
@@ -14,10 +16,10 @@ auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics)
 }
 
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
-    : thread_registries_count{*metrics->coroutine_thread_registries, 1},
-      running_coroutines{*metrics->running_coroutines},
-      coroutines_ready_for_deletion{*metrics->coroutines_ready_for_deletion} {
-  if (metrics->coroutine_thread_registries == nullptr) {
+    : running_threads{*metrics->running_threads, 1}, metrics{metrics} {
+  if (metrics->total_threads != nullptr) {
+    metrics->total_threads->count();
+  } else {
     LOG_TOPIC("4be6e", WARN, Logger::STARTUP)
         << "An async thread registry was created with empty metrics.";
   }
@@ -26,6 +28,9 @@ ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
 auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
   // promise needs to live on the same thread as this registry
   ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
+  if (metrics->total_coroutines != nullptr) {
+    metrics->total_coroutines->count();
+  }
   auto current_head = promise_head.load(std::memory_order_relaxed);
   promise->next = current_head;
   promise->registry = shared_from_this();
@@ -34,7 +39,9 @@ auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
   }
   // (1) - this store synchronizes with load in (2)
   promise_head.store(promise, std::memory_order_release);
-  running_coroutines.add(1);
+  if (metrics->running_coroutines != nullptr) {
+    metrics->running_coroutines->fetch_add(1);
+  }
 }
 
 auto ThreadRegistry::mark_for_deletion(PromiseInList* promise) noexcept
@@ -48,10 +55,18 @@ auto ThreadRegistry::mark_for_deletion(PromiseInList* promise) noexcept
   } while (not free_head.compare_exchange_weak(current_head, promise,
                                                std::memory_order_release,
                                                std::memory_order_acquire));
+  // log this promise
+  LOG_TOPIC("4be6e", WARN, Logger::STARTUP)
+      << fmt::format("[{}]", inspection::json(*promise));
+
   // decrement the registries ref-count
   promise->registry.reset();
-  running_coroutines.sub(1);
-  coroutines_ready_for_deletion.add(1);
+  if (metrics->running_coroutines != nullptr) {
+    metrics->running_coroutines->fetch_sub(1);
+  }
+  if (metrics->ready_for_deletion_coroutines != nullptr) {
+    metrics->ready_for_deletion_coroutines->fetch_add(1);
+  }
 }
 
 auto ThreadRegistry::garbage_collect() noexcept -> void {
@@ -66,7 +81,9 @@ auto ThreadRegistry::garbage_collect() noexcept -> void {
     next = next->next_to_free;
     remove(current);
     current->destroy();
-    coroutines_ready_for_deletion.sub(1);
+    if (metrics->ready_for_deletion_coroutines != nullptr) {
+      metrics->ready_for_deletion_coroutines->fetch_sub(1);
+    }
   }
 }
 

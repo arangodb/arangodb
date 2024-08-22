@@ -4,6 +4,7 @@
 #include <source_location>
 #include <string>
 #include <memory>
+#include "fmt/format.h"
 
 namespace arangodb::async_registry {
 
@@ -29,5 +30,15 @@ struct PromiseInList : Observables {
   // only needed to garbage collect promises
   PromiseInList* next_to_free = nullptr;
 };
+
+template<typename Inspector>
+auto inspect(Inspector& f, PromiseInList& x) {
+  // perhaps just use for saving
+  return f.object(x).fields(
+      f.field("location",
+              fmt::format("{}:{} {}", x._where.file_name(), x._where.line(),
+                          x._where.function_name())),
+      f.field("registry", x.registry));
+}
 
 }  // namespace arangodb::async_registry

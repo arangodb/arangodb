@@ -8,6 +8,8 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include "fmt/format.h"
+#include "fmt/std.h"
 
 namespace arangodb::metrics {
 template<typename T>
@@ -76,14 +78,15 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
    */
   auto garbage_collect() noexcept -> void;
 
- private:
   const std::thread::id owning_thread = std::this_thread::get_id();
+
+ private:
   std::atomic<PromiseInList*> free_head = nullptr;
   std::atomic<PromiseInList*> promise_head = nullptr;
   std::mutex mutex;
-  metrics::GaugeCounterGuard<uint64_t> thread_registries_count;
-  metrics::GaugeCounterGuard<uint64_t> running_coroutines;
-  metrics::GaugeCounterGuard<uint64_t> coroutines_ready_for_deletion;
+  metrics::GaugeCounterGuard<uint64_t> running_threads;
+  std::shared_ptr<const Metrics> metrics;
+  // metrics::CounterGuard
 
   ThreadRegistry(std::shared_ptr<const Metrics> metrics);
 
@@ -96,5 +99,11 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
    */
   auto remove(PromiseInList* promise) -> void;
 };
+
+template<typename Inspector>
+auto inspect(Inspector& f, ThreadRegistry& x) {
+  return f.object(x).fields(
+      f.field("thread_id", fmt::format("{}", x.owning_thread)));
+}
 
 }  // namespace arangodb::async_registry
