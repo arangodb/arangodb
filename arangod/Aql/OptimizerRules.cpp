@@ -2044,23 +2044,59 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     // finally, adjust the original plan and create a sorted version of COLLECT.
     collectNode->aggregationMethod(CollectOptions::CollectMethod::kSorted);
 
-    // insert a SortNode IN FRONT OF the CollectNode
+    // insert a SortNode IN FRONT OF the CollectNode, if we don't already have
+    // one that can be used instead
     if (!groupVariables.empty()) {
-      SortElementVector sortElements;
-      for (auto const& v : groupVariables) {
-        sortElements.push_back(SortElement::create(v.inVar, true));
+      // check if our input is already sorted
+      SortNode* sortNode = nullptr;
+      auto d = n->getFirstDependency();
+      while (d) {
+        if (d->getType() == EN::SORT) {
+          sortNode = ExecutionNode::castTo<SortNode*>(d);
+          break;
+        }
+        if (d->getType() == EN::INDEX ||
+            d->getType() == EN::ENUMERATE_COLLECTION ||
+            d->getType() == EN::ENUMERATE_LIST ||
+            d->getType() == EN::TRAVERSAL ||
+            d->getType() == EN::ENUMERATE_PATHS ||
+            d->getType() == EN::SHORTEST_PATH) {
+          break;
+        }
+        d = d->getFirstDependency();
       }
 
-      auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
-                                                 std::move(sortElements), true);
+      bool needNewSortNode = true;
+      if (sortNode != nullptr) {
+        needNewSortNode = false;
+        // we found a SORT node, now let's check if it covers all our group
+        // variables
+        auto& elems = sortNode->elements();
+        for (auto const& v : groupVariables) {
+          needNewSortNode |= std::find_if(elems.begin(), elems.end(),
+                                          [&v](SortElement const& e) {
+                                            return e.var == v.inVar;
+                                          }) == elems.end();
+        }
+      }
 
-      TRI_ASSERT(collectNode->hasDependency());
-      auto dep = collectNode->getFirstDependency();
-      TRI_ASSERT(dep != nullptr);
-      sortNode->addDependency(dep);
-      collectNode->replaceDependency(dep, sortNode);
+      if (needNewSortNode) {
+        SortElementVector sortElements;
+        for (auto const& v : groupVariables) {
+          sortElements.push_back(SortElement::create(v.inVar, true));
+        }
 
-      modified = true;
+        sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
+                                              std::move(sortElements), true);
+
+        TRI_ASSERT(collectNode->hasDependency());
+        auto dep = collectNode->getFirstDependency();
+        TRI_ASSERT(dep != nullptr);
+        sortNode->addDependency(dep);
+        collectNode->replaceDependency(dep, sortNode);
+
+        modified = true;
+      }
     }
   }
 
