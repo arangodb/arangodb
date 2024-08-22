@@ -788,9 +788,10 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE
             << "-> Index name: " << node->getIndexes()[0]->name()
             << ", id: " << node->getIndexes()[0]->id();
+      } else {
+        // the index stream is a unique stream
+        indexOffset.isUniqueStream = supportResult.isUniqueStream();
       }
-      // the index stream is a unique stream
-      indexOffset.isUniqueStream = supportResult.isUniqueStream();
     }
 
     if (!allCandidatesSupportStreamInterface) {

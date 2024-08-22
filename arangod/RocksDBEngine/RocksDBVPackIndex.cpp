@@ -3194,7 +3194,7 @@ Index::StreamSupportResult RocksDBVPackIndex::checkSupportsStreamInterface(
   // unique. Thus, we should not pick an optimized strategy for joining two
   // unique indexes.
   TRI_ASSERT(streamOpts.usedKeyFields.size() == 1);
-  bool const hasUniqueTuples = idx == fields.size();
+  bool const hasUniqueTuples = isUnique && idx == fields.size();
 
   return StreamSupportResult::makeSupported(hasUniqueTuples);
 }

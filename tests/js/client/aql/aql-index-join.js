@@ -1203,7 +1203,7 @@ const IndexJoinTestSuite = function () {
       A.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
       fillCollection("A", attributeGenerator(100, {x: x => x, y: x => x, z: x => x}));
       const B = createCollection("B", ["x"]);
-      B.ensureIndex({type: "persistent", fields: ["x"]});
+      B.ensureIndex({type: "persistent", fields: ["x"], unique: true});
       fillCollection("B", singleAttributeGenerator(100, "x", x => x));
 
       {
