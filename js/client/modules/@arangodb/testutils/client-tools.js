@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, arango */
+/* global print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -30,6 +30,7 @@ const internal = require('internal');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
+const { sanHandler } = require('@arangodb/testutils/san-file-handler');
 const executeExternal = internal.executeExternal;
 
 /* Functions: */
@@ -37,16 +38,16 @@ const toArgv = internal.toArgv;
 
 /* Constants: */
 // const BLUE = internal.COLORS.COLOR_BLUE;
-const CYAN = internal.COLORS.COLOR_CYAN;
+// const CYAN = internal.COLORS.COLOR_CYAN;
 const GREEN = internal.COLORS.COLOR_GREEN;
-const RED = internal.COLORS.COLOR_RED;
+// const RED = internal.COLORS.COLOR_RED;
 const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 let logCounter = 0;
 
 class ConfigBuilder {
-  constructor(type) {
+  constructor (type) {
     this.config = {
       'log.foreground-tty': 'true'
     };
@@ -68,11 +69,11 @@ class ConfigBuilder {
       this.logprefix = 'import';
       break;
     default:
-      throw 'Sorry this type of Arango-Binary is not yet implemented: ' + type;
+      throw new Error('Sorry this type of Arango-Binary is not yet implemented: ' + type);
     }
   }
 
-  setWhatToImport(what) {
+  setWhatToImport (what) {
     this.config['file'] = fs.join(pu.TOP_DIR, what.data);
     this.config['collection'] = what.coll;
     this.config['type'] = what.type;
@@ -323,7 +324,7 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false
   return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
 }
 
-function runArangoshCmdBg (options, instanceInfo, addArgs, cmds, coreCheck = false) {
+function runArangoshCmdBg (options, instanceInfo, addArgs, cmds) {
   let args = makeArgsArangosh(options);
   args['server.endpoint'] = instanceInfo.endpoint;
 
@@ -331,12 +332,12 @@ function runArangoshCmdBg (options, instanceInfo, addArgs, cmds, coreCheck = fal
     args = Object.assign(args, addArgs);
   }
 
-  let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
+  let sh = new sanHandler(pu.ARANGOSH_BIN.replace(/.*\//, ''), options);
   sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
   let env = sh.getSanOptions();
   env['INSTANCEINFO'] = JSON.stringify(instanceInfo.getStructure());
   const argv = toArgv(args).concat(cmds);
-  let ret = executeExternal(cmd, args, false, timeout * 1000,  env);
+  let ret = executeExternal(pu.ARANGOSH_BIN, argv, false, env);
   ret.sh = sh;
   return ret;
 }
