@@ -57,12 +57,12 @@ struct IndexDescriptor {
                            std::size_t numProjections, bool isUnique)
       : iter(std::move(iter)),
         numProjections(numProjections),
-        isUnique(isUnique) {}
+        isUniqueStream(isUnique) {}
   std::unique_ptr<StreamIteratorType> iter;
   std::size_t numProjections{0};
   std::size_t numKeyComponents{0};
   std::size_t numConstants{0};
-  bool isUnique{false};
+  bool isUniqueStream{false};
 };
 
 using AqlIndexJoinStrategy =
