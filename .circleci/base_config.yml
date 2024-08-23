@@ -527,7 +527,7 @@ jobs:
               --cluster << parameters.cluster >> \
               --suffix "<< parameters.suffix >>" \
               --allProtocols << parameters.allProtocols >> \
-              --extraArgs " << parameters.extraArgs >>"
+              --extraArgs ' << parameters.extraArgs >>'
       - run:
           name: Copy test results
           when: always
