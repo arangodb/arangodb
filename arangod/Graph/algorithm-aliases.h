@@ -26,6 +26,7 @@
 #include "Graph/Enumerators/OneSidedEnumerator.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/Enumerators/WeightedTwoSidedEnumerator.h"
+#include "Graph/Enumerators/YenEnumerator.h"
 
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
@@ -93,6 +94,22 @@ using KShortestPathsEnumerator = TwoSidedEnumeratorWithProvider<Provider>;
 template<class Provider>
 using TracedKShortestPathsEnumerator =
     TracedTwoSidedEnumeratorWithProvider<Provider>;
+
+// Yen's algorithm implementation
+template<class Provider>
+using YenEnumeratorWithProvider = YenEnumerator<
+    PathStore<typename Provider::Step>, Provider,
+    PathValidator<Provider, PathStore<typename Provider::Step>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+// Yen's algorithm implementation using Tracing
+template<class Provider>
+using TracedYenEnumeratorWithProvider = YenEnumerator<
+    PathStoreTracer<PathStore<typename Provider::Step>>,
+    ProviderTracer<Provider>,
+    PathValidator<ProviderTracer<Provider>,
+                  PathStoreTracer<PathStore<typename Provider::Step>>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 // WEIGHTED_K_SHORTEST_PATHS implementation
 template<class Provider>

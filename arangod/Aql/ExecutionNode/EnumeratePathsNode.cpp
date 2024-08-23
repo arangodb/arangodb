@@ -37,6 +37,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/StaticStrings.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
+#include "Graph/Enumerators/YenEnumerator.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
@@ -508,6 +509,15 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
+            if (opts->getAlgorithm() == "yen") {
+              return _makeExecutionBlockImpl<
+                  YenEnumeratorWithProvider<Provider>, Provider,
+                  SingleServerBaseProviderOptions>(
+                  opts, std::move(forwardProviderOptions),
+                  std::move(backwardProviderOptions), enumeratorOptions,
+                  validatorOptions, outputRegister, engine, sourceInput,
+                  targetInput, registerInfos);
+            }
             return _makeExecutionBlockImpl<KShortestPathsEnumerator<Provider>,
                                            Provider,
                                            SingleServerBaseProviderOptions>(

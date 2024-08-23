@@ -337,6 +337,9 @@ template class ::arangodb::aql::EnumeratePathsExecutorInfos<
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     TracedWeightedKShortestPathsEnumerator<SingleServer>>;
 
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    YenEnumeratorWithProvider<SingleServer>>;
+
 template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<SingleServer>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
@@ -346,6 +349,9 @@ template class ::arangodb::aql::EnumeratePathsExecutor<
     WeightedKShortestPathsEnumerator<SingleServer>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
     TracedWeightedKShortestPathsEnumerator<SingleServer>>;
+
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    YenEnumeratorWithProvider<SingleServer>>;
 
 /* ClusterProvider Section */
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
