@@ -176,6 +176,14 @@ class TwoSidedEnumerator {
    */
   bool getNextPath(arangodb::velocypack::Builder& result);
 
+  // The reference returned by the following call is only valid until
+  // getNextPath is called again or until the TwoSidedEnumerator is destroyed
+  // or otherwise modified!
+  PathResult<ProviderType, typename ProviderType::Step> const&
+  getLastPathResult() const {
+    return _resultPath;
+  }
+
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
    *

@@ -98,13 +98,15 @@ using TracedKShortestPathsEnumerator =
 // Yen's algorithm implementation
 template<class Provider>
 using YenEnumeratorWithProvider = YenEnumerator<
-    PathStore<typename Provider::Step>, Provider,
+    FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
+    Provider,
     PathValidator<Provider, PathStore<typename Provider::Step>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
 // Yen's algorithm implementation using Tracing
 template<class Provider>
 using TracedYenEnumeratorWithProvider = YenEnumerator<
+    QueueTracer<FifoQueue<typename Provider::Step>>,
     PathStoreTracer<PathStore<typename Provider::Step>>,
     ProviderTracer<Provider>,
     PathValidator<ProviderTracer<Provider>,
