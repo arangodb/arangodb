@@ -11,11 +11,11 @@ exposedBy:
   - agent
   - single
 description: |
-  Histogram of the collection/shard lock acquisition times. Locks will be acquired for
+  Histogram of the collection/shard lock acquisition times. Locks are acquired for
   all write operations, but not for read operations.
   The values here are measured in seconds.
 troubleshoot: |
   In case these values are considered too high, check if there are AQL queries
   or transactions that use exclusive locks on collections, and try to reduce them.
   Operations using exclusive locks may lock out other queries/transactions temporarily,
-  which will lead to an increase in lock acquisition times.
+  which leads to an increase in lock acquisition times.

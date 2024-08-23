@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,12 +33,12 @@
 #include <Cluster/ClusterFeature.h>
 #include <Cluster/AgencyCache.h>
 
+#include "Agency/AgencyPaths.h"
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
@@ -106,7 +106,7 @@ RestStatus RestLogHandler::handlePostRequest(
     namespace paths = ::arangodb::cluster::paths;
     auto& agencyCache =
         _vocbase.server().getFeature<ClusterFeature>().agencyCache();
-    if (auto result = agencyCache.waitForLatestCommitIndex().get();
+    if (auto result = agencyCache.waitForLatestCommitIndex().waitAndGet();
         result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }
@@ -129,7 +129,6 @@ RestStatus RestLogHandler::handlePostRequest(
                 generateError(result);
               }
             }));
-    return RestStatus::DONE;
   } else if (std::string_view logIdStr, newLeaderStr;
              rest::Match(suffixes).against(&logIdStr, "leader",
                                            &newLeaderStr)) {
@@ -296,6 +295,13 @@ RestStatus RestLogHandler::handlePostCompact(
 
 RestStatus RestLogHandler::handlePost(ReplicatedLogMethods const& methods,
                                       velocypack::Slice specSlice) {
+  if (_vocbase.replicationVersion() != replication::Version::TWO) {
+    generateError(
+        Result{TRI_ERROR_HTTP_FORBIDDEN,
+               "Replicated logs available only in replication2 databases!"});
+    return RestStatus::DONE;
+  }
+
   // create a new log
   auto spec =
       velocypack::deserialize<ReplicatedLogMethods::CreateOptions>(specSlice);
@@ -318,6 +324,13 @@ RestStatus RestLogHandler::handleGetRequest(
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.empty()) {
     return handleGet(methods);
+  }
+
+  if (suffixes.size() == 2) {
+    if (suffixes[0] == "collection-status") {
+      CollectionID cid{suffixes[1]};
+      return handleGetCollectionStatus(methods, std::move(cid));
+    }
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
@@ -450,7 +463,7 @@ RestStatus RestLogHandler::handleGetPoll(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.poll(logId, logIdx, limit)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -478,7 +491,7 @@ RestStatus RestLogHandler::handleGetTail(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.tail(logId, limit)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -506,7 +519,7 @@ RestStatus RestLogHandler::handleGetHead(ReplicatedLogMethods const& methods,
   limit = limitFound ? limit : ReplicatedLogMethods::kDefaultLimit;
 
   auto fut = methods.head(logId, limit)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -535,7 +548,7 @@ RestStatus RestLogHandler::handleGetSlice(ReplicatedLogMethods const& methods,
   stop = stopFound ? stop : start + ReplicatedLogMethods::kDefaultLimit + 1;
 
   auto fut = methods.slice(logId, start, stop)
-                 .thenValue([&](std::unique_ptr<PersistedLogIterator> iter) {
+                 .thenValue([&](std::unique_ptr<LogIterator> iter) {
                    VPackBuilder builder;
                    {
                      VPackArrayBuilder ab(&builder);
@@ -590,6 +603,16 @@ RestStatus RestLogHandler::handleGetGlobalStatus(
                            }));
 }
 
+RestStatus RestLogHandler::handleGetCollectionStatus(
+    replication2::ReplicatedLogMethods const& methods, CollectionID cid) {
+  return waitForFuture(methods.getCollectionStatus(std::move(cid))
+                           .thenValue([this](auto&& status) {
+                             VPackBuilder buffer;
+                             status.toVelocyPack(buffer);
+                             generateOk(rest::ResponseCode::OK, buffer.slice());
+                           }));
+}
+
 RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
                                           replication2::LogId logId) {
   auto const& suffixes = _request->suffixes();
@@ -600,10 +623,10 @@ RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
   }
   LogIndex logIdx{basics::StringUtils::uint64(suffixes[2])};
 
-  return waitForFuture(
-      methods.getLogEntryByIndex(logId, logIdx)
-          .thenValue([this](std::optional<PersistingLogEntry>&& entry) {
-            if (entry) {
+  auto fut =
+      methods.slice(logId, logIdx, logIdx + 1)
+          .thenValue([this](std::unique_ptr<LogIterator>&& iter) {
+            if (auto entry = iter->next(); entry) {
               VPackBuilder result;
               entry->toVelocyPack(result);
               generateOk(rest::ResponseCode::OK, result.slice());
@@ -611,5 +634,7 @@ RestStatus RestLogHandler::handleGetEntry(ReplicatedLogMethods const& methods,
               generateError(rest::ResponseCode::NOT_FOUND,
                             TRI_ERROR_HTTP_NOT_FOUND, "log index not found");
             }
-          }));
+          });
+
+  return waitForFuture(std::move(fut));
 }

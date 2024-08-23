@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 
 #include "Agency/AgencyCommon.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
@@ -150,7 +151,7 @@ static void sendLeaderChangeRequests(
     futures.emplace_back(std::move(f));
   }
 
-  auto responses = futures::collectAll(futures).get();
+  auto responses = futures::collectAll(futures).waitAndGet();
 
   // This code intentionally ignores all errors
   realInsyncFollowers = std::make_shared<std::vector<ServerID>>();
@@ -208,7 +209,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     }
     LOG_TOPIC("fe222", DEBUG, Logger::MAINTENANCE)
         << "Waiting until ClusterInfo has version " << currVersion;
-    ci.waitForCurrentVersion(currVersion).get();
+    ci.waitForCurrentVersion(currVersion).waitAndGet();
 
     auto currentInfo = ci.getCollectionCurrent(
         databaseName, std::to_string(collection.planId().id()));
@@ -217,9 +218,15 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
       return;
     }
     TRI_ASSERT(currentInfo != nullptr);
-    std::vector<ServerID> currentServers =
-        currentInfo->servers(collection.name());
+    ShardID shardId{collection.name()};
+    std::vector<ServerID> currentServers = currentInfo->servers(shardId);
     std::shared_ptr<std::vector<ServerID>> realInsyncFollowers;
+
+    TRI_IF_FAILURE("HandleLeadership::before") {
+      std::string shortName = ServerState::instance()->getShortName();
+      waitForGlobalEvent("HandleLeadership::before",
+                         absl::StrCat(shortName, ":", collection.name()));
+    }
 
     if (!currentServers.empty()) {
       std::string& oldLeader = currentServers[0];
@@ -239,9 +246,15 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     }
 
     std::vector<ServerID> failoverCandidates =
-        currentInfo->failoverCandidates(collection.name());
+        currentInfo->failoverCandidates(shardId);
     followers->takeOverLeadership(failoverCandidates, realInsyncFollowers);
     transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
+
+    TRI_IF_FAILURE("HandleLeadership::after") {
+      std::string shortName = ServerState::instance()->getShortName();
+      waitForGlobalEvent("HandleLeadership::after",
+                         absl::StrCat(shortName, ":", collection.name()));
+    }
   }
 }
 

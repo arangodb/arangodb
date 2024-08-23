@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,20 +28,17 @@
 const functionsDocumentation = {
   'gtest': 'gtest test suites'
 };
-const optionsDocumentation = [
-  '   - `skipGTest`: if set to true the gtest unittests are skipped',
-  '   - `skipGeo`: obsolete and only here for downwards-compatibility'
-];
 
+const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const {getGTestResults} = require('@arangodb/testutils/result-processing');
 const testPaths = {
   'gtest': [],
   'catch': [],
 };
-
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 
@@ -81,79 +78,53 @@ function readGreylist() {
   return greylist;
 }
 
-function getGTestResults(fileName, defaultResults) {
-  let results = defaultResults;
-  if (! fs.exists(fileName)) {
-    defaultResults.failed += 1;
-    print(RED + "No testresult file found at: " + fileName + RESET);    
-    return defaultResults;
-  }
-  let gTestResults = JSON.parse(fs.read(fileName));
-  results.failed = gTestResults.failures + gTestResults.errors;
-  results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
-  gTestResults.testsuites.forEach(function(testSuite) {
-    results[testSuite.name] = {
-      failed: testSuite.failures + testSuite.errors,
-      status: (testSuite.failures + testSuite.errors ) === 0,
-      duration: testSuite.time
-    };
-    if (testSuite.failures !== 0) {
-      let message = "";
-      testSuite.testsuite.forEach(function (suite) {
-        if (suite.hasOwnProperty('failures')) {
-          suite.failures.forEach(function (fail) {
-            message += fail.failure;
-          });
-        }
-      });
-      results[testSuite.name].message = message;
+function gtestRunner (testfilename, name, opts, testoptions) {
+  let options = _.clone(opts);
+  if (testoptions !== undefined) {
+    if (!options.commandSwitches) {
+      options.commandSwitches = [];
     }
-  });
-  return results;
-}
-
-function gtestRunner (testname, options) {
+    options.commandSwitches = options.commandSwitches.concat(testoptions);
+  }
   let results = { failed: 0 };
-  let rootDir = fs.join(fs.getTempPath(), 'gtest', testname);
+  let rootDir = fs.join(fs.getTempPath(), name);
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
 
-  const run = locateGTest(testname);
-  if (!options.skipGTest) {
-    if (run !== '') {
-      let tmpMgr = new tmpDirMmgr('gtest', options);
-      let argv = [
-        '--gtest_output=json:' + testResultJsonFile,
-      ];
+  const binary = locateGTest(testfilename);
+  if (binary !== '') {
+    let tmpMgr = new tmpDirMmgr('gtest', options);
+    let argv = [
+      '--gtest_output=json:' + testResultJsonFile,
+    ];
 
-      let filter = options.commandSwitches ? options.commandSwitches.filter(s => s.startsWith("gtest_filter=")) : [];
-      if (filter.length > 0) {
-        if (filter.length > 1) {
-          throw "Found more than one gtest_filter argument";
-        }
-        argv.push('--' + filter[0]);
-      } else if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
-        argv.push('--gtest_filter='+options.testCase);
-      } else {
-        argv.push('--gtest_filter=-*_LongRunning');
+    let filter = options.commandSwitches ? options.commandSwitches.filter(s => s.startsWith("gtest_filter=")) : [];
+    if (filter.length > 0) {
+      if (filter.length > 1) {
+        throw "Found more than one gtest_filter argument";
       }
-      // all non gtest args have to come last
-      argv.push('--log.line-number');
-      argv.push(options.extremeVerbosity ? "true" : "false");
-      results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, options.coreCheck);
-      results.basics.failed = results.basics.status ? 0 : 1;
-      if (!results.basics.status) {
-        results.failed += 1;
-      }
-      results = getGTestResults(testResultJsonFile, results);
-      tmpMgr.destructor((results.failed === 0) && options.cleanup);
+      argv.push('--' + filter[0]);
+    } else if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
+      argv.push('--gtest_filter='+options.testCase);
     } else {
-      results.failed += 1;
-      results.basics = {
-        failed: 1,
-        status: false,
-        message: `binary ${testname} not found when trying to run suite "all-gtest"`
-      };
+      argv.push('--gtest_filter=-*_LongRunning');
     }
+    // all non gtest args have to come last
+    argv.push('--log.line-number');
+    argv.push(options.extremeVerbosity ? "true" : "false");
+    results[name] = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
+    results[name].failed = results[name].status ? 0 : 1;
+    if (!results[name].status) {
+      results.failed += 1;
+    }
+    results = getGTestResults(testResultJsonFile, results);
+    tmpMgr.destructor((results.failed === 0) && options.cleanup);
+  } else {
+    results.failed += 1;
+    results[name] = {
+      failed: 1,
+      status: false,
+      message: `binary ${testfilename} not found when trying to run suite "all-gtest"`
+    };
   }
   return results;
 }
@@ -164,13 +135,14 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   const tests = [ 'arangodbtests_zkd' ];
 
   for(const test of tests) {
-    testFns[test] = x => gtestRunner(test, x);
+    testFns[test] = x => gtestRunner(test, test, x);
   }
-  testFns['gtest'] = x => gtestRunner('arangodbtests', x);
+  testFns['gtest'] = x => gtestRunner('arangodbtests', 'arangodbtests', x);
+  
+  let iresearch_filter = ['gtest_filter=IResearch*'];
+  testFns['gtest_iresearch'] = x => gtestRunner('arangodbtests', 'gtest-iresearch', x, iresearch_filter);
+  let no_iresearch_filter = ['gtest_filter=-IResearch*:*_LongRunning*'];
+  testFns['gtest_arangodb'] = x => gtestRunner('arangodbtests', 'gtest-arangodb', x, no_iresearch_filter);
 
-  opts['skipGtest'] = false;
-  testFns['gtest_replication2'] = x => gtestRunner('arangodbtests_replication2', x);
-
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

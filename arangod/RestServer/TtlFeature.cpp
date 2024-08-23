@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,42 +26,59 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
+#include "Network/types.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
 #include <chrono>
+#include <random>
 #include <thread>
 
 using namespace arangodb;
 using namespace arangodb::options;
 
 namespace {
-// the AQL query to remove documents
-std::string const removeQuery(
+// the AQL query to lookup documents
+std::string const lookupQuery(
     "/*ttl cleanup*/ FOR doc IN @@collection OPTIONS { forceIndexHint: true, "
     "indexHint: @indexHint } FILTER doc.@indexAttribute >= 0 && "
     "doc.@indexAttribute <= @stamp SORT doc.@indexAttribute LIMIT @limit "
-    "REMOVE doc IN @@collection OPTIONS { ignoreErrors: true }");
+    "RETURN {_key: doc._key, _rev: doc._rev}");
 }  // namespace
 
 namespace arangodb {
@@ -120,8 +137,13 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
                       "expecting numeric value for frequency");
       }
       frequency = slice.get("frequency").getNumericValue<uint64_t>();
-      if (frequency < TtlProperties::minFrequency) {
-        return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
+      TRI_IF_FAILURE("allow-low-ttl-frequency") {
+        // for faster js tests we want to allow lower frequency values
+      }
+      else {
+        if (frequency < TtlProperties::minFrequency) {
+          return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
+        }
       }
     }
     if (slice.hasKey("maxTotalRemoves")) {
@@ -171,15 +193,15 @@ class TtlThread final : public ServerThread<ArangodServer> {
 
   void wakeup() {
     // wake up the thread that may be waiting in run()
-    CONDITION_LOCKER(guard, _condition);
-    guard.signal();
+    std::lock_guard guard{_condition.mutex};
+    _condition.cv.notify_one();
   }
 
   bool isCurrentlyWorking() const { return _working.load(); }
 
   /// @brief frequency is specified in milliseconds
   void setNextStart(uint64_t frequency) {
-    CONDITION_LOCKER(guard, _condition);
+    std::lock_guard guard{_condition.mutex};
     _nextStart =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(frequency);
   }
@@ -202,16 +224,16 @@ class TtlThread final : public ServerThread<ArangodServer> {
           // server shutdown
           return;
         }
-        CONDITION_LOCKER(guard, _condition);
+        std::unique_lock guard{_condition.mutex};
         auto now = std::chrono::steady_clock::now();
         if (now >= _nextStart) {
           break;
         }
 
         // wait for our start...
-        guard.wait(std::chrono::microseconds(
-            std::chrono::duration_cast<std::chrono::microseconds>(_nextStart -
-                                                                  now)));
+        _condition.cv.wait_for(
+            guard, std::chrono::duration_cast<std::chrono::microseconds>(
+                       _nextStart - now));
       }
 
       // properties may have changed... update them
@@ -253,15 +275,36 @@ class TtlThread final : public ServerThread<ArangodServer> {
 
     stats.runs++;
 
+    // these are only needed if we are on a DB server
+    size_t coordinatorIndex = 0;
+    std::vector<ServerID> coordinators;
+
+    if (ServerState::instance()->isDBServer()) {
+      // fetch list of current coordinators
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      coordinators = ci.getCurrentCoordinators();
+    }
+
+    std::random_device rd;
+    std::mt19937 randGen(rd());
+
+    constexpr uint64_t maxResultsPerQuery = 4000;
+
     double const stamp = TRI_microtime();
     uint64_t limitLeft = properties.maxTotalRemoves;
 
     // iterate over all databases
     auto& db = server().getFeature<DatabaseFeature>();
-    for (auto const& name : db.getDatabaseNames()) {
+
+    auto databases = db.getDatabaseNames();
+    // randomize the list of databases so that we do not favor particular
+    // databases in the removals. the total amount of documents to remove
+    // is limited, so a deterministic input could favor the first few
+    // databases in the list.
+    std::shuffle(databases.begin(), databases.end(), randGen);
+    for (auto const& name : databases) {
       if (!isActive()) {
-        // feature deactivated (for example, due to running on current follower
-        // in active failover setup)
+        // feature deactivated
         return;
       }
 
@@ -276,28 +319,35 @@ class TtlThread final : public ServerThread<ArangodServer> {
 
       std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections =
           vocbase->collections(false);
+      // randomize the list of collections so that we do not favor particular
+      // collections in the removals. the total amount of documents to remove
+      // is limited, so a deterministic input could favor the first few
+      // collections in the list.
+      std::shuffle(collections.begin(), collections.end(), randGen);
 
       for (auto const& collection : collections) {
         if (!isActive()) {
-          // feature deactivated (for example, due to running on current
-          // follower in active failover setup)
+          // feature deactivated
           return;
         }
 
         if (ServerState::instance()->isDBServer() &&
-            !collection->followers()->getLeader().empty()) {
+            !collection->isLeadingShard()) {
           // we are a follower for this shard. do not remove any data here, but
           // let the leader carry out the removal and replicate it
           continue;
         }
 
-        std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
+        std::vector<std::shared_ptr<Index>> indexes =
+            collection->getPhysical()->getReadyIndexes();
 
         for (auto const& index : indexes) {
           // we are only interested in collections with TTL indexes
           if (index->type() != Index::TRI_IDX_TYPE_TTL_INDEX) {
             continue;
           }
+
+          TRI_ASSERT(!index->inProgress());
 
           // serialize the index description so we can read the "expireAfter"
           // attribute
@@ -317,65 +367,247 @@ class TtlThread final : public ServerThread<ArangodServer> {
               << ", stamp: " << (stamp - expireAfter) << ", limit: "
               << std::min(properties.maxCollectionRemoves, limitLeft);
 
-          auto bindVars = std::make_shared<VPackBuilder>();
-          bindVars->openObject();
-          bindVars->add("indexHint", VPackValue(index->name()));
-          bindVars->add("@collection", VPackValue(collection->name()));
-          bindVars->add(VPackValue("indexAttribute"));
-          bindVars->openArray();
-          for (auto const& it : index->fields()[0]) {
-            bindVars->add(VPackValue(it.name));
-          }
-          bindVars->close();
-          bindVars->add("stamp", VPackValue(stamp - expireAfter));
-          bindVars->add(
-              "limit",
-              VPackValue(std::min(properties.maxCollectionRemoves, limitLeft)));
-          bindVars->close();
-
-          auto query = aql::Query::create(
-              transaction::StandaloneContext::Create(*vocbase),
-              aql::QueryString(::removeQuery), std::move(bindVars));
-          query->collections().add(collection->name(), AccessMode::Type::WRITE,
-                                   aql::Collection::Hint::Shard);
-          aql::QueryResult queryResult = query->executeSync();
-
-          if (queryResult.result.fail()) {
-            // we can probably live with an error here...
-            // the thread will try to remove the documents again on next
-            // iteration
-            if (!queryResult.result.is(TRI_ERROR_ARANGO_READ_ONLY) &&
-                !queryResult.result.is(TRI_ERROR_ARANGO_CONFLICT) &&
-                !queryResult.result.is(TRI_ERROR_LOCKED) &&
-                !queryResult.result.is(
-                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-              LOG_TOPIC("08300", WARN, Logger::TTL)
-                  << "error during TTL document removal for collection '"
-                  << collection->name()
-                  << "': " << queryResult.result.errorMessage();
+          auto bindVars = [&]() {
+            auto bindVars = std::make_shared<VPackBuilder>();
+            bindVars->openObject();
+            bindVars->add("indexHint", VPackValue(index->name()));
+            bindVars->add("@collection", VPackValue(collection->name()));
+            bindVars->add(VPackValue("indexAttribute"));
+            bindVars->openArray();
+            for (auto const& it : index->fields()[0]) {
+              bindVars->add(VPackValue(it.name));
             }
-          } else {
-            auto extra = queryResult.extra;
-            if (extra != nullptr) {
-              VPackSlice v = extra->slice().get("stats");
-              if (v.isObject()) {
-                v = v.get("writesExecuted");
-                if (v.isNumber()) {
-                  uint64_t removed = v.getNumericValue<uint64_t>();
-                  stats.documentsRemoved += removed;
-                  if (removed > 0) {
-                    LOG_TOPIC("2455e", DEBUG, Logger::TTL)
-                        << "TTL thread removed " << removed
-                        << " documents for collection '" << collection->name()
-                        << "'";
-                    if (limitLeft >= removed) {
-                      limitLeft -= removed;
-                    } else {
-                      limitLeft = 0;
-                    }
+            bindVars->close();
+            bindVars->add("stamp", VPackValue(stamp - expireAfter));
+            bindVars->add(
+                "limit",
+                VPackValue(std::min(
+                    maxResultsPerQuery,
+                    std::min(properties.maxCollectionRemoves, limitLeft))));
+            bindVars->close();
+            return bindVars;
+          }();
+
+          auto origin =
+              transaction::OperationOriginInternal{"ttl index cleanup"};
+
+          size_t leftForCurrentCollection =
+              std::min(properties.maxCollectionRemoves, limitLeft);
+
+          while (leftForCurrentCollection > 0) {
+            aql::QueryOptions options;
+            // don't let query runtime restrictions affect the lookup query
+            options.maxRuntime = 0.0;
+            // no need to make the lookup query appear in the audit log
+            // every time we do a potential TTL index purge
+            options.skipAudit = true;
+
+            auto query = aql::Query::create(
+                transaction::StandaloneContext::create(*vocbase, origin),
+                aql::QueryString(::lookupQuery), std::move(bindVars), options);
+            query->collections().add(collection->name(), AccessMode::Type::READ,
+                                     aql::Collection::Hint::Shard);
+            aql::QueryResult queryResult = query->executeSync();
+
+            if (queryResult.result.fail()) {
+              // we can probably live with an error here...
+              // the thread will try to remove the documents again on next
+              // iteration
+              if (!queryResult.result.is(
+                      TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE) &&
+                  !queryResult.result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+                  !queryResult.result.is(
+                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                LOG_TOPIC("08300", WARN, Logger::TTL)
+                    << "unexpected error during TTL document removal for "
+                       "collection '"
+                    << collection->name()
+                    << "': " << queryResult.result.errorMessage();
+              }
+              break;
+            }
+
+            // finish query so that it does not overlap with following remove
+            // operation
+            query.reset();
+
+            if (queryResult.data == nullptr ||
+                !queryResult.data->slice().isArray()) {
+              break;
+            }
+
+            VPackSlice docsToRemove = queryResult.data->slice();
+            size_t found = docsToRemove.length();
+            if (found == 0) {
+              break;
+            }
+
+            if (found > limitLeft) {
+              limitLeft = 0;
+            } else {
+              limitLeft -= found;
+            }
+
+            if (found < maxResultsPerQuery ||
+                found > leftForCurrentCollection) {
+              // no more documents to remove
+              leftForCurrentCollection = 0;
+            } else {
+              leftForCurrentCollection -= found;
+            }
+
+            if (ServerState::instance()->isDBServer() &&
+                collection->isRemoteSmartEdgeCollection()) {
+              // SmartGraph edge collection
+              TRI_ASSERT(collection->type() == TRI_COL_TYPE_EDGE);
+
+              // look up cluster-wide collection name from shard
+              CollectionNameResolver resolver(collection->vocbase());
+              std::string cname = resolver.getCollectionName(collection->id());
+
+              auto& nf = server().getFeature<arangodb::NetworkFeature>();
+              network::ConnectionPool* pool = nf.pool();
+              if (pool == nullptr) {
+                break;
+              }
+
+              if (coordinators.empty()) {
+                // no coordinator to send the request to
+                break;
+              }
+
+              network::RequestOptions reqOptions;
+              reqOptions.param(StaticStrings::IgnoreRevsString, "false");
+              reqOptions.param(StaticStrings::WaitForSyncString, "false");
+              reqOptions.database = collection->vocbase().name();
+              reqOptions.timeout = network::Timeout(30.0);
+
+              // pick next coordinator in list (round robin)
+              TRI_ASSERT(!coordinators.empty());
+              auto const& coordinator =
+                  coordinators[++coordinatorIndex % coordinators.size()];
+
+              // send batch document deletion request to the picked coordinator
+              std::string url = absl::StrCat(
+                  "/_api/document/", basics::StringUtils::urlEncode(cname));
+              auto f = network::sendRequestRetry(
+                  pool, "server:" + coordinator, fuerte::RestVerb::Delete, url,
+                  std::move(*queryResult.data->steal()), reqOptions);
+              auto& val = f.waitAndGet();
+              Result res = val.combinedResult();
+
+              if (res.fail()) {
+                // we can ignore these errors here, as they can be expected if
+                // some other operations concurrently modify/remove documents in
+                // the collection
+                if (!res.is(TRI_ERROR_ARANGO_READ_ONLY) &&
+                    !res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+                    !res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+                    !res.is(TRI_ERROR_LOCKED) &&
+                    !res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+                    !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                  LOG_TOPIC("f211d", WARN, Logger::TTL)
+                      << "unexpected error during TTL document removal for "
+                         "SmartGraph collection '"
+                      << cname << "': " << res.errorMessage();
+                }
+                break;
+              }
+
+              size_t count = 0;
+              for (auto it : VPackArrayIterator(val.slice())) {
+                VPackSlice error = it.get(StaticStrings::Error);
+                if (!error.isTrue()) {
+                  ++count;
+                }
+              }
+
+              stats.documentsRemoved += count;
+              LOG_TOPIC("2455f", INFO, Logger::TTL)
+                  << "TTL thread removed " << count
+                  << " documents for SmartGraph collection '" << cname << "'";
+
+            } else {
+              // single server or non-SmartGraph collection
+              auto trx = std::make_unique<SingleCollectionTransaction>(
+                  transaction::StandaloneContext::create(*vocbase, origin),
+                  collection->name(), AccessMode::Type::WRITE);
+
+              Result res = trx->begin();
+
+              if (res.fail()) {
+                // we can ignore these errors here, as they can be expected if
+                // some other operations concurrently modify/remove documents in
+                // the collection
+                if (!res.is(TRI_ERROR_ARANGO_READ_ONLY) &&
+                    !res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+                    !res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+                    !res.is(TRI_ERROR_LOCKED) &&
+                    !res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+                    !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                  LOG_TOPIC("f211c", WARN, Logger::TTL)
+                      << "unexpected error during TTL document removal for "
+                         "collection '"
+                      << collection->name() << "': " << res.errorMessage();
+                }
+                break;
+              }
+
+              OperationOptions opOptions;
+              opOptions.ignoreRevs = false;
+              opOptions.waitForSync = false;
+
+              OperationResult opRes =
+                  trx->remove(collection->name(), docsToRemove, opOptions);
+              if (opRes.fail()) {
+                LOG_TOPIC("86e90", WARN, Logger::TTL)
+                    << "could not remove " << found
+                    << " documents in TTL thread: "
+                    << opRes.result.errorMessage();
+                break;
+              }
+
+              bool doCommit = true;
+              size_t count = 0;
+              for (auto it : VPackArrayIterator(opRes.slice())) {
+                VPackSlice error = it.get(StaticStrings::Error);
+                if (!error.isTrue()) {
+                  ++count;
+                  continue;
+                }
+                error = it.get(StaticStrings::ErrorNum);
+                if (error.isNumber()) {
+                  auto code = ErrorCode{error.getNumericValue<int>()};
+                  if (code != TRI_ERROR_ARANGO_READ_ONLY &&
+                      code != TRI_ERROR_ARANGO_CONFLICT &&
+                      code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND &&
+                      code != TRI_ERROR_LOCKED) {
+                    LOG_TOPIC("86e91", WARN, Logger::TTL)
+                        << "could not remove " << found
+                        << " documents in TTL thread: "
+                        << it.get(StaticStrings::ErrorMessage).stringView();
+                    doCommit = false;
+                    break;
                   }
                 }
               }
+
+              if (!doCommit || count == 0) {
+                break;
+              }
+
+              res = trx->finish(res);
+              if (res.fail()) {
+                LOG_TOPIC("86e92", WARN, Logger::TTL)
+                    << "unable to commit removal operation for " << count
+                    << " documents in TTL thread: " << res.errorMessage();
+                break;
+              }
+
+              stats.documentsRemoved += count;
+              LOG_TOPIC("2455e", INFO, Logger::TTL)
+                  << "TTL thread removed " << count
+                  << " documents for collection '" << collection->name() << "'";
             }
           }
 
@@ -417,7 +649,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
 }  // namespace arangodb
 
 TtlFeature::TtlFeature(Server& server)
-    : ArangodFeature{server, *this}, _allowRunning(true), _active(true) {
+    : ArangodFeature{server, *this}, _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<application_features::ServerFeaturePhase>();
 }
@@ -475,7 +707,7 @@ void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  MUTEX_LOCKER(locker, _propertiesMutex);
+  std::lock_guard locker{_propertiesMutex};
 
   if (_properties.frequency > 0 &&
       _properties.frequency < TtlProperties::minFrequency) {
@@ -504,7 +736,7 @@ void TtlFeature::start() {
   }
 
   {
-    MUTEX_LOCKER(locker, _propertiesMutex);
+    std::lock_guard locker{_propertiesMutex};
 
     // a frequency of 0 means the thread is not started at all
     if (_properties.frequency == 0) {
@@ -512,7 +744,7 @@ void TtlFeature::start() {
     }
   }
 
-  MUTEX_LOCKER(locker, _threadMutex);
+  std::lock_guard locker{_threadMutex};
 
   if (server().isStopping()) {
     // don't create the thread if we are already shutting down
@@ -532,7 +764,7 @@ void TtlFeature::beginShutdown() {
   // this will make the TTL background thread stop as soon as possible
   deactivate();
 
-  MUTEX_LOCKER(locker, _threadMutex);
+  std::lock_guard locker{_threadMutex};
 
   if (_thread != nullptr) {
     // this will also wake up the thread if it should be sleeping
@@ -542,28 +774,10 @@ void TtlFeature::beginShutdown() {
 
 void TtlFeature::stop() { shutdownThread(); }
 
-void TtlFeature::allowRunning(bool value) {
-  {
-    MUTEX_LOCKER(locker, _propertiesMutex);
-
-    if (value) {
-      _allowRunning = true;
-    } else {
-      _allowRunning = false;
-    }
-  }
-
-  if (value) {
-    return;
-  }
-
-  waitForThreadWork();
-}
-
 void TtlFeature::waitForThreadWork() {
   while (true) {
     {
-      MUTEX_LOCKER(locker, _threadMutex);
+      std::lock_guard locker{_threadMutex};
 
       if (_thread == nullptr) {
         break;
@@ -582,7 +796,7 @@ void TtlFeature::waitForThreadWork() {
 
 void TtlFeature::activate() {
   {
-    MUTEX_LOCKER(locker, _propertiesMutex);
+    std::lock_guard locker{_propertiesMutex};
     if (_active) {
       // already activated
       return;
@@ -595,7 +809,7 @@ void TtlFeature::activate() {
 
 void TtlFeature::deactivate() {
   {
-    MUTEX_LOCKER(locker, _propertiesMutex);
+    std::lock_guard locker{_propertiesMutex};
     if (!_active) {
       // already deactivated
       return;
@@ -609,27 +823,27 @@ void TtlFeature::deactivate() {
 }
 
 bool TtlFeature::isActive() const {
-  MUTEX_LOCKER(locker, _propertiesMutex);
-  return _allowRunning && _active;
+  std::lock_guard locker{_propertiesMutex};
+  return _active;
 }
 
 void TtlFeature::statsToVelocyPack(VPackBuilder& builder) const {
-  MUTEX_LOCKER(locker, _statisticsMutex);
+  std::lock_guard locker{_statisticsMutex};
   _statistics.toVelocyPack(builder);
 }
 
 void TtlFeature::updateStats(TtlStatistics const& stats) {
-  MUTEX_LOCKER(locker, _statisticsMutex);
+  std::lock_guard locker{_statisticsMutex};
   _statistics += stats;
 }
 
 void TtlFeature::propertiesToVelocyPack(VPackBuilder& builder) const {
-  MUTEX_LOCKER(locker, _propertiesMutex);
+  std::lock_guard locker{_propertiesMutex};
   _properties.toVelocyPack(builder, _active);
 }
 
 TtlProperties TtlFeature::properties() const {
-  MUTEX_LOCKER(locker, _propertiesMutex);
+  std::lock_guard locker{_propertiesMutex};
   return _properties;
 }
 
@@ -640,7 +854,7 @@ Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice,
   bool active;
 
   {
-    MUTEX_LOCKER(locker, _propertiesMutex);
+    std::lock_guard locker{_propertiesMutex};
 
     bool const hasActiveFlag = slice.isObject() && slice.hasKey("active");
     if (hasActiveFlag && !slice.get("active").isBool()) {
@@ -660,7 +874,7 @@ Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice,
   }
 
   {
-    MUTEX_LOCKER(locker, _threadMutex);
+    std::lock_guard locker{_threadMutex};
 
     if (_thread != nullptr) {
       _thread->setNextStart(frequency);
@@ -676,7 +890,7 @@ Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice,
 }
 
 void TtlFeature::shutdownThread() noexcept {
-  MUTEX_LOCKER(locker, _threadMutex);
+  std::lock_guard locker{_threadMutex};
 
   if (_thread != nullptr) {
     try {

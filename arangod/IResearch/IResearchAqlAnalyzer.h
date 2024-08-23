@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,27 +23,34 @@
 
 #pragma once
 
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/token_streams.hpp"
-#include "utils/attribute_helper.hpp"
-#include "Aql/Ast.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Containers/SmallVector.h"
-#include "StorageEngine/TransactionState.h"
 #include "IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearchVPackTermAttribute.h"
+#include "StorageEngine/TransactionState.h"
 
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "utils/attribute_helper.hpp"
+
+#include <cstdint>
+#include <memory>
 #include <string>
+#include <string_view>
+#include <vector>
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::aql {
+struct AstNode;
+class CalculationNode;
+class ExecutionPlan;
+class QueryContext;
+}  // namespace arangodb::aql
+
+namespace arangodb::iresearch {
 
 class AqlAnalyzer final : public irs::analysis::analyzer {
  public:
@@ -99,13 +106,16 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
 
   explicit AqlAnalyzer(Options const& options);
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override final {
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<AqlAnalyzer>::id();
+  }
+
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(_attrs, type);
   }
 
-  virtual bool next() override;
-  virtual bool reset(std::string_view field) noexcept override;
+  bool next() final;
+  bool reset(std::string_view field) noexcept final;
 
  private:
   using ResetImplFunctor = void (*)(AqlAnalyzer* analyzer);
@@ -135,6 +145,6 @@ class AqlAnalyzer final : public irs::analysis::analyzer {
   attributes _attrs;
   size_t _resultRowIdx{0};
   uint32_t _nextIncVal{0};
-};  // AqlAnalyzer
-}  // namespace iresearch
-}  // namespace arangodb
+};
+
+}  // namespace arangodb::iresearch

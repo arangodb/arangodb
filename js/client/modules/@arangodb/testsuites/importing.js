@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,17 +30,17 @@ const fs = require('fs');
 const functionsDocumentation = {
   'importing': 'import tests'
 };
-const optionsDocumentation = [
-];
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
 
 const testPaths = {
   'importing': [
-    tu.pathForTesting('server/import'),
+    tu.pathForTesting('client/import'),
     tu.pathForTesting('common/test-data/import') // our testdata...
   ]
 };
@@ -427,9 +427,15 @@ const impTodos = [{
   type: 'csv',
   create: 'true',
   batchSize: 1000
+}, {
+  id: 'json1-extended-name',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨',
+  type: 'json',
+  create: undefined
 }];
 
-class importRunner extends tu.runInArangoshRunner {
+class importRunner extends trs.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runImport";
@@ -466,10 +472,10 @@ class importRunner extends tu.runInArangoshRunner {
 
       for (let i = 0; i < impTodos.length; i++) {
         const impTodo = impTodos[i];
-        let cfg = pu.createBaseConfig('import', this.options, this.instanceManager);
+        let cfg = ct.createBaseConfig('import', this.options, this.instanceManager);
         cfg.setWhatToImport(impTodo);
         cfg.setEndpoint(this.instanceManager.endpoint);
-        result[impTodo.id] = pu.run.arangoImport(cfg, this.options, this.instanceManager.rootDir, this.options.coreCheck);
+        result[impTodo.id] = ct.run.arangoImport(cfg, this.options, this.instanceManager.rootDir, this.options.coreCheck);
         result[impTodo.id].failed = 0;
 
         if (impTodo.expectFailure) {
@@ -515,6 +521,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['importing'] = importing;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

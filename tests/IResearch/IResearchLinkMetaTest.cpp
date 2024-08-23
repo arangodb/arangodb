@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,7 +36,6 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Containers/FlatHashSet.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -54,7 +53,9 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/Methods/Collections.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
@@ -62,7 +63,6 @@
 
 #if USE_ENTERPRISE
 #include "fakeit.hpp"
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
 
@@ -76,7 +76,7 @@ struct TestAttributeZ : public irs::attribute {
 
 REGISTER_ATTRIBUTE(TestAttributeZ);
 
-class EmptyAnalyzer : public irs::analysis::analyzer {
+class EmptyAnalyzer final : public irs::analysis::TypedAnalyzer<EmptyAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept { return "empty"; }
 
@@ -105,16 +105,15 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  EmptyAnalyzer() = default;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<TestAttributeZ>::id()) {
       return &_attr;
     }
     return nullptr;
   }
-  virtual bool next() override { return false; }
-  virtual bool reset(std::string_view) override { return true; }
+  bool next() final { return false; }
+  bool reset(std::string_view) final { return true; }
 
  private:
   TestAttributeZ _attr;
@@ -168,6 +167,7 @@ class IResearchLinkMetaTest
     analyzers.emplace(
         result, "testVocbase::empty", "empty",
         VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features(
             irs::IndexFeatures::FREQ));  // cache the 'empty' analyzer for
                                          // 'testVocbase'
@@ -603,8 +603,13 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
     builder.close();
 
     auto slice = builder.slice();
-
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+    tmpSlice = slice.get("optimizeTopK");
+    EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
     EXPECT_EQ(10, slice.length());
+#endif
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -670,7 +675,13 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+    tmpSlice = slice.get("optimizeTopK");
+    EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
     EXPECT_EQ(10, slice.length());
+#endif
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -706,14 +717,17 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   analyzers.emplace(
       emplaceResult, arangodb::StaticStrings::SystemDatabase + "::empty",
       "empty", VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
+      arangodb::transaction::OperationOriginTestCase{},
       {{}, irs::IndexFeatures::FREQ});
 
   auto identity =
-      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+      analyzers.get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                    arangodb::transaction::OperationOriginTestCase{});
   ASSERT_NE(nullptr, identity);
   auto empty =
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
-                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST);
+                    arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                    arangodb::transaction::OperationOriginTestCase{});
   ASSERT_NE(nullptr, empty);
 
   meta._includeAllFields = true;
@@ -762,7 +776,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   overrideAll._analyzers.emplace_back(
       arangodb::iresearch::IResearchLinkMeta::Analyzer(
           analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
-                        arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
+                        arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                        arangodb::transaction::OperationOriginTestCase{}),
           "empty"));
 
   // do not inherit fields to match jSon inheritance
@@ -906,7 +921,13 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+    tmpSlice = slice.get("optimizeTopK");
+    EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
     EXPECT_EQ(10, slice.length());
+#endif
 
     tmpSlice = slice.get("version");
     EXPECT_TRUE(tmpSlice.isNumber());
@@ -1182,7 +1203,13 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+    tmpSlice = slice.get("optimizeTopK");
+    EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
     EXPECT_EQ(10, slice.length());
+#endif
 
     tmpSlice = slice.get("version");
     EXPECT_TRUE(tmpSlice.isNumber());
@@ -1404,7 +1431,11 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+#else
     EXPECT_EQ(10, slice.length());
+#endif
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -1461,7 +1492,11 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(12, slice.length());
+#else
     EXPECT_EQ(11, slice.length());
+#endif
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -1488,7 +1523,12 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
 
     auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+    EXPECT_EQ(11, slice.length());
+    EXPECT_TRUE(slice.hasKey("optimizeTopK"));
+#else
     EXPECT_EQ(10, slice.length());
+#endif
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -2589,8 +2629,10 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
   // this is for test cleanup
   irs::Finally testCleanup = [&analyzerCustomInSystem, &analyzers,
                               &analyzerCustomInTestVocbase]() noexcept {
-    analyzers.remove(analyzerCustomInSystem);
-    analyzers.remove(analyzerCustomInTestVocbase);
+    analyzers.remove(analyzerCustomInSystem,
+                     arangodb::transaction::OperationOriginTestCase{});
+    analyzers.remove(analyzerCustomInTestVocbase,
+                     arangodb::transaction::OperationOriginTestCase{});
   };
 
   {
@@ -2599,6 +2641,7 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     // testVocbase with same name (it is ok to add both!).
     analyzers.emplace(emplaceResult, analyzerCustomInSystem, "identity",
                       VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
+                      arangodb::transaction::OperationOriginTestCase{},
                       {{}, irs::IndexFeatures::FREQ});
   }
 
@@ -2606,6 +2649,7 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
     analyzers.emplace(emplaceResult, analyzerCustomInTestVocbase, "identity",
                       VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
+                      arangodb::transaction::OperationOriginTestCase{},
                       {{}, irs::IndexFeatures::FREQ});
   }
 
@@ -2631,17 +2675,20 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     std::unordered_set<std::string> expectedAnalyzers;
     expectedAnalyzers.insert(
         analyzers
-            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+            .get("identity", arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::OperationOriginTestCase{})
             ->name());
     expectedAnalyzers.insert(
         analyzers
             .get(analyzerCustomInTestVocbase,
-                 arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+                 arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::OperationOriginTestCase{})
             ->name());
     expectedAnalyzers.insert(
         analyzers
             .get(analyzerCustomInSystem,
-                 arangodb::QueryAnalyzerRevisions::QUERY_LATEST)
+                 arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                 arangodb::transaction::OperationOriginTestCase{})
             ->name());
 
     arangodb::iresearch::IResearchLinkMeta::Mask mask(false);
@@ -2704,6 +2751,7 @@ class IResearchLinkMetaTestNoSystem
     analyzers.emplace(
         result, "testVocbase::empty", "empty",
         VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features(
             irs::IndexFeatures::FREQ));  // cache the 'empty' analyzer for
                                          // 'testVocbase'
@@ -4090,8 +4138,8 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
   builder.close();
 }
 
-// Circumventing fakeit inability to build a mock
-// for class with pure virtual functions in base
+// Circumventing fakeit inability to run a mock
+// for class with private virtual functions
 class mock_field_iterator : public irs::field_iterator {
  public:
   void Destroy() const noexcept override {}
@@ -4099,6 +4147,7 @@ class mock_field_iterator : public irs::field_iterator {
 
 class mock_term_reader : public irs::term_reader {
  public:
+  bool has_scorer(irs::byte_type index) const override { return false; }
   irs::seek_term_iterator::ptr iterator(irs::SeekMode mode) const override {
     return nullptr;
   }
@@ -4107,9 +4156,9 @@ class mock_term_reader : public irs::term_reader {
     return nullptr;
   }
 
-  irs::doc_iterator::ptr wanderator(
-      const irs::seek_cookie&, irs::IndexFeatures,
-      const irs::WanderatorOptions&) const override {
+  irs::doc_iterator::ptr wanderator(const irs::seek_cookie&, irs::IndexFeatures,
+                                    const irs::WanderatorOptions&,
+                                    irs::WandContext) const override {
     return nullptr;
   }
 
@@ -4540,5 +4589,44 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
   std::set<irs::field_id> expected{1, 4};
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
+}
+
+TEST_F(IResearchLinkMetaTest, test_withSmartSort) {
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache":false,
+      "includeAllFields":true,
+      "fields" : {},
+      "optimizeTopK": ["bm25(@doc) desc"]
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  EXPECT_FALSE(meta._optimizeTopK.empty());
+  EXPECT_EQ(1, meta._optimizeTopK.buckets().size());
+  {
+    VPackBuilder builder;
+    builder.openObject();
+    EXPECT_TRUE(meta.json(server.server(), builder, true));
+    builder.close();
+    auto sort = builder.slice().get("optimizeTopK");
+    EXPECT_TRUE(sort.isArray());
+    EXPECT_EQ(1, sort.length());
+  }
+  {
+    VPackBuilder builder;
+    builder.openObject();
+    EXPECT_TRUE(meta.json(server.server(), builder, false));
+    builder.close();
+    auto sort = builder.slice().get("optimizeTopK");
+    EXPECT_TRUE(sort.isNone());
+  }
 }
 #endif

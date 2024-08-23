@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,10 +41,14 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+
+#include <algorithm>
 
 namespace arangodb {
 
@@ -70,9 +74,7 @@ void PhysicalCollection::flushClusterIndexEstimates() {
 void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
   TRI_ASSERT(indexesSlice.isArray());
 
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine();
+  auto& engine = _logicalCollection.vocbase().engine();
 
   std::vector<std::shared_ptr<Index>> indexes;
   {
@@ -106,14 +108,16 @@ void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
     }
   }
 
+  TRI_ASSERT(!_indexes.empty());
+
   auto it = _indexes.cbegin();
   if ((*it)->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (TRI_COL_TYPE_EDGE == _logicalCollection.type() &&
        (_indexes.size() < 3 ||
         ((*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
          (*++it)->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX)))) {
-    std::string msg = "got invalid indexes for collection '" +
-                      _logicalCollection.name() + "'";
+    std::string msg = absl::StrCat("got invalid indexes for collection '",
+                                   _logicalCollection.name(), "'");
     LOG_TOPIC("0ef34", ERR, arangodb::Logger::ENGINES) << msg;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto const& it : _indexes) {
@@ -121,10 +125,8 @@ void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
           << "- " << it->context();
     }
 #endif
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(msg));
   }
-
-  TRI_ASSERT(!_indexes.empty());
 }
 
 void PhysicalCollection::close() {
@@ -147,7 +149,9 @@ void PhysicalCollection::drop() {
   }
 }
 
-uint64_t PhysicalCollection::recalculateCounts() {
+void PhysicalCollection::freeMemory() noexcept {}
+
+futures::Future<uint64_t> PhysicalCollection::recalculateCounts() {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "recalculateCounts not implemented for this engine");
@@ -234,7 +238,7 @@ PhysicalCollection::computeRevisionTree(uint64_t batchId) {
   return nullptr;
 }
 
-Result PhysicalCollection::rebuildRevisionTree() {
+futures::Future<Result> PhysicalCollection::rebuildRevisionTree() {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -246,10 +250,22 @@ void PhysicalCollection::removeRevisionTreeBlocker(TransactionId) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief hands out a list of indexes
-std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
+/// @brief get list of all indexes. this includes in-progress indexes and thus
+/// should be used with care
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getAllIndexes() const {
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   return {_indexes.begin(), _indexes.end()};
+}
+
+/// @brief get a list of "ready" indexes, that means all indexes which are
+/// not "in progress" anymore
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getReadyIndexes()
+    const {
+  std::vector<std::shared_ptr<Index>> result;
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  std::copy_if(_indexes.begin(), _indexes.end(), std::back_inserter(result),
+               [](auto const& idx) { return !idx->inProgress(); });
+  return result;
 }
 
 /// @brief get a snapshot of all indexes of the collection, with the read
@@ -406,10 +422,7 @@ Result PhysicalCollection::dropIndex(IndexId iid) {
   }
 
   Result res = basics::catchToResult([&]() -> Result {
-    auto& selector = _logicalCollection.vocbase()
-                         .server()
-                         .getFeature<EngineSelectorFeature>();
-    auto& engine = selector.engine();
+    auto& engine = _logicalCollection.vocbase().engine();
     bool const inRecovery = engine.inRecovery();
 
     std::shared_ptr<arangodb::Index> toRemove;

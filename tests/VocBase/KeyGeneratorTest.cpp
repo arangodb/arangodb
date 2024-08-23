@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -244,7 +244,10 @@ TEST(KeyGeneratorTest, validateId) {
   EXPECT_FALSE(::validateIdWrapper("abc123/mötör", false, 6));
   EXPECT_FALSE(::validateIdWrapper("abc123/😀", false, 6));
   EXPECT_FALSE(::validateIdWrapper("abc123/ﻚﻠﺑ ﻞﻄﻴﻓ", false, 6));
-  EXPECT_TRUE(::validateIdWrapper(" a + & ? = abc/!", true, 14));
+  EXPECT_TRUE(::validateIdWrapper("a + & ? = abc/!", true, 13));
+  EXPECT_FALSE(::validateIdWrapper(" a + & ? = abc/!", true, 14));
+  EXPECT_FALSE(::validateIdWrapper("a + & ? = abc /!", true, 14));
+  EXPECT_FALSE(::validateIdWrapper("a + & ? = abc/! ", true, 13));
   EXPECT_TRUE(::validateIdWrapper("<script>alert(1);/!", true, 17));
   EXPECT_TRUE(::validateIdWrapper("a b c/123", true, 5));
   EXPECT_TRUE(::validateIdWrapper("test123 & ' \" <> abc/123abc", true, 20));
@@ -300,7 +303,10 @@ TEST(KeyGeneratorTest, validateId) {
   EXPECT_FALSE(::validateIdWrapper("maçã/ﻚﻠﺑ ﻞﻄﻴﻓ", false, 6));
 
   // Special characters
-  EXPECT_TRUE(::validateIdWrapper(" a + & ? = abc/!", true, 14));
+  EXPECT_TRUE(::validateIdWrapper("a + & ? = abc/!", true, 13));
+  EXPECT_FALSE(::validateIdWrapper(" a + & ? = abc/!", true, 14));
+  EXPECT_FALSE(::validateIdWrapper("a + & ? = abc /!", true, 14));
+  EXPECT_FALSE(::validateIdWrapper("a + & ? = abc/! ", true, 13));
   EXPECT_TRUE(::validateIdWrapper("<script>alert(1);/!", true, 17));
   EXPECT_TRUE(::validateIdWrapper("a b c/123", true, 5));
   EXPECT_TRUE(::validateIdWrapper("test123 & ' \" <> abc/123abc", true, 20));

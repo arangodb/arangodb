@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,23 +29,10 @@
 #include <string>
 #include <ostream>
 
-#if (_MSC_VER >= 1)
-// suppress warnings:
-#pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
-// data
-#pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
-// intended?)
-#pragma warning(disable : 4334)
-#endif
 #include <immer/flex_vector.hpp>
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/InMemoryLogEntry.h"
 #include "Replication2/ReplicatedLog/types.h"
 
 namespace arangodb {
@@ -99,41 +86,50 @@ auto inspect(Inspector& f, MessageId& x) {
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 struct AppendEntriesResult {
-  LogTerm const logTerm;
-  ErrorCode const errorCode;
+  LogTerm logTerm;
+  ErrorCode errorCode;
   AppendEntriesErrorReason reason;
   MessageId messageId;
+  // TODO With some error reasons (at least kLostLogCore, i.e. when the follower
+  //      resigned already) information about the snapshot is unavailable. Maybe
+  //      this should be an optional<bool>.
   bool snapshotAvailable{false};
+
+  LogIndex syncIndex;
 
   std::optional<TermIndexPair> conflict;
 
   [[nodiscard]] auto isSuccess() const noexcept -> bool;
 
   AppendEntriesResult(LogTerm term, MessageId id, TermIndexPair conflict,
-                      AppendEntriesErrorReason reason,
-                      bool snapshotAvailable) noexcept;
-  AppendEntriesResult(LogTerm, MessageId, bool snapshotAvailable) noexcept;
+                      AppendEntriesErrorReason reason, bool snapshotAvailable,
+                      LogIndex syncIndex) noexcept;
+  AppendEntriesResult(LogTerm, MessageId, bool snapshotAvailable,
+                      LogIndex syncIndex) noexcept;
   AppendEntriesResult(LogTerm logTerm, ErrorCode errorCode,
                       AppendEntriesErrorReason reason, MessageId,
-                      bool snapshotAvailable) noexcept;
+                      bool snapshotAvailable, LogIndex syncIndex) noexcept;
   void toVelocyPack(velocypack::Builder& builder) const;
   static auto fromVelocyPack(velocypack::Slice slice) -> AppendEntriesResult;
 
   static auto withConflict(LogTerm, MessageId, TermIndexPair conflict,
-                           bool snapshotAvailable) noexcept
+                           bool snapshotAvailable, LogIndex syncIndex) noexcept
       -> AppendEntriesResult;
   static auto withRejection(LogTerm, MessageId, AppendEntriesErrorReason,
-                            bool snapshotAvailable) noexcept
+                            bool snapshotAvailable, LogIndex syncIndex) noexcept
       -> AppendEntriesResult;
   static auto withPersistenceError(LogTerm, MessageId, Result const&,
-                                   bool snapshotAvailable) noexcept
+                                   bool snapshotAvailable,
+                                   LogIndex syncIndex) noexcept
       -> AppendEntriesResult;
-  static auto withOk(LogTerm, MessageId, bool snapshotAvailable) noexcept
-      -> AppendEntriesResult;
+  static auto withOk(LogTerm, MessageId, bool snapshotAvailable,
+                     LogIndex syncIndex) noexcept -> AppendEntriesResult;
 };
 #if (defined(__GNUC__) && !defined(__clang__))
 #pragma GCC diagnostic pop
 #endif
+
+auto to_string(AppendEntriesResult const& res) -> std::string;
 
 struct AppendEntriesRequest {
   using EntryContainer =

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,10 @@
 ///
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
 #include "v8-vocindex.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -86,8 +90,9 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
   VPackBuilder output;
-  auto res = methods::Indexes::ensureIndex(collection, builder.slice(), create,
-                                           output);
+  auto res = methods::Indexes::ensureIndex(*collection, builder.slice(), create,
+                                           output)
+                 .waitAndGet();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -96,10 +101,6 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, output.slice());
   TRI_V8_RETURN(result);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionEnsureIndex
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_EnsureIndexVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -125,10 +126,6 @@ static void JS_LookupIndexVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock col_dropIndex
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_DropIndexVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -152,19 +149,15 @@ static void JS_DropIndexVocbaseCol(
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
-  auto res = methods::Indexes::drop(collection, builder.slice());
+  auto res = methods::Indexes::drop(*collection, builder.slice()).waitAndGet();
 
-  if (res.ok()) {
-    TRI_V8_RETURN_TRUE();
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_V8_RETURN_FALSE();
+  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionGetIndexes
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetIndexesVocbaseCol(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -190,7 +183,8 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   VPackBuilder output;
-  auto res = methods::Indexes::getAll(collection, flags, withHidden, output);
+  auto res = methods::Indexes::getAll(*collection, flags, withHidden, output)
+                 .waitAndGet();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -313,19 +307,11 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8_RETURN(v8Result);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDatabaseCreate
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_CreateVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   CreateVocBase(args, TRI_COL_TYPE_DOCUMENT);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionCreateDocumentCollection
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateDocumentCollectionVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -333,10 +319,6 @@ static void JS_CreateDocumentCollectionVocbase(
   CreateVocBase(args, TRI_COL_TYPE_DOCUMENT);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionCreateEdgeCollection
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateEdgeCollectionVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {

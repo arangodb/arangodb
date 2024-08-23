@@ -1,4 +1,5 @@
 add_library(arango_v8 STATIC
+  V8PlatformFeature.cpp
   V8SecurityFeature.cpp
   JavaScriptSecurityContext.cpp
   JSLoader.cpp
@@ -22,16 +23,7 @@ target_include_directories(arango_v8
   ${CMAKE_CURRENT_BINARY_DIR}
   SYSTEM PUBLIC
   ${OPENSSL_INCLUDE_DIR}
-  ${ICU_INCLUDE_DIR})
-
-add_library(arango_v8_deadline STATIC
-  v8-deadline.cpp)
-target_link_libraries(arango_v8_deadline
-  arango
-  v8_interface
-  velocypack)
-target_include_directories(arango_v8_deadline PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR})
+  ${ICU64_INCLUDE_DIR})
 
 add_library(arango_v8_no_deadline STATIC
   v8-no-deadline.cpp)

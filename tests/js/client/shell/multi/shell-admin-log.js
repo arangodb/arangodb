@@ -4,13 +4,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
@@ -31,8 +32,7 @@ const _ = require("lodash");
 
 const dbservers = (function () {
   const isType = (d) => (d.instanceRole.toLowerCase() === "dbserver");
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType).map((x) => x.id);
+  return global.instanceManager.arangods.filter(isType).map((x) => x.id);
 })();
 
 function adminLogSuite() {
@@ -42,21 +42,85 @@ function adminLogSuite() {
     arango.POST("/_admin/execute", `for (let i = 0; i < 50; ++i) require('console')._log('general=${level}', 'testi');`);
   };
 
-  let oldLogLevel;
+  let oldLogLevels;
 
   return {
     setUpAll: function () {
-      oldLogLevel = arango.GET("/_admin/log/level").general;
-      arango.PUT("/_admin/log/level", {general: "info"});
+      oldLogLevels = arango.GET("/_admin/log/level?withAppenders=true");
+      
+      // set all log levels to "fatal" except for topic general
+      let adjusted = {};
+      Object.keys(oldLogLevels.global).forEach((k) => {
+        adjusted[k] = "fatal";
+      });
+      adjusted.general = "info";
+      arango.PUT("/_admin/log/level", adjusted);
     },
 
     tearDownAll: function () {
       // restore previous log level for "general" topic;
-      arango.PUT("/_admin/log/level", {general: oldLogLevel});
+      arango.PUT("/_admin/log/level?withAppenders=true", oldLogLevels);
     },
 
     setUp: function () {
       arango.DELETE("/_admin/log");
+    },
+
+    testPutInvalidLevelReturnsError: function () {
+      let old = arango.GET("/_admin/log/level");
+      let res = arango.PUT("/_admin/log/level", {all: "error", general: "invalidLevel"});
+      assertEqual(res.error, true);
+      assertEqual(res.code, 400);
+      assertEqual(res.errorMessage, "Failed to update log levels: Unknown enum value INVALIDLEVEL at path ['general']");
+
+      assertEqual(old, arango.GET("/_admin/log/level"), "log levels should not have changed");
+    },
+    
+    testPutInvalidTopicReturnsError: function () {
+      let old = arango.GET("/_admin/log/level");
+      let res = arango.PUT("/_admin/log/level", {all: "error", invalidTopic: "error"});
+      assertEqual(res.error, true);
+      assertEqual(res.code, 400);
+      assertEqual(res.errorMessage, "Failed to update log levels: Unknown log topic invalidTopic");
+
+      assertEqual(old, arango.GET("/_admin/log/level"), "log levels should not have changed");
+    },
+    
+    testPutInvalidAppenderReturnsError: function () {
+      let old = arango.GET("/_admin/log/level?withAppenders=true");
+      let res = arango.PUT("/_admin/log/level?withAppenders=true", { global: { all: "error" }, appenders: { invalidAppender: { all: "debug" } } });
+      assertEqual(res.error, true);
+      assertEqual(res.code, 400);
+      assertEqual(res.errorMessage, "Failed to update log levels: Unknown appender invalidAppender");
+
+      assertEqual(old, arango.GET("/_admin/log/level?withAppenders=true"), "log levels should not have changed");
+    },
+    
+    testIncreaseLogLevelForAppenderAdjustsGlobalLevel: function () {
+      let old = arango.GET("/_admin/log/level?withAppenders=true");
+      let res = arango.PUT("/_admin/log/level?withAppenders=true", { appenders: { "-": { queries: "trace" } } });
+      assertEqual(res.appenders["-"].queries, "TRACE", JSON.stringify(res));
+      assertEqual(res.global.queries, "TRACE", JSON.stringify(res));
+
+      // restore old levels
+      arango.PUT("/_admin/log/level?withAppenders=true", old);
+    },
+
+
+    testDecreaseLogLevelForAppenderAdjustsGlobalLevel: function () {
+      let old = arango.GET("/_admin/log/level?withAppenders=true");
+
+      // we first set queries globally to debug (i.e., all appenders), but for the stdout appender we set it to trace.
+      // This implicitly also sets the global level to trace.
+      let res = arango.PUT("/_admin/log/level?withAppenders=true", { global: { queries: "debug" }, appenders: { "-": { queries: "trace" } } });
+      assertEqual(res.appenders["-"].queries, "TRACE");
+      assertEqual(res.global.queries, "TRACE");
+      res = arango.PUT("/_admin/log/level?withAppenders=true", { appenders: { "-": { queries: "error" } } });
+      assertEqual(res.appenders["-"].queries, "ERROR");
+      assertEqual(res.global.queries, "DEBUG");
+
+      // restore old levels
+      arango.PUT("/_admin/log/level?withAppenders=true", old);
     },
 
     testPutAdminSetAllLevels: function () {
@@ -407,6 +471,46 @@ function adminLogSuite() {
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(50, res.total);
+    },
+
+    testResetLogLevels: function () {
+      let res = arango.PUT("/_admin/log/level", {"trx": "trace", "requests": "debug"});
+      assertEqual(res.trx, "TRACE");
+      assertEqual(res.requests, "DEBUG");
+      const newValue = arango.GET("/_admin/log/level");
+      assertEqual(newValue.trx, "TRACE");
+      assertEqual(newValue.requests, "DEBUG");
+      // restore old values
+      const restored = arango.DELETE("/_admin/log/level");
+      assertEqual(oldLogLevels.global.trx, restored.trx);
+      assertEqual(oldLogLevels.global.requests, restored.requests);
+      // now read the restored value
+      const newOld = arango.GET("/_admin/log/level");
+      assertEqual(oldLogLevels.global.trx, newOld.trx);
+      assertEqual(oldLogLevels.global.requests, newOld.requests);
+    },
+    
+    testResetLogLevelsOtherServer: function () {
+      if (dbservers.length === 0) {
+        return;
+      }
+      const server = dbservers[0];
+      const url = helper.getEndpointById(server);
+      const old = request.get(`${url}/_admin/log/level`);
+      // change the value via coordinator
+      let res = arango.PUT(`/_admin/log/level?serverId=${server}`, {"trx": "trace", "requests": "debug"});
+      assertEqual(res.trx, "TRACE");
+      assertEqual(res.requests, "DEBUG");
+      // read directly from dbserver
+      const newValue = request.get(`${url}/_admin/log/level`);
+      assertEqual(newValue.json.trx, "TRACE");
+      assertEqual(newValue.json.requests, "DEBUG");
+      // restore old values
+      request.delete(`${url}/_admin/log/level`);
+      // now read the restored value
+      const newOld = arango.GET(`/_admin/log/level?serverId=${server}`);
+      assertEqual(old.json.trx, newOld.trx);
+      assertEqual(old.json.requests, newOld.requests);
     },
 
   };

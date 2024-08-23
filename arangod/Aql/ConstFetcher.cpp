@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,6 +29,7 @@
 #include "Aql/SkipResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Containers/SmallVector.h"
 
 #include <algorithm>
 
@@ -40,12 +41,8 @@ ConstFetcher::ConstFetcher() : _currentBlock{nullptr}, _rowIndex(0) {}
 ConstFetcher::ConstFetcher(DependencyProxy& executionBlock)
     : _currentBlock{nullptr}, _rowIndex(0) {}
 
-auto ConstFetcher::execute(AqlCallStack& stack)
+auto ConstFetcher::execute(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
-  // We only peek the call here, as we do not take over ownership.
-  // We can replace this by pop again if all executors also only take a
-  // reference to the stack.
-  auto call = stack.peek();
   if (_blockForPassThrough == nullptr) {
     SkipResult skipped = _skipped;
     _skipped.reset();
@@ -53,6 +50,11 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     return {ExecutionState::DONE, skipped,
             AqlItemBlockInputRange{MainQueryState::DONE}};
   }
+
+  // We only peek the call here, as we do not take over ownership.
+  // We can replace this by pop again if all executors also only take a
+  // reference to the stack.
+  auto call = stack.peek();
 
   containers::SmallVector<std::pair<size_t, size_t>, 4> sliceIndexes;
 
@@ -77,7 +79,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
             // we cannot jump over relevant shadow rows.
             // Unfortunately we need to stop including rows here.
             // NOTE: As all blocks have this behavior anyway
-            // this is not cirtical.
+            // this is not critical.
             break;
           }
           toShadowRow++;

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -56,6 +56,19 @@ class RestHandler;
 /// execution over to some other thread (e.g., using futures), we also need to
 /// transfer the context. The easiest way to achieve that is by using the
 /// `withLogContext` helper function.
+///
+/// In some cases we cannot use a local ScopedValue, e.g., in the RestHandler
+/// we want to add some values during execution of the handler, but the handler
+/// can get paused and recontinue later. In such a case we want to create the
+/// value once and add/remove it from the context as needed. This can be done
+/// by creating the ScopedValue and then calling `share()` on it to create a
+/// shared_ptr which can be stored in a member. This shared_ptr can then be
+/// passed to `LogContext::Current::pushValues()` to add the values to the
+/// context. This returns a `LogContext::EntryPtr` which must also be stored,
+/// because it is required later when calling `LogContext::Current::popEntry()`
+/// to remove the values from the context.
+/// Note: it is important that entries are popped in the inverse order in
+/// which they were added.
 ///
 /// Internally the values are managed in an immutable linked list using ref
 /// counts. I.e., values that have been added to some LogContext are never
@@ -216,16 +229,16 @@ template<class Derived>
 struct LogContext::GenericVisitor : Visitor {
   void visit(std::string_view const& key,
              std::string_view const& value) const override {
-    self().visit(key, value);
+    self().doVisit(key, value);
   }
   void visit(std::string_view const& key, double value) const override {
-    self().visit(key, value);
+    self().doVisit(key, value);
   }
   void visit(std::string_view const& key, std::int64_t value) const override {
-    self().visit(key, value);
+    self().doVisit(key, value);
   }
   void visit(std::string_view const& key, std::uint64_t value) const override {
-    self().visit(key, value);
+    self().doVisit(key, value);
   }
 
  private:
@@ -240,7 +253,7 @@ struct LogContext::OverloadVisitor : GenericVisitor<OverloadVisitor<Overloads>>,
   explicit OverloadVisitor(Overloads overloads)
       : GenericVisitor<OverloadVisitor>(), Overloads(std::move(overloads)) {}
   template<class T>
-  void visit(std::string_view const& key, T&& value) const {
+  void doVisit(std::string_view const& key, T&& value) const {
     this->operator()(key, std::forward<T>(value));
   }
 };
@@ -452,6 +465,10 @@ struct LogContext::EntryPtr {
  public:
   constexpr EntryPtr() : _entry(nullptr) {}
   explicit EntryPtr(Entry* e) noexcept : _entry(e) {}
+
+  operator bool() const noexcept { return _entry != nullptr; }
+  bool operator!=(std::nullptr_t) const noexcept { return _entry != nullptr; }
+  bool operator==(std::nullptr_t) const noexcept { return _entry == nullptr; }
 
   EntryPtr(EntryPtr&& other) noexcept : _entry(other._entry) {
     other._entry = nullptr;
@@ -693,10 +710,7 @@ inline LogContext::ValueBuilder<> LogContext::makeValue() noexcept {
 // the following attribute suppresses an UBSan false positive that reports
 // a nullptr access to the LogContext object here. it seems UBSan has issues
 // with thread-locals
-#ifndef _MSC_VER
-__attribute__((no_sanitize("null")))
-#endif
-inline LogContext&
+__attribute__((no_sanitize("null"))) inline LogContext&
 LogContext::current() noexcept {
   return _threadControlBlock._logContext;
 }

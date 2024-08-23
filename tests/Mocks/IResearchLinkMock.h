@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -59,23 +59,21 @@ class IResearchLinkMock final : public Index, public IResearchLink {
     return IResearchDataStore::hasSelectivityEstimate();
   }
 
-  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                velocypack::Slice const doc) {
+  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
+                velocypack::Slice doc) {
     return IResearchDataStore::insert<FieldIterator<FieldMeta>,
                                       IResearchLinkMeta>(trx, documentId, doc,
-                                                         meta(), nullptr);
+                                                         meta());
   }
 
-  Result insertInRecovery(transaction::Methods& trx,
-                          LocalDocumentId const& documentId,
-                          velocypack::Slice doc, uint64_t tick) {
-    return IResearchDataStore::insert<FieldIterator<FieldMeta>,
-                                      IResearchLinkMeta>(trx, documentId, doc,
-                                                         meta(), &tick);
+  void recoveryInsert(uint64_t tick, LocalDocumentId documentId,
+                      velocypack::Slice doc) {
+    IResearchDataStore::recoveryInsert<FieldIterator<FieldMeta>,
+                                       IResearchLinkMeta>(tick, documentId, doc,
+                                                          meta());
   }
 
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                bool nested, uint64_t const* recoveryTick);
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId);
 
   bool isSorted() const final { return IResearchLink::isSorted(); }
 

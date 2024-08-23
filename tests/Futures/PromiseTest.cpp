@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -163,7 +163,7 @@ TEST(PromiseTest, hasPreconditionValid) {
   auto const except = std::logic_error("foo");
   auto const ewrap = std::make_exception_ptr(except);
 
-  DOIT(p.getFuture());
+  DOIT(std::ignore = p.getFuture());
   DOIT(p.setException(except));
   DOIT(p.setException(ewrap));
   // DOIT(p.setInterruptHandler([](auto&) {}));
@@ -242,7 +242,7 @@ TEST(PromiseTest, setValue) {
   Promise<int> fund;
   auto ffund = fund.getFuture();
   fund.setValue(42);
-  ASSERT_TRUE(42 == ffund.get());
+  ASSERT_TRUE(42 == ffund.waitAndGet());
 
   struct Foo {
     std::string name;
@@ -253,21 +253,21 @@ TEST(PromiseTest, setValue) {
   auto fpod = pod.getFuture();
   Foo f = {"the answer", 42};
   pod.setValue(f);
-  Foo f2 = fpod.get();
+  Foo f2 = fpod.waitAndGet();
   ASSERT_TRUE(f.name == f2.name);
   ASSERT_TRUE(f.value == f2.value);
 
   pod = Promise<Foo>();
   fpod = pod.getFuture();
   pod.setValue(std::move(f2));
-  Foo f3 = fpod.get();
+  Foo f3 = fpod.waitAndGet();
   ASSERT_TRUE(f.name == f3.name);
   ASSERT_TRUE(f.value == f3.value);
 
   Promise<std::unique_ptr<int>> mov;
   auto fmov = mov.getFuture();
   mov.setValue(std::make_unique<int>(42));
-  std::unique_ptr<int> ptr = std::move(fmov).get();
+  std::unique_ptr<int> ptr = std::move(fmov).waitAndGet();
   ASSERT_TRUE(42 == *ptr);
 
   Promise<Unit> v;
@@ -281,13 +281,13 @@ TEST(PromiseTest, setException) {
     Promise<int> p;
     auto f = p.getFuture();
     p.setException(eggs);
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
   {
     Promise<int> p;
     auto f = p.getFuture();
     p.setException(std::make_exception_ptr(eggs));
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
 }
 
@@ -296,13 +296,13 @@ TEST(PromiseTest, setWith) {
     Promise<int> p;
     auto f = p.getFuture();
     p.setWith([] { return 42; });
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == f.waitAndGet());
   }
   {
     Promise<int> p;
     auto f = p.getFuture();
     p.setWith([]() -> int { throw eggs; });
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
 }
 
@@ -333,7 +333,7 @@ TEST(PromiseTest, brokenOnDelete) {
 
   ASSERT_TRUE(f.isReady());
 
-  auto t = f.getTry();
+  auto t = f.waitAndGetTry();
 
   ASSERT_TRUE(t.hasException());
   EXPECT_THROW(t.throwIfFailed(), FutureException);

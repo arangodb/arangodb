@@ -1,0 +1,16 @@
+name: arangodb_replication2_replicated_log_follower_entry_drop_total
+introducedIn: "3.11.0"
+help: |
+  Counter of how many entries have been dropped by a follower during an
+  append-entries request.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  The leader of a replicated log replicates the log entries by sending
+  append-entries requests to its followers.
+  Sometimes followers have to drop existing log entries before appending the
+  new log entries. This usually happens after a failover or leader change.

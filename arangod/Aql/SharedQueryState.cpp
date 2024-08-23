@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,7 +37,11 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 SharedQueryState::SharedQueryState(ArangodServer& server)
+    : SharedQueryState(server, SchedulerFeature::SCHEDULER) {}
+
+SharedQueryState::SharedQueryState(ArangodServer& server, Scheduler* scheduler)
     : _server(server),
+      _scheduler(scheduler),
       _wakeupCb(nullptr),
       _numWakeups(0),
       _cbVersion(0),
@@ -124,8 +128,7 @@ void SharedQueryState::queueHandler() {
     return;
   }
 
-  auto scheduler = SchedulerFeature::SCHEDULER;
-  if (ADB_UNLIKELY(scheduler == nullptr)) {
+  if (ADB_UNLIKELY(_scheduler == nullptr)) {
     // We are shutting down
     return;
   }
@@ -134,7 +137,7 @@ void SharedQueryState::queueHandler() {
                         ? RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR
                         : RequestLane::CLUSTER_AQL;
 
-  bool queued = scheduler->tryBoundedQueue(
+  bool queued = _scheduler->tryBoundedQueue(
       lane, [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
         std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
@@ -170,9 +173,8 @@ void SharedQueryState::queueHandler() {
 }
 
 bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  if (scheduler) {
-    return scheduler->tryBoundedQueue(RequestLane::CLUSTER_AQL, std::move(cb));
+  if (_scheduler) {
+    return _scheduler->tryBoundedQueue(RequestLane::CLUSTER_AQL, std::move(cb));
   }
   return false;
 }

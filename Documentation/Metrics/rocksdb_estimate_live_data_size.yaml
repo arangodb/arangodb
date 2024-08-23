@@ -11,6 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "rocksdb-estimate-live-data-size".
+  This metric exhibits the RocksDB metric `rocksdb-estimate-live-data-size`.
   It shows an estimate of the amount of live data in bytes, summed over
   all column families.

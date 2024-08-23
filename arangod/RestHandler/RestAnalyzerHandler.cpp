@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,7 +37,12 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Transaction/Hints.h"
 #include "Utilities/NameValidator.h"
+
+namespace {
+constexpr std::string_view moduleName("analyzers management");
+}
 
 namespace arangodb {
 namespace iresearch {
@@ -92,13 +97,11 @@ void RestAnalyzerHandler::createAnalyzer(  // create
     return;
   }
 
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-  if (!AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(splittedAnalyzerName.second.data(),
-                           splittedAnalyzerName.second.size()))) {
-    generateError(arangodb::Result(
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+  if (AnalyzerNameValidator::validateName(extendedNames,
+                                          splittedAnalyzerName.second)
+          .fail()) {
+    generateError(Result(
         TRI_ERROR_BAD_PARAMETER,
         "invalid characters in analyzer name '" +
             static_cast<std::string>(splittedAnalyzerName.second) + "'"));
@@ -171,7 +174,9 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   }
 
   IResearchAnalyzerFeature::EmplaceResult result;
-  auto res = analyzers.emplace(result, name, type, properties, features);
+  auto res = analyzers.emplace(result, name, type, properties,
+                               transaction::OperationOriginREST{::moduleName},
+                               features);
 
   if (res.fail()) {
     generateError(res);
@@ -286,7 +291,8 @@ void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
   }
 
   auto pool =
-      analyzers.get(normalizedName, QueryAnalyzerRevisions::QUERY_LATEST);
+      analyzers.get(normalizedName, QueryAnalyzerRevisions::QUERY_LATEST,
+                    transaction::OperationOriginREST{::moduleName});
   if (!pool) {
     generateError(arangodb::Result(
         TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
@@ -320,10 +326,13 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
   };
 
   builder.openArray();
-  analyzers.visit(visitor, nullptr);  // include static analyzers
+  analyzers.visit(visitor, nullptr,
+                  transaction::OperationOriginREST{
+                      ::moduleName});  // include static analyzers
 
   if (IResearchAnalyzerFeature::canUse(_vocbase, auth::Level::RO)) {
-    analyzers.visit(visitor, &_vocbase);
+    analyzers.visit(visitor, &_vocbase,
+                    transaction::OperationOriginREST{::moduleName});
   }
 
   // include analyzers from the system vocbase if possible
@@ -334,7 +343,8 @@ void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
     if (sysVocbase                                // have system vocbase
         && sysVocbase->name() != _vocbase.name()  // not same vocbase as current
         && IResearchAnalyzerFeature::canUse(*sysVocbase, auth::Level::RO)) {
-      analyzers.visit(visitor, sysVocbase.get());
+      analyzers.visit(visitor, sysVocbase.get(),
+                      transaction::OperationOriginREST{::moduleName});
     }
   }
 
@@ -352,10 +362,8 @@ void RestAnalyzerHandler::removeAnalyzer(IResearchAnalyzerFeature& analyzers,
       IResearchAnalyzerFeature::splitAnalyzerName(requestedName);
   auto name = splittedAnalyzerName.second;
 
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
-  if (!AnalyzerNameValidator::isAllowedName(
-          extendedNames, std::string_view(name.data(), name.size()))) {
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+  if (AnalyzerNameValidator::validateName(extendedNames, name).fail()) {
     generateError(
         arangodb::Result(TRI_ERROR_BAD_PARAMETER,
                          std::string("Invalid characters in analyzer name '")
@@ -383,7 +391,8 @@ void RestAnalyzerHandler::removeAnalyzer(IResearchAnalyzerFeature& analyzers,
     return;
   }
 
-  auto res = analyzers.remove(normalizedName, force);
+  auto res = analyzers.remove(
+      normalizedName, transaction::OperationOriginREST{::moduleName}, force);
   if (!res.ok()) {
     generateError(res);
     return;

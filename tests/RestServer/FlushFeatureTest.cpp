@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,6 +33,7 @@
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "Metrics/MetricsFeature.h"
@@ -42,10 +43,13 @@
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 // -----------------------------------------------------------------------------
@@ -69,7 +73,18 @@ class FlushFeatureTest
 
   FlushFeatureTest() : server(nullptr, nullptr), engine(server) {
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::QueryRegistryFeature>(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::StatisticsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::EngineSelectorFeature>(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::metrics::ClusterMetricsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+                nullptr)),
+        false);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(),
@@ -80,16 +95,15 @@ class FlushFeatureTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // required for TRI_vocbase_t
     features.emplace_back(
-        server.addFeature<arangodb::V8DealerFeature>(),
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);  // required for TRI_vocbase_t
+#ifdef USE_V8
+    features.emplace_back(
+        server.addFeature<arangodb::V8DealerFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for DatabaseFeature::createDatabase(...)
-
-#if USE_ENTERPRISE
-    features.emplace_back(
-        server.addFeature<arangodb::LdapFeature>(),
-        false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {

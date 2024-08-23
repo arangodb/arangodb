@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,14 +23,15 @@
 
 #pragma once
 
+#include "Basics/Exceptions.h"
+#include "Basics/Guarded.h"
+#include "Basics/UnshackledMutex.h"
+#include "Replication2/Helper/WaitForQueue.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/WaitForBag.h"
-#include "Replication2/Helper/WaitForQueue.h"
-#include "Basics/UnshackledMutex.h"
-#include "Basics/Guarded.h"
-#include "Replication2/Streams/MultiplexedValues.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/Streams/MultiplexedValues.h"
 
 namespace arangodb::replication2::test {
 
@@ -40,13 +42,14 @@ struct FakeFollower final : replicated_log::ILogFollower,
 
   auto getStatus() const -> replicated_log::LogStatus override;
   auto getQuickStatus() const -> replicated_log::QuickLogStatus override;
-  auto resign() && -> std::tuple<std::unique_ptr<replicated_log::LogCore>,
-                                 DeferredAction> override;
+  auto resign() && -> std::tuple<
+      std::unique_ptr<storage::IStorageEngineMethods>,
+      std::unique_ptr<replicated_log::IReplicatedStateHandle>,
+      DeferredAction> override;
   void resign() &;
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
 
-  auto release(LogIndex doneWithIdx) -> Result override;
   auto compact() -> ResultT<
       arangodb::replication2::replicated_log::CompactionResult> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -60,8 +63,8 @@ struct FakeFollower final : replicated_log::ILogFollower,
   void updateCommitIndex(LogIndex index);
   auto addEntry(LogPayload) -> LogIndex;
   void triggerLeaderAcked();
-
-  auto copyInMemoryLog() const -> replicated_log::InMemoryLog override;
+  auto getInternalLogIterator(std::optional<LogRange> bounds) const
+      -> std::unique_ptr<LogIterator> override;
 
   template<typename State>
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {
@@ -70,7 +73,7 @@ struct FakeFollower final : replicated_log::ILogFollower,
     velocypack::Builder builder;
     using descriptor = streams::stream_descriptor_by_id_t<1, streamSpec>;
     streams::MultiplexedValues::toVelocyPack<descriptor>(t, builder);
-    return addEntry(LogPayload::createFromSlice(builder.slice()));
+    return addEntry(LogPayload{*builder.steal()});
   }
 
  private:

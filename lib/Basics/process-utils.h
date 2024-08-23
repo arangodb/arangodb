@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,21 +23,19 @@
 
 #pragma once
 
+#include <functional>
+#include <mutex>
 #include <string>
 #include <vector>
+#include <optional>
 
-#include "Basics/Common.h"
 #include "Basics/threads.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalid process id
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#define TRI_INVALID_PROCESS_ID (0)
-#else
 #define TRI_INVALID_PROCESS_ID (-1)
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
@@ -76,23 +74,12 @@ typedef enum {
 /// @brief identifier of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef _WIN32
 struct ExternalId {
   TRI_pid_t _pid;
   int _readPipe;
   int _writePipe;
   ExternalId();
 };
-#else
-struct ExternalId {
-  TRI_pid_t _pid;
-  HANDLE _readPipe;
-  HANDLE _writePipe;
-
-  ExternalId();
-  virtual ~ExternalId() = default;
-};
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process description
@@ -100,18 +87,17 @@ struct ExternalId {
 
 struct ExternalProcess : public ExternalId {
   std::string _executable;
-  size_t _numberArguments;
-  char** _arguments;
+  size_t _numberArguments = 0;
+  char** _arguments = nullptr;
 
-#ifdef _WIN32
-  HANDLE _process;
-#endif
+  TRI_external_status_e _status = TRI_EXT_NOT_STARTED;
+  int64_t _exitStatus = 0;
 
-  TRI_external_status_e _status;
-  int64_t _exitStatus;
+  ExternalProcess(ExternalProcess const& other) = delete;
+  ExternalProcess& operator=(ExternalProcess const& other) = delete;
 
+  ExternalProcess() = default;
   ~ExternalProcess();
-  ExternalProcess();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,17 +105,16 @@ struct ExternalProcess : public ExternalId {
 ////////////////////////////////////////////////////////////////////////////////
 
 extern std::vector<ExternalProcess*> ExternalProcesses;
+extern std::mutex ExternalProcessesLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process status
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ExternalProcessStatus {
-  TRI_external_status_e _status;
-  int64_t _exitStatus;
+  TRI_external_status_e _status = TRI_EXT_NOT_STARTED;
+  int64_t _exitStatus = 0;
   std::string _errorMessage;
-
-  ExternalProcessStatus();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +129,7 @@ uint64_t TRI_MicrosecondsTv(struct timeval* tv);
 /// @brief returns information about the current process
 ////////////////////////////////////////////////////////////////////////////////
 
-ProcessInfo TRI_ProcessInfoSelf(void);
+ProcessInfo TRI_ProcessInfoSelf();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
@@ -157,6 +142,13 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid);
 ////////////////////////////////////////////////////////////////////////////////
 
 ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up process in the process list
+////////////////////////////////////////////////////////////////////////////////
+
+std::optional<ExternalProcessStatus> TRI_LookupSpawnedProcessStatus(
+    TRI_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process name
@@ -198,8 +190,9 @@ bool TRI_WritePipe(ExternalProcess const* process, char const* buffer,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
-                                               uint32_t timeout);
+ExternalProcessStatus TRI_CheckExternalProcess(
+    ExternalId pid, bool wait, uint32_t timeout,
+    std::function<bool()> const& deadlineReached = {});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
@@ -225,3 +218,11 @@ bool TRI_ContinueExternalProcess(ExternalId pid);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownProcess();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change the process priority using setpriority / SetPriorityClass
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_SetPriority(ExternalId pid, int prio);
+
+inline bool noDeadLine() { return false; }

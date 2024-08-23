@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,9 +35,7 @@
 
 #include "RocksDBThrottle.h"
 
-#ifndef _WIN32
 #include <sys/resource.h>
-#endif
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -45,8 +43,6 @@
 
 #include <thread>
 
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -67,6 +63,7 @@ RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency,
                                  uint64_t lowerBoundBps)
     : _internalRocksDB(nullptr),
       _throttleState(ThrottleState::NotStarted),
+      _throttleData(std::make_unique<std::vector<ThrottleData_t>>(numSlots)),
       _replaceIdx(2),
       _throttleBps(0),
       _firstThrottle(true),
@@ -78,8 +75,6 @@ RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency,
       _slowdownWritesTrigger(slowdownWritesTrigger),
       _lowerBoundThrottleBps(lowerBoundBps) {
   TRI_ASSERT(_scalingFactor != 0);
-  _throttleData = std::make_unique<std::vector<ThrottleData_t>>();
-  _throttleData->resize(numSlots);
 }
 
 // Shutdown the background thread only if it was ever started
@@ -101,8 +96,8 @@ void RocksDBThrottle::stopThread() {
       if (_throttleState.compare_exchange_strong(state,
                                                  ThrottleState::ShuttingDown)) {
         {
-          CONDITION_LOCKER(guard, _threadCondvar);
-          _threadCondvar.signal();
+          std::lock_guard guard{_threadCondvar.mutex};
+          _threadCondvar.cv.notify_one();
         }
         _threadFuture.wait();
 
@@ -110,7 +105,7 @@ void RocksDBThrottle::stopThread() {
         _throttleState.store(ThrottleState::Done);
 
         {
-          CONDITION_LOCKER(guard, _threadCondvar);
+          std::lock_guard guard{_threadCondvar.mutex};
 
           _internalRocksDB = nullptr;
         }
@@ -166,7 +161,7 @@ void RocksDBThrottle::OnCompactionCompleted(
 }
 
 void RocksDBThrottle::startup(rocksdb::DB* db) {
-  CONDITION_LOCKER(guard, _threadCondvar);
+  std::unique_lock guard{_threadCondvar.mutex};
 
   _internalRocksDB = (rocksdb::DBImpl*)db;
 
@@ -178,7 +173,7 @@ void RocksDBThrottle::startup(rocksdb::DB* db) {
       std::async(std::launch::async, &RocksDBThrottle::threadLoop, this);
 
   while (_throttleState.load() == ThrottleState::Starting) {
-    _threadCondvar.wait(10000);
+    _threadCondvar.cv.wait_for(guard, std::chrono::milliseconds{10});
   }
 }
 
@@ -190,7 +185,7 @@ void RocksDBThrottle::setThrottleWriteRate(std::chrono::microseconds micros,
   //  was calculated against write_buffer_size, but that varies by column family
   if ((64 << 19) < bytes) {
     // lock _threadMutex while we update _throttleData
-    MUTEX_LOCKER(mutexLocker, _threadMutex);
+    std::lock_guard mutexLocker{_threadMutex};
     // index 0 for level 0 compactions, index 1 for all others
     unsigned target_idx = (isLevel0 ? 0 : 1);
 
@@ -216,12 +211,12 @@ void RocksDBThrottle::threadLoop() {
 
   // addresses race condition during fast start/stop
   {
-    CONDITION_LOCKER(guard, _threadCondvar);
+    std::lock_guard guard{_threadCondvar.mutex};
 
     // Starting => Running
     TRI_ASSERT(_throttleState.load() == ThrottleState::Starting);
     _throttleState.store(ThrottleState::Running);
-    _threadCondvar.signal();
+    _threadCondvar.cv.notify_one();
   }
 
   LOG_TOPIC("a4a57", DEBUG, arangodb::Logger::ENGINES)
@@ -243,12 +238,12 @@ void RocksDBThrottle::threadLoop() {
     }
 
     // wait on _threadCondvar
-    CONDITION_LOCKER(guard, _threadCondvar);
+    std::unique_lock guard{_threadCondvar.mutex};
 
     if (_throttleState.load(std::memory_order_relaxed) ==
         ThrottleState::Running) {
       // test in case of race at shutdown
-      _threadCondvar.wait(std::chrono::microseconds(_frequency * 1000));
+      _threadCondvar.cv.wait_for(guard, std::chrono::milliseconds{_frequency});
     }
   }
 
@@ -267,7 +262,7 @@ void RocksDBThrottle::recalculateThrottle() {
   uint64_t totalBytes = 0;
   bool noData;
   {
-    MUTEX_LOCKER(mutexLocker, _threadMutex);
+    std::lock_guard mutexLocker{_threadMutex};
 
     throttleData[_replaceIdx] = throttleData[1];
     throttleData[1] = ThrottleData_t{};
@@ -318,7 +313,7 @@ void RocksDBThrottle::recalculateThrottle() {
 
   // lock _threadMutex while we update _throttleData
   {
-    MUTEX_LOCKER(mutexLocker, _threadMutex);
+    std::lock_guard mutexLocker{_threadMutex};
 
     int64_t newThrottle;
     // non-level0 data available?
@@ -347,6 +342,7 @@ void RocksDBThrottle::recalculateThrottle() {
     if (!_firstThrottle) {
       int64_t tempRate = _throttleBps.load(std::memory_order_relaxed);
 
+      TRI_ASSERT(_scalingFactor != 0);
       if (tempRate < newThrottle) {
         tempRate += (newThrottle - tempRate) / _scalingFactor;
       } else {
@@ -391,7 +387,7 @@ void RocksDBThrottle::setThrottle() {
   // called by routine with _threadMutex held
 
   // using condition variable's mutex to protect _internalRocksDB race
-  CONDITION_LOCKER(guard, _threadCondvar);
+  std::lock_guard guard{_threadCondvar.mutex};
 
   // this routine can get called before _internalRocksDB is set
   if (nullptr != _internalRocksDB && _throttleBps > 100) {

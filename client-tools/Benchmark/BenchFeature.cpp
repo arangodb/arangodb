@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,12 +32,14 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <thread>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StaticStrings.h"
@@ -349,6 +351,8 @@ void BenchFeature::updateStatsValues(
   }
 }
 
+void BenchFeature::prepare() { logLGPLNotice(); }
+
 void BenchFeature::start() {
   std::sort(_percentiles.begin(), _percentiles.end());
 
@@ -370,7 +374,7 @@ void BenchFeature::start() {
 
     VPackBuilder b;
     b.openObject();
-    b.add("name", VPackValue(normalizeUtf8ToNFC(connectDB)));
+    b.add("name", VPackValue(connectDB));
     b.close();
 
     std::unordered_map<std::string, std::string> headers;
@@ -489,8 +493,8 @@ void BenchFeature::start() {
 
     // broadcast the start signal to all threads
     {
-      CONDITION_LOCKER(guard, startCondition);
-      guard.broadcast();
+      std::lock_guard guard{startCondition.mutex};
+      startCondition.cv.notify_all();
     }
 
     uint64_t const stepValue = _operations / 20;

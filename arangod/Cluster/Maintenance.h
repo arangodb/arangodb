@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Agency/Node.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -40,11 +39,13 @@ class StorageEngine;
 
 namespace replication2 {
 namespace replicated_log {
-struct QuickLogStatus;
 enum class ParticipantRole;
 }  // namespace replicated_log
 namespace replicated_state {
 struct StateStatus;
+}
+namespace maintenance {
+struct LogStatus;
 }
 }  // namespace replication2
 
@@ -71,15 +72,21 @@ constexpr int SLOW_OP_PRIORITY = 0;
 // maintenance thread which does not execute SLOW_OP_PRIORITY jobs.
 
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
-// database -> LogId -> QuickLogStatus
+// database -> LogId -> LogStatus
 using ReplicatedLogStatusMap =
     std::unordered_map<arangodb::replication2::LogId,
-                       arangodb::replication2::replicated_log::QuickLogStatus>;
+                       arangodb::replication2::maintenance::LogStatus>;
 using ReplicatedLogStatusMapByDatabase =
     std::unordered_map<DatabaseID, ReplicatedLogStatusMap>;
 using ReplicatedLogSpecMap =
     std::unordered_map<arangodb::replication2::LogId,
                        arangodb::replication2::agency::LogPlanSpecification>;
+// ShardID -> LogId
+using ShardIdToLogIdMap =
+    std::unordered_map<arangodb::ShardID, arangodb::replication2::LogId>;
+// database -> ShardID -> LogId
+using ShardIdToLogIdMapByDatabase =
+    std::unordered_map<DatabaseID, ShardIdToLogIdMap>;
 
 /**
  * @brief          Diff Plan Replicated Logs and Local Replicated Logs for phase
@@ -116,11 +123,11 @@ void diffReplicatedLogs(
  */
 arangodb::Result diffPlanLocal(
     StorageEngine& engine,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
     uint64_t planIndex,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        current,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& current,
     uint64_t currentIndex, containers::FlatHashSet<std::string> dirty,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
@@ -128,7 +135,8 @@ arangodb::Result diffPlanLocal(
     containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ShardIdToLogIdMapByDatabase const& localShardIdToLogId);
 
 /**
  * @brief          Difference Plan and local for phase 1 of Maintenance run
@@ -145,11 +153,11 @@ arangodb::Result diffPlanLocal(
  * @return         Result
  */
 arangodb::Result executePlan(
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
     uint64_t planIndex,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        current,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& current,
     uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
     containers::FlatHashSet<std::string> const& moreDirt,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
@@ -157,7 +165,8 @@ arangodb::Result executePlan(
     std::string const& serverId, arangodb::MaintenanceFeature& feature,
     VPackBuilder& report,
     arangodb::MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ShardIdToLogIdMapByDatabase const& shardIdToLogId);
 
 /**
  * @brief          Difference local and current states for phase 2 of
@@ -192,11 +201,11 @@ arangodb::Result diffLocalCurrent(
  * @return         Result
  */
 arangodb::Result phaseOne(
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
     uint64_t planIndex,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        current,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& current,
     uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
     containers::FlatHashSet<std::string> const& moreDirt,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
@@ -204,7 +213,8 @@ arangodb::Result phaseOne(
     std::string const& serverId, MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ShardIdToLogIdMapByDatabase const& localShardIdToLogId);
 
 /**
  * @brief          Phase two: Report in agency
@@ -219,17 +229,18 @@ arangodb::Result phaseOne(
  * @return         Result
  */
 arangodb::Result phaseTwo(
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        cur,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& cur,
     uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     std::string const& serverId, MaintenanceFeature& feature,
     VPackBuilder& report,
     MaintenanceFeature::ShardActionMap const& shardActionMap,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ShardIdToLogIdMapByDatabase const& localShardsToLogs);
 
 /**
  * @brief          Report local changes to current
@@ -251,16 +262,17 @@ struct ShardStatistics {
 
 arangodb::Result reportInCurrent(
     MaintenanceFeature& feature,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
     containers::FlatHashSet<std::string> const& dirty,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        cur,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& cur,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
     VPackBuilder& report, ShardStatistics& shardStats,
-    ReplicatedLogStatusMapByDatabase const& localLogs);
+    ReplicatedLogStatusMapByDatabase const& localLogs,
+    ShardIdToLogIdMapByDatabase const& localShardIdToLogId);
 
 /**
  * @brief            Schedule synchroneous replications
@@ -272,11 +284,11 @@ arangodb::Result reportInCurrent(
  * @param  feature   Maintenance feature
  */
 void syncReplicatedShardsWithLeaders(
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
     containers::FlatHashSet<std::string> const& dirty,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        current,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& current,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     std::string const& serverId, MaintenanceFeature& feature,

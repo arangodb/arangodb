@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
+#include <fmt/format.h>
 
 #include <iosfwd>
 
@@ -70,8 +72,36 @@ enum class MainQueryState {
   HASMORE
 };
 
+auto toStringView(ExecutionState state) -> std::string_view;
+
+auto toStringView(ExecutorState state) -> std::string_view;
+
 std::ostream& operator<<(std::ostream& ostream, ExecutionState state);
 
 std::ostream& operator<<(std::ostream& ostream, ExecutorState state);
 
 }  // namespace arangodb::aql
+
+template<>
+struct fmt::formatter<::arangodb::aql::ExecutionState>
+    : formatter<std::string_view> {
+  // parse is inherited from formatter<string_view>.
+  template<class FormatContext>
+  auto format(::arangodb::aql::ExecutionState state, FormatContext& fc) const {
+    auto view = toStringView(state);
+
+    return formatter<std::string_view>::format(view, fc);
+  }
+};
+
+template<>
+struct fmt::formatter<::arangodb::aql::ExecutorState>
+    : formatter<std::string_view> {
+  // parse is inherited from formatter<string_view>.
+  template<class FormatContext>
+  auto format(::arangodb::aql::ExecutorState state, FormatContext& fc) const {
+    auto view = toStringView(state);
+
+    return formatter<std::string_view>::format(view, fc);
+  }
+};

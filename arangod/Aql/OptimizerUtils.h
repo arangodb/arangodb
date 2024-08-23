@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,9 +24,11 @@
 #pragma once
 
 #include "Aql/AttributeNamePath.h"
+#include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/VarInfoMap.h"
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
+#include "Utils/OperationOptions.h"
 
 #include <cstdint>
 #include <memory>
@@ -44,7 +46,7 @@ namespace aql {
 
 class Ast;
 struct AstNode;
-struct AttributeNamePath;
+class AttributeNamePath;
 struct Collection;
 class ExecutionNode;
 class IndexHint;
@@ -79,7 +81,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint,
     std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
-    bool& isAllCoveredByIndex);
+    bool& isAllCoveredByIndex, ReadOwnWrites readOwnWrites);
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the contents of  node  may be modified by this function if
@@ -88,7 +90,8 @@ bool getBestIndexHandleForFilterCondition(
     transaction::Methods& trx, aql::Collection const& collection,
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
     size_t itemsInCollection, aql::IndexHint const& hint,
-    std::shared_ptr<Index>& usedIndex, bool onlyEdgeIndexes = false);
+    std::shared_ptr<Index>& usedIndex, ReadOwnWrites readOwnWrites,
+    bool onlyEdgeIndexes);
 
 /// @brief Gets the best fitting index for an AQL sort condition
 bool getIndexForSortCondition(aql::Collection const& coll,
@@ -101,6 +104,13 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
     Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
     AstNode const* condition, Variable const* indexVariable);
+
+arangodb::aql::Collection const* getCollection(
+    arangodb::aql::ExecutionNode const* node);
+
+Projections translateLMIndexVarsToProjections(
+    ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
+    transaction::Methods::IndexHandle index);
 
 }  // namespace utils
 }  // namespace aql

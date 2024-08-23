@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,15 +26,19 @@
 
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Basics/Common.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 
-#include <deque>
+#include <velocypack/Iterator.h>
 
-namespace arangodb {
-namespace aql {
+#include <cstdint>
+#include <deque>
+#include <memory>
+
+namespace arangodb::aql {
 
 class AqlItemBlock;
 enum class ExecutionState;
@@ -53,9 +57,11 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   aql::QueryResult const* result() const { return &_result; }
 
-  bool hasNext();
+  bool hasNext() const noexcept;
 
-  arangodb::velocypack::Slice next();
+  velocypack::Slice next();
+
+  uint64_t memoryUsage() const noexcept override final;
 
   size_t count() const override final;
 
@@ -71,10 +77,10 @@ class QueryResultCursor final : public arangodb::Cursor {
   /// @brief Returns a slice to read the extra values.
   /// Make sure the Cursor Object is not destroyed while reading this slice.
   /// If no extras are set this will return a NONE slice.
-  arangodb::velocypack::Slice extra() const;
+  velocypack::Slice extra() const;
 
   /// @brief Remember, if dirty reads were allowed:
-  bool allowDirtyReads() const override final {
+  bool allowDirtyReads() const noexcept override final {
     return _result.allowDirtyReads;
   }
 
@@ -82,7 +88,8 @@ class QueryResultCursor final : public arangodb::Cursor {
   DatabaseGuard _guard;
   aql::QueryResult _result;
   arangodb::velocypack::ArrayIterator _iterator;
-  bool _cached;
+  uint64_t const _memoryUsageAtStart;
+  bool const _cached;
 };
 
 /// Cursor managing a query from which it continuously gets
@@ -91,7 +98,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
   QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize, double ttl,
-                    bool isRetriable);
+                    bool isRetriable,
+                    transaction::OperationOrigin operationOrigin);
 
   ~QueryStreamCursor();
 
@@ -102,6 +110,8 @@ class QueryStreamCursor final : public arangodb::Cursor {
   // is actually visible through other APIS (e.g. current queries)
   // so user actually has a chance to kill it here.
   void debugKillQuery() override;
+
+  uint64_t memoryUsage() const noexcept override final;
 
   size_t count() const override final { return 0; }
 
@@ -118,7 +128,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   // The following method returns, if the transaction the query is using
   // allows dirty reads (reads from followers).
-  virtual bool allowDirtyReads() const override final {
+  bool allowDirtyReads() const noexcept override final {
     // We got this information from the query directly in the constructor,
     // when `prepareQuery` has been called:
     return _allowDirtyReads;
@@ -136,7 +146,6 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   void cleanupStateCallback();
 
- private:
   velocypack::UInt8Buffer _extrasBuffer;
   std::deque<SharedAqlItemBlockPtr> _queryResults;  /// buffered results
   std::shared_ptr<transaction::Context> _ctx;       /// cache context
@@ -153,5 +162,4 @@ class QueryStreamCursor final : public arangodb::Cursor {
                           // gone.
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

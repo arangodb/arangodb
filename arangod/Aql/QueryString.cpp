@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -109,16 +109,35 @@ std::string QueryString::extractRegion(int line, int column) const {
 
   constexpr int snippetLength = 32;
 
-  if (size() < offset + snippetLength) {
-    // return a copy of the region
-    return std::string(s + offset, n - offset);
-  }
-
-  // copy query part
+  // copy query part, UTF-8-aware
   std::string result;
   result.reserve(snippetLength + 3 /*...*/);
-  result.append(s + offset, snippetLength);
-  result.append("...");
+
+  {
+    char const* start = s + offset;
+    char const* end = s + size();
+
+    int charsFound = 0;
+
+    while (start < end) {
+      char c = *start;
+
+      if ((c & 128) == 0 || (c & 192) == 192) {
+        // ASCII character or start of a multi-byte sequence
+        ++charsFound;
+        if (charsFound > snippetLength) {
+          break;
+        }
+      }
+
+      result.push_back(c);
+      ++start;
+    }
+
+    if (start != end) {
+      result.append("...");
+    }
+  }
 
   return result;
 }

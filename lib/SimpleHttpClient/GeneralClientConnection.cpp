@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,6 @@
 #include <limits.h>
 #include <string.h>
 
-#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_POLL_H
@@ -41,27 +40,17 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/socket-utils.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 
-#ifdef _WIN32
-#define STR_ERROR()                                                  \
-  windowsErrorBuf;                                                   \
-  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0, \
-                windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
-  errno = GetLastError();
-#else
 #define STR_ERROR() strerror(errno)
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -81,6 +70,7 @@ GeneralClientConnection::GeneralClientConnection(
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _freeEndpointOnDestruction(false),
+      _isSocketNonBlocking(false),
       _isConnected(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _read(0),
@@ -101,6 +91,7 @@ GeneralClientConnection::GeneralClientConnection(
       _connectRetries(connectRetries),
       _numConnectRetries(0),
       _freeEndpointOnDestruction(true),
+      _isSocketNonBlocking(false),
       _isConnected(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _read(0),
@@ -136,7 +127,9 @@ GeneralClientConnection* GeneralClientConnection::factory(
                                    connectTimeout, numRetries, sslProtocol);
   }
 
-  return nullptr;
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid encryption type for connection");
 }
 
 GeneralClientConnection* GeneralClientConnection::factory(
@@ -367,10 +360,6 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout,
       TRI_set_errno(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ);
     }
   } else {  // res < 0
-#ifdef _WIN32
-    char windowsErrorBuf[256];
-#endif
-
     char const* pErr = STR_ERROR();
     _errorDetails = std::string("during prepare: ") + std::to_string(errno) +
                     std::string(" - ") + pErr;

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,9 +23,12 @@
 
 #include "TraverserEngineShardLists.h"
 
-#include "Aql/GraphNode.h"
+#include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/QueryContext.h"
+#include "Aql/Variable.h"
 #include "Graph/BaseOptions.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -33,10 +36,15 @@ using namespace arangodb::aql;
 TraverserEngineShardLists::TraverserEngineShardLists(
     GraphNode const* node, ServerID const& server,
     containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
-    QueryContext& query)
+    QueryContext const& query)
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
+  if (edges.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "edges list in TraverserEngineShardLists should not be empty");
+  }
   auto const& restrictToShards = query.queryOptions().restrictToShards;
 #ifdef USE_ENTERPRISE
   transaction::Methods trx{query.newTrxContext()};
@@ -78,7 +86,7 @@ TraverserEngineShardLists::TraverserEngineShardLists(
 std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
     containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
     ServerID const& server,
-    std::shared_ptr<std::vector<std::string>> const& shardIds,
+    std::shared_ptr<std::vector<ShardID> const> const& shardIds,
     bool allowReadFromFollower) {
   std::vector<ShardID> localShards;
   for (auto const& shard : *shardIds) {
@@ -86,8 +94,9 @@ std::vector<ShardID> TraverserEngineShardLists::getAllLocalShards(
     if (it == shardMapping.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          "no entry for shard '" + shard + "' in shard mapping table (" +
-              std::to_string(shardMapping.size()) + " entries)");
+          absl::StrCat("no entry for shard '", std::string{shard},
+                       "' in shard mapping table (", shardMapping.size(),
+                       " entries)"));
     }
     if (it->second == server) {
       localShards.emplace_back(shard);

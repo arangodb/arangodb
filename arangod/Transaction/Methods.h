@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
 #include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
@@ -35,6 +34,7 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -69,12 +69,6 @@ struct AstNode;
 struct Variable;
 }  // namespace aql
 
-namespace transaction {
-struct BatchOptions;
-class Context;
-struct Options;
-}  // namespace transaction
-
 class CollectionNameResolver;
 class DataSourceId;
 class Index;
@@ -92,6 +86,9 @@ class TransactionState;
 class TransactionCollection;
 
 namespace transaction {
+struct BatchOptions;
+class Context;
+struct Options;
 
 class Methods {
  public:
@@ -107,21 +104,20 @@ class Methods {
   Methods& operator=(Methods const&) = delete;
 
   /// @brief create the transaction
-  explicit Methods(
-      std::shared_ptr<transaction::Context> const& ctx,
-      transaction::Options const& options = transaction::Options());
+  explicit Methods(std::shared_ptr<Context> ctx,
+                   Options const& options = Options());
 
   /// @brief create the transaction, and add a collection to it.
   /// use on followers only!
-  Methods(std::shared_ptr<transaction::Context> ctx,
-          std::string const& collectionName, AccessMode::Type type);
+  Methods(std::shared_ptr<Context> ctx, std::string const& collectionName,
+          AccessMode::Type type);
 
   /// @brief create the transaction, used to be UserTransaction
-  Methods(std::shared_ptr<transaction::Context> const& ctx,
+  Methods(std::shared_ptr<Context> ctx,
           std::vector<std::string> const& readCollections,
           std::vector<std::string> const& writeCollections,
           std::vector<std::string> const& exclusiveCollections,
-          transaction::Options const& options);
+          Options const& options);
 
   /// @brief destroy the transaction
   virtual ~Methods();
@@ -141,8 +137,7 @@ class Methods {
   ///               will match trx.state()->status() for top-level transactions
   ///               may not match trx.state()->status() for embeded transactions
   ///               since their staus is not updated from RUNNING
-  using StatusChangeCallback = std::function<void(transaction::Methods& trx,
-                                                  transaction::Status status)>;
+  using StatusChangeCallback = std::function<void(Methods& trx, Status status)>;
 
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
@@ -170,47 +165,55 @@ class Methods {
   TRI_vocbase_t& vocbase() const;
 
   /// @brief return internals of transaction
-  inline TransactionState* state() const { return _state.get(); }
-  inline std::shared_ptr<TransactionState> const& stateShrdPtr() const {
-    return _state;
-  }
+  TransactionState* state() const noexcept { return _state.get(); }
+  std::shared_ptr<TransactionState> stateShrdPtr() const { return _state; }
 
   Result resolveId(char const* handle, size_t length,
                    std::shared_ptr<LogicalCollection>& collection,
                    char const*& key, size_t& outLength);
 
   /// @brief return a pointer to the transaction context
-  std::shared_ptr<transaction::Context> const& transactionContext() const {
+  std::shared_ptr<Context> const& transactionContext() const {
     return _transactionContext;
   }
 
-  TEST_VIRTUAL inline transaction::Context* transactionContextPtr() const {
+  TEST_VIRTUAL Context* transactionContextPtr() const {
     TRI_ASSERT(_transactionContext != nullptr);
     return _transactionContext.get();
   }
 
+  /// @brief set name of user who originated the transaction. will
+  /// only be set if no user has been registered with the transaction yet.
+  /// this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  void setUsername(std::string const& name);
+
+  /// @brief return name of user who originated the transaction. may be
+  /// empty. this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  std::string_view username() const noexcept;
+
   // is this instance responsible for commit / abort
-  bool isMainTransaction() const { return _mainTransaction; }
+  bool isMainTransaction() const noexcept;
 
   /// @brief add a transaction hint
-  void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
+  void addHint(Hints::Hint hint) noexcept;
 
   /// @brief whether or not the transaction consists of a single operation only
-  bool isSingleOperationTransaction() const;
+  bool isSingleOperationTransaction() const noexcept;
 
   /// @brief get the status of the transaction
-  Status status() const;
+  Status status() const noexcept;
 
-  /// @brief get the status of the transaction, as a string
-  char const* statusString() const {
-    return transaction::statusString(status());
-  }
+  /// @brief get the status of the transaction, as a string_view
+  std::string_view statusString() const noexcept;
 
   /// @brief options used, not dump options
   TEST_VIRTUAL velocypack::Options const& vpackOptions() const;
 
   /// @brief begin the transaction
-  Result begin();
+  [[nodiscard, deprecated("use async variant")]] Result begin();
+  [[nodiscard]] futures::Future<Result> beginAsync();
 
   /// @deprecated use async variant
   [[nodiscard, deprecated("use async variant")]] auto commit() noexcept
@@ -244,21 +247,19 @@ class Methods {
   /// @brief read many documents, using skip and limit in arbitrary order
   /// The result guarantees that all documents are contained exactly once
   /// as long as the collection is not modified.
-  ENTERPRISE_VIRT OperationResult any(std::string const& collectionName,
-                                      OperationOptions const& options);
+  ENTERPRISE_VIRT futures::Future<OperationResult> any(
+      std::string const& collectionName, OperationOptions const& options);
 
   /// @brief add a collection to the transaction for read, at runtime
-  DataSourceId addCollectionAtRuntime(DataSourceId cid,
-                                      std::string const& collectionName,
-                                      AccessMode::Type type);
+  futures::Future<DataSourceId> addCollectionAtRuntime(
+      DataSourceId cid, std::string_view collectionName, AccessMode::Type type);
 
   /// @brief add a collection to the transaction for read, at runtime
-  virtual DataSourceId addCollectionAtRuntime(std::string const& collectionName,
-                                              AccessMode::Type type);
+  virtual futures::Future<DataSourceId> addCollectionAtRuntime(
+      std::string_view collectionName, AccessMode::Type type);
 
   /// @brief return the type of a collection
-  bool isEdgeCollection(std::string const& collectionName) const;
-  TRI_col_type_e getCollectionType(std::string const& collectionName) const;
+  TRI_col_type_e getCollectionType(std::string_view collectionName) const;
 
   /// @brief return one  document from a collection, fast path
   ///        If everything went well the result will contain the found document
@@ -268,7 +269,7 @@ class Methods {
   ///        revision handling! shouldLock indicates if the transaction should
   ///        lock the collection if set to false it will not lock it (make sure
   ///        it is already locked!)
-  ENTERPRISE_VIRT Result documentFastPath(
+  ENTERPRISE_VIRT futures::Future<Result> documentFastPath(
       std::string const& collectionName, arangodb::velocypack::Slice value,
       OperationOptions const& options, arangodb::velocypack::Builder& result);
 
@@ -278,9 +279,9 @@ class Methods {
   ///        TRI_ERROR_NO_ERROR. If there was an error the code is returned Does
   ///        not care for revision handling! Must only be called on a local
   ///        server, not in cluster case!
-  ENTERPRISE_VIRT Result
-  documentFastPathLocal(std::string const& collectionName, std::string_view key,
-                        IndexIterator::DocumentCallback const& cb);
+  ENTERPRISE_VIRT futures::Future<Result> documentFastPathLocal(
+      std::string_view collectionName, std::string_view key,
+      IndexIterator::DocumentCallback const& cb);
 
   /// @brief return one or multiple documents from a collection
   /// @deprecated use async variant
@@ -342,9 +343,9 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief fetches all documents in a collection
-  ENTERPRISE_VIRT OperationResult all(std::string const& collectionName,
-                                      uint64_t skip, uint64_t limit,
-                                      OperationOptions const& options);
+  ENTERPRISE_VIRT futures::Future<OperationResult> all(
+      std::string const& collectionName, uint64_t skip, uint64_t limit,
+      OperationOptions const& options);
 
   /// @brief deprecated use async variant
   [[deprecated]] OperationResult truncate(std::string const& collectionName,
@@ -376,10 +377,9 @@ class Methods {
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  std::unique_ptr<IndexIterator> indexScan(ResourceMonitor& monitor,
-                                           std::string const& collectionName,
-                                           CursorType cursorType,
-                                           ReadOwnWrites readOwnWrites);
+  futures::Future<std::unique_ptr<IndexIterator>> indexScan(
+      std::string const& collectionName, CursorType cursorType,
+      ReadOwnWrites readOwnWrites);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,
@@ -424,6 +424,13 @@ class Methods {
   TransactionCollection* trxCollection(
       DataSourceId cid, AccessMode::Type type = AccessMode::Type::READ) const;
 
+  Future<Result> replicateOperations(
+      TransactionCollection& collection,
+      std::shared_ptr<const std::vector<std::string>> const& followers,
+      OperationOptions const& options,
+      velocypack::Builder const& replicationData,
+      TRI_voc_document_operation_e operation, std::string_view userName);
+
  private:
   // perform a (deferred) intermediate commit if required
   futures::Future<Result> performIntermediateCommitIfRequired(
@@ -431,20 +438,20 @@ class Methods {
 
   futures::Future<OperationResult> documentCoordinator(
       std::string const& collectionName, VPackSlice value,
-      OperationOptions const& options, MethodsApi api);
+      OperationOptions options, MethodsApi api);
 
   Future<OperationResult> documentLocal(std::string const& collectionName,
                                         VPackSlice value,
-                                        OperationOptions const& options);
+                                        OperationOptions options);
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
                                             VPackSlice value,
-                                            OperationOptions const& options,
+                                            OperationOptions options,
                                             MethodsApi api);
 
   Future<OperationResult> insertLocal(std::string const& collectionName,
                                       VPackSlice value,
-                                      OperationOptions& options);
+                                      OperationOptions options);
 
   Result determineReplication1TypeAndFollowers(
       LogicalCollection& collection, std::string_view operationName,
@@ -460,41 +467,42 @@ class Methods {
 
   Future<OperationResult> modifyCoordinator(
       std::string const& collectionName, VPackSlice newValue,
-      OperationOptions const& options, TRI_voc_document_operation_e operation,
+      OperationOptions options, TRI_voc_document_operation_e operation,
       MethodsApi api);
 
   Future<OperationResult> modifyLocal(std::string const& collectionName,
                                       VPackSlice newValue,
-                                      OperationOptions& options, bool isUpdate);
+                                      OperationOptions options, bool isUpdate);
 
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
                                             VPackSlice value,
-                                            OperationOptions const& options,
-                                            transaction::MethodsApi api);
+                                            OperationOptions options,
+                                            MethodsApi api);
 
   Future<OperationResult> removeLocal(std::string const& collectionName,
                                       VPackSlice value,
-                                      OperationOptions& options);
+                                      OperationOptions options);
 
-  OperationResult allCoordinator(std::string const& collectionName,
-                                 uint64_t skip, uint64_t limit,
-                                 OperationOptions& options);
+  futures::Future<OperationResult> allCoordinator(
+      std::string const& collectionName, uint64_t skip, uint64_t limit,
+      OperationOptions const& options);
 
-  OperationResult allLocal(std::string const& collectionName, uint64_t skip,
-                           uint64_t limit, OperationOptions& options);
+  futures::Future<OperationResult> allLocal(std::string const& collectionName,
+                                            uint64_t skip, uint64_t limit,
+                                            OperationOptions options);
 
   OperationResult anyCoordinator(std::string const& collectionName,
                                  OperationOptions const& options);
 
-  OperationResult anyLocal(std::string const& collectionName,
-                           OperationOptions const& options);
+  futures::Future<OperationResult> anyLocal(std::string const& collectionName,
+                                            OperationOptions options);
 
   Future<OperationResult> truncateCoordinator(std::string const& collectionName,
-                                              OperationOptions& options,
+                                              OperationOptions options,
                                               MethodsApi api);
 
-  Future<OperationResult> truncateLocal(std::string const& collectionName,
-                                        OperationOptions& options);
+  Future<OperationResult> truncateLocal(std::string collectionName,
+                                        OperationOptions options);
 
  protected:
   // The internal methods distinguish between the synchronous and asynchronous
@@ -538,21 +546,22 @@ class Methods {
 
   futures::Future<OperationResult> countCoordinator(
       std::string const& collectionName, CountType type,
-      OperationOptions const& options, MethodsApi api);
+      OperationOptions options, MethodsApi api);
 
   futures::Future<OperationResult> countCoordinatorHelper(
       std::shared_ptr<LogicalCollection> const& collinfo,
       std::string const& collectionName, CountType type,
       OperationOptions const& options, MethodsApi api);
 
-  OperationResult countLocal(std::string const& collectionName, CountType type,
-                             OperationOptions const& options);
+  futures::Future<OperationResult> countLocal(std::string const& collectionName,
+                                              CountType type,
+                                              OperationOptions options);
 
   /// @brief add a collection by id, with the name supplied
-  Result addCollection(DataSourceId, std::string const&, AccessMode::Type);
+  Result addCollection(DataSourceId, std::string_view, AccessMode::Type);
 
   /// @brief add a collection by name
-  Result addCollection(std::string const&, AccessMode::Type);
+  Result addCollection(std::string_view, AccessMode::Type);
 
  private:
   template<CallbacksTag tag, typename Callback>
@@ -562,20 +571,12 @@ class Methods {
   std::shared_ptr<TransactionState> _state;
 
   /// @brief the transaction context
-  std::shared_ptr<transaction::Context> _transactionContext;
-
-  bool _mainTransaction;
-
- public:
-  Future<Result> replicateOperations(
-      TransactionCollection& collection,
-      std::shared_ptr<const std::vector<std::string>> const& followers,
-      OperationOptions const& options,
-      velocypack::Builder const& replicationData,
-      TRI_voc_document_operation_e operation);
+  std::shared_ptr<Context> _transactionContext;
 
   /// @brief transaction hints
-  transaction::Hints _localHints;
+  Hints _localHints;
+
+  bool _mainTransaction;
 
   /// @brief name-to-cid lookup cache for last collection seen
   struct {

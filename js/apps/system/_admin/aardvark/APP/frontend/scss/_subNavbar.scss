@@ -15,14 +15,14 @@
   li {
     cursor: pointer;
     float: left;
-    font-size: 10pt;
+    font-size: 14px;
     line-height: 30px;
     margin-bottom: 5px;
     margin-top: 5px;
     padding: 0 12px;
 
     &.active {
-      border-bottom: 2px solid $c-active-green;
+      border-bottom: 2px solid var(--green-600);
       cursor: default;
       padding-bottom: 5px;
 
@@ -35,6 +35,10 @@
     &.disabled {
       cursor: not-allowed;
 
+      a {
+        color: rgba(51, 51, 51, .6);
+      }
+
       &:hover {
         a {
           color: rgba(51, 51, 51, .6);
@@ -44,7 +48,7 @@
 
     &:hover {
       a {
-        color: rgba(51, 51, 51, 1);
+        color: black;
         -moz-transition: all .2s ease-in;
         -o-transition: all .2s ease-in;
         -webkit-transition: all .2s ease-in;
@@ -53,7 +57,7 @@
     }
 
     a {
-      color: rgba(51, 51, 51, .6);
+      color: black;
       -moz-transition: all .2s ease-in;
       -o-transition: all .2s ease-in;
       -webkit-transition: all .2s ease-in;
@@ -85,7 +89,7 @@
     margin: 0;
 
     &.top {
-      background-color: $c-bluegrey-dark;
+      background-color: var(--gray-950);
       height: 60px;
       width: 100%;
 
@@ -118,7 +122,7 @@
       margin-top: 5px;
 
       &.active {
-        border-bottom: 2px solid $c-active-green;
+        border-bottom: 2px solid var(--green-600);
         cursor: default;
         padding-bottom: 5px;
 
@@ -130,6 +134,10 @@
       &.disabled {
         cursor: not-allowed;
 
+        a {
+          color: rgba(51, 51, 51, .6);
+        }
+
         &:hover {
           a {
             color: rgba(51, 51, 51, .6);
@@ -139,7 +147,7 @@
 
       &:hover {
         a {
-          color: rgba(51, 51, 51, 1);
+          color: black;
           -moz-transition: all .2s ease-in;
           -o-transition: all .2s ease-in;
           -webkit-transition: all .2s ease-in;
@@ -148,7 +156,7 @@
       }
 
       a {
-        color: rgba(51, 51, 51, .6);
+        color: black;
         -moz-transition: all .2s ease-in;
         -o-transition: all .2s ease-in;
         -webkit-transition: all .2s ease-in;
@@ -172,7 +180,7 @@
         }
 
         i:hover {
-          color: $c-positive;
+          color: var(--green-500);
           cursor: pointer;
         }
       }
@@ -191,7 +199,7 @@
       .health-state,
       .state,
       .health-icon {
-        color: $c-positive;
+        color: var(--green-500);
       }
     }
 
@@ -209,7 +217,7 @@
     color: rgba(255, 255, 255, .95);
     display: block;
     float: left;
-    font-weight: 300;
+    font-weight: 400;
     max-width: 190px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -217,7 +225,7 @@
     white-space: nowrap;
 
     span {
-      color: $c-positive;
+      color: var(--green-500);
     }
 
     span:hover {
@@ -248,7 +256,7 @@
   }
 
   .dropdown-header {
-    background-color: $c-active-green;
+    background-color: var(--green-600);
     cursor: default;
     margin: 0;
     margin-left: -1px;

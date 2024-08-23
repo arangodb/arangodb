@@ -30,7 +30,7 @@ yet.
 
 - If the modifications change any documented behavior or add new features,
   document the changes. It should be written in American English.
-  The documentation can be found in [docs repository](https://github.com/arangodb/docs#readme).
+  The documentation can be found in [`docs-hugo` repository](https://github.com/arangodb/docs-hugo#readme).
 
 - When done, run the complete test suite and make sure all tests pass.
 
@@ -39,8 +39,8 @@ yet.
   the appropriate branches there. This will most likely be **devel**.
 
 - You must use the Apache License for your changes and have signed our
-  [CLA](https://www.arangodb.com/documents/cla.pdf). We cannot accept pull requests
-  from contributors that didn't sign the CLA.
+  [CLA](https://arangodb.com/community/#contribute). We cannot accept pull requests
+  from contributors who didn't sign the CLA.
 
 - Please let us know if you plan to work on a ticket. This way we can make sure
   redundant work is avoided.
@@ -52,7 +52,6 @@ yet.
 - [Running](#running)
 - [Debugging](#debugging)
   - [Linux Core Dumps](#linux-core-dumps)
-  - [Windows Core Dumps](#windows-core-dumps)
 - [Unittests](#unittests)
   - [invoking driver tests](#driver-tests) via scripts/unittests
   - [capturing test HTTP communication](#running-tcpdump--windump-for-the-sut) but
@@ -63,7 +62,27 @@ yet.
 
 ## Source Code
 
-### Git
+### Get the source code
+
+Download the latest source code with Git, including submodules:
+
+    git clone --recurse-submodules --jobs 8 https://github.com/arangodb/arangodb
+
+This automatically clones the **devel** branch.
+
+If you only plan to compile a specific version of ArangoDB locally and do not
+want to commit changes, you can speed up cloning substantially by using the
+`--depth` and `--shallow-submodules` parameters and specifying a branch, tag,
+or commit hash using the `--branch` parameter for the clone command as follows:
+
+    git clone --depth 1 --recurse-submodules --shallow-submodules --jobs 8 --branch v3.12.0 https://github.com/arangodb/arangodb
+
+On Windows, Git's automatic conversion to CRLF line endings needs to be disabled.
+Otherwise, [compiling](#building-the-binaries) in the Linux build container fails.
+You can use `git clone --config core.autocrlf=input ...` so that it only affects
+this working copy.
+
+### Git Setup
 
 Setting up git for automatically merging certain automatically generated files
 in the ArangoDB source tree:
@@ -80,6 +99,9 @@ Coding Guidelines.
 
 We support only officially released compiler versions which major version is
 at least 9 month old.
+ArangoDB does not guarantee successful compilation with arbitrary compilers, 
+but uses a certain compiler make and version for building ArangoDB. Both the
+compiler make and version can change over time.
 
 ### Unique Log Ids
 
@@ -93,22 +115,17 @@ during CI runs. The script will fail with a non-zero status if id collisions are
 found. You can use `openssl rand -hex 3 | sed 's/.//;s/\(.*\)/"\1"/'` or
 anything that suits you to generate a **5 hex digit log** id.
 
-### JSLint
-
-We switched to eslint a while back, but it is still named jslint for historical
-reasons.
-
-#### Checker Script
+### ESLint
 
 Use:
 
-    ./utils/gitjslint.sh
+    ./utils/giteslint.sh
 
 to lint your modified files.
 
-    ./utils/jslint.sh
+    ./utils/eslint.sh
 
-to find out whether all of your files comply to jslint. This is required to
+to find out whether all of your files comply to eslint. This is required to
 make continuous integration work smoothly.
 
 If you want to add new files / patterns to this make target, edit the respective
@@ -116,14 +133,7 @@ shell scripts.
 
 To be safe from committing non-linted stuff add **.git/hooks/pre-commit** with:
 
-    ./utils/jslint.sh
-
-#### Use jslint standalone for your js file
-
-If you want to search errors in your js file, jslint is very handy - like a
-compiler is for C/C++. You can invoke it like this:
-
-    bin/arangosh --jslint js/client/modules/@arangodb/testing.js
+    ./utils/eslint.sh
 
 ### Adding startup options
 
@@ -151,8 +161,6 @@ The _text_ is interpreted as **Markdown**, allowing formatting like
 `inline code`, fenced code blocks, and even tables.)");
 ```
 
-
-
 See [`lib/ProgramOptions/Option.h`](lib/ProgramOptions/Option.h) for details.
 
 For a feature that is added to v3.9.6, v3.10.2, and devel, you only need to set
@@ -176,6 +184,12 @@ In 3.10 and later:
     .setIntroducedIn(30906)
     .setIntroducedIn(31002)
 ```
+
+These version remarks can be removed again when all of the listed versions for
+an option are obsolete (and removed from the online documentation).
+
+Note that `.setDeprecatedIn()` should not be removed until the startup option is
+obsoleted or fully removed.
 
 ### Adding metrics
 
@@ -230,67 +244,115 @@ but do not include `Documentation/Metrics/allMetrics.yaml` in your PR
 
 ## Building
 
-Note: Make sure that your source path does not contain spaces otherwise the build process will likely fail.
+Note: Make sure that your source path does not contain spaces. Otherwise, the
+build process will likely fail.
 
 ### Building the binaries
 
-ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
-Please refer to the documentation of Oskar for details.
+To compile ArangoDB 3.12 or later, you can use a Docker build container that
+is based on Ubuntu and includes the necessary toolchain. You need Git on the
+host system to [get the source code](#get-the-source-code) and mount it into the
+container, however.
 
-Optimizations and limit of architecture (list of possible CPU instructions) are set using this `cmake` option
-in addition to the other options:
+Check the [`.circleci/base_config.yml`](.circleci/base_config.yml) file for the
+default `build-docker-image` value to ensure it's the matching image tag for the
+version you want to build.
 
-```
--DTARGET_ARCHITECTURE
-```
+You can start the build container as follows in a Bash-like terminal:
 
-Oskar uses predefined architecture which is defined in `./VERSIONS` file or `sandybridge` if it's not defined.
+    cd arangodb
+    docker run -it -v $(pwd):/root/project -p 3000:3000 arangodb/ubuntubuildarangodb-devel:3
 
-Note: if you use more modern architecture for optimizations or any additional implementation with extended
-set of CPU instructions please notice that result could be different to the default one.
+In PowerShell, use `${pwd}` instead of `$(pwd)`.
 
-For building the ArangoDB starter checkout the
-[ArangoDB Starter](https://github.com/arangodb-helper/arangodb).
+The port mapping is for accessing the web interface in case you want to run a
+development server for working on the frontend.
+
+In the fish shell of the container, run the following commands for a release-like
+build using the officially supported version of the Clang compiler
+(also see the [`VERSIONS`](VERSIONS)):
+
+    cd /root/project
+    cmake --preset community -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib -DOPENSSL_ROOT_DIR=/opt
+    cmake --build --preset community --parallel (nproc)
+
+For a debug build, you can use the `community-developer` preset instead.
+
+The default target CPU architecture is `sandybridge` for the x86-64 platform and
+`graviton1` for 64-bit ARM chips. You can specify a different architecture to
+enable more optimizations or to limit the compiler to the available instructions
+for a particular architecture:
+
+    cmake --preset community -DTARGET_ARCHITECTURE=native ...
+
+On ARM, disable the `USE_LIBUNWIND` option:
+
+    cmake --preset community -DUSE_LIBUNWIND=Off ...
+
+To build specific targets instead of all, you can specify them like shown below:
+
+    cmake --build --preset community --target arangod arangosh arangodump arangorestore arangoimport arangoexport arangobench arangovpack frontend
+
+You can find the output files at `build-presets/<preset-name>/`,
+with the compiled executables in the `bin/` subfolder.
+
+To collect all files for packaging, you can run the following command (with
+`<preset-name>` substituted, e.g. with `community`):
+
+    cmake --install ./build-presets/<preset-name> --prefix install/usr
+
+It copies the needed files to a folder called `install`.
+It may fail if you only built a subset of the targets.
+The folder is organized following the Linux directory structure, with the
+server executable at `usr/sbin/arangod`, the tools in `usr/bin/`, the
+configuration files in `usr/etc/arangodb3/`, and so on.
+
+For building the ArangoDB Starter (`arangodb` executable), see the
+[ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
 
 ### Building the Web Interface
 
-To build web interface, also known as the Web UI, frontend, or _Aardvark_, [Node.js](https://nodejs.org/)
-and [Yarn](https://yarnpkg.com/) need to be installed. You can then use CMake in the
-build directory:
+The web interface is also known as the Web UI, frontend, or _Aardvark_.
+Building ArangoDB also builds the frontend unless `-DUSE_FRONTEND=Off` was
+specified when configuring CMake or if the `frontend` target was left out for
+the build.
 
-    cmake --build . --target frontend
+To build the web interface via CMake, you can run the following commands:
 
-For Oskar you may use the following:
+    cmake --preset community
+    cmake --build --preset community --target frontend
 
-    shellInAlpineContainer
+To remove all installed Node.js modules and start a clean installation, run:
 
-    apk add --no-cache nodejs yarn && cd /work/ArangoDB/build && cmake --build . --target frontend
+    cmake --build --preset community --target frontend_clean
 
-To remove all available node modules and start a clean installation run:
-
-    cmake --build . --target frontend_clean
-
-The frontend can also be built using these commands:
+You can also build the frontend manually without CMake.
+[Node.js](https://nodejs.org/) and [Yarn](https://yarnpkg.com/) need to be
+installed.
 
     cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
     yarn install
-    yarn run build
+    yarn build
 
-For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
-run:
+To run a development server, go to `js/apps/system/_admin/aardvark/APP/react`
+and run the following command:
 
     yarn start
 
-This will deploy a development server (Port: 3000) and automatically start your
-favorite browser and open the web interface.
+It should start your browser and open the web interface at `http://localhost:3000`.
+Changes to any frontend source files trigger an automatic re-build and reload
+the browser tab. If you use the build container, make sure to start it with a
+port mapping for the development server.
 
-All changes to any source will automatically re-build and reload your browser.
-Enjoy :)
+#### Cross Origin Policy (CORS) error
 
-### Cross Origin Policy (CORS) ERROR
-
-Our front-end development server currently runs on port:`3000`, while the backend runs on port:`8529` respectively. This implies that when the front-end sends a request to the backend would result in Cross-Origin-Policy security checks which recently got enforced by some browsers for security reasons. Until recently, we never had reports of CORS errors when running both the backend and front-end dev servers independently, however,
-we recently confirmed that this error occurs in ( Chrome v: 98.0.4758.102 and Firefox v: 96.0.1 ).
+Our front-end development server currently runs on port:`3000`, while the backend
+runs on port:`8529` respectively. This implies that when the front-end sends a
+request to the backend would result in Cross-Origin-Policy security checks which
+recently got enforced by some browsers for security reasons. Until recently, we
+never had reports of CORS errors when running both the backend and front-end dev
+servers independently, however, we recently confirmed that this error occurs in
+(Chrome version 98.0.4758.102 and Firefox version 96.0.1).
 
 In case you run into CORS errors while running the development server, here is a quick fix:
 
@@ -303,12 +365,12 @@ cmd + c
 Then restart `arangodb` server with the command below:
 
 ```bash
-./build/bin/arangod ../Arango --http.trusted-origin '*'
+./build-presets/<preset-name>/bin/arangod ../Arango --http.trusted-origin '*'
 ```
 
 Note:
 
-a: `./build/bin/arangod`: represents the location of `arangodb` binaries in your machine.
+a: `./build-presets/<preset-name>/bin/arangod`: represents the location of `arangodb` binaries in your machine.
 
 b: `../Arango`: is the database directory where the data will be stored.
 
@@ -316,7 +378,7 @@ c: `--http.trusted-origin '*'` the prefix that allows cross-origin requests.
 
 #### NPM Dependencies
 
-To add new NPM dependencies switch into the `js/node` folder and install them
+To add new NPM dependencies, switch into the `js/node` folder and install them
 with npm using the following options:
 
 `npm install [<@scope>/]<name> --global-style --save --save-exact`
@@ -346,17 +408,74 @@ For example to commit a patch for the transitive dependency `is-wsl` of the depe
 and then run `npx patch-package node-netstat/is-wsl` in `js/node` and commit the resulting
 patch file in `js/node/patches`.
 
+#### Build the HTTP API documentation for Swagger-UI
+
+The REST HTTP API of the ArangoDB server is described using the OpenAPI
+specification (formerly Swagger). The source code is in documentation repository
+at <https://github.com/arangodb/docs-hugo>.
+
+To build the `api-docs.json` file for viewing the API documentation in the
+Swagger-UI of the web interface (**SUPPORT** section, **Rest API** tab), run
+the following commands in a terminal:
+
+1. Get a working copy of the documentation content with Git:
+
+   `git clone https://github.com/arangodb/docs-hugo`
+
+2. Enter the `docs-hugo` folder:
+
+   `cd docs-hugo`
+
+3. Optional: Switch to a tag, branch, or commit if you want to build the
+   API documentation for a specific version of the docs:
+   
+   `git checkout <reference>`
+
+4. Enter the folder of the Docker toolchain, `amd64` on the x86-64 architecture
+   and `arm64` on ARM CPUs:
+
+   ```shell
+   cd toolchain/docker/amd64 # x86-64
+   cd toolchain/docker/arm64 # ARM 64-bit
+   ```
+
+5. Set the environment variable `ENV` to any value other than `local` to make
+   the documentation tooling not start a live server in watch mode but rather
+   create and static build and exit:
+
+   ```shell
+   export ENV=static  # Bash
+   set -xg ENV static # Fish
+   $Env:ENV='static'  # PowerShell
+   ```
+
+6. Run Docker Compose using the plain build configuration for the documentation:
+
+   `docker compose -f docker-compose.plain-build.yml up --abort-on-container-exit`
+
+7. When the docs building finishes successfully, you can find the `api-docs.json`
+   files in `site/data/<version>/`.
+
+8. Copy the respective `api-docs.json` file into the ArangoDB working copy or
+   installation folder under `js/apps/system/_admin/aardvark/APP/api-docs.json`
+   and refresh the web interface.
+
 ---
 
 ## Running
 
 ### Temporary files and temp directories
 
-Depending on the platform, ArangoDB tries to locate the temporary directory:
+ArangoDB tries to locate the temporary directory like this:
 
-- Linux/Mac: the environment variable `TMPDIR` is evaluated.
-- Windows: the [W32 API function GetTempPath()](https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992%28v=vs.85%29.aspx) is called
-- all platforms: `--temp.path` overrules the above system provided settings.
+- the environment variable `TMPDIR` is evaluated.
+- the startup option `--temp.path` overrules the above system provided settings.
+
+Our testing framework uses this path in the cluster test cases to set an
+environment variable `ARANGOTEST_ROOT_DIR` which is global to the running
+cluster, but specific to the current test suite. You can access this as 
+`global.instanceManager.rootDir` in Javascript client tests and via the
+environment variable on the C++ level.
 
 ### Local Cluster Startup
 
@@ -384,7 +503,6 @@ Mode:
 
 - start arangod with `--console` to get a debug console
 - Cheapen startup for valgrind: `--server.rest-server false`
-- to have backtraces output set this on the prompt: `ENABLE_NATIVE_BACKTRACES(true)`
 
 ### Startup
 
@@ -392,13 +510,12 @@ Arangod has a startup rc file: `~/.arangod.rc`. It's evaled as JavaScript. A
 sample version to help working with the arangod rescue console may look like
 that:
 
-    ENABLE_NATIVE_BACKTRACES(true);
     internal = require("internal");
     fs = require("fs");
     db = internal.db;
     time = internal.time;
     timed = function (cb) {
-      var s = time();
+      let s = time();
       cb();
       return time() - s;
     };
@@ -411,6 +528,7 @@ _Hint_: You shouldn't lean on these variables in your Foxx services.
 To debug AQL execution blocks, two steps are required:
 
 - turn on logging for queries using `--extraArgs:log.level queries=info`
+- divert this facilities log output into individual files: `--extraArgs --log.output queries file://@ARANGODB_SERVER_DIR@/arangod_queries.log`
 - send queries enabling block debugging: `db._query('RETURN 1', {}, { profile: 4 })`
 
 You now will get log entries with the contents being passed between the blocks.
@@ -662,110 +780,6 @@ These commands give useful information about the incident:
 The first gives the full stacktrace including variables of the last active
 thread, the later one the stacktraces of all threads.
 
-#### Windows Core Dumps
-
-For the average \*nix user windows debugging has some awkward methods.
-
-##### Windows Core Dump Generation
-
-Core dumps can be created using the task manager; switch it to detail view, the
-context menu offers to _create dump file_; the generated file ends in a
-directory that explorer hides from you - AppData - you have to type that in the
-location bar. This however only for running processes which is not as useful as
-having dumps of crashing processes.
-
-While it is a common feature to turn on core dumps with the system facilities on
-\*nix systems, it is not as easy in Windows. You need an external program from
-the _Sysinternals package_:
-[ProcDump](https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx).
-First look up the PID of arangod, you can find it in the brackets in the
-ArangoDB logfile. Then invoke _procdump_ like this:
-
-    procdump -accepteula -e -ma <PID-of-arangod>
-
-It will keep on running and monitor arangod until eventually a crash happens.
-You will then get a core dump if an incident occurs or _Dump count not reached._
-if nothing happened, _Dump count reached._ if a dump was written - the filename
-will be printed above.
-
-##### Windows Debugging Symbols
-
-Releases are supported by a public symbol server so you will be able to debug
-cores. Please replace `XX` with the major and minor release number (e.g. `38`
-for v3.8). Note that you should run the latest version of a release series
-before reporting bugs. Either
-[WinDbg](https://docs.microsoft.com/de-de/windows-hardware/drivers/debugger/debugger-download-tools)
-or Visual Studio support setting the symbol path via the environment variable or
-in the menu. Given we want to store the symbols on `E:\symbol_cache` we add the
-ArangoDB symbolserver like this:
-
-    set _NT_SYMBOL_PATH=SRV*e:\symbol_cache\arango*https://download.arangodb.com/symsrv_arangodbXX/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
-
-You then will be able to see stack traces in the debugger.
-
-You may also try to download the symbols manually using:
-
-    symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://download.arangodb.com/symsrv_arangodbXX/
-
-The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is
-browseable; thus you can easily download the files you need by hand. It
-contains of a list of directories corresponding to the components of ArangoDB, e.g.:
-
-- lib - the basic arangodb libraries needed by all components
-- lib/V8 - the basic V8 wrappers needed by all components
-- arangod - the server process
-- the client utilities:
-  - arangobackup
-  - arangobench
-  - arangodump
-  - arangoexport
-  - arangoimport
-  - arangorestore
-  - arangosh
-  - arangovpack
-
-In these directories you will find subdirectories with the hash corresponding to
-the id of the binaries. Their date should correspond to the release date of
-their respective arango release.
-
-This means i.e. for ArangoDB 3.1.11:
-
-https://download.arangodb.com/symsrv_arangodb31/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
-
-This file is a microsoft cabinet file, which is a little bit compressed. You
-can extract it by invoking `cabextract` or dismantle it so the Windows Explorer
-offers you its proper handler by renaming it to .cab; click on the now named
-`arangod.cab`, copy the contained arangod.pdb into your symbol path.
-
-##### Windows Core Dump Analysis
-
-While Visual studio may carry a nice shiny GUI, the concept of GUI fails
-miserably e.g. in test automation. Getting an overview over all running threads
-is a tedious task with it. Here the commandline version of
-[WinDbg](http://www.windbg.org/) cdb comes to the aid. `testing.js` utilizes it
-to obtain automatical stack traces for crashes. We run it like that:
-
-    cdb -z <dump file> -c 'kp; ~*kb; dv; !analyze -v; q'
-
-These commands for `-c` mean:
-kp print curren threads backtrace with arguments
-~\*kb print all threads stack traces
-dv analyze local variables (if)
-!analyze -v print verbose analysis
-q quit the debugger
-
-If you don't specify them via `-c` you can also use them in an interactive
-manner.
-
-Alternatively you can also directly specify the symbol path via the `-y`
-parameter (replace XX):
-
-    cdb -z <dump file> -y 'SRV*e:\symbol_cache*https://download.arangodb.com/symsrv_arangodbXX;SRV*e:\symbol_cache\ms*http://msdl.microsoft'
-
-and use the commands above to obtain stacktraces.
-
----
-
 ## Unittests
 
 ### Dependencies
@@ -785,32 +799,27 @@ There are several major places where unittests live:
 | `tests/` (remaining)                                         | Google Test unittests                                                                                                              |
 | implementation specific files                                |
 | `scripts/unittest`                                           | Entry wrapper script for `UnitTests/unittest.js`                                                                                   |
-| `js/client/modules/@arangodb/testutils/testing.js`           | invoked via `unittest.js` handles module structure for `testsuites`.                                                               |
-| `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating                                                                      |
-| `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes                                                                          |
-| `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.                                                                 |
-| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if something goes wrong, this contains the crash analysis tools                                                                   |
-| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched separately to monitor the cluster instances and their resource usage                                               |
-| `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each                                                                      |
-| `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module                                                               |
-| `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb                                                                                        |
+
+                                          |
+see [js/client/modules/@arangodb/README.md] about implementation details of the framework.
 
 ### Filename conventions
 
 Special patterns in the test filenames are used to select tests to be executed
 or skipped depending on parameters:
 
-| Substring       | Description                                                                                                                                                                                                                                                                                                                                                                                   |
-| :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-cluster`      | These tests will only run if clustering is tested (option 'cluster' needs to be true).                                                                                                                                                                                                                                                                                                        |
-| `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)                                                                                                                                                                                                                                                                                                          |
-| `-noasan`        | These tests will not be ran if *san instrumented binaries are used                                                                                                                                                                                                                                                                                                                           |
-|  `-noinstr`      | These tests will not be ran if instrumented binaries are used, be it *san or gcov                                                                                                                                                                                                                                                                                                             | 
-|  `-nocov`        | These tests will not be ran if gcov instrumented binaries are used.                                                                                                                                                                                                                                                                                                              | 
-| `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to _true_.                                                                                                                               |
-| `-spec`         | These tests are run using the mocha framework instead of jsunity.                                                                                                                                                                                                                                                                                                                             |
-| `-nightly`      | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.                                                                                                                                                                                                                                                                |
-| `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date. |
+| Substring                | Description                                                                                                                                                                                                                                                                                                                                                                                   |
+| :----------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-cluster`               | These tests will only run if clustering is tested (option 'cluster' needs to be true).                                                                                                                                                                                                                                                                                                        |
+| `-noncluster`            | These tests will only run if no cluster is used (option 'cluster' needs to be false)                                                                                                                                                                                                                                                                                                          |
+| `-noinstr_or_noncluster` | These tests will not be ran if instrumented binaries are used and we are running in cluster mode                                                                                                                                                                                                                                                                                              |
+| `-noasan`                | These tests will not be ran if *san instrumented binaries are used                                                                                                                                                                                                                                                                                                                            |
+|  `-noinstr`              | These tests will not be ran if instrumented binaries are used, be it *san or gcov                                                                                                                                                                                                                                                                                                             | 
+|  `-nocov`                | These tests will not be ran if gcov instrumented binaries are used.                                                                                                                                                                                                                                                                                                                           | 
+| `-timecritical`          | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to _true_.                                                                                                                               |
+| `-spec`                  | These tests are run using the mocha framework instead of jsunity.                                                                                                                                                                                                                                                                                                                             |
+| `-nightly`               | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.                                                                                                                                                                                                                                                                |
+| `-grey`                  | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date. |
 
 ### JavaScript Framework
 
@@ -824,15 +833,15 @@ Get a list of the available testsuites and options by invoking:
 
 To locate the suite(s) associated with a specific test file use:
 
-    ./scripts/unittest find --test tests/js/common/shell/shell-aqlfunctions.js
+    ./scripts/unittest find --test tests/js/client/shell/api/aqlfunction.js
 
 Run all suite(s) associated with a specific test file in single server mode:
 
-    ./scripts/unittest auto --test tests/js/common/shell/shell-aqlfunctions.js
+    ./scripts/unittest auto --test tests/js/client/shell/api/aqlfunction.js
 
 Run all suite(s) associated with a specific test file in cluster mode:
 
-    ./scripts/unittest auto --cluster true --test tests/js/common/shell/shell-aqlfunctions.js
+    ./scripts/unittest auto --cluster true --test tests/js/client/shell/api/aqlfunction.js
 
 Run all C++ based Google Test (gtest) tests using the `arangodbtests` binary:
 
@@ -846,24 +855,25 @@ Run specific gtest tests:
 
 Controlling the place where the test-data is stored:
 
-    TMPDIR=/some/other/path ./scripts/unittest shell_server_aql
-
-(Linux/Mac case. On Windows `TMP` or `TEMP` - as returned by `GetTempPathW` are the way to go)
+    TMPDIR=/some/other/path ./scripts/unittest shell_client_aql
 
 Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
 
 `scripts/unittest` is only a wrapper for the most part, the backend
-functionality lives in `js/client/modules/@arangodb/` (`testing.js`,
-`process-utils.js`, `test-utils.js`). The actual testsuites are located in the
-`testsuites` subfolder.
+functionality lives in `js/client/modules/@arangodb/testutils`.
+The actual testsuites are located in the
+`js/client/modules/@arangodb/testsuites` folder.
 
 #### Passing Options
 
 The first parameter chooses the facility to execute. Available choices include:
 
-- **single_client**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
-- **single_server**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
+- **shell_client**
+- **shell_api**
+- **shell_api_multi**
+- **shell_client_aql**
+- **shell_client_multi**
 
 Different facilities may take different options. The above mentioned usage
 output contains the full detail.
@@ -873,7 +883,7 @@ previously started arangod instance. You can launch the instance as you want
 including via a debugger or `rr` and prepare it for what you want to test with
 it. You then launch the test on it like this (assuming the default endpoint):
 
-    ./scripts/unittest http_server --server tcp://127.0.0.1:8529/
+    ./scripts/unittest shell_client --server tcp://127.0.0.1:8529/
 
 A commandline for running a single test (-> with the facility 'single_server')
 using valgrind could look like this. Options are passed as regular long values
@@ -897,37 +907,30 @@ this:
 - We specify some arangod arguments via --extraArgs which increase the server performance
 - We specify to run using valgrind (this is supported by all facilities)
 - We specify some valgrind commandline arguments
-- We set the log levels for agents to `trace` (the Instance type can be specified by:
+- We set the log levels for agents to `trace` (the Iinstance type can be specified by:
   - `single`
   - `agent`
   - `dbserver`
   - `coordinator`
-  - `activefailover`
   )
 - We set the `requests` log level to debug on all instances
 - We force the logging not to happen asynchronous
 - Eventually you may still add temporary `console.log()` statements to tests you debug.
 
-
-
 #### Running a Single Unittest Suite
 
-Testing a single test with the framework directly on a server:
+Testing a single test with the framework directly from the arangosh:
 
-    scripts/unittest single_server --test tests/js/server/aql/aql-escaping.js
+    scripts/unittest shell_client --test tests/js/client/shell/shell-client.js
 
 You can also only execute a filtered test case in a jsunity/mocha/gtest test
 suite (in this case `testTokens`):
 
-    scripts/unittest single_server --test tests/js/server/aql/aql-escaping.js --testCase testTokens
+    scripts/unittest shell_client_aql --test tests/js/client/aql/aql-escaping.js --testCase testTokens
 
     scripts/unittest shell_client --test shell-util-spec.js --testCase zip
 
     scripts/unittest gtest --testCase "IResearchDocumentTest.*"
-
-Testing a single test with the framework via arangosh:
-
-    scripts/unittest single_client --test tests/js/client/shell/transaction/shell-transaction.js
 
 Running a test against a server you started (instead of letting the script start its own server):
 
@@ -937,9 +940,23 @@ Re-running previously failed tests:
 
     scripts/unittest <args> --failed
 
+Specifying a `--test ` filter containing `-cluster` will implicitly set `--cluster true` and launch a cluster test.
+
 The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
 The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
 This failed filter should work for all jsunity and mocha tests.
+
+#### Running several Suites in one go
+
+Several testsuites can be launched consequently in one run by specifying them as coma separated list.
+They all share the specified commandline arguments. Individual arguments can be passed as a JSON array.
+The JSON Array has to contain the same number of elements as testsuites specified. The specified individual
+parameters will overrule global and default values.
+
+Running the same testsuite twice with different and shared parameters would look like this:
+
+    ./scripts/unittest  shell_client_multi,shell_client_multi --test shell-admin-status.js  --optionsJson '[{"http2":true,"suffix":"http2"},{"http":true,"suffix":"http"}]'
+
 
 #### Running Foxx Tests with a Fake Foxx Repo
 
@@ -978,16 +995,6 @@ arangosh> require("jsunity").runTest("test.js");
 2012-01-28T19:10:23Z [10671] INFO 1 millisecond elapsed
 ```
 
-#### Running jsUnity Tests with arangod
-
-In (emergency) console mode (`arangod --console`):
-
-    require("jsunity").runTest("tests/js/server/aql/aql-escaping.js");
-
-Filtering for one test case (in this case `testTokens`) in console mode:
-
-    require("jsunity").runTest("tests/js/server/aql/aql-escaping.js", false, "testTokens");
-
 #### Running jsUnity Tests with arangosh client
 
 Run tests this way:
@@ -1011,7 +1018,7 @@ To aid their development, they can also be used from the ArangoDB source tree.
 
 #### MakeData / CheckData suite
 
-The [makedata framework](https://github.com/arangodb/release-test-automation#makedata--checkdata-framework)
+The [makedata framework](https://github.com/arangodb/rta-makedata) as git submodule in [3rdParty/rta-makedata](3rdParty/rta-makedata/)
 is implemented in arangosh javascript.
 It uses the respective interface to execute DDL and DML operations. 
 It facilitates a per database approach, and can be run multiple times in loops. 
@@ -1035,15 +1042,15 @@ rather time and resource consuming and complex RTA framework.
 The `rta_makedata` testsuite can be invoked with:
 
 - `--cluster false` - to be ran on a single server setup.
-- `--activefailover true` to be ran on an active failover setup.
 - `--cluster true` to be ran on a 3 db-server node cluster; one run will check resilience with 2 remaining dbservers.
+
+These combinations are also engaged via [test-definitions.txt](tests/test-definitions.txt).
 
 Invoke it like this:
 
-    ./scripts/unittest rta_makedata --cluster true --rtasource ../release-test-automation/
+    ./scripts/unittest rta_makedata --cluster true
 
-(with `--rtasource ../release-test-automation` being the default value,
-that can be overriden with another directory with a git clone of RTA)
+(you can override the 3rdParty/rta-makedata with `--rtasource ../rta-makedata` ,if you want to work with a full git clone of RTA-makedata)
 
 ### Driver tests
 
@@ -1151,7 +1158,7 @@ Statically provided options (with sample values):
 - `--username root`
 - `--password ''`
 - `--[no-]enterprise`
-- `--deployment-mode [SINGLE_SERVER|ACTIVE_FAILOVER|CLUSTER]`
+- `--deployment-mode [SINGLE_SERVER|CLUSTER]`
 
 ### Debugging Tests
 
@@ -1201,26 +1208,6 @@ make sure that your current shell has sudo enabled. Try like this:
 
 The pcap file will end up in your tests temporary directory. You may need to
 press an additional `ctrl+c` to force stop the sudo'ed tcpdump.
-
-On Windows you can use TShark, you need a npcap enabled installation. List your
-devices to sniff on using the -D option:
-
-    c:/Program\ Files/wireshark/tshark.exe  -D
-    1. \Device\NPF_{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX} (Npcap Loopback Adapter)
-    2. \Device\NPF_{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX} (Ethernet)
-    3. \\.\USBPcap1 (USBPcap1)
-
-Choose the `Npcap Loopback Adapter` number - 1:
-
-    ./scripts/unittest http_server \
-      --sniff true \
-      --cleanup false \
-      --sniffDevice 1 \
-      --sniffProgram 'c:/Program Files/wireshark/tshark.exe' \
-      --forceJson true
-
-You can later on use Wireshark to inspect the capture files.
-(please note that `--forceJson` will downgrade the communication VPACK->JSON for better readability)
 
 ### Evaluating json test reports from previous testruns
 
@@ -1302,6 +1289,30 @@ getting the PIDs of the server in the testrun using jq:
     "1721883_dbserver": {
     "1721884_dbserver": {
     "1721885_coordinator": {
+
+### Installing bash completion for `./scripts/unittest`
+
+Calling
+
+```bash
+./scripts/buildUnittestBashCompletion.bash > ~/arango_unittest_comp.bash
+```
+
+generates a bash completion script for `./scripts/unittest` which can be sourced
+in your `~/.bashrc` or `~/.bash_profile`:
+
+```bash
+. ~/arango_unittest_comp.bash
+```
+
+You can also install completions directly by running
+
+```bash
+  eval "$(./scripts/buildUnittestBashCompletion.bash)"
+```
+
+in your shell, or `.bashrc` etc., but note that it has to be executed in the
+arangodb directory.
 
 # Additional Resources
 

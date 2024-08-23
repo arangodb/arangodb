@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"
@@ -34,6 +35,7 @@
 #include <vector>
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,
@@ -97,7 +99,8 @@ void FailedLeader::rollback() {
   // Create new plan servers (exchange _to and _from)
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto planned = _snapshot.hasAsSlice(planPath).value();
+  auto plannedBuilder = _snapshot.hasAsBuilder(planPath).value();
+  auto planned = plannedBuilder.slice();
   std::shared_ptr<Builder> payload = nullptr;
 
   if (_status == PENDING) {  // Only payload if pending. Otherwise just fail.
@@ -216,21 +219,23 @@ bool FailedLeader::start(bool& aborts) {
   // Current servers vector
   std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard;
-  auto current = _snapshot.hasAsSlice(curPath + "/servers").value();
+  auto currentBuilder = _snapshot.get(curPath + "/servers")->toBuilder();
+  auto current = currentBuilder.slice();
 
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto planned = _snapshot.hasAsSlice(planPath).value();
+  auto plannedBuilder = _snapshot.get(planPath)->toBuilder();
+  auto planned = plannedBuilder.slice();
 
   // Get todo entry
   Builder todo;
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& jobIdNode = _snapshot.get(toDoPrefix + _jobId);
       if (jobIdNode) {
-        jobIdNode->get().toBuilder(todo);
+        jobIdNode->toBuilder(todo);
       } else {
         LOG_TOPIC("96395", INFO, Logger::SUPERVISION)
             << "Failed to get key " << toDoPrefix << _jobId
@@ -358,6 +363,8 @@ bool FailedLeader::start(bool& aborts) {
                                     Supervision::HEALTH_STATUS_GOOD);
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
+        // All clones still exist
+        addPreconditionClonesStillExist(pending, _database, shardsLikeMe);
         // Check that Current/servers and failoverCandidates are still as
         // we inspected them:
         doForAllShards(
@@ -369,9 +376,10 @@ bool FailedLeader::start(bool& aborts) {
               // "failoverCandidates":
               std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
               foCandsPath += StaticStrings::FailoverCandidates;
-              auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+              auto foCands = this->_snapshot.hasAsBuilder(foCandsPath);
               if (foCands) {
-                addPreconditionUnchanged(pending, foCandsPath, *foCands);
+                addPreconditionUnchanged(pending, foCandsPath,
+                                         foCands->slice());
               }
             });
         // Destination server should not be blocked by another job
@@ -455,7 +463,7 @@ bool FailedLeader::start(bool& aborts) {
     if (!slice.isNone()) {
       LOG_TOPIC("aff11", INFO, Logger::SUPERVISION)
           << "Destination server " << _to << " meanwhile is blocked by job "
-          << slice.copyString();
+          << slice.stringView();
     }
 
     // This shard blocked by other job?
@@ -464,7 +472,7 @@ bool FailedLeader::start(bool& aborts) {
     if (!slice.isNone()) {
       LOG_TOPIC("71bb2", INFO, Logger::SUPERVISION)
           << "Shard  " << _shard << " meanwhile is blocked by job "
-          << slice.copyString();
+          << slice.stringView();
     }
   }
 
@@ -496,10 +504,10 @@ JOB_STATUS FailedLeader::status() {
   }
 
   std::string database, shard;
-  auto const& job = _snapshot.hasAsNode(pendingPrefix + _jobId);
+  auto const& job = _snapshot.get(pendingPrefix + _jobId);
   if (job) {
-    auto tmp_database = job->get().hasAsString("database");
-    auto tmp_shard = job->get().hasAsString("shard");
+    auto tmp_database = job->hasAsString("database");
+    auto tmp_shard = job->hasAsString("shard");
     if (tmp_database && tmp_shard) {
       database = tmp_database.value();
       shard = tmp_shard.value();
@@ -514,12 +522,12 @@ JOB_STATUS FailedLeader::status() {
   for (auto const& clone : clones(_snapshot, _database, _collection, _shard)) {
     auto sub = database + "/" + clone.collection;
     auto plan_slice =
-        _snapshot.hasAsSlice(planColPrefix + sub + "/shards/" + clone.shard);
-    auto cur_slice = _snapshot.hasAsSlice(curColPrefix + sub + "/" +
-                                          clone.shard + "/servers");
+        _snapshot.hasAsBuilder(planColPrefix + sub + "/shards/" + clone.shard);
+    auto cur_slice = _snapshot.hasAsBuilder(curColPrefix + sub + "/" +
+                                            clone.shard + "/servers");
     if (plan_slice && cur_slice &&
-        !basics::VelocyPackHelper::equal(plan_slice.value()[0],
-                                         cur_slice.value()[0], false)) {
+        !basics::VelocyPackHelper::equal(plan_slice->slice()[0],
+                                         cur_slice->slice()[0], false)) {
       LOG_TOPIC("0d8ca", DEBUG, Logger::SUPERVISION)
           << "FailedLeader waiting for " << sub << "/" << shard;
       break;

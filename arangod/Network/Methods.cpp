@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,13 +25,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Utf8Helper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
@@ -146,11 +146,11 @@ Result Response::combinedResult() const {
 }
 
 /// @brief shardId or empty
-std::string Response::destinationShard() const {
+ResultT<ShardID> Response::destinationShard() const {
   if (this->destination.size() > 6 && this->destination.starts_with("shard:")) {
-    return this->destination.substr(6);
+    return ShardID::shardIdFromString(this->destination.substr(6));
   }
-  return StaticStrings::Empty;
+  return Result{TRI_ERROR_BAD_PARAMETER, "destination not a shard"};
 }
 
 std::string Response::serverId() const {
@@ -181,10 +181,14 @@ auto prepareRequest(ConnectionPool* pool, RestVerb type, std::string path,
     req->header.acceptType(options.acceptType);
   }
 
-  TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
-  req->header.addMeta(
-      StaticStrings::HLCHeader,
-      arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp));
+  if (options.sendHLCHeader) {
+    // add x-arango-hlc header to outgoing request, so that the peer
+    // can update its own HLC value to at least the value of our own HLC
+    TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
+    req->header.addMeta(
+        StaticStrings::HLCHeader,
+        arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp));
+  }
 
   consensus::Agent* agent = nullptr;
   if (pool && pool->config().clusterInfo) {
@@ -234,8 +238,12 @@ struct Pack {
   fuerte::Error tmp_err;
   RequestLane continuationLane;
   bool skipScheduler;
-  Pack(DestinationId&& dest, RequestLane lane, bool skip)
-      : dest(std::move(dest)), continuationLane(lane), skipScheduler(skip) {}
+  bool handleContentEncoding;
+  Pack(DestinationId&& dest, RequestLane lane, bool skip, bool handle)
+      : dest(std::move(dest)),
+        continuationLane(lane),
+        skipScheduler(skip),
+        handleContentEncoding(handle) {}
 };
 
 void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
@@ -245,7 +253,7 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
   NetworkFeature& nf = server.getFeature<NetworkFeature>();
   nf.sendRequest(
       *pool, options, endpoint, std::move(req),
-      [p(std::move(p)), pool, &options, endpoint](
+      [pack(std::move(p)), pool, options, endpoint](
           fuerte::Error err, std::unique_ptr<fuerte::Request> req,
           std::unique_ptr<fuerte::Response> res, bool isFromPool) mutable {
         TRI_ASSERT(req != nullptr || err == fuerte::Error::ConnectionCanceled);
@@ -254,29 +262,41 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
                            err == fuerte::Error::WriteError)) {
           // retry under certain conditions
           // cppcheck-suppress accessMoved
-          actuallySendRequest(std::move(p), pool, options, endpoint,
-                              std::move(req));
+          actuallySendRequest(std::move(pack), pool, std::move(options),
+                              std::move(endpoint), std::move(req));
           return;
         }
 
-        auto* sch = SchedulerFeature::SCHEDULER;
+        // We access the global SCHEDULER pointer here via an atomic
+        // reference. This is to silence TSAN, which often detects a data
+        // race on this pointer, which is actually totally harmless.
+        // What happens is that this access here occurs earlier in time
+        // than the write in SchedulerFeature::unprepare, which
+        // invalidates the pointer. TSAN does not see an official "happens
+        // before" relation between the two threads and complains.
+        // However, this is totally fine (and to some extent expected),
+        // since potentially network responses might come in later than
+        // the time when the scheduler has been shut down. Even in that
+        // case, all is fine, since we check for nullptr below.
+        std::atomic_ref<Scheduler*> schedulerRef{SchedulerFeature::SCHEDULER};
+        auto* sch = schedulerRef.load(std::memory_order_relaxed);
         // cppcheck-suppress accessMoved
-        if (p->skipScheduler || sch == nullptr) {
-          p->promise.setValue(network::Response{
-              std::move(p->dest), err, std::move(req), std::move(res)});
+        if (pack->skipScheduler || sch == nullptr) {
+          pack->promise.setValue(network::Response{
+              std::move(pack->dest), err, std::move(req), std::move(res)});
           return;
         }
 
-        p->tmp_err = err;
-        p->tmp_res = std::move(res);
-        p->tmp_req = std::move(req);
+        pack->tmp_err = err;
+        pack->tmp_res = std::move(res);
+        pack->tmp_req = std::move(req);
 
-        TRI_ASSERT(p->tmp_req != nullptr);
+        TRI_ASSERT(pack->tmp_req != nullptr);
 
-        sch->queue(p->continuationLane, [p]() mutable {
-          p->promise.setValue(Response{std::move(p->dest), p->tmp_err,
-                                       std::move(p->tmp_req),
-                                       std::move(p->tmp_res)});
+        sch->queue(pack->continuationLane, [pack]() mutable {
+          pack->promise.setValue(Response{std::move(pack->dest), pack->tmp_err,
+                                          std::move(pack->tmp_req),
+                                          std::move(pack->tmp_res)});
         });
       });
 }
@@ -301,22 +321,37 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     if (!pool || !pool->config().clusterInfo) {
       LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
-      return futures::makeFuture(Response{
-          std::move(dest), Error::ConnectionCanceled, std::move(req), nullptr});
+      co_return Response{std::move(dest), Error::ConnectionCanceled,
+                         std::move(req), nullptr};
     }
 
+    // resolve destination.
+    // it is at least temporarily possible for the destination to be an empty
+    // string. this can happen if a server is in shutdown and has unregistered
+    // itself from the cluster. if this happens, the dest value can be empty,
+    // and trying to resolve it via resolveDestination() will produce error
+    // message 77a84. we are trying to suppress this error message here, and
+    // simply return "backend unavailable" (as we did before) and do not log the
+    // error.
     arangodb::network::EndpointSpec spec;
-    auto res =
-        options.overrideDestination.empty()
-            ? resolveDestination(*pool->config().clusterInfo, dest, spec)
-            : resolveDestination(*pool->config().clusterInfo,
-                                 "server:" + options.overrideDestination, spec);
+    ErrorCode res = TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    if (options.overrideDestination.empty()) {
+      if (!dest.empty()) {
+        res = co_await resolveDestination(*pool->config().clusterInfo, dest,
+                                          spec);
+      }
+    } else {
+      res = co_await resolveDestination(*pool->config().clusterInfo,
+                                        "server:" + options.overrideDestination,
+                                        spec);
+    }
+
     if (res != TRI_ERROR_NO_ERROR) {
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
       auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
-      return futures::makeFuture(Response{std::move(dest), Error::NoError,
-                                          std::move(req), std::move(resp)});
+      co_return Response{std::move(dest), Error::NoError, std::move(req),
+                         std::move(resp)};
     }
     TRI_ASSERT(!spec.endpoint.empty());
 
@@ -324,11 +359,12 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
 
     auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
-                                    options.skipScheduler);
+                                    options.skipScheduler,
+                                    options.handleContentEncoding);
     FutureRes f = p->promise.getFuture();
     actuallySendRequest(std::move(p), pool, options, spec.endpoint,
                         std::move(req));
-    return f;
+    co_return co_await std::move(f);
 
   } catch (std::exception const& e) {
     LOG_TOPIC("236d7", DEBUG, Logger::COMMUNICATION)
@@ -337,13 +373,14 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION)
         << "failed to send request.";
   }
-  return futures::makeFuture(
-      Response{std::string(), Error::ConnectionCanceled, nullptr, nullptr});
+  co_return Response{std::string(), Error::ConnectionCanceled, nullptr,
+                     nullptr};
 }
 
 /// Stateful handler class with enough information to keep retrying
 /// a request until an overall timeout is hit (or the request succeeds)
-class RequestsState final : public std::enable_shared_from_this<RequestsState> {
+class RequestsState final : public std::enable_shared_from_this<RequestsState>,
+                            public RetryableRequest {
  public:
   RequestsState(ConnectionPool* pool, DestinationId&& destination,
                 RestVerb type, std::string&& path,
@@ -359,40 +396,24 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
                 options.timeout)) {
     _tmp_req = prepareRequest(pool, type, std::move(path), std::move(payload),
                               _options, std::move(headers));
+
+    TRI_ASSERT(_pool != nullptr);
+    TRI_ASSERT(_pool->config().clusterInfo != nullptr);
   }
 
   ~RequestsState() = default;
 
- private:
-  DestinationId _destination;
-  RequestOptions const _options;
-  ConnectionPool* _pool;
-
-  std::shared_ptr<arangodb::Scheduler::DelayedWorkItem> _workItem;
-  std::unique_ptr<fuerte::Request> _tmp_req;
-  std::unique_ptr<fuerte::Response> _tmp_res;  /// temporary response
-
-  futures::Promise<network::Response> _promise;  /// promise called
-
-  std::chrono::steady_clock::time_point const _startTime;
-  std::chrono::steady_clock::time_point const _endTime;
-
-  fuerte::Error _tmp_err;
-
- public:
   FutureRes future() { return _promise.getFuture(); }
 
-  // scheduler requests that are due
+  // schedule requests that are due
   void startRequest() {
     TRI_ASSERT(_tmp_req != nullptr);
-    if (ADB_UNLIKELY(!_pool)) {
-      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
-          << "connection pool unavailable";
-      _tmp_err = Error::ConnectionCanceled;
-      _tmp_res = nullptr;
-      resolvePromise();
-      return;
-    }
+    // the following assertions hold true because we are already checking
+    // these values in the constructor. furthermore, all users or RequestsState
+    // make sure that _pool and _pool->config().clusterInfo are always
+    // non-nullptrs.
+    TRI_ASSERT(_pool != nullptr);
+    TRI_ASSERT(_pool->config().clusterInfo != nullptr);
 
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime) {
@@ -409,42 +430,50 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       return;  // we are done
     }
 
-    arangodb::network::EndpointSpec spec;
-    auto res = _options.overrideDestination.empty()
-                   ? resolveDestination(*_pool->config().clusterInfo,
-                                        _destination, spec)
-                   : resolveDestination(
-                         *_pool->config().clusterInfo,
-                         "server:" + _options.overrideDestination, spec);
-    if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
-      // We fake a successful request with statusCode 503 and a backend not
-      // available error here:
-      _tmp_err = Error::NoError;
-      _tmp_res = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
-      resolvePromise();
-      return;
-    }
+    auto futureRes = _options.overrideDestination.empty()
+                         ? resolveDestination(*_pool->config().clusterInfo,
+                                              _destination, _spec)
+                         : resolveDestination(
+                               *_pool->config().clusterInfo,
+                               "server:" + _options.overrideDestination, _spec);
 
-    // simon: shorten actual request timeouts to allow time for retry
-    //        otherwise resilience_failover tests likely fail
-    auto t = _endTime - now;
-    if (t >= std::chrono::duration<double>(100)) {
-      t -= std::chrono::seconds(30);
-    }
-    TRI_ASSERT(t.count() > 0);
-    _tmp_req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(t));
+    std::move(futureRes).thenFinal([this, self = shared_from_this(),
+                                    now](futures::Try<ErrorCode> tryRes) {
+      auto res =
+          basics::catchToResult([&] { return tryRes.get(); }).errorNumber();
 
-    auto& server = _pool->config().clusterInfo->server();
-    NetworkFeature& nf = server.getFeature<NetworkFeature>();
-    nf.sendRequest(*_pool, _options, spec.endpoint, std::move(_tmp_req),
-                   [self = shared_from_this()](
-                       fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                       std::unique_ptr<fuerte::Response> res, bool isFromPool) {
-                     self->_tmp_err = err;
-                     self->_tmp_req = std::move(req);
-                     self->_tmp_res = std::move(res);
-                     self->handleResponse(isFromPool);
-                   });
+      if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
+        // We fake a successful request with statusCode 503 and a backend not
+        // available error here:
+        _tmp_err = Error::NoError;
+        _tmp_res = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
+        resolvePromise();
+        return;
+      }
+
+      // simon: shorten actual request timeouts to allow time for retry
+      //        otherwise resilience_failover tests likely fail
+      auto t = _endTime - now;
+      if (t >= std::chrono::duration<double>(100)) {
+        t -= std::chrono::seconds(30);
+      }
+      TRI_ASSERT(t.count() > 0);
+      _tmp_req->timeout(
+          std::chrono::duration_cast<std::chrono::milliseconds>(t));
+
+      auto& server = _pool->config().clusterInfo->server();
+      NetworkFeature& nf = server.getFeature<NetworkFeature>();
+      nf.sendRequest(
+          *_pool, _options, _spec.endpoint, std::move(_tmp_req),
+          [self = shared_from_this()](
+              fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+              std::unique_ptr<fuerte::Response> res, bool isFromPool) {
+            self->_tmp_err = err;
+            self->_tmp_req = std::move(req);
+            self->_tmp_res = std::move(res);
+            self->handleResponse(isFromPool);
+          });
+    });
   }
 
  private:
@@ -602,18 +631,37 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       return;
     }
 
-    _workItem = sch->queueDelayed(
-        "request-retry", _options.continuationLane, tryAgainAfter,
-        [self = shared_from_this()](bool canceled) {
-          if (canceled) {
-            self->_promise.setValue(Response{std::move(self->_destination),
-                                             Error::ConnectionCanceled, nullptr,
-                                             nullptr});
-          } else {
-            self->startRequest();
-          }
-        });
+    TRI_ASSERT(_pool != nullptr);
+    TRI_ASSERT(_pool->config().clusterInfo != nullptr);
+
+    auto& server = _pool->config().clusterInfo->server();
+    NetworkFeature& nf = server.getFeature<NetworkFeature>();
+    nf.retryRequest(shared_from_this(), _options.continuationLane,
+                    tryAgainAfter);
   }
+
+ public:
+  bool isDone() const override { return _promise.isFulfilled(); }
+  void retry() override { startRequest(); }
+  void cancel() override {
+    _promise.setValue(Response{std::move(_destination),
+                               Error::ConnectionCanceled, nullptr, nullptr});
+  }
+
+ private:
+  DestinationId _destination;
+  RequestOptions const _options;
+  ConnectionPool* _pool;
+
+  std::unique_ptr<fuerte::Request> _tmp_req;
+  std::unique_ptr<fuerte::Response> _tmp_res;  /// temporary response
+
+  futures::Promise<network::Response> _promise;  /// promise called
+
+  std::chrono::steady_clock::time_point const _startTime;
+  std::chrono::steady_clock::time_point const _endTime;
+  network::EndpointSpec _spec;
+  fuerte::Error _tmp_err;
 };
 
 /// @brief send a request to a given destination, retry until timeout is
@@ -635,11 +683,10 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
         << " " << path << "'";
 
     auto rs = std::make_shared<RequestsState>(
-        pool, std::move(destination), type, std::move(path), std::move(payload),
-        std::move(headers), options);
+        pool, std::string{destination}, type, std::move(path),
+        std::move(payload), std::move(headers), options);
     rs->startRequest();  // will auto reference itself
     return rs->future();
-
   } catch (std::exception const& e) {
     LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION)
         << "failed to send request: " << e.what();
@@ -648,8 +695,8 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
         << "failed to send request.";
   }
 
-  return futures::makeFuture(
-      Response{std::string(), Error::ConnectionCanceled, nullptr, nullptr});
+  return futures::makeFuture(Response{
+      std::move(destination), Error::ConnectionCanceled, nullptr, nullptr});
 }
 
 }  // namespace network

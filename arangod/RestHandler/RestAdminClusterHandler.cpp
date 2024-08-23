@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,7 +47,6 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
-#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -57,8 +56,10 @@
 #include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
+#include "StorageEngine/VPackSortMigration.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -77,36 +78,90 @@ struct agentConfigHealthResult {
   futures::Try<network::Response> response;
 };
 
-void removePlanServers(std::unordered_set<std::string>& servers,
-                       VPackSlice plan) {
-  for (auto const& database : VPackObjectIterator(plan.get("Collections"))) {
-    for (auto const& collection : VPackObjectIterator(database.value)) {
-      VPackSlice shards = collection.value.get("shards");
-      for (auto const& shard : VPackObjectIterator(shards)) {
-        for (auto const& server : VPackArrayIterator(shard.value)) {
-          servers.erase(server.copyString());
-          if (servers.empty()) {
-            return;
-          }
+void removePlanServersReplicationOne(std::unordered_set<std::string>& servers,
+                                     VPackSlice planCollections) {
+  for (auto const& collection : VPackObjectIterator(planCollections)) {
+    // In ReplicationOne we need to ignore servers that is either leader or
+    // follower of a shard.
+    VPackSlice shards = collection.value.get("shards");
+    for (auto const& shard : VPackObjectIterator(shards)) {
+      for (auto const& server : VPackArrayIterator(shard.value)) {
+        servers.erase(server.copyString());
+        if (servers.empty()) {
+          return;
         }
       }
     }
   }
 }
 
-void removeCurrentServers(std::unordered_set<std::string>& servers,
-                          VPackSlice current) {
-  for (auto const& database : VPackObjectIterator(current.get("Collections"))) {
-    for (auto const& collection : VPackObjectIterator(database.value)) {
-      for (auto const& shard : VPackObjectIterator(collection.value)) {
-        for (auto const& server :
-             VPackArrayIterator(shard.value.get("servers"))) {
-          servers.erase(server.copyString());
-          if (servers.empty()) {
-            return;
-          }
+void removeCurrentServersReplicationOne(
+    std::unordered_set<std::string>& servers, VPackSlice currentCollections) {
+  for (auto const& collection : VPackObjectIterator(currentCollections)) {
+    for (auto const& shard : VPackObjectIterator(collection.value)) {
+      for (auto const& server :
+           VPackArrayIterator(shard.value.get("servers"))) {
+        servers.erase(server.copyString());
+        if (servers.empty()) {
+          return;
         }
       }
+    }
+  }
+}
+
+void removePlanServersReplicationTwo(std::unordered_set<std::string>& servers,
+                                     VPackSlice planReplicatedLogs) {
+  for (auto const& logSlice : VPackObjectIterator(planReplicatedLogs)) {
+    auto log = velocypack::deserialize<
+        arangodb::replication2::agency::LogPlanSpecification>(logSlice.value);
+    // In ReplicationTwo we need to ignore servers that are still leading the
+    // logs
+    if (log.currentTerm.has_value() &&
+        log.currentTerm.value().leader.has_value()) {
+      // If we have selected a leader, let's avoid to remove it
+      // Should be cleaned out first
+      servers.erase(log.currentTerm.value().leader.value().serverId);
+    } else {
+      // If we don't have a leader, let's not remove any server that is still a
+      // participant
+      for (auto const& [server, flags] : log.participantsConfig.participants) {
+        servers.erase(server);
+      }
+    }
+  }
+}
+
+void removeCurrentServersReplicationTwo(
+    std::unordered_set<std::string>& servers,
+    VPackSlice currentReplicatedLogs) {
+  for (auto const& logSlice : VPackObjectIterator(currentReplicatedLogs)) {
+    auto log =
+        velocypack::deserialize<arangodb::replication2::agency::LogCurrent>(
+            logSlice.value);
+    if (log.leader.has_value()) {
+      servers.erase(log.leader.value().serverId);
+    }
+  }
+}
+
+void removePlanOrCurrentServers(std::unordered_set<std::string>& servers,
+                                VPackSlice plan, VPackSlice current) {
+  for (auto const& database : VPackObjectIterator(plan.get("Databases"))) {
+    if (database.value.get(StaticStrings::ReplicationVersion)
+            .isEqualString("2")) {
+      auto planLogs = plan.get("ReplicatedLogs").get(database.key.stringView());
+      auto currentLogs =
+          current.get("ReplicatedLogs").get(database.key.stringView());
+      removePlanServersReplicationTwo(servers, planLogs);
+      removeCurrentServersReplicationTwo(servers, currentLogs);
+    } else {
+      auto planCollections =
+          plan.get("Collections").get(database.key.stringView());
+      auto currentCollections =
+          current.get("Collections").get(database.key.stringView());
+      removePlanServersReplicationOne(servers, planCollections);
+      removeCurrentServersReplicationOne(servers, currentCollections);
     }
   }
 }
@@ -114,8 +169,7 @@ void removeCurrentServers(std::unordered_set<std::string>& servers,
 bool isServerResponsibleForSomething(std::string const& server, VPackSlice plan,
                                      VPackSlice current) {
   std::unordered_set<std::string> servers = {server};
-  removePlanServers(servers, plan);
-  removeCurrentServers(servers, current);
+  removePlanOrCurrentServers(servers, plan, current);
   return servers.size() == 1;
 }
 
@@ -161,8 +215,8 @@ void buildHealthResult(
       }
     }
 
-    removePlanServers(set, store.get(rootPath->plan()->vec()));
-    removeCurrentServers(set, store.get(rootPath->current()->vec()));
+    removePlanOrCurrentServers(set, store.get(rootPath->plan()->vec()),
+                               store.get(rootPath->current()->vec()));
     return set;
   };
   delayedCalculator canBeDeleted(canBeDeletedConstructor);
@@ -294,7 +348,12 @@ std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 std::string const RestAdminClusterHandler::Rebalance = "rebalance";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
-std::string const RestAdminClusterHandler::FailureOracle = "failureOracle";
+std::string const RestAdminClusterHandler::VPackSortMigration =
+    "vpackSortMigration";
+std::string const RestAdminClusterHandler::VPackSortMigrationCheck = "check";
+std::string const RestAdminClusterHandler::VPackSortMigrationMigrate =
+    "migrate";
+std::string const RestAdminClusterHandler::VPackSortMigrationStatus = "status";
 
 RestStatus RestAdminClusterHandler::execute() {
   // here we first do a glboal check, which is based on the setting in startup
@@ -377,16 +436,16 @@ RestStatus RestAdminClusterHandler::execute() {
     }
   } else if (len == 2) {
     std::string const& command = suffixes.at(0);
-    if (command == FailureOracle) {
-      return handleFailureOracle();
-    } else if (command == Rebalance) {
+    if (command == Rebalance) {
       return handleRebalance();
     } else if (command == Maintenance) {
       return handleDBServerMaintenance(suffixes.at(1));
+    } else if (command == VPackSortMigration) {
+      return waitForFuture(handleVPackSortMigration(suffixes.at(1)));
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command +
-                        "', expecting 'failureOracle'");
+                        "', expecting 'rebalance' or 'maintenance'");
       return RestStatus::DONE;
     }
   }
@@ -1419,7 +1478,7 @@ RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
 RestStatus RestAdminClusterHandler::handleGetMaintenance() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1452,7 +1511,7 @@ RestStatus RestAdminClusterHandler::handleGetDBServerMaintenance(
     std::string const& serverId) {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1620,7 +1679,7 @@ RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
       true, true);
   auto& cf = server().getFeature<ClusterFeature>();
 
-  if (auto result = cf.agencyCallbackRegistry()->registerCallback(cb, true);
+  if (auto result = cf.agencyCallbackRegistry()->registerCallback(cb);
       result.fail()) {
     return {};
   }
@@ -1709,7 +1768,7 @@ RestStatus RestAdminClusterHandler::setDBServerMaintenance(
 RestStatus RestAdminClusterHandler::handlePutMaintenance() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1800,7 +1859,7 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1846,7 +1905,7 @@ RestStatus RestAdminClusterHandler::handleDBServerMaintenance(
 RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1911,7 +1970,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -2068,7 +2127,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -2591,11 +2650,11 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
 
   auto p = collectRebalanceInformation(options->databasesExcluded,
                                        options->excludeSystemCollections);
+  p.setPiFactor(options->piFactor);
   auto const imbalanceLeaderBefore = p.computeLeaderImbalance();
   auto const imbalanceShardsBefore = p.computeShardImbalance();
 
   moves.reserve(options->maximumNumberOfMoves);
-  p.setPiFactor(options->piFactor);
   p.optimize(options->leaderChanges, options->moveFollowers,
              options->moveLeaders, options->maximumNumberOfMoves, moves);
 
@@ -2678,8 +2737,6 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       return RestStatus::DONE;
   }
-
-  return RestStatus::DONE;
 }
 
 RestStatus RestAdminClusterHandler::handleRebalance() {
@@ -2815,13 +2872,15 @@ RestAdminClusterHandler::collectRebalanceInformation(
         collectionRef.weight = 1.0;
         distributeShardsLikeCounter[collectionRef.name].index = index;
 
-        for (auto const& shard : *collection->shardIds()) {
+        auto shardIds = collection->shardIds();
+        for (auto const& shard : *shardIds) {
           auto shardIndex =
               static_cast<decltype(collectionRef.shards)::value_type>(
                   p.shards.size());
           collectionRef.shards.push_back(shardIndex);
           auto& shardRef = p.shards.emplace_back();
           shardRef.name = shard.first;
+          TRI_ASSERT(!shard.second.empty());
           shardRef.leader = getDBServerIndex(shard.second[0]);
           shardRef.id = shardIndex;
           shardRef.collectionId = index;
@@ -2853,119 +2912,59 @@ RestAdminClusterHandler::collectRebalanceInformation(
   return p;
 }
 
-RestStatus RestAdminClusterHandler::handleFailureOracle() {
-  if (!server().hasFeature<cluster::FailureOracleFeature>() ||
-      !server().isEnabled<cluster::FailureOracleFeature>()) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                  "FailureOracleFeature is unavailable");
-    return RestStatus::DONE;
+RestAdminClusterHandler::FutureVoid
+RestAdminClusterHandler::handleVPackSortMigration(
+    std::string const& subCommand) {
+  // First we do the authentication: We only allow superuser access, since
+  // this is a critical migration operation:
+  if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "only superusers may run vpack index migration");
+    co_return;
   }
 
-  std::vector<std::string> const& suffixes = request()->suffixes();
-  if (suffixes.size() != 2) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected /_admin/cluster/failureOracle/[verb]");
-    return RestStatus::DONE;
-  }
-
-  if (auto const& command = suffixes[1]; command == "status") {
-    handleFailureOracleStatus();
-  } else if (command == "flush") {
-    return handleFailureOracleFlush();
-  } else {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "expecting one of the resources 'status', 'flush'");
-  }
-  return RestStatus::DONE;
-}
-
-RestStatus RestAdminClusterHandler::handleFailureOracleStatus() {
-  if (request()->requestType() != rest::RequestType::GET) {
+  // First check methods:
+  if (!((request()->requestType() == rest::RequestType::GET &&
+         subCommand == VPackSortMigrationCheck) ||
+        (request()->requestType() == rest::RequestType::PUT &&
+         subCommand == VPackSortMigrationMigrate) ||
+        (request()->requestType() == rest::RequestType::GET &&
+         subCommand == VPackSortMigrationStatus))) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
-  auto& failureOracle = server().getFeature<cluster::FailureOracleFeature>();
-  auto status = failureOracle.status();
-  VPackBuilder response;
-  status.toVelocyPack(response);
-  generateOk(rest::ResponseCode::OK, response.slice());
-  return RestStatus::DONE;
-}
-
-RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
-  if (request()->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
-  }
-
-  auto& failureOracle = server().getFeature<cluster::FailureOracleFeature>();
-  auto global = _request->parsedValue("global", false);
-
-  if (ServerState::instance()->isDBServer() && global) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "global=true is only allowed on coordinators");
-    return RestStatus::DONE;
-  }
-
-  if (ServerState::instance()->isCoordinator() && global) {
-    auto* pool = server().getFeature<NetworkFeature>().pool();
-
-    // Locally flush the cache for this coordinator
-    auto status = failureOracle.status();
-    auto isFailed = std::move(status.isFailed);
-    auto id = ServerState::instance()->getId();
-    isFailed.erase(id);
-    failureOracle.flush();
-
-    // Send flush requests to all servers
-    auto fut = std::invoke([isFailed = std::move(isFailed), id = std::move(id),
-                            pool = pool]() mutable {
-      std::vector<futures::Future<fuerte::StatusCode>> flushDbs;
-      for (auto const& [pid, pf] : isFailed) {
-        auto path = basics::StringUtils::joinT("/", "_admin/cluster",
-                                               "failureOracle", "flush");
-        network::RequestOptions opts;
-        opts.timeout = std::chrono::seconds{5};
-        opts.parameters["global"] = "false";
-        flushDbs.emplace_back(
-            network::sendRequest(pool, "server:" + pid, fuerte::RestVerb::Post,
-                                 std::move(path), {}, opts)
-                .then([](futures::Try<network::Response>&& tryResult) {
-                  auto result = basics::catchToResultT(
-                      [&] { return std::move(tryResult.get()); });
-                  return result.ok() ? result->statusCode()
-                                     : fuerte::StatusUndefined;
-                }));
+  // We behave differently on a coordinator and on a single server,
+  // dbserver or agent.
+  // On a coordinator, we basically implement a trampoline to all dbservers.
+  // On the other instance types, we implement the actual checking and
+  // migration logic. Agents do not have to be checked since they do not
+  // use VPack indexes.
+  VPackBuilder result;
+  Result res;
+  if (!ServerState::instance()->isCoordinator()) {
+    if (request()->requestType() == rest::RequestType::GET) {
+      if (subCommand == VPackSortMigrationCheck) {
+        res = ::analyzeVPackIndexSorting(_vocbase, result);
+      } else {
+        res = ::statusVPackIndexSorting(_vocbase, result);
       }
-      return futures::collectAll(std::move(flushDbs))
-          .thenValue([status = std::move(isFailed),
-                      id = std::move(id)](auto&& statusCodes) {
-            VPackBuilder response;
-            {
-              VPackObjectBuilder participantsFlushStatus(&response);
-              std::size_t idx = 0;
-              for (auto const& [pid, pf] : status) {
-                auto& result = statusCodes.at(idx++);
-                response.add(pid, VPackValue(std::move(result.get())));
-              }
-              response.add(id, VPackValue(fuerte::StatusAccepted));
-            }
-            return response;
-          });
-    });
-
-    return waitForFuture(std::move(fut).thenValue(
-        [self = std::static_pointer_cast<RestAdminClusterHandler>(
-             shared_from_this())](auto builder) mutable {
-          self->generateOk(rest::ResponseCode::OK, std::move(builder.slice()));
-        }));
+    } else {  // PUT
+      res = ::migrateVPackIndexSorting(_vocbase, result);
+    }
+  } else {
+    // Coordinators from here:
+    fuerte::RestVerb verb = request()->requestType() == rest::RequestType::GET
+                                ? fuerte::RestVerb::Get
+                                : fuerte::RestVerb::Put;
+    res = co_await ::fanOutRequests(_vocbase, verb, subCommand, result);
   }
-
-  failureOracle.flush();
-  generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
-  return RestStatus::DONE;
+  if (res.fail()) {
+    generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
+                  res.errorMessage());
+  } else {
+    generateOk(rest::ResponseCode::OK, result.slice());
+  }
+  co_return;
 }

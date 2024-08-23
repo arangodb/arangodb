@@ -14,6 +14,7 @@ target_link_libraries(arango_crashhandler
   #       the function that accesses the environment
   #       through files.h
   PRIVATE
+    arango_build_id
     arango_lightweight
     boost_system
     velocypack)

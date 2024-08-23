@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,8 +37,7 @@
 
 #include <absl/strings/str_cat.h>
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
     : IResearchDataStoreMeta::Mask(mask),
@@ -47,6 +46,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 #ifdef USE_ENTERPRISE
       _sortCache(mask),
       _pkCache(mask),
+      _optimizeTopK(mask),
 #endif
       _primarySortCompression(mask) {
 }
@@ -78,6 +78,7 @@ void IResearchViewMeta::storeFull(IResearchViewMeta const& other) {
 #ifdef USE_ENTERPRISE
   _sortCache = other._sortCache;
   _pkCache = other._pkCache;
+  _optimizeTopK = other._optimizeTopK;
 #endif
   IResearchDataStoreMeta::storeFull(other);
 }
@@ -92,6 +93,7 @@ void IResearchViewMeta::storeFull(IResearchViewMeta&& other) noexcept {
 #ifdef USE_ENTERPRISE
   _sortCache = other._sortCache;
   _pkCache = other._pkCache;
+  _optimizeTopK = std::move(other._optimizeTopK);
 #endif
   IResearchDataStoreMeta::storeFull(std::move(other));
 }
@@ -108,19 +110,15 @@ bool IResearchViewMeta::operator==(
     return false;
   }
 #ifdef USE_ENTERPRISE
-  if (_sortCache != other._sortCache || _pkCache != other._pkCache) {
+  if (_sortCache != other._sortCache || _pkCache != other._pkCache ||
+      _optimizeTopK != other._optimizeTopK) {
     return false;
   }
 #endif
   return true;
 }
 
-bool IResearchViewMeta::operator!=(
-    IResearchViewMeta const& other) const noexcept {
-  return !(*this == other);
-}
-
-const IResearchViewMeta& IResearchViewMeta::DEFAULT() {
+IResearchViewMeta const& IResearchViewMeta::DEFAULT() {
   static const IResearchViewMeta meta;
 
   return meta;
@@ -225,6 +223,19 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
       _pkCache = defaults._pkCache;
     }
   }
+  {
+    auto const field = slice.get(StaticStrings::kOptimizeTopKField);
+    mask->_optimizeTopK = !field.isNone();
+    if (mask->_optimizeTopK) {
+      std::string err;
+      if (!_optimizeTopK.fromVelocyPack(field, err)) {
+        errorField = absl::StrCat(StaticStrings::kOptimizeTopKField, ": ", err);
+        return false;
+      }
+    } else {
+      _optimizeTopK = defaults._optimizeTopK;
+    }
+  }
 #endif
   return true;
 }
@@ -277,6 +288,16 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
        (ignoreEqual && _pkCache != ignoreEqual->_pkCache))) {
     builder.add(StaticStrings::kCachePrimaryKeyField, VPackValue(_pkCache));
   }
+
+  if ((!mask || mask->_optimizeTopK) &&
+      (!ignoreEqual || _optimizeTopK != ignoreEqual->_optimizeTopK)) {
+    velocypack::ArrayBuilder arrayScope(&builder,
+                                        StaticStrings::kOptimizeTopKField);
+    if (!_optimizeTopK.toVelocyPack(builder)) {
+      return false;
+    }
+  }
+
 #endif
   return true;
 }
@@ -325,11 +346,6 @@ bool IResearchViewMetaState::operator==(
   }
 
   return true;
-}
-
-bool IResearchViewMetaState::operator!=(
-    IResearchViewMetaState const& other) const noexcept {
-  return !(*this == other);
 }
 
 bool IResearchViewMetaState::init(VPackSlice slice, std::string& errorField,
@@ -416,5 +432,4 @@ size_t IResearchViewMetaState::memory() const {
   return size;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

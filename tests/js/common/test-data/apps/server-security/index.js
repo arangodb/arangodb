@@ -6,7 +6,6 @@ const path = require('path');
 
 // variables
 const appPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'server-security');
-const isWindows = (require("internal").platform.substr(0, 3) === 'win');
 
 module.context.use(router);
 

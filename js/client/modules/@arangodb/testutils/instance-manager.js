@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,16 +27,17 @@
 
 /* Modules: */
 const _ = require('lodash');
+const internal = require('internal');
 const fs = require('fs');
+const yaml = require('js-yaml');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const inst = require('@arangodb/testutils/instance');
-const yaml = require('js-yaml');
-const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
+const {versionHas, debugGetFailurePoints} = require("@arangodb/test-helper");
 const crypto = require('@arangodb/crypto');
-const ArangoError = require('@arangodb').ArangoError;
-const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
+const ArangoError = require('@arangodb').ArangoError;;
 const netstat = require('node-netstat');
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -75,9 +76,12 @@ class instanceManager {
     this.protocol = protocol;
     this.options = options;
     this.addArgs = addArgs;
-    this.rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
-    this.options.agency = this.options.agency || this.options.cluster || this.options.activefailover;
+    this.tmpDir = tmpDir || fs.getTempPath();
+    this.rootDir = fs.join(this.tmpDir, testname);
+    process.env['ARANGOTEST_ROOT_DIR'] = this.rootDir;
+    this.options.agency = this.options.agency || this.options.cluster;
     this.agencyConfig = new inst.agencyConfig(options, this);
+    this.dumpedAgency = false;
     this.leader = null;
     this.urls = [];
     this.endpoints = [];
@@ -85,6 +89,7 @@ class instanceManager {
     this.restKeyFile = '';
     this.tcpdump = null;
     this.JWT = null;
+    this.memlayout = {};
     this.cleanup = options.cleanup && options.server === undefined;
     if (!options.hasOwnProperty('startupMaxCount')) {
       this.startupMaxCount = 300;
@@ -106,6 +111,9 @@ class instanceManager {
   destructor(cleanup) {
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
+      if (arangod.serverCrashedLocal) {
+        cleanup = false;
+      }
     });
     this.stopTcpDump();
     if (this.cleanup && cleanup) {
@@ -153,7 +161,7 @@ class instanceManager {
     this.tcpdump = struct['tcpdump'];
     this.cleanup = struct['cleanup'];
     struct['arangods'].forEach(arangodStruct => {
-      let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyConfig);
+      let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyConfig, this.tmpDir);
       this.arangods.push(oneArangod);
       oneArangod.setFromStructure(arangodStruct);
       if (oneArangod.isAgent()) {
@@ -177,6 +185,32 @@ class instanceManager {
     }
     fs.removeDirectoryRecursive(this.rootDir, true);
   }
+
+  getMemLayout () {
+    if (this.options.memory !== undefined) {
+      if (this.options.cluster) {
+        // Distribute 8 % agency, 23% coordinator, 69% dbservers
+        this.memlayout[instanceRole.agent] = Math.round(this.options.memory * (8/100) / this.options.agencySize);
+        this.memlayout[instanceRole.dbServer] = Math.round(this.options.memory * (69/100) / this.options.dbServers);
+        this.memlayout[instanceRole.coordinator] = Math.round(this.options.memory * (23/100) / this.options.coordinators);
+      } else if (this.options.agency) {
+        this.memlayout[instanceRole.agent] = Math.round(this.options.memory / this.options.agencySize);
+      } else {
+        this.memlayout[instanceRole.single] = Math.round(this.options.memory / this.options.singles);
+      }
+    } else {
+      // no memory limits
+      if (this.options.cluster) {
+        this.memlayout[instanceRole.agent] = 0;
+        this.memlayout[instanceRole.dbServer] = 0;
+        this.memlayout[instanceRole.coordinator] = 0;
+      } else if (this.options.agency) {
+        this.memlayout[instanceRole.agent] = 0;
+      } else {
+        this.memlayout[instanceRole.single] = 0;
+      }
+    }
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief prepares all instances required for a deployment
   // /
@@ -194,7 +228,7 @@ class instanceManager {
         arango.reconnect(this.endpoint, '_system', 'root', '');
         return true;
       }
-
+      this.getMemLayout();
       for (let count = 0;
            this.options.agency && count < this.agencyConfig.agencySize;
            count ++) {
@@ -205,7 +239,9 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.agent + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir,
+                                             this.memlayout[instanceRole.agent]));
       }
       
       for (let count = 0;
@@ -218,7 +254,9 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir,
+                                             this.memlayout[instanceRole.dbServer]));
       }
       
       for (let count = 0;
@@ -231,26 +269,12 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir,
+                                             this.memlayout[instanceRole.coordinator] ));
         frontendCount ++;
       }
       
-      for (let count = 0;
-           this.options.activefailover && count < this.options.singles;
-           count ++) {
-        this.arangods.push(new inst.instance(this.options,
-                                             instanceRole.failover,
-                                             this.addArgs,
-                                             this.httpAuthOptions,
-                                             this.protocol,
-                                             fs.join(this.rootDir, instanceRole.failover + "_" + count),
-                                             this.restKeyFile,
-                                             this.agencyConfig));
-        this.urls.push(this.arangods[this.arangods.length -1].url);
-        this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
-        frontendCount ++;
-      }
-
       for (let count = 0;
            !this.options.agency && count < this.options.singles;
            count ++) {
@@ -262,7 +286,9 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.single + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig));
+                                             this.agencyConfig,
+                                             this.tmpDir,
+                                             this.memlayout[instanceRole.single]));
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
         frontendCount ++;
@@ -304,14 +330,22 @@ class instanceManager {
       });
       if (this.options.cluster) {
         this.checkClusterAlive();
-      } else if (this.options.activefailover) {
-        if (this.urls !== []) {
-          this.detectCurrentLeader();
-        }
       }
       this.launchFinalize(startTime);
       return true;
     } catch (e) {
+      // disable watchdog
+      let hasTimedOut = internal.SetGlobalExecutionDeadlineTo(0.0);
+      if (hasTimedOut) {
+        print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      }
+      this.arangods.forEach(arangod => {
+        try {
+          arangod.shutdownArangod(true);
+        } catch(e) {
+          print("Error cleaning up: ", e, e.stack);
+        }
+      });
       print(e, e.stack);
       return false;
     }
@@ -377,17 +411,11 @@ class instanceManager {
     }
     this.options.cleanup = false;
     let device = 'lo';
-    if (platform.substr(0, 3) === 'win') {
-      device = '1';
-    }
     if (this.options.sniffDevice !== undefined) {
       device = this.options.sniffDevice;
     }
 
     let prog = 'tcpdump';
-    if (platform.substr(0, 3) === 'win') {
-      prog = 'c:/Program Files/Wireshark/tshark.exe';
-    }
     if (this.options.sniffProgram !== undefined) {
       prog = this.options.sniffProgram;
     }
@@ -467,7 +495,7 @@ class instanceManager {
       let deltaStats = {};
       let deltaSum = {};
       this.arangods.forEach((arangod) => {
-        let newStats = arangod.getProcessStats();
+        let newStats = arangod._getProcessStats();
         let myDeltaStats = {};
         for (let key in arangod.stats) {
           if (key.startsWith('sockstat_')) {
@@ -490,7 +518,7 @@ class instanceManager {
       return deltaStats;
     }
     catch (x) {
-      print("aborting stats generation");
+      print("aborting stats generation: " + x);
       return {};
     }
   }
@@ -531,6 +559,7 @@ class instanceManager {
   // / @brief dump the state of the agency to disk. if we still can get one.
   // //////////////////////////////////////////////////////////////////////////////
   dumpAgency() {
+    this.dumpedAgency = true;
     const dumpdir = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}`);
     const zipfn = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}.zip`);
     if (fs.isFile(zipfn)) {
@@ -592,6 +621,33 @@ class instanceManager {
     return ret;
   }
 
+  getFromPlan(path) {
+    let req = this.agencyConfig.agencyInstances[0].getAgent('/_api/agency/read', 'POST', `[["/arango/${path}"]]`);
+    if (req.code !== 200) {
+      throw new Error(`Failed to query agency [["/arango/${path}"]] : ${JSON.stringify(req)}`);
+    }
+    return JSON.parse(req["body"])[0];
+  }
+
+  removeServerFromAgency(serverId) {
+    // Make sure we remove the server
+    for (let i = 0; i < 10; ++i) {
+      const res = arango.POST_RAW("/_admin/cluster/removeServer", JSON.stringify(serverId));
+      if (res.code === 404 || res.code === 200) {
+        // Server is removed
+        return;
+      }
+      // Server could not be removed, give supervision some more time
+      // and then try again.
+      print("Wait for supervision to clear responsibilty of server");
+      require("internal").wait(0.2);
+    }
+    // If we reach this place the server could not be removed
+    // it is still responsible for shards, so a failover
+    // did not work out.
+    throw "Could not remove shutdown server";
+  }
+
   _checkServersGOOD() {
     let name = '';
     try {
@@ -642,29 +698,27 @@ class instanceManager {
   checkInstanceAlive({skipHealthCheck = false} = {}) {
     this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
     let obj = this;
-    netstat({platform: process.platform}, function (data) {
-      // skip server ports, we know what we bound.
-      if (data.state !== 'LISTEN') {
-        obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+    try {
+      netstat({platform: process.platform}, function (data) {
+        // skip server ports, we know what we bound.
+        if (data.state !== 'LISTEN') {
+          obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+        }
+      });
+      if (!this.options.noStartStopLogs) {
+        this.printNetstat();
       }
-    });
-    if (!this.options.noStartStopLogs) {
-      this.printNetstat();
-    }
-    
-    if (this.options.activefailover &&
-        this.hasOwnProperty('authOpts') &&
-        (this.url !== this.agencyConfig.urls[0])
-       ) {
-      // only detect a leader after we actually know one has been started.
-      // the agency won't tell us anything about leaders.
-      let d = this.detectCurrentLeader();
-      if (this.endpoint !== d.endpoint) {
-        print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
-        d.serverCrashedLocal = true;
-        this.dumpAgency();
-        return false;
+    } catch (ex) {
+      let timeout = internal.SetGlobalExecutionDeadlineTo(0.0);
+      let moreReason = ": " + ex.message;
+      if (timeout) {
+        moreReason = "because of :" + ex.message;
       }
+      print(RED + 'netstat gathering has thrown: ' + moreReason);
+      print(ex, ex.stack);
+      print(RESET);
+      this.cleanup = false;
+      return this._forceTerminate("Abort during Health Check SUT netstat gathering " + moreReason);
     }
 
     let rc = this.arangods.reduce((previous, arangod) => {
@@ -682,7 +736,6 @@ class instanceManager {
       for (
         const start = Date.now();
         !rc && Date.now() < start + seconds(60) && checkAllAlive();
-        internal.sleep(1)
       ) {
         rc = this._checkServersGOOD();
         if (first) {
@@ -690,6 +743,9 @@ class instanceManager {
             print(RESET + "Waiting for all servers to go GOOD...");
           }
           first = false;
+        }
+        if (!rc) {
+          internal.sleep(1);
         }
       }
     }
@@ -712,9 +768,14 @@ class instanceManager {
   // / @brief checks whether any instance has failure points set
   // //////////////////////////////////////////////////////////////////////////////
 
-  checkServerFailurePoints(instanceInfo) {
+  checkServerFailurePoints(instanceMgr = null) {
     let failurePoints = [];
-    instanceInfo.arangods.forEach(arangod => {
+    let im = this;
+    if (instanceMgr !== null) {
+      im = instanceMgr;
+    }
+
+    im.arangods.forEach(arangod => {
       // we don't have JWT success atm, so if, skip:
       if ((!arangod.isAgent()) &&
           !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
@@ -791,6 +852,19 @@ class instanceManager {
       this.arangods.forEach(arangod => { arangod.serverCrashedLocal = true;});
       forceTerminate = true;
     }
+    if (forceTerminate && !timeoutReached && this.options.agency && !this.dumpedAgency) {
+      // the SUT is unstable, but we want to attempt an agency dump anyways.
+      try {
+        print(CYAN + Date() + ' attempting to dump agency in forceterminate!' + RESET);
+        // set us a short deadline so we don't get stuck.
+        internal.SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 100);
+        this.dumpAgency();
+      } catch(ex) {
+        print(CYAN + Date() + ' aborted to dump agency in forceterminate! ' + ex + RESET);
+      } finally {
+        internal.SetGlobalExecutionDeadlineTo(0.0);
+      }
+    }
     try {
       if (forceTerminate) {
         return this._forceTerminate(moreReason);
@@ -811,23 +885,20 @@ class instanceManager {
         print(e.stack);
       }
     }
+    return false;
   }
 
   _forceTerminate(moreReason="") {
-    print("Aggregating coredumps");
+    if (!this.options.coreCheck && !this.options.setInterruptable) {
+      print("Interactive mode: SIGABRT killing all arangods");
+    } else {
+      print("Aggregating coredumps");
+    }
     this.arangods.forEach((arangod) => {
-      if (arangod.pid !== null) {
-        arangod.killWithCoreDump('forced shutdown because of: ' + moreReason);
-        arangod.serverCrashedLocal = true;
-      } else {
-        print(RED + Date() + 'instance already gone? ' + arangod.name + RESET);
-      }
+      arangod.killWithCoreDump('force terminating');
     });
     this.arangods.forEach((arangod) => {
-      if (arangod.checkArangoAlive()) {
-        crashUtils.aggregateDebugger(arangod, this.options);
-        arangod.waitForExitAfterDebugKill();
-      }
+      arangod.aggregateDebugger();
     });
     return true;
   }
@@ -845,16 +916,6 @@ class instanceManager {
       }});
     if (!allAlive) {
       return this._forceTerminate("not all instances are alive!");
-    }
-    if (this.options.activefailover) {
-      let d = this.detectCurrentLeader();
-      if (this.endpoint !== d.endpoint) {
-        print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
-        moreReason += "failover has happened, leader is no more!";
-        d.serverCrashedLocal = true;
-        forceTerminate = true;
-        shutdownSuccess = false;
-      }
     }
 
     if (!forceTerminate && !this.checkInstanceAlive()) {
@@ -883,7 +944,7 @@ class instanceManager {
       }
     }
 
-    if (this.options.cluster && this.hasOwnProperty('clusterHealthMonitor')) {
+    if ((this.options.cluster || this.options.agency) && this.hasOwnProperty('clusterHealthMonitor')) {
       try {
         this.clusterHealthMonitor['kill'] = killExternal(this.clusterHealthMonitor.pid);
         this.clusterHealthMonitor['statusExternal'] = statusExternal(this.clusterHealthMonitor.pid, true);
@@ -952,17 +1013,7 @@ class instanceManager {
           }
           return true;
         }
-        if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
-          arangod.exitStatus = statusExternal(arangod.pid, false);
-          if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, arangod, this.options, arangod.exitStatus)) {
-            if (!arangod.isAgent()) {
-              nonAgenciesCount--;
-            }
-            print(Date() + ' Server "' + arangod.name + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
-            return false;
-          }
-        }
-        if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
+        if (arangod.isRunning()) {
           let localTimeout = timeout;
           if (arangod.isAgent()) {
             localTimeout = localTimeout + 60;
@@ -993,7 +1044,6 @@ class instanceManager {
             arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
           }
-          crashUtils.stopProcdump(this.options, arangod);
         } else {
           if (!arangod.isAgent()) {
             nonAgenciesCount--;
@@ -1001,7 +1051,6 @@ class instanceManager {
           if (!this.options.noStartStopLogs) {
             print(Date() + ' Server "' + arangod.name + '" shutdown: Success: pid', arangod.pid);
           }
-          crashUtils.stopProcdump(this.options, arangod);
           return false;
         }
       });
@@ -1036,9 +1085,17 @@ class instanceManager {
     }
     this.arangods.forEach(arangod => {
       arangod.readAssertLogLines(this.expectAsserts);
+      if (arangod.exitStatus && arangod.exitStatus.exit !== 0) {
+        print(RED + `arangod "${arangod.instanceRole}" with pid ${arangod.pid} exited with exit code ${arangod.exitStatus.exit}` + RESET);
+        shutdownSuccess = false;
+      }
     });
     this.cleanup = this.cleanup && shutdownSuccess;
     return shutdownSuccess;
+  }
+
+  getAgency(path, method, body = null) {
+    return this.agencyConfig.agencyInstances[0].getAgent(path, method, body);
   }
 
   detectAgencyAlive() {
@@ -1070,6 +1127,12 @@ class instanceManager {
         }
         if (haveLeader === 1 && haveConfig === this.agencyConfig.agencySize) {
           print("Agency Up!");
+          try {
+            // set back log level to info for agents
+            for (let agentIndex = 0; agentIndex < this.agencyConfig.agencySize; agentIndex ++) {
+              this.agencyConfig.agencyInstances[agentIndex].getAgent('/_admin/log/level', 'PUT', JSON.stringify({"agency":"info"}));
+            }
+          } catch (err) {}
           return;
         }
         if (count === 0) {
@@ -1081,7 +1144,7 @@ class instanceManager {
     }
   }
 
-  detectCurrentLeader(instanceInfo) {
+  detectCurrentLeader() {
     let opts = {
       method: 'POST',
       jwt: crypto.jwtEncode(this.arangods[0].args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
@@ -1178,16 +1241,33 @@ class instanceManager {
         }
         let url = arangod.url;
         if (arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
-          url += '/_admin/aardvark/index.html';
+          url += '/_api/foxx';
           httpOptions.method = 'GET';
         } else {
           url += '/_api/version';
           httpOptions.method = 'POST';
         }
         const reply = download(url, '', httpOptions);
+        if (!this.options.noStartStopLogs) {
+          print(`Server reply to ${url}: ${JSON.stringify(reply)}`);
+        }
         if (!reply.error && reply.code === 200) {
           arangod.upAndRunning = true;
           return true;
+        }
+        try {
+          if (reply.code === 403) {
+            let parsedBody = JSON.parse(reply.body);
+            if (parsedBody.errorNum === internal.errors.ERROR_SERVICE_API_DISABLED.code) {
+              if (!this.options.noStartStopLogs) {
+                print("service API disabled, continuing.");
+              }
+              arangod.upAndRunning = true;
+              return true;
+            }
+          }
+        } catch (e) {
+          print(RED + Date() + " failed to parse server reply: " + JSON.stringify(reply));
         }
 
         if (arangod.pid !== null && !arangod.checkArangoAlive()) {
@@ -1195,6 +1275,7 @@ class instanceManager {
             if ((arangod.exitStatus === null) ||
                 (arangod.exitStatus.status === 'RUNNING')) {
               // arangod.killWithCoreDump();
+              arangod.processSanitizerReports();
               arangod.exitStatus = killExternal(arangod.pid, termSignal);
             }
             arangod.analyzeServerCrash('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);
@@ -1267,17 +1348,6 @@ class instanceManager {
   }
   reconnect()
   {
-    // we need to find the leading server
-    if (this.options.activefailover) {
-      internal.wait(5.0, false);
-      let d = this.detectCurrentLeader();
-      if (d === undefined) {
-        throw new Error("failed to detect a leader");
-      }
-      this.endpoint = d.endpoint;
-      this.url = d.url;
-    }
-
     if (this.options.hasOwnProperty('server')) {
       arango.reconnect(this.endpoint, '_system', 'root', '');
       return true;
@@ -1304,16 +1374,10 @@ class instanceManager {
     }
     return true;
   }
-  /// make arangosh use HTTP, VST or HTTP2 according to option
+  /// make arangosh use HTTP, HTTP2 according to option
   findEndpoint() {
     let endpoint = this.endpoint;
-    if (this.options.vst) {
-      if (this.options.protocol === 'ssl') {
-        endpoint = endpoint.replace(/.*\/\//, 'vst+ssl://');
-      } else {
-        endpoint = endpoint.replace(/.*\/\//, 'vst://');
-      }
-    } else if (this.options.http2) {
+    if (this.options.http2) {
       if (this.options.protocol === 'ssl') {
         endpoint = endpoint.replace(/.*\/\//, 'h2+ssl://');
       } else {
@@ -1357,7 +1421,7 @@ class instanceManager {
               break;
             } catch (e) {
               this.arangods.forEach( arangod => {
-                let status = statusExternal(arangod.pid, false);
+                let status = arangod.status(false);
                 if (status.status !== "RUNNING") {
                   throw new Error(`Arangod ${arangod.pid} exited instantly! ` + JSON.stringify(status));
                 }
@@ -1386,7 +1450,7 @@ class instanceManager {
       });
       this.endpoints = [this.endpoint];
       this.urls = [this.url];
-    } else if (this.options.agency && !this.options.cluster && !this.options.activefailover) {
+    } else if (this.options.agency && !this.options.cluster) {
       this.arangods.forEach(arangod => {
         this.urls.push(arangod.url);
         this.endpoints.push(arangod.endpoint);
@@ -1415,11 +1479,17 @@ class instanceManager {
       print("spawning cluster health inspector");
       internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
       internal.env.OPTIONS = JSON.stringify(this.options);
+      let tmp = internal.env.TEMP;
+      internal.env.TMP = this.rootDir;
+      internal.env.TEMP = this.rootDir;
       let args = pu.makeArgs.arangosh(this.options);
+      args['javascript.allow-external-process-control'] =  true;
       args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
       const argv = toArgv(args);
       this.clusterHealthMonitor = executeExternal(pu.ARANGOSH_BIN, argv);
       this.clusterHealthMonitorFile = fs.join(this.rootDir, 'stats.jsonl');
+      internal.env.TMP = tmp;
+      internal.env.TEMP = tmp;
     }
     if (!this.options.disableClusterMonitor) {
       this.initProcessStats();
@@ -1502,3 +1572,87 @@ class instanceManager {
 }
 
 exports.instanceManager = instanceManager;
+exports.registerOptions = function(optionsDefaults, optionsDocumentation, optionHandlers) {
+  tu.CopyIntoObject(optionsDefaults, {
+    'memory': undefined,
+    'singles': 1, // internal only
+    'dumpAgencyOnError': true,
+    'agencySize': 3,
+    'agencyWaitForSync': false,
+    'agencySupervision': true,
+    'coordinators': 1,
+    'dbServers': 2,
+    'disableClusterMonitor': true,
+    'encryptionAtRest': false,
+    'extraArgs': {},
+    'cluster': false,
+    'forceOneShard': false,
+    'sniff': false,
+    'sniffAgency': true,
+    'sniffDBServers': true,
+    'sniffDevice': undefined,
+    'sniffProgram': undefined,
+    'sniffFilter': undefined,
+    'sleepBeforeStart' : 0,
+    'memprof': false,
+    'valgrind': false,
+    'valgrindFileBase': '',
+    'valgrindArgs': {},
+    'valgrindHosts': false,
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    ' SUT configuration properties:',
+    '   - `memory`: amount of Host memory to distribute amongst the arangods',
+    '   - `encryptionAtRest`: enable on disk encryption, enterprise only',
+    '   - `cluster`: if set to true the tests are run with a cluster',
+    '   - `forceOneShard`: if set to true the tests are run with a OneShard (EE only) cluster, requires cluster option to be set to true',
+    '   - `dbServers`: number of DB-Servers to use',
+    '   - `coordinators`: number coordinators to use',
+    '   - `agency`: if set to true agency tests are done',
+    '   - `agencySize`: number of agents in agency',
+    '   - `agencySupervision`: run supervision in agency',
+    '   - `extraArgs`: list of extra commandline arguments to add to arangod',
+    ' SUT monitoring',
+    '   - `sleepBeforeStart` : sleep at tcpdump info - use this to dump traffic or attach debugger',
+    '   - `dumpAgencyOnError`: if we should create an agency dump if an error occurs',
+    '   - `disableClusterMonitor`: if set to false, an arangosh is started that will send',
+    '                              keepalive requests to all cluster instances, and report on error',
+    ' SUT debugging',
+    '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
+    '   - `serverRoot`: directory where data/ points into the db server. Use in',
+    '                   conjunction with "server".',
+    '   - `memprof`: take snapshots (requries memprof enabled build)',
+    ' SUT packet capturing:',
+    '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
+    '              false / true / sudo',
+    '   - `sniffDevice`: the device tcpdump / tshark should use',
+    '   - `sniffProgram`: specify your own programm',
+    '   - `sniffAgency`: when sniffing cluster, sniff agency traffic too? (true)',
+    '   - `sniffDBServers`: when sniffing cluster, sniff dbserver traffic too? (true)',
+    '   - `sniffFilter`: only launch tcpdump for tests matching this string',
+    ' SUT & valgrind:',
+    '   - `valgrind`: if set the programs are run with the valgrind',
+    '     memory checker; should point to the valgrind executable',
+    '   - `valgrindFileBase`: string to prepend to the report filename',
+    '   - `valgrindArgs`: commandline parameters to add to valgrind',
+    '   - valgrindHosts  - configure which clustercomponents to run using valgrind',
+    '        Coordinator - flag to run Coordinator with valgrind',
+    '        DBServer    - flag to run DBServers with valgrind',
+    ''
+  ]);
+  optionHandlers.push(function(options) {
+    if (options.forceOneShard) {
+      if (!options.cluster) {
+        throw new Error("need cluster enabled");
+      }
+    }
+    if (options.memprof) {
+      process.env['MALLOC_CONF'] = 'prof:true';
+    }
+    options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
+    if (options.encryptionAtRest && !pu.isEnterpriseClient) {
+      options.encryptionAtRest = false;
+    }
+  });
+};

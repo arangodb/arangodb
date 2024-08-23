@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -65,15 +65,19 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks)
   return {readInput, writeOutput, regs, regs, toClear, toKeep};
 }
 }  // namespace
+
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(
     ExecutionEngine* engine, ExecutionNode const* node,
     std::deque<SharedAqlItemBlockPtr>&& data, WaitingBehaviour variant,
-    size_t subqueryDepth)
+    size_t subqueryDepth, WakeupCallback wakeUpCallback,
+    ExecuteCallback executeCallback)
     : ExecutionBlock(engine, node),
       _hasWaited(false),
       _variant{variant},
       _infos{::blocksToInfos(data)},
-      _blockData{*engine, node, _infos} {
+      _blockData{*engine, node, _infos},
+      _wakeUpCallback(std::move(wakeUpCallback)),
+      _executeCallback(std::move(executeCallback)) {
   SkipResult s;
   for (size_t i = 0; i < subqueryDepth; ++i) {
     s.incrementSubquery();
@@ -100,6 +104,7 @@ WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {
   if (!_hasWaited) {
     _hasWaited = true;
+    wakeupCallback();
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
   _hasWaited = false;
@@ -116,6 +121,8 @@ WaitingExecutionBlockMock::execute(AqlCallStack const& stack) {
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 WaitingExecutionBlockMock::executeWithoutTrace(AqlCallStack stack) {
+  executeCallback();
+
   auto myCall = stack.peek();
 
   TRI_ASSERT(
@@ -125,6 +132,7 @@ WaitingExecutionBlockMock::executeWithoutTrace(AqlCallStack stack) {
   if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
     // If we ordered waiting check on _hasWaited and wait if not
     _hasWaited = true;
+    wakeupCallback();
     return {ExecutionState::WAITING, SkipResult{}, nullptr};
   }
   if (_variant == WaitingBehaviour::ALWAYS) {
@@ -192,5 +200,17 @@ WaitingExecutionBlockMock::executeWithoutTrace(AqlCallStack stack) {
       // We have a valid result.
       return {state, localSkipped, result};
     }
+  }
+}
+
+void WaitingExecutionBlockMock::wakeupCallback() {
+  if (_wakeUpCallback) {
+    _wakeUpCallback();
+  }
+}
+
+void WaitingExecutionBlockMock::executeCallback() {
+  if (_executeCallback) {
+    _executeCallback();
   }
 }

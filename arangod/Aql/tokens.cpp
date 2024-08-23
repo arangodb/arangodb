@@ -4,10 +4,6 @@
 #include <algorithm>
 #include <cstdint>
 
-#if (_MSC_VER >= 1)
-// fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
-#pragma warning( disable : 4267)
-#endif
 
 
 
@@ -1315,14 +1311,9 @@ static const flex_int32_t yy_rule_can_match_eol[108] =
 
 
 
-#include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/operating-system.h"
-
-#if _WIN32
-#include "Basics/win-utils.h"
-#endif
 
 // introduce the namespace here, otherwise following references to
 // the namespace in auto-generated headers might fail
@@ -1334,6 +1325,7 @@ class Parser;
 }
 }
 
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/grammar.hpp"
 #include "Aql/Functions.h"
@@ -1882,12 +1874,16 @@ YY_RULE_SETUP
 case 7:
 YY_RULE_SETUP
 {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_LIMIT;
 }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
 {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_WINDOW;
 }
 	YY_BREAK
@@ -1953,12 +1949,16 @@ YY_RULE_SETUP
 case 18:
 YY_RULE_SETUP
 {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_INTO;
 }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
 {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_WITH;
 }
 	YY_BREAK
@@ -2025,30 +2025,40 @@ YY_RULE_SETUP
 case 30:
 YY_RULE_SETUP
 {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_OUTBOUND;
 }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
 {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_INBOUND;
 }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
 {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_ANY;
 }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
 {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_ALL;
 }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
 {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_NONE;
 }
 	YY_BREAK
@@ -2062,6 +2072,8 @@ YY_RULE_SETUP
 case 36:
 YY_RULE_SETUP
 {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_LIKE;
 }
 	YY_BREAK

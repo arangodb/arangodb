@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,7 +33,7 @@ struct TestAttribute : public irs::attribute {
   }
 };
 
-class TestAnalyzer : public irs::analysis::analyzer {
+class TestAnalyzer final : public irs::analysis::TypedAnalyzer<TestAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "TestAnalyzer";
@@ -40,15 +41,15 @@ class TestAnalyzer : public irs::analysis::analyzer {
 
   TestAnalyzer();
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final;
 
   static ptr make(std::string_view args);
 
   static bool normalize(std::string_view args, std::string& definition);
 
-  bool next() override;
+  bool next() final;
 
-  bool reset(std::string_view data) override;
+  bool reset(std::string_view data) final;
 
  private:
   irs::bytes_view _data;

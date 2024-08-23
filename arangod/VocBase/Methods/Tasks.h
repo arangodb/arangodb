@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,11 +26,11 @@
 #pragma once
 
 #include <chrono>
+#include <mutex>
 
 #include <v8.h>
 #include <velocypack/Builder.h>
 
-#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Scheduler/Scheduler.h"
@@ -61,7 +61,7 @@ class Task : public std::enable_shared_from_this<Task> {
                          std::string const& command);
 
  private:
-  static Mutex _tasksLock;
+  static std::mutex _tasksLock;
   // id => [ user, task ]
   static std::unordered_map<std::string,
                             std::pair<std::string, std::shared_ptr<Task>>>
@@ -87,7 +87,7 @@ class Task : public std::enable_shared_from_this<Task> {
 
  private:
   void toVelocyPack(velocypack::Builder&) const;
-  void work(ExecContext const*);
+  void work();
   bool queue(std::chrono::microseconds offset) ADB_WARN_UNUSED_RESULT;
   std::function<void(bool cancelled)> callbackFunction();
   std::string const& name() const { return _name; }
@@ -99,7 +99,7 @@ class Task : public std::enable_shared_from_this<Task> {
   std::string _user;
 
   Scheduler::WorkHandle _taskHandle;
-  Mutex _taskHandleMutex;
+  std::mutex _taskHandleMutex;
 
   // guard to make sure the database is not dropped while used by us
   std::unique_ptr<DatabaseGuard> _dbGuard;

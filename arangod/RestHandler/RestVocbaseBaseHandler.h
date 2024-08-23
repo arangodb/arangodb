@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 
 #include "Rest/GeneralResponse.h"
 #include "RestServer/VocbaseContext.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
@@ -34,6 +35,7 @@
 #include "VocBase/vocbase.h"
 
 #include <memory>
+#include <string_view>
 
 struct TRI_vocbase_t;
 
@@ -64,9 +66,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief collection path
   static std::string const COLLECTION_PATH;
-
-  /// @brief control pregel path
-  static std::string const CONTROL_PREGEL_PATH;
 
   /// @brief cursor path
   static std::string const CURSOR_PATH;
@@ -125,7 +124,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief Internal Traverser path
   static std::string const INTERNAL_TRAVERSER_PATH;
 
- public:
   RestVocbaseBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
@@ -144,30 +142,15 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
-  std::string assembleDocumentId(std::string const& collectionName,
-                                 std::string const& key, bool urlEncode);
+  std::string assembleDocumentId(std::string_view collectionName,
+                                 std::string_view key, bool urlEncode) const;
 
   /// @brief generates a HTTP 201 or 202 response
-  void generate20x(arangodb::OperationResult const&, std::string const&,
-                   TRI_col_type_e, arangodb::velocypack::Options const*,
-                   bool isMultiple, rest::ResponseCode waitForSyncResponseCode);
-
-  /// @brief generates message for a saved document
-  void generateSaved(arangodb::OperationResult const& result,
-                     std::string const& collectionName, TRI_col_type_e type,
-                     arangodb::velocypack::Options const*, bool isMultiple);
-
-  /// @brief generates deleted message
-  void generateDeleted(arangodb::OperationResult const& result,
-                       std::string const& collectionName, TRI_col_type_e type,
-                       arangodb::velocypack::Options const*, bool isMultiple);
-
-  /// @brief generates document not found error message, no transaction info
-  void generateDocumentNotFound(std::string const& /* collection name */,
-                                std::string const& /* document key */) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  }
+  void generate20x(arangodb::OperationResult const& result,
+                   std::string_view collectionName, TRI_col_type_e type,
+                   arangodb::velocypack::Options const* options,
+                   bool isMultiple, bool silent,
+                   rest::ResponseCode waitForSyncResponseCode);
 
   /// @brief generates conflict error
   void generateConflictError(arangodb::OperationResult const&,
@@ -177,15 +160,14 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void generateNotModified(RevisionId);
 
   /// @brief generates first entry from a result set
-  void generateDocument(arangodb::velocypack::Slice const& input,
-                        bool generateBody,
-                        arangodb::velocypack::Options const* options = nullptr);
+  void generateDocument(velocypack::Slice input, bool generateBody,
+                        velocypack::Options const* options = nullptr);
 
   /// @brief generate an error message for a transaction error, this method
   /// is used by the others.
-  void generateTransactionError(std::string const& collectionName,
+  void generateTransactionError(std::string_view collectionName,
                                 OperationResult const& result,
-                                std::string const& key = "",
+                                std::string_view key = "",
                                 RevisionId rid = RevisionId::none());
 
   /// @brief extracts the revision. "header" must be lowercase.
@@ -207,14 +189,16 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * @return A freshly created transaction for the given collection with proper
    * locking or a leased transaction.
    */
-  std::unique_ptr<transaction::Methods> createTransaction(
+  futures::Future<std::unique_ptr<transaction::Methods>> createTransaction(
       std::string const& cname, AccessMode::Type mode,
       OperationOptions const& opOptions,
+      transaction::OperationOrigin operationOrigin,
       transaction::Options&& trxOpts = transaction::Options()) const;
 
   /// @brief create proper transaction context, including the proper IDs
-  std::shared_ptr<transaction::Context> createTransactionContext(
-      AccessMode::Type mode) const;
+  futures::Future<std::shared_ptr<transaction::Context>>
+  createTransactionContext(AccessMode::Type mode,
+                           transaction::OperationOrigin operationOrigin) const;
 
  protected:
   /// @brief request context

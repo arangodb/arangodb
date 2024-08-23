@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -107,29 +107,39 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       transaction::Methods& trx, aql::AstNode* node,
       aql::Variable const* reference) const override;
 
+  bool supportsStreamInterface(
+      IndexStreamOptions const&) const noexcept override;
+
+  static bool checkSupportsStreamInterface(
+      std::vector<std::vector<basics::AttributeName>> const& coveredFields,
+      IndexStreamOptions const&) noexcept;
+
+  virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
+      transaction::Methods* trx, IndexStreamOptions const&) override;
+
   /// @brief returns whether the document can be inserted into the primary index
   /// (or if there will be a conflict)
   Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
-                     LocalDocumentId const& documentId, velocypack::Slice doc,
+                     LocalDocumentId documentId, velocypack::Slice doc,
                      OperationOptions const& options) override;
 
   Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
-                      LocalDocumentId const& documentId, velocypack::Slice doc,
+                      LocalDocumentId documentId, velocypack::Slice doc,
                       OperationOptions const& options) override;
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc,
+                LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& options, bool performChecks) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc,
+                LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& /*options*/) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& oldDocumentId, velocypack::Slice oldDoc,
-                LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
+                LocalDocumentId oldDocumentId, velocypack::Slice oldDoc,
+                LocalDocumentId newDocumentId, velocypack::Slice newDoc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override;
 
@@ -161,6 +171,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
  private:
   std::vector<std::vector<basics::AttributeName>> const _coveredFields;
 
-  bool const _isRunningInCluster;
+  // maximum size of values to be stored in the in-memory cache
+  size_t const _maxCacheValueSize;
 };
 }  // namespace arangodb

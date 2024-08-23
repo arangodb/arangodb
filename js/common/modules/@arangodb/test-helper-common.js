@@ -2,19 +2,16 @@
 /*global arango, db, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Helper for JavaScript Tests
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Lucas Dohmen
 // / @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
@@ -102,7 +99,7 @@ exports.truncateFailure = function (collection) {
     collection.truncate();
     return 1;
   } catch (ex) {
-    if (!ex instanceof arangodb.ArangoError ||
+    if (!(ex instanceof arangodb.ArangoError) ||
       ex.errorNum !== internal.errors.ERROR_DEBUG.code) {
       throw ex;
     }
@@ -407,17 +404,17 @@ exports.endpointToURL = (endpoint) => {
 };
 
 exports.checkIndexMetrics = (checkFunction) => {
-  var isMetricsArrived = false;
+  var isMetricArrived = false;
   var timeToWait = 100;
-  while (!isMetricsArrived) {
+  while (!isMetricArrived) {
     try {
       checkFunction();
-      isMetricsArrived = true;
+      isMetricArrived = true;
     } catch (err) {
-      isMetricsArrived = false;
+      isMetricArrived = false;
       if (timeToWait > 0) {
-        require("internal").sleep(2);
-        timeToWait = timeToWait - 2;
+        require("internal").sleep(1);
+        timeToWait = timeToWait - 1;
       } else {
         throw err;
       }

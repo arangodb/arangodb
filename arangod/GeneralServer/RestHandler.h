@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,16 +23,17 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ResultT.h"
+#include "Futures/Unit.h"
 #include "GeneralServer/RequestLane.h"
 #include "Logger/LogContext.h"
+#include "Metrics/GaugeCounterGuard.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
-#include "Futures/Unit.h"
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string_view>
 #include <thread>
 
@@ -67,7 +68,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual ~RestHandler();
 
   void assignHandlerId();
-  uint64_t handlerId() const { return _handlerId; }
+  uint64_t handlerId() const noexcept { return _handlerId; }
   uint64_t messageId() const;
 
   /// @brief called when the handler is queued for execution in the scheduler
@@ -91,18 +92,17 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ArangodServer& server() noexcept { return _server; }
   ArangodServer const& server() const noexcept { return _server; }
 
-  RequestStatistics::Item const& statistics() const noexcept {
+  [[nodiscard]] RequestStatistics::Item const& requestStatistics()
+      const noexcept {
     return _statistics;
   }
-  RequestStatistics::Item&& stealStatistics();
-  void setStatistics(RequestStatistics::Item&& stat);
+  [[nodiscard]] RequestStatistics::Item&& stealRequestStatistics();
+  void setRequestStatistics(RequestStatistics::Item&& stat);
+
+  void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 
   /// Execute the rest handler state machine
-  void runHandler(std::function<void(rest::RestHandler*)> cb) {
-    TRI_ASSERT(_state == HandlerState::PREPARE);
-    _callback = std::move(cb);
-    runHandlerStateMachine();
-  }
+  void runHandler(std::function<void(rest::RestHandler*)> responseCallback);
 
   /// Execute the rest handler state machine. Retry the wakeup,
   /// returns true if _state == PAUSED, false otherwise
@@ -123,7 +123,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestLane determineRequestLane();
 
   virtual void prepareExecute(bool isContinue);
-  virtual RestStatus execute() = 0;
+  virtual RestStatus execute();
+  virtual futures::Future<futures::Unit> executeAsync();
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
   virtual void shutdownExecute(bool isFinalized) noexcept;
 
@@ -158,7 +159,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
+  [[nodiscard]] RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
+  [[nodiscard]] RestStatus waitForFuture(futures::Future<RestStatus>&& f);
 
   enum class HandlerState : uint8_t {
     PREPARE = 0,
@@ -199,13 +201,13 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestStatistics::Item _statistics;
 
  private:
-  mutable Mutex _executionMutex;
+  mutable std::mutex _executionMutex;
+  mutable std::atomic_uint8_t _executionCounter{0};
+  mutable RestStatus _followupRestStatus;
 
-  std::function<void(rest::RestHandler*)> _callback;
+  std::function<void(rest::RestHandler*)> _sendResponseCallback;
 
   uint64_t _handlerId;
-
-  std::atomic<std::thread::id> _executionMutexOwner;
 
   HandlerState _state;
   // whether or not we have tracked this task as ongoing.
@@ -213,12 +215,18 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // low priority tasks
   bool _trackedAsOngoingLowPrio;
 
+  // whether or not the handler handles a request for the async
+  // job api (/_api/job) or the batch API (/_api/batch)
+  bool _isAsyncRequest = false;
+
   RequestLane _lane;
 
   std::shared_ptr<LogContext::Values> _logContextScopeValues;
   LogContext::EntryPtr _logContextEntry;
 
  protected:
+  metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;
+
   std::atomic<bool> _canceled;
 };
 

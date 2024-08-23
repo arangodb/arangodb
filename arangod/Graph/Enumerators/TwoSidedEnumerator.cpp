@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -181,7 +181,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   if (!looseEnds.empty()) {
     // Will throw all network errors here
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
-    futureEnds.get();
+    futureEnds.waitAndGet();
     // Notes for the future:
     // Vertices are now fetched. Thnink about other less-blocking and batch-wise
     // fetching (e.g. re-fetch at some later point).
@@ -205,7 +205,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
 
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
+    auto&& preparedEnds = futureEnds.waitAndGet();
 
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.hasProcessableElement());
@@ -213,22 +213,34 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
   auto step = _queue.pop();
   auto previous = _interior.append(step);
+
   _provider.expand(step, previous, [&](Step n) -> void {
-    ValidationResult res = _validator.validatePath(n);
+    {
+      // To be able to run validatePath and check condition on vertices and
+      // edges, knowledge of all documents is required.
+      //
+      // This means that in some cases we are now overfetching, and that problem
+      // needs to be addressed.
+      if (!n.isProcessable()) {
+        auto futureEnds = _provider.fetch({&n});
+        futureEnds.waitAndGet();
+      }
+    }
+    auto valid = _validator.validatePath(n);
 
     // Check if other Ball knows this Vertex.
     // Include it in results.
-    if ((getDepth() + other.getDepth() >= _minDepth) && !res.isFiltered()) {
+    if ((getDepth() + other.getDepth() >= _minDepth) && !valid.isFiltered()) {
       // One side of the path is checked, the other side is unclear:
       // We need to combine the test of both sides.
 
-      // For GLOBAL: We ignore otherValidator, On FIRST match: Add this match as
-      // result, clear both sides. => This will give the shortest path.
-      // TODO: Check if the GLOBAL holds true for weightedEdges
+      // For GLOBAL: We ignore otherValidator, On FIRST match: Add this
+      // match as result, clear both sides. => This will give the shortest
+      // path.
+
       other.matchResultsInShell(n, results, _validator);
     }
-    if (!res.isPruned()) {
-      // Add the step to our shell
+    if (!valid.isPruned()) {
       _shell.emplace(std::move(n));
     }
   });

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "Aql/VariableGenerator.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -32,7 +33,10 @@
 using namespace arangodb::aql;
 
 /// @brief create the generator
-VariableGenerator::VariableGenerator() : _id(0) { _variables.reserve(8); }
+VariableGenerator::VariableGenerator(arangodb::ResourceMonitor& resourceMonitor)
+    : _id(0), _resourceMonitor(resourceMonitor) {
+  _variables.reserve(8);
+}
 
 /// @brief visit all variables
 void VariableGenerator::visit(std::function<void(Variable*)> const& visitor) {
@@ -61,20 +65,26 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(
 /// @brief generate a variable
 Variable* VariableGenerator::createVariable(std::string_view name,
                                             bool isUserDefined) {
-  std::string temp(name);
-
   if (isUserDefined && !isValidName(name.data(), name.data() + name.size())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
         arangodb::basics::Exception::FillExceptionString(
-            TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, temp.c_str()));
+            TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, std::string{name}.c_str()));
   }
 
-  auto variable = std::make_unique<Variable>(std::move(temp), nextId(), false);
+  auto id = nextId();
+  auto nameCopy = [&] {
+    if (name.empty()) {
+      TRI_ASSERT(!isUserDefined);
+      return std::to_string(id);
+    } else {
+      return std::string{name};
+    }
+  }();
+  auto variable = std::make_unique<Variable>(std::move(nameCopy), id, false,
+                                             _resourceMonitor);
 
   TRI_ASSERT(!isUserDefined || variable->isUserDefined());
-
-  VariableId const id = variable->id;
   auto [it, inserted] = _variables.emplace(id, std::move(variable));
   TRI_ASSERT(inserted);
   return (*it).second.get();
@@ -93,12 +103,13 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
                                    "cloned AQL variable already present");
   }
   // variable was inserted, return the clone
+  _id = std::max(id + 1, _id);
   return (*it).second.get();
 }
 
 /// @brief generate a variable from VelocyPack
 Variable* VariableGenerator::createVariable(VPackSlice slice) {
-  auto variable = std::make_unique<Variable>(slice);
+  auto variable = std::make_unique<Variable>(slice, _resourceMonitor);
   VariableId const id = variable->id;
 
   // make sure _id is at least as high as the highest variable id
@@ -111,7 +122,7 @@ Variable* VariableGenerator::createVariable(VPackSlice slice) {
 
 /// @brief generate a temporary variable
 Variable* VariableGenerator::createTemporaryVariable() {
-  return createVariable(nextName(), false);
+  return createVariable({}, false);
 }
 
 /// @brief renames a variable (assigns a temporary name)
@@ -172,7 +183,7 @@ void VariableGenerator::fromVelocyPack(VPackSlice const slice) {
   auto len = allVariablesList.length();
   _variables.reserve(static_cast<size_t>(len));
 
-  for (auto const& var : VPackArrayIterator(allVariablesList)) {
+  for (auto var : VPackArrayIterator(allVariablesList)) {
     createVariable(var);
   }
 }

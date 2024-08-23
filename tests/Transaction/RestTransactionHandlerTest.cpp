@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -334,11 +334,13 @@ TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Internal, "dummy",
                                 "testVocbase", arangodb::auth::Level::RO,
                                 arangodb::auth::Level::RO, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  };
+  auto execContext = std::make_shared<ExecContext>();
+  arangodb::ExecContextScope execContextScope(execContext);
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");
@@ -376,11 +378,13 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Internal, "dummy",
                                 "testVocbase", arangodb::auth::Level::NONE,
                                 arangodb::auth::Level::NONE, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  };
+  auto execContext = std::make_shared<ExecContext>();
+  arangodb::ExecContextScope execContextScope(execContext);
 
   request.setRequestType(arangodb::rest::RequestType::POST);
   request.addSuffix("begin");

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -189,7 +189,7 @@ bool FieldMeta::init(
     } else {
       auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
       bool const extendedNames =
-          server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+          server.getFeature<DatabaseFeature>().extendedNames();
 
       if (!field.isArray()) {
         errorField = kFieldName;
@@ -236,8 +236,10 @@ bool FieldMeta::init(
           // For cluster only check cache to avoid ClusterInfo locking issues
           // analyzer should have been populated via 'analyzerDefinitions'
           // above.
-          analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
-                                   ServerState::instance()->isClusterRole());
+          analyzer = analyzers.get(
+              name, QueryAnalyzerRevisions::QUERY_LATEST,
+              transaction::OperationOriginInternal{"fetching analyzer"},
+              ServerState::instance()->isClusterRole());
 
           if (!analyzer) {
             errorField = absl::StrCat(kFieldName, ".", value.stringView());
@@ -479,7 +481,7 @@ bool FieldMeta::init(
   _hasNested = !_nested.empty();
   if (!_hasNested) {
     for (auto const& f : _fields) {
-      if (!f.second._nested.empty()) {
+      if (f.second._hasNested) {
         _hasNested = true;
         break;
       }
@@ -650,7 +652,7 @@ IResearchLinkMeta::IResearchLinkMeta()
 
 bool IResearchLinkMeta::operator==(
     IResearchLinkMeta const& other) const noexcept {
-  if (FieldMeta::operator!=(other)) {
+  if (static_cast<FieldMeta const&>(*this) != other) {
     return false;
   }
 
@@ -661,7 +663,8 @@ bool IResearchLinkMeta::operator==(
   }
 
 #ifdef USE_ENTERPRISE
-  if (_pkCache != other._pkCache || _sortCache != other._sortCache) {
+  if (_pkCache != other._pkCache || _sortCache != other._sortCache ||
+      _optimizeTopK != other._optimizeTopK) {
     return false;
   }
 #endif
@@ -744,6 +747,17 @@ bool IResearchLinkMeta::init(
       _pkCache = field.getBool();
     }
   }
+  {
+    auto const field = slice.get(StaticStrings::kOptimizeTopKField);
+    mask->_optimizeTopK = !field.isNone();
+    std::string err;
+    if (mask->_optimizeTopK) {
+      if (!_optimizeTopK.fromVelocyPack(field, err)) {
+        errorField = absl::StrCat(StaticStrings::kOptimizeTopKField, ": ", err);
+        return false;
+      }
+    }
+  }
 #endif
 
   {
@@ -769,7 +783,7 @@ bool IResearchLinkMeta::init(
   }
 
   bool const extendedNames =
-      server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+      server.getFeature<DatabaseFeature>().extendedNames();
 
   {
     _analyzerDefinitions.clear();
@@ -975,6 +989,14 @@ bool IResearchLinkMeta::json(ArangodServer& server,
        (ignoreEqual && _sortCache != ignoreEqual->_sortCache))) {
     builder.add(StaticStrings::kPrimarySortCacheField, VPackValue(_sortCache));
   }
+  if (writeAnalyzerDefinition && (!mask || mask->_optimizeTopK) &&
+      (!ignoreEqual || _optimizeTopK != ignoreEqual->_optimizeTopK)) {
+    velocypack::ArrayBuilder arrayScope(&builder,
+                                        StaticStrings::kOptimizeTopKField);
+    if (!_optimizeTopK.toVelocyPack(builder)) {
+      return false;
+    }
+  }
 #endif
 
   if (writeAnalyzerDefinition && (!mask || mask->_version)) {
@@ -1020,6 +1042,9 @@ size_t IResearchLinkMeta::memory() const noexcept {
   size += _collectionName.size();
   size += sizeof(_version);
   size += FieldMeta::memory();
+#ifdef USE_ENTERPRISE
+  size += _optimizeTopK.memory();
+#endif
 
   return size;
 }

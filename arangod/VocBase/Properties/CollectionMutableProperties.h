@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,12 +25,18 @@
 
 #include "Basics/StaticStrings.h"
 #include "VocBase/Properties/UtilityInvariants.h"
+#include "Inspection/Access.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
 
 struct CollectionMutableProperties {
+  struct Invariants {
+    [[nodiscard]] static auto isJsonSchema(
+        std::optional<arangodb::velocypack::Builder> const& value)
+        -> inspection::Status;
+  };
   std::string name = StaticStrings::Empty;
 
   // TODO: This can be optimized into it's own struct.
@@ -38,7 +45,9 @@ struct CollectionMutableProperties {
 
   // TODO: This can be optimized into it's own struct.
   // Did a short_cut here to avoid concatenated changes
-  arangodb::velocypack::Builder schema{VPackSlice::nullSlice()};
+  std::optional<arangodb::velocypack::Builder> schema{std::nullopt};
+
+  bool cacheEnabled = false;
 
   bool operator==(CollectionMutableProperties const&) const;
 };
@@ -49,8 +58,12 @@ auto inspect(Inspector& f, CollectionMutableProperties& props) {
       f.field(StaticStrings::DataSourceName, props.name)
           .fallback(f.keep())
           .invariant(UtilityInvariants::isNonEmpty),
-      f.field(StaticStrings::Schema, props.schema).fallback(f.keep()),
+      f.field(StaticStrings::Schema, props.schema)
+          .fallback(f.keep())
+          .invariant(CollectionMutableProperties::Invariants::isJsonSchema),
       f.field(StaticStrings::ComputedValues, props.computedValues)
+          .fallback(f.keep()),
+      f.field(StaticStrings::CacheEnabled, props.cacheEnabled)
           .fallback(f.keep()));
 }
 

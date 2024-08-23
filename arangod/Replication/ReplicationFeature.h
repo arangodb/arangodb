@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -86,10 +86,14 @@ class ReplicationFeature final : public ArangodFeature {
   /// timeout value
   double checkRequestTimeout(double value) const;
 
-  /// @brief automatic failover of replication using the agency
-  bool isActiveFailoverEnabled() const;
+  bool syncByRevision() const noexcept;
 
-  bool syncByRevision() const;
+  bool autoRepairRevisionTrees() const noexcept;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // only used during testing
+  void autoRepairRevisionTrees(bool value) noexcept;
+#endif
 
   /// @brief track the number of (parallel) tailing operations
   /// will throw an exception if the number of concurrently running operations
@@ -101,12 +105,6 @@ class ReplicationFeature final : public ArangodFeature {
   void trackTailingEnd() noexcept;
 
   void trackInventoryRequest() noexcept;
-
-  /// @brief set the x-arango-endpoint header
-  void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
-
-  /// @brief fill a response object with correct response for a follower
-  void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
 
   /// @brief get max document num for quick call to _api/replication/keys to get
   /// actual keys or only doc count
@@ -132,11 +130,12 @@ class ReplicationFeature final : public ArangodFeature {
 
   bool _replicationApplierAutoStart;
 
-  /// Enable the active failover
-  bool _enableActiveFailover;
-
   /// Use the revision-based replication protocol
   bool _syncByRevision;
+
+  /// automatically repair revision trees of shards after too many failed
+  /// shard synchronization attempts
+  bool _autoRepairRevisionTrees;
 
   /// @brief cache for reusable connections
   httpclient::ConnectionCache _connectionCache;

@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -160,7 +161,9 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
     });
   }
   ASSERT_TRUE(wg->wait_for(
-      std::chrono::seconds(300)));  // wait for all threads to return
+      std::chrono::seconds(600)));  // wait for all threads to return
+  // This test is suspected to timeout. I enabled request logging to figure out
+  // if the requests reach the server or if fuerte deadlocks internally.
 
   // wait for all threads to end
   joins.joinAll();
@@ -172,12 +175,10 @@ static const ConnectionTestParams params[] = {
     {/*._protocol=*/fu::ProtocolType::Http, /* ._threads=*/2, /*._repeat=*/500},
     {/*._protocol=*/fu::ProtocolType::Http2, /* ._threads=*/2,
      /*._repeat=*/500},
-    {/*._protocol=*/fu::ProtocolType::Vst, /* ._threads=*/2, /*._repeat=*/500},
     {/*._protocol=*/fu::ProtocolType::Http, /* ._threads=*/4,
      /*._repeat=*/5000},
     {/*._protocol=*/fu::ProtocolType::Http2, /* ._threads=*/4,
      /*._repeat=*/5000},
-    {/*._protocol=*/fu::ProtocolType::Vst, /* ._threads=*/4, /*._repeat=*/5000},
 };
 
 INSTANTIATE_TEST_CASE_P(ConcurrentRequestsTests, ConcurrentConnectionF,

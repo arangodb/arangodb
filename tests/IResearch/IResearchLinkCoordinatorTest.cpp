@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -163,7 +163,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "}");
     arangodb::LogicalView::ptr logicalView;
     ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase,
-                                              viewJson->slice(), true)
+                                              viewJson->slice(), false)
                     .ok());
 
     ASSERT_TRUE(logicalView);
@@ -173,7 +173,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
+          R"({ "s123": { "indexes" : [ { "id": "42" } ] } })");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -181,9 +181,10 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     // unable to create index without timeout
     VPackBuilder outputDefinition;
-    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
+    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                         linkJson->slice(), true,
                                                         outputDefinition)
+                    .waitAndGet()
                     .ok());
 
     // get new version from plan
@@ -193,7 +194,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *updatedCollection0, *logicalView);
     EXPECT_TRUE(link);
-    ASSERT_EQ("1_3simd", link->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN),
+              link->meta()._version);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     ASSERT_TRUE(false == !index);
@@ -251,7 +253,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // simulate heartbeat thread (drop index from current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id\": { \"indexes\" : [ ] } }");
+          R"({ "s123": { "indexes" : [ ] } })");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -259,9 +261,10 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     auto const indexArg =
         arangodb::velocypack::Parser::fromJson("{\"id\": \"42\"}");
-    EXPECT_TRUE(arangodb::methods::Indexes::drop(logicalCollection.get(),
-                                                 indexArg->slice())
-                    .ok());
+    EXPECT_TRUE(
+        arangodb::methods::Indexes::drop(*logicalCollection, indexArg->slice())
+            .waitAndGet()
+            .ok());
 
     // get new version from plan
     auto updatedCollection1 = ci.getCollection(
@@ -322,7 +325,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "}");
     arangodb::LogicalView::ptr logicalView;
     ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase,
-                                              viewJson->slice(), true)
+                                              viewJson->slice(), false)
                     .ok());
     ASSERT_TRUE(logicalView);
     auto const viewId = std::to_string(logicalView->planId().id());
@@ -331,7 +334,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
+          R"({ "s123": { "indexes" : [ { "id": "42" } ] } })");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -339,9 +342,10 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
 
     // unable to create index without timeout
     VPackBuilder outputDefinition;
-    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(logicalCollection.get(),
+    EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                         linkJson->slice(), true,
                                                         outputDefinition)
+                    .waitAndGet()
                     .ok());
 
     // get new version from plan
@@ -351,7 +355,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *updatedCollection, *logicalView);
     EXPECT_TRUE(link);
-    ASSERT_EQ("1_4simd", link->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              link->meta()._version);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     EXPECT_TRUE(true == index->canBeDropped());

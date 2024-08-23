@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,7 +31,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
@@ -43,38 +42,38 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-AgencyCallback::AgencyCallback(ArangodServer& server, std::string key,
+AgencyCallback::AgencyCallback(ApplicationServer& server,
+                               AgencyCache& agencyCache, std::string key,
                                CallbackType cb, bool needsValue,
                                bool needsInitialValue)
     : key(std::move(key)),
       _server(server),
+      _agencyCache(agencyCache),
       _cb(std::move(cb)),
       _needsValue(needsValue),
       _needsInitialValue(needsInitialValue) {}
+
+AgencyCallback::AgencyCallback(ArangodServer& server, std::string key,
+                               CallbackType cb, bool needsValue,
+                               bool needsInitialValue)
+    : AgencyCallback(server, server.getFeature<ClusterFeature>().agencyCache(),
+                     std::move(key), std::move(cb), needsValue,
+                     needsInitialValue) {}
 
 AgencyCallback::AgencyCallback(ArangodServer& server, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
     : AgencyCallback(
-          server, key,
+          server, server.getFeature<ClusterFeature>().agencyCache(), key,
           [cb](VPackSlice slice, consensus::index_t) { return cb(slice); },
           needsValue, needsInitialValue) {}
-
-void AgencyCallback::local(bool b) {
-  _local = b;
-  if (!b) {
-    _agency = std::make_unique<AgencyComm>(_server);
-  }
-}
-
-bool AgencyCallback::local() const { return _local; }
 
 void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
                                       bool forceCheck) {
   if (!_needsValue) {
     // no need to pass any value to the callback
     if (needToAcquireMutex) {
-      CONDITION_LOCKER(locker, _cv);
+      std::lock_guard locker{_cv.mutex};
       executeEmpty();
     } else {
       executeEmpty();
@@ -82,43 +81,21 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
     return;
   }
 
-  VPackSlice result;
-  std::shared_ptr<VPackBuilder> builder;
-  consensus::index_t idx = 0;
-  AgencyCommResult tmp;
-
   LOG_TOPIC("a6344", TRACE, Logger::CLUSTER)
       << "Refetching and update for " << AgencyCommHelper::path(key);
 
-  if (_local) {
-    auto& _cache = _server.getFeature<ClusterFeature>().agencyCache();
-    std::tie(builder, idx) =
-        _cache.read(std::vector<std::string>{AgencyCommHelper::path(key)});
-    result = builder->slice();
-    if (!result.isArray()) {
-      if (!_server.isStopping()) {
-        // only log errors if we are not already shutting down...
-        // in case of shutdown this error is somewhat expected
-        LOG_TOPIC("ec320", ERR, arangodb::Logger::CLUSTER)
-            << "Callback to get agency cache was not successful: "
-            << result.toJson();
-      }
-      return;
+  auto [builder, idx] =
+      _agencyCache.read(std::vector{AgencyCommHelper::path(key)});
+  auto result = builder->slice();
+  if (!result.isArray()) {
+    if (!_server.isStopping()) {
+      // only log errors if we are not already shutting down...
+      // in case of shutdown this error is somewhat expected
+      LOG_TOPIC("ec320", ERR, arangodb::Logger::CLUSTER)
+          << "Callback to get agency cache was not successful: "
+          << result.toJson();
     }
-  } else {
-    TRI_ASSERT(_agency.get() != nullptr);
-    tmp = _agency->getValues(key);
-    if (!tmp.successful()) {
-      if (!_server.isStopping()) {
-        // only log errors if we are not already shutting down...
-        // in case of shutdown this error is somewhat expected
-        LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
-            << "Callback getValues to agency was not successful: "
-            << tmp.errorCode() << " " << tmp.errorMessage();
-      }
-      return;
-    }
-    result = tmp.slice();
+    return;
   }
 
   std::vector<std::string> kv =
@@ -136,7 +113,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
   };
 
   if (needToAcquireMutex) {
-    CONDITION_LOCKER(locker, _cv);
+    std::lock_guard locker{_cv.mutex};
     callCheckValue();
   } else {
     callCheckValue();
@@ -179,7 +156,7 @@ bool AgencyCallback::execute(velocypack::Slice newData,
     bool result = _cb(newData, raftIndex);
     if (result) {
       _wasSignaled = true;
-      _cv.signal();
+      _cv.cv.notify_one();
     }
     return result;
   } catch (std::exception const& ex) {
@@ -203,7 +180,12 @@ bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
 
     // we haven't yet been signaled. so let's wait for a signal or
     // the timeout to occur
-    if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))) {
+    std::unique_lock lock{_cv.mutex, std::adopt_lock};
+    auto const cv_status = _cv.cv.wait_for(
+        lock,
+        std::chrono::microseconds{static_cast<uint64_t>(maxTimeout * 1e6)});
+    std::ignore = lock.release();
+    if (cv_status == std::cv_status::timeout) {
       LOG_TOPIC("1514e", DEBUG, Logger::CLUSTER)
           << "Waiting done and nothing happended. Refetching to be sure";
       // mop: watches have not triggered during our sleep...recheck to be sure

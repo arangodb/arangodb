@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -49,6 +49,8 @@
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+
+#include <absl/strings/escaping.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -307,13 +309,13 @@ RestStatus RestStatusHandler::executeOverview() {
     }
   }
 
-  auto const res = buffer.deflate();
+  auto const res = buffer.zlibDeflate(/*onlyIfSmaller*/ false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     result.add("hash", VPackValue(buffer.c_str()));
   } else {
-    std::string deflated(buffer.c_str(), buffer.size());
-    auto encoded = StringUtils::encodeBase64(deflated);
+    auto encoded =
+        absl::Base64Escape(std::string_view{buffer.c_str(), buffer.size()});
     result.add("hash", VPackValue(encoded));
   }
 
@@ -327,7 +329,7 @@ RestStatus RestStatusHandler::executeMemoryProfile() {
   long err;
   std::string fileName;
   std::string msg;
-  int res = TRI_GetTempName(nullptr, fileName, true, err, msg);
+  ErrorCode res = TRI_GetTempName(nullptr, fileName, true, err, msg);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::SERVER_ERROR, res, msg);

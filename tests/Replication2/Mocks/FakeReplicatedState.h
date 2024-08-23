@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,7 +56,7 @@ struct EmptyFollowerType : replicated_state::IReplicatedFollowerState<S> {
       -> futures::Future<Result> override {
     return futures::Future<Result>{std::in_place};
   }
-  auto acquireSnapshot(ParticipantId const&, LogIndex) noexcept
+  auto acquireSnapshot(ParticipantId const&) noexcept
       -> futures::Future<Result> override {
     return futures::Future<Result>{std::in_place};
   }
@@ -102,6 +103,11 @@ auto EmptyLeaderType<S>::resign() && noexcept
 
 template<typename Input, typename Result>
 struct AsyncOperationMarker {
+  ~AsyncOperationMarker() {
+    TRI_ASSERT(!promise.has_value() or promise->isFulfilled())
+        << "unfulfilled promise in " << ADB_HERE;
+  }
+
   auto trigger(Input inValue) -> futures::Future<Result> {
     TRI_ASSERT(in.has_value() == false);
     in.emplace(std::move(inValue));
@@ -189,7 +195,7 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
       -> std::unique_ptr<test::TestCoreType> override;
 
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> apply;
-  AsyncOperationMarker<std::pair<ParticipantId, LogIndex>, Result> acquire;
+  AsyncOperationMarker<ParticipantId, Result> acquire;
 
   using replicated_state::IReplicatedFollowerState<S>::getStream;
 
@@ -198,10 +204,9 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
       -> futures::Future<Result> override {
     return apply.trigger(std::move(ptr));
   }
-  auto acquireSnapshot(const ParticipantId& leader,
-                       LogIndex localCommitIndex) noexcept
+  auto acquireSnapshot(ParticipantId const& leader) noexcept
       -> futures::Future<Result> override {
-    return acquire.trigger(std::make_pair(leader, localCommitIndex));
+    return acquire.trigger(leader);
   }
 
   std::unique_ptr<test::TestCoreType> _core;
@@ -220,11 +225,19 @@ auto FakeFollowerType<S>::resign() && noexcept
  */
 template<typename LeaderType, typename FollowerType>
 struct DefaultFactory {
-  auto constructLeader() -> std::shared_ptr<LeaderType> {
-    return std::make_shared<LeaderType>();
+  using CoreType = typename LeaderType::CoreType;
+  auto constructLeader(std::unique_ptr<CoreType> core)
+      -> std::shared_ptr<LeaderType> {
+    return std::make_shared<LeaderType>(std::move(core));
   }
-  auto constructFollower() -> std::shared_ptr<FollowerType> {
-    return std::make_shared<FollowerType>();
+  auto constructFollower(std::unique_ptr<CoreType> core,
+                         std::shared_ptr<IScheduler> scheduler)
+      -> std::shared_ptr<FollowerType> {
+    return std::make_shared<FollowerType>(std::move(core));
+  }
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
+      -> std::unique_ptr<CoreType> {
+    return std::make_unique<CoreType>();
   }
 };
 
@@ -250,14 +263,16 @@ struct RecordingFactory {
     leaders.push_back(ptr);
     return ptr;
   }
-  auto constructFollower(std::unique_ptr<CoreType> core)
+  auto constructFollower(std::unique_ptr<CoreType> core,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<FollowerType> {
     auto ptr = std::make_shared<FollowerType>(std::move(core));
     followers.push_back(ptr);
     return ptr;
   }
 
-  auto constructCore(GlobalLogIdentifier const&) -> std::unique_ptr<CoreType> {
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
+      -> std::unique_ptr<CoreType> {
     return std::make_unique<CoreType>();
   }
 

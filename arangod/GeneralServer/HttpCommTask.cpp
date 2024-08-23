@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,7 +32,6 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/H2CommTask.h"
-#include "GeneralServer/VstCommTask.h"
 #include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
@@ -70,6 +69,15 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
       return RequestType::ILLEGAL;
   }
 }
+
+static constexpr const char* vst10 = "VST/1.0\r\n\r\n";
+static constexpr const char* vst11 = "VST/1.1\r\n\r\n";
+static constexpr const char* h2Preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
+static constexpr size_t vstLen = 11;        // length of vst connection preface
+static constexpr size_t h2PrefaceLen = 24;  // length of h2 connection preface
+static constexpr size_t minHttpRequestLen =
+    18;  // min length of http 1.0 request
+
 }  // namespace
 
 template<SocketType T>
@@ -80,7 +88,7 @@ bool HttpCommTask<T>::transferEncodingContainsChunked(
     commTask.sendErrorResponse(
         rest::ResponseCode::NOT_IMPLEMENTED, rest::ContentType::UNSET, 1,
         TRI_ERROR_NOT_IMPLEMENTED,
-        "Parsing for transfer-encoding of type chunked not implemented.");
+        "Support for Transfer-Encoding: chunked is not implemented.");
     return true;
   }
   return false;
@@ -93,15 +101,15 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_lastHeaderValue.clear();
   me->_origin.clear();
   me->_url.clear();
-  me->_request = std::make_unique<HttpRequest>(
-      me->_connectionInfo, /*messageId*/ 1, me->_allowMethodOverride);
+  me->_request =
+      std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ 1);
   me->_response.reset();
   me->_lastHeaderWasValue = false;
   me->_shouldKeepAlive = false;
   me->_messageDone = false;
 
   // acquire a new statistics entry for the request
-  me->acquireStatistics(1UL).SET_READ_START(TRI_microtime());
+  me->acquireRequestStatistics(1UL).SET_READ_START(TRI_microtime());
   return HPE_OK;
 } catch (...) {
   // the caller of this function is a C function, which doesn't know
@@ -118,7 +126,7 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) try {
                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
-  me->statistics(1UL).SET_REQUEST_TYPE(me->_request->requestType());
+  me->requestStatistics(1UL).SET_REQUEST_TYPE(me->_request->requestType());
 
   me->_url.append(at, len);
   return HPE_OK;
@@ -139,8 +147,8 @@ int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at,
                                      size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   if (me->_lastHeaderWasValue) {
-    me->_request->setHeaderV2(std::move(me->_lastHeaderField),
-                              std::move(me->_lastHeaderValue));
+    me->_request->setHeader(std::move(me->_lastHeaderField),
+                            std::move(me->_lastHeaderValue));
     me->_lastHeaderField.assign(at, len);
   } else {
     me->_lastHeaderField.append(at, len);
@@ -175,18 +183,16 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_response.reset();
   if (!me->_lastHeaderField.empty()) {
-    me->_request->setHeaderV2(std::move(me->_lastHeaderField),
-                              std::move(me->_lastHeaderValue));
+    me->_request->setHeader(std::move(me->_lastHeaderField),
+                            std::move(me->_lastHeaderValue));
   }
 
   bool found;
   std::string const& encoding =
       me->_request->header(StaticStrings::TransferEncoding, found);
 
-  if (found) {
-    if (transferEncodingContainsChunked(*me, encoding)) {
-      return HPE_USER;
-    }
+  if (found && transferEncodingContainsChunked(*me, encoding)) {
+    return HPE_USER;
   }
 
   if ((p->http_major != 1 || p->http_minor != 0) &&
@@ -234,7 +240,7 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
 template<SocketType T>
 int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_request->body().append(at, len);
+  me->_request->appendBody(at, len);
   return HPE_OK;
 } catch (...) {
   // the caller of this function is a C function, which doesn't know
@@ -247,7 +253,7 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->parseUrl(me->_url.data(), me->_url.size());
 
-  me->statistics(1UL).SET_READ_END();
+  me->requestStatistics(1UL).SET_READ_END();
   me->_messageDone = true;
 
   return HPE_PAUSED;
@@ -259,12 +265,11 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
 
 template<SocketType T>
 HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
-                              std::unique_ptr<AsioSocket<T>> so)
+                              std::shared_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
-      _messageDone(false),
-      _allowMethodOverride(this->_generalServerFeature.allowMethodOverride()) {
+      _messageDone(false) {
   this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
@@ -291,10 +296,10 @@ void HttpCommTask<T>::start() {
   LOG_TOPIC("358d4", DEBUG, Logger::REQUESTS)
       << "<http> opened connection \"" << (void*)this << "\"";
 
-  asio_ns::post(this->_protocol->context.io_context,
-                [self = this->shared_from_this()] {
-                  static_cast<HttpCommTask<T>&>(*self.get()).checkVSTPrefix();
-                });
+  asio_ns::post(
+      this->_protocol->context.io_context, [self = this->shared_from_this()] {
+        static_cast<HttpCommTask<T>&>(*self.get()).checkProtocolUpgrade();
+      });
 }
 
 template<SocketType T>
@@ -333,7 +338,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(nparsed);
     // And count it in the statistics:
-    this->statistics(1UL).ADD_RECEIVED_BYTES(nparsed);
+    this->requestStatistics(1UL).ADD_RECEIVED_BYTES(nparsed);
 
     if (_messageDone) {
       TRI_ASSERT(err == HPE_PAUSED);
@@ -397,58 +402,36 @@ void HttpCommTask<T>::setIOTimeout() {
       }));
 }
 
-namespace {
-static constexpr const char* vst10 = "VST/1.0\r\n\r\n";
-static constexpr const char* vst11 = "VST/1.1\r\n\r\n";
-static constexpr const char* h2Preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
-static constexpr size_t vstLen = 11;        // length of vst connection preface
-static constexpr size_t h2PrefaceLen = 24;  // length of h2 connection preface
-static constexpr size_t minHttpRequestLen =
-    18;  // min length of http 1.0 request
-}  // namespace
-
 template<SocketType T>
-void HttpCommTask<T>::checkVSTPrefix() {
+void HttpCommTask<T>::checkProtocolUpgrade() {
   auto cb = [self = this->shared_from_this()](asio_ns::error_code const& ec,
                                               size_t nread) {
     auto& me = static_cast<HttpCommTask<T>&>(*self);
-    if (ec || nread < vstLen) {
+    if (ec) {
       me.close(ec);
       return;
     }
     me._protocol->buffer.commit(nread);
 
     auto bg = asio_ns::buffers_begin(me._protocol->buffer.data());
-    if (std::equal(::vst10, ::vst10 + vstLen, bg, bg + ptrdiff_t(vstLen))) {
-      me._protocol->buffer.consume(vstLen);  // remove VST/1.0 prefix
-      auto commTask = std::make_unique<VstCommTask<T>>(
-          me._server, me._connectionInfo, std::move(me._protocol),
-          fuerte::vst::VST1_0);
-      commTask->setStatistics(1UL, me.stealStatistics(1UL));
-      me._server.registerTask(std::move(commTask));
-      me.close(ec);
-      return;  // vst 1.0
-
-    } else if (std::equal(::vst11, ::vst11 + vstLen, bg,
-                          bg + ptrdiff_t(vstLen))) {
-      me._protocol->buffer.consume(vstLen);  // remove VST/1.1 prefix
-      auto commTask = std::make_unique<VstCommTask<T>>(
-          me._server, me._connectionInfo, std::move(me._protocol),
-          fuerte::vst::VST1_1);
-      commTask->setStatistics(1UL, me.stealStatistics(1UL));
-      me._server.registerTask(std::move(commTask));
-      me.close(ec);
-      return;  // vst 1.1
-    } else if (nread >= h2PrefaceLen &&
-               std::equal(::h2Preface, ::h2Preface + h2PrefaceLen, bg,
-                          bg + ptrdiff_t(h2PrefaceLen))) {
+    if (nread >= h2PrefaceLen &&
+        std::equal(::h2Preface, ::h2Preface + h2PrefaceLen, bg,
+                   bg + ptrdiff_t(h2PrefaceLen))) {
+      // http2 upgrade
       // do not remove preface here, H2CommTask will read it from buffer
       auto commTask = std::make_unique<H2CommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol));
-      commTask->setStatistics(1UL, me.stealStatistics(1UL));
+      commTask->setStatistics(1UL, me.stealRequestStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
-      return;  // http2 upgrade
+      return;
+    }
+    if (nread >= vstLen &&
+        (std::equal(::vst10, ::vst10 + vstLen, bg, bg + ptrdiff_t(vstLen)) ||
+         std::equal(::vst11, ::vst11 + vstLen, bg, bg + ptrdiff_t(vstLen)))) {
+      // attempt to use VST 1.0 or VST 1.1
+      me.close(ec);
+      return;
     }
 
     me.asyncReadSome();  // continue reading
@@ -523,7 +506,7 @@ void HttpCommTask<T>::doProcessRequest() {
     if (h2 == "h2c" && found && !settings.empty()) {
       auto task = std::make_shared<H2CommTask<T>>(
           this->_server, this->_connectionInfo, std::move(this->_protocol));
-      task->setStatistics(1UL, this->stealStatistics(1UL));
+      task->setStatistics(1UL, this->stealRequestStatistics(1UL));
       task->upgradeHttp1(std::move(_request));
       this->close();
       return;
@@ -532,8 +515,8 @@ void HttpCommTask<T>::doProcessRequest() {
 
   // ensure there is a null byte termination. Some RestHandlers use
   // C functions like strchr that except a C string as input
-  _request->body().push_back('\0');
-  _request->body().resetTo(_request->body().size() - 1);
+  _request->appendNullTerminator();
+  // no need to increase memory usage here!
   {
     LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
@@ -571,7 +554,7 @@ void HttpCommTask<T>::doProcessRequest() {
 
   // We want to separate superuser token traffic:
   if (_request->authenticated() && _request->user().empty()) {
-    this->statistics(1UL).SET_SUPERUSER();
+    this->requestStatistics(1UL).SET_SUPERUSER();
   }
 
   // first check whether we allow the request to continue
@@ -580,17 +563,18 @@ void HttpCommTask<T>::doProcessRequest() {
     return;  // prepareExecution sends the error message
   }
 
-  // unzip / deflate
-  if (!this->handleContentEncoding(*_request)) {
+  // gzip-uncompress / zlib-deflate / lz4-uncompress
+  if (Result res = this->handleContentEncoding(*_request); res.fail()) {
     this->sendErrorResponse(rest::ResponseCode::BAD,
                             _request->contentTypeResponse(), 1,
-                            TRI_ERROR_BAD_PARAMETER, "decoding error");
+                            TRI_ERROR_BAD_PARAMETER, res.errorMessage());
     return;
   }
 
   // create a handler and execute
-  auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
-                                             1, nullptr);
+  auto resp = std::make_unique<HttpResponse>(
+      rest::ResponseCode::SERVER_ERROR, 1, nullptr,
+      rest::ResponseCompressionType::kUnset);
   resp->setContentType(_request->contentTypeResponse());
   this->executeRequest(std::move(_request), std::move(resp), mode);
 }
@@ -622,6 +606,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   // will add CORS headers if necessary
   this->finishExecution(*baseRes, _origin);
+
+  // handle response code 204 No Content
+  if (response.responseCode() == rest::ResponseCode::NO_CONTENT) {
+    response.clearBody();
+  }
 
   _header.clear();
   _header.reserve(220);
@@ -689,7 +678,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // add "Server" response header
-  if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
+  if (!seenServerHeader && this->_isUserRequest) {
     _header.append(std::string_view("Server: ArangoDB\r\n"));
   }
 
@@ -723,6 +712,9 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   size_t len = response.bodySize();
+  TRI_ASSERT(response.responseCode() != rest::ResponseCode::NO_CONTENT ||
+             len == 0)
+      << "response code 204 requires body length to be zero";
   _header.append(std::string_view("Content-Length: "));
   _header.append(std::to_string(len));
   _header.append("\r\n\r\n", 4);
@@ -730,6 +722,9 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
   // append write buffer and statistics
+  TRI_ASSERT(response.responseCode() != rest::ResponseCode::NO_CONTENT ||
+             _response->empty())
+      << "response code 204 requires body length to be zero";
 
   if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
       Logger::logRequestParameters()) {
@@ -820,11 +815,10 @@ template<SocketType T>
 std::unique_ptr<GeneralResponse> HttpCommTask<T>::createResponse(
     rest::ResponseCode responseCode, uint64_t mid) {
   TRI_ASSERT(mid == 1);
-  return std::make_unique<HttpResponse>(responseCode, mid);
+  return std::make_unique<HttpResponse>(responseCode, mid, nullptr,
+                                        rest::ResponseCompressionType::kUnset);
 }
 
 template class arangodb::rest::HttpCommTask<SocketType::Tcp>;
 template class arangodb::rest::HttpCommTask<SocketType::Ssl>;
-#ifndef _WIN32
 template class arangodb::rest::HttpCommTask<SocketType::Unix>;
-#endif

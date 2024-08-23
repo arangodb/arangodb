@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,8 +24,11 @@
 #pragma once
 
 #include "RestServer/arangod.h"
+#include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/QueryRegistry.h"
 #include "Metrics/Fwd.h"
+
+#include <atomic>
 
 namespace arangodb {
 
@@ -37,12 +40,12 @@ class QueryRegistryFeature final : public ArangodFeature {
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
 
-  explicit QueryRegistryFeature(Server& server);
+  QueryRegistryFeature(Server& server, metrics::MetricsFeature& metrics);
+  ~QueryRegistryFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
@@ -75,10 +78,15 @@ class QueryRegistryFeature final : public ArangodFeature {
   bool smartJoins() const noexcept { return _smartJoins; }
   bool parallelizeTraversals() const noexcept { return _parallelizeTraversals; }
 #endif
+  size_t maxCollectionsPerQuery() const noexcept {
+    return _maxCollectionsPerQuery;
+  }
   bool allowCollectionsInExpressions() const noexcept {
     return _allowCollectionsInExpressions;
   }
   bool logFailedQueries() const noexcept { return _logFailedQueries; }
+  size_t leaseAsyncPrefetchSlots(size_t value) noexcept;
+  void returnAsyncPrefetchSlots(size_t value) noexcept;
   uint64_t queryGlobalMemoryLimit() const noexcept {
     return _queryGlobalMemoryLimit;
   }
@@ -89,6 +97,13 @@ class QueryRegistryFeature final : public ArangodFeature {
     return _queryRegistry.get();
   }
   uint64_t maxParallelism() const noexcept { return _maxParallelism; }
+
+  metrics::Gauge<uint64_t>* cursorsMetric() const { return &_activeCursors; }
+  metrics::Gauge<uint64_t>* cursorsMemoryUsageMetric() const {
+    return &_cursorsMemoryUsage;
+  }
+
+  aql::AsyncPrefetchSlotsManager& asyncPrefetchSlotsManager() noexcept;
 
  private:
   bool _trackingEnabled;
@@ -106,7 +121,10 @@ class QueryRegistryFeature final : public ArangodFeature {
 #endif
   bool _allowCollectionsInExpressions;
   bool _logFailedQueries;
+  size_t _maxAsyncPrefetchSlotsTotal;
+  size_t _maxAsyncPrefetchSlotsPerQuery;
   size_t _maxQueryStringLength;
+  size_t _maxCollectionsPerQuery;
   uint64_t _peakMemoryUsageThreshold;
   uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;
@@ -127,6 +145,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
+  aql::AsyncPrefetchSlotsManager _asyncPrefetchSlotsManager;
 
   metrics::Histogram<metrics::LogScale<double>>& _queryTimes;
   metrics::Histogram<metrics::LogScale<double>>& _slowQueryTimes;
@@ -137,6 +156,8 @@ class QueryRegistryFeature final : public ArangodFeature {
   metrics::Gauge<uint64_t>& _globalQueryMemoryLimit;
   metrics::Counter& _globalQueryMemoryLimitReached;
   metrics::Counter& _localQueryMemoryLimitReached;
+  metrics::Gauge<uint64_t>& _activeCursors;
+  metrics::Gauge<uint64_t>& _cursorsMemoryUsage;
 };
 
 }  // namespace arangodb

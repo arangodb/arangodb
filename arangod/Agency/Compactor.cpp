@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/Agent.h"
-#include "Basics/ConditionLocker.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
@@ -47,9 +46,10 @@ void Compactor::run() {
   while (true) {
     bool falseAlarm = true;
     {
-      CONDITION_LOCKER(guard, _cv);
+      std::unique_lock guard{_cv.mutex};
       if (!_wakeupCompactor) {
-        _cv.wait(5000000);  // just in case we miss a wakeup call!
+        _cv.cv.wait_for(guard, std::chrono::seconds{5});
+        // just in case we miss a wakeup call!
       }
       if (_wakeupCompactor) {
         falseAlarm = false;
@@ -74,9 +74,9 @@ void Compactor::run() {
 
 // @brief Wake up compaction
 void Compactor::wakeUp() {
-  CONDITION_LOCKER(guard, _cv);
+  std::lock_guard guard{_cv.mutex};
   _wakeupCompactor = true;
-  _cv.signal();
+  _cv.cv.notify_one();
 }
 
 // @brief Begin shutdown

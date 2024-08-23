@@ -1,28 +1,29 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2018, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -33,6 +34,7 @@ const { deriveTestSuite } = require('@arangodb/test-helper');
 const ERRORS = arangodb.errors;
   
 const cn = "UnitTestsCollection";
+const taskName = "UnitTestsTask";
   
 let setupCollection = (type) => {
   let c;
@@ -52,14 +54,22 @@ let setupCollection = (type) => {
 };
   
 let shutdownTask = (task) => {
-  while (true) {
-    try {
-      tasks.get(task);
-      require("internal").wait(0.25, false);
-    } catch (err) {
-      // "task not found" means the task is finished
-      break;
+  db._useDatabase("_system");   // We need to switch to the _system database
+                                // such that we are not tripped off by a
+                                // "database not found" exception. This is
+                                // only necessary for the drop database test.
+  try {
+    if (task === undefined) {
+      tasks.unregister(taskName);
+    } else {
+      while (true) {
+        // will be left by exception here
+        tasks.get(task);
+        require("internal").wait(0.25, false);
+      }
     }
+  } catch (err) {
+    // "task not found" means the task is finished
   }
 };
 
@@ -77,9 +87,9 @@ function BaseTestConfig (dropCb, expectedError) {
         // scheduling. the whole test is time-based and assumes reasonable
         // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
+      } finally {
+        shutdownTask(task);
       }
-
-      shutdownTask(task);
     },
     
     testIndexCreationInBackgroundAborts : function () {
@@ -94,9 +104,9 @@ function BaseTestConfig (dropCb, expectedError) {
         // scheduling. the whole test is time-based and assumes reasonable
         // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
+      } finally {
+        shutdownTask(task);
       }
-
-      shutdownTask(task);
     },
     
     testWarmupAborts : function () {
@@ -117,9 +127,9 @@ function BaseTestConfig (dropCb, expectedError) {
         // scheduling. the whole test is time-based and assumes reasonable
         // scheduling, which probably isn't guaranteed on some CI servers.
         assertEqual(expectedError, err.errorNum);
+      } finally {
+        shutdownTask(task);
       }
-
-      shutdownTask(task);
     },
 
   };
@@ -130,6 +140,7 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
 
   let dropCb = () => {
     let task = tasks.register({
+      name: taskName,
       command: function() {
         let db = require("internal").db;
         let cn = "UnitTestsCollection";
@@ -144,15 +155,21 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
       },
     });
 
-    while (!db[cn].exists("runner1")) {
-      require("internal").sleep(0.02);
+    try {
+      while (!db[cn].exists("runner1")) {
+        require("internal").sleep(0.02);
+      }
+      db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
+      return task;
+    } catch (err) {
+      shutdownTask(task);
+      throw err;
     }
-    db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
-    return task;
   };
 
   let suite = {
     tearDown: function () {
+      shutdownTask();
       internal.debugClearFailAt();
       db._drop(cn);
     }
@@ -170,6 +187,7 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
     db._useDatabase('_system');
     try {
       let task = tasks.register({
+        name: taskName,
         command: function(params) {
           let db = require("internal").db;
           db._useDatabase(params.old);
@@ -188,12 +206,18 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
         isSystem: true,
       });
 
-      db._useDatabase(old);
-      while (!db[cn].exists("runner1")) {
-        require("internal").sleep(0.02);
+      try {
+        db._useDatabase(old);
+        while (!db[cn].exists("runner1")) {
+          require("internal").sleep(0.02);
+        }
+        db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
+        return task;
+      } catch (err) {
+        db._useDatabase(old);
+        shutdownTask(task);
+        throw err;
       }
-      db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
-      return task;
     } finally {
       db._useDatabase(old);
     }
@@ -205,6 +229,7 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
       db._useDatabase(cn);
     },
     tearDown: function () {
+      shutdownTask();
       internal.debugClearFailAt();
       db._useDatabase('_system');
       try {

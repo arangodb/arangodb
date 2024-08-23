@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,13 +25,22 @@
 
 #include <stddef.h>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "Basics/FileResult.h"
 #include "Basics/FileResultString.h"
 #include "Basics/Result.h"
+#include "Basics/operating-system.h"
+
+#ifdef ARANGODB_HAVE_GETGRGID
+#include <grp.h>
+#endif
+
+#ifdef ARANGODB_HAVE_GETPWNAM
+#include <pwd.h>
+#endif
 
 namespace arangodb::basics::FileUtils {
 
@@ -65,6 +74,12 @@ void spit(std::string const& filename, char const* ptr, size_t len,
           bool sync = false);
 void spit(std::string const& filename, std::string const& content,
           bool sync = false);
+
+// appends to an existing file
+void appendToFile(std::string const& filename, char const* ptr, size_t len,
+                  bool sync = false);
+void appendToFile(std::string const& filename, std::string_view s,
+                  bool sync = false);
 
 // if a file could be removed returns TRI_ERROR_NO_ERROR.
 // otherwise, returns TRI_ERROR_SYS_ERROR and sets LastError.
@@ -100,8 +115,15 @@ bool copyDirectoryRecursive(
     std::function<TRI_copy_recursive_e(std::string const&)> const& filter,
     std::string& error);
 
-// returns list of files
+// returns list of files / subdirectories / links in a directory.
+// does not recurse into subdirectories. will throw an exception in
+// case the directory cannot be opened for iteration.
 std::vector<std::string> listFiles(std::string const& directory);
+
+// returns the number of files / subdirectories / links in a directory.
+// does not recurse into subdirectories. will throw an exception in
+// case the directory cannot be opened for iteration.
+size_t countFiles(std::string const& directory);
 
 // checks if path is a directory
 bool isDirectory(std::string const& path);
@@ -140,5 +162,16 @@ std::string dirname(std::string const&);
 
 // returns the output of a program
 std::string slurpProgram(std::string const& program);
+
+#ifdef ARANGODB_HAVE_GETPWUID
+std::optional<uid_t> findUser(std::string const& nameOrId) noexcept;
+std::optional<std::string> findUserName(uid_t id) noexcept;
+#endif
+#ifdef ARANGODB_HAVE_GETGRGID
+std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept;
+#endif
+#ifdef ARANGODB_HAVE_INITGROUPS
+void initGroups(std::string const& userName, gid_t groupId) noexcept;
+#endif
 
 }  // namespace arangodb::basics::FileUtils

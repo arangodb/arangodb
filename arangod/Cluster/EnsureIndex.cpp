@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,11 +34,12 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
-#include "VocBase/Methods/Collections.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
-#include "VocBase/Methods/Indexes.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -90,13 +91,28 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature,
 
 EnsureIndex::~EnsureIndex() = default;
 
+// For local book keeping and reporting on /_admin/actions
+arangodb::Result EnsureIndex::setProgress(double d) {
+  _progress = d;
+  return {};
+}
+
+void EnsureIndex::setState(ActionState state) {
+  if (_description.isRunEvenIfDuplicate() &&
+      (COMPLETE == state || FAILED == state) && _state != state) {
+    // calling unlockShard here is safe, because nothing before it
+    // can go throw. if some code is added before the unlock that
+    // can throw, it must be made sure that the unlock is always called
+    _feature.unlockShard(ShardID{_description.get(SHARD)});
+  }
+  ActionBase::setState(state);
+}
+
 bool EnsureIndex::first() {
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& shard = _description.get(SHARD);
   auto const& id = properties().get(ID).copyString();
-
-  VPackBuilder body;
 
   try {  // now try to guard the database
     auto& df = _feature.server().getFeature<DatabaseFeature>();
@@ -114,6 +130,7 @@ bool EnsureIndex::first() {
       return false;
     }
 
+    VPackBuilder body;
     {
       VPackObjectBuilder b(&body);
       body.add(COLLECTION, VPackValue(shard));
@@ -150,18 +167,27 @@ bool EnsureIndex::first() {
       // continue with the job normally
     }
 
-    VPackBuilder index;
-    auto res =
-        methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
+    auto res = std::invoke([&]() -> Result {
+      auto lambda = std::make_shared<Indexes::ProgressTracker>(
+          [this](double d) { return setProgress(d); });
+
+      if (vocbase->replicationVersion() == replication::Version::TWO) {
+        return ensureIndexReplication2(col, body.slice(), std::move(lambda));
+      }
+      auto index = VPackBuilder();
+      auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index,
+                                               std::move(lambda))
+                     .waitAndGet();
+      if (res.ok()) {
+        indexCreationLogging(index.slice());
+        setProgress(100.);
+      }
+      return res;
+    });
+
     result(res);
 
-    if (res.ok()) {
-      VPackSlice created = index.slice().get("isNewlyCreated");
-      std::string log = std::string("Index ") + id;
-      log += (created.isBool() && created.getBool() ? std::string(" created")
-                                                    : std::string(" updated"));
-      LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
-    } else {
+    if (res.fail()) {
       std::stringstream error;
       error << "failed to ensure index " << body.slice().toJson() << " "
             << res.errorMessage();
@@ -193,7 +219,15 @@ bool EnsureIndex::first() {
       // then, if you are missing components, such as database name, will
       // you be able to produce an IndexError?
 
-      _feature.storeIndexError(database, collection, shard, id, eb.steal());
+      // Temporary unavailability of the replication2 leader should not stop
+      // this server from creating the index eventually.
+      if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+          res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+        // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+      } else {
+        _feature.storeIndexError(database, collection, shard, id, eb.steal());
+      }
       result(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
@@ -208,4 +242,31 @@ bool EnsureIndex::first() {
   }
 
   return false;
+}
+
+void EnsureIndex::indexCreationLogging(VPackSlice index) {
+  VPackSlice created = index.get("isNewlyCreated");
+  std::string log = std::string("Index ") + index.get(ID).copyString();
+  log += (created.isBool() && created.getBool() ? std::string(" created")
+                                                : std::string(" updated"));
+  LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
+}
+
+auto EnsureIndex::ensureIndexReplication2(
+    std::shared_ptr<LogicalCollection> coll, VPackSlice indexInfo,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+    -> Result {
+  auto maybeShardID = ShardID::shardIdFromString(coll->name());
+  if (ADB_UNLIKELY(maybeShardID.fail())) {
+    // This will only throw if we take a real collection here and not a shard.
+    TRI_ASSERT(false) << "Tried to ensure index on Collection " << coll->name()
+                      << " which is not considered a shard.";
+    return maybeShardID.result();
+  }
+  return basics::catchToResult([&coll, shard = maybeShardID.get(), indexInfo,
+                                progress = std::move(progress)]() mutable {
+    return coll->getDocumentStateLeader()
+        ->createIndex(shard, indexInfo, std::move(progress))
+        .waitAndGet();
+  });
 }

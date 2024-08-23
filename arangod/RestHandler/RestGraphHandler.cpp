@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,11 +28,18 @@
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Graph/GraphOperations.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 
 #include <velocypack/Collection.h>
+
+#include <string_view>
 #include <utility>
+
+namespace {
+constexpr std::string_view moduleName("graph management");
+}
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -41,16 +48,16 @@ RestGraphHandler::RestGraphHandler(ArangodServer& server,
                                    GeneralRequest* request,
                                    GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
-      _graphManager(_vocbase) {}
+      _graphManager(_vocbase, transaction::OperationOriginREST{::moduleName}) {}
 
 RestStatus RestGraphHandler::execute() {
-  Result res = executeGharial();
-  if (res.fail()) {
-    TRI_ASSERT(!_response->isResponseEmpty());
-    return RestStatus::FAIL;
-  }
-  // The url is required to properly generate the result!
-  return RestStatus::DONE;
+  auto f = executeGharial().thenValue([&](Result res) {
+    if (res.fail()) {
+      TRI_ASSERT(!_response->isResponseEmpty());
+    }
+  });
+
+  return waitForFuture(std::move(f));
 }
 
 Result RestGraphHandler::returnError(ErrorCode errorNumber) {
@@ -66,7 +73,7 @@ Result RestGraphHandler::returnError(ErrorCode errorNumber,
   return res;
 }
 
-Result RestGraphHandler::executeGharial() {
+futures::Future<Result> RestGraphHandler::executeGharial() {
   auto suffix = request()->suffixes().begin();
   auto end = request()->suffixes().end();
 
@@ -78,7 +85,7 @@ Result RestGraphHandler::executeGharial() {
 
   if (noMoreSuffixes()) {
     // /_api/gharial
-    return graphsAction();
+    co_return graphsAction();
   }
 
   std::string const& graphName = getNextSuffix();
@@ -90,7 +97,7 @@ Result RestGraphHandler::executeGharial() {
 
   if (noMoreSuffixes()) {
     // /_api/gharial/{graph-name}
-    return graphAction(*(graph.get()));
+    co_return graphAction(*(graph.get()));
   }
 
   std::string const& collType = getNextSuffix();
@@ -98,16 +105,16 @@ Result RestGraphHandler::executeGharial() {
   const char* vertex = "vertex";
   const char* edge = "edge";
   if (collType != vertex && collType != edge) {
-    return returnError(TRI_ERROR_HTTP_NOT_FOUND);
+    co_return returnError(TRI_ERROR_HTTP_NOT_FOUND);
   }
 
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex
-      return vertexSetsAction(*(graph.get()));
+      co_return co_await vertexSetsAction(*(graph.get()));
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge
-      return edgeSetsAction(*(graph.get()));
+      co_return co_await edgeSetsAction(*(graph.get()));
     }
   }
 
@@ -145,10 +152,10 @@ Result RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex/{collection-name}
-      return vertexSetAction(*(graph.get()), setName);
+      co_return co_await vertexSetAction(*(graph.get()), setName);
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge/{definition-name}
-      return edgeSetAction(*(graph.get()), setName);
+      co_return co_await edgeSetAction(*(graph.get()), setName);
     }
   }
 
@@ -157,14 +164,14 @@ Result RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
-      return vertexAction(*(graph.get()), setName, elementKey);
+      co_return co_await vertexAction(*(graph.get()), setName, elementKey);
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-      return edgeAction(*(graph.get()), setName, elementKey);
+      co_return co_await edgeAction(*(graph.get()), setName, elementKey);
     }
   }
 
-  return returnError(TRI_ERROR_HTTP_NOT_FOUND);
+  co_return returnError(TRI_ERROR_HTTP_NOT_FOUND);
 }
 
 Result RestGraphHandler::graphAction(Graph& graph) {
@@ -191,7 +198,8 @@ Result RestGraphHandler::graphsAction() {
   return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-Result RestGraphHandler::vertexSetsAction(Graph& graph) {
+futures::Future<arangodb::Result> RestGraphHandler::vertexSetsAction(
+    Graph& graph) {
   switch (request()->requestType()) {
     case RequestType::GET:
       return graphActionReadConfig(graph, TRI_COL_TYPE_DOCUMENT,
@@ -203,7 +211,8 @@ Result RestGraphHandler::vertexSetsAction(Graph& graph) {
   return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-Result RestGraphHandler::edgeSetsAction(Graph& graph) {
+futures::Future<arangodb::Result> RestGraphHandler::edgeSetsAction(
+    Graph& graph) {
   switch (request()->requestType()) {
     case RequestType::GET:
       return graphActionReadConfig(graph, TRI_COL_TYPE_EDGE,
@@ -215,8 +224,8 @@ Result RestGraphHandler::edgeSetsAction(Graph& graph) {
   return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-Result RestGraphHandler::edgeSetAction(Graph& graph,
-                                       const std::string& edgeDefinitionName) {
+futures::Future<arangodb::Result> RestGraphHandler::edgeSetAction(
+    Graph& graph, std::string const& edgeDefinitionName) {
   switch (request()->requestType()) {
     case RequestType::POST:
       return edgeActionCreate(graph, edgeDefinitionName);
@@ -229,8 +238,8 @@ Result RestGraphHandler::edgeSetAction(Graph& graph,
   return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-Result RestGraphHandler::vertexSetAction(
-    Graph& graph, const std::string& vertexCollectionName) {
+futures::Future<arangodb::Result> RestGraphHandler::vertexSetAction(
+    Graph& graph, std::string const& vertexCollectionName) {
   switch (request()->requestType()) {
     case RequestType::POST:
       return vertexActionCreate(graph, vertexCollectionName);
@@ -242,46 +251,48 @@ Result RestGraphHandler::vertexSetAction(
   return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-Result RestGraphHandler::vertexAction(Graph& graph,
-                                      const std::string& vertexCollectionName,
-                                      const std::string& vertexKey) {
+futures::Future<Result> RestGraphHandler::vertexAction(
+    Graph& graph, std::string const& vertexCollectionName,
+    std::string const& vertexKey) {
   switch (request()->requestType()) {
     case RequestType::GET: {
-      vertexActionRead(graph, vertexCollectionName, vertexKey);
-      return {TRI_ERROR_NO_ERROR};
+      co_await vertexActionRead(graph, vertexCollectionName, vertexKey);
+      co_return {TRI_ERROR_NO_ERROR};
     }
     case RequestType::PATCH:
-      return vertexActionUpdate(graph, vertexCollectionName, vertexKey);
+      co_return co_await vertexActionUpdate(graph, vertexCollectionName,
+                                            vertexKey);
     case RequestType::PUT:
-      return vertexActionReplace(graph, vertexCollectionName, vertexKey);
+      co_return co_await vertexActionReplace(graph, vertexCollectionName,
+                                             vertexKey);
     case RequestType::DELETE_REQ:
-      return vertexActionRemove(graph, vertexCollectionName, vertexKey);
+      co_return co_await vertexActionRemove(graph, vertexCollectionName,
+                                            vertexKey);
     default:;
   }
-  return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  co_return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-Result RestGraphHandler::edgeAction(Graph& graph,
-                                    const std::string& edgeDefinitionName,
-                                    const std::string& edgeKey) {
+futures::Future<Result> RestGraphHandler::edgeAction(
+    Graph& graph, std::string const& edgeDefinitionName,
+    std::string const& edgeKey) {
   switch (request()->requestType()) {
     case RequestType::GET:
-      edgeActionRead(graph, edgeDefinitionName, edgeKey);
-      return {TRI_ERROR_NO_ERROR};
+      co_await edgeActionRead(graph, edgeDefinitionName, edgeKey);
+      co_return {TRI_ERROR_NO_ERROR};
     case RequestType::DELETE_REQ:
-      return edgeActionRemove(graph, edgeDefinitionName, edgeKey);
+      co_return co_await edgeActionRemove(graph, edgeDefinitionName, edgeKey);
     case RequestType::PATCH:
-      return edgeActionUpdate(graph, edgeDefinitionName, edgeKey);
+      co_return co_await edgeActionUpdate(graph, edgeDefinitionName, edgeKey);
     case RequestType::PUT:
-      return edgeActionReplace(graph, edgeDefinitionName, edgeKey);
+      co_return co_await edgeActionReplace(graph, edgeDefinitionName, edgeKey);
     default:;
   }
-  return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  co_return returnError(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-void RestGraphHandler::vertexActionRead(Graph& graph,
-                                        std::string const& collectionName,
-                                        std::string const& key) {
+futures::Future<futures::Unit> RestGraphHandler::vertexActionRead(
+    Graph& graph, std::string const& collectionName, std::string const& key) {
   // check for an etag
   bool isValidRevision;
   RevisionId ifNoneRid = extractRevision("if-none-match", isValidRevision);
@@ -292,21 +303,24 @@ void RestGraphHandler::vertexActionRead(Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::READ);
-  GraphOperations gops{graph, _vocbase, ctx};
-  OperationResult result = gops.getVertex(collectionName, key, maybeRev);
+  auto origin = transaction::OperationOriginREST{"retrieving vertex"};
+
+  auto ctx = co_await createTransactionContext(AccessMode::Type::READ, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
+  OperationResult result =
+      co_await gops.getVertex(collectionName, key, maybeRev);
 
   if (!result.ok()) {
     generateTransactionError(collectionName, result, key,
                              maybeRev.value_or(RevisionId::none()));
-    return;
+    co_return;
   }
 
   if (ifNoneRid.isSet()) {
     RevisionId const rid = RevisionId::fromSlice(result.slice());
     if (ifNoneRid == rid) {
       generateNotModified(rid);
-      return;
+      co_return;
     }
   }
 
@@ -551,9 +565,8 @@ void RestGraphHandler::generateResultMergedWithObject(
 }
 
 // TODO this is nearly exactly the same as vertexActionRead. reuse somehow?
-void RestGraphHandler::edgeActionRead(Graph& graph,
-                                      const std::string& definitionName,
-                                      const std::string& key) {
+futures::Future<futures::Unit> RestGraphHandler::edgeActionRead(
+    Graph& graph, std::string const& definitionName, std::string const& key) {
   // check for an etag
   bool isValidRevision;
   RevisionId ifNoneRid = extractRevision("if-none-match", isValidRevision);
@@ -564,21 +577,23 @@ void RestGraphHandler::edgeActionRead(Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::READ);
-  GraphOperations gops{graph, _vocbase, ctx};
-  OperationResult result = gops.getEdge(definitionName, key, maybeRev);
+  auto origin = transaction::OperationOriginREST{"retrieving edge"};
+
+  auto ctx = co_await createTransactionContext(AccessMode::Type::READ, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
+  OperationResult result = co_await gops.getEdge(definitionName, key, maybeRev);
 
   if (result.fail()) {
     generateTransactionError(/*collection*/ "", result, key,
                              maybeRev.value_or(RevisionId::none()));
-    return;
+    co_return;
   }
 
   if (ifNoneRid.isSet()) {
     RevisionId const rid = RevisionId::fromSlice(result.slice());
     if (ifNoneRid == rid) {
       generateNotModified(rid);
-      return;
+      co_return;
     }
   }
 
@@ -586,12 +601,13 @@ void RestGraphHandler::edgeActionRead(Graph& graph,
 }
 
 std::unique_ptr<Graph> RestGraphHandler::getGraph(
-    const std::string& graphName) {
+    std::string const& graphName) {
   auto graphResult = _graphManager.lookupGraphByName(graphName);
   if (graphResult.fail()) {
     THROW_ARANGO_EXCEPTION(std::move(graphResult).result());
   }
   TRI_ASSERT(graphResult.get() != nullptr);
+  // cppcheck-suppress returnStdMoveLocal
   return std::move(graphResult.get());
 }
 
@@ -600,9 +616,8 @@ std::unique_ptr<Graph> RestGraphHandler::getGraph(
 // TODO The tests check that, if "returnOld: true" is passed,  the result
 // contains the old value in the field "old". This is not documented in
 // HTTP/Gharial!
-Result RestGraphHandler::edgeActionRemove(Graph& graph,
-                                          const std::string& definitionName,
-                                          const std::string& key) {
+futures::Future<arangodb::Result> RestGraphHandler::edgeActionRemove(
+    Graph& graph, std::string const& definitionName, std::string const& key) {
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
@@ -610,23 +625,25 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, ctx};
+  auto origin = transaction::OperationOriginREST{"removing edge"};
 
-  OperationResult result =
-      gops.removeEdge(definitionName, key, maybeRev, waitForSync, returnOld);
+  auto ctx = co_await createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
+
+  OperationResult result = co_await gops.removeEdge(
+      definitionName, key, maybeRev, waitForSync, returnOld);
 
   if (result.fail()) {
     generateTransactionError(/*collection*/ "", result, key,
                              maybeRev.value_or(RevisionId::none()));
-    return result.result;
+    co_return result.result;
   }
 
   generateRemoved(true, result.options.waitForSync,
                   result.slice().get(StaticStrings::Old),
                   *ctx->getVPackOptions());
 
-  return Result();
+  co_return Result();
 }
 
 /// @brief If rev is a string, set the Etag header to its value.
@@ -638,94 +655,97 @@ void RestGraphHandler::addEtagHeader(velocypack::Slice rev) {
   }
 }
 
-Result RestGraphHandler::vertexActionUpdate(graph::Graph& graph,
-                                            const std::string& collectionName,
-                                            const std::string& key) {
+futures::Future<arangodb::Result> RestGraphHandler::vertexActionUpdate(
+    graph::Graph& graph, std::string const& collectionName,
+    std::string const& key) {
   return vertexModify(graph, collectionName, key, true);
 }
 
-Result RestGraphHandler::vertexActionReplace(graph::Graph& graph,
-                                             const std::string& collectionName,
-                                             const std::string& key) {
+futures::Future<arangodb::Result> RestGraphHandler::vertexActionReplace(
+    graph::Graph& graph, std::string const& collectionName,
+    std::string const& key) {
   return vertexModify(graph, collectionName, key, false);
 }
 
-Result RestGraphHandler::vertexActionCreate(graph::Graph& graph,
-                                            const std::string& collectionName) {
+futures::Future<arangodb::Result> RestGraphHandler::vertexActionCreate(
+    graph::Graph& graph, std::string const& collectionName) {
   return vertexCreate(graph, collectionName);
 }
 
-Result RestGraphHandler::edgeActionUpdate(graph::Graph& graph,
-                                          const std::string& collectionName,
-                                          const std::string& key) {
+futures::Future<arangodb::Result> RestGraphHandler::edgeActionUpdate(
+    graph::Graph& graph, std::string const& collectionName,
+    std::string const& key) {
   return edgeModify(graph, collectionName, key, true);
 }
 
-Result RestGraphHandler::edgeActionReplace(graph::Graph& graph,
-                                           const std::string& collectionName,
-                                           const std::string& key) {
+futures::Future<arangodb::Result> RestGraphHandler::edgeActionReplace(
+    graph::Graph& graph, std::string const& collectionName,
+    std::string const& key) {
   return edgeModify(graph, collectionName, key, false);
 }
 
-Result RestGraphHandler::edgeModify(graph::Graph& graph,
-                                    const std::string& collectionName,
-                                    const std::string& key, bool isPatch) {
+futures::Future<arangodb::Result> RestGraphHandler::edgeModify(
+    graph::Graph& graph, std::string const& collectionName,
+    std::string const& key, bool isPatch) {
   return documentModify(graph, collectionName, key, isPatch, TRI_COL_TYPE_EDGE);
 }
 
-Result RestGraphHandler::edgeCreate(graph::Graph& graph,
-                                    const std::string& collectionName) {
+futures::Future<arangodb::Result> RestGraphHandler::edgeCreate(
+    graph::Graph& graph, std::string const& collectionName) {
   return documentCreate(graph, collectionName, TRI_COL_TYPE_EDGE);
 }
 
-Result RestGraphHandler::edgeActionCreate(graph::Graph& graph,
-                                          const std::string& collectionName) {
+futures::Future<arangodb::Result> RestGraphHandler::edgeActionCreate(
+    graph::Graph& graph, std::string const& collectionName) {
   return edgeCreate(graph, collectionName);
 }
 
-Result RestGraphHandler::vertexModify(graph::Graph& graph,
-                                      const std::string& collectionName,
-                                      const std::string& key, bool isPatch) {
+futures::Future<arangodb::Result> RestGraphHandler::vertexModify(
+    graph::Graph& graph, std::string const& collectionName,
+    std::string const& key, bool isPatch) {
   return documentModify(graph, collectionName, key, isPatch,
                         TRI_COL_TYPE_DOCUMENT);
 }
 
-Result RestGraphHandler::vertexCreate(graph::Graph& graph,
-                                      const std::string& collectionName) {
+futures::Future<arangodb::Result> RestGraphHandler::vertexCreate(
+    graph::Graph& graph, std::string const& collectionName) {
   return documentCreate(graph, collectionName, TRI_COL_TYPE_DOCUMENT);
 }
 
 // /_api/gharial/{graph-name}/edge/{definition-name}
-Result RestGraphHandler::editEdgeDefinition(
-    graph::Graph& graph, const std::string& edgeDefinitionName) {
+futures::Future<arangodb::Result> RestGraphHandler::editEdgeDefinition(
+    graph::Graph& graph, std::string const& edgeDefinitionName) {
   return modifyEdgeDefinition(graph, EdgeDefinitionAction::EDIT,
                               edgeDefinitionName);
 }
 
-Result RestGraphHandler::createEdgeDefinition(graph::Graph& graph) {
+futures::Future<arangodb::Result> RestGraphHandler::createEdgeDefinition(
+    graph::Graph& graph) {
   return modifyEdgeDefinition(graph, EdgeDefinitionAction::CREATE);
 }
 
 // /_api/gharial/{graph-name}/edge
-Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph,
-                                              EdgeDefinitionAction action,
-                                              std::string edgeDefinitionName) {
+futures::Future<arangodb::Result> RestGraphHandler::modifyEdgeDefinition(
+    graph::Graph& graph, EdgeDefinitionAction action,
+    std::string edgeDefinitionName) {
   // edgeDefinitionName == "" <=> action == CREATE
   TRI_ASSERT((action == EdgeDefinitionAction::CREATE) ==
              edgeDefinitionName.empty());
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return {TRI_ERROR_BAD_PARAMETER, "unable to parse body"};
+    co_return {TRI_ERROR_BAD_PARAMETER, "unable to parse body"};
   }
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool dropCollections =
       _request->parsedValue(StaticStrings::GraphDropCollections, false);
 
+  auto origin = transaction::OperationOriginREST{"modifying edge definition"};
+
   // simon: why is this part of el-cheapo ??
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, ctx};
+  auto ctx = co_await createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
   OperationOptions options(_context);
   OperationResult result(Result(), options);
 
@@ -734,27 +754,27 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph,
     if (!editOptions.isObject()) {
       editOptions = VPackSlice::emptyObjectSlice();
     }
-    result = gops.addEdgeDefinition(body, editOptions, waitForSync);
+    result = co_await gops.addEdgeDefinition(body, editOptions, waitForSync);
   } else if (action == EdgeDefinitionAction::EDIT) {
     VPackSlice editOptions = body.get(StaticStrings::GraphOptions);
     if (!editOptions.isObject()) {
       editOptions = VPackSlice::emptyObjectSlice();
     }
-    result = gops.editEdgeDefinition(body, editOptions, waitForSync,
-                                     edgeDefinitionName);
+    result = co_await gops.editEdgeDefinition(body, editOptions, waitForSync,
+                                              edgeDefinitionName);
   } else if (action == EdgeDefinitionAction::REMOVE) {
     // TODO Does this get waitForSync? Not according to the documentation.
     // if not, remove the parameter from eraseEdgeDefinition. What about
     // add/edit?
-    result = gops.eraseEdgeDefinition(waitForSync, edgeDefinitionName,
-                                      dropCollections);
+    result = co_await gops.eraseEdgeDefinition(waitForSync, edgeDefinitionName,
+                                               dropCollections);
   } else {
     TRI_ASSERT(false);
   }
 
   if (result.fail()) {
     generateTransactionError(/*collection*/ "", result);
-    return result.result;
+    co_return result.result;
   }
 
   auto newGraph = getGraph(graph.name());
@@ -767,16 +787,16 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph,
   generateCreatedEdgeDefinition(waitForSync, builder.slice(),
                                 *ctx->getVPackOptions());
 
-  return Result();
+  co_return Result();
 }
 
-Result RestGraphHandler::modifyVertexDefinition(
+futures::Future<arangodb::Result> RestGraphHandler::modifyVertexDefinition(
     graph::Graph& graph, VertexDefinitionAction action,
     std::string vertexDefinitionName) {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
+    co_return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
   }
 
   // TODO maybe merge this function with modifyEdgeDefinition?
@@ -787,23 +807,26 @@ Result RestGraphHandler::modifyVertexDefinition(
   bool createCollection =
       _request->parsedValue(StaticStrings::GraphCreateCollection, true);
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, ctx};
+  auto origin = transaction::OperationOriginREST{"modifying vertex definition"};
+
+  auto ctx = co_await createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
   OperationOptions options(_context);
   OperationResult result(Result(), options);
 
   if (action == VertexDefinitionAction::CREATE) {
-    result = gops.addOrphanCollection(body, waitForSync, createCollection);
+    result =
+        co_await gops.addOrphanCollection(body, waitForSync, createCollection);
   } else if (action == VertexDefinitionAction::REMOVE) {
-    result = gops.eraseOrphanCollection(waitForSync, vertexDefinitionName,
-                                        dropCollection);
+    result = co_await gops.eraseOrphanCollection(
+        waitForSync, vertexDefinitionName, dropCollection);
   } else {
     TRI_ASSERT(false);
   }
 
   if (result.fail()) {
     generateTransactionError(/*collection*/ "", result);
-    return result.result;
+    co_return result.result;
   }
 
   auto newGraph = getGraph(graph.name());
@@ -816,10 +839,11 @@ Result RestGraphHandler::modifyVertexDefinition(
   generateCreatedEdgeDefinition(waitForSync, builder.slice(),
                                 *ctx->getVPackOptions());
 
-  return Result();
+  co_return Result();
 }
-Result RestGraphHandler::removeEdgeDefinition(
-    graph::Graph& graph, const std::string& edgeDefinitionName) {
+
+futures::Future<arangodb::Result> RestGraphHandler::removeEdgeDefinition(
+    graph::Graph& graph, std::string const& edgeDefinitionName) {
   return modifyEdgeDefinition(graph, EdgeDefinitionAction::REMOVE,
                               edgeDefinitionName);
 }
@@ -830,14 +854,13 @@ Result RestGraphHandler::removeEdgeDefinition(
 // This is not documented in HTTP/Gharial!
 // TODO the document API also supports mergeObjects, silent and ignoreRevs;
 // should gharial, too?
-Result RestGraphHandler::documentModify(graph::Graph& graph,
-                                        const std::string& collectionName,
-                                        const std::string& key, bool isPatch,
-                                        TRI_col_type_e colType) {
+futures::Future<arangodb::Result> RestGraphHandler::documentModify(
+    graph::Graph& graph, std::string const& collectionName,
+    std::string const& key, bool isPatch, TRI_col_type_e colType) {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
+    co_return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
   }
 
   bool waitForSync =
@@ -848,28 +871,33 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
   bool keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
 
   // extract the revision, if single document variant and header given:
-  std::unique_ptr<VPackBuilder> builder;
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, ctx};
+  auto origin = transaction::OperationOriginREST{"modifying vertex/edge"};
+
+  auto ctx = co_await createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
 
   OperationOptions options(_context);
   OperationResult result(Result(), options);
   // TODO get rid of this branching, rather use several functions and reuse the
   // common code another way.
   if (isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
-    result = gops.updateVertex(collectionName, key, body, maybeRev, waitForSync,
-                               returnOld, returnNew, keepNull);
+    result =
+        co_await gops.updateVertex(collectionName, key, body, maybeRev,
+                                   waitForSync, returnOld, returnNew, keepNull);
   } else if (!isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
-    result = gops.replaceVertex(collectionName, key, body, maybeRev,
-                                waitForSync, returnOld, returnNew, keepNull);
+    result = co_await gops.replaceVertex(collectionName, key, body, maybeRev,
+                                         waitForSync, returnOld, returnNew,
+                                         keepNull);
   } else if (isPatch && colType == TRI_COL_TYPE_EDGE) {
-    result = gops.updateEdge(collectionName, key, body, maybeRev, waitForSync,
-                             returnOld, returnNew, keepNull);
+    result =
+        co_await gops.updateEdge(collectionName, key, body, maybeRev,
+                                 waitForSync, returnOld, returnNew, keepNull);
   } else if (!isPatch && colType == TRI_COL_TYPE_EDGE) {
-    result = gops.replaceEdge(collectionName, key, body, maybeRev, waitForSync,
-                              returnOld, returnNew, keepNull);
+    result =
+        co_await gops.replaceEdge(collectionName, key, body, maybeRev,
+                                  waitForSync, returnOld, returnNew, keepNull);
   } else {
     TRI_ASSERT(false);
   }
@@ -879,7 +907,7 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
     //        changes to 404 in for unknown _to/_from collection -> breaks API
     generateTransactionError(/*cname*/ "", result, key,
                              maybeRev.value_or(RevisionId::none()));
-    return result.result;
+    co_return result.result;
   }
 
   switch (colType) {
@@ -895,35 +923,39 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
       TRI_ASSERT(false);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  co_return TRI_ERROR_NO_ERROR;
 }
 
-Result RestGraphHandler::documentCreate(graph::Graph& graph,
-                                        std::string const& collectionName,
-                                        TRI_col_type_e colType) {
+futures::Future<arangodb::Result> RestGraphHandler::documentCreate(
+    graph::Graph& graph, std::string const& collectionName,
+    TRI_col_type_e colType) {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
+    co_return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
   }
 
   if (!body.isObject()) {
-    return returnError(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    co_return returnError(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, ctx};
+  auto origin = transaction::OperationOriginREST{"inserting edge/vertex"};
+
+  auto ctx = co_await createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
 
   OperationOptions options(_context);
   OperationResult result(Result(), options);
   if (colType == TRI_COL_TYPE_DOCUMENT) {
-    result = gops.createVertex(collectionName, body, waitForSync, returnNew);
+    result = co_await gops.createVertex(collectionName, body, waitForSync,
+                                        returnNew);
   } else if (colType == TRI_COL_TYPE_EDGE) {
-    result = gops.createEdge(collectionName, body, waitForSync, returnNew);
+    result =
+        co_await gops.createEdge(collectionName, body, waitForSync, returnNew);
   } else {
     TRI_ASSERT(false);
   }
@@ -946,12 +978,12 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph,
     }
   }
 
-  return result.result;
+  co_return result.result;
 }
 
-Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
-                                            const std::string& collectionName,
-                                            const std::string& key) {
+futures::Future<arangodb::Result> RestGraphHandler::vertexActionRemove(
+    graph::Graph& graph, std::string const& collectionName,
+    std::string const& key) {
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
@@ -959,27 +991,30 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
 
   auto maybeRev = handleRevision();
 
-  auto ctx = createTransactionContext(AccessMode::Type::WRITE);
-  GraphOperations gops{graph, _vocbase, ctx};
+  auto origin = transaction::OperationOriginREST{"removing vertex"};
 
-  OperationResult result =
-      gops.removeVertex(collectionName, key, maybeRev, waitForSync, returnOld);
+  auto ctx = co_await createTransactionContext(AccessMode::Type::WRITE, origin);
+  GraphOperations gops{graph, _vocbase, origin, ctx};
+
+  OperationResult result = co_await gops.removeVertex(
+      collectionName, key, maybeRev, waitForSync, returnOld);
 
   if (result.fail()) {
     generateTransactionError(collectionName, result, key,
                              maybeRev.value_or(RevisionId::none()));
-    return result.result;
+    co_return result.result;
   }
 
   generateRemoved(true, result.options.waitForSync,
                   result.slice().get(StaticStrings::Old),
                   *ctx->getVPackOptions());
 
-  return Result();
+  co_return Result();
 }
 
 Result RestGraphHandler::graphActionReadGraphConfig(graph::Graph const& graph) {
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginREST{"reading graph"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
   VPackBuilder builder;
   builder.openObject();
   graph.graphForClient(builder);
@@ -1003,7 +1038,8 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
     return result.result;
   }
 
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginREST{"removing graph"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
   generateGraphRemoved(true, result.options.waitForSync,
                        *ctx.getVPackOptions());
 
@@ -1035,7 +1071,8 @@ Result RestGraphHandler::graphActionCreateGraph() {
   // Write the response for the client (in case of success)
   std::string graphName = body.get(StaticStrings::DataSourceName).copyString();
 
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginREST{"creating graph"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
   std::unique_ptr<Graph const> graph = getGraph(graphName);
 
   VPackBuilder builder;
@@ -1050,7 +1087,8 @@ Result RestGraphHandler::graphActionCreateGraph() {
 }
 
 Result RestGraphHandler::graphActionReadGraphs() {
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginREST{"retrieving graphs"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
 
   VPackBuilder builder;
   _graphManager.readGraphs(builder);
@@ -1073,7 +1111,8 @@ Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph,
     TRI_ASSERT(false);
   }
 
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginREST{"reading graph info"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
 
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 

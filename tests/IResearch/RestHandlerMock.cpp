@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,19 +29,18 @@
 GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase)
     : arangodb::GeneralRequest(arangodb::ConnectionInfo{}, 1) {
   _authenticated = false;  // must be set before VocbaseContext::create(...)
-  _isRequestContextOwner =
-      false;  // must be set before VocbaseContext::create(...)
-  _context.reset(arangodb::VocbaseContext::create(*this, vocbase));
+  _context = arangodb::VocbaseContext::create(*this, vocbase);
   _context->vocbase().forceUse();  // must be called or ~VocbaseContext() will
                                    // fail at '_vocbase.release()'
   _requestContext =
-      _context
-          .get();  // do not use setRequestContext(...) since '_requestContext'
-                   // has not been initialized and contains garbage
+      _context;  // do not use setRequestContext(...) since '_requestContext'
+                 // has not been initialized and contains garbage
 }
 GeneralRequestMock::~GeneralRequestMock() = default;
 
-size_t GeneralRequestMock::contentLength() const { return _contentLength; }
+size_t GeneralRequestMock::contentLength() const noexcept {
+  return _contentLength;
+}
 
 std::string_view GeneralRequestMock::rawPayload() const {
   return std::string_view(reinterpret_cast<char const*>(_payload.data()),
@@ -61,10 +60,6 @@ void GeneralRequestMock::setPayload(
 void GeneralRequestMock::setData(VPackSlice slice) {
   _payload.clear();
   _payload.add(slice);
-}
-
-arangodb::Endpoint::TransportType GeneralRequestMock::transportType() {
-  return arangodb::Endpoint::TransportType::HTTP;  // arbitrary value
 }
 
 GeneralResponseMock::GeneralResponseMock(
@@ -100,11 +95,19 @@ void GeneralResponseMock::reset(arangodb::ResponseCode code) {
   _responseCode = code;
 }
 
-arangodb::Endpoint::TransportType GeneralResponseMock::transportType() {
-  return arangodb::Endpoint::TransportType::HTTP;  // arbitrary value
+ErrorCode GeneralResponseMock::zlibDeflate(bool /*onlyIfSmaller*/) {
+  // we should never get here
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
 }
 
-ErrorCode GeneralResponseMock::deflate() {
+ErrorCode GeneralResponseMock::gzipCompress(bool /*onlyIfSmaller*/) {
+  // we should never get here
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
+}
+
+ErrorCode GeneralResponseMock::lz4Compress(bool /*onlyIfSmaller*/) {
   // we should never get here
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;

@@ -1,34 +1,30 @@
 /* jshint strict: true, unused: true */
-/* global AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Helpers for graph tests
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Max Neunhoeffer
 /// @author Copyright 2016-2016, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require('jsunity');
+const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const {assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 
@@ -718,7 +714,7 @@ let runTraversalRestrictEdgeCollectionTests = function (vn, en, gn, checkOptimiz
 
   queries.forEach(function(q) {
     if (checkOptimizerRule) {
-      assertNotEqual(-1, AQL_EXPLAIN(q[0]).plan.rules.indexOf(checkOptimizerRule));
+      assertNotEqual(-1, db._createStatement(q[0]).explain().plan.rules.indexOf(checkOptimizerRule));
     }
     const actual = db._query(q[0]).toArray();
     let expected = [];

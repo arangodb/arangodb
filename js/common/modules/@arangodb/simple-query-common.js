@@ -1,19 +1,16 @@
 /*jshint strict: false */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Arango Simple Query Language
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2012 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +18,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Dr. Frank Celler
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
@@ -95,17 +92,9 @@ SimpleQuery.prototype.clone = function () {
   throw 'cannot clone abstract query';
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock queryExecute
-// //////////////////////////////////////////////////////////////////////////////
-
 SimpleQuery.prototype.execute = function () {
   throw 'cannot execute abstract query';
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock queryLimit
-// //////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.limit = function (limit) {
   if (this._execution !== null) {
@@ -121,10 +110,6 @@ SimpleQuery.prototype.limit = function (limit) {
 
   return joinLimits(this, limit);
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock querySkip
-// //////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.skip = function (skip) {
   var query;
@@ -179,27 +164,15 @@ SimpleQuery.prototype.toArray = function () {
   return result;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock cursorGetBatchSize
-// //////////////////////////////////////////////////////////////////////////////
-
 SimpleQuery.prototype.getBatchSize = function () {
   return this._batchSize;
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock cursorSetBatchSize
-// //////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.setBatchSize = function (value) {
   if (value >= 1) {
     this._batchSize = value;
   }
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock cursorCount
-// //////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.count = function (applyPagination) {
   this.execute();
@@ -211,19 +184,11 @@ SimpleQuery.prototype.count = function (applyPagination) {
   return this._countQuery;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock cursorHasNext
-// //////////////////////////////////////////////////////////////////////////////
-
 SimpleQuery.prototype.hasNext = function () {
   this.execute();
 
   return this._execution.hasNext();
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock cursorNext
-// //////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.next = function () {
   this.execute();
@@ -237,10 +202,6 @@ SimpleQuery.prototype[Symbol.iterator] = function * () {
     yield item;
   }
 };
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock cursorDispose
-// //////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.dispose = function () {
   if (this._execution !== null) {

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,6 +29,7 @@
 
 #include "Shell/arangosh.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 
@@ -77,44 +78,52 @@ class ClientFeature final : public HttpEndpointProvider {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
-  void stop() override final;
 
-  std::string const& databaseName() const { return _databaseName; }
-  void setDatabaseName(std::string const& databaseName);
-  bool authentication() const noexcept { return _authentication; }
+  std::string databaseName() const;
+  void setDatabaseName(std::string_view databaseName);
+
+  bool authentication() const noexcept;
+
   // get single endpoint. used by client tools that can handle only one endpoint
-  std::string const& endpoint() const { return _endpoints[0]; }
+  std::string endpoint() const;
   // set single endpoint
-  void setEndpoint(std::string const& value) { _endpoints[0] = value; }
-  std::string const& username() const { return _username; }
-  void setUsername(std::string const& value) { _username = value; }
-  std::string const& password() const { return _password; }
-  void setPassword(std::string const& value) { _password = value; }
-  std::string const& jwtSecret() const { return _jwtSecret; }
-  void setJwtSecret(std::string_view jwtSecret) { _jwtSecret = jwtSecret; }
-  double connectionTimeout() const noexcept { return _connectionTimeout; }
-  double requestTimeout() const noexcept { return _requestTimeout; }
-  void requestTimeout(double value) noexcept { _requestTimeout = value; }
-  uint64_t maxPacketSize() const noexcept { return _maxPacketSize; }
-  uint64_t sslProtocol() const noexcept { return _sslProtocol; }
-  bool forceJson() const noexcept { return _forceJson; }
-  void setForceJson(bool value) noexcept { _forceJson = value; }
-  void setRetries(size_t retries) noexcept { _retries = retries; }
-  void setWarn(bool warn) noexcept { _warn = warn; }
-  bool getWarn() const noexcept { return _warn; }
-  void setWarnConnect(bool warnConnect) { _warnConnect = warnConnect; }
-  bool getWarnConnect() const noexcept { return _warnConnect; }
+  void setEndpoint(std::string_view value);
+
+  std::string username() const;
+  void setUsername(std::string_view value);
+
+  std::string password() const;
+  void setPassword(std::string_view value);
+
+  std::string jwtSecret() const;
+  void setJwtSecret(std::string_view jwtSecret);
+
+  double connectionTimeout() const noexcept;
+  double requestTimeout() const noexcept;
+  void requestTimeout(double value) noexcept;
+  uint64_t maxPacketSize() const noexcept;
+  uint64_t sslProtocol() const noexcept;
+  bool askJwtSecret() const noexcept;
+  bool forceJson() const noexcept;
+  void setForceJson(bool value) noexcept;
+  void setRetries(size_t retries) noexcept;
+  void setWarn(bool warn) noexcept;
+  bool getWarn() const noexcept;
+  void setWarnConnect(bool warnConnect) noexcept;
+  bool getWarnConnect() const noexcept;
+  void setCompressTransfer(bool value) noexcept;
+  bool compressTransfer() const noexcept;
+  uint64_t compressRequestThreshold() const noexcept;
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      size_t threadNumber = 0) const;
+      size_t threadNumber = 0, bool suppressError = false) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition) const;
+      std::string const& definition, bool suppressError = false) const;
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient(
-      std::string const& definition,
-      httpclient::SimpleHttpClientParams const&) const;
+      std::string const& definition, httpclient::SimpleHttpClientParams const&,
+      bool suppressError = false) const;
   std::vector<std::string> httpEndpoints() override;
 
   CommunicationFeaturePhase& getCommFeaturePhase() { return _comm; }
@@ -122,9 +131,9 @@ class ClientFeature final : public HttpEndpointProvider {
   ApplicationServer& server() const noexcept;
 
   static std::string buildConnectedMessage(
-      std::string const& endpointSpecification, std::string const& version,
-      std::string const& role, std::string const& mode,
-      std::string const& databaseName, std::string const& user);
+      std::string_view endpointSpecification, std::string_view version,
+      std::string_view role, std::string_view mode,
+      std::string_view databaseName, std::string_view user);
 
   static int runMain(
       int argc, char* argv[],
@@ -143,9 +152,14 @@ class ClientFeature final : public HttpEndpointProvider {
 
   CommunicationFeaturePhase& _comm;
   ShellConsoleFeature* _console;
-  std::string _databaseName;
+
+  // protects most settings except codepage
+  basics::ReadWriteLock mutable _settingsLock;
+
   std::vector<std::string> _endpoints;
-  size_t _maxNumEndpoints;
+  size_t const _maxNumEndpoints;
+
+  std::string _databaseName;
   std::string _username;
   std::string _password;
   std::string _jwtSecret;
@@ -153,22 +167,25 @@ class ClientFeature final : public HttpEndpointProvider {
   double _connectionTimeout;
   double _requestTimeout;
   uint64_t _maxPacketSize;
+  // if > 0, it means that request bodies >= this value will be
+  // sent our compressed.
+  uint64_t _compressRequestThreshold;
+  // only set at startup
   uint64_t _sslProtocol;
-
   size_t _retries;
-
-#if _WIN32
-  uint16_t _codePage;
-  uint16_t _originalCodePage;
-#endif
 
   bool const _allowJwtSecret;
   bool _authentication;
   bool _askJwtSecret;
+
   bool _warn;
   bool _warnConnect;
   bool _haveServerPassword;
   bool _forceJson;
+  // if true, all requests sent out will add an extra
+  // HTTP header "Accept-Encoding: deflate" to advertise that
+  // the remote can compress the response body.
+  bool _compressTransfer;
 };
 
 }  // namespace arangodb

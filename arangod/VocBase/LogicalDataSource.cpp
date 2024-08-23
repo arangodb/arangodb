@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -102,20 +102,6 @@ DataSourceId ensureId(TRI_vocbase_t& vocbase, DataSourceId id) {
   return id;
 }
 
-bool readIsSystem(velocypack::Slice definition) {
-  if (!definition.isObject()) {
-    return false;
-  }
-  auto name = basics::VelocyPackHelper::getStringValue(
-      definition, StaticStrings::DataSourceName, StaticStrings::Empty);
-  if (!NameValidator::isSystemName(name)) {
-    return false;
-  }
-  // same condition as in LogicalCollection
-  return basics::VelocyPackHelper::getBooleanValue(
-      definition, StaticStrings::DataSourceSystem, false);
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create an velocypack::ValuePair for a string value
 //////////////////////////////////////////////////////////////////////////////
@@ -128,21 +114,6 @@ velocypack::ValuePair toValuePair(std::string const& value) {
 static_assert(LogicalCollection::category() ==
               LogicalDataSource::Category::kCollection);
 static_assert(LogicalView::category() == LogicalDataSource::Category::kView);
-
-LogicalDataSource::LogicalDataSource(Category category, TRI_vocbase_t& vocbase,
-                                     velocypack::Slice definition)
-    : LogicalDataSource(
-          category, vocbase,
-          DataSourceId{basics::VelocyPackHelper::extractIdValue(definition)},
-          basics::VelocyPackHelper::getStringValue(
-              definition, StaticStrings::DataSourceGuid, ""),
-          DataSourceId{basics::VelocyPackHelper::stringUInt64(
-              definition.get(StaticStrings::DataSourcePlanId))},
-          basics::VelocyPackHelper::getStringValue(
-              definition, StaticStrings::DataSourceName, ""),
-          readIsSystem(definition),
-          basics::VelocyPackHelper::getBooleanValue(
-              definition, StaticStrings::DataSourceDeleted, false)) {}
 
 LogicalDataSource::LogicalDataSource(Category category, TRI_vocbase_t& vocbase,
                                      DataSourceId id, std::string&& guid,

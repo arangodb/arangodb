@@ -15,7 +15,7 @@ description: |
   This metric exposes the RocksDB WAL sequence number from which onwards 
   WAL files have to be kept because the WAL data could be used by external
   flushing needs. WAL files with sequence numbers higher than this value
-  will not be garbage-collected.
+  are not garbage-collected.
   The candidates that can keep WAL files from being garbage-collected are
-  arangosearch links or inverted indexes that are still syncing data,
+  `arangosearch` View links or inverted indexes that are still syncing data,
   and background index creation.

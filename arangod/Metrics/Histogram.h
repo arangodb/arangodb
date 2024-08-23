@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -120,7 +120,8 @@ class Histogram : public Metric {
 
   size_t size() const { return _c.size(); }
 
-  void toPrometheus(std::string& result, std::string_view globals) const final {
+  void toPrometheus(std::string& result, std::string_view globals,
+                    bool ensureWhitespace) const final {
     std::string ls;
     auto const globals_size = globals.size();
     auto const labels_size = labels().size();
@@ -138,13 +139,24 @@ class Histogram : public Metric {
         result.append(ls) += ',';
       }
       result.append("le=\"").append(_scale.delim(i)).append("\"}");
+      if (ensureWhitespace) {
+        result.push_back(' ');
+      }
       result.append(std::to_string(sum)) += '\n';
     }
     (result.append(name()).append("_count") += '{').append(ls) += '}';
+    if (ensureWhitespace) {
+      result.push_back(' ');
+    }
     result.append(std::to_string(sum)) += '\n';
     (result.append(name()).append("_sum") += '{').append(ls) += '}';
+    if (ensureWhitespace) {
+      result.push_back(' ');
+    }
     result.append(std::to_string(_sum.load(std::memory_order_relaxed))) += '\n';
   }
+
+  void toVPack(velocypack::Builder& builder) const override {}
 
   std::ostream& print(std::ostream& o) const {
     o << name() << " scale: " << _scale;

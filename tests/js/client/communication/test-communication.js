@@ -5,13 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +20,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
@@ -64,8 +65,7 @@ const debug = function (text) {
 
 function getEndpointById(id) {
   const toEndpoint = (d) => (d.endpoint);
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter((d) => (d.id === id))
+  return global.instanceManager.arangods.filter((d) => (d.id === id))
     .map(toEndpoint)
     .map(endpointToURL)[0];
 }
@@ -73,7 +73,7 @@ function getEndpointById(id) {
 const runShell = function (args, prefix) {
   let options = internal.options();
 
-  let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
+  let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
   let moreArgs = {
     'javascript.startup-directory': options['javascript.startup-directory'],
     'server.endpoint': endpoint,
@@ -239,8 +239,7 @@ function CommunicationSuite() {
       return 'http' + endpoint.substr(pos);
     };
 
-    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    return instanceInfo.arangods.filter(isType)
+    return global.instanceManager.arangods.filter(isType)
       .map(toEndpoint)
       .map(endpointToURL);
   }

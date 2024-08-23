@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,6 +35,7 @@
 
 #include "LogStatus.h"
 
+using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
@@ -269,11 +270,21 @@ auto replicated_log::to_string(ParticipantRole role) noexcept
     case ParticipantRole::kFollower:
       return "Follower";
   }
-  LOG_TOPIC("e3242", ERR, Logger::REPLICATION2)
+  LOG_TOPIC("e3142", ERR, Logger::REPLICATION2)
       << "Unhandled participant role: "
       << static_cast<std::underlying_type_t<decltype(role)>>(role);
   TRI_ASSERT(false);
   return "(unknown status code)";
+}
+
+auto replicated_log::to_string(LogStatus const& status) -> std::string {
+  auto builder = velocypack::Builder();
+  status.toVelocyPack(builder);
+  return builder.toJson();
+}
+
+auto replicated_log::to_string(QuickLogStatus const& status) -> std::string {
+  return velocypack::serialize(status).toJson();
 }
 
 void GlobalStatus::Specification::toVelocyPack(

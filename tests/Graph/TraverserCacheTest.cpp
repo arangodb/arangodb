@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,10 +24,13 @@
 #include "gtest/gtest.h"
 
 #include "Aql/Query.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/GraphTestTools.h"
 #include "Graph/TraverserOptions.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Graph/EdgeDocumentToken.h"
 
@@ -44,8 +47,6 @@ namespace traverser_cache_test {
 
 class TraverserCacheTest : public ::testing::Test {
  protected:
-  ServerState::RoleEnum oldRole;
-
   graph::GraphTestSetup s{};
   graph::MockGraphDatabase gdb;
   arangodb::aql::TraversalStats stats{};
@@ -53,8 +54,12 @@ class TraverserCacheTest : public ::testing::Test {
   std::unique_ptr<RefactoredTraverserCache> traverserCache{nullptr};
   std::shared_ptr<transaction::Context> queryContext{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> trx{nullptr};
-  std::unordered_map<std::string, std::vector<std::string>>
-      collectionToShardMap{};  // can be empty, only used in standalone mode
+  arangodb::GlobalResourceMonitor global;
+  arangodb::ResourceMonitor resourceMonitor = arangodb::ResourceMonitor(global);
+  ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor> alloc =
+      {resourceMonitor};
+  MonitoredCollectionToShardMap collectionToShardMap{
+      alloc};  // can be empty, only used in standalone mode
   arangodb::ResourceMonitor* _monitor;
   arangodb::aql::Projections _vertexProjections{};
   arangodb::aql::Projections _edgeProjections{};
@@ -290,18 +295,17 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
 
   std::uint64_t fetchedDocumentId = 0;
   bool called = false;
-  auto result = col->getPhysical()->read(
-      trx.get(), std::string_view{edgeKey},
-      [&fetchedDocumentId, &called, &edgeKey](LocalDocumentId const& ldid,
-                                              VPackSlice edgeDocument) {
-        fetchedDocumentId = ldid.id();
-        called = true;
-        EXPECT_TRUE(edgeDocument.isObject());
-        EXPECT_TRUE(edgeDocument.get("_key").isString());
-        EXPECT_EQ(edgeKey, edgeDocument.get("_key").copyString());
-        return true;
-      },
-      arangodb::ReadOwnWrites::no);
+  auto cb = [&](LocalDocumentId ldid, aql::DocumentData&&,
+                VPackSlice edgeDocument) {
+    fetchedDocumentId = ldid.id();
+    called = true;
+    EXPECT_TRUE(edgeDocument.isObject());
+    EXPECT_TRUE(edgeDocument.get("_key").isString());
+    EXPECT_EQ(edgeKey, edgeDocument.get("_key").copyString());
+    return true;
+  };
+  auto result =
+      col->getPhysical()->lookup(trx.get(), std::string_view{edgeKey}, cb, {});
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
   ASSERT_NE(fetchedDocumentId, 0U);

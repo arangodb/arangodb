@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,12 +21,12 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/DownCast.h"
 
 #include "gtest/gtest.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "absl/cleanup/cleanup.h"
 
 #include "velocypack/Iterator.h"
 
@@ -42,16 +42,19 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/IResearchViewExecutor.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/NoResultsExecutor.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Executor/IResearchViewExecutor.h"
+#include "Aql/Executor/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/DownCast.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -72,17 +75,16 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 namespace {
 
@@ -92,6 +94,8 @@ class IResearchViewNodeTest
                                             arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   IResearchViewNodeTest() : server(false) {
     arangodb::tests::init(true);
@@ -108,7 +112,7 @@ class IResearchViewNodeTest
 struct MockQuery final : arangodb::aql::Query {
   MockQuery(std::shared_ptr<arangodb::transaction::Context> const& ctx,
             arangodb::aql::QueryString const& queryString)
-      : arangodb::aql::Query{ctx, queryString, nullptr, {}} {}
+      : arangodb::aql::Query{ctx, queryString, nullptr, {}, nullptr} {}
 
   ~MockQuery() final {
     // Destroy this query, otherwise it's still
@@ -140,17 +144,20 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
   ASSERT_TRUE(logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  query.prepareQuery();
+  arangodb::aql::Variable const outVariable("variable", 1, false,
+                                            resourceMonitor);
 
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
+        "\"name\":\"variable\", \"id\":1 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
@@ -188,8 +195,8 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
 
   {
@@ -197,7 +204,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
+        "\"name\":\"variable\", \"id\":1 }, \"options\": { \"waitForSync\" : "
         "true, \"collections\":[42] }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
@@ -235,8 +242,8 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
     EXPECT_EQ(42, node.options().sources.begin()->id());
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
 
   // invalid 'primarySortBuckets' specified
@@ -245,7 +252,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        "\"name\":\"variable\", \"id\":1 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySortBuckets\": false }");
@@ -265,7 +272,7 @@ TEST_F(IResearchViewNodeTest, constructSortedView) {
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
         "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        "\"name\":\"variable\", \"id\":1 }, \"viewId\": \"" +
         std::to_string(logicalView->id().id()) +
         "\", "
         "\"primarySortBuckets\": 3 }");
@@ -289,10 +296,13 @@ TEST_F(IResearchViewNodeTest, construct) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  query.prepareQuery();
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no options
   {
@@ -335,8 +345,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(1., node.getCost().estimatedCost);
     EXPECT_EQ(0, node.getCost().estimatedNrItems);
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
 
   // with options
@@ -387,8 +397,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
 
   // with options default optimization
@@ -441,8 +451,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // with options none optimization
   {
@@ -494,8 +504,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // with options noneg optimization
   {
@@ -547,8 +557,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // with options nodnf optimization
   {
@@ -600,8 +610,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // with options exact countApproximate
   {
@@ -653,8 +663,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Exact);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // with optionscost countApproximate
   {
@@ -706,8 +716,8 @@ TEST_F(IResearchViewNodeTest, construct) {
               arangodb::iresearch::CountApproximate::Cost);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
   }
   // invalid options
   {
@@ -871,16 +881,17 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_FALSE(node.options().forceSync);
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
-    EXPECT_EQ(0, node.getScorersSortLimit());
-    EXPECT_TRUE(node.getScorersSort().empty());
+    EXPECT_EQ(0, node.getHeapSortLimit());
+    EXPECT_TRUE(node.getHeapSort().empty());
 
-    std::vector<std::pair<size_t, bool>> scorersSort{
-        {1, true}, {2, false}, {4, true}};
+    std::vector<arangodb::iresearch::HeapSortElement> scorersSort{
+        {"", 1, std::numeric_limits<size_t>::max(), true},
+        {"foo", 2, 1, false},
+        {"", -1, 0, true}};
     auto expectedScorersSort = scorersSort;
-    node.setScorersSort(std::move(scorersSort), 42);
-    EXPECT_EQ(42, node.getScorersSortLimit());
-    auto actualScorersSort = node.getScorersSort();
-    EXPECT_EQ(expectedScorersSort.size(), actualScorersSort.size());
+    node.setHeapSort(std::move(scorersSort), 42);
+    EXPECT_EQ(42, node.getHeapSortLimit());
+    auto actualScorersSort = node.getHeapSort();
     EXPECT_TRUE(std::equal(expectedScorersSort.begin(),
                            expectedScorersSort.end(), actualScorersSort.begin(),
                            actualScorersSort.end()));
@@ -896,12 +907,15 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(
-                      std::string_view("LET variable = 42 LET scoreVariable1 = "
-                                       "1 LET scoreVariable2 = 2 RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(
+          std::string_view("LET variable = 42 LET scoreVariable1 = "
+                           "1 LET scoreVariable2 = 2 RETURN 1")));
+  query.prepareQuery();
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // missing 'viewId'
   {
@@ -1090,6 +1104,70 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     }
   }
 
+  // invalid 'heapSortLimit' specified
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        std::to_string(logicalView->id().id()) +
+        "\", \"heapSortLimit\":false, \"heapSort\": [{\"postfix\":\"\", "
+        "\"source\":0, \"field\":0, "
+        "\"asc\":true}]}");
+
+    try {
+      arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+                                                  json->slice());
+      EXPECT_TRUE(false);
+    } catch (arangodb::basics::Exception const& ex) {
+      EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, ex.code());
+    }
+  }
+
+  // invalid 'heapSort' specified
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        std::to_string(logicalView->id().id()) +
+        "\", \"heapSortLimit\":42, \"heapSort\": [{\"postfix\":\"\", "
+        "\"source\":0, \"field\":true, "
+        "\"asc\":true}]}");
+
+    try {
+      arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+                                                  json->slice());
+      EXPECT_TRUE(false);
+    } catch (arangodb::basics::Exception const& ex) {
+      EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, ex.code());
+    }
+  }
+
+  // valid 'heapSort' specified
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        std::to_string(logicalView->id().id()) +
+        "\", \"heapSortLimit\":42, \"heapSort\": [{\"postfix\":\"foo\", "
+        "\"source\":0, \"field\":2, "
+        "\"asc\":false}]}");
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+                                                json->slice());
+    auto sorts = node.getHeapSort();
+    EXPECT_EQ(sorts.size(), 1);
+    EXPECT_FALSE(sorts.front().ascending);
+    EXPECT_EQ(sorts.front().fieldNumber, 2);
+    EXPECT_EQ(sorts.front().source, 0);
+    EXPECT_EQ(sorts.front().postfix, "foo");
+    ASSERT_EQ(node.getHeapSortLimit(), 42);
+  }
+
   // no options
   {
     auto json = arangodb::velocypack::Parser::fromJson(
@@ -1272,13 +1350,15 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
-    EXPECT_EQ(42, node.getScorersSortLimit());
-    auto actualScorersSort = node.getScorersSort();
+    EXPECT_EQ(42, node.getHeapSortLimit());
+    auto actualScorersSort = node.getHeapSort();
     EXPECT_EQ(2, actualScorersSort.size());
-    EXPECT_EQ(0, actualScorersSort[0].first);
-    EXPECT_TRUE(actualScorersSort[0].second);
-    EXPECT_EQ(1, actualScorersSort[1].first);
-    EXPECT_FALSE(actualScorersSort[1].second);
+    EXPECT_EQ(0, actualScorersSort[0].source);
+    EXPECT_TRUE(actualScorersSort[0].ascending);
+    EXPECT_TRUE(actualScorersSort[0].isScore());
+    EXPECT_EQ(1, actualScorersSort[1].source);
+    EXPECT_FALSE(actualScorersSort[1].ascending);
+    EXPECT_TRUE(actualScorersSort[1].isScore());
   }
 
   // no options with invalid index scorersSort
@@ -1362,12 +1442,19 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
   // with options
   {
     auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
-        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
-        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
-        "\"name\":\"variable\", \"id\":0 }, \"options\": { \"waitForSync\" : "
-        "true, \"collections\":[] }, \"viewId\": \"" +
-        std::to_string(logicalView->id().id()) + "\" }");
+        R"({ 
+        "id":42, "depth":0, "totalNrRegs":0, "varInfoList":[],
+        "nrRegs":[], "nrRegsHere":[], "regsToClear":[],
+        "varsUsedLaterStack":[[]], "varsValid":[],
+        "outVariable": {
+          "name":"variable", "id":0
+        },
+        "options": { 
+          "waitForSync" : true, 
+          "collections":[],
+          "parallelism": 2
+        }, "viewId": ")" +
+        std::to_string(logicalView->id().id()) + R"(" })");
 
     arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
                                                 json->slice());
@@ -1404,6 +1491,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
     EXPECT_EQ(node.options().countApproximate,
               arangodb::iresearch::CountApproximate::Exact);
+    EXPECT_EQ(node.options().parallelism, 2);
   }
 
   // with options none condition optimization
@@ -1895,10 +1983,13 @@ TEST_F(IResearchViewNodeTest, clone) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  query.prepareQuery();
+  arangodb::aql::Variable const outVariable("variable", 3, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition, no shards, no options
   {
@@ -1918,7 +2009,7 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       auto const nextId = node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(query.plan(), true, false));
+          *node.clone(query.plan(), true));
       EXPECT_EQ(node.getType(), cloned.getType());
       EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
       EXPECT_EQ(node.plan(), cloned.plan());
@@ -1930,50 +2021,22 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-    }
-
-    // clone with properties into another plan
-    {
-      // another dummy query
-      MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-
-      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, true));
-      EXPECT_EQ(node.getType(), cloned.getType());
-      EXPECT_NE(&node.outVariable(),
-                &cloned.outVariable());  // different objects
-      EXPECT_EQ(node.outVariable().id, cloned.outVariable().id);
-      EXPECT_EQ(node.outVariable().name, cloned.outVariable().name);
-      EXPECT_EQ(otherQuery.plan(), cloned.plan());
-      EXPECT_EQ(node.id(), cloned.id());
-      EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
-      EXPECT_EQ(node.view(), cloned.view());
-      EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
-      EXPECT_EQ(node.scorers(), cloned.scorers());
-      EXPECT_EQ(node.volatility(), cloned.volatility());
-      EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
-      EXPECT_EQ(node.sort(), cloned.sort());
-      EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
 
     // clone without properties into another plan
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, false));
+          *node.clone(otherQuery.plan(), true));
       EXPECT_EQ(node.getType(), cloned.getType());
       EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
       EXPECT_EQ(otherQuery.plan(), cloned.plan());
@@ -1986,8 +2049,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
   }
 
@@ -2001,9 +2064,20 @@ TEST_F(IResearchViewNodeTest, clone) {
         arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
     attributeName.addMember(&attributeValue);
     attributeName.setStringValue("waitForSync", strlen("waitForSync"));
+
+    arangodb::aql::AstNode attributeValueParallelism(
+        arangodb::aql::NODE_TYPE_VALUE);
+    attributeValueParallelism.setValueType(arangodb::aql::VALUE_TYPE_INT);
+    attributeValueParallelism.setIntValue(5);
+    arangodb::aql::AstNode attributeNameParallelism(
+        arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
+    attributeNameParallelism.addMember(&attributeValueParallelism);
+    attributeNameParallelism.setStringValue("parallelism",
+                                            strlen("parallelism"));
+
     arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
     options.addMember(&attributeName);
-
+    options.addMember(&attributeNameParallelism);
     arangodb::iresearch::IResearchViewNode node(
         *query.plan(), arangodb::aql::ExecutionNodeId{42},
         vocbase,      // database
@@ -2015,12 +2089,12 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
     EXPECT_TRUE(node.options().forceSync);
-
+    EXPECT_EQ(5, node.options().parallelism);
     // clone without properties into the same plan
     {
       auto const nextId = node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(query.plan(), true, false));
+          *node.clone(query.plan(), true));
       EXPECT_EQ(node.getType(), cloned.getType());
       EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
       EXPECT_EQ(node.plan(), cloned.plan());
@@ -2032,50 +2106,23 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-    }
-
-    // clone with properties into another plan
-    {
-      // another dummy query
-      MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-
-      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, true));
-      EXPECT_EQ(node.getType(), cloned.getType());
-      EXPECT_NE(&node.outVariable(),
-                &cloned.outVariable());  // different objects
-      EXPECT_EQ(node.outVariable().id, cloned.outVariable().id);
-      EXPECT_EQ(node.outVariable().name, cloned.outVariable().name);
-      EXPECT_EQ(otherQuery.plan(), cloned.plan());
-      EXPECT_EQ(node.id(), cloned.id());
-      EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
-      EXPECT_EQ(node.view(), cloned.view());
-      EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
-      EXPECT_EQ(node.scorers(), cloned.scorers());
-      EXPECT_EQ(node.volatility(), cloned.volatility());
-      EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
-      EXPECT_EQ(node.sort(), cloned.sort());
-      EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
 
     // clone without properties into another plan
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, false));
+          *node.clone(otherQuery.plan(), true));
       EXPECT_EQ(node.getType(), cloned.getType());
       EXPECT_EQ(&node.outVariable(), &cloned.outVariable());  // same objects
       EXPECT_EQ(otherQuery.plan(), cloned.plan());
@@ -2088,13 +2135,20 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
   }
 
   // no filter condition, no sort condition, with shards, no options
   {
+    auto& feature =
+        server.server().getFeature<arangodb::iresearch::IResearchFeature>();
+    feature.setDefaultParallelism(333);
+    absl::Cleanup cleanup = [&feature]() noexcept {
+      feature.setDefaultParallelism(1);
+    };
     arangodb::iresearch::IResearchViewNode node(
         *query.plan(), arangodb::aql::ExecutionNodeId{42},
         vocbase,      // database
@@ -2107,15 +2161,15 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.empty());                // view has no links
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
-
-    node.shards().emplace("abc", arangodb::LogicalView::Indexes{});
-    node.shards().emplace("def", arangodb::LogicalView::Indexes{});
+    EXPECT_EQ(333, node.options().parallelism);
+    node.shards().emplace("s1", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("s2", arangodb::LogicalView::Indexes{});
 
     // clone without properties into the same plan
     {
       auto const nextId = node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(query.plan(), true, false));
+          *node.clone(query.plan(), true));
       EXPECT_TRUE(cloned.collections().empty());
       EXPECT_EQ(node.empty(), cloned.empty());
       EXPECT_EQ(node.shards(), cloned.shards());
@@ -2131,53 +2185,23 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-    }
-
-    // clone with properties into another plan
-    {
-      // another dummy query
-      MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-
-      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, true));
-      EXPECT_TRUE(cloned.collections().empty());
-      EXPECT_EQ(node.empty(), cloned.empty());
-      EXPECT_EQ(node.shards(), cloned.shards());
-      EXPECT_EQ(node.getType(), cloned.getType());
-      EXPECT_NE(&node.outVariable(),
-                &cloned.outVariable());  // different objects
-      EXPECT_EQ(node.outVariable().id, cloned.outVariable().id);
-      EXPECT_EQ(node.outVariable().name, cloned.outVariable().name);
-      EXPECT_EQ(otherQuery.plan(), cloned.plan());
-      EXPECT_EQ(node.id(), cloned.id());
-      EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
-      EXPECT_EQ(node.view(), cloned.view());
-      EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
-      EXPECT_EQ(node.scorers(), cloned.scorers());
-      EXPECT_EQ(node.volatility(), cloned.volatility());
-      EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
-      EXPECT_EQ(node.sort(), cloned.sort());
-      EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
 
     // clone without properties into another plan
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, false));
+          *node.clone(otherQuery.plan(), true));
       EXPECT_TRUE(cloned.collections().empty());
       EXPECT_EQ(node.empty(), cloned.empty());
       EXPECT_EQ(node.shards(), cloned.shards());
@@ -2193,8 +2217,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.options().parallelism, cloned.options().parallelism);
     }
   }
 
@@ -2215,14 +2240,14 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.shards().emplace("abc", arangodb::LogicalView::Indexes{});
-    node.shards().emplace("def", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("s1", arangodb::LogicalView::Indexes{});
+    node.shards().emplace("s2", arangodb::LogicalView::Indexes{});
 
     // clone without properties into the same plan
     {
       auto const nextId = node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(query.plan(), true, false));
+          *node.clone(query.plan(), true));
       EXPECT_TRUE(cloned.collections().empty());
       EXPECT_EQ(node.empty(), cloned.empty());
       EXPECT_EQ(node.shards(), cloned.shards());
@@ -2238,53 +2263,22 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-    }
-
-    // clone with properties into another plan
-    {
-      // another dummy query
-      MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-
-      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, true));
-      EXPECT_TRUE(cloned.collections().empty());
-      EXPECT_EQ(node.empty(), cloned.empty());
-      EXPECT_EQ(node.shards(), cloned.shards());
-      EXPECT_EQ(node.getType(), cloned.getType());
-      EXPECT_NE(&node.outVariable(),
-                &cloned.outVariable());  // different objects
-      EXPECT_EQ(node.outVariable().id, cloned.outVariable().id);
-      EXPECT_EQ(node.outVariable().name, cloned.outVariable().name);
-      EXPECT_EQ(otherQuery.plan(), cloned.plan());
-      EXPECT_EQ(node.id(), cloned.id());
-      EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
-      EXPECT_EQ(node.view(), cloned.view());
-      EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
-      EXPECT_EQ(node.scorers(), cloned.scorers());
-      EXPECT_EQ(node.volatility(), cloned.volatility());
-      EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
-      EXPECT_EQ(node.sort(), cloned.sort());
-      EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
 
     // clone without properties into another plan
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, false));
+          *node.clone(otherQuery.plan(), true));
       EXPECT_TRUE(cloned.collections().empty());
       EXPECT_EQ(node.empty(), cloned.empty());
       EXPECT_EQ(node.shards(), cloned.shards());
@@ -2300,8 +2294,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
       EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
   }
 
@@ -2315,7 +2309,8 @@ TEST_F(IResearchViewNodeTest, clone) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no sort condition
-    arangodb::aql::Variable const outNmDocId("variable101", 101, false);
+    arangodb::aql::Variable const outNmDocId("variable101", 101, false,
+                                             resourceMonitor);
     node.setLateMaterialized(outNmDocId);
     ASSERT_TRUE(node.isLateMaterialized());
     auto varsSetOriginal = node.getVariablesSetHere();
@@ -2324,7 +2319,7 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       auto const nextId = node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(query.plan(), true, false));
+          *node.clone(query.plan(), true));
       auto varsSetCloned = cloned.getVariablesSetHere();
       EXPECT_TRUE(cloned.collections().empty());
       EXPECT_EQ(node.empty(), cloned.empty());
@@ -2344,56 +2339,22 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.isLateMaterialized(), cloned.isLateMaterialized());
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
       EXPECT_EQ(varsSetOriginal[0], varsSetCloned[0]);
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
 
-    // clone with properties into another plan
-    {
-      // another dummy query
-      MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-
-      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, true));
-      auto varsSetCloned = cloned.getVariablesSetHere();
-      EXPECT_TRUE(cloned.collections().empty());
-      EXPECT_EQ(node.empty(), cloned.empty());
-      EXPECT_EQ(node.shards(), cloned.shards());
-      EXPECT_EQ(node.getType(), cloned.getType());
-      EXPECT_NE(&node.outVariable(),
-                &cloned.outVariable());  // different objects
-      EXPECT_EQ(node.outVariable().id, cloned.outVariable().id);
-      EXPECT_EQ(node.outVariable().name, cloned.outVariable().name);
-      EXPECT_EQ(otherQuery.plan(), cloned.plan());
-      EXPECT_EQ(node.id(), cloned.id());
-      EXPECT_EQ(&node.vocbase(), &cloned.vocbase());
-      EXPECT_EQ(node.view(), cloned.view());
-      EXPECT_EQ(&node.filterCondition(), &cloned.filterCondition());
-      EXPECT_EQ(node.scorers(), cloned.scorers());
-      EXPECT_EQ(node.volatility(), cloned.volatility());
-      EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
-      EXPECT_EQ(node.sort(), cloned.sort());
-      EXPECT_EQ(node.getCost(), cloned.getCost());
-      EXPECT_EQ(node.isLateMaterialized(), cloned.isLateMaterialized());
-      ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
-      EXPECT_NE(varsSetOriginal[0], varsSetCloned[0]);
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-    }
     // clone without properties into another plan
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, false));
+          *node.clone(otherQuery.plan(), true));
       auto varsSetCloned = cloned.getVariablesSetHere();
       EXPECT_TRUE(cloned.collections().empty());
       EXPECT_EQ(node.empty(), cloned.empty());
@@ -2413,8 +2374,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.isLateMaterialized(), cloned.isLateMaterialized());
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
       EXPECT_EQ(varsSetOriginal[0], varsSetCloned[0]);
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
     }
   }
 
@@ -2428,21 +2389,24 @@ TEST_F(IResearchViewNodeTest, clone) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no sort condition
-    arangodb::aql::Variable const outNmColPtr("variable100", 100, false);
-    arangodb::aql::Variable const outNmDocId("variable101", 101, false);
-    std::vector<std::pair<size_t, bool>> scorersSort{{0, true}};
-    node.setScorersSort(std::move(scorersSort), 42);
+    arangodb::aql::Variable const outNmColPtr("variable100", 100, false,
+                                              resourceMonitor);
+    arangodb::aql::Variable const outNmDocId("variable101", 101, false,
+                                             resourceMonitor);
+    std::vector<arangodb::iresearch::HeapSortElement> scorersSort{
+        {"", 0, 0, true}};
+    node.setHeapSort(std::move(scorersSort), 42);
     auto varsSetOriginal = node.getVariablesSetHere();
     // clone without properties into the same plan
     {
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(query.plan(), true, false));
+          *node.clone(query.plan(), true));
       auto varsSetCloned = cloned.getVariablesSetHere();
       EXPECT_EQ(varsSetCloned, varsSetOriginal);
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      auto orig = node.getScorersSort();
-      auto clone = cloned.getScorersSort();
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      auto orig = node.getHeapSort();
+      auto clone = cloned.getHeapSort();
       EXPECT_TRUE(
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }
@@ -2450,39 +2414,20 @@ TEST_F(IResearchViewNodeTest, clone) {
     {
       // another dummy query
       MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      otherQuery.prepareQuery();
 
       node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, false));
+          *node.clone(otherQuery.plan(), true));
       auto varsSetCloned = cloned.getVariablesSetHere();
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      auto orig = node.getScorersSort();
-      auto clone = cloned.getScorersSort();
-      EXPECT_TRUE(
-          std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
-    }
-    // clone without properties into another plan
-    {
-      // another dummy query
-      MockQuery otherQuery(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
-          arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-
-      node.plan()->nextId();
-      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-          *node.clone(otherQuery.plan(), true, true));
-      auto varsSetCloned = cloned.getVariablesSetHere();
-      ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
-      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
-      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
-      auto orig = node.getScorersSort();
-      auto clone = cloned.getScorersSort();
+      EXPECT_EQ(node.getHeapSortLimit(), cloned.getHeapSortLimit());
+      EXPECT_EQ(node.getHeapSort().size(), cloned.getHeapSort().size());
+      auto orig = node.getHeapSort();
+      auto clone = cloned.getHeapSort();
       EXPECT_TRUE(
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }
@@ -2498,13 +2443,16 @@ TEST_F(IResearchViewNodeTest, serialize) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(
-                      std::string_view("let variable = 1 let variable100 = 3 "
-                                       "let variable101 = 2 RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(
+          std::string_view("let variable = 1 let variable100 = 3 "
+                           "let variable101 = 2 RETURN 1")));
+  query.prepareQuery();
 
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition
   {
@@ -2691,7 +2639,8 @@ TEST_F(IResearchViewNodeTest, serialize) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no sort condition
-    arangodb::aql::Variable const outNmDocId("variable101", 2, false);
+    arangodb::aql::Variable const outNmDocId("variable101", 2, false,
+                                             resourceMonitor);
     node.setLateMaterialized(outNmDocId);
 
     node.setVarsUsedLater({arangodb::aql::VarSet{&outNmDocId}});
@@ -2994,7 +2943,8 @@ TEST_F(IResearchViewNodeTest, serialize) {
   // with scorers sort
   {
     MockQuery queryScores(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(
             std::string_view("LET variable = 42 LET scoreVariable1 = 1 LET "
                              "scoreVariable2 = 2 RETURN 1")));
@@ -3020,10 +2970,13 @@ TEST_F(IResearchViewNodeTest, serialize) {
         "\"name\": \"d\",\"id\": 0 }]}]}}] "
         " }");
 
-    queryScores.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
-    arangodb::aql::Variable const outVariable("variable", 0, false);
-    arangodb::aql::Variable const outScore0("variable100", 1, false);
-    arangodb::aql::Variable const outScore1("variable101", 2, false);
+    queryScores.prepareQuery();
+    arangodb::aql::Variable const outVariable("variable", 0, false,
+                                              resourceMonitor);
+    arangodb::aql::Variable const outScore0("variable100", 1, false,
+                                            resourceMonitor);
+    arangodb::aql::Variable const outScore1("variable101", 2, false,
+                                            resourceMonitor);
     arangodb::iresearch::IResearchViewNode node(
         *queryScores.plan(), json->slice());  // no sort condition
     node.setVarsUsedLater(
@@ -3041,11 +2994,10 @@ TEST_F(IResearchViewNodeTest, serialize) {
       arangodb::iresearch::IResearchViewNode const deserialized(
           *queryScores.plan(), nodeSlice);
       EXPECT_EQ(node.empty(), deserialized.empty());
-      EXPECT_EQ(deserialized.getScorersSortLimit(), 42);
-      EXPECT_EQ(node.getScorersSort().size(),
-                deserialized.getScorersSort().size());
-      auto orig = node.getScorersSort();
-      auto clone = deserialized.getScorersSort();
+      EXPECT_EQ(deserialized.getHeapSortLimit(), 42);
+      EXPECT_EQ(node.getHeapSort().size(), deserialized.getHeapSort().size());
+      auto orig = node.getHeapSort();
+      auto clone = deserialized.getHeapSort();
       EXPECT_TRUE(
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }
@@ -3058,11 +3010,10 @@ TEST_F(IResearchViewNodeTest, serialize) {
       auto& deserialized =
           dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
               *deserializedNode);
-      EXPECT_EQ(deserialized.getScorersSortLimit(), 42);
-      EXPECT_EQ(node.getScorersSort().size(),
-                deserialized.getScorersSort().size());
-      auto orig = node.getScorersSort();
-      auto clone = deserialized.getScorersSort();
+      EXPECT_EQ(deserialized.getHeapSortLimit(), 42);
+      EXPECT_EQ(node.getHeapSort().size(), deserialized.getHeapSort().size());
+      auto orig = node.getHeapSort();
+      auto clone = deserialized.getHeapSort();
       EXPECT_TRUE(
           std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }
@@ -3083,13 +3034,16 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
   EXPECT_FALSE(viewImpl.primarySort().empty());
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(
-                      std::string_view("let variable = 1 let variable100 = 3 "
-                                       "let variable101 = 2 RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(
+          std::string_view("let variable = 1 let variable100 = 3 "
+                           "let variable101 = 2 RETURN 1")));
+  query.prepareQuery();
 
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition
   {
@@ -3266,7 +3220,8 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
         nullptr,  // no filter condition
         nullptr,  // no options
         {});      // no sort condition
-    arangodb::aql::Variable const outNmDocId("variable101", 2, false);
+    arangodb::aql::Variable const outNmDocId("variable101", 2, false,
+                                             resourceMonitor);
     node.setSort(viewImpl.primarySort(), 1);
     node.setLateMaterialized(outNmDocId);
 
@@ -3389,8 +3344,10 @@ TEST_F(IResearchViewNodeTest, collections) {
   EXPECT_TRUE(logicalView->properties(updateJson->slice(), true, true).ok());
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
 
   // register collections with the query
   query.collections().add(std::to_string(collection0->id().id()),
@@ -3401,9 +3358,10 @@ TEST_F(IResearchViewNodeTest, collections) {
                           arangodb::aql::Collection::Hint::None);
 
   // prepare query
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query.prepareQuery();
 
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(
@@ -3463,8 +3421,9 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {collection0->name()}, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {collection0->name()}, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -3480,19 +3439,19 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   }
 
   // dummy query
-  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
+  auto ctx = arangodb::transaction::StandaloneContext::create(
+      vocbase, arangodb::transaction::OperationOriginTestCase{});
   MockQuery query(ctx,
                   arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.initForTests();
-  //  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  //  query.prepareQuery();
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(
-      0, query, query.itemBlockManager(),
-      arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager());
   arangodb::aql::ExecutionPlan plan(query.ast(), false);
 
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition
   {
@@ -3520,13 +3479,9 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 
     node.planRegisters();
 
-    std::unordered_map<arangodb::aql::ExecutionNode*,
-                       arangodb::aql::ExecutionBlock*>
-        EMPTY;
-
     // before transaction has started (no snapshot)
     try {
-      auto block = node.createBlock(engine, EMPTY);
+      auto block = node.createBlock(engine);
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& e) {
       EXPECT_EQ(TRI_ERROR_INTERNAL, e.code());
@@ -3561,7 +3516,7 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
 
     // after transaction has started
     {
-      auto block = node.createBlock(engine, EMPTY);
+      auto block = node.createBlock(engine);
       EXPECT_NE(nullptr, block);
       EXPECT_NE(
           nullptr,
@@ -3587,21 +3542,22 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   ASSERT_FALSE(!logicalView);
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query.initForTests();
-  //  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  //  query.prepareQuery();
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(
-      0, query, query.itemBlockManager(),
-      arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager());
   arangodb::aql::ExecutionPlan plan(query.ast(), false);
 
   // dummy engine
   arangodb::aql::SingletonNode singleton(&plan,
                                          arangodb::aql::ExecutionNodeId{0});
-  arangodb::aql::Variable const outVariable("variable", 0, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(
@@ -3614,9 +3570,6 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
       {});      // no sort condition
   node.addDependency(&singleton);
 
-  std::unordered_map<arangodb::aql::ExecutionNode*,
-                     arangodb::aql::ExecutionBlock*>
-      EMPTY;
   singleton.setVarsUsedLater({arangodb::aql::VarSet{&outVariable}});
   singleton.setVarsValid({{}});
   node.setVarsUsedLater({{}});
@@ -3627,7 +3580,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinator) {
   node.planRegisters();
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::ROLE_COORDINATOR);
-  auto emptyBlock = node.createBlock(engine, EMPTY);
+  auto emptyBlock = node.createBlock(engine);
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::ROLE_SINGLE);
   EXPECT_NE(nullptr, emptyBlock);
@@ -3646,18 +3599,20 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   ASSERT_TRUE((false == !logicalView));
 
   // dummy query
-  MockQuery query(arangodb::transaction::StandaloneContext::Create(vocbase),
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
-  query.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  MockQuery query(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  query.prepareQuery();
 
   // dummy engine
-  arangodb::aql::ExecutionEngine engine(
-      0, query, query.itemBlockManager(),
-      arangodb::aql::SerializationFormat::SHADOWROWS);
+  arangodb::aql::ExecutionEngine engine(0, query, query.itemBlockManager());
   arangodb::aql::SingletonNode singleton(query.plan(),
                                          arangodb::aql::ExecutionNodeId{0});
-  arangodb::aql::Variable const outVariable("variable", 0, false);
-  arangodb::aql::Variable const outNmDocId("variable101", 101, false);
+  arangodb::aql::Variable const outVariable("variable", 0, false,
+                                            resourceMonitor);
+  arangodb::aql::Variable const outNmDocId("variable101", 101, false,
+                                           resourceMonitor);
 
   // no filter condition, no sort condition
   arangodb::iresearch::IResearchViewNode node(
@@ -3670,9 +3625,6 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
       {});      // no sort condition
   node.addDependency(&singleton);
   node.setLateMaterialized(outNmDocId);
-  std::unordered_map<arangodb::aql::ExecutionNode*,
-                     arangodb::aql::ExecutionBlock*>
-      EMPTY;
   singleton.setVarsUsedLater({arangodb::aql::VarSet{&outNmDocId}});
   singleton.setVarsValid({{}});
   node.setVarsUsedLater({{}});
@@ -3683,7 +3635,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
   node.planRegisters();
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::ROLE_COORDINATOR);
-  auto emptyBlock = node.createBlock(engine, EMPTY);
+  auto emptyBlock = node.createBlock(engine);
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::ROLE_SINGLE);
   EXPECT_TRUE(nullptr != emptyBlock);
@@ -3760,7 +3712,8 @@ class IResearchViewVolatitlityTest
 
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY_VECTOR,
         std::vector<std::string>{collection0->name(), collection1->name()},
         EMPTY_VECTOR, arangodb::transaction::Options());
@@ -4150,7 +4103,8 @@ class IResearchViewBlockTest
     EXPECT_TRUE(logicalView->properties(updateJson->slice(), true, true).ok());
     std::vector<std::string> EMPTY_VECTOR;
     auto trx = std::make_shared<arangodb::transaction::Methods>(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         EMPTY_VECTOR, std::vector<std::string>{collection0->name()},
         EMPTY_VECTOR, arangodb::transaction::Options());
 
@@ -4161,7 +4115,7 @@ class IResearchViewBlockTest
     meta._includeAllFields = true;
     {
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
-      auto indexes = collection0->getIndexes();
+      auto indexes = collection0->getPhysical()->getAllIndexes();
       EXPECT_FALSE(indexes.empty());
       auto* l = static_cast<arangodb::iresearch::IResearchLinkMock*>(
           indexes[0].get());

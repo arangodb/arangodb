@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,21 +23,18 @@
 
 #include "Constituent.h"
 
-#include <chrono>
-#include <iomanip>
-#include <thread>
-
-#include <velocypack/Iterator.h>
-
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -45,8 +42,11 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include <velocypack/Iterator.h>
+
+#include <chrono>
+#include <iomanip>
+#include <thread>
 
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
@@ -60,16 +60,10 @@ const std::vector<std::string> roleStr({"Follower", "Candidate", "Leader"});
 
 /// Configure with agent's configuration
 void Constituent::configure(Agent* agent) {
-  MUTEX_LOCKER(guard, _termVoteLock);
+  std::lock_guard guard{_termVoteLock};
 
   _agent = agent;
   TRI_ASSERT(_agent != nullptr);
-
-  if (size() == 1) {
-    _role = LEADER;
-    LOG_TOPIC("c396f", INFO, Logger::AGENCY)
-        << "Set _role to LEADER in term " << _term;
-  }
 }
 
 // Default ctor
@@ -93,19 +87,18 @@ bool Constituent::waitForSync() const { return _agent->config().waitForSync(); }
 
 /// Get my term
 term_t Constituent::term() const {
-  MUTEX_LOCKER(guard, _termVoteLock);
+  std::lock_guard guard{_termVoteLock};
   return _term;
 }
 
 /// Update my term
 void Constituent::term(term_t t, std::string const& votedFor) {
-  MUTEX_LOCKER(guard, _termVoteLock);
+  std::lock_guard guard{_termVoteLock};
   termNoLock(t, votedFor);
 }
 
 void Constituent::termNoLock(term_t t, std::string const& votedFor) {
   // Only call this when you have the _termVoteLock
-  _termVoteLock.assertLockedByCurrentThread();
 
   term_t tmp = _term;
   _term = t;
@@ -130,8 +123,11 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
     }
 
     TRI_ASSERT(_vocbase != nullptr);
-    auto ctx = transaction::StandaloneContext::Create(*_vocbase);
-    SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
+    auto origin =
+        transaction::OperationOriginInternal{"storing agency election result"};
+    auto ctx = transaction::StandaloneContext::create(*_vocbase, origin);
+    SingleCollectionTransaction trx(std::move(ctx), "election",
+                                    AccessMode::Type::WRITE);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -192,13 +188,11 @@ role_t Constituent::role() const {
 
 /// Become follower in term
 void Constituent::follow(term_t t, std::string const& votedFor) {
-  MUTEX_LOCKER(guard, _termVoteLock);
+  std::lock_guard guard{_termVoteLock};
   followNoLock(t, votedFor);
 }
 
 void Constituent::followNoLock(term_t t, std::string const& votedFor) {
-  _termVoteLock.assertLockedByCurrentThread();
-
   if (t > 0 && (t != _term || votedFor != _votedFor)) {
     LOG_TOPIC("2fb5f", DEBUG, Logger::AGENCY)
         << "Changing term from " << _term << " to " << t;
@@ -218,14 +212,14 @@ void Constituent::followNoLock(term_t t, std::string const& votedFor) {
         << _id << ": following '" << _leaderID << "' in term " << _term;
   }
 
-  CONDITION_LOCKER(guard, _cv);
-  _cv.signal();
+  std::lock_guard guard{_cv.mutex};
+  _cv.cv.notify_one();
 }
 
 /// Become leader
 void Constituent::lead(term_t term) {
   {
-    MUTEX_LOCKER(guard, _termVoteLock);
+    std::lock_guard guard{_termVoteLock};
 
     // if we already have a higher term, ignore this request
     if (term < _term) {
@@ -247,7 +241,7 @@ void Constituent::lead(term_t term) {
     _leaderID = _id;
 
     // Keep track of this election time:
-    MUTEX_LOCKER(locker, _recentElectionsMutex);
+    std::lock_guard locker{_recentElectionsMutex};
     _recentElections.push_back(steadyClockToDouble());
 
     // we need to rebuild spear_head and read_db, but this is done in the
@@ -259,9 +253,8 @@ void Constituent::lead(term_t term) {
 }
 
 /// Become candidate
-void Constituent::candidate() {
-  MUTEX_LOCKER(guard, _termVoteLock);
-
+void Constituent::candidateNoLock() {
+  // Only call this when you have the _termVoteLock
   if (_leaderID != NO_LEADER) {
     _leaderID = NO_LEADER;
     LOG_TOPIC("43711", DEBUG, Logger::AGENCY)
@@ -274,7 +267,7 @@ void Constituent::candidate() {
         << _id << ": candidating in term " << _term;
 
     // Keep track of this election time:
-    MUTEX_LOCKER(locker, _recentElectionsMutex);
+    std::lock_guard locker{_recentElectionsMutex};
     _recentElections.push_back(steadyClockToDouble());
   }
 }
@@ -296,7 +289,7 @@ bool Constituent::running() const {
 
 /// Get current leader's id
 std::string Constituent::leaderID() const {
-  MUTEX_LOCKER(guard, _termVoteLock);
+  std::lock_guard guard{_termVoteLock};
   return _leaderID;
 }
 
@@ -313,7 +306,7 @@ bool Constituent::checkLeader(term_t term, std::string const& id,
                               index_t prevLogIndex, term_t prevLogTerm) {
   TRI_ASSERT(_vocbase != nullptr);
 
-  MUTEX_LOCKER(guard, _termVoteLock);
+  std::lock_guard guard{_termVoteLock};
 
   LOG_TOPIC("0c694", TRACE, Logger::AGENCY)
       << "checkLeader(term: " << term << ", leaderId: " << id
@@ -345,7 +338,7 @@ bool Constituent::checkLeader(term_t term, std::string const& id,
 
     // Recall time of this leadership change:
     {
-      MUTEX_LOCKER(locker, _recentElectionsMutex);
+      std::lock_guard locker{_recentElectionsMutex};
       _recentElections.push_back(steadyClockToDouble());
     }
 
@@ -367,7 +360,7 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
 
   TRI_ASSERT(_vocbase != nullptr);
 
-  MUTEX_LOCKER(guard, _termVoteLock);
+  std::lock_guard guard{_termVoteLock};
 
   LOG_TOPIC("a5185", TRACE, Logger::AGENCY)
       << "vote(termOfPeer: " << termOfPeer << ", leaderId: " << id
@@ -448,7 +441,7 @@ void Constituent::callElection() {
 
   term_t savedTerm;
   {
-    MUTEX_LOCKER(locker, _termVoteLock);
+    std::lock_guard locker{_termVoteLock};
 
     this->termNoLock(_term + 1, _id);  // raise my term, vote for us
 
@@ -477,6 +470,11 @@ void Constituent::callElection() {
   network::ConnectionPool* cp = nf.pool();
 
   network::RequestOptions reqOpts;
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
   reqOpts.timeout = timeout;
   reqOpts.param("term", std::to_string(savedTerm))
       .param("candidateId", _id)
@@ -495,35 +493,38 @@ void Constituent::callElection() {
     if (i == _id) {
       continue;
     }
-    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get,
-                         "/_api/agency_priv/requestVote",
-                         VPackBuffer<uint8_t>(), reqOpts)
-        .thenValue([=](network::Response r) {
-          if (r.ok() && r.statusCode() == 200) {
-            VPackSlice slc = r.slice();
+    std::ignore =
+        network::sendRequest(
+            cp, _agent->config().poolAt(i), fuerte::RestVerb::Get,
+            "/_api/agency_priv/requestVote", VPackBuffer<uint8_t>(), reqOpts)
+            .thenValue([=](network::Response r) {
+              if (r.ok() && r.statusCode() == 200) {
+                VPackSlice slc = r.slice();
 
-            // Got ballot
-            if (slc.isObject() && slc.hasKey("term") &&
-                slc.hasKey("voteGranted")) {
-              // Follow right away?
-              term_t receivedT = slc.get("term").getUInt();
-              if (receivedT >
-                  savedTerm) {  // only count vote if term is equal or smaller
-                term_t expectedT = maxTermReceived->load();
-                maxTermReceived->compare_exchange_strong(expectedT, receivedT);
-              } else {
-                // Check result and counts
-                if (slc.get("voteGranted").getBool()) {  // majority in favor?
-                  yea->fetch_add(1);
-                  // Vote is counted as yea
-                  return;
+                // Got ballot
+                if (slc.isObject() && slc.hasKey("term") &&
+                    slc.hasKey("voteGranted")) {
+                  // Follow right away?
+                  term_t receivedT = slc.get("term").getUInt();
+                  if (receivedT > savedTerm) {  // only count vote if term is
+                                                // equal or smaller
+                    term_t expectedT = maxTermReceived->load();
+                    maxTermReceived->compare_exchange_strong(expectedT,
+                                                             receivedT);
+                  } else {
+                    // Check result and counts
+                    if (slc.get("voteGranted")
+                            .getBool()) {  // majority in favor?
+                      yea->fetch_add(1);
+                      // Vote is counted as yea
+                      return;
+                    }
+                  }
                 }
               }
-            }
-          }
-          // Count the vote as a nay
-          nay->fetch_add(1);
-        });
+              // Count the vote as a nay
+              nay->fetch_add(1);
+            });
   }
 
   // We collect votes, we leave the following loop when one of the following
@@ -534,14 +535,14 @@ void Constituent::callElection() {
   //       a conclusive vote.
   while (!isStopping()) {
     if (steady_clock::now() >= endTime) {  // Timeout.
-      MUTEX_LOCKER(locker, _termVoteLock);
+      std::lock_guard locker{_termVoteLock};
       followNoLock(0);  // do not adjust _term or _votedFor
       break;
     }
 
     term_t t = maxTermReceived->load();
     {
-      MUTEX_LOCKER(locker, _termVoteLock);
+      std::lock_guard locker{_termVoteLock};
       if (t > _term) {
         followNoLock(t, NO_LEADER);
         break;
@@ -568,7 +569,7 @@ void Constituent::callElection() {
 }
 
 void Constituent::update(std::string const& leaderID, term_t t) {
-  MUTEX_LOCKER(guard, _termVoteLock);
+  std::lock_guard guard{_termVoteLock};
   _term = t;
   _gterm = t;
   if (_leaderID != leaderID) {
@@ -584,8 +585,8 @@ void Constituent::update(std::string const& leaderID, term_t t) {
 void Constituent::beginShutdown() {
   Thread::beginShutdown();
 
-  CONDITION_LOCKER(guard, _cv);
-  guard.broadcast();
+  std::lock_guard guard{_cv.mutex};
+  _cv.cv.notify_all();
 }
 
 /// Start operation
@@ -607,8 +608,10 @@ void Constituent::run() {
   {
     std::string const aql(
         "FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
+    auto origin = transaction::OperationOriginInternal{
+        "querying most recent agency election vote"};
     auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*_vocbase),
+        transaction::StandaloneContext::create(*_vocbase, origin),
         arangodb::aql::QueryString(aql), nullptr);
 
     aql::QueryResult queryResult = query->executeSync();
@@ -623,7 +626,7 @@ void Constituent::run() {
       for (auto const& i : VPackArrayIterator(result)) {
         auto ii = i.resolveExternals();
         try {
-          MUTEX_LOCKER(locker, _termVoteLock);
+          std::lock_guard locker{_termVoteLock};
           termNoLock(ii.get("term").getUInt(),
                      ii.get("voted_for").copyString());
         } catch (std::exception const&) {
@@ -640,66 +643,70 @@ void Constituent::run() {
   while (!this->isStopping()  // Obvious
          && (!_agent->ready() ||
              find(act.begin(), act.end(), _id) == act.end())) {  // Active agent
-    CONDITION_LOCKER(guardv, _cv);
-    _cv.wait(50000);
+    std::unique_lock guardv{_cv.mutex};
+    _cv.cv.wait_for(guardv, std::chrono::milliseconds{50});
     act = _agent->config().active();
   }
 
-  if (size() == 1) {
-    MUTEX_LOCKER(guard, _termVoteLock);
-    _leaderID = _agent->config().id();
-    LOG_TOPIC("66f72", INFO, Logger::AGENCY)
-        << "Set _leaderID to '" << _leaderID << "' in term " << _term;
-  } else {
-    {
-      MUTEX_LOCKER(guard, _termVoteLock);
-      LOG_TOPIC("29175", INFO, Logger::AGENCY)
-          << "Setting role to follower in term " << _term;
-      _role = FOLLOWER;
-    }
+  {
+    std::lock_guard guard{_termVoteLock};
+    LOG_TOPIC("29175", INFO, Logger::AGENCY)
+        << "Setting role to follower in term " << _term;
+    _role = FOLLOWER;
+  }
 
-    std::chrono::steady_clock::time_point constituentLoopStart;
+  std::chrono::steady_clock::time_point constituentLoopStart;
 
-    while (!this->isStopping()) {
-      constituentLoopStart = std::chrono::steady_clock::now();
+  while (!this->isStopping()) {
+    constituentLoopStart = std::chrono::steady_clock::now();
 
-      role_t role = _role.load(std::memory_order_relaxed);
+    role_t role = _role.load(std::memory_order_relaxed);
 
-      if (role == FOLLOWER) {
-        static double const M = 1.0e6;
-        int64_t a = static_cast<int64_t>(M * _agent->config().minPing() *
-                                         _agent->config().timeoutMult());
-        int64_t b = static_cast<int64_t>(M * _agent->config().maxPing() *
-                                         _agent->config().timeoutMult());
-        int64_t randTimeout = RandomGenerator::interval(a, b);
-        int64_t randWait = randTimeout;
+    if (role == FOLLOWER) {
+      static double const M = 1.0e6;
+      int64_t a = static_cast<int64_t>(M * _agent->config().minPing() *
+                                       _agent->config().timeoutMult());
+      int64_t b = static_cast<int64_t>(M * _agent->config().maxPing() *
+                                       _agent->config().timeoutMult());
+      int64_t randTimeout = RandomGenerator::interval(a, b);
+      int64_t randWait = randTimeout;
 
-        {
-          MUTEX_LOCKER(guard, _termVoteLock);
+      // Speedup for size() == 1 - do not wait at all. Start election
+      // immediately.
+      if (size() == 1) {
+        LOG_TOPIC("31ed7", INFO, Logger::AGENCY)
+            << "Immediately start election because of single agency";
+        randWait = 0;
+      }
 
-          // in the beginning, pure random, after that, we might have to
-          // wait for less than planned, since the last heartbeat we have
-          // seen is already some time ago, note that this waiting time
-          // can become negative:
-          if (_lastHeartbeatSeen > 0.0) {
-            double now = TRI_microtime();
-            randWait -= static_cast<int64_t>(M * (now - _lastHeartbeatSeen));
-            if (randWait < a) {
-              randWait = a;
-            } else if (randWait > b) {
-              randWait = b;
-            }
+      {
+        std::lock_guard guard{_termVoteLock};
+
+        // in the beginning, pure random, after that, we might have to
+        // wait for less than planned, since the last heartbeat we have
+        // seen is already some time ago, note that this waiting time
+        // can become negative:
+        if (_lastHeartbeatSeen > 0.0) {
+          double now = TRI_microtime();
+          randWait -= static_cast<int64_t>(M * (now - _lastHeartbeatSeen));
+          if (randWait < a) {
+            randWait = a;
+          } else if (randWait > b) {
+            randWait = b;
           }
         }
+      }
 
-        LOG_TOPIC("9a750", TRACE, Logger::AGENCY)
-            << "Random timeout: " << randTimeout << ", wait: " << randWait;
+      LOG_TOPIC("9a750", TRACE, Logger::AGENCY)
+          << "Random timeout: " << randTimeout << ", wait: " << randWait;
 
-        if (randWait > 0) {
-          CONDITION_LOCKER(guardv, _cv);
-          _cv.wait(randWait);
-        }
+      if (randWait > 0) {
+        std::unique_lock guardv{_cv.mutex};
+        _cv.cv.wait_for(guardv, std::chrono::microseconds{randWait});
+      }
 
+      {
+        std::lock_guard guard{_termVoteLock};
         bool isTimeout = false;
 
         if (_lastHeartbeatSeen <= 0.0) {
@@ -716,91 +723,88 @@ void Constituent::run() {
         if (isTimeout) {
           LOG_TOPIC("18b71", TRACE, Logger::AGENCY)
               << "timeout, calling an election";
-          candidate();
+          candidateNoLock();
           _agent->endPrepareLeadership();
         }
+      }
+    } else if (role == CANDIDATE) {
+      callElection();  // Run for office
+      // Now we take this point of time as the next base point for a
+      // potential next random timeout, since we have just cast a vote for
+      // ourselves:
+      _lastHeartbeatSeen = TRI_microtime();
+      LOG_TOPIC("aeaef", TRACE, Logger::AGENCY)
+          << "setting last heartbeat because we voted for us: "
+          << _lastHeartbeatSeen;
 
-      } else if (role == CANDIDATE) {
-        callElection();  // Run for office
-        // Now we take this point of time as the next base point for a
-        // potential next random timeout, since we have just cast a vote for
-        // ourselves:
-        _lastHeartbeatSeen = TRI_microtime();
-        LOG_TOPIC("aeaef", TRACE, Logger::AGENCY)
-            << "setting last heartbeat because we voted for us: "
-            << _lastHeartbeatSeen;
+    } else {
+      double interval =
+          0.25 * _agent->config().minPing() * _agent->config().timeoutMult();
 
-      } else {
-        double interval =
-            0.25 * _agent->config().minPing() * _agent->config().timeoutMult();
+      double now = TRI_microtime();
+      double nextWakeup = interval;  // might be lowered below
 
-        double now = TRI_microtime();
-        double nextWakeup = interval;  // might be lowered below
-
-        std::string const myid = _agent->id();
-        for (auto const& followerId : _agent->config().active()) {
-          if (followerId != myid) {
-            bool needed = false;
-            {
-              MUTEX_LOCKER(guard, _heartBeatMutex);
-              auto it = _lastHeartbeatSent.find(followerId);
-              if (it == _lastHeartbeatSent.end()) {
+      std::string const myid = _agent->id();
+      for (auto const& followerId : _agent->config().active()) {
+        if (followerId != myid) {
+          bool needed = false;
+          {
+            std::lock_guard guard{_heartBeatMutex};
+            auto it = _lastHeartbeatSent.find(followerId);
+            if (it == _lastHeartbeatSent.end()) {
+              needed = true;
+            } else {
+              double diff = now - it->second;
+              if (diff >= interval) {
                 needed = true;
+                nextWakeup = 0;
               } else {
-                double diff = now - it->second;
-                if (diff >= interval) {
-                  needed = true;
-                  nextWakeup = 0;
-                } else {
-                  // diff < interval, so only needed again in interval-diff s
-                  double waitOnly = interval - diff;
-                  if (nextWakeup > waitOnly) {
-                    nextWakeup = waitOnly;
-                  }
-                  LOG_TOPIC("25d6b", DEBUG, Logger::AGENCY)
-                      << "No need for empty AppendEntriesRPC: " << diff;
+                // diff < interval, so only needed again in interval-diff s
+                double waitOnly = interval - diff;
+                if (nextWakeup > waitOnly) {
+                  nextWakeup = waitOnly;
                 }
-              }
-            }
-            LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY)
-                << "Considering empty AppendEntriesRPC for follower "
-                << followerId << " needed: " << needed;
-            if (needed) {
-              auto startTime = std::chrono::steady_clock::now();
-              _agent->sendEmptyAppendEntriesRPC(followerId);
-              auto endTime = std::chrono::steady_clock::now();
-              if (endTime - startTime > std::chrono::milliseconds(100)) {
-                LOG_TOPIC("ddeeb", DEBUG, Logger::AGENCY)
-                    << "Call to sendEmptyAppendEntriesRPC took longer than 0.1 "
-                       "s: time needed: "
-                    << std::chrono::duration<double>(endTime - startTime)
-                           .count();
+                LOG_TOPIC("25d6b", DEBUG, Logger::AGENCY)
+                    << "No need for empty AppendEntriesRPC: " << diff;
               }
             }
           }
+          LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY)
+              << "Considering empty AppendEntriesRPC for follower "
+              << followerId << " needed: " << needed;
+          if (needed) {
+            auto startTime = std::chrono::steady_clock::now();
+            _agent->sendEmptyAppendEntriesRPC(followerId);
+            auto endTime = std::chrono::steady_clock::now();
+            if (endTime - startTime > std::chrono::milliseconds(100)) {
+              LOG_TOPIC("ddeeb", DEBUG, Logger::AGENCY)
+                  << "Call to sendEmptyAppendEntriesRPC took longer than 0.1 "
+                     "s: time needed: "
+                  << std::chrono::duration<double>(endTime - startTime).count();
+            }
+          }
         }
+      }
 
-        auto beforeWaitTime = std::chrono::steady_clock::now();
+      auto beforeWaitTime = std::chrono::steady_clock::now();
 
-        // This is the smallest time until any of the followers need a
-        // new empty heartbeat:
-        uint64_t timeout = static_cast<uint64_t>(1000000.0 * nextWakeup);
-        if (timeout > 0) {
-          CONDITION_LOCKER(guardv, _cv);
-          _cv.wait(timeout);
-        }
-        auto afterWaitTime = std::chrono::steady_clock::now();
-        if (afterWaitTime - constituentLoopStart >
-            std::chrono::seconds(1) * _agent->config().minPing() *
-                _agent->config().timeoutMult()) {
-          LOG_TOPIC("aa123", WARN, Logger::AGENCY)
-              << "Constituent loop delayed: First part took "
-              << (beforeWaitTime - constituentLoopStart).count()
-              << ", second part took "
-              << (afterWaitTime - beforeWaitTime).count()
-              << ", which is together more than minPing="
-              << _agent->config().minPing() * _agent->config().timeoutMult();
-        }
+      // This is the smallest time until any of the followers need a
+      // new empty heartbeat:
+      uint64_t timeout = static_cast<uint64_t>(1000000.0 * nextWakeup);
+      if (timeout > 0) {
+        std::unique_lock guardv{_cv.mutex};
+        _cv.cv.wait_for(guardv, std::chrono::microseconds{timeout});
+      }
+      auto afterWaitTime = std::chrono::steady_clock::now();
+      if (afterWaitTime - constituentLoopStart >
+          std::chrono::seconds(1) * _agent->config().minPing() *
+              _agent->config().timeoutMult()) {
+        LOG_TOPIC("aa123", WARN, Logger::AGENCY)
+            << "Constituent loop delayed: First part took "
+            << (beforeWaitTime - constituentLoopStart).count()
+            << ", second part took " << (afterWaitTime - beforeWaitTime).count()
+            << ", which is together more than minPing="
+            << _agent->config().minPing() * _agent->config().timeoutMult();
       }
     }
   }
@@ -811,7 +815,7 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
   // seconds and returns the number of more recent ones.
 
   auto now = steadyClockToDouble();
-  MUTEX_LOCKER(locker, _recentElectionsMutex);
+  std::lock_guard locker{_recentElectionsMutex};
   int64_t count = 0;
   for (auto iter = _recentElections.begin(); iter != _recentElections.end();) {
     if (now - *iter > threshold) {
@@ -828,6 +832,6 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
 // Notify about heartbeat being sent out:
 void Constituent::notifyHeartbeatSent(std::string const& followerId) {
   double now = TRI_microtime();
-  MUTEX_LOCKER(guard, _heartBeatMutex);
+  std::lock_guard guard{_heartBeatMutex};
   _lastHeartbeatSent[followerId] = now;
 }

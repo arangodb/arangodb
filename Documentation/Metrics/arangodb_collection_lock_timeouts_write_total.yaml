@@ -13,7 +13,7 @@ exposedBy:
   - single
 description: |
   Number of timeouts when trying to acquire collection write locks.
-  This counter will be increased whenever a collection write lock
+  This counter increases whenever a collection write lock
   cannot be acquired within the configured lock timeout.
   This can only happen if writes on a collection are locked out by
   other operations on the collection that use an exclusive lock. Writes

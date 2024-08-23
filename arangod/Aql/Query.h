@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,50 +25,56 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/BindParameters.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResult.h"
-#include "Aql/QueryResultV8.h"
+#include "Basics/Guarded.h"
 #include "Aql/QueryString.h"
-#include "Aql/SharedQueryState.h"
-#include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/system-functions.h"
-#include "V8Server/V8Context.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <vector>
 
 struct TRI_vocbase_t;
 
+#ifdef USE_V8
+namespace v8 {
+class Isolate;
+}
+#endif
+
 namespace arangodb {
 
 class CollectionNameResolver;
-class LogicalDataSource;  // forward declaration
+class LogicalDataSource;
+class V8Executor;
 
 namespace transaction {
-
 class Context;
 class Methods;
-
 }  // namespace transaction
 namespace aql {
 
 class Ast;
 struct AstNode;
 class ExecutionEngine;
+class ExecutionPlan;
 struct ExecutionStats;
 struct QueryCacheResultEntry;
+class QueryList;
 struct QueryProfile;
-enum class SerializationFormat;
+struct QueryResultV8;
+class SharedQueryState;
 
 /// @brief an AQL query
 class Query : public QueryContext, public std::enable_shared_from_this<Query> {
@@ -85,7 +91,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// method
   Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
         std::shared_ptr<velocypack::Builder> bindParameters,
-        QueryOptions options);
+        QueryOptions options, Scheduler* scheduler);
 
   ~Query() override;
 
@@ -100,9 +106,39 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   static std::shared_ptr<Query> create(
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,
-      QueryOptions options = {});
+      QueryOptions options = {},
+      Scheduler* scheduler = SchedulerFeature::SCHEDULER);
 
-  constexpr static uint64_t DontCache = 0;
+  constexpr static uint64_t kDontCache = 0;
+
+  struct QuerySerializationOptions {
+    bool includeUser = true;
+    bool includeQueryString = true;
+    bool includeBindParameters = false;
+    bool includeDataSources = false;
+    bool includeResultCode = false;
+    size_t queryStringMaxLength = 2048;
+  };
+  /// @brief create a velocypack representation of the query for statistical
+  /// or informational purposes, consisting of some descriptive attributes,
+  /// such as:
+  /// - id
+  /// - database
+  /// - user
+  /// - query string
+  /// - bind vars
+  /// - data sources
+  /// - start time
+  /// - run time
+  /// - peak memory usage
+  /// - state (failed / killed / completed)
+  /// - stream
+  /// - exit code
+  void toVelocyPack(velocypack::Builder& builder, bool isCurrent,
+                    QuerySerializationOptions const& options) const;
+
+  /// @brief log a query to the slow query log
+  void logSlow(QuerySerializationOptions const& options) const;
 
   /// @brief return the user that started the query
   std::string const& user() const final;
@@ -113,11 +149,18 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief set the query to killed
   void kill();
 
+  void setKillFlag();
+
   /// @brief setter and getter methods for the query lockTimeout.
   void setLockTimeout(double timeout) noexcept final;
   double getLockTimeout() const noexcept final;
 
   QueryString const& queryString() const { return _queryString; }
+
+  /// @brief the query's transaction id. returns 0 if no transaction
+  /// has been assigned to the query yet. use this only for informational
+  /// purposes
+  TransactionId transactionId() const noexcept;
 
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
@@ -131,7 +174,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// every following call will be ignored.
   void ensureExecutionTime() noexcept;
 
-  void prepareQuery(SerializationFormat format);
+  void prepareQuery();
 
   /// @brief execute an AQL query
   ExecutionState execute(QueryResult& res);
@@ -140,9 +183,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   ///        need to wait.
   QueryResult executeSync();
 
+#ifdef USE_V8
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
   QueryResultV8 executeV8(v8::Isolate* isolate);
+#endif
 
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
@@ -155,30 +200,48 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief explain an AQL query
   QueryResult explain();
 
+  /// @brief prepare a query out of some velocypack data.
+  /// only to be used on single server or coordinator.
+  /// never call this on a DB server!
+  void prepareFromVelocyPack(velocypack::Slice querySlice,
+                             velocypack::Slice collections,
+                             velocypack::Slice variables,
+                             velocypack::Slice snippets,
+                             QueryAnalyzerRevisions const& analyzersRevision);
+
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
 
   bool isAsyncQuery() const noexcept final;
 
-  /// @brief enter a V8 context
-  void enterV8Context() final;
+  /// @brief enter a V8 executor
+  void enterV8Executor() final;
 
-  /// @brief exits a V8 context
-  void exitV8Context() final;
+  /// @brief exits a V8 executor
+  void exitV8Executor() final;
 
-  /// @brief check if the query has a V8 context ready for use
-  bool hasEnteredV8Context() const final {
-    return (_contextOwnedByExterior || _v8Context != nullptr);
+  /// @brief check if the query has a V8 executor ready for use
+  bool hasEnteredV8Executor() const final {
+#ifdef USE_V8
+    return (_executorOwnedByExterior || _v8Executor != nullptr);
+#else
+    return false;
+#endif
   }
 
-  /// @brief return the final query result status code (0 = no error,
-  /// > 0 = error, one of TRI_ERROR_...)
-  ErrorCode resultCode() const noexcept;
+#ifdef USE_V8
+  void runInV8ExecutorContext(std::function<void(v8::Isolate*)> const& cb);
+#endif
+
+  Result result() const;
+
+  void setResult(Result&& res) noexcept;
 
   /// @brief return the bind parameters as passed by the user
-  std::shared_ptr<velocypack::Builder> bindParameters() const {
+  std::shared_ptr<velocypack::Builder> bindParametersAsBuilder() const {
     return _bindParameters.builder();
   }
+  BindParameters const& bindParameters() const { return _bindParameters; }
 
   /// @brief return the query's shared state
   std::shared_ptr<SharedQueryState> sharedState() const;
@@ -217,7 +280,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   SnippetList const& snippets() const { return _snippets; }
   SnippetList& snippets() { return _snippets; }
   ServerQueryIdList& serverQueryIds() { return _serverQueryIds; }
-  ExecutionStats& executionStats() { return _execStats; }
+  Guarded<ExecutionStats>& executionStatsGuard() { return _execStats; }
 
   // Debug method to kill a query at a specific position
   // during execution. It internally asserts that the query
@@ -250,11 +313,12 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
-  /// to be able to only prepare a query from VelocyPack and then store it in
-  /// the QueryRegistry.
+  /// to be able to only prepare a query from VelocyPack and then store it
+  /// in the QueryRegistry.
   std::unique_ptr<ExecutionPlan> preparePlan();
 
-  /// @brief calculate a hash value for the query string and bind parameters
+  /// @brief calculate a hash value for the query string and bind
+  /// parameters
   uint64_t calculateHash() const;
 
   /// @brief whether or not the query cache can be used for the query
@@ -263,25 +327,29 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
-  /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(ErrorCode errorCode, bool sync);
+  /// @brief cleanup plan and engine for current query. can issue WAITING
+  ExecutionState cleanupPlanAndEngine(bool sync);
 
   void unregisterSnippets();
 
  private:
-  ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
+  void handlePostProcessing();
+  void handlePostProcessing(QueryList& querylist);
+
+  ExecutionState cleanupTrxAndEngines();
 
   // @brief injects vertex collections into all types of graph nodes:
   // ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH and
-  // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not contain
-  // a vertex collection yet. This can happen e.g. during anonymous traversal.
+  // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not
+  // contain a vertex collection yet. This can happen e.g. during
+  // anonymous traversal.
   void injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan);
 
   // log the start of a query (trace mode only)
-  void logAtStart();
+  void logAtStart() const;
 
   // log the end of a query (warnings only)
-  void logAtEnd(QueryResult const& queryResult) const;
+  void logAtEnd() const;
 
   enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
@@ -292,7 +360,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   QueryString _queryString;
 
   /// collect execution stats, contains aliases
-  ExecutionStats _execStats;
+  Guarded<ExecutionStats> _execStats;
 
   /// @brief transaction context to use for this query
   std::shared_ptr<transaction::Context> _transactionContext;
@@ -300,8 +368,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief shared query state
   std::shared_ptr<SharedQueryState> _sharedState;
 
-  /// @brief the currently used V8 context
-  V8Context* _v8Context;
+#ifdef USE_V8
+  /// @brief the currently used V8 executor
+  V8Executor* _v8Executor;
+#endif
 
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
@@ -342,8 +412,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;
 
+  /// @brief total memory used for the velocypack data of an execution plan
+  size_t _planMemoryUsage;
+
   /// @brief hash for this query. will be calculated only once when needed
-  mutable uint64_t _queryHash = DontCache;
+  mutable uint64_t _queryHash = kDontCache;
 
   enum class ShutdownState : uint8_t { None = 0, InProgress = 2, Done = 4 };
 
@@ -354,22 +427,25 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// repeatability.
   ExecutionPhase _executionPhase;
 
-  /// @brief return the final query result status code (0 = no error,
-  /// > 0 = error, one of TRI_ERROR_...)
-  std::optional<ErrorCode> _resultCode;
+  /// @brief mutex protecting _result
+  mutable std::mutex _resultMutex;
+  std::optional<Result> _result;
+  bool _postProcessingDone = false;
 
   /// @brief user that started the query
   std::string _user;
 
-  /// @brief whether or not someone else has acquired a V8 context for us
-  bool const _contextOwnedByExterior;
+#ifdef USE_V8
+  /// @brief whether or not someone else has acquired a V8 executor for us
+  bool const _executorOwnedByExterior;
 
   /// @brief set if we are inside a JS transaction
   bool const _embeddedQuery;
 
-  /// @brief whether or not the transaction context was registered
-  /// in a v8 context
-  bool _registeredInV8Context;
+  /// @brief whether or not the transaction executor was registered
+  /// in a v8 executor
+  bool _registeredInV8Executor;
+#endif
 
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;

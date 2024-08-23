@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,16 +24,21 @@
 #include "TraversalConditionFinder.h"
 
 #include "Aql/Ast.h"
+#include "Aql/Condition.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
-#include "Aql/TraversalNode.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LogMacros.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -105,12 +110,7 @@ AstNodeType buildSingleComparatorType(AstNode const* condition) {
   TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
   TRI_ASSERT(!Quantifier::isAny(quantifier));
   if (Quantifier::isNone(quantifier)) {
-    auto it = Ast::NegatedOperators.find(type);
-    if (it == Ast::NegatedOperators.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "unsupported operator type");
-    }
-    type = it->second;
+    type = Ast::negateOperator(type);
   }
   return type;
 }
@@ -557,6 +557,8 @@ TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
       _condition(std::make_unique<Condition>(plan->getAst())),
       _planAltered(planAltered) {}
 
+TraversalConditionFinder::~TraversalConditionFinder() = default;
+
 bool TraversalConditionFinder::before(ExecutionNode* en) {
   if (!_condition->isEmpty() && !en->isDeterministic()) {
     // we already found a FILTER and
@@ -576,6 +578,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
+    case EN::JOIN:
     case EN::RETURN:
     case EN::SORT:
     case EN::ENUMERATE_COLLECTION:
@@ -787,8 +790,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       if (conditionIsImpossible) {
         // condition is always false
         for (auto const& x : node->getParents()) {
-          auto noRes = new NoResultsNode(_plan, _plan->nextId());
-          _plan->registerNode(noRes);
+          auto noRes = _plan->createNode<NoResultsNode>(_plan, _plan->nextId());
           _plan->insertDependency(x, noRes);
           *_planAltered = true;
         }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,10 +48,14 @@
 namespace arangodb {
 namespace geo_index {
 
-Index::Index(VPackSlice const& info,
+Index::Index(velocypack::Slice info,
              std::vector<std::vector<basics::AttributeName>> const& fields)
     : _variant(Variant::NONE) {
   _coverParams.fromVelocyPack(info);
+  // If the legacyPolygons value is not set here, it is from a previous
+  // version, so we default to `true` here. Coming from `ensureIndex`,
+  // we have always set the value in the definition, and if the user does
+  // not specify it, it defaults to `false` via the IndexTypeFactory.
   _legacyPolygons = arangodb::basics::VelocyPackHelper::getBooleanValue(
       info, StaticStrings::IndexLegacyPolygons, true);
 
@@ -319,7 +323,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
 void Index::parseCondition(aql::AstNode const* node,
                            aql::Variable const* reference,
                            geo::QueryParams& params, bool legacy) {
-  if (aql::Ast::IsAndOperatorType(node->type)) {
+  if (aql::Ast::isAndOperatorType(node->type)) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       handleNode(node->getMemberUnchecked(i), reference, params, legacy);
     }

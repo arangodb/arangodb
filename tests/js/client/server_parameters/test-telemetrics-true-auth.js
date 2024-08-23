@@ -1,16 +1,17 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global getOptions, assertEqual, assertTrue, assertNotNull, assertNotUndefined, arango */
+/* global getOptions, assertEqual, assertNotEqual, assertTrue, assertNotNull, assertNotUndefined, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2023 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
@@ -27,25 +28,32 @@ const jwtSecret = 'abc';
 
 if (getOptions === true) {
   return {
-    'server.enable-telemetrics-api': 'true',
+    'server.telemetrics-api': 'true',
+    'server.telemetrics-api-max-requests': '15',
     'server.authentication': 'true',
     'server.jwt-secret': jwtSecret,
   };
 }
 
-let jsunity = require('jsunity');
-let internal = require('internal');
+const jsunity = require('jsunity');
+const internal = require('internal');
+const toArgv = require('internal').toArgv;
+const fs = require('fs');
+const pu = require('@arangodb/testutils/process-utils');
 const FoxxManager = require('@arangodb/foxx/manager');
 const path = require('path');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'redirect');
-let arangodb = require('@arangodb');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 const users = require('@arangodb/users');
+const analyzers = require("@arangodb/analyzers");
 const isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 let smartGraph = null;
 if (isEnterprise) {
   smartGraph = require("@arangodb/smart-graph");
 }
+const arangosh = pu.ARANGOSH_BIN;
 const userName = "abc";
 const databaseName = "databaseTest";
 const cn = "testCollection";
@@ -54,7 +62,6 @@ const cn3 = "edgeTestCollection";
 const vn1 = "testVertex1";
 const vn2 = "testVertex2";
 
-let db = arangodb.db;
 
 function createUser() {
   users.save(userName, '123', true);
@@ -126,7 +133,7 @@ function parseCollections(colls) {
     assertTrue(coll.hasOwnProperty("n_skiplist"));
     assertTrue(coll.hasOwnProperty("n_ttl"));
     assertTrue(coll.hasOwnProperty("n_unknown"));
-    assertTrue(coll.hasOwnProperty("n_zkd"));
+    assertTrue(coll.hasOwnProperty("n_mdi"));
     const idxs = coll["idxs"];
     parseIndexes(idxs);
   });
@@ -214,9 +221,7 @@ function assertForTelemetricsResponse(telemetrics) {
   parseDatabases(databases);
 }
 
-
 function telemetricsShellReconnectSmartGraphTestsuite() {
-
   return {
 
     setUpAll: function () {
@@ -239,6 +244,11 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         smartGraph._drop(cn2, true);
       } catch (err) {
       }
+    },
+
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
     },
 
     testTelemetricsShellRequestByUserAuthorized: function () {
@@ -267,8 +277,14 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
+        analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
 
-        db._createView('testView1', 'arangosearch', {});
+
+        db._createView('testView1', 'arangosearch', { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        let db1DocsCount = 0;
+        db._collections().forEach((coll) => {
+          db1DocsCount += coll.count();
+        });
         db._useDatabase("_system");
 
         arango.restartTelemetrics();
@@ -284,8 +300,8 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         databases.forEach((database, idx) => {
           let totalNumDocs = 0;
           if (idx === db1Idx) {
-            // there are already the 8 system collections in each database + 1 created here
-            assertEqual(database["n_doc_colls"], 10);
+            // there are already the 7 system collections in each database + 1 created here
+            assertEqual(database["n_doc_colls"], 9);
             database["colls"].forEach(coll => {
               const nDocs = coll["n_docs"];
               totalNumDocs += nDocs;
@@ -294,30 +310,30 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
-                assertEqual(nDocs, 0);
-                //system collections have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                assertTrue(nDocs === 0 || nDocs === 1);
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
               }
             });
-            assertEqual(totalNumDocs, 2000);
+            assertEqual(totalNumDocs, db1DocsCount);
           } else {
             //includes the collections created for the smart graph
-            assertEqual(database["n_doc_colls"], 15);
+            assertEqual(database["n_doc_colls"], 14);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              //system collections would have replication factor 2, our one has 1, so both are allowed
+              // We cannot distinguish which variant we analyse.
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
@@ -350,13 +366,12 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         }
       }
     },
+
   };
 }
 
 function telemetricsShellReconnectGraphTestsuite() {
-
   return {
-
     setUpAll: function () {
       db._create(cn);
       let coll = db._createEdgeCollection(cn3, {numberOfShards: 2});
@@ -366,6 +381,11 @@ function telemetricsShellReconnectGraphTestsuite() {
     tearDownAll: function () {
       db._drop(cn);
       db._drop(cn3);
+    },
+
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
     },
 
     testTelemetricsShellRequestByUserAuthorized2: function () {
@@ -395,8 +415,13 @@ function telemetricsShellReconnectGraphTestsuite() {
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
 
-        db._createView('testView1', 'arangosearch', {});
+        analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
 
+        db._createView('testView1', 'arangosearch', { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        let db1DocsCount = 0;
+        db._collections().forEach((coll) => {
+          db1DocsCount += coll.count();
+        });
         db._useDatabase("_system");
 
         arango.restartTelemetrics();
@@ -412,8 +437,8 @@ function telemetricsShellReconnectGraphTestsuite() {
         databases.forEach((database, idx) => {
           let totalNumDocs = 0;
           if (idx === db1Idx) {
-            // there are already the 9 system collections in the database + 1 created here
-            assertEqual(database["n_doc_colls"], 10);
+            // there are already the 8 system collections in the database + 1 created here
+            assertEqual(database["n_doc_colls"], 9);
             database["colls"].forEach(coll => {
               const nDocs = coll["n_docs"];
               totalNumDocs += nDocs;
@@ -422,31 +447,32 @@ function telemetricsShellReconnectGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
-                assertEqual(nDocs, 0);
+                assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
               }
             });
-            assertEqual(totalNumDocs, 2000);
+            assertEqual(totalNumDocs, db1DocsCount);
           } else {
-            // there are already 12 collections in the _system database + 2 created here
-            assertEqual(database["n_doc_colls"], 14);
+            // there are already 11 collections in the _system database + 2 created here
+            assertEqual(database["n_doc_colls"], 13);
             assertEqual(database["n_edge_colls"], 1);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              //system collections would have replication factor 2, our one has 1, so both are allowed
+              // We cannot distinguish which variant we analyse.
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
@@ -460,12 +486,56 @@ function telemetricsShellReconnectGraphTestsuite() {
         }
       }
     },
+
+    testTelemetricsShellExecuteScriptLeave: function () {
+      // this is for when the user logs into the shell to run a script and then leaves the shell immediately. The shell
+      // should not hang because telemetrics is still in progress.
+      // The telemetrics process should be transparent to the user and not influence user experience.
+      // The shell should be closed as soon as the script executes despite of telemetrics being in progress, not
+      // mattering whether telemetrics is still in progress by fetching info from servers or by sending the info to
+      // the endpoint.
+      // It could happen, for example, that the script executes, and telemetrics is still in progress, the data is about
+      // to be sent to the warehouse and could hang until a connection timeout (30s) is reached. Therefore, the
+      // connecting socket is made non-blocking to be able to abort the request.The shell should be closed immediately
+      // as it would behave had the telemetrics process not taken place.
+      let file = fs.getTempFile() + "-telemetrics";
+      fs.write(file, `(function() { const x = 0;})();`);
+      let options = internal.options();
+      let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
+      const args = {
+        'javascript.startup-directory': options['javascript.startup-directory'],
+        'server.endpoint': endpoint,
+        'server.username': arango.connectedUser(),
+        'server.password': '',
+        'javascript.execute': file,
+        'client.failure-points': 'startTelemetricsForTest',
+      };
+      const argv = toArgv(args);
+
+      for (let o in options['javascript.module-directory']) {
+        argv.push('--javascript.module-directory');
+        argv.push(options['javascript.module-directory'][o]);
+      }
+
+      let result = internal.executeExternal(arangosh, argv, false /*usePipes*/);
+      assertTrue(result.hasOwnProperty('pid'));
+      let numSecs = 0.5;
+      let status = {};
+      while (true) {
+        status = internal.statusExternal(result.pid);
+        if (status.status === "TERMINATED" || numSecs >= 16) {
+          break;
+        }
+        internal.sleep(numSecs);
+        numSecs *= 2;
+      }
+      assertEqual(status.status, "TERMINATED", "couldn't leave shell immediately after executing script");
+    }
   };
 }
 
 
 function telemetricsApiReconnectSmartGraphTestsuite() {
-
   return {
 
     setUpAll: function () {
@@ -488,6 +558,11 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
         smartGraph._drop(cn2, true);
       } catch (err) {
       }
+    },
+
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
     },
 
     testTelemetricsApiRequestByUserAuthorized: function () {
@@ -516,8 +591,14 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
         db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
+        analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
 
-        db._createView('testView1', 'arangosearch', {});
+
+        db._createView('testView1', 'arangosearch',{ links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        let db1DocsCount = 0;
+        db._collections().forEach((coll) => {
+          db1DocsCount += coll.count();
+        });
         db._useDatabase("_system");
         telemetrics = arango.GET("/_admin/telemetrics");
 
@@ -531,8 +612,8 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
         databases.forEach((database, idx) => {
           let totalNumDocs = 0;
           if (idx === db1Idx) {
-            // there are already the 8 system collections in each database + 1 created here
-            assertEqual(database["n_doc_colls"], 10);
+            // there are already the 7 system collections in each database + 1 created here
+            assertEqual(database["n_doc_colls"], 9);
             database["colls"].forEach(coll => {
               const nDocs = coll["n_docs"];
               totalNumDocs += nDocs;
@@ -541,30 +622,31 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
-                assertEqual(nDocs, 0);
+                assertTrue(nDocs === 0 || nDocs === 1);
                 //system collections would have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
               }
             });
-            assertEqual(totalNumDocs, 2000);
+            assertEqual(totalNumDocs, db1DocsCount);
           } else {
             //includes the collections created for the smart graph
-            assertEqual(database["n_doc_colls"], 15);
+            assertEqual(database["n_doc_colls"], 14);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              //system collections would have replication factor 2, our one has 1, so both are allowed
+              // We cannot distinguish which variant we analyse.
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
@@ -598,7 +680,6 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
       }
     },
 
-
     testTelemetricsInsertingEndpointReqBodyAsDocument: function () {
       arango.disableAutomaticallySendTelemetricsToEndpoint();
       arango.startTelemetrics();
@@ -609,14 +690,12 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
       assertTrue(doc.hasOwnProperty("_key"));
       assertTrue(doc.hasOwnProperty("_rev"));
       assertForTelemetricsResponse(db[cn].document(doc["_id"]));
-
     },
 
   };
 }
 
 function telemetricsApiReconnectGraphTestsuite() {
-
   return {
 
     setUpAll: function () {
@@ -630,6 +709,11 @@ function telemetricsApiReconnectGraphTestsuite() {
       db._drop(cn3);
     },
 
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
+    },
+
     testTelemetricsApiRequestByUserAuthorized2: function () {
       try {
         arango.disableAutomaticallySendTelemetricsToEndpoint();
@@ -638,7 +722,6 @@ function telemetricsApiReconnectGraphTestsuite() {
         assertForTelemetricsResponse(telemetrics);
         let deployment = telemetrics["deployment"];
         assertEqual(deployment["databases"].length, 1);
-
 
         db._createDatabase(databaseName);
         db._useDatabase(databaseName);
@@ -657,8 +740,14 @@ function telemetricsApiReconnectGraphTestsuite() {
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
         db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
 
-        db._createView('testView1', 'arangosearch', {});
-        db._useDatabase("_system");
+        analyzers.save("testAnalyzer", "delimiter", { delimiter: " " }, [ "frequency"]);
+
+
+        db._createView('testView1', 'arangosearch', { links: { [cn]: {includeAllFields: true, analyzers: ["testAnalyzer"] }}});
+        let db1DocsCount = 0;
+        db._collections().forEach((coll) => {
+          db1DocsCount += coll.count();
+        });
         telemetrics = arango.GET("/_admin/telemetrics");
 
         assertForTelemetricsResponse(telemetrics);
@@ -671,8 +760,8 @@ function telemetricsApiReconnectGraphTestsuite() {
         databases.forEach((database, idx) => {
           let totalNumDocs = 0;
           if (idx === db1Idx) {
-            // there are already the 8 system collections in each database + 1 created here
-            assertEqual(database["n_doc_colls"], 10);
+            // there are already the 7 system collections in each database + 1 created here
+            assertEqual(database["n_doc_colls"], 9);
             database["colls"].forEach(coll => {
               const nDocs = coll["n_docs"];
               totalNumDocs += nDocs;
@@ -681,30 +770,28 @@ function telemetricsApiReconnectGraphTestsuite() {
                 assertEqual(coll["rep_factor"], 1);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 1);
+                assertEqual(coll["n_iresearch"], 1);
                 assertEqual(coll["n_geo"], 2);
                 numColls++;
-                assertEqual(coll.idxs.length, 4);
+                assertEqual(coll.idxs.length, 5);
               } else {
-                assertEqual(nDocs, 0);
-                //system collections would have replication factor 2
-                if (!isCluster) {
-                  assertEqual(coll["rep_factor"], 1);
-                }
+                assertTrue(nDocs === 0 || nDocs === 1);
+                //system collections would have replication factor 2, our one has 1, so both are allowed
+                // We cannot distinguish which variant we analyse.
+                assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
                 assertEqual(coll["n_primary"], 1);
                 assertEqual(coll["n_persistent"], 0);
                 assertEqual(coll["n_geo"], 0);
               }
             });
-            assertEqual(totalNumDocs, 2000);
+            assertEqual(totalNumDocs, db1DocsCount);
           } else {
-            assertEqual(database["n_doc_colls"], 14);
+            assertEqual(database["n_doc_colls"], 13);
             assertEqual(database["n_edge_colls"], 1);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
               assertEqual(coll["n_persistent"], 0);
-              if (!isCluster) {
-                assertEqual(coll["rep_factor"], 1);
-              }
+              assertTrue(coll["rep_factor"] === 1 || coll["rep_factor"] === 2);
               assertEqual(coll["n_geo"], 0);
             });
           }
@@ -721,13 +808,10 @@ function telemetricsApiReconnectGraphTestsuite() {
   };
 }
 
-
 function telemetricsSendToEndpointRedirectTestsuite() {
-
   const mount = '/test-redirect';
 
   return {
-
     setUpAll: function () {
       try {
         FoxxManager.uninstall(mount, {force: true});
@@ -751,12 +835,53 @@ function telemetricsSendToEndpointRedirectTestsuite() {
       }
     },
 
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
+    },
+
     testTelemetricsSendToEndpointWithRedirection: function () {
       arango.disableAutomaticallySendTelemetricsToEndpoint();
       arango.startTelemetrics();
       getTelemetricsResult();
       const telemetrics = getTelemetricsSentToEndpoint();
       assertForTelemetricsResponse(telemetrics);
+    },
+  };
+}
+
+function telemetricsEnhancingOurCalm() {
+  return {
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
+    },
+
+    testTelemetricsApiCallWithoutArangoshUserAgent: function () {
+      for (let i = 0; i < 20; ++i) {
+        let res = arango.GET_RAW("/_admin/telemetrics");
+        assertEqual(200, res.code);
+      }
+    },
+
+    testTelemetricsApiCallAndSetArangoshUserAgent: function () {
+      const n = 50;
+
+      let successful = 0;
+      let failed = 0;
+      for (let i = 0; i < n; ++i) {
+        let res = arango.GET_RAW("/_admin/telemetrics", {"user-agent": "arangosh/3.11.0"});
+        if (res.code === 200) {
+          ++successful;
+        }
+        if (res.code === 420) {
+          assertEqual(420, res.errorNum);
+          ++failed;
+          break;
+        }
+      }
+      assertNotEqual(failed, 0);
+      assertNotEqual(successful, n);
     },
 
   };
@@ -769,6 +894,6 @@ if (isEnterprise) {
 jsunity.run(telemetricsShellReconnectGraphTestsuite);
 jsunity.run(telemetricsApiReconnectGraphTestsuite);
 jsunity.run(telemetricsSendToEndpointRedirectTestsuite);
-
+jsunity.run(telemetricsEnhancingOurCalm);
 
 return jsunity.done();

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,6 +41,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/IndexesSnapshot.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -63,8 +64,9 @@ Result removeKeysOutsideRange(
     return Result();
   }
 
+  auto origin = transaction::OperationOriginInternal{"replication"};
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(coll->vocbase()), *coll,
+      transaction::StandaloneContext::create(coll->vocbase(), origin), *coll,
       AccessMode::Type::EXCLUSIVE);
 
   trx.addHint(transaction::Hints::Hint::NO_INDEXING);
@@ -103,6 +105,7 @@ Result removeKeysOutsideRange(
   auto iterator = createPrimaryIndexIterator(&trx, coll);
 
   VPackBuilder builder;
+  auto callback = IndexIterator::makeDocumentCallback(builder);
 
   // remove everything from the beginning of the key range until the lowest
   // remote key
@@ -113,9 +116,10 @@ Result removeKeysOutsideRange(
           auto documentId = RocksDBValue::documentId(rocksValue);
 
           builder.clear();
-          Result r = physical->lookupDocument(
-              trx, documentId, builder, /*readCache*/ true,
-              /*fillCache*/ false, ReadOwnWrites::yes);
+
+          auto r =
+              physical->lookup(&trx, documentId, callback,
+                               {.fillCache = false, .readOwnWrites = true});
 
           if (r.ok()) {
             TRI_ASSERT(builder.slice().isObject());
@@ -159,9 +163,9 @@ Result removeKeysOutsideRange(
           LocalDocumentId documentId = RocksDBValue::documentId(rocksValue);
 
           builder.clear();
-          Result r = physical->lookupDocument(
-              trx, documentId, builder, /*readCache*/ true,
-              /*fillCache*/ false, ReadOwnWrites::yes);
+          auto r =
+              physical->lookup(&trx, documentId, callback,
+                               {.fillCache = false, .readOwnWrites = true});
 
           if (r.ok()) {
             TRI_ASSERT(builder.slice().isObject());
@@ -290,6 +294,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   // responseBody.toJson();
 
   transaction::BuilderLeaser tempBuilder(trx);
+  auto callback = IndexIterator::makeDocumentCallback(*tempBuilder);
   std::vector<size_t> toFetch;
   size_t i = 0;
   size_t nextStart = 0;
@@ -340,9 +345,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           auto [documentId, revisionId] = lookupResult;
 
           tempBuilder->clear();
-          r = physical->lookupDocument(*trx, documentId, *tempBuilder,
-                                       /*readCache*/ true, /*fillCache*/ false,
-                                       ReadOwnWrites::yes);
+          r = physical->lookup(trx, documentId, callback,
+                               {.fillCache = false, .readOwnWrites = true});
 
           if (r.ok()) {
             TRI_ASSERT(tempBuilder->slice().isObject());
@@ -408,9 +412,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
         auto [documentId, revisionId] = lookupResult;
 
         tempBuilder->clear();
-        r = physical->lookupDocument(*trx, documentId, *tempBuilder,
-                                     /*readCache*/ true, /*fillCache*/ false,
-                                     ReadOwnWrites::yes);
+        r = physical->lookup(trx, documentId, callback,
+                             {.fillCache = false, .readOwnWrites = true});
 
         if (r.ok()) {
           TRI_ASSERT(tempBuilder->slice().isObject());
@@ -437,7 +440,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   // determine number of unique indexes. we may need it later
   std::size_t numUniqueIndexes = [&]() {
     std::size_t numUnique = 0;
-    for (auto const& idx : coll->getIndexes()) {
+    for (auto const& idx : coll->getPhysical()->getReadyIndexes()) {
       numUnique += idx->unique() ? 1 : 0;
     }
     return numUnique;
@@ -576,9 +579,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           auto [documentId, revisionId] = lookupResult;
 
           tempBuilder->clear();
-          r = physical->lookupDocument(*trx, documentId, *tempBuilder,
-                                       /*readCache*/ true, /*fillCache*/ false,
-                                       ReadOwnWrites::yes);
+          r = physical->lookup(trx, documentId, callback,
+                               {.fillCache = false, .readOwnWrites = true});
 
           if (r.ok()) {
             TRI_ASSERT(tempBuilder->slice().isObject());
@@ -786,9 +788,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     std::unique_ptr<SingleCollectionTransaction> trx;
 
     auto startTrx = [&]() -> Result {
+      auto origin = transaction::OperationOriginInternal{"replication"};
       trx = std::make_unique<SingleCollectionTransaction>(
-          transaction::StandaloneContext::Create(syncer.vocbase()), *col,
-          AccessMode::Type::EXCLUSIVE);
+          transaction::StandaloneContext::create(syncer.vocbase(), origin),
+          *col, AccessMode::Type::EXCLUSIVE);
       trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       return trx->begin();
     };
@@ -865,13 +868,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     // tempBuilder is reused inside compareChunk
     VPackBuilder tempBuilder;
+    auto callback = IndexIterator::makeDocumentCallback(tempBuilder);
 
     std::function<void(std::string, RevisionId)> compareChunk =
-        [&trx, &physical, &options, &foundLowKey, &markers, &localHash,
-         &hashString, &syncer, &currentChunkId, &numChunks, &keysId,
-         &resetChunk, &compareChunk, &lowKey, &highKey, &tempBuilder,
-         &indexesSnapshot,
-         &stats](std::string const& docKey, RevisionId docRev) {
+        [&](std::string const& docKey, RevisionId docRev) {
           int cmp1 = docKey.compare(lowKey);
 
           if (cmp1 < 0) {
@@ -886,9 +886,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
               auto [documentId, revisionId] = lookupResult;
 
               tempBuilder.clear();
-              r = physical->lookupDocument(
-                  *trx, documentId, tempBuilder, /*readCache*/ true,
-                  /*fillCache*/ false, ReadOwnWrites::yes);
+              r = physical->lookup(trx.get(), documentId, callback,
+                                   {.fillCache = false, .readOwnWrites = true});
 
               if (r.ok()) {
                 TRI_ASSERT(tempBuilder.slice().isObject());
@@ -969,22 +968,22 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     uint64_t documentsFound = 0;
     auto iterator = createPrimaryIndexIterator(trx.get(), col);
+    RevisionId docRev;
+    auto callbackFunc = [&](LocalDocumentId, aql::DocumentData&&,
+                            VPackSlice doc) {
+      docRev = RevisionId::fromSlice(doc);
+      return true;
+    };
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           ++documentsFound;
           std::string docKey = std::string(RocksDBKey::primaryKey(rocksKey));
-          RevisionId docRev;
           if (!RocksDBValue::revisionId(rocksValue, docRev)) {
             // for collections that do not have the revisionId in the value
-            auto documentId = RocksDBValue::documentId(
-                rocksValue);  // we want probably to do this instead
-            physical->read(
-                trx.get(), documentId,
-                [&docRev](LocalDocumentId const&, VPackSlice doc) {
-                  docRev = RevisionId::fromSlice(doc);
-                  return true;
-                },
-                ReadOwnWrites::yes);
+            // we want probably to do this instead
+            auto documentId = RocksDBValue::documentId(rocksValue);
+            physical->lookup(trx.get(), documentId, callbackFunc,
+                             {.readOwnWrites = true});
           }
           compareChunk(docKey, docRev);
           return true;
@@ -1017,7 +1016,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           documentsFound + stats.numDocsInserted -
           (stats.numDocsRemoved - numberDocumentsRemovedBeforeStart);
       uint64_t numberDocumentsDueToCounter =
-          col->numberDocuments(trx.get(), transaction::CountType::Normal);
+          physical->numberDocuments(trx.get());
       syncer.setProgress(
           std::string("number of remaining documents in collection '") +
           col->name() + "': " + std::to_string(numberDocumentsAfterSync) +
@@ -1035,10 +1034,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         // patch the document counter of the collection and the transaction
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
-        RocksDBEngine& engine = col->vocbase()
-                                    .server()
-                                    .getFeature<EngineSelectorFeature>()
-                                    .engine<RocksDBEngine>();
+        RocksDBEngine& engine = col->vocbase().engine<RocksDBEngine>();
         auto seq = engine.db()->GetLatestSequenceNumber();
         static_cast<RocksDBCollection*>(
             trx->documentCollection()->getPhysical())

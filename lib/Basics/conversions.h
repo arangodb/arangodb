@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,9 +23,8 @@
 
 #pragma once
 
+#include <cstdint>
 #include <string>
-
-#include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a single hex to an integer
@@ -38,24 +37,6 @@ int TRI_IntHex(char ch, int errorValue);
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_DoubleString(char const* str);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to int32 from string
-////////////////////////////////////////////////////////////////////////////////
-
-int32_t TRI_Int32String(char const* str);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to int32 from string with given length
-////////////////////////////////////////////////////////////////////////////////
-
-int32_t TRI_Int32String(char const* str, size_t length);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to uint32 from string
-////////////////////////////////////////////////////////////////////////////////
-
-uint32_t TRI_UInt32String(char const* str);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from int8, using the specified buffer.
@@ -166,28 +147,6 @@ size_t TRI_StringUInt32HexInPlace(uint32_t, char*);
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_StringUInt64HexInPlace(uint64_t, char*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to an octal string from uint32, using the specified buffer.
-/// A NUL-byte will be appended at the end.
-/// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte.
-/// The length of the string number in characters without the NUL byte is
-/// returned.
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_StringUInt32OctalInPlace(uint32_t, char*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to an octal string from uint64, using the specified buffer.
-/// A NUL-byte will be appended at the end.
-/// It is the caller's responsibility to ensure the buffer is big enough to
-/// contain the result string and the NUL byte.
-/// The length of the string number in characters without the NUL byte is
-/// returned.
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_StringUInt64OctalInPlace(uint64_t, char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a time stamp to a string

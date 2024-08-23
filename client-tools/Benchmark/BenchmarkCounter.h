@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,9 +23,7 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
+#include <mutex>
 
 namespace arangodb {
 namespace arangobench {
@@ -58,7 +56,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   T getValue() {
-    MUTEX_LOCKER(mutexLocker, this->_mutex);
+    std::lock_guard mutexLocker{this->_mutex};
     return _value;
   }
 
@@ -67,7 +65,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t failures() {
-    MUTEX_LOCKER(mutexLocker, this->_mutex);
+    std::lock_guard mutexLocker{this->_mutex};
     return _failures;
   }
 
@@ -76,7 +74,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t incompleteFailures() {
-    MUTEX_LOCKER(mutexLocker, this->_mutex);
+    std::lock_guard mutexLocker{this->_mutex};
     return _incompleteFailures;
   }
 
@@ -91,7 +89,7 @@ class BenchmarkCounter {
       realValue = 1;
     }
 
-    MUTEX_LOCKER(mutexLocker, this->_mutex);
+    std::lock_guard mutexLocker{this->_mutex};
 
     T oldValue = _value;
     if (_runUntil != 0.0) {
@@ -116,7 +114,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   void done(const T value) {
-    MUTEX_LOCKER(mutexLocker, this->_mutex);
+    std::lock_guard mutexLocker{this->_mutex};
 
     _done += value;
   }
@@ -126,7 +124,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   T getDone() {
-    MUTEX_LOCKER(mutexLocker, this->_mutex);
+    std::lock_guard mutexLocker{this->_mutex};
 
     return _done;
   }
@@ -136,7 +134,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   void incFailures(size_t const value) {
-    MUTEX_LOCKER(mutexLocker, this->_mutex);
+    std::lock_guard mutexLocker{this->_mutex};
     _failures += value;
   }
 
@@ -145,7 +143,7 @@ class BenchmarkCounter {
   //////////////////////////////////////////////////////////////////////////////
 
   void incIncompleteFailures(size_t const value) {
-    MUTEX_LOCKER(mutexLocker, this->_mutex);
+    std::lock_guard mutexLocker{this->_mutex};
     _incompleteFailures += value;
   }
 
@@ -154,7 +152,7 @@ class BenchmarkCounter {
   /// @brief mutex protecting the counter
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Mutex _mutex;
+  std::mutex _mutex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current value

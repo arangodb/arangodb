@@ -1,28 +1,29 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, assertMatch, require*/
+/* global assertTrue, assertFalse, assertEqual, assertMatch */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Dan Larkin-York
 /// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -95,6 +96,16 @@ function CursorSyncSuite (databaseName) {
         }
       }
 
+      // note: the wait time here is arbitrary. some wait time is
+      // necessary because we are creating the database and collection
+      // via one coordinator, but we will be querying it from a different
+      // coordinator in this test.
+      // the 2 seconds should normally be enough for the second coordinator
+      // to catch up and acknowledge the new database and collections.
+      // if we don't wait enough here, it is not guaranteed that the 
+      // second coordinator is already aware of the new database or
+      // collections, which can make the tests in here fail with spurious
+      // "database not found" or "collection or view not found" errors.
       require("internal").wait(2);
     },
 
@@ -120,30 +131,30 @@ function CursorSyncSuite (databaseName) {
       };
       let result = sendRequest('POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest('PUT', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 200);
-      assertFalse(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 200, result);
+      assertFalse(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest('PUT', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
     },
     
     testCursorForwardingBasicPost: function() {
@@ -157,30 +168,30 @@ function CursorSyncSuite (databaseName) {
         }
       };
       let result = sendRequest('POST', url, query, true);
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest('POST', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 200);
-      assertFalse(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 200, result);
+      assertFalse(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest('POST', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
     },
 
     testCursorForwardingDeletionPut: function() {
@@ -195,27 +206,27 @@ function CursorSyncSuite (databaseName) {
       };
       let result = sendRequest('POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest('DELETE', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 202);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 202, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest('PUT', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
     },
     
     testCursorForwardingDeletionPost: function() {
@@ -230,27 +241,27 @@ function CursorSyncSuite (databaseName) {
       };
       let result = sendRequest('POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest('DELETE', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 202);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 202, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest('POST', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
     },
     
     testCursorForwardingDeletionWrongId: function() {
@@ -265,12 +276,12 @@ function CursorSyncSuite (databaseName) {
       };
       let result = sendRequest('POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       // send using wrong id
@@ -284,16 +295,16 @@ function CursorSyncSuite (databaseName) {
       
       result = sendRequest('DELETE', `${baseCursorUrl}/${cursorId}`, {}, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 202);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 202, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest('POST', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
     },
 
   };

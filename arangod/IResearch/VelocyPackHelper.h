@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 
 #include <velocypack/Slice.h>
@@ -47,16 +46,16 @@ uint8_t const COMPACT_ARRAY = 0x13;
 uint8_t const COMPACT_OBJECT = 0x14;
 
 template<typename Char>
-std::basic_string_view<Char> ref(VPackSlice slice) {
+irs::basic_string_view<Char> ref(VPackSlice slice) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
 
-  return std::basic_string_view<Char>(
+  return irs::basic_string_view<Char>(
       reinterpret_cast<Char const*>(slice.begin()), slice.byteSize());
 }
 
 template<typename Char>
-VPackSlice slice(std::basic_string_view<Char> const& ref) {
+VPackSlice slice(irs::basic_string_view<Char> const& ref) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
 
@@ -64,7 +63,7 @@ VPackSlice slice(std::basic_string_view<Char> const& ref) {
 }
 
 template<typename Char>
-VPackSlice slice(std::basic_string<Char> const& ref) {
+VPackSlice slice(irs::basic_string<Char> const& ref) {
   static_assert(sizeof(Char) == sizeof(uint8_t),
                 "sizeof(Char) != sizeof(uint8_t)");
 

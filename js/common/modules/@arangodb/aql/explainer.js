@@ -1,14 +1,13 @@
 /* jshint strict: false, maxlen: 300 */
 /* global arango */
 
-var db = require('@arangodb').db,
-  internal = require('internal'),
-  _ = require('lodash'),
-  systemColors = internal.COLORS,
-  print = internal.print,
-  output = internal.output,
-  colors = {};
-var console = require('console');
+const db = require('@arangodb').db;
+const internal = require('internal');
+const _ = require('lodash');
+const systemColors = internal.COLORS;
+const output = internal.output;
+
+let colors = {};
 
 // max elements to print from array/objects
 const maxMembersToPrint = 20;
@@ -22,7 +21,7 @@ const isCoordinator = function () {
   } else {
     try {
       if (arango) {
-        var result = arango.GET('/_admin/server/role');
+        let result = arango.GET('/_admin/server/role');
         if (result.role === 'COORDINATOR') {
           isCoordinator = true;
         }
@@ -100,6 +99,12 @@ function setColors(useSystemColors) {
 }
 
 /* colorizer and output helper functions */
+
+function netLength(value) {
+  'use strict';
+  return String(value).replace(/\x1b\[.+?m/g, '').length;
+}
+
 
 function bracketize(node, v) {
   'use strict';
@@ -198,7 +203,8 @@ function printQuery(query, cacheable) {
   'use strict';
   // restrict max length of printed query to avoid endless printing for
   // very long query strings
-  var maxLength = 4096, headline = 'Query String (' + query.length + ' chars';
+  const maxLength = 4096;
+  let headline = 'Query String (' + query.length + ' chars';
   if (query.length > maxLength) {
     headline += ' - truncated...';
     query = query.substr(0, maxLength / 2) + ' ... ' + query.substr(query.length - maxLength / 2);
@@ -217,11 +223,10 @@ function printModificationFlags(flags) {
     return;
   }
   stringBuilder.appendLine(section('Write query options:'));
-  var keys = Object.keys(flags), maxLen = 'Option'.length;
+  const keys = Object.keys(flags);
+  let maxLen = 'Option'.length;
   keys.forEach(function (k) {
-    if (k.length > maxLen) {
-      maxLen = k.length;
-    }
+    maxLen = Math.max(maxLen, k.length);
   });
   stringBuilder.appendLine(' ' + header('Option') + pad(1 + maxLen - 'Option'.length) + '   ' + header('Value'));
   keys.forEach(function (k) {
@@ -234,27 +239,48 @@ function printModificationFlags(flags) {
 function printRules(rules, stats) {
   'use strict';
 
-  const maxIdLen = String('Id').length;
   stringBuilder.appendLine(section('Optimization rules applied:'));
   if (rules.length === 0) {
     stringBuilder.appendLine(' ' + value('none'));
   } else {
-    stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' + header('RuleName'));
-    for (let i = 0; i < rules.length; ++i) {
-      stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + '   ' + keyword(rules[i]));
+    let maxIdLen = 'Id'.length;
+    let maxRuleLen = 'Rule Name'.length;
+    rules.forEach((rule, i) => {
+      maxIdLen = Math.max(maxIdLen, String(i + 1).length);
+      maxRuleLen = Math.max(maxRuleLen, rule.length);
+    });
+    const cols = 3;
+    const off = Math.ceil(rules.length / cols);
+    let parts = [];
+    for (let j = 0; j < Math.min(rules.length, cols); ++j) {
+      const idx = j * off;
+      if (idx < rules.length) {
+        parts.push(pad(1 + maxIdLen - 'Id'.length) + header('Id') + '   ' + header('Rule Name') + pad(1 + maxRuleLen - 'Rule Name'.length));
+      }
+    }
+    stringBuilder.appendLine(' ' + parts.join('         '));
+
+    for (let i = 0; i < off; ++i) {
+      parts = [];
+      for (let j = 0; j < cols; ++j) {
+        const idx = i + j * off;
+        if (idx < rules.length) {
+          parts.push(pad(1 + maxIdLen - String(idx + 1).length) + variable(String(idx + 1)) + '   ' + keyword(rules[idx]) + pad(1 + maxRuleLen - rules[idx].length)); 
+        }
+      }
+    
+      stringBuilder.appendLine(' ' + parts.join('         '));
     }
   }
   stringBuilder.appendLine();
- 
+
   if (!stats || !stats.rules) {
     return;
   }
 
   let maxNameLength = 0;
   let times = Object.keys(stats.rules).map(function(key) {
-    if (key.length > maxNameLength) {
-      maxNameLength = key.length;
-    }
+    maxNameLength = Math.max(maxNameLength, key.length);
     return { name: key, time: stats.rules[key] };
   });
   // filter out everything that was reasonably fast
@@ -273,7 +299,7 @@ function printRules(rules, stats) {
     times.forEach(function(rule) {
       stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
     });
-  
+
     stringBuilder.appendLine();
   }
 
@@ -297,9 +323,9 @@ function printWarnings(warnings) {
   }
 
   stringBuilder.appendLine(section('Warnings:'));
-  var maxIdLen = String('Code').length;
-  stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Code').length) + header('Code') + '   ' + header('Message'));
-  for (var i = 0; i < warnings.length; ++i) {
+  let maxIdLen = 'Code'.length;
+  stringBuilder.appendLine(' ' + pad(1 + maxIdLen - 'Code'.length) + header('Code') + '   ' + header('Message'));
+  for (let i = 0; i < warnings.length; ++i) {
     stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + '   ' + keyword(warnings[i].message));
   }
   stringBuilder.appendLine();
@@ -312,30 +338,34 @@ function printStats(stats, isCoord) {
     return;
   }
 
-  stringBuilder.appendLine(section('Query Statistics:'));
-  var maxWELen = String('Writes Exec').length;
-  var maxWILen = String('Writes Ign').length;
-  var maxSFLen = String('Scan Full').length;
-  var maxSILen = String('Scan Index').length;
-  var maxCHMLen = String('Cache Hits/Misses').length;
-  var maxFLen = String('Filtered').length;
-  var maxRLen = String('Requests').length;
-  var maxMem = String('Peak Mem [b]').length;
-  var maxETen = String('Exec Time [s]').length;
-  stats.executionTime = stats.executionTime.toFixed(5);
-  stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') + 
-    header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
+  const spc = '      ';
 
-  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
-    pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
-    pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
-    pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
-    pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + '   ' +
-    pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + '   ' +
-    (isCoord ? pad(1 + maxRLen - String(stats.httpRequests).length) + value(stats.httpRequests) + '   ' : '') +
-    pad(1 + maxMem - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + '   ' +
-    pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
+  stringBuilder.appendLine(section('Query Statistics:'));
+  let maxWELen = 'Writes Exec'.length;
+  let maxWILen = 'Writes Ign'.length;
+  let maxDLLen = 'Doc. Lookups'.length;
+  let maxSFLen = 'Scan Full'.length;
+  let maxSILen = 'Scan Index'.length;
+  let maxCHMLen = 'Cache Hits/Misses'.length;
+  let maxFLen = 'Filtered'.length;
+  let maxRLen = 'Requests'.length;
+  let maxMemLen = 'Peak Mem [b]'.length;
+  let maxETLen = 'Exec Time [s]'.length;
+  stats.executionTime = stats.executionTime.toFixed(5);
+  stringBuilder.appendLine(' ' + header('Writes Exec') + spc + header('Writes Ign') + spc + header('Doc. Lookups') + spc + header('Scan Full') + spc +
+    header('Scan Index') + spc + header('Cache Hits/Misses') + spc + header('Filtered') + spc + (isCoord ? header('Requests') + spc : '') +
+    header('Peak Mem [b]') + spc + header('Exec Time [s]'));
+
+  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + spc +
+    pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + spc +
+    pad(1 + maxDLLen - String((stats.documentLookups || 0)).length) + value(stats.documentLookups || 0) + spc +
+    pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + spc +
+    pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + spc +
+    pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + spc +
+    pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + spc +
+    (isCoord ? pad(1 + maxRLen - String(stats.httpRequests).length) + value(stats.httpRequests) + spc : '') +
+    pad(1 + maxMemLen - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + spc +
+    pad(1 + maxETLen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
 }
 
@@ -346,20 +376,33 @@ function printProfile(profile) {
   }
 
   stringBuilder.appendLine(section('Query Profile:'));
+  let keys = Object.keys(profile);
   let maxHeadLen = 0;
   let maxDurLen = 'Duration [s]'.length;
-  Object.keys(profile).forEach(key => {
-    if (key.length > maxHeadLen) {
-      maxHeadLen = key.length;
-    }
-    if (profile[key].toFixed(5).length > maxDurLen) {
-      maxDurLen = profile[key].toFixed(5).length;
-    }
+  keys.forEach(key => {
+    maxHeadLen = Math.max(maxHeadLen, key.length);
+    maxDurLen = Math.max(maxDurLen, profile[key].toFixed(5).length);
   });
-  stringBuilder.appendLine(' ' + header('Query Stage') + pad(1 + maxHeadLen - String('Query Stage').length) + '   ' + pad(1 + maxDurLen - 'Duration [s]'.length) + header('Duration [s]'));
-  Object.keys(profile).forEach(key => {
-    stringBuilder.appendLine(' ' + keyword(key) + pad(1 + maxHeadLen - String(key).length) + '   ' + pad(1 + maxDurLen - profile[key].toFixed(5).length) + value(profile[key].toFixed(5)));
-  });
+
+  const cols = 3;
+  const off = Math.ceil(keys.length / cols);
+  let parts = [];
+  for (let j = 0; j < cols; ++j) {
+    parts.push(header('Query Stage') + pad(1 + maxHeadLen - 'Query Stage'.length) + '    ' + pad(1 + maxDurLen - 'Duration [s]'.length) + header('Duration [s]'));
+  }
+  stringBuilder.appendLine(' ' + parts.join('         '));
+
+  for (let i = 0; i < off; ++i) {
+    parts = [];
+    for (let j = 0; j < cols; ++j) {
+      let key = keys[i + j * off];
+      if (key !== undefined) {
+        parts.push(keyword(key) + pad(1 + maxHeadLen - String(key).length) + '    ' + pad(1 + maxDurLen - profile[key].toFixed(5).length) + value(profile[key].toFixed(5)));
+      }
+    }
+    
+    stringBuilder.appendLine(' ' + parts.join('         '));
+  }
   stringBuilder.appendLine();
 }
 
@@ -371,105 +414,86 @@ function printIndexes(indexes) {
 
   if (indexes.length === 0) {
     stringBuilder.appendLine(' ' + value('none'));
-  } else {
-    var maxIdLen = String('By').length;
-    var maxCollectionLen = String('Collection').length;
-    var maxUniqueLen = String('Unique').length;
-    var maxSparseLen = String('Sparse').length;
-    var maxCacheLen = String('Cache').length;
-    var maxNameLen = String('Name').length;
-    var maxTypeLen = String('Type').length;
-    var maxSelectivityLen = String('Selectivity').length;
-    var maxFieldsLen = String('Fields').length;
-    var maxStoredValuesLen = String('Stored values').length;
-    indexes.forEach(function (index) {
-      var l = String(index.node).length;
-      if (l > maxIdLen) {
-        maxIdLen = l;
-      }
-      l = index.name ? index.name.length : 0;
-      if (l > maxNameLen) {
-        maxNameLen = l;
-      }
-      l = index.type.length;
-      if (l > maxTypeLen) {
-        maxTypeLen = l;
-      }
-      l = index.fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      if (l > maxFieldsLen) {
-        maxFieldsLen = l;
-      }
-      var storedValuesFields = index.storedValues || [];
-      if (index.type === 'inverted') {
-        storedValuesFields = Array.isArray(index.storedValues) && index.storedValues.flatMap(s => s.fields) || [];
-      }
-      l = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      if (l > maxStoredValuesLen) {
-        maxStoredValuesLen = l;
-      }
-      l = index.collection.length;
-      if (l > maxCollectionLen) {
-        maxCollectionLen = l;
-      }
-    });
-    var line = ' ' + pad(1 + maxIdLen - String('By').length) + header('By') + '   ' +
-      header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
-      header('Type') + pad(1 + maxTypeLen - 'Type'.length) + '   ' +
-      header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
-      header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
-      header('Sparse') + pad(1 + maxSparseLen - 'Sparse'.length) + '   ' +
-      header('Cache') + pad(1 + maxCacheLen - 'Cache'.length) + '   ' +
-      header('Selectivity') + '   ' +
-      header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
-      header('Stored values') + pad(1 + maxStoredValuesLen - 'Stored values'.length) + '   ' +
-      header('Ranges');
+    return;
+  }
+
+  let maxIdLen = String('By').length;
+  let maxCollectionLen = String('Collection').length;
+  let maxUniqueLen = String('Unique').length;
+  let maxSparseLen = String('Sparse').length;
+  let maxCacheLen = String('Cache').length;
+  let maxNameLen = String('Name').length;
+  let maxTypeLen = String('Type').length;
+  let maxSelectivityLen = String('Selectivity').length;
+  let maxFieldsLen = String('Fields').length;
+  let maxStoredValuesLen = String('Stored values').length;
+  indexes.forEach(function (index) {
+    maxIdLen = Math.max(maxIdLen, String(index.node).length);
+    maxNameLen = Math.max(maxNameLen, index.name ? index.name.length : 0);
+    maxTypeLen = Math.max(maxTypeLen, index.type.length);
+    maxFieldsLen = Math.max(maxFieldsLen, index.fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length);
+    let storedValuesFields = index.storedValues || [];
+    if (index.type === 'inverted') {
+      storedValuesFields = Array.isArray(index.storedValues) && index.storedValues.flatMap(s => s.fields) || [];
+    }
+    maxStoredValuesLen = Math.max(maxStoredValuesLen, storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length);
+    maxCollectionLen = Math.max(maxCollectionLen, index.collection.length);
+  });
+  let line = ' ' + pad(1 + maxIdLen - String('By').length) + header('By') + '   ' +
+    header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
+    header('Type') + pad(1 + maxTypeLen - 'Type'.length) + '   ' +
+    header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
+    header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
+    header('Sparse') + pad(1 + maxSparseLen - 'Sparse'.length) + '   ' +
+    header('Cache') + pad(1 + maxCacheLen - 'Cache'.length) + '   ' +
+    header('Selectivity') + '   ' +
+    header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
+    header('Stored values') + pad(1 + maxStoredValuesLen - 'Stored values'.length) + '   ' +
+    header('Ranges');
+
+  stringBuilder.appendLine(line);
+
+  for (let i = 0; i < indexes.length; ++i) {
+    let uniqueness = (indexes[i].unique ? 'true' : 'false');
+    let sparsity = (indexes[i].hasOwnProperty('sparse') ? (indexes[i].sparse ? 'true' : 'false') : 'n/a');
+    let cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
+    let fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+    let fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+    let storedValuesFields = indexes[i].storedValues || [];
+    if (indexes[i].type === 'inverted') {
+      storedValuesFields = Array.isArray(indexes[i].storedValues) && indexes[i].storedValues.flatMap(s => s.fields) || [];
+    }
+    let storedValues = '[ ' + storedValuesFields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+    let storedValuesLen = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+    let ranges = '';
+    if (indexes[i].hasOwnProperty('condition')) {
+      ranges = indexes[i].condition;
+    }
+
+    let estimate;
+    if (indexes[i].hasOwnProperty('selectivityEstimate')) {
+      estimate = (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %';
+    } else if (indexes[i].unique) {
+      // hard-code estimate to 100%
+      estimate = '100.00 %';
+    } else {
+      estimate = 'n/a';
+    }
+
+    line = ' ' +
+      pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
+      collection(indexes[i].name) + pad(1 + maxNameLen - indexes[i].name.length) + '   ' +
+      keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + '   ' +
+      collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
+      value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
+      value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
+      value(cache) + pad(1 + maxCacheLen - cache.length) + '   ' +
+      pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
+      fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
+      storedValues + pad(1 + maxStoredValuesLen - storedValuesLen) + '   ' +
+      ranges;
 
     stringBuilder.appendLine(line);
-
-    for (var i = 0; i < indexes.length; ++i) {
-      var uniqueness = (indexes[i].unique ? 'true' : 'false');
-      var sparsity = (indexes[i].hasOwnProperty('sparse') ? (indexes[i].sparse ? 'true' : 'false') : 'n/a');
-      var cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
-      var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
-      var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      var storedValuesFields = indexes[i].storedValues || [];
-      if (indexes[i].type === 'inverted') {
-        storedValuesFields = Array.isArray(indexes[i].storedValues) && indexes[i].storedValues.flatMap(s => s.fields) || [];
-      }
-      var storedValues = '[ ' + storedValuesFields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
-      var storedValuesLen = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      var ranges;
-      if (indexes[i].hasOwnProperty('condition')) {
-        ranges = indexes[i].condition;
-      } else {
-        ranges = '[ ' + indexes[i].ranges + ' ]';
-      }
-
-      let estimate;
-      if (indexes[i].hasOwnProperty('selectivityEstimate')) {
-        estimate = (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %';
-      } else if (indexes[i].unique) {
-        // hard-code estimate to 100%
-        estimate = '100.00 %';
-      } else {
-        estimate = 'n/a';
-      }
-
-      line = ' ' +
-        pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
-        collection(indexes[i].name) + pad(1 + maxNameLen - indexes[i].name.length) + '   ' +
-        keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + '   ' +
-        collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
-        value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
-        value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
-        value(cache) + pad(1 + maxCacheLen - cache.length) + '   ' +
-        pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
-        fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
-        storedValues + pad(1 + maxStoredValuesLen - storedValuesLen) + '   ' +
-        ranges;
-
-      stringBuilder.appendLine(line);
-    }
   }
 }
 
@@ -487,15 +511,12 @@ function printFunctions(functions) {
   stringBuilder.appendLine();
   stringBuilder.appendLine(section('Functions used:'));
 
-  let maxNameLen = String('Name').length;
-  let maxDeterministicLen = String('Deterministic').length;
-  let maxCacheableLen = String('Cacheable').length;
-  let maxV8Len = String('Uses V8').length;
+  let maxNameLen = 'Name'.length;
+  let maxDeterministicLen = 'Deterministic'.length;
+  let maxCacheableLen = 'Cacheable'.length;
+  let maxV8Len = 'Uses V8'.length;
   funcArray.forEach(function (f) {
-    let l = String(f.name).length;
-    if (l > maxNameLen) {
-      maxNameLen = l;
-    }
+    maxNameLen = Math.max(maxNameLen, String(f.name).length);
   });
   let line = ' ' +
     header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
@@ -505,7 +526,7 @@ function printFunctions(functions) {
 
   stringBuilder.appendLine(line);
 
-  for (var i = 0; i < funcArray.length; ++i) {
+  for (let i = 0; i < funcArray.length; ++i) {
     // prevent "undefined"
     let deterministic = String(funcArray[i].isDeterministic || false);
     let cacheable = String(funcArray[i].cacheable || false);
@@ -541,7 +562,7 @@ class PrintedTable {
   addCell(index, value, valueLength) {
     // Value might be empty
     value = value || "";
-    valueLength = valueLength || value.length;
+    valueLength = valueLength || netLength(value);
     this.content[index].cells.push({ formatted: value, size: valueLength });
     this.content[index].size = Math.max(this.content[index].size, valueLength);
   }
@@ -559,24 +580,35 @@ class PrintedTable {
     let rowsNeeded = Math.max(...this.content.map(c => c.cells.length));
     // Print the header
     let line = ' ';
-    let isFirst = true;
+    let col = 0;
     for (let c of this.content) {
-      line += (isFirst ? '' : pad(3)) + header(c.header) + pad(1 + c.size - c.header.length);
-      isFirst = false;
+      line += (col === 0 ? '' : pad(3)) + header(c.header);
+      if (col + 1 < this.content.length) {
+        // Don't pad rightmost column
+        line += pad(1 + c.size - c.header.length);
+      }
+      ++col;
     }
     builder.appendLine(line);
 
     // Print the cells
     for (let i = 0; i < rowsNeeded; ++i) {
       let line = ' ';
-      let isFirst = true;
+      let col = 0;
       for (let c of this.content) {
+        line += (col === 0 ? '' : pad(3));
         if (c.cells.length > i) {
-          line += (isFirst ? '' : pad(3)) + c.cells[i].formatted + pad(1 + c.size - c.cells[i].size);
+          line += c.cells[i].formatted;
+          if (col + 1 < this.content.length) {
+            line += pad(1 + c.size - c.cells[i].size);
+          }
         } else {
-          line += (isFirst ? '' : pad(3)) + pad(1 + c.size);
+          if (col + 1 < this.content.length) {
+            // Don't pad rightmost column
+            line += pad(1 + c.size);
+          }
         }
-        isFirst = false;
+        ++col;
       }
       builder.appendLine(line);
     }
@@ -601,22 +633,23 @@ function printTraversalDetails(traversals) {
   outTable.setHeader(4, 'Options');
   outTable.setHeader(5, 'Filter / Prune Conditions');
 
-
-  var optify = function (options, colorize) {
-    var opts = {
+  let optify = function (options, colorize) {
+    let opts = {
       bfs: options.bfs || undefined, /* only print if set to true to save room */
       neighbors: options.neighbors || undefined, /* only print if set to true to save room */
       uniqueVertices: options.uniqueVertices,
-      uniqueEdges: options.uniqueEdges
+      uniqueEdges: options.uniqueEdges,
+      order: options.order || 'dfs',
+      weightAttribute: options.order === 'weighted' && options.weightAttribute || undefined,
     };
 
-    var result = '';
-    for (var att in opts) {
-      if (result.length > 0) {
-        result += ', ';
-      }
+    let result = '';
+    for (let att in opts) {
       if (opts[att] === undefined) {
         continue;
+      }
+      if (result.length > 0) {
+        result += ', ';
       }
       if (colorize) {
         result += keyword(att) + ': ';
@@ -639,7 +672,7 @@ function printTraversalDetails(traversals) {
 
   traversals.forEach(node => {
     outTable.alignNewEntry();
-    outTable.addCell(0, String(node.id));
+    outTable.addCell(0, variable(String(node.id)));
     outTable.addCell(1, node.minMaxDepth);
     outTable.addCell(2, node.vertexCollectionNameStr, node.vertexCollectionNameStrLen);
     outTable.addCell(3, node.edgeCollectionNameStr, node.edgeCollectionNameStrLen);
@@ -669,15 +702,12 @@ function printShortestPathDetails(shortestPaths) {
   stringBuilder.appendLine();
   stringBuilder.appendLine(section('Shortest paths on graphs:'));
 
-  var maxIdLen = String('Id').length;
-  var maxVertexCollectionNameStrLen = String('Vertex collections').length;
-  var maxEdgeCollectionNameStrLen = String('Edge collections').length;
+  let maxIdLen = 'Id'.length;
+  let maxVertexCollectionNameStrLen = 'Vertex collections'.length;
+  let maxEdgeCollectionNameStrLen = 'Edge collections'.length;
 
   shortestPaths.forEach(function (node) {
-    var l = String(node.id).length;
-    if (l > maxIdLen) {
-      maxIdLen = l;
-    }
+    maxIdLen = Math.max(maxIdLen, String(node.id).length);
 
     if (node.hasOwnProperty('vertexCollectionNameStr')) {
       if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
@@ -691,14 +721,14 @@ function printShortestPathDetails(shortestPaths) {
     }
   });
 
-  var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
+  let line = ' ' + pad(1 + maxIdLen - 'Id'.length) + header('Id') + '   ' +
     header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
     header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
 
   stringBuilder.appendLine(line);
 
   for (let sp of shortestPaths) {
-    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + sp.id + '   ';
+    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + variable(sp.id) + '   ';
 
     if (sp.hasOwnProperty('vertexCollectionNameStr')) {
       line += sp.vertexCollectionNameStr +
@@ -731,15 +761,12 @@ function printKShortestPathsDetails(shortestPaths) {
   stringBuilder.appendLine();
   stringBuilder.appendLine(section('k shortest paths on graphs:'));
 
-  var maxIdLen = String('Id').length;
-  var maxVertexCollectionNameStrLen = String('Vertex collections').length;
-  var maxEdgeCollectionNameStrLen = String('Edge collections').length;
+  let maxIdLen = 'Id'.length;
+  let maxVertexCollectionNameStrLen = 'Vertex collections'.length;
+  let maxEdgeCollectionNameStrLen = 'Edge collections'.length;
 
   shortestPaths.forEach(function (node) {
-    var l = String(node.id).length;
-    if (l > maxIdLen) {
-      maxIdLen = l;
-    }
+    maxIdLen = Math.max(maxIdLen, String(node.id).length);
 
     if (node.hasOwnProperty('vertexCollectionNameStr')) {
       if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
@@ -753,7 +780,7 @@ function printKShortestPathsDetails(shortestPaths) {
     }
   });
 
-  var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
+  let line = ' ' + pad(1 + maxIdLen - 'Id'.length) + header('Id') + '   ' +
     header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
     header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
 
@@ -796,20 +823,27 @@ function processQuery(query, explain, planIndex) {
     maxIdLen = String('Id').length,
     maxEstimateLen = String('Est.').length,
     maxCallsLen = String('Calls').length,
+    maxParallelLen = String('Par').length,
     maxItemsLen = String('Items').length,
     maxFilteredLen = String('Filtered').length,
     maxRuntimeLen = String('Runtime [s]').length,
     stats = explain.stats;
 
-  let plan = explain.plan;
+  if (explain === undefined || (explain.plan === undefined && explain.plans === undefined)) {
+    throw "incomplete query execution plan data - this should not happen unless when connected to a DB-Server. fetching query plans/profiles from a DB-Server is not supported!";
+  }
+  
+  let plan;
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
+  } else {
+    plan = explain.plan;
   }
 
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
-  var recursiveWalk = function (partNodes, level, site) {
+  let recursiveWalk = function (partNodes, level, site) {
     let n = _.clone(partNodes);
     n.reverse();
     n.forEach(function (node) {
@@ -833,63 +867,75 @@ function processQuery(query, explain, planIndex) {
         parents[d].push(node.id);
       });
 
-      if (String(node.id).length > maxIdLen) {
-        maxIdLen = String(node.id).length;
-      }
-      if (String(node.type).length > maxTypeLen) {
-        maxTypeLen = String(node.type).length;
-      }
-      if (String(node.site).length > maxSiteLen) {
-        maxSiteLen = String(node.site).length;
-      }
+      maxIdLen = Math.max(maxIdLen, String(node.id).length);
+      maxTypeLen = Math.max(maxTypeLen, String(node.type).length);
+      maxSiteLen = Math.max(maxSiteLen, String(node.site).length);
       if (!profileMode) { // not shown when we got actual runtime stats
-        if (String(node.estimatedNrItems).length > maxEstimateLen) {
-          maxEstimateLen = String(node.estimatedNrItems).length;
+        maxEstimateLen = Math.max(maxEstimateLen, String(node.estimatedNrItems).length);
+        if (node.type === 'JoinNode') {
+          node.indexInfos.forEach((info) => {
+            maxEstimateLen = Math.max(maxEstimateLen, String(info.estimatedNrItems).length);
+          });
         }
       }
     });
   };
+
   recursiveWalk(plan.nodes, 0, 'COOR');
 
-  if (profileMode) { // merge runtime info into plan
+  if (profileMode) { 
+    // merge runtime info into plan.
+    // note that this is only necessary for server versions <= 3.11.
+    // the code can be removed when only supporting server versions
+    // >= 3.12.
     stats.nodes.forEach(n => {
-      if (nodes.hasOwnProperty(n.id)) {
-        nodes[n.id].calls = (n.calls === undefined ? "n/a" : n.calls);
-        nodes[n.id].items = (n.items === undefined ? "n/a" : n.items);
-        nodes[n.id].filtered = (n.filtered === undefined ? "n/a" : n.filtered);
-        nodes[n.id].runtime = (n.runtime === undefined ? "n/a" : n.runtime);
-
-        if (String(nodes[n.id].calls).length > maxCallsLen) {
-          maxCallsLen = String(nodes[n.id].calls).length;
-        }
-        if (String(nodes[n.id].items).length > maxItemsLen) {
-          maxItemsLen = String(nodes[n.id].items).length;
-        }
-        if (String(nodes[n.id].filtered).length > maxFilteredLen) {
-          maxFilteredLen = String(nodes[n.id].filtered).length;
-        }
-        let l;
-        if (typeof nodes[n.id].runtime === 'number') {
-          l = String(nodes[n.id].runtime.toFixed(3)).length;
-        } else {
-          l = nodes[n.id].runtime.length;
-        }
-        if (l > maxRuntimeLen) {
-          maxRuntimeLen = l;
+      // the try..catch here is necessary because we may have nodes inside
+      // the stats object that are not contained in the original plan.
+      // this can happen for parallel traversals, which inserts additional
+      // nodes into the plan on the DB servers after the plan is shipped
+      // to the servers.
+      try {
+        nodes[n.id].runtime = n.runtime;
+      } catch (err) {}
+    });
+    stats.nodes.forEach(n => {
+      if (nodes.hasOwnProperty(n.id) && !n.hasOwnProperty('fetching')) {
+        // no separate fetching stats. that means the runtime is cumulative.
+        // by subtracting the dependencies from parent runtime we get the runtime per node
+        if (parents.hasOwnProperty(n.id)) {
+          parents[n.id].forEach(pid => {
+            nodes[pid].runtime -= n.runtime;
+          });
         }
       }
     });
-    // by design the runtime is cumulative right now.
-    // by subtracting the dependencies from parent runtime we get the runtime per node
+
     stats.nodes.forEach(n => {
-      if (typeof n.runtime === 'number') {
-        if (parents.hasOwnProperty(n.id)) {
-          parents[n.id].forEach(pid => {
-            if (typeof nodes[pid].runtime === 'number') {
-              nodes[pid].runtime -= n.runtime;
-            }
-          });
+      if (nodes.hasOwnProperty(n.id)) {
+        let runtime = 0;
+        if (n.hasOwnProperty('fetching')) {
+          // this branch is taken for servers >= 3.12.
+          runtime = n.runtime;
+          // we have separate runtime (including fetching time)
+          // and fetching stats
+          runtime -= n.fetching;
+        } else if (nodes[n.id].hasOwnProperty('runtime')) {
+          // this branch is taken for servers <= 3.11 and can be removed
+          // eventually.
+          runtime = nodes[n.id].runtime;
         }
+
+        nodes[n.id].calls = String(n.calls || 0);
+        nodes[n.id].parallel = (nodes[n.id].isAsyncPrefetchEnabled ? String(n.parallel || 0) : '-');
+        nodes[n.id].items = String(n.items || 0);
+        nodes[n.id].filtered = String(n.filtered || 0);
+        nodes[n.id].runtime = runtime.toFixed(5);
+
+        maxCallsLen = Math.max(maxCallsLen, String(nodes[n.id].calls).length);
+        maxParallelLen = Math.max(maxParallelLen, String(nodes[n.id].parallel).length);
+        maxItemsLen = Math.max(maxItemsLen, String(nodes[n.id].items).length);
+        maxFilteredLen = Math.max(maxFilteredLen, String(nodes[n.id].filtered).length);
+        maxRuntimeLen = Math.max(maxRuntimeLen, nodes[n.id].runtime.length);
       }
     });
   }
@@ -906,7 +952,7 @@ function processQuery(query, explain, planIndex) {
     isConst = true,
     currentNode = null;
 
-  var variableName = function (node) {
+  const variableName = function (node) {
     try {
       if (/^[0-9_]/.test(node.name)) {
         return variable('#' + node.name);
@@ -923,11 +969,11 @@ function processQuery(query, explain, planIndex) {
     return variable(node.name);
   };
 
-  var lateVariableCallback = function () {
+  const lateVariableCallback = function () {
     return (node) => variableName(node);
   };
 
-  var unfoldRawData = function (value) {
+  const unfoldRawData = function (value) {
     let node = {};
     if (Array.isArray(value)) {
       node.type = 'array';
@@ -952,7 +998,7 @@ function processQuery(query, explain, planIndex) {
     return node;
   };
 
-  var checkRawData = function (node) {
+  const checkRawData = function (node) {
     if (node.hasOwnProperty('raw')) {
       node = unfoldRawData(node.raw);
     } else {
@@ -980,7 +1026,7 @@ function processQuery(query, explain, planIndex) {
       var rhs = buildExpression(node.subNodes[1]);
       if (node.subNodes.length === 3) {
         // array operator node... prepend "all" | "any" | "none" to node type
-        name = node.subNodes[2].quantifier + ' ' + name;
+        name = keyword(node.subNodes[2].quantifier.toUpperCase()) + ' ' + name;
       }
       if (node.sorted) {
         return lhs + ' ' + name + ' ' + annotation('/* sorted */') + ' ' + rhs;
@@ -1132,21 +1178,23 @@ function processQuery(query, explain, planIndex) {
       case 'parameter':
       case 'datasource parameter':
         return value('@' + node.name);
+      case undefined:
+        return '';
       default:
-        return 'unhandled node type (' + node.type + ')';
+        return 'unhandled node type in buildExpression (' + node.type + ')';
     }
   };
 
   var buildSimpleExpression = function (simpleExpressions) {
-    var rc = '';
+    let rc = '';
 
-    for (var indexNo in simpleExpressions) {
+    for (let indexNo in simpleExpressions) {
       if (simpleExpressions.hasOwnProperty(indexNo)) {
         if (rc.length > 0) {
           rc += ' AND ';
         }
-        for (var i = 0; i < simpleExpressions[indexNo].length; i++) {
-          var item = simpleExpressions[indexNo][i];
+        for (let i = 0; i < simpleExpressions[indexNo].length; i++) {
+          let item = simpleExpressions[indexNo][i];
           rc += attribute('Path') + '.';
           if (item.isEdgeAccess) {
             rc += attribute('edges');
@@ -1168,58 +1216,18 @@ function processQuery(query, explain, planIndex) {
     return attribute(attr) + ' ' + operators[bound.include ? 1 : 0] + ' ' + boundValue;
   };
 
-  var buildRanges = function (ranges) {
-    var results = [];
-    ranges.forEach(function (range) {
-      var attr = range.attr;
-
-      if (range.lowConst.hasOwnProperty('bound') && range.highConst.hasOwnProperty('bound') &&
-        JSON.stringify(range.lowConst.bound) === JSON.stringify(range.highConst.bound)) {
-        range.equality = true;
-      }
-
-      if (range.equality) {
-        if (range.lowConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, ['==', '=='], range.lowConst));
-        } else if (range.hasOwnProperty('lows')) {
-          range.lows.forEach(function (bound) {
-            results.push(buildBound(attr, ['==', '=='], bound));
-          });
-        }
-      } else {
-        if (range.lowConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, ['>', '>='], range.lowConst));
-        }
-        if (range.highConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, ['<', '<='], range.highConst));
-        }
-        if (range.hasOwnProperty('lows')) {
-          range.lows.forEach(function (bound) {
-            results.push(buildBound(attr, ['>', '>='], bound));
-          });
-        }
-        if (range.hasOwnProperty('highs')) {
-          range.highs.forEach(function (bound) {
-            results.push(buildBound(attr, ['<', '<='], bound));
-          });
-        }
-      }
-    });
-    if (results.length > 1) {
-      return '(' + results.join(' && ') + ')';
-    }
-    return results[0];
-  };
-
   const projections = function (value, attributeName, label) {
     if (value && value.hasOwnProperty(attributeName) && value[attributeName].length > 0) {
-      let p = value[attributeName].map(function(p) {
+      let fields = value[attributeName].map(function(p) {
         if (Array.isArray(p)) {
-          return p.join('`.`', p);
+          return '`' + p.join('`.`') + '`';
+        } else if (typeof p === 'string') {
+          return '`' + p + '`';
+        } else if (p.hasOwnProperty('path')) {
+          return '`' + p.path.join('`.`') + '`';
         }
-        return p;
       });
-      return ' (' + label + ': `' + p.join('`, `') + '`)';
+      return ' (' + label + ': ' + fields.join(', ') + ')';
     }
     return '';
   };
@@ -1233,10 +1241,10 @@ function processQuery(query, explain, planIndex) {
     return '';
   };
 
-  var iterateIndexes = function (idx, i, node, types, variable) {
-    let what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan';
+  const iterateIndexes = function (idx, i, node, types, variable) {
+    let what = (!node.ascending ? 'reverse ' : '') + idx.type + ' index scan';
     if (node.producesResult || !node.hasOwnProperty('producesResult')) {
-      if (node.indexCoversProjections) {
+      if (node.indexCoversProjections || node.isLateMaterialized === true) {
         what += ', index only';
       } else {
         what += ', index scan + document lookup';
@@ -1282,7 +1290,7 @@ function processQuery(query, explain, planIndex) {
       for (i = 0; i < node.edgeCollections.length; ++i) {
         d = node.directions[i];
         // base indexes
-        var ix = node.indexes.base[i];
+        let ix = node.indexes.base[i];
         ix.collection = node.edgeCollections[i];
         ix.condition = keyword("base " + translate[d]);
         ix.level = -1;
@@ -1317,9 +1325,79 @@ function processQuery(query, explain, planIndex) {
 
       return allIndexes;
     };
+
+    const handleGraphDefinition = (node) => { 
+      if (node.hasOwnProperty('graphDefinition')) {
+        let v = [];
+        let vNames = [];
+        if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+          node.options.vertexCollections.forEach(function (vcn) {
+            v.push(collection(vcn));
+            vNames.push(vcn);
+          });
+        } else {
+          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+            v.push(collection(vcn));
+            vNames.push(vcn);
+          });
+        }
+        node.vertexCollectionNameStr = v.join(', ');
+        node.vertexCollectionNameStrLen = vNames.join(', ').length;
+
+        let e = [];
+        let eNames = [];
+        if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+          node.options.edgeCollections.forEach(function (ecn) {
+            e.push(collection(ecn));
+            eNames.push(ecn);
+          });
+        } else {
+          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+            e.push(collection(ecn));
+            eNames.push(ecn);
+          });
+        }
+        node.edgeCollectionNameStr = e.join(', ');
+        node.edgeCollectionNameStrLen = eNames.join(', ').length;
+      } else {
+        let e = [];
+        let eNames = [];
+        if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
+          node.options.edgeCollections.forEach(function (ecn) {
+            e.push(collection(ecn));
+            eNames.push(ecn);
+          });
+        } else {
+          edgeCols = node.graph || [];
+          edgeCols.forEach(function (ecn) {
+            e.push(collection(ecn));
+            eNames.push(ecn);
+          });
+        }
+        node.edgeCollectionNameStr = e.join(', ');
+        node.edgeCollectionNameStrLen = eNames.join(', ').length;
+        node.graph = '<anonymous>';
+
+        if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
+          let v = [];
+          node.options.vertexCollections.forEach(function (vcn) {
+            v.push(collection(vcn));
+          });
+          node.vertexCollectionNameStr = v.join(', ');
+          node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
+        }
+      }
+    };
+
     switch (node.type) {
       case 'SingletonNode':
-        return keyword('ROOT');
+        let bindVars = [];
+        if (node.bindParameterVariables) {
+          for (const [name, bindVar] of Object.entries(node.bindParameterVariables)) {
+            bindVars.push(variableName(bindVar) + ' = ' + variable("@" + name));
+          }
+        }
+        return keyword('ROOT') + ' ' + bindVars.join(', ');
       case 'NoResultsNode':
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
@@ -1327,10 +1405,30 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
+        if (node.projections) {
+          // produce LET nodes for each projection output register
+          let parts = [];
+          node.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(node.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            filter = '   ' + keyword('LET') + ' ' + parts.join(', ') + filter;
+          }
+        }
         const enumAnnotation = annotation('/* full collection scan' + (node.random ? ', random order' : '') + projections(node, 'projections', 'projections') + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + (node.count ? ', with count optimization' : '') + `${restriction(node)} ${node.readOwnWrites ? '; read own writes' : ''} */`);
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + enumAnnotation + filter;
       case 'EnumerateListNode':
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        if (node.mode === "object") {
+          return keyword('FOR') + ' [' + variableName(node.keyOutVariable) + ', ' + variableName(node.valueOutVariable) + '] ' + keyword('OF') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* object iteration */') + filter;
+        } else {
+          return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
+        }
+        break;
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
@@ -1355,7 +1453,7 @@ function processQuery(query, explain, planIndex) {
             return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join('');
         }
-        
+
         var scorersSort = '';
         if (node.hasOwnProperty('scorersSort') && node.scorersSort.length > 0) {
           node.scorersSort.forEach(function(sort) {
@@ -1368,11 +1466,11 @@ function processQuery(query, explain, planIndex) {
               } else {
                 scorersSort += keyword(' DESC');
               }
-          
+
           });
            scorersSort = keyword(' SORT ') + scorersSort;
            scorersSort += keyword(' LIMIT ') + value('0, ' + JSON.stringify(node.scorersSortLimit));
-           
+
         }
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId')) {
@@ -1381,8 +1479,9 @@ function processQuery(query, explain, planIndex) {
           viewAnnotation += ' without materialization';
         }
         if (node.hasOwnProperty('options')) {
-          if (node.options.hasOwnProperty('countApproximate'))
-          viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+          if (node.options.hasOwnProperty('countApproximate')) {
+            viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+          }
         }
         viewAnnotation += ' */';
         let viewVariables = '';
@@ -1400,10 +1499,37 @@ function processQuery(query, explain, planIndex) {
         return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') +
                view(node.view) + condition + sortCondition + scorers + viewVariables +
                scorersSort + '   ' + annotation(viewAnnotation);
+      case 'JoinNode':
+        node.indexInfos.forEach((info) => {
+          collectionVariables[info.outVariable.id] = info.collection;
+          let condition = '';
+          if (info.condition && info.condition.hasOwnProperty('type')) {
+            condition = buildExpression(info.condition);
+          }
+          info.index.condition = condition;
+          iterateIndexes(info.index, 0, {id: node.id, collection: info.collection}, types, false); 
+        });
+        return keyword('JOIN');
       case 'IndexNode':
+        var limit = '';
         collectionVariables[node.outVariable.id] = node.collection;
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        if (node.limit > 0) {
+          limit = '   '  + keyword('LIMIT') + ' ' + value(JSON.stringify(node.limit)) + ' ' + annotation('/* early reducing results */');
+        }
+        if (node.projections) {
+          // produce LET nodes for each projection output register
+          let parts = [];
+          node.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(node.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            filter = '   ' + keyword('LET') + ' ' + parts.join(', ') + filter;
+          }
         }
         let indexAnnotation = '';
         let indexVariables = '';
@@ -1420,10 +1546,10 @@ function processQuery(query, explain, planIndex) {
         }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
-          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter + limit +
           '   ' + annotation(indexAnnotation);
 
-      case 'TraversalNode':
+      case 'TraversalNode': {
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
         } else if (node.hasOwnProperty("traversalFlags")) {
@@ -1519,64 +1645,7 @@ function processQuery(query, explain, planIndex) {
           node.PruneConditionStr = buildExpression(node.expression);
         }
 
-        e = [];
-        eNames = [];
-        if (node.hasOwnProperty('graphDefinition')) {
-          v = [];
-          vNames = [];
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          } else {
-            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          }
-          node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = vNames.join(', ').length;
-
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-        } else {
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            edgeCols = node.graph || [];
-            edgeCols.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-          node.graph = '<anonymous>';
-
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            v = [];
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-            });
-            node.vertexCollectionNameStr = v.join(', ');
-            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
-          }
-        }
+        handleGraphDefinition(node);
 
         indexes.push(...getGraphNodeIndexes(node));
 
@@ -1590,8 +1659,16 @@ function processQuery(query, explain, planIndex) {
         if (node.options && node.options.hasOwnProperty('parallelism') && node.options.parallelism > 1) {
           rc += annotation(' /* parallelism: ' + node.options.parallelism + ' */');
         }
+        if (node.options && node.options.order) {
+          let order = node.options.order;
+          if (node.options.order === 'weighted') {
+            order += ', weight attribute: ' + node.options.weightAttribute;
+          }
+          rc += annotation(' /* order: ' + order + ' */');
+        }
 
         return rc;
+      }
       case 'ShortestPathNode': {
         if (node.hasOwnProperty('vertexOutVariable')) {
           parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
@@ -1618,18 +1695,18 @@ function processQuery(query, explain, planIndex) {
         if (Array.isArray(node.graph)) {
           directions = [];
           for (i = 0; i < node.edgeCollections.length; ++i) {
-              isLast = (i + 1 === node.edgeCollections.length);
-              d = node.directions[i];
-              if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
-                  // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
-                  // on the same collection
-                  d = 0; // ANY
-                  ++i;
-              }
-              directions.push({ collection: node.edgeCollections[i], direction: d });
+            isLast = (i + 1 === node.edgeCollections.length);
+            d = node.directions[i];
+            if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+              // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+              // on the same collection
+              d = 0; // ANY
+              ++i;
+            }
+            directions.push({ collection: node.edgeCollections[i], direction: d });
           }
           rc += directions.map(function (g, index) {
-            var tmp = '';
+            let tmp = '';
             if (g.direction !== defaultDirection) {
               tmp += keyword(translate[g.direction]);
               tmp += ' ';
@@ -1641,63 +1718,8 @@ function processQuery(query, explain, planIndex) {
         }
 
         shortestPathDetails.push(node);
-        e = [];
-        eNames = [];
-        if (node.hasOwnProperty('graphDefinition')) {
-          v = [];
-          vNames = [];
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          } else {
-            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          }
-          node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = vNames.join(', ').length;
 
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-        } else {
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            edgeCols = node.graph || [];
-            edgeCols.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-          node.graph = '<anonymous>';
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            v = [];
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-            });
-            node.vertexCollectionNameStr = v.join(', ');
-            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
-          }
-        }
+        handleGraphDefinition(node);
 
         indexes.push(...getGraphNodeIndexes(node));
 
@@ -1736,18 +1758,18 @@ function processQuery(query, explain, planIndex) {
         if (Array.isArray(node.graph)) {
           directions = [];
           for (i = 0; i < node.edgeCollections.length; ++i) {
-              isLast = (i + 1 === node.edgeCollections.length);
-              d = node.directions[i];
-              if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
-                  // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
-                  // on the same collection
-                  d = 0; // ANY
-                  ++i;
-              }
-              directions.push({ collection: node.edgeCollections[i], direction: d });
+            isLast = (i + 1 === node.edgeCollections.length);
+            d = node.directions[i];
+            if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+              // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+              // on the same collection
+              d = 0; // ANY
+              ++i;
+            }
+            directions.push({ collection: node.edgeCollections[i], direction: d });
           }
           rc += directions.map(function (g, index) {
-            var tmp = '';
+            let tmp = '';
             if (g.direction !== defaultDirection) {
               tmp += keyword(translate[g.direction]);
               tmp += ' ';
@@ -1759,63 +1781,8 @@ function processQuery(query, explain, planIndex) {
         }
 
         kShortestPathsDetails.push(node);
-        e = [];
-        eNames = [];
-        if (node.hasOwnProperty('graphDefinition')) {
-          v = [];
-          vNames = [];
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          } else {
-            node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
-              v.push(collection(vcn));
-              vNames.push(vcn);
-            });
-          }
-          node.vertexCollectionNameStr = v.join(', ');
-          node.vertexCollectionNameStrLen = vNames.join(', ').length;
-
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-        } else {
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('edgeCollections')) {
-            node.options.edgeCollections.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          } else {
-            edgeCols = node.graph || [];
-            edgeCols.forEach(function (ecn) {
-              e.push(collection(ecn));
-              eNames.push(ecn);
-            });
-          }
-          node.edgeCollectionNameStr = e.join(', ');
-          node.edgeCollectionNameStrLen = eNames.join(', ').length;
-          node.graph = '<anonymous>';
-          if (node.hasOwnProperty('options') && node.options.hasOwnProperty('vertexCollections')) {
-            v = [];
-            node.options.vertexCollections.forEach(function (vcn) {
-              v.push(collection(vcn));
-            });
-            node.vertexCollectionNameStr = v.join(', ');
-            node.vertexCollectionNameStrLen = node.options.vertexCollections.join(', ').length;
-          }
-        }
+        
+        handleGraphDefinition(node);
 
         indexes.push(...getGraphNodeIndexes(node));
 
@@ -1825,7 +1792,7 @@ function processQuery(query, explain, planIndex) {
         (node.functions || []).forEach(function (f) {
           functions[f.name] = f;
         });
-        return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */');
+        return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */') + variablesUsed() + constNess();
       case 'FilterNode':
         return keyword('FILTER') + ' ' + variableName(node.inVariable);
       case 'AggregateNode': /* old-style COLLECT node */
@@ -2045,6 +2012,19 @@ function processQuery(query, explain, planIndex) {
         }
       }
         break;
+      case 'MultipleRemoteModificationNode': {
+        modificationFlags = node.modificationFlags;
+        collectionVariables[node.inVariable.id] = node.collection;
+        let indexRef = `${variableName(node.inVariable)}`;
+        if (node.hasOwnProperty('indexes')) {
+          node.indexes.forEach(function (idx, i) {
+            iterateIndexes(idx, i, node, types, indexRef);
+          });
+        }
+        return `${keyword('FOR')} d ${keyword('IN')} ${variableName(node.inVariable)} ${keyword('INSERT')} d ${keyword('IN')} ${collection(node.collection)}`;
+      }
+        break;
+
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
@@ -2070,7 +2050,32 @@ function processQuery(query, explain, planIndex) {
         }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
 
       case 'MaterializeNode':
-        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+        let annotations = '';
+        let accessString = '';
+        if (node.projections) {
+          annotations += projections(node, 'projections', 'projections');
+          // produce LET nodes for each projection output register
+          let parts = [];
+          node.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(node.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            accessString = '   ' + keyword('LET') + ' ' + parts.join(', ') + accessString;
+          }
+        }
+        let varString = '';
+        if (node.hasOwnProperty('oldDocVariable')) {
+          if (node.outVariable.id !== node.oldDocVariable.id) {
+            varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+          } else {
+            varString = variableName(node.oldDocVariable);
+          }
+        } else {
+          varString = variableName(node.outVariable);
+        }
+        return keyword('MATERIALIZE') + ' ' + varString + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '') + accessString;
       case 'OffsetMaterializeNode':
         return keyword('LET ') + variableName(node.outVariable) + ' = ' +
                func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', ' + buildExpression(node.options) + ')';
@@ -2103,11 +2108,22 @@ function processQuery(query, explain, planIndex) {
   };
 
   var level = 0, subqueries = [], subqueryCallbacks = [];
-  var indent = function (level, isRoot) {
+  const indent = function (level, isRoot) {
     return pad(1 + level + level) + (isRoot ? '* ' : '- ');
   };
 
-  var preHandle = function (node) {
+  const nodePrefix = (node) => {
+    let line = ' ' +
+      pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
+      keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
+
+    if (isCoord) {
+      line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + '  ';
+    }
+    return line;
+  };
+
+  const preHandle = function (node) {
     usedVariables = {};
     currentNode = node.id;
     isConst = true;
@@ -2120,11 +2136,65 @@ function processQuery(query, explain, planIndex) {
     }
   };
 
-  var postHandle = function (node) {
+  const postHandle = function (node) {
+    if (node.type === 'JoinNode') {
+      ++level;
+      node.indexInfos.forEach((info) => {
+        let line = nodePrefix(node);
+        if (profileMode) {
+          line += pad(1 + maxCallsLen) +  '   ' +
+            pad(1 + maxParallelLen) + '   ' +
+            pad(1 + maxItemsLen) + '   ' +
+            pad(1 + maxFilteredLen) + '   ' +
+            pad(1 + maxRuntimeLen) + '   ';
+        } else {
+          line += pad('Par'.length) + value(info.isAsyncPrefetchEnabled ? '✓' : ' ') + '   ' +
+            pad(1 + maxEstimateLen - String(info.estimatedNrItems).length) + value(info.estimatedNrItems) + '   ';
+        }
+        let label = keyword('FOR ') + variableName(info.outVariable) + keyword(' IN ') + collection(info.collection);
+        let filter = '';
+        if (info.filter && info.filter.hasOwnProperty('type')) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(info.filter);
+        }
+        let accessString = '';
+        if (!info.indexCoversProjections && info.producesOutput) {
+          accessString += "index scan + document lookup";
+        } else if (info.indexCoversProjections) {
+          accessString += "index scan";
+        } else {
+          accessString += "index scan only";
+        }
+        if (info.isLateMaterialized === true) {
+          accessString += ' with late materialization';
+        }
+        if (info.projections) {
+          accessString += projections(info, "projections", "projections");
+        }
+        if (info.filterProjections) {
+          accessString += projections(info, 'filterProjections', 'filter projections');
+        }
+        accessString = '   ' + annotation('/* ' + accessString + ' */');
+        if (info.projections) {
+          // produce LET nodes for each projection output register
+          let parts = [];
+          info.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(info.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            accessString = '   ' + keyword('LET') + ' ' + parts.join(', ') + accessString;
+          }
+        }
+        line += indent(level, false) + label + filter + accessString;
+        stringBuilder.appendLine(line);
+      });
+      --level;
+    }
     if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
       level = subqueries.pop();
     }
-    var isLeafNode = !parents.hasOwnProperty(node.id);
+    const isLeafNode = !parents.hasOwnProperty(node.id);
 
     if (['EnumerateCollectionNode',
       'EnumerateListNode',
@@ -2148,16 +2218,16 @@ function processQuery(query, explain, planIndex) {
     return '';
   };
 
-  var constNess = function () {
+  const constNess = function () {
     if (isConst) {
       return '   ' + annotation('/* const assignment */');
     }
     return '';
   };
 
-  var variablesUsed = function () {
-    var used = [];
-    for (var a in usedVariables) {
+  const variablesUsed = function () {
+    let used = [];
+    for (let a in usedVariables) {
       if (usedVariables.hasOwnProperty(a)) {
         used.push(variable(a) + ' : ' + collection(usedVariables[a]));
       }
@@ -2170,46 +2240,22 @@ function processQuery(query, explain, planIndex) {
 
   const isCoord = isCoordinator();
 
-  var printNode = function (node) {
+  const printNode = function (node) {
     preHandle(node);
-    var line = ' ' +
-      pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
-      keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
-
-    if (isCoord) {
-      line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + '  ';
-    }
+    let line = nodePrefix(node); 
 
     if (profileMode) {
-      if (node.calls === undefined) {
-        node.calls = 'n/a';
-      }
-      if (node.items === undefined) {
-        node.items = 'n/a';
-      }
-      if (node.filtered === undefined) {
-        node.filtered = 'n/a';
-      }
-      let runtime = node.runtime;
-      if (runtime === undefined) {
-        runtime = 'n/a';
-      } else {
-        runtime = String(Math.abs(node.runtime).toFixed(5));
-      }
-
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
+        pad(1 + maxParallelLen - String(node.parallel).length) + value(node.parallel) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
         pad(1 + maxFilteredLen - String(node.filtered).length) + value(node.filtered) + '   ' +
-        pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
-        indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
+        pad(1 + maxRuntimeLen - node.runtime.length) + value(node.runtime) + '   ';
     } else {
-      line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
-        indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
+      line += pad('Par'.length) + value(node.isAsyncPrefetchEnabled ? '✓' : ' ') + '   ' +
+        pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ';
     }
+    line += indent(level, node.type === 'SingletonNode') + label(node) + callstackSplit(node);
 
-    if (node.type === 'CalculationNode') {
-      line += variablesUsed() + constNess();
-    }
     stringBuilder.appendLine(line);
     postHandle(node);
   };
@@ -2220,7 +2266,7 @@ function processQuery(query, explain, planIndex) {
 
   stringBuilder.appendLine(section('Execution plan:'));
 
-  var line = ' ' +
+  let line = ' ' +
     pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
     header('NodeType') + pad(1 + maxTypeLen - String('NodeType').length) + '   ';
 
@@ -2230,12 +2276,15 @@ function processQuery(query, explain, planIndex) {
 
   if (profileMode) {
     line += pad(1 + maxCallsLen - String('Calls').length) + header('Calls') + '   ' +
+      pad(1 + maxParallelLen - String('Par').length) + header('Par') + '   ' +
       pad(1 + maxItemsLen - String('Items').length) + header('Items') + '   ' +
       pad(1 + maxFilteredLen - String('Filtered').length) + header('Filtered') + '   ' +
       pad(1 + maxRuntimeLen - String('Runtime [s]').length) + header('Runtime [s]') + '   ' +
       header('Comment');
   } else {
-    line += pad(1 + maxEstimateLen - String('Est.').length) + header('Est.') + '   ' +
+    line += 
+      pad(1 + maxParallelLen - String('Par').length) + header('Par') + '   ' +
+      pad(1 + maxEstimateLen - String('Est.').length) + header('Est.') + '   ' +
       header('Comment');
   }
 
@@ -2264,7 +2313,10 @@ function processQuery(query, explain, planIndex) {
   stringBuilder.appendLine();
 
   printRules(plan.rules, explain.stats);
-  printModificationFlags(modificationFlags);
+  // printing of "write query options" normally does not help to get any
+  // better insights, so it has been deactivated. the code is kept around
+  // in case we still need it later.
+  // printModificationFlags(modificationFlags);
   if (profileMode) {
     printStats(explain.stats, isCoord);
     printProfile(explain.profile);
@@ -2297,7 +2349,7 @@ function explain(data, options, shouldPrint) {
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let result = stmt.explain(options);
-  if (options.allPlans) {
+  if (options.allPlans === true) {
     // multiple plans
     printQuery(data.query);
     for (let i = 0; i < result.plans.length; ++i) {
@@ -2316,7 +2368,7 @@ function explain(data, options, shouldPrint) {
   }
 
   if (shouldPrint === undefined || shouldPrint) {
-    print(stringBuilder.getOutput());
+    internal.print(stringBuilder.getOutput());
   } else {
     return stringBuilder.getOutput();
   }
@@ -2343,7 +2395,7 @@ function profileQuery(data, shouldPrint) {
   processQuery(data.query, extra, undefined);
 
   if (shouldPrint === undefined || shouldPrint) {
-    print(stringBuilder.getOutput());
+    internal.print(stringBuilder.getOutput());
   } else {
     return stringBuilder.getOutput();
   }
@@ -2383,6 +2435,7 @@ function debug(query, bindVars, options) {
     database: dbProperties,
     query: input,
     queryCache: require('@arangodb/aql/cache').properties(),
+    analyzers: {},
     collections: {},
     views: {}
   };
@@ -2435,6 +2488,10 @@ function debug(query, bindVars, options) {
               }
             });
           } catch (err) { }
+        } else {
+          node.graph.forEach(edgeColl => {
+            collections.push({name: edgeColl});
+          });
         }
       } else if (node.type === 'SubqueryNode') {
         // recurse into subqueries
@@ -2458,8 +2515,7 @@ function debug(query, bindVars, options) {
         type: v.type(),
         properties: v.properties()
       };
-    } else {
-      // a collection
+    } else if (isNaN(collection.name)) {
       if (c.type() === 3 && collection.name.match(/^_(local|from|to)_.+/)) {
         // an internal smart-graph collection. let's skip this
         return;
@@ -2533,6 +2589,31 @@ function debug(query, bindVars, options) {
     result.collections[c.name] = c;
   });
 
+  let used_analyzers = new Set();
+  Object.values(result.views).forEach(v => {
+    let links = v["properties"]["links"];
+    Object.values(links).forEach(c => {
+      let curr_analyzers = c["analyzers"];
+      curr_analyzers.forEach(a => {
+        used_analyzers.add(a);
+      });
+    });
+  });
+
+  let analyzers = require("@arangodb/analyzers");
+  let all_analyzers = analyzers.toArray();
+  used_analyzers.forEach(used_a => {
+    let re = new RegExp(String.raw`::${used_a}$`, "g");
+    let found = all_analyzers.find((a) => a.name().match(re));
+    if(found) {
+      // it means that it is not a system analyzer
+      result.analyzers[used_a] = {
+        type: analyzers.analyzer(used_a).type(),
+        properties: analyzers.analyzer(used_a).properties()
+      };
+    }
+  });
+  
   result.graphs = graphs;
   return result;
 }
@@ -2544,17 +2625,27 @@ function debugDump(filename, query, bindVars, options) {
 }
 
 function inspectDump(filename, outfile) {
-  let internal = require('internal');
+  let print = internal.print;
   if (outfile !== undefined) {
     internal.startCaptureMode();
   }
 
   let data = JSON.parse(require('fs').read(filename));
-  if (data.version && data.version) {
-    print("/* original data is from " + data.version["server-version"] + ", " + data.version.license + " */");
+  let version = "";
+  let license = "";
+  if (data.version) {
+    version = data.version;
+    license = version.license;
+    if (version && version.details) {
+      version = version.details;
+    }
+    if (version && version.hasOwnProperty('server-version')) {
+      version = version['server-version'];
+    }
+    print("/* original data is from " + version + ", " + license + " */");
   }
   if (data.database) {
-    print("/* original data gathered from database '" + data.database + "' */");
+    print("/* original data gathered from database " + JSON.stringify(data.database) + " */");
   }
 
   try {
@@ -2576,6 +2667,28 @@ function inspectDump(filename, outfile) {
     print("db._graphs.insert(" + JSON.stringify(details) + ");");
   });
   print();
+
+  // drop views to be able to recreate analyzers
+  print("/*drop views */");
+  Object.keys(data.views || {}).forEach(function (view) {
+    print("db._dropView(" + JSON.stringify(view) + ");");
+  });
+  print();
+
+  // all analyzers if they are exists
+  if (data.hasOwnProperty("analyzers")) {
+    print("/* analyzers setup */");
+    const analyzers_names = Object.keys(data.analyzers);
+    if (analyzers_names.length > 0) {
+      print("var analyzers = require('@arangodb/analyzers')");
+      for (let i = 0; i < analyzers_names.length; ++i) {
+        let name = analyzers_names[i];
+        print(`try { analyzers.remove("${name}"); } catch (err) { print(String(err)); }`);
+        print(`analyzers.save("${name}", ${JSON.stringify(data.analyzers[name]["type"])}, ${JSON.stringify(data.analyzers[name]["properties"])})`);
+      }
+    }
+    print();
+  }
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
@@ -2601,6 +2714,8 @@ function inspectDump(filename, outfile) {
         if (details.properties.isSmart) {
           delete details.properties.numberOfShards;
         }
+        delete details.properties.objectId;
+        delete details.properties.statusString;
         print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
       } else {
         print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
@@ -2641,7 +2756,6 @@ function inspectDump(filename, outfile) {
   print("/* views */");
   Object.keys(data.views || {}).forEach(function (view) {
     let details = data.views[view];
-    print("db._dropView(" + JSON.stringify(view) + ");");
     print("db._createView(" + JSON.stringify(view) + ", " + JSON.stringify(details.type) + ", " + JSON.stringify(details.properties) + ");");
   });
   print();
@@ -2666,7 +2780,8 @@ function inspectDump(filename, outfile) {
   }
 }
 
-function explainQuerysRegisters(plan) {
+function explainQueryRegisters(plan) {
+  let print = internal.print;
 
   /**
    * @typedef Node
@@ -3039,7 +3154,8 @@ function explainQuerysRegisters(plan) {
 function explainRegisters(data, options, shouldPrint) {
   'use strict';
 
-  console.warn("explainRegisters() is purposefully undocumented and may be changed or removed without notice.");
+  let print = internal.print;
+  require('console').warn("explainRegisters() is purposefully undocumented and may be changed or removed without notice.");
 
   if (typeof data === 'string') {
     data = { query: data, options: options };
@@ -3070,12 +3186,12 @@ function explainRegisters(data, options, shouldPrint) {
       stringBuilder.appendLine(section("Plan #" + (i + 1) + " of " + result.plans.length));
       stringBuilder.prefix = ' ';
       stringBuilder.appendLine();
-      explainQuerysRegisters(result.plans[i]);
+      explainQueryRegisters(result.plans[i]);
       stringBuilder.prefix = '';
     }
   } else {
     // single plan
-    explainQuerysRegisters(result.plan);
+    explainQueryRegisters(result.plan);
   }
 
   if (shouldPrint === undefined || shouldPrint) {

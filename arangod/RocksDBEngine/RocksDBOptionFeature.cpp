@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,9 +51,17 @@
 #include <rocksdb/memory_allocator.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
+#include <rocksdb/sst_partitioner.h>
 #include <rocksdb/statistics.h>
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
+
+// It's not atomic because it shouldn't change after initilization.
+// And initialization should happen before rocksdb initialization.
+static bool ioUringEnabled = true;
+
+// weak symbol from rocksdb
+extern "C" bool RocksDbIOUringEnable() { return ioUringEnabled; }
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -224,7 +232,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
-      _maxWriteBufferNumber(8 + 2),  // number of column families plus 2
+      _maxWriteBufferNumber(RocksDBColumnFamilyManager::numberOfColumnFamilies +
+                            2),  // number of column families plus 2
       _maxWriteBufferSizeToMaintain(0),
       _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
@@ -246,8 +255,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
 #ifdef ARANGODB_ROCKSDB8
       _blockCacheEstimatedEntryCharge(0),
 #endif
-      _minBlobSize(0),
-      _blobFileSize(1ULL << 28),
+      _minBlobSize(256),
+      _blobFileSize(1ULL << 30),
 #ifdef ARANGODB_ROCKSDB8
       _blobFileStartingLevel(0),
 #endif
@@ -272,6 +281,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       // note: this is a default value from RocksDB (db/column_family.cc,
       // kAdjustedTtl):
       _periodicCompactionTtl(30 * 24 * 60 * 60),
+      _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compressionType(::kCompressionTypeLZ4),
       _blobCompressionType(::kCompressionTypeLZ4),
       _blockCacheType(::kBlockCacheTypeLRU),
@@ -285,10 +295,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
 #ifdef ARANGODB_ROCKSDB8
       _prepopulateBlobCache(false),
 #endif
-      _reserveTableBuilderMemory(false),
-      _reserveTableReaderMemory(false),
-      _reserveFileMetadataMemory(false),
-      _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
+      _reserveTableBuilderMemory(true),
+      _reserveTableReaderMemory(true),
+      _reserveFileMetadataMemory(true),
       _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(true),
       _cacheIndexAndFilterBlocksWithHighPriority(
@@ -311,10 +320,15 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _useFileLogging(false),
       _limitOpenFilesAtStartup(false),
       _allowFAllocate(true),
-      _enableBlobGarbageCollection(false),
+      _enableBlobGarbageCollection(true),
       _exclusiveWrites(false),
       _minWriteBufferNumberToMergeTouched(false),
-      _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0} {
+      _partitionFilesForDocumentsCf(false),
+      _partitionFilesForPrimaryIndexCf(false),
+      _partitionFilesForEdgeIndexCf(false),
+      _partitionFilesForVPackIndexCf(false),
+      _partitionFilesForMdiIndexCf(false),
+      _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0, 0, 0, 0} {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
       std::max(static_cast<size_t>(2), NumberOfCores::getValue()));
@@ -349,33 +363,29 @@ void RocksDBOptionFeature::collectOptions(
                          arangodb::options::Flags::OnDBServer,
                          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption("--rocksdb.target-file-size-base",
-                  "Per-file target file size for compaction (in bytes). The "
-                  "actual target file size for each level is "
-                  "`--rocksdb.target-file-size-base` multiplied by "
-                  "`--rocksdb.target-file-size-multiplier` ^ (level - 1)",
-                  new UInt64Parameter(&_targetFileSizeBase),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnAgent,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701);
+  options->addOption("--rocksdb.target-file-size-base",
+                     "Per-file target file size for compaction (in bytes). The "
+                     "actual target file size for each level is "
+                     "`--rocksdb.target-file-size-base` multiplied by "
+                     "`--rocksdb.target-file-size-multiplier` ^ (level - 1)",
+                     new UInt64Parameter(&_targetFileSizeBase),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption(
-          "--rocksdb.target-file-size-multiplier",
-          "The multiplier for `--rocksdb.target-file-size`. A value of 1 means "
-          "that files in different levels will have the same size.",
-          new UInt64Parameter(&_targetFileSizeMultiplier, /*base*/ 1,
-                              /*minValue*/ 1),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701);
+  options->addOption(
+      "--rocksdb.target-file-size-multiplier",
+      "The multiplier for `--rocksdb.target-file-size`. A value of 1 means "
+      "that files in different levels will have the same size.",
+      new UInt64Parameter(&_targetFileSizeMultiplier, /*base*/ 1,
+                          /*minValue*/ 1),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   TRI_ASSERT(::compressionTypes.contains(_compressionType));
   options
@@ -458,16 +468,17 @@ flushed to standard storage. Larger values than the default may improve
 performance, especially for bulk loads.)");
 
   options
-      ->addOption("--rocksdb.max-write-buffer-number",
-                  "The maximum number of write buffers that build up in memory "
-                  "(default: number of column families + 2 = 9 write buffers). "
-                  "You can only increase the number.",
-                  new UInt64Parameter(&_maxWriteBufferNumber),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnAgent,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
+      ->addOption(
+          "--rocksdb.max-write-buffer-number",
+          "The maximum number of write buffers that build up in memory "
+          "(default: number of column families + 2 = 12 write buffers). "
+          "You can only increase the number.",
+          new UInt64Parameter(&_maxWriteBufferNumber),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(If this number is reached before the buffers can
 be flushed, writes are slowed or stalled.)");
 
@@ -485,7 +496,6 @@ be flushed, writes are slowed or stalled.)");
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30703)
       .setLongDescription(R"(The default value `0` restores the memory usage
 pattern of version 3.6. This makes RocksDB not keep any flushed immutable
 write-buffers in memory.)");
@@ -556,7 +566,7 @@ prevent WAL files from being moved to the archive and being removed.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(Levels above the default of `2` use Snappy
+      .setLongDescription(R"(Levels above the default of `2` use
 compression to reduce the disk space requirements for storing data in these
 levels.)");
 
@@ -649,22 +659,16 @@ number of cross-page I/O operations.)");
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle));
 
-#ifdef __linux__
   options->addOption(
       "--rocksdb.use-direct-reads", "Use O_DIRECT for reading files.",
       new BooleanParameter(&_useDirectReads),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::Uncommon));
+      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--rocksdb.use-direct-io-for-flush-and-compaction",
       "Use O_DIRECT for writing files for flush and compaction.",
       new BooleanParameter(&_useDirectIoForFlushAndCompaction),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::Uncommon));
-#endif
+      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--rocksdb.use-fsync",
@@ -894,7 +898,6 @@ recommended to set this option to `true`.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701)
       .setLongDescription(R"(If you set this option to `true`, RocksDB tracks
 all loaded index and filter blocks in the block cache, so that they count
 towards RocksDB's block cache memory limit.
@@ -911,52 +914,46 @@ index and filter blocks leaves less room for other data in the block cache, so
 in case servers have unused RAM capacity available, it may be useful to increase
 the overall size of the block cache.)");
 
-  options
-      ->addOption(
-          "--rocksdb.cache-index-and-filter-blocks-with-high-priority",
-          "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
-          "enabled, cache index and filter blocks with high priority, "
-          "making index and filter blocks be less likely to be evicted than "
-          "data blocks.",
-          new BooleanParameter(&_cacheIndexAndFilterBlocksWithHighPriority),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701);
+  options->addOption(
+      "--rocksdb.cache-index-and-filter-blocks-with-high-priority",
+      "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
+      "enabled, cache index and filter blocks with high priority, "
+      "making index and filter blocks be less likely to be evicted than "
+      "data blocks.",
+      new BooleanParameter(&_cacheIndexAndFilterBlocksWithHighPriority),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption(
-          "--rocksdb.pin-l0-filter-and-index-blocks-in-cache",
-          "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
-          "enabled, filter and index blocks are pinned and only evicted from "
-          "cache when the table reader is freed.",
-          new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701);
+  options->addOption(
+      "--rocksdb.pin-l0-filter-and-index-blocks-in-cache",
+      "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
+      "enabled, filter and index blocks are pinned and only evicted from "
+      "cache when the table reader is freed.",
+      new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption(
-          "--rocksdb.pin-top-level-index-and-filter",
-          "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
-          "enabled, the top-level index of partitioned filter and index blocks "
-          "are pinned and only evicted from cache when the table reader is "
-          "freed.",
-          new BooleanParameter(&_pinTopLevelIndexAndFilter),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnAgent,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30701);
+  options->addOption(
+      "--rocksdb.pin-top-level-index-and-filter",
+      "If enabled and `--rocksdb.cache-index-and-filter-blocks` is also "
+      "enabled, the top-level index of partitioned filter and index blocks "
+      "are pinned and only evicted from cache when the table reader is "
+      "freed.",
+      new BooleanParameter(&_pinTopLevelIndexAndFilter),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.table-block-size",
                      "The approximate size (in bytes) of the user data packed "
@@ -972,7 +969,7 @@ the overall size of the block cache.)");
   options->addOption(
       "--rocksdb.recycle-log-file-num",
       "If enabled, keep a pool of log files around for recycling.",
-      new BooleanParameter(&_recycleLogFileNum),
+      new SizeTParameter(&_recycleLogFileNum),
       arangodb::options::makeFlags(
           arangodb::options::Flags::Uncommon,
           arangodb::options::Flags::DefaultNoComponents,
@@ -1031,18 +1028,16 @@ RocksDB internals and performance.)");
                          arangodb::options::Flags::OnDBServer,
                          arangodb::options::Flags::OnSingle));
 
-  options
-      ->addOption("--rocksdb.limit-open-files-at-startup",
-                  "Limit the amount of .sst files RocksDB inspects at "
-                  "startup, in order to reduce the startup I/O operations.",
-                  new BooleanParameter(&_limitOpenFilesAtStartup),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnAgent,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30405);
+  options->addOption("--rocksdb.limit-open-files-at-startup",
+                     "Limit the amount of .sst files RocksDB inspects at "
+                     "startup, in order to reduce the startup I/O operations.",
+                     new BooleanParameter(&_limitOpenFilesAtStartup),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--rocksdb.allow-fallocate",
@@ -1056,7 +1051,6 @@ RocksDB internals and performance.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30405)
       .setLongDescription(R"(Preallocation is turned on by default, but you can
 turn it off for operating system versions that are known to have issues with it.
 This option only has an effect on operating systems that support
@@ -1075,7 +1069,6 @@ This option only has an effect on operating systems that support
               arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30504)
       .setDeprecatedIn(30800)
       .setLongDescription(R"(This option allows you to make all writes to the
 RocksDB storage exclusive and therefore avoid write-write conflicts.
@@ -1281,7 +1274,7 @@ version.)");
 #ifdef ARANGODB_ROCKSDB8
   options
       ->addOption("--rocksdb.prepopulate-blob-cache",
-                  "Prepopulate the blob cache on flushes.",
+                  "Pre-populate the blob cache on flushes.",
                   new BooleanParameter(&_prepopulateBlobCache),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Experimental,
@@ -1300,7 +1293,6 @@ version.)");
           new BooleanParameter(&_useJemallocAllocator),
           arangodb::options::makeFlags(arangodb::options::Flags::Experimental,
                                        arangodb::options::Flags::Uncommon,
-                                       arangodb::options::Flags::OsLinux,
                                        arangodb::options::Flags::OnAgent,
                                        arangodb::options::Flags::OnDBServer,
                                        arangodb::options::Flags::OnSingle))
@@ -1375,6 +1367,177 @@ support (which is the default on Linux).)");
 avoid periodic auto-compaction and the I/O caused by it, you can set this
 option to `0`.)");
 
+  options
+      ->addOption("--rocksdb.partition-files-for-documents",
+                  "If enabled, the document data for different "
+                  "collections/shards will end up in "
+                  "different .sst files.",
+                  new BooleanParameter(&_partitionFilesForDocumentsCf),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Enabling this option will make RocksDB's
+compaction write the document data for different collections/shards
+into different .sst files. Otherwise the document data from different 
+collections/shards can be mixed and written into the same .sst files.
+
+Enabling this option usually has the benefit of making the RocksDB
+compaction more efficient when a lot of different collections/shards
+are written to in parallel.
+The disavantage of enabling this option is that there can be more .sst
+files than when the option is turned off, and the disk space used by
+these .sst files can be higher than if there are fewer .sst files (this
+is because there is some per-.sst file overhead).
+In particular on deployments with many collections/shards
+this can lead to a very high number of .sst files, with the potential
+of outgrowing the maximum number of file descriptors the ArangoDB process 
+can open. Thus the option should only be enabled on deployments with a
+limited number of collections/shards.)");
+
+  options
+      ->addOption("--rocksdb.partition-files-for-primary-index",
+                  "If enabled, the primary index data for different "
+                  "collections/shards will end up in "
+                  "different .sst files.",
+                  new BooleanParameter(&_partitionFilesForPrimaryIndexCf),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Enabling this option will make RocksDB's
+compaction write the primary index data for different collections/shards
+into different .sst files. Otherwise the primary index data from different 
+collections/shards can be mixed and written into the same .sst files.
+
+Enabling this option usually has the benefit of making the RocksDB
+compaction more efficient when a lot of different collections/shards
+are written to in parallel.
+The disavantage of enabling this option is that there can be more .sst
+files than when the option is turned off, and the disk space used by
+these .sst files can be higher than if there are fewer .sst files (this
+is because there is some per-.sst file overhead).
+In particular on deployments with many collections/shards
+this can lead to a very high number of .sst files, with the potential
+of outgrowing the maximum number of file descriptors the ArangoDB process 
+can open. Thus the option should only be enabled on deployments with a
+limited number of collections/shards.)");
+
+  options
+      ->addOption("--rocksdb.partition-files-for-edge-index",
+                  "If enabled, the index data for different edge "
+                  "indexes will end up in different .sst files.",
+                  new BooleanParameter(&_partitionFilesForEdgeIndexCf),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Enabling this option will make RocksDB's
+compaction write the edge index data for different edge collections/shards
+into different .sst files. Otherwise the edge index data from different 
+edge collections/shards can be mixed and written into the same .sst files.
+
+Enabling this option usually has the benefit of making the RocksDB
+compaction more efficient when a lot of different edge collections/shards
+are written to in parallel.
+The disavantage of enabling this option is that there can be more .sst
+files than when the option is turned off, and the disk space used by
+these .sst files can be higher than if there are fewer .sst files (this
+is because there is some per-.sst file overhead).
+In particular on deployments with many edge collections/shards
+this can lead to a very high number of .sst files, with the potential
+of outgrowing the maximum number of file descriptors the ArangoDB process 
+can open. Thus the option should only be enabled on deployments with a
+limited number of edge collections/shards.)");
+
+  options
+      ->addOption("--rocksdb.partition-files-for-persistent-index",
+                  "If enabled, the index data for different persistent "
+                  "indexes will end up in different .sst files.",
+                  new BooleanParameter(&_partitionFilesForVPackIndexCf),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Enabling this option will make RocksDB's
+compaction write the persistent index data for different persistent
+indexes (also indexes from different collections/shards) into different 
+.sst files. Otherwise the persistent index data from different 
+collections/shards/indexes can be mixed and written into the same .sst files.
+
+Enabling this option usually has the benefit of making the RocksDB
+compaction more efficient when a lot of different collections/shards/indexes
+are written to in parallel.
+The disavantage of enabling this option is that there can be more .sst
+files than when the option is turned off, and the disk space used by
+these .sst files can be higher than if there are fewer .sst files (this
+is because there is some per-.sst file overhead).
+In particular on deployments with many collections/shards/indexes
+this can lead to a very high number of .sst files, with the potential
+of outgrowing the maximum number of file descriptors the ArangoDB process 
+can open. Thus the option should only be enabled on deployments with a
+limited number of edge collections/shards/indexes.)");
+
+  options
+      ->addOption("--rocksdb.partition-files-for-mdi-index",
+                  "If enabled, the index data for different mdi "
+                  "indexes will end up in different .sst files.",
+                  new BooleanParameter(&_partitionFilesForMdiIndexCf),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Enabling this option will make RocksDB's
+  compaction write the persistent index data for different mdi
+  indexes (also indexes from different collections/shards) into different
+  .sst files. Otherwise the persistent index data from different
+  collections/shards/indexes can be mixed and written into the same .sst files.
+
+  Enabling this option usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different collections/shards/indexes
+  are written to in parallel.
+  The disavantage of enabling this option is that there can be more .sst
+  files than when the option is turned off, and the disk space used by
+  these .sst files can be higher than if there are fewer .sst files (this
+  is because there is some per-.sst file overhead).
+  In particular on deployments with many collections/shards/indexes
+  this can lead to a very high number of .sst files, with the potential
+  of outgrowing the maximum number of file descriptors the ArangoDB process
+  can open. Thus the option should only be enabled on deployments with a
+  limited number of edge collections/shards/indexes.)");
+
+  options
+      ->addOption(
+          "--rocksdb.use-io_uring",
+          "Check for existence of io_uring at startup and use it if available. "
+          "Should be set to false only to opt out of using io_uring.",
+          new BooleanParameter(&ioUringEnabled),
+          arangodb::options::makeFlags(arangodb::options::Flags::Uncommon,
+                                       arangodb::options::Flags::OnAgent,
+                                       arangodb::options::Flags::OnDBServer,
+                                       arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(3'12'00);
+
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now
   //////////////////////////////////////////////////////////////////////////////
@@ -1386,7 +1549,9 @@ option to `0`.)");
       RocksDBColumnFamilyManager::Family::VPackIndex,
       RocksDBColumnFamilyManager::Family::GeoIndex,
       RocksDBColumnFamilyManager::Family::FulltextIndex,
-      RocksDBColumnFamilyManager::Family::ReplicatedLogs};
+      RocksDBColumnFamilyManager::Family::ReplicatedLogs,
+      RocksDBColumnFamilyManager::Family::MdiIndex,
+      RocksDBColumnFamilyManager::Family::MdiVPackIndex};
 
   auto addMaxWriteBufferNumberCf =
       [this, &options](RocksDBColumnFamilyManager::Family family) {
@@ -1395,6 +1560,11 @@ option to `0`.)");
         std::size_t index = static_cast<
             std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(
             family);
+        auto introducedIn = 30800;
+        if (family == RocksDBColumnFamilyManager::Family::MdiVPackIndex ||
+            family == RocksDBColumnFamilyManager::Family::MdiIndex) {
+          introducedIn = 31200;
+        }
         options
             ->addOption("--rocksdb.max-write-buffer-number-" + name,
                         "If non-zero, overrides the value of "
@@ -1403,7 +1573,7 @@ option to `0`.)");
                         new UInt64Parameter(&_maxWriteBufferNumberCf[index]),
                         arangodb::options::makeDefaultFlags(
                             arangodb::options::Flags::Uncommon))
-            .setIntroducedIn(30800);
+            .setIntroducedIn(introducedIn);
       };
   for (auto family : families) {
     addMaxWriteBufferNumberCf(family);
@@ -1422,8 +1592,7 @@ void RocksDBOptionFeature::validateOptions(
         << "invalid value for '--rocksdb.total-write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
-  if (_maxBackgroundJobs != -1 &&
-      (_maxBackgroundJobs < 1 || _maxBackgroundJobs > 128)) {
+  if (_maxBackgroundJobs != -1 && _maxBackgroundJobs < 1) {
     LOG_TOPIC("cfc5a", FATAL, arangodb::Logger::STARTUP)
         << "invalid value for '--rocksdb.max-background-jobs'";
     FATAL_ERROR_EXIT();
@@ -1501,6 +1670,12 @@ void RocksDBOptionFeature::validateOptions(
         << "disabling jemalloc allocator for RocksDB - jemalloc not compiled";
   }
 #endif
+
+  if (!_enableBlobFiles) {
+    // turn off blob garbage collection to avoid potential side effects
+    // for performance
+    _enableBlobGarbageCollection = false;
+  }
 }
 
 void RocksDBOptionFeature::prepare() {
@@ -1612,7 +1787,7 @@ void RocksDBOptionFeature::start() {
       << _pinl0FilterAndIndexBlocksInCache
       << ", pin_top_level_index_and_filter: " << std::boolalpha
       << _pinTopLevelIndexAndFilter << ", table_block_size: " << _tableBlockSize
-      << ", recycle_log_file_num: " << std::boolalpha << _recycleLogFileNum
+      << ", recycle_log_file_num: " << _recycleLogFileNum
       << ", compaction_read_ahead_size: " << _compactionReadaheadSize
       << ", level0_compaction_trigger: " << _level0CompactionTrigger
       << ", level0_slowdown_trigger: " << _level0SlowdownTrigger
@@ -1794,11 +1969,10 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
     result.db_write_buffer_size = _totalWriteBufferSize;
   }
 
-  // WAL_ttl_seconds needs to be bigger than the sync interval of the count
-  // manager. Should be several times bigger counter_sync_seconds
-  result.WAL_ttl_seconds = 60 * 60 * 24 * 30;  // we manage WAL file deletion
-  // ourselves, don't let RocksDB
-  // garbage collect them
+  // we manage WAL file deletion ourselves, don't let RocksDB garbage-collect
+  // obsolete files.
+  result.WAL_ttl_seconds =
+      933120000;  // ~30 years (60 * 60 * 24 * 30 * 12 * 30)
   result.WAL_size_limit_MB = 0;
   result.memtable_prefix_bloom_size_ratio = 0.2;  // TODO: pick better value?
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
@@ -1940,9 +2114,6 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
     result.enable_blob_files = _enableBlobFiles;
     result.min_blob_size = _minBlobSize;
     result.blob_file_size = _blobFileSize;
-#ifdef ARANGODB_ROCKSDB8
-    result.blob_file_starting_level = _blobFileStartingLevel;
-#endif
     result.blob_compression_type =
         ::compressionTypeFromString(_blobCompressionType);
     result.enable_blob_garbage_collection = _enableBlobGarbageCollection;
@@ -1950,6 +2121,7 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
     result.blob_garbage_collection_force_threshold =
         _blobGarbageCollectionForceThreshold;
 #ifdef ARANGODB_ROCKSDB8
+    result.blob_file_starting_level = _blobFileStartingLevel;
     result.prepopulate_blob_cache =
         _prepopulateBlobCache ? rocksdb::PrepopulateBlobCache::kFlushOnly
                               : rocksdb::PrepopulateBlobCache::kDisable;
@@ -1958,6 +2130,44 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
       result.blob_cache = getTableOptions().block_cache;
     }
 #endif
+    if (_partitionFilesForDocumentsCf) {
+      // partition .sst files by object id prefix
+      result.sst_partitioner_factory =
+          rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
+    }
+  }
+
+  if (family == RocksDBColumnFamilyManager::Family::PrimaryIndex) {
+    // partition .sst files by object id prefix
+    if (_partitionFilesForPrimaryIndexCf) {
+      result.sst_partitioner_factory =
+          rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
+    }
+  }
+
+  if (family == RocksDBColumnFamilyManager::Family::EdgeIndex) {
+    // partition .sst files by object id prefix
+    if (_partitionFilesForEdgeIndexCf) {
+      result.sst_partitioner_factory =
+          rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
+    }
+  }
+
+  if (family == RocksDBColumnFamilyManager::Family::VPackIndex) {
+    // partition .sst files by object id prefix
+    if (_partitionFilesForVPackIndexCf) {
+      result.sst_partitioner_factory =
+          rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
+    }
+  }
+
+  if (family == RocksDBColumnFamilyManager::Family::MdiIndex ||
+      family == RocksDBColumnFamilyManager::Family::MdiVPackIndex) {
+    // partition .sst files by object id prefix
+    if (_partitionFilesForMdiIndexCf) {
+      result.sst_partitioner_factory =
+          rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
+    }
   }
 
   // override

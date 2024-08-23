@@ -1,35 +1,31 @@
 /* jshint strict: false, unused: false, esnext: true */
 /* global JSON_CURSOR */
 
-//
-// @brief JavaScript actions module
-//
-// @file
-//
-// DISCLAIMER
-//
-// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-// Copyright 2012-2014 triagens GmbH, Cologne, Germany
-//
-// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// @author Dr. Frank Celler
-// @author Alan Plum
-// @author Copyright 2014-2016, ArangoDB GmbH, Cologne, Germany
-// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
-//
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Alan Plum
+// / @author Copyright 2014-2016, ArangoDB GmbH, Cologne, Germany
+// / @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 module.isSystem = true;
 
@@ -1299,10 +1295,6 @@ function startup () {
   }
 }
 
-//
-// @brief was docuBlock actionsDefineHttp
-//
-
 function defineHttp (options) {
   'use strict';
 
@@ -1382,10 +1374,6 @@ function addCookie (res, name, value, lifeTime, path, domain, secure, httpOnly) 
   res.cookies.push(cookie);
 }
 
-//
-// @brief was docuBlock actionsGetErrorMessage
-//
-
 function getErrorMessage (code) {
   'use strict';
 
@@ -1434,10 +1422,6 @@ function getJsonBody (req, res, code) {
 
   return body;
 }
-
-//
-// @brief was docuBlock actionsResultError
-//
 
 function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {
   'use strict';
@@ -1513,10 +1497,6 @@ function badParameter (req, res, name) {
   ));
 }
 
-//
-// @brief was docuBlock actionsResultOk
-//
-
 function resultOk (req, res, httpReturnCode, result, headers) {
   'use strict';
 
@@ -1545,29 +1525,17 @@ function resultOk (req, res, httpReturnCode, result, headers) {
   }
 }
 
-//
-// @brief was docuBlock actionsResultBad
-//
-
 function resultBad (req, res, code, msg, headers) {
   'use strict';
 
   resultError(req, res, exports.HTTP_BAD, code, msg, headers);
 }
 
-//
-// @brief was docuBlock actionsResultNotFound
-//
-
 function resultNotFound (req, res, code, msg, headers) {
   'use strict';
 
   resultError(req, res, exports.HTTP_NOT_FOUND, code, msg, headers);
 }
-
-//
-// @brief was docuBlock actionsResultNotImplemented
-//
 
 function resultNotImplemented (req, res, msg, headers) {
   'use strict';
@@ -1579,10 +1547,6 @@ function resultNotImplemented (req, res, msg, headers) {
     msg,
     headers);
 }
-
-//
-// @brief was docuBlock actionsResultUnsupported
-//
 
 function resultUnsupported (req, res, headers) {
   'use strict';
@@ -1637,10 +1601,6 @@ function handleRedirect (req, res, options, headers) {
   res.headers.location = url;
 }
 
-//
-// @brief was docuBlock actionsResultPermanentRedirect
-//
-
 function resultPermanentRedirect (req, res, options, headers) {
   'use strict';
 
@@ -1648,10 +1608,6 @@ function resultPermanentRedirect (req, res, options, headers) {
 
   handleRedirect(req, res, options, headers);
 }
-
-//
-// @brief was docuBlock actionsResultTemporaryRedirect
-//
 
 function resultTemporaryRedirect (req, res, options, headers) {
   'use strict';
@@ -1737,10 +1693,6 @@ function resultCursor (req, res, cursor, code, options) {
   resultOk(req, res, code, result);
 }
 
-//
-// @brief was docuBlock actionsCollectionNotFound
-//
-
 function collectionNotFound (req, res, collection, headers) {
   'use strict';
 
@@ -1755,10 +1707,6 @@ function collectionNotFound (req, res, collection, headers) {
       "unknown collection '" + collection + "'", headers);
   }
 }
-
-//
-// @brief was docuBlock actionsIndexNotFound
-//
 
 function indexNotFound (req, res, collection, index, headers) {
   'use strict';
@@ -1788,7 +1736,6 @@ function arangoErrorToHttpCode (num) {
   switch (num) {
     case arangodb.ERROR_INTERNAL:
     case arangodb.ERROR_OUT_OF_MEMORY:
-    case arangodb.ERROR_GRAPH_TOO_MANY_ITERATIONS:
     case arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD:
       return exports.HTTP_SERVER_ERROR;
 
@@ -1851,10 +1798,6 @@ function arangoErrorToHttpCode (num) {
 
   return exports.HTTP_BAD;
 }
-
-//
-// @brief was docuBlock actionsResultException
-//
 
 function resultException (req, res, err, headers, verbose) {
   'use strict';

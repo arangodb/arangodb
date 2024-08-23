@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Logger/LogAppenderSyslog.h"
+
+#include "Logger/LogMessage.h"
 
 using namespace arangodb;
 
@@ -41,6 +43,43 @@ using namespace arangodb;
 
 using namespace arangodb::basics;
 
+namespace {
+// The writable strings warning is suppressed to prevent clang from complaining
+// about pointing to a string constant using a char *, which happens in
+// particular because musl defines CODE to be a struct containing just a `char
+// *`, but requires using CODE * to iterate through facilitynames.
+//
+// Extra fun is to be had because facilitynames is a macro, which is why this
+// code just accesses facilitynames by indexing
+// findSyslogFacilityByName returns -1 as fallback; this is just dealt with
+// below by setting the facility to LOG_LOCAL0 as a last resort, as error
+// handling is not great with syslog
+#if defined(__clang__)
+#if __has_warning("-Wwritable-strings")
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wwritable-strings"
+#endif
+#endif
+auto findSyslogFacilityByName(std::string const& facility) -> int {
+  for (auto i = size_t{0}; i < LOG_NFACILITIES; ++i) {
+    if (facilitynames[i].c_name == nullptr) {
+      return -1;
+    }
+    if (strncmp(facilitynames[i].c_name, facility.c_str(), facility.size()) ==
+        0) {
+      return facilitynames[i].c_val;
+    }
+  }
+  return -1;
+}
+#if defined(__clang__)
+#if __has_warning("-Wwritable-strings")
+#pragma clang diagnostic pop
+#endif
+#endif
+
+}  // namespace
+
 bool LogAppenderSyslog::_opened(false);
 
 void LogAppenderSyslog::close() {
@@ -59,16 +98,12 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   if ('0' <= facility[0] && facility[0] <= '9') {
     value = StringUtils::int32(facility);
   } else {
-    CODE* ptr = reinterpret_cast<CODE*>(facilitynames);
+    value = findSyslogFacilityByName(name);
+  }
 
-    while (ptr->c_name != nullptr) {
-      if (strcmp(ptr->c_name, facility.c_str()) == 0) {
-        value = ptr->c_val;
-        break;
-      }
-
-      ++ptr;
-    }
+  // try to be safe(er) with what is passed to openlog
+  if (value < 0 or value >= LOG_NFACILITIES) {
+    value = LOG_LOCAL0;
   }
 
   // from man 3 syslog:

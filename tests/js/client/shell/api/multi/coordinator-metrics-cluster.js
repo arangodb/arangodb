@@ -1,32 +1,33 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global fail, assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, VPACK_TO_V8*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Valery Mironov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const {getEndpointsByType, getRawMetric, getAllMetric} = require("@arangodb/test-helper");
+const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 const parsePrometheusTextFormat = require("parse-prometheus-text-format");
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
@@ -35,7 +36,20 @@ const db = arangodb.db;
 
 function checkMetrics(metrics) {
 
+  assertNotEqual(null, metrics);
+  assertNotEqual(undefined, metrics);
+
+  assertNotEqual(undefined, metrics["arangodb_search_num_docs"]);
+  assertNotEqual(undefined, metrics["arangodb_search_num_live_docs"]);
+
+  assertNotEqual(undefined, metrics["arangodb_search_num_segments"]);
+  assertNotEqual(undefined, metrics["arangodb_search_num_files"]);
+  assertNotEqual(undefined, metrics["arangodb_search_index_size"]);
   if (isEnterprise) {
+    // 'arangodb_search_num_primary_docs' is available only in enterprise.
+    // So make sure that it is exists before checking other metrics.
+    assertNotEqual(undefined, metrics["arangodb_search_num_primary_docs"]);
+    
     // nested documents are treated like a real documents
     assertEqual(metrics["arangodb_search_num_docs"]["foo1"], 2000);
     assertEqual(metrics["arangodb_search_num_docs"]["foo2"], 4001);
@@ -96,8 +110,10 @@ function checkCoordinators(coordinators, mode) {
   assertTrue(coordinators.length > 1);
   for (let i = 1; i < coordinators.length; i++) {
     let c = coordinators[i];
-    let txt = getAllMetric(c, mode);
-    checkRawMetrics(txt, false);
+    checkIndexMetrics(function() {
+      let txt = getAllMetric(c, mode);
+      checkRawMetrics(txt, false);
+    });
   }
 }
 

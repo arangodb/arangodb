@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,6 +53,11 @@ struct ClusteringMutableProperties {
     };
   };
 
+  struct Invariants {
+    [[nodiscard]] static auto writeConcernAllowedToBeZeroForSatellite(
+        ClusteringMutableProperties const& props) -> inspection::Status;
+  };
+
   inspection::NonNullOptional<uint64_t> replicationFactor{std::nullopt};
   inspection::NonNullOptional<uint64_t> writeConcern{std::nullopt};
 
@@ -69,25 +75,25 @@ struct ClusteringMutableProperties {
 
 template<class Inspector>
 auto inspect(Inspector& f, ClusteringMutableProperties& props) {
-  return f.object(props).fields(
-      f.field(StaticStrings::WaitForSyncString, props.waitForSync)
-          .fallback(f.keep()),
-      // Deprecated, and not documented anymore
-      // The ordering is important here, minReplicationFactor
-      // has to be before writeConcern, this way we ensure that writeConcern
-      // will overwrite the minReplicationFactor value if present
-      f.field(StaticStrings::MinReplicationFactor, props.writeConcern)
-          .fallback(f.keep()),
-      // Now check the new attribute, if it is not there,
-      // fallback to minReplicationFactor / default, whatever
-      // is set already.
-      // Then do the invariant check, this should now cover both
-      // values.
-      f.field(StaticStrings::WriteConcern, props.writeConcern)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isGreaterZeroIfPresent),
-      f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
-          .transformWith(ClusteringMutableProperties::Transformers::
-                             ReplicationSatellite{}));
+  return f.object(props)
+      .fields(
+          f.field(StaticStrings::WaitForSyncString, props.waitForSync)
+              .fallback(f.keep()),
+          // minReplicationFactor is deprecated, and not documented anymore
+          // The ordering is important here, minReplicationFactor
+          // has to be before writeConcern, this way we ensure that writeConcern
+          // will overwrite the minReplicationFactor value if present
+          f.field(StaticStrings::MinReplicationFactor, props.writeConcern)
+              .fallback(f.keep()),
+          // Now check the new attribute, if it is not there,
+          // fallback to minReplicationFactor / default, whatever
+          // is set already.
+          f.field(StaticStrings::WriteConcern, props.writeConcern)
+              .fallback(f.keep()),
+          f.field(StaticStrings::ReplicationFactor, props.replicationFactor)
+              .transformWith(ClusteringMutableProperties::Transformers::
+                                 ReplicationSatellite{}))
+      .invariant(ClusteringMutableProperties::Invariants::
+                     writeConcernAllowedToBeZeroForSatellite);
 }
 }  // namespace arangodb

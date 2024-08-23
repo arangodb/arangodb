@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,7 @@
 #include "RocksDBBackgroundThread.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
+#include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -32,6 +32,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBDumpManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
@@ -59,8 +60,8 @@ void RocksDBBackgroundThread::beginShutdown() {
   Thread::beginShutdown();
 
   // wake up the thread that may be waiting in run()
-  CONDITION_LOCKER(guard, _condition);
-  guard.broadcast();
+  std::lock_guard guard{_condition.mutex};
+  _condition.cv.notify_all();
 }
 
 void RocksDBBackgroundThread::run() {
@@ -72,8 +73,10 @@ void RocksDBBackgroundThread::run() {
 
   while (!isStopping()) {
     {
-      CONDITION_LOCKER(guard, _condition);
-      guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
+      std::unique_lock guard{_condition.mutex};
+      _condition.cv.wait_for(guard,
+                             std::chrono::microseconds{
+                                 static_cast<uint64_t>(_interval * 1000000.0)});
     }
 
     if (_engine.inRecovery()) {
@@ -140,6 +143,7 @@ void RocksDBBackgroundThread::run() {
 
       bool force = isStopping();
       _engine.replicationManager()->garbageCollect(force);
+      _engine.dumpManager()->garbageCollect(force);
 
       if (!force) {
         try {

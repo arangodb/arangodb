@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -99,13 +99,6 @@ RequestLane RestWalAccessHandler::lane() const {
         return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
     }
-  } else if (server()
-                 .getFeature<ReplicationFeature>()
-                 .isActiveFailoverEnabled()) {
-    // prioritize catch-up requests by active failover followers over other
-    // requests, so that followers have a better chance of catching up with the
-    // leader
-    return RequestLane::SERVER_REPLICATION_CATCHUP;
   }
 
   return RequestLane::SERVER_REPLICATION;
@@ -302,9 +295,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
 
-  bool const useVst =
-      (_request->transportType() == Endpoint::TransportType::VST);
-
   WalAccess::Filter filter;
   if (!parseFilter(filter)) {
     return;
@@ -348,42 +338,28 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   size_t length = 0;
 
-  if (useVst) {
-    result = wal->tail(
-        filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice marker) {
-          length++;
-
-          if (vocbase != nullptr) {  // database drop has no vocbase
-            prepOpts(*vocbase);
-          }
-
-          _response->addPayload(marker, &opts, true);
-        });
-  } else {
-    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-    TRI_ASSERT(httpResponse);
-    if (httpResponse == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid response type");
-    }
-    basics::StringBuffer& buffer = httpResponse->body();
-    basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
-    // note: we need the CustomTypeHandler here
-    VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(
-        filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice marker) {
-          length++;
-
-          if (vocbase != nullptr) {  // database drop has no vocbase
-            prepOpts(*vocbase);
-          }
-
-          dumper.dump(marker);
-          buffer.appendChar('\n');
-          // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
-          // marker.toJson(&opts);
-        });
+  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+  TRI_ASSERT(httpResponse);
+  if (httpResponse == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
+  basics::StringBuffer& buffer = httpResponse->body();
+  basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+  // note: we need the CustomTypeHandler here
+  VPackDumper dumper(&adapter, &opts);
+  result = wal->tail(
+      filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice marker) {
+        length++;
+
+        if (vocbase != nullptr) {  // database drop has no vocbase
+          prepOpts(*vocbase);
+        }
+
+        dumper.dump(marker);
+        buffer.appendChar('\n');
+        // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
+        // marker.toJson(&opts);
+      });
 
   if (result.fail()) {
     generateError(std::move(result).result());

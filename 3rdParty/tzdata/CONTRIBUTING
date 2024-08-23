@@ -18,7 +18,7 @@ To email small changes, please run a POSIX shell command like
 'diff -u old/europe new/europe >myfix.patch', and attach
 'myfix.patch' to the email.
 
-For more-elaborate or possibly-controversial changes,
+For more-elaborate or possibly controversial changes,
 such as renaming, adding or removing zones, please read
 "Theory and pragmatics of the tz code and data"
 <https://www.iana.org/time-zones/repository/theory.html>.

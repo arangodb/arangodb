@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,29 +27,31 @@
 #include "Basics/fasthash.h"
 #include "Maskings/Maskings.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+
+#include <absl/strings/escaping.h>
+
+#include <memory>
+
 using namespace arangodb;
 using namespace arangodb::maskings;
 
-ParseResult<AttributeMasking> RandomStringMask::create(Path path,
-                                                       Maskings* maskings,
-                                                       VPackSlice const&) {
-  return ParseResult<AttributeMasking>(
-      AttributeMasking(path, new RandomStringMask(maskings)));
+ParseResult<AttributeMasking> RandomStringMask::create(
+    Path path, Maskings* maskings, velocypack::Slice /*def*/) {
+  return ParseResult<AttributeMasking>(AttributeMasking(
+      std::move(path), std::make_shared<RandomStringMask>(maskings)));
 }
 
-VPackValue RandomStringMask::mask(bool value, std::string&) const {
-  return VPackValue(value);
-}
-
-VPackValue RandomStringMask::mask(std::string const& data,
-                                  std::string& buffer) const {
+void RandomStringMask::mask(std::string_view data, velocypack::Builder& out,
+                            std::string& buffer) const {
   uint64_t len = data.size();
   uint64_t hash;
 
-  hash = fasthash64(data.c_str(), data.size(), _maskings->randomSeed());
+  hash = fasthash64(data.data(), data.size(), _maskings->randomSeed());
 
-  std::string hash64 = basics::StringUtils::encodeBase64(
-      std::string((char const*)&hash, sizeof(decltype(hash))));
+  std::string hash64 =
+      absl::Base64Escape(std::string_view{(char const*)&hash, sizeof(hash)});
 
   buffer.clear();
   buffer.reserve(len);
@@ -63,13 +65,5 @@ VPackValue RandomStringMask::mask(std::string const& data,
     buffer.resize(len);
   }
 
-  return VPackValue(buffer);
-}
-
-VPackValue RandomStringMask::mask(int64_t value, std::string&) const {
-  return VPackValue(value);
-}
-
-VPackValue RandomStringMask::mask(double value, std::string&) const {
-  return VPackValue(value);
+  out.add(VPackValue(buffer));
 }

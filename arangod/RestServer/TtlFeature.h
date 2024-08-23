@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Basics/Mutex.h"
 #include "RestServer/arangod.h"
+#include <mutex>
 
 namespace arangodb {
 namespace velocypack {
@@ -59,7 +59,7 @@ struct TtlProperties {
   static constexpr uint64_t minFrequency = 1 * 1000;  // milliseconds
   uint64_t frequency = 30 * 1000;                     // milliseconds
   uint64_t maxTotalRemoves = 1000000;
-  uint64_t maxCollectionRemoves = 1000000;
+  uint64_t maxCollectionRemoves = 100000;
 
   void toVelocyPack(arangodb::velocypack::Builder& out, bool isActive) const;
   Result fromVelocyPack(arangodb::velocypack::Slice const& properties);
@@ -77,13 +77,6 @@ class TtlFeature final : public ArangodFeature {
   void beginShutdown() override final;
   void start() override final;
   void stop() override final;
-
-  /// @brief allow the TTL thread to run or not
-  /// this is not a user-facing method, but it is used by the active-failover
-  /// setup internally. the value is orthogonal to the value of _active, so it
-  /// is possible that allowRunning is true (leader in active failover setup)
-  /// but the user has set _active to false.
-  void allowRunning(bool value);
 
   /// @brief wait until the TTL thread has successfully stopped working
   void waitForThreadWork();
@@ -113,20 +106,16 @@ class TtlFeature final : public ArangodFeature {
 
  private:
   /// @brief protects _properties and _active
-  mutable Mutex _propertiesMutex;
+  mutable std::mutex _propertiesMutex;
   TtlProperties _properties;
 
   /// @brief protects _statistics
-  mutable Mutex _statisticsMutex;
+  mutable std::mutex _statisticsMutex;
   TtlStatistics _statistics;
 
   /// @brief protects _thread
-  mutable Mutex _threadMutex;
+  mutable std::mutex _threadMutex;
   std::unique_ptr<TtlThread> _thread;
-
-  /// @brief internal active flag, used by HeartbeatThread in active failover
-  /// setups the value is orthogonal to the user-facing _active flag
-  bool _allowRunning;
 
   /// @brief user-facing active flag, can be changed by end users
   bool _active;

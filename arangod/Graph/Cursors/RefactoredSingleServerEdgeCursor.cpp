@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,15 +33,14 @@
 #include "Basics/StaticStrings.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
+// TODO: Needed for the IndexAccessor, should be modified
+#include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Indexes/IndexIterator.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-// TODO: Needed for the IndexAccessor, should be modified
-#include "Graph/Providers/SingleServerProvider.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
@@ -52,8 +51,6 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
-IndexIteratorOptions defaultIndexIteratorOptions;
-
 #ifdef USE_ENTERPRISE
 static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
   // for skipInaccessibleCollections we need to check the edge
@@ -101,7 +98,8 @@ uint16_t RefactoredSingleServerEdgeCursor<
 template<class Step>
 void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     VertexType vertex, ResourceMonitor& monitor, transaction::Methods* trx,
-    arangodb::aql::Variable const* tmpVar, aql::TraversalStats& stats) {
+    arangodb::aql::Variable const* tmpVar, aql::TraversalStats& stats,
+    bool useCache) {
   auto* node = _accessor->getCondition();
   // We need to rewire the search condition for the new vertex
   TRI_ASSERT(node->numMembers() > 0);
@@ -141,6 +139,10 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     idNode->setStringValue(vertex.data(), vertex.length());
   }
 
+  IndexIteratorOptions indexIteratorOptions;
+  // forward "useCache" traversal option to actual index iterator
+  indexIteratorOptions.useCache = useCache;
+
   // We need to reset the cursor
 
   // check if the underlying index iterator supports rearming
@@ -148,7 +150,7 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     // rearming supported
     stats.incrCursorsRearmed();
 
-    if (!_cursor->rearm(node, tmpVar, defaultIndexIteratorOptions)) {
+    if (!_cursor->rearm(node, tmpVar, indexIteratorOptions)) {
       _cursor =
           std::make_unique<EmptyIndexIterator>(_cursor->collection(), trx);
     }
@@ -159,8 +161,7 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     auto index = _accessor->indexHandle();
 
     _cursor = trx->indexScanForCondition(
-        monitor, index, node, tmpVar, ::defaultIndexIteratorOptions,
-        ReadOwnWrites::no,
+        monitor, index, node, tmpVar, indexIteratorOptions, ReadOwnWrites::no,
         static_cast<int>(_accessor->getMemberToUpdate().has_value()
                              ? _accessor->getMemberToUpdate().value()
                              : transaction::Methods::kNoMutableConditionIdx));
@@ -168,8 +169,12 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     uint16_t coveringPosition = aql::Projections::kNoCoveringIndexPosition;
 
     // projections we want to cover
-    aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
-        {StaticStrings::FromString, StaticStrings::ToString}));
+    std::vector<aql::AttributeNamePath> paths = {};
+    paths.emplace_back(
+        aql::AttributeNamePath({StaticStrings::FromString}, monitor));
+    paths.emplace_back(
+        aql::AttributeNamePath({StaticStrings::ToString}, monitor));
+    aql::Projections edgeProjections(std::move(paths));
 
     if (index->covers(edgeProjections)) {
       // find opposite attribute
@@ -208,14 +213,20 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
     std::unordered_map<uint64_t, std::vector<IndexAccessor>>&
         depthBasedIndexConditions,
     arangodb::aql::FixedVarExpressionContext& expressionContext,
-    bool requiresFullDocument)
+    bool requiresFullDocument, bool useCache)
     : _tmpVar(tmpVar),
       _monitor(monitor),
       _trx(trx),
       _expressionCtx(expressionContext),
-      _requiresFullDocument(requiresFullDocument) {
+      _requiresFullDocument(requiresFullDocument),
+      _useCache(useCache) {
   // We need at least one indexCondition, otherwise nothing to serve
   TRI_ASSERT(!globalIndexConditions.empty());
+  if (globalIndexConditions.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "index conditions in SingleServerEdgeCursor should not be empty");
+  }
   _lookupInfo.reserve(globalIndexConditions.size());
   _depthLookupInfo.reserve(depthBasedIndexConditions.size());
 
@@ -255,7 +266,7 @@ void RefactoredSingleServerEdgeCursor<
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(&(ctx.trx().vpackOptions()));
-    VPackSlice slice = materializer.slice(a, false);
+    VPackSlice slice = materializer.slice(a);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
     AstNode* tmp = _accessor->getCondition();
@@ -285,7 +296,7 @@ void RefactoredSingleServerEdgeCursor<Step>::rearm(VertexType vertex,
                                                    uint64_t depth,
                                                    aql::TraversalStats& stats) {
   for (auto& info : getLookupInfos(depth)) {
-    info.rearmVertex(vertex, _monitor, _trx, _tmpVar, stats);
+    info.rearmVertex(vertex, _monitor, _trx, _tmpVar, stats, _useCache);
   }
 }
 
@@ -322,67 +333,63 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
     if (!_requiresFullDocument &&
         aql::Projections::isCoveringIndexPosition(coveringPosition)) {
       // use covering index and projections
-      cursor.allCovering([&](LocalDocumentId const& token,
-                             IndexIteratorCoveringData& covering) {
-        stats.incrScannedIndex(1);
+      cursor.allCovering(
+          [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
+            stats.incrScannedIndex(1);
 
-        TRI_ASSERT(covering.isArray());
-        VPackSlice edge = covering.at(coveringPosition);
-        TRI_ASSERT(edge.isString());
+            TRI_ASSERT(covering.isArray());
+            VPackSlice edge = covering.at(coveringPosition);
+            TRI_ASSERT(edge.isString());
 
 #ifdef USE_ENTERPRISE
-        if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-          return false;
-        }
+            if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
+              return false;
+            }
 #endif
 
+            EdgeDocumentToken edgeToken(cid, token);
+            // evaluate expression if available
+            if (expression != nullptr &&
+                !evaluateEdgeExpressionHelper(expression, edgeToken, edge)) {
+              stats.incrFiltered();
+              return false;
+            }
+
+            callback(std::move(edgeToken), edge, cursorID);
+            return true;
+          });
+    } else {
+      // fetch full documents
+      auto cb = [&](LocalDocumentId token, aql::DocumentData&&,
+                    VPackSlice edgeDoc) {
+        stats.incrScannedIndex(1);
+#ifdef USE_ENTERPRISE
+        if (_trx->skipInaccessible()) {
+          // TODO: we only need to check one of these
+          VPackSlice from =
+              transaction::helpers::extractFromFromDocument(edgeDoc);
+          VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
+          if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+            return false;
+          }
+        }
+#endif
+        // eval depth-based expression first if available
         EdgeDocumentToken edgeToken(cid, token);
+
         // evaluate expression if available
         if (expression != nullptr &&
-            !evaluateEdgeExpressionHelper(expression, edgeToken, edge)) {
+            !evaluateEdgeExpressionHelper(expression, edgeToken, edgeDoc)) {
           stats.incrFiltered();
           return false;
         }
 
-        callback(std::move(edgeToken), edge, cursorID);
+        callback(std::move(edgeToken), edgeDoc, cursorID);
         return true;
-      });
-    } else {
-      // fetch full documents
-      cursor.all([&](LocalDocumentId const& token) {
+      };
+      cursor.all([&](LocalDocumentId token) {
         return collection->getPhysical()
-            ->read(
-                _trx, token,
-                [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-                  stats.incrScannedIndex(1);
-#ifdef USE_ENTERPRISE
-                  if (_trx->skipInaccessible()) {
-                    // TODO: we only need to check one of these
-                    VPackSlice from =
-                        transaction::helpers::extractFromFromDocument(edgeDoc);
-                    VPackSlice to =
-                        transaction::helpers::extractToFromDocument(edgeDoc);
-                    if (CheckInaccessible(_trx, from) ||
-                        CheckInaccessible(_trx, to)) {
-                      return false;
-                    }
-                  }
-#endif
-                  // eval depth-based expression first if available
-                  EdgeDocumentToken edgeToken(cid, token);
-
-                  // evaluate expression if available
-                  if (expression != nullptr &&
-                      !evaluateEdgeExpressionHelper(expression, edgeToken,
-                                                    edgeDoc)) {
-                    stats.incrFiltered();
-                    return false;
-                  }
-
-                  callback(std::move(edgeToken), edgeDoc, cursorID);
-                  return true;
-                },
-                ReadOwnWrites::no)
+            ->lookup(_trx, token, cb, {.countBytes = true})
             .ok();
       });
     }

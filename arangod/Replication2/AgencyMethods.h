@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,31 +47,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb::replication2::agency::methods {
 
-auto updateTermSpecificationTrx(arangodb::agency::envelope envelope,
-                                DatabaseID const& database, LogId id,
-                                LogPlanTermSpecification const& spec,
-                                std::optional<LogTerm> prevTerm = {})
-    -> arangodb::agency::envelope;
-
-auto updateParticipantsConfigTrx(arangodb::agency::envelope envelope,
-                                 DatabaseID const& database, LogId id,
-                                 ParticipantsConfig const& participantsConfig,
-                                 ParticipantsConfig const& prevConfig)
-    -> arangodb::agency::envelope;
-
-auto updateTermSpecification(DatabaseID const& database, LogId id,
-                             LogPlanTermSpecification const& spec,
-                             std::optional<LogTerm> prevTerm = {})
-    -> futures::Future<ResultT<uint64_t>>;
-
-auto updateElectionResult(arangodb::agency::envelope envelope,
-                          DatabaseID const& database, LogId id,
-                          LogCurrentSupervisionElection const& result)
-    -> arangodb::agency::envelope;
-auto removeElectionResult(arangodb::agency::envelope envelope,
-                          DatabaseID const& database, LogId id)
-    -> arangodb::agency::envelope;
-
 auto deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
                             DatabaseID const& database, LogId id)
     -> arangodb::agency::envelope;
@@ -83,10 +58,6 @@ auto createReplicatedLogTrx(arangodb::agency::envelope envelope,
     -> arangodb::agency::envelope;
 auto createReplicatedLog(DatabaseID const& database, LogTarget const& spec)
     -> futures::Future<ResultT<uint64_t>>;
-auto deleteReplicatedState(DatabaseID const& database, LogId)
-    -> futures::Future<ResultT<uint64_t>>;
-auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
-    -> LogCurrentSupervision;
 
 auto replaceReplicatedStateParticipant(
     std::string const& databaseName, LogId id,

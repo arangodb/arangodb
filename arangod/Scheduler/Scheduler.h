@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -63,17 +63,36 @@ class Scheduler {
   // ---------------------------------------------------------------------------
   // Scheduling and Task Queuing - the relevant stuff
   // ---------------------------------------------------------------------------
- public:
   class DelayedWorkItem;
   typedef std::chrono::steady_clock clock;
   typedef std::shared_ptr<DelayedWorkItem> WorkHandle;
 
+  // push an item onto the queue. does not indicate success or failure
+  // by returning a value, but will throw if the item could not be pushed
+  // onto the queue. as the function is marked noexcept, this will also
+  // lead to the program aborting with std::terminate.
   template<typename F,
            std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
   void queue(RequestLane lane, F&& fn) noexcept {
-    doQueue(lane, std::forward<F>(fn), false);
+    // doQueue() will always return true for unbounded queues.
+    // in the case of failure, doQueue() will throw
+    [[maybe_unused]] bool result =
+        doQueue(lane, std::forward<F>(fn), /*bounded*/ false);
+    TRI_ASSERT(result);
+  }
+  template<typename F, typename R = std::invoke_result_t<F>,
+           std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
+  futures::Future<R> queueWithFuture(RequestLane lane, F&& fn) {
+    auto p = futures::Promise<R>{};
+    auto f = p.getFuture();
+    queue(lane, [p = std::move(p), fn = std::forward<F>(fn)]() mutable {
+      p.setValue(std::forward<F>(fn)());
+    });
+    return f;
   }
 
+  // push an item onto the queue. indicates success or failure by returning
+  // a boolean value (true = queueing successful, false = queueing failed)
   template<typename F,
            std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
   [[nodiscard]] bool tryBoundedQueue(RequestLane lane, F&& fn) noexcept {
@@ -89,6 +108,16 @@ class Scheduler {
 
   // Returns the scheduler's server object
   ArangodServer& server() noexcept { return _server; }
+
+  struct WorkItemBase {
+    virtual ~WorkItemBase() { TRI_ASSERT(next == nullptr); }
+    virtual void invoke() = 0;
+
+    std::chrono::steady_clock::time_point enqueueTime;
+
+    // used by some schedulers to chain work items
+    WorkItemBase* next = nullptr;
+  };
 
   class DelayedWorkItem {
    public:
@@ -153,15 +182,15 @@ class Scheduler {
  protected:
   ArangodServer& _server;
 
-  struct WorkItemBase {
-    virtual ~WorkItemBase() = default;
-    virtual void invoke() = 0;
-  };
-
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
     explicit WorkItem(F f)
-        : F(std::move(f)), logContext(LogContext::current()) {}
+        : F(std::move(f)), logContext(LogContext::current()) {
+      schedulerJobMemoryAccounting(static_cast<int64_t>(sizeof(*this)));
+    }
+    ~WorkItem() {
+      schedulerJobMemoryAccounting(-static_cast<int64_t>(sizeof(*this)));
+    }
     void invoke() override {
       LogContext::ScopedContext ctxGuard(logContext);
       this->operator()();
@@ -180,7 +209,7 @@ class Scheduler {
  private:
   template<typename F,
            std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
-  bool doQueue(RequestLane lane, F&& fn, bool bounded) {
+  [[nodiscard]] bool doQueue(RequestLane lane, F&& fn, bool bounded) {
     auto item = std::make_unique<Scheduler::WorkItem<std::decay_t<F>>>(
         std::forward<F>(fn));
     auto result = queueItem(lane, std::move(item), bounded);
@@ -189,9 +218,10 @@ class Scheduler {
   }
 
  public:
-  // delay Future returns a future that will be fulfilled after the given
-  // duration requires scheduler If d is zero, the future is fulfilled
-  // immediately. Throws a logic error if delay was cancelled.
+  // delay Future. returns a future that will be fulfilled after the given
+  // duration expires. If d is zero or we cannot post the future
+  // to the scheduler, the future is fulfilled immediately.
+  // Throws a logic error if delay was cancelled.
   futures::Future<futures::Unit> delay(std::string_view name,
                                        clock::duration d) {
     if (d == clock::duration::zero()) {
@@ -206,11 +236,31 @@ class Scheduler {
                                pr.setValue(cancelled);
                              });
 
+    if (item == nullptr) {
+      return futures::makeFuture();
+    }
+
     return std::move(f).thenValue([item = std::move(item)](bool cancelled) {
       if (cancelled) {
         throw std::logic_error("delay was cancelled");
       }
     });
+  }
+
+  // Yield the current thread
+  futures::Future<futures::Unit> yield(
+      RequestLane lane = RequestLane::CONTINUATION) {
+    struct awaitable {
+      bool await_ready() { return false; }
+      void await_suspend(std::coroutine_handle<> coro) {
+        sched->queue(lane, [coro] { coro.resume(); });
+      }
+      void await_resume() {}
+      Scheduler* sched;
+      RequestLane lane;
+    };
+
+    co_await awaitable{this, lane};
   }
 
   // ---------------------------------------------------------------------------
@@ -229,9 +279,6 @@ class Scheduler {
   // Entry point for the CronThread
   void runCronThread();
   friend class SchedulerCronThread;
-
-  // Removed all tasks from the priority queue and cancels them
-  void cancelAllCronTasks();
 
   typedef std::pair<clock::time_point, std::weak_ptr<DelayedWorkItem>>
       CronWorkItem;
@@ -264,8 +311,23 @@ class Scheduler {
   virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
 
+  virtual void trackCreateHandlerTask() noexcept = 0;
+  virtual void trackBeginOngoingLowPriorityTask() noexcept = 0;
+  virtual void trackEndOngoingLowPriorityTask() noexcept = 0;
+
+  virtual void trackQueueTimeViolation() = 0;
+  virtual void trackQueueItemSize(std::int64_t) noexcept = 0;
+
   /// @brief returns the last stored dequeue time [ms]
   virtual uint64_t getLastLowPriorityDequeueTime() const noexcept = 0;
+
+  /// @brief set the time it took for the last low prio item to be dequeued
+  /// (time between queuing and dequeing) [ms]
+  virtual void setLastLowPriorityDequeueTime(uint64_t time) noexcept = 0;
+
+  /// @brief get information about low prio queue:
+  virtual std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
+      const = 0;
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   virtual double approximateQueueFillGrade() const = 0;
@@ -277,7 +339,6 @@ class Scheduler {
   // ---------------------------------------------------------------------------
   // Start/Stop/IsRunning stuff
   // ---------------------------------------------------------------------------
- public:
   virtual bool start();
   virtual void shutdown();
 
@@ -288,6 +349,8 @@ class Scheduler {
   virtual bool isStopping() = 0;
 
  private:
+  static void schedulerJobMemoryAccounting(std::int64_t x) noexcept;
+
   Scheduler(Scheduler const&) = delete;
   Scheduler(Scheduler&&) = delete;
   void operator=(Scheduler const&) = delete;

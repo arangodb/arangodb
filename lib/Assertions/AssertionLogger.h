@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +25,7 @@
 
 #include <sstream>
 
+#include "Basics/SourceLocation.h"
 #include "CrashHandler/CrashHandler.h"
 
 namespace arangodb::debug {
@@ -32,7 +33,7 @@ struct AssertionLogger {
   [[noreturn]] void operator&(std::ostringstream const& stream) const {
     std::string message = stream.str();
     arangodb::CrashHandler::assertionFailure(
-        file, line, function, expr,
+        location.file_name(), location.line(), function, expr,
         message.empty() ? nullptr : message.c_str());
   }
   // can be removed in C++20 because of LWG 1203
@@ -40,8 +41,7 @@ struct AssertionLogger {
     operator&(static_cast<std::ostringstream const&>(stream));
   }
 
-  const char* file;
-  int line;
+  basics::SourceLocation location;
   const char* function;
   const char* expr;
 

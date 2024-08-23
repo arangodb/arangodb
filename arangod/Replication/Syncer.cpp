@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Syncer.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
+#include "Auth/UserManager.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -44,6 +44,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
@@ -295,17 +296,17 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
 namespace arangodb {
 
-Syncer::JobSynchronizer::JobSynchronizer(
-    std::shared_ptr<Syncer const> const& syncer)
-    : _syncer(syncer), _gotResponse(false), _time(0.0), _jobsInFlight(0) {}
+Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> syncer)
+    : _syncer(std::move(syncer)),
+      _gotResponse(false),
+      _time(0.0),
+      _id(0),
+      _nextId(0),
+      _jobsInFlight(0) {}
 
 Syncer::JobSynchronizer::~JobSynchronizer() {
   // signal that we have got something
-  try {
-    gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
-  } catch (...) {
-    // must not throw from here
-  }
+  gotResponse(Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED));
 
   // wait until all posted jobs have been completed/canceled
   while (hasJobInFlight()) {
@@ -315,7 +316,7 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
 }
 
 bool Syncer::JobSynchronizer::gotResponse() const noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   return _gotResponse;
 }
 
@@ -323,13 +324,13 @@ bool Syncer::JobSynchronizer::gotResponse() const noexcept {
 void Syncer::JobSynchronizer::gotResponse(
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response,
     double time) noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   _res.reset();  // no error!
   _response = std::move(response);
   _gotResponse = true;
   _time = time;
 
-  guard.signal();
+  _condition.cv.notify_one();
 }
 
 /// @brief will be called whenever an error occurred
@@ -338,25 +339,48 @@ void Syncer::JobSynchronizer::gotResponse(arangodb::Result&& res,
                                           double time) noexcept {
   TRI_ASSERT(res.fail());
 
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   _res = std::move(res);
   _response.reset();
   _gotResponse = true;
   _time = time;
 
-  guard.signal();
+  _condition.cv.notify_one();
 }
 
 /// @brief the calling Syncer will call and block inside this function until
 /// there is a response or the syncer/server is shut down
 Result Syncer::JobSynchronizer::waitForResponse(
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
+  // clear result response
+  response.reset();
+
   while (true) {
     {
-      CONDITION_LOCKER(guard, _condition);
+      std::unique_lock guard{_condition.mutex};
+
+      // check if the scheduler has already executed the callback.
+      // if not, then we will execute the callback ourselves here.
+      if (_cb) {
+        auto cb = std::move(_cb);
+        _id = 0;
+        TRI_ASSERT(!_cb);
+
+        // execute callback without holding the lock
+        guard.unlock();
+
+        {
+          // must be in an extra scope because jobDone() reacquires
+          // the mutex
+          auto markAsDone = scopeGuard([this]() noexcept { jobDone(); });
+          cb();
+        }
+
+        guard.lock();
+      }
 
       if (!_gotResponse) {
-        guard.wait(1 * 1000 * 1000);
+        _condition.cv.wait_for(guard, std::chrono::seconds{1});
       }
 
       // check again, _gotResponse may have changed
@@ -368,36 +392,57 @@ Result Syncer::JobSynchronizer::waitForResponse(
     }
 
     if (_syncer->isAborted()) {
-      // clear result response
-      response.reset();
-
-      CONDITION_LOCKER(guard, _condition);
+      std::lock_guard guard{_condition.mutex};
       _gotResponse = false;
       _response.reset();
       _res.reset();
-
-      // will result in returning TRI_ERROR_REPLICATION_APPLIER_STOPPED
-      break;
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
   }
-
-  return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
 }
 
-void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
+void Syncer::JobSynchronizer::request(fu2::unique_function<void()> cb) {
+  TRI_ASSERT(cb);
+
   // by indicating that we have posted an async job, the caller
   // will block on exit until all posted jobs have finished
   if (!jobPosted()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
+  uint64_t id = 0;
+  {
+    // store callback
+    std::unique_lock guard{_condition.mutex};
+    id = ++_nextId;
+    _id = id;
+    _cb = std::move(cb);
+  }
+
   SchedulerFeature::SCHEDULER->queue(
-      RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
+      RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), id]() {
+        fu2::unique_function<void()> cb;
+
+        {
+          std::unique_lock guard{_condition.mutex};
+          // check if we are still looking at the same job that was posted,
+          // or if someone already posted a different job.
+          if (_id != id) {
+            return;
+          }
+          TRI_ASSERT(_id != 0);
+          // claim callback
+          _id = 0;
+          cb = std::move(_cb);
+          TRI_ASSERT(!_cb);
+        }
+        // execute callback without holding the lock
+
         // whatever happens next, when we leave this here, we need to indicate
         // that there is no more posted job.
         // otherwise the calling thread may block forever waiting on the
         // posted jobs to finish
-        auto guard = scopeGuard([self]() noexcept { self->jobDone(); });
+        auto markAsDone = scopeGuard([self]() noexcept { self->jobDone(); });
 
         cb();
       });
@@ -408,7 +453,7 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
 /// the syncer was stopped/aborted already)
 bool Syncer::JobSynchronizer::jobPosted() {
   while (true) {
-    CONDITION_LOCKER(guard, _condition);
+    std::unique_lock guard{_condition.mutex};
 
     // _jobsInFlight should be 0 in almost all cases, however, there
     // is a small window in which the request has been processed already
@@ -424,25 +469,55 @@ bool Syncer::JobSynchronizer::jobPosted() {
       // syncer already stopped... no need to carry on here
       return false;
     }
-    guard.wait(10 * 1000);
+    _condition.cv.wait_for(guard, std::chrono::milliseconds{10});
   }
 }
 
 /// @brief notifies that a job was done
 void Syncer::JobSynchronizer::jobDone() noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
 
   TRI_ASSERT(_jobsInFlight == 1);
   --_jobsInFlight;
-  _condition.signal();
+  _condition.cv.notify_one();
 }
 
 /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
 bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
 
   TRI_ASSERT(_jobsInFlight <= 1);
   return _jobsInFlight > 0;
+}
+
+Syncer::JobSynchronizerScope::JobSynchronizerScope(
+    std::shared_ptr<Syncer const> syncer)
+    : _synchronizer(std::make_shared<JobSynchronizer>(std::move(syncer))) {
+  TRI_ASSERT(_synchronizer.use_count() == 1);
+}
+
+Syncer::JobSynchronizerScope::~JobSynchronizerScope() {
+  // if use_count is > 1, it means that we have copied the JobSynchronizer's
+  // shared_ptr already and dispatched a background task.
+  // we need to wait until the background task is fully done.
+  while (_synchronizer.use_count() > 1) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    std::this_thread::yield();
+  }
+}
+
+Syncer::JobSynchronizer* Syncer::JobSynchronizerScope::operator->() {
+  return _synchronizer.get();
+}
+
+Syncer::JobSynchronizer const* Syncer::JobSynchronizerScope::operator->()
+    const {
+  return _synchronizer.get();
+}
+
+std::shared_ptr<Syncer::JobSynchronizer> Syncer::JobSynchronizerScope::clone()
+    const {
+  return _synchronizer;
 }
 
 /**
@@ -458,7 +533,7 @@ bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
  * case, we use the syncer ID with a server specific tick.
  *
  * Otherwise, we're doing some other kind of asynchronous replication (e.g.
- * active failover or dc2dc). In that case, the server specific tick would not
+ * dc2dc). In that case, the server specific tick would not
  * be unique among clients, and the server ID will be used instead.
  *
  * The server distinguishes between syncer and server IDs, which is why we don't
@@ -551,28 +626,28 @@ TRI_vocbase_t* Syncer::resolveVocbase(velocypack::Slice slice) {
                                    "could not resolve vocbase id / name");
   }
 
-  // will work with either names or id's
-  auto const& it = _state.vocbases.find(name);
+  // database names with a number in front are invalid names and
+  // cannot be handled here
+  TRI_ASSERT(name[0] < '0' || name[0] > '9');
+
+  // will work with either names or ids
+  auto it = _state.vocbases.find(name);
 
   if (it == _state.vocbases.end()) {
     // automatically checks for id in string
     auto& server = _state.applier._server;
-    TRI_vocbase_t* vocbase =
-        server.getFeature<DatabaseFeature>().lookupDatabase(name);
+    auto vocbase = server.getFeature<DatabaseFeature>().useDatabase(name);
 
-    if (vocbase != nullptr) {
-      _state.vocbases.try_emplace(name,
-                                  *vocbase);  // we can not be lazy because of
-                                              // the guard requires a valid ref
-    } else {
+    if (vocbase == nullptr) {
       LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION)
           << "could not find database '" << name << "'";
+      return nullptr;
     }
-
-    return vocbase;
-  } else {
-    return &(it->second.database());
+    it = _state.vocbases.try_emplace(name, std::move(vocbase)).first;
   }
+
+  TRI_ASSERT(it != _state.vocbases.end());
+  return &(it->second.database());
 }
 
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
@@ -618,7 +693,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
       Result res = ::applyCollectionDumpMarkerInternal(
           _state, trx, coll, type, slice, conflictingDocumentKey);
 
-      if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+      if (res.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
         return res;
       }
 
@@ -677,9 +752,11 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
 
   if (col != nullptr) {
     if (col->system()) {
+      auto operationOrigin = transaction::OperationOriginInternal{
+          "truncating collection for replication"};
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(vocbase), *col,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(vocbase, operationOrigin),
+          *col, AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
       trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
       Result res = trx.begin();
@@ -830,7 +907,7 @@ void Syncer::createIndexInternal(velocypack::Slice idxDef,
     std::string name;  // placeholder for now
     CollectionNameResolver resolver(col.vocbase());
     Result res =
-        methods::Indexes::extractHandle(&col, &resolver, idxDef, iid, name);
+        methods::Indexes::extractHandle(col, &resolver, idxDef, iid, name);
     if (res.ok() && iid.isSet()) {
       // lookup by id
       auto byId = physical->lookupIndex(iid);
@@ -870,7 +947,7 @@ void Syncer::createIndexInternal(velocypack::Slice idxDef,
 
   if (idx == nullptr) {
     bool created = false;
-    idx = physical->createIndex(idxDef, /*restore*/ true, created);
+    idx = physical->createIndex(idxDef, /*restore*/ true, created).waitAndGet();
   }
   TRI_ASSERT(idx != nullptr);
 }

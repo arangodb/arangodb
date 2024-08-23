@@ -2,18 +2,16 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +21,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -33,6 +31,7 @@ const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 const jsunity = require("jsunity");
+const errors = internal.errors;
 
 let api = "/_api/database";
 
@@ -97,7 +96,7 @@ function dealing_with_Unicode_database_namesSuite () {
         assertEqual(doc.code, 400);
         assertEqual(doc.headers['content-type'], contentType);
         assertTrue(doc.parsedBody["error"]);
-        assertEqual(doc.parsedBody["errorNum"], internal.errors.ERROR_ARANGO_ILLEGAL_NAME.code);
+        assertEqual(doc.parsedBody["errorNum"], errors.ERROR_ARANGO_ILLEGAL_NAME.code);
       });
     },
 
@@ -199,7 +198,7 @@ function dealing_with_database_manipulation_methodsSuite () {
       assertEqual(doc.code, 400);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody["error"]);
-      assertEqual(doc.parsedBody["errorNum"], 1229);
+      assertEqual(doc.parsedBody["errorNum"], errors.ERROR_ARANGO_ILLEGAL_NAME.code);
     },
 
     test_creates_a_database_with_an_empty_name: function() {
@@ -209,7 +208,7 @@ function dealing_with_database_manipulation_methodsSuite () {
       assertEqual(doc.code, 400);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody["error"]);
-      assertEqual(doc.parsedBody["errorNum"], 1229);
+      assertEqual(doc.parsedBody["errorNum"], errors.ERROR_ARANGO_ILLEGAL_NAME.code);
     },
 
     test_creates_a_database_with_an_invalid_name: function() {
@@ -219,7 +218,7 @@ function dealing_with_database_manipulation_methodsSuite () {
       assertEqual(doc.code, 400);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody["error"]);
-      assertEqual(doc.parsedBody["errorNum"], 1229);
+      assertEqual(doc.parsedBody["errorNum"], errors.ERROR_ARANGO_ILLEGAL_NAME.code);
     },
 
     test_re_creates_an_existing_database: function() {
@@ -278,7 +277,7 @@ function dealing_with_database_manipulation_methodsSuite () {
 
       assertEqual(doc.code, 404);
       assertEqual(doc.headers['content-type'], contentType);
-      assertEqual(doc.parsedBody["errorNum"], 1228);
+      assertEqual(doc.parsedBody["errorNum"], errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code);
       assertTrue(doc.parsedBody["error"]);
     },
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,6 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "V8Server/v8-voccursor.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
@@ -29,6 +33,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/ScopeGuard.h"
 #include "Transaction/Context.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Cursor.h"
@@ -92,15 +97,17 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     isRetriable = TRI_ObjectToBoolean(isolate, args[3]);
   }
 
-  auto* cursors = vocbase.cursorRepository();  // create a cursor
-  arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
+  auto origin = transaction::OperationOriginAQL{"running AQL query"};
 
+  arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
   result.data = builder;
   result.cached = false;
-  result.context = transaction::V8Context::CreateWhenRequired(vocbase, false);
+  result.context =
+      transaction::V8Context::createWhenRequired(vocbase, origin, false);
 
   TRI_ASSERT(builder.get() != nullptr);
 
+  auto* cursors = vocbase.cursorRepository();  // create a cursor
   arangodb::Cursor* cursor = cursors->createFromQueryResult(
       std::move(result), static_cast<size_t>(batchSize), ttl, true,
       isRetriable);
@@ -198,7 +205,9 @@ struct V8Cursor final {
       _handle.Reset();
     }
     if (_isolate) {
-      TRI_GET_GLOBALS2(_isolate);
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+          _isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+      TRI_ASSERT(v8g != nullptr);
       TRI_vocbase_t* vocbase = v8g->_vocbase;
       if (vocbase) {
         CursorRepository* cursors = vocbase->cursorRepository();
@@ -310,7 +319,7 @@ struct V8Cursor final {
         TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
       }
       if (args[1]->IsObject()) {
-        bindVars.reset(new VPackBuilder);
+        bindVars = std::make_shared<VPackBuilder>();
         TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
       }
     }
@@ -335,15 +344,16 @@ struct V8Cursor final {
     TRI_ASSERT(vocbase != nullptr);
     auto* cursors = vocbase->cursorRepository();  // create a cursor
     double ttl = std::numeric_limits<double>::max();
+    auto origin = transaction::OperationOriginAQL{"running AQL query"};
 
     auto q = aql::Query::create(
-        transaction::V8Context::CreateWhenRequired(*vocbase, true),
+        transaction::V8Context::createWhenRequired(*vocbase, origin, true),
         aql::QueryString(queryString), std::move(bindVars),
         aql::QueryOptions(options.slice()));
 
     // specify ID 0 so it uses the external V8 context
-    Cursor* cc =
-        cursors->createQueryStream(std::move(q), batchSize, ttl, isRetriable);
+    Cursor* cc = cursors->createQueryStream(std::move(q), batchSize, ttl,
+                                            isRetriable, origin);
     // a soft shutdown will throw here!
 
     arangodb::ScopeGuard releaseCursorGuard([&]() noexcept { cc->release(); });

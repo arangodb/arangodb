@@ -30,9 +30,10 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
+namespace arangodb {
+namespace fuerte {
+inline namespace v1 {
 class Request;
 class Response;
 
@@ -81,8 +82,6 @@ enum class Error : uint16_t {
 
   ConnectionCanceled = 1104,
 
-  VstUnauthorized = 2000,
-
   ProtocolError = 3000,
 };
 std::string to_string(Error error);
@@ -129,7 +128,6 @@ enum class MessageType : int {
   Undefined = 0,
   Request = 1,
   Response = 2,
-  ResponseUnfinished = 3,
   Authentication = 1000
 };
 MessageType intToMessageType(int integral);
@@ -151,7 +149,6 @@ enum class ProtocolType : uint8_t {
   Undefined = 0,
   Http = 1,
   Http2 = 2,
-  Vst = 3
 };
 std::string to_string(ProtocolType type);
 
@@ -181,7 +178,8 @@ enum class ContentEncoding : uint8_t {
   Identity = 0,
   Deflate = 1,
   Gzip = 2,
-  Custom = 3
+  Lz4 = 3,
+  Custom = 4
 };
 ContentEncoding to_ContentEncoding(std::string_view val);
 std::string to_string(ContentEncoding type);
@@ -194,15 +192,6 @@ enum class AuthenticationType { None, Basic, Jwt };
 std::string to_string(AuthenticationType type);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      Velocystream
-// -----------------------------------------------------------------------------
-
-namespace vst {
-
-enum VSTVersion : char { VST1_0 = 0, VST1_1 = 1 };
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                           ConnectionConfiguration
 // -----------------------------------------------------------------------------
 
@@ -210,16 +199,18 @@ namespace detail {
 struct ConnectionConfiguration {
   ConnectionConfiguration()
       : _socketType(SocketType::Tcp),
-        _protocolType(ProtocolType::Vst),
-        _vstVersion(vst::VST1_1),
+        _protocolType(ProtocolType::Http),
         _upgradeH1ToH2(false),
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
-        _connectTimeout(15000),
+        _connectTimeout(60000),
         _idleTimeout(300000),
         _connectRetryPause(1000),
         _maxConnectRetries(3),
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+        _failConnectAttempts(0),
+#endif         
         _useIdleTimeout(true),
         _authenticationType(AuthenticationType::None),
         _user(""),
@@ -228,8 +219,7 @@ struct ConnectionConfiguration {
 
   ConnectionFailureCallback _onFailure;
   SocketType _socketType;      // tcp, ssl or unix
-  ProtocolType _protocolType;  // vst or http
-  vst::VSTVersion _vstVersion;
+  ProtocolType _protocolType;  // http or http2
   bool _upgradeH1ToH2;
 
   std::string _host;
@@ -240,6 +230,9 @@ struct ConnectionConfiguration {
   std::chrono::milliseconds _idleTimeout;
   std::chrono::milliseconds _connectRetryPause;
   unsigned _maxConnectRetries;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  unsigned _failConnectAttempts;
+#endif    
   bool _useIdleTimeout;
 
   AuthenticationType _authenticationType;
@@ -248,5 +241,7 @@ struct ConnectionConfiguration {
   std::string _jwtToken;
 };
 }  // namespace detail
-}}}  // namespace arangodb::fuerte::v1
+}  // namespace v1
+}  // namespace fuerte
+}  // namespace arangodb
 #endif

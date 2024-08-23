@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,17 +20,6 @@
 ///
 /// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4291)
-#pragma warning(disable : 4244)
-#pragma warning(disable : 4245)
-#pragma warning(disable : 4706)
-#pragma warning(disable : 4305)
-#pragma warning(disable : 4267)
-#pragma warning(disable : 4018)
-#endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/ExpressionContext.h"
@@ -70,21 +59,21 @@ using Weight = fst::fsa::BooleanWeight;
 
 namespace fst {
 
-inline Weight Times(const Weight& lhs, const Weight& rhs) {
+inline Weight Times(Weight const& lhs, Weight const& rhs) {
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
   return Weight{lhs && rhs};
 }
 
-inline Weight Plus(const Weight& lhs, const Weight& rhs) {
+inline Weight Plus(Weight const& lhs, Weight const& rhs) {
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
   return Weight{lhs || rhs};
 }
 
-inline Weight DivideLeft(const Weight& lhs, const Weight& rhs) {
+inline Weight DivideLeft(Weight const& lhs, Weight const& rhs) {
   if (!lhs.Member() || !rhs.Member()) {
     return Weight::NoWeight();
   }
@@ -264,6 +253,11 @@ std::string checkFieldsDifferentCollections(
 
 std::string check(SearchMeta const& search,
                   IResearchInvertedIndexMeta const& index) {
+#ifdef USE_ENTERPRISE
+  if (search.optimizeTopK != index._optimizeTopK) {
+    return "index optimize topK mismatches view optimize topK";
+  }
+#endif
   if (search.primarySort != index._sort) {
     return "index primary sort mismatches view primary sort";
   }
@@ -394,7 +388,7 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                              bool isUserRequest) const {
   if (!definition.isObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "search-alias view definition should be a object"};
+            "search-alias view definition should be an object"};
   }
   auto const nameSlice = definition.get("name");
   if (nameSlice.isNone()) {
@@ -432,7 +426,7 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
                                   bool isUserRequest) const {
   TRI_ASSERT(ServerState::instance()->isCoordinator() ||
              ServerState::instance()->isSingleServer());
-  auto impl = std::make_shared<Search>(vocbase, definition);
+  auto impl = std::make_shared<Search>(vocbase, definition, isUserRequest);
   auto indexesSlice = definition.get("indexes");
   if (indexesSlice.isNone()) {
     view = impl;
@@ -440,7 +434,7 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
   }
   if (!indexesSlice.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "search-alias view optional field 'indexes' should be array"};
+            "search-alias view optional field 'indexes' should be an array"};
   }
   CollectionNameResolver resolver{vocbase};
   velocypack::ArrayIterator it{indexesSlice};
@@ -456,8 +450,9 @@ ViewFactory const& Search::factory() {
   return factory;
 }
 
-Search::Search(TRI_vocbase_t& vocbase, velocypack::Slice definition)
-    : LogicalView{*this, vocbase, definition},
+Search::Search(TRI_vocbase_t& vocbase, velocypack::Slice definition,
+               bool isUserRequest)
+    : LogicalView{*this, vocbase, definition, isUserRequest},
       _meta{std::make_shared<SearchMeta const>()} {
   if (ServerState::instance()->isSingleServer()) {
     _asyncSelf = std::make_shared<AsyncSearchPtr::element_type>(this);
@@ -523,6 +518,10 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
   if (indexesSlice.isNone()) {
     indexesSlice = velocypack::Slice::emptyArraySlice();
   }
+  if (!indexesSlice.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "search-alias view optional field 'indexes' should be an array"};
+  }
   velocypack::ArrayIterator it{indexesSlice};
   if (it.size() == 0 && partialUpdate) {
     return {};
@@ -555,14 +554,6 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
     revert.cancel();
   }
   return r;
-}
-
-void Search::open() {
-  // if (ServerState::instance()->isSingleServer()) {
-  //   auto& engine =
-  //       vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  //   _inRecovery.store(engine.inRecovery(), std::memory_order_seq_cst);
-  // }
 }
 
 bool Search::visitCollections(CollectionVisitor const& visitor) const {
@@ -674,11 +665,8 @@ Result Search::dropImpl() {
 }
 
 Result Search::renameImpl(std::string const& oldName) {
-  if (ServerState::instance()->isSingleServer()) {
-    return storage_helper::rename(*this, oldName);
-  }
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-  return {TRI_ERROR_CLUSTER_UNSUPPORTED};
+  TRI_ASSERT(ServerState::instance()->isSingleServer());
+  return storage_helper::rename(*this, oldName);
 }
 
 Result Search::updateProperties(CollectionNameResolver& resolver,
@@ -688,6 +676,10 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       frozen::make_unordered_set<frozen::string>({"", "add", "del"});
   for (; it.valid(); ++it) {
     auto value = *it;
+    if (!value.isObject()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "search-alias index definition should be an object"};
+    }
     auto collectionSlice = value.get("collection");
     if (!collectionSlice.isString()) {
       return {TRI_ERROR_BAD_PARAMETER, "'collection' should be a string"};
@@ -789,6 +781,9 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
   auto searchMeta = SearchMeta::make();
   auto r = iterate(
       [&](auto const& indexMeta) {
+#ifdef USE_ENTERPRISE
+        searchMeta->optimizeTopK = indexMeta._optimizeTopK;
+#endif
         searchMeta->primarySort = indexMeta._sort;
         searchMeta->storedValues = indexMeta._storedValues;
       },
@@ -812,11 +807,14 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
           first = false;
         } else if (auto error = checkFieldsSameCollection(merged, indexMeta);
                    !error.empty()) {
-          return {TRI_ERROR_BAD_PARAMETER,
-                  absl::StrCat(
-                      "You cannot add to view indexes to the same collection,"
-                      " if them index the same fields. Error for: ",
-                      error, inverted.index().collection().name(), "'")};
+          return {
+              TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("You can only have several indexes from the same "
+                           "collection if they index different fields. Adding "
+                           "multiple indexes to the collection for the same "
+                           "fields is not permitted. Error '",
+                           error, "' for '",
+                           inverted.index().collection().name(), "'")};
         } else {
           add(merged, indexMeta);
         }

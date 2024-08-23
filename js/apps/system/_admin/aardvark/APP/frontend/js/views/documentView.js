@@ -1,7 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, $, localStorage, window, arangoHelper, templateEngine, JSONEditor */
-/* global document, _ */
+/* global templateEngine */
 
 (function () {
   'use strict';
@@ -412,6 +409,9 @@
     },
 
     saveDocument: function () {
+      if (this.editor.repair) {
+        this.editor.repair();
+      }
       if ($('#saveDocumentButton').attr('disabled') === undefined) {
         if (this.collection.first().attributes._id.substr(0, 1) === '_') {
           var buttons = []; var tableContent = [];
@@ -536,8 +536,9 @@
 
     breadcrumb: function () {
       var name = window.location.hash.split('/');
+      var collid = decodeURIComponent(name[1]);
       $('#subNavigationBar .breadcrumb').html(
-        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + _.escape(name[1].length > 64 ? name[1].substr(0, 64) + "..." : name[1]) + '</a>' +
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + _.escape(collid.length > 64 ? collid.substr(0, 64) + "..." : collid) + '</a>' +
         '<i class="fa fa-chevron-right"></i>' +
         this.type.charAt(0).toUpperCase() + this.type.slice(1) + ': ' + _.escape(decodeURIComponent(name[2]))
       );

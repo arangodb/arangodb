@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,11 +26,13 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"
+#include "Auth/TokenCache.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -38,12 +40,11 @@
 
 #include <fuerte/types.h>
 
-namespace arangodb {
-namespace network {
+namespace arangodb::network {
 
-ErrorCode resolveDestination(NetworkFeature const& feature,
-                             DestinationId const& dest,
-                             network::EndpointSpec& spec) {
+futures::Future<ErrorCode> resolveDestination(NetworkFeature const& feature,
+                                              DestinationId const& dest,
+                                              network::EndpointSpec& spec) {
   // Now look up the actual endpoint:
   if (!feature.server().hasFeature<ClusterFeature>()) {
     return TRI_ERROR_SHUTTING_DOWN;
@@ -52,18 +53,19 @@ ErrorCode resolveDestination(NetworkFeature const& feature,
   return resolveDestination(ci, dest, spec);
 }
 
-ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
-                             network::EndpointSpec& spec) {
+futures::Future<ErrorCode> resolveDestination(ClusterInfo& ci,
+                                              DestinationId const& dest,
+                                              network::EndpointSpec& spec) {
   using namespace arangodb;
 
   if (dest.starts_with("tcp://") || dest.starts_with("ssl://")) {
     spec.endpoint = dest;
-    return TRI_ERROR_NO_ERROR;  // all good
+    co_return TRI_ERROR_NO_ERROR;  // all good
   }
 
   if (dest.starts_with("http+tcp://") || dest.starts_with("http+ssl://")) {
     spec.endpoint = dest.substr(5);
-    return TRI_ERROR_NO_ERROR;
+    co_return TRI_ERROR_NO_ERROR;
   }
 
   // This sets result.shardId, result.serverId and result.endpoint,
@@ -74,24 +76,29 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
 
   if (dest.starts_with("shard:")) {
     spec.shardId = dest.substr(6);
-    {
-      std::shared_ptr<std::vector<ServerID> const> resp =
-          ci.getResponsibleServer(spec.shardId);
-      if (!resp->empty()) {
-        spec.serverId = (*resp)[0];
-      } else {
-        LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
-            << "cannot find responsible server for shard '" << spec.shardId
-            << "'";
-        return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-      }
+    auto maybeShard = ShardID::shardIdFromString(spec.shardId);
+    if (maybeShard.fail()) {
+      LOG_TOPIC("005c4", ERR, Logger::COMMUNICATION)
+          << "Invalid shard id specified as destination `" << dest
+          << "`: " << maybeShard.errorMessage();
+      co_return maybeShard.errorNumber();
     }
+
+    auto maybeServer = co_await ci.getLeaderForShard(*maybeShard);
+    if (maybeServer.fail()) {
+      LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
+          << "cannot find responsible server for shard '" << spec.shardId
+          << "': " << maybeServer.errorMessage();
+      co_return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    }
+
+    spec.serverId = std::move(*maybeServer);
   } else if (dest.starts_with("server:")) {
     spec.serverId = dest.substr(7);
   } else {
     LOG_TOPIC("77a84", ERR, Logger::COMMUNICATION)
         << "did not understand destination '" << dest << "'";
-    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    co_return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
   spec.endpoint = ci.getServerEndpoint(spec.serverId);
@@ -101,9 +108,9 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
     }
     LOG_TOPIC("f29ef", ERR, Logger::COMMUNICATION)
         << "did not find endpoint of server '" << spec.serverId << "'";
-    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    co_return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
-  return TRI_ERROR_NO_ERROR;
+  co_return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief extract the error code form the body
@@ -144,11 +151,10 @@ Result resultFromBody(arangodb::velocypack::Slice slice,
                       ErrorCode defaultError) {
   // read the error number from the response and use it if present
   if (slice.isObject()) {
-    VPackSlice num = slice.get(StaticStrings::ErrorNum);
-    VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
-    if (num.isNumber()) {
+    if (VPackSlice num = slice.get(StaticStrings::ErrorNum); num.isNumber()) {
       auto errorCode = ErrorCode{num.getNumericValue<int>()};
-      if (msg.isString()) {
+      if (VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+          msg.isString()) {
         // found an error number and an error message, so let's use it!
         return Result(errorCode, msg.copyString());
       }
@@ -216,9 +222,6 @@ ErrorCode toArangoErrorCodeInternal(fuerte::Error err) {
     case fuerte::Error::WriteError:
     case fuerte::Error::ProtocolError:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-
-    case fuerte::Error::VstUnauthorized:
-      return TRI_ERROR_FORBIDDEN;
   }
 
   return TRI_ERROR_INTERNAL;
@@ -275,15 +278,17 @@ ErrorCode fuerteToArangoErrorCode(network::Response const& res) {
   LOG_TOPIC_IF("abcde", ERR, Logger::COMMUNICATION,
                res.error != fuerte::Error::NoError)
       << "communication error: '" << fuerte::to_string(res.error)
-      << "' from destination '" << res.destination << "'"
-      << [](network::Response const& res) {
-           if (res.hasRequest()) {
-             return std::string(", url: ") +
-                    to_string(res.request().header.restVerb) + " " +
-                    res.request().header.path;
-           }
-           return std::string();
-         }(res);
+      << "' from destination '" << res.destination << "'" <<
+      [](network::Response const& res) {
+        if (res.hasRequest()) {
+          return std::string(", url: ") +
+                 to_string(res.request().header.restVerb) + " " +
+                 res.request().header.path;
+        }
+        return std::string();
+      }(res)
+      << ", request ptr: "
+      << (res.hasRequest() ? (void*)(&res.request()) : nullptr);
   return toArangoErrorCodeInternal(res.error);
 }
 
@@ -340,10 +345,22 @@ void addSourceHeader(consensus::Agent* agent, fuerte::Request& req) {
   auto state = ServerState::instance();
   if (state->isCoordinator() || state->isDBServer()) {
     req.header.addMeta(StaticStrings::ClusterCommSource, state->getId());
+#if 0
   } else if (state->isAgent() && agent != nullptr) {
+    // note: header intentionally not sent to save cluster-internal
+    // traffic
     req.header.addMeta(StaticStrings::ClusterCommSource, agent->id());
+#endif
   }
 }
 
-}  // namespace network
-}  // namespace arangodb
+void addUserParameter(RequestOptions& reqOpts, std::string_view value) {
+  if (!value.empty()) {
+    // if no user name is set, we cannot add it to the request options
+    // as a URL parameter, because they will assert that the provided
+    // value is non-empty
+    reqOpts.param(StaticStrings::UserString, value);
+  }
+}
+
+}  // namespace arangodb::network

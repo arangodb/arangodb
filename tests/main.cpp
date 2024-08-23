@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,13 +29,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Basics/icu-helper.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
@@ -48,21 +46,21 @@ class TestThread : public arangodb::Thread {
   TestThread(arangodb::ArangodServer& server, Function&& f, int i, char* c[])
       : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
-    CONDITION_LOCKER(guard, _wait);
+    std::unique_lock guard{_wait.mutex};
     while (true) {
       if (_done) {
         break;
       }
-      _wait.wait(uint64_t(1000000));
+      _wait.cv.wait_for(guard, std::chrono::seconds{1});
     }
   }
   ~TestThread() { shutdown(); }
 
   void run() override {
-    CONDITION_LOCKER(guard, _wait);
+    std::lock_guard guard{_wait.mutex};
     _result = _f(_i, _c);
     _done = true;
-    _wait.broadcast();
+    _wait.cv.notify_all();
   }
 
   int result() { return _result; }
@@ -124,8 +122,11 @@ int main(int argc, char* argv[]) {
   arangodb::ShellColorsFeature sc(server);
 
   arangodb::Logger::setShowLineNumber(logLineNumbers);
-  arangodb::Logger::initialize(server, false);
-  arangodb::LogAppender::addAppender(arangodb::Logger::defaultLogGroup(), "-");
+  arangodb::Logger::setTimeFormat(
+      arangodb::LogTimeFormats::TimeFormat::UTCDateStringMicros);
+  arangodb::Logger::setShowThreadIdentifier(true);
+  arangodb::Logger::initialize(false, 10000);
+  arangodb::Logger::addAppender(arangodb::Logger::defaultLogGroup(), "-");
 
   sc.prepare();
 
@@ -137,7 +138,6 @@ int main(int argc, char* argv[]) {
   // so we do it here in a central place
   arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
   arangodb::ServerState::instance()->setGoogleTest(true);
-  IcuInitializer::setup(ARGV0);
 
   // enable mocking globally - not awesome, but helps to prevent runtime
   // assertions in queries

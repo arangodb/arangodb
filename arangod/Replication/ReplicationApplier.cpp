@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,8 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -82,7 +80,7 @@ struct ApplierThread : public Thread {
     }
 
     {
-      MUTEX_LOCKER(locker, _syncerMutex);
+      std::lock_guard locker{_syncerMutex};
       _syncer->setAborted(false);
       _syncer.reset();
     }
@@ -93,7 +91,7 @@ struct ApplierThread : public Thread {
   virtual Result runApplier() = 0;
 
   void setAborted(bool value) {
-    MUTEX_LOCKER(locker, _syncerMutex);
+    std::lock_guard locker{_syncerMutex};
     if (_syncer) {
       _syncer->setAborted(value);
     }
@@ -101,7 +99,7 @@ struct ApplierThread : public Thread {
 
  protected:
   ReplicationApplier* _applier;
-  Mutex _syncerMutex;
+  std::mutex _syncerMutex;
   std::shared_ptr<Syncer> _syncer;
 };
 
@@ -127,7 +125,7 @@ struct FullApplierThread final : public ApplierThread {
     TRI_voc_tick_t lastLogTick = initSync->getLastLogTick();
 
     {
-      MUTEX_LOCKER(locker, _syncerMutex);
+      std::lock_guard locker{_syncerMutex};
       auto tailer = _applier->buildTailingSyncer(lastLogTick, true);
       _syncer.reset();
       _syncer = std::move(tailer);
@@ -307,6 +305,7 @@ void ReplicationApplier::doStart(
   {
     // steal thread
     std::unique_ptr<Thread> t = std::move(_thread);
+    // cppcheck-suppress accessMoved
     TRI_ASSERT(_thread == nullptr);
     // now _thread is empty
     // and release the write lock so when "thread" goes
@@ -326,15 +325,15 @@ void ReplicationApplier::doStart(
 
   // build a new instance in _thread
   cb();
-
+  // cppcheck-suppress accessMoved
   TRI_ASSERT(_thread != nullptr);
-
+  // cppcheck-suppress accessMoved
   if (!_thread->start()) {
     _thread.reset();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "could not start ApplyThread");
   }
-
+  // cppcheck-suppress nullPointer
   while (!_thread->hasStarted()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
@@ -352,8 +351,8 @@ void ReplicationApplier::startReplication() {
   doStart(
       [&]() {
         std::shared_ptr<InitialSyncer> syncer = buildInitialSyncer();
-        _thread.reset(new FullApplierThread(_configuration._server, this,
-                                            std::move(syncer)));
+        _thread = std::make_unique<FullApplierThread>(_configuration._server,
+                                                      this, std::move(syncer));
       },
       ReplicationApplierState::ActivityPhase::INITIAL);
 }
@@ -371,8 +370,8 @@ void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick,
             << ". initialTick: " << initialTick << ", useTick: " << useTick;
         std::shared_ptr<TailingSyncer> syncer =
             buildTailingSyncer(initialTick, useTick);
-        _thread.reset(new TailingApplierThread(_configuration._server, this,
-                                               std::move(syncer)));
+        _thread = std::make_unique<TailingApplierThread>(
+            _configuration._server, this, std::move(syncer));
       },
       ReplicationApplierState::ActivityPhase::TAILING);
 
@@ -788,6 +787,7 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
 
       // steal thread
       std::unique_ptr<Thread> t = std::move(_thread);
+      // cppcheck-suppress accessMoved
       TRI_ASSERT(_thread == nullptr);
       // now _thread is empty
       // and release the write lock so when "thread" goes

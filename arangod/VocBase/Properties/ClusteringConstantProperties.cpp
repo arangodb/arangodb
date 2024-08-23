@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -54,16 +55,11 @@ ClusteringConstantProperties::validateDatabaseConfiguration(
                   std::to_string(config.maxNumberOfShards)};
     }
   }
+
   if (config.isOneShardDB) {
     if (numberOfShards.value() != 1) {
       return {TRI_ERROR_BAD_PARAMETER,
               "Collection in a 'oneShardDatabase' must have 1 shard"};
-    }
-
-    if (distributeShardsLike.value() != config.defaultDistributeShardsLike) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Collection in a 'oneShardDatabase' cannot define "
-              "'distributeShardsLike'"};
     }
   }
 

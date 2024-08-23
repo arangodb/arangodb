@@ -1,17 +1,16 @@
 /*jshint strict: false */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoCollection
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2013 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +18,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Achim Brandt
 // / @author Dr. Frank Celler
@@ -151,7 +150,10 @@ ArangoCollection.prototype._baseurl = function (suffix) {
 
 ArangoCollection.prototype._documenturl = function (id) {
   let s = id.split('/'), url;
-  let name = this.name();
+  let name = this.name(); 
+  // note: no need to use encodeURIComponent(name) here, because
+  // _database._documenturl() will call URL-encode the parts of
+  // the URL already
   if (s.length === 1) {
     url = this._database._documenturl(name + '/' + id, name);
   } else {
@@ -166,7 +168,7 @@ ArangoCollection.prototype._documenturl = function (id) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype._documentcollectionurl = function () {
-  return this._prefixurl('/_api/document/' + this.name());
+  return this._prefixurl('/_api/document/' + encodeURIComponent(this.name()));
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -194,7 +196,7 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
 
   // get the edges
   let url = '/_api/edges/' + encodeURIComponent(this.name())
-    + (direction ? '?direction=' + direction : '');
+    + (direction ? '?direction=' + encodeURIComponent(direction) : '');
 
   let requestResult = this._database._connection.POST(this._prefixurl(url), vertex);
   arangosh.checkRequestResult(requestResult);
@@ -322,6 +324,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'syncByRevision': false,
     'schema' : true,
     'isDisjoint': false,
+    'groupId': false,
   };
 
   let requestResult;
@@ -598,13 +601,6 @@ ArangoCollection.prototype.dropIndex = function (id) {
   }
 
   let requestResult = this._database._connection.DELETE(this._database._indexurl(id, this.name()));
-
-  if (requestResult !== null
-    && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
-    return false;
-  }
-
   arangosh.checkRequestResult(requestResult);
   return true;
 };
@@ -854,6 +850,10 @@ ArangoCollection.prototype.save =
     }
     
     url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
+  
+    if (options.versionAttribute) {
+      url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+    }
 
     if (data === undefined || typeof data !== 'object') {
       throw new ArangoError({
@@ -1066,17 +1066,17 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
       fillInSpecial(id[i], data[i]);
     }
     url = this._documentcollectionurl();
-  } else if (typeof id === 'object') {
-    if (id.hasOwnProperty('_rev')) {
-      rev = id._rev;
-    }
-    if (id.hasOwnProperty('_id')) {
-      id = id._id;
-    } else if (id.hasOwnProperty('_key')) {
-      id = id._key;
-    }
-    url = this._documenturl(id);
   } else {
+    if (typeof id === 'object') {
+      if (id.hasOwnProperty('_rev')) {
+        rev = id._rev;
+      }
+      if (id.hasOwnProperty('_id')) {
+        id = id._id;
+      } else if (id.hasOwnProperty('_key')) {
+        id = id._key;
+      }
+    }
     url = this._documenturl(id);
   }
 
@@ -1098,6 +1098,10 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     url = appendBoolParameter(url, 'silent', options.silent);
   }
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
+  
+  if (options.versionAttribute) {
+    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+  }
 
   let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
   if (rev !== null && !ignoreRevs) {
@@ -1192,17 +1196,17 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
       fillInSpecial(id[i], data[i]);
     }
     url = this._documentcollectionurl() + params;
-  } else if (typeof id === 'object') {
-    if (id.hasOwnProperty('_rev')) {
-      rev = id._rev;
-    }
-    if (id.hasOwnProperty('_id')) {
-      id = id._id;
-    } else if (id.hasOwnProperty('_key')) {
-      id = id._key;
-    }
-    url = this._documenturl(id) + params;
   } else {
+    if (typeof id === 'object') {
+      if (id.hasOwnProperty('_rev')) {
+        rev = id._rev;
+      }
+      if (id.hasOwnProperty('_id')) {
+        id = id._id;
+      } else if (id.hasOwnProperty('_key')) {
+        id = id._key;
+      }
+    }
     url = this._documenturl(id) + params;
   }
 
@@ -1221,6 +1225,10 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     url = appendBoolParameter(url, 'silent', options.silent);
   }
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
+  
+  if (options.versionAttribute) {
+    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+  }
 
   let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
   if (rev !== null && !ignoreRevs) {
@@ -1416,7 +1424,7 @@ ArangoCollection.prototype._revisionTreeVerification = function() {
     throw "Could not create batch!";
   }
   let requestResult = this._database._connection.GET(this._prefixurl(
-    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&verification=true&batchId=${batch.id}`));
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&verification=true&batchId=${batch.id}&onlyPopulated=false`));
   this._database._connection.DELETE(this._prefixurl(
     `/_api/replication/batch/${batch.id}`));
   return requestResult;

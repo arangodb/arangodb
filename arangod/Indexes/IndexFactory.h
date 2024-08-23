@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -130,21 +130,24 @@ class IndexFactory {
   static Result validateFieldsDefinition(velocypack::Slice definition,
                                          std::string const& attributeName,
                                          size_t minFields, size_t maxFields,
-                                         bool allowSubAttributes = true);
+                                         bool allowSubAttributes,
+                                         bool allowIdAttribute);
 
   /// @brief process the "fields" list, deduplicate it, and add it to the json
   static Result processIndexFields(velocypack::Slice definition,
                                    velocypack::Builder& builder,
                                    size_t minFields, size_t maxFields,
                                    bool create, bool allowExpansion,
-                                   bool allowSubAttributes);
+                                   bool allowSubAttributes,
+                                   bool allowIdAttribute);
 
   /// @brief process the "storedValues" list, deduplicate it, and add it to the
   /// json
   static Result processIndexStoredValues(velocypack::Slice definition,
                                          velocypack::Builder& builder,
                                          size_t minFields, size_t maxFields,
-                                         bool create, bool allowSubAttributes);
+                                         bool create, bool allowSubAttributes,
+                                         bool allowOverlappingFields);
 
   /// @brief process the "cacheEnabled" flag and add it to the json
   static void processIndexCacheEnabled(velocypack::Slice definition,
@@ -204,10 +207,13 @@ class IndexFactory {
                                          velocypack::Builder& builder,
                                          bool create);
 
-  /// @brief enhances the json of a zkd index
-  static Result enhanceJsonIndexZkd(arangodb::velocypack::Slice definition,
+  /// @brief enhances the json of a mdi
+  static Result enhanceJsonIndexMdi(arangodb::velocypack::Slice definition,
                                     arangodb::velocypack::Builder& builder,
                                     bool create);
+  static Result enhanceJsonIndexMdiPrefixed(
+      arangodb::velocypack::Slice definition,
+      arangodb::velocypack::Builder& builder, bool create);
 
  protected:
   /// @brief clear internal factory/normalizer maps

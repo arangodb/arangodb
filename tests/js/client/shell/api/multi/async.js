@@ -2,18 +2,16 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +21,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -280,7 +278,7 @@ function dealing_with_async_requestsSuite () {
       assertFalse(doc.parsedBody.hasOwnProperty('id'));
     },
 
-    test_checks_whether_we_can_cancel_an_AQL_query_1: function() {
+    test_checks_whether_we_can_cancel_an_AQL_query: function() {
       let cmd = "/_api/cursor";
       let body = '{"query": "for x in 1..1000 let a = sleep(0.5) filter x == 1 return x"}';
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
@@ -302,54 +300,7 @@ function dealing_with_async_requestsSuite () {
       cmd = "/_api/job/" + id;
       doc = wait_for_put(cmd, 410, 20);
       assertEqual(doc.code, 410);
-    },
-
-    test_checks_whether_we_can_cancel_an_AQL_query_2: function() {
-      let cmd = "/_api/cursor";
-      let body = '{"query": "for x in 1..10000 for y in 1..10000 let a = sleep(0.01) filter x == 1 && y == 1 return x"}';
-      let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
-
-      assertEqual(doc.code, 202);
-      assertTrue(doc.headers.hasOwnProperty(("x-arango-async-id")));
-      let id = doc.headers["x-arango-async-id"];
-      assertMatch(/^\d+$/, id);
-      assertEqual(doc.parsedBody, undefined);
-
-      cmd = "/_api/job/" + id;
-      doc = wait_for_put(cmd, 204, 20);
-      assertEqual(doc.code, 204);
-
-      cmd = "/_api/job/" + id + "/cancel";
-      doc = arango.PUT_RAW(cmd, "");
-      assertEqual(doc.code, 200);
-
-      cmd = "/_api/job/" + id;
-      doc = wait_for_put(cmd, 410, 20);
-      assertEqual(doc.code, 410);
-    },
-
-    test_checks_whether_we_can_cancel_an_AQL_query_3: function() {
-      let cmd = "/_api/cursor";
-      let body = '{"query": "for x in 1..10000 for y in 1..10000 let a = sleep(0.01) filter x == 1 && y == 1 return x"}';
-      let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
-
-      assertEqual(doc.code, 202);
-      assertTrue(doc.headers.hasOwnProperty(("x-arango-async-id")));
-      let id = doc.headers["x-arango-async-id"];
-      assertMatch(/^\d+$/, id);
-      assertEqual(doc.parsedBody, undefined);
-
-      cmd = "/_api/job/" + id;
-      doc = wait_for_put(cmd, 204, 20);
-      assertEqual(doc.code, 204);
-
-      cmd = "/_api/job/" + id + "/cancel";
-      doc = arango.PUT_RAW(cmd, "");
-      assertEqual(doc.code, 200);
-
-      cmd = "/_api/job/" + id;
-      doc = wait_for_put(cmd, 410, 20);
-      assertEqual(doc.code, 410);
+      assertEqual(doc.parsedBody.errorMessage, "canceled request");
     },
 
     test_checks_whether_we_can_cancel_a_transaction: function() {
@@ -374,6 +325,7 @@ function dealing_with_async_requestsSuite () {
       cmd = "/_api/job/" + id;
       doc = wait_for_put(cmd, 410, 20);
       assertEqual(doc.code, 410);
+      assertEqual(doc.parsedBody.errorMessage, "canceled request");
     },
   };
 }

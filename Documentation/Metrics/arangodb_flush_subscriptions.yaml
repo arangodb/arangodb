@@ -12,5 +12,5 @@ exposedBy:
   - single
 description: |
   This metric exposes the number of currently active flush subscriptions.
-  Flush subscriptions can be created by arangosearch links and by background
+  Flush subscriptions can be created by `arangosearch` View links and by background
   index creation.

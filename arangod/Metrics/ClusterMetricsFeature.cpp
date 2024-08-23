@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -132,7 +132,7 @@ std::optional<std::string> ClusterMetricsFeature::update(
                                             .getNumber<uint64_t>()
                                       : 0;
       }();
-      writeData(version, metricsOnLeader(nf, cf).getTry());
+      writeData(version, metricsOnLeader(nf, cf).waitAndGetTry());
     }
   } catch (...) {
   }
@@ -218,6 +218,7 @@ void ClusterMetricsFeature::update() {
   auto rebootId = oldData.get("RebootId").getNumber<uint64_t>();
   auto serverId = oldData.get("ServerId").copyString();
   data.reset();
+  // cppcheck-suppress accessMoved
   metricsFromLeader(nf, cf, *leader, std::move(serverId), rebootId, version)
       .thenFinal([this](futures::Try<LeaderResponse>&& raw) mutable noexcept {
         if (wasStop()) {
@@ -252,11 +253,11 @@ bool ClusterMetricsFeature::writeData(uint64_t version,
     return false;
   }
   auto metrics = parse(std::move(raw).get());
-  bool const currEmpty = metrics.values.empty();
-  if (currEmpty && _prevEmpty) {
+  bool currEmpty = metrics.values.empty();
+  bool prevEmpty = _prevEmpty.exchange(currEmpty, std::memory_order_relaxed);
+  if (currEmpty && prevEmpty) {
     return true;
   }
-  _prevEmpty = currEmpty;
   velocypack::Builder builder;
   builder.openObject();
   builder.add("ServerId", VPackValue{ServerState::instance()->getId()});
@@ -285,7 +286,7 @@ bool ClusterMetricsFeature::readData(futures::Try<LeaderResponse>&& raw) {
   }
   auto data = Data::fromVPack(metrics);
   data->packed = std::move(raw).get();
-  _prevEmpty = data->metrics.values.empty();
+  _prevEmpty.store(data->metrics.values.empty(), std::memory_order_relaxed);
   std::atomic_store_explicit(&_data, std::move(data),
                              std::memory_order_release);
   return true;
@@ -330,7 +331,8 @@ void ClusterMetricsFeature::add(std::string_view metric, MapReduce mapReduce,
 }
 
 void ClusterMetricsFeature::toPrometheus(std::string& result,
-                                         std::string_view globals) const {
+                                         std::string_view globals,
+                                         bool ensureWhitespace) const {
   auto data = getData();
   if (!data) {
     return;
@@ -348,7 +350,8 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
       }
     }
     if (it != _toPrometheus.end()) {
-      it->second(result, globals, metricName, key.labels, value);
+      it->second(result, globals, metricName, key.labels, value,
+                 ensureWhitespace);
     }
   }
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,7 +33,7 @@ void ReadWriteLock::lockWrite() {
     return;
   }
 
-  // the lock is either hold by another writer or we have active readers
+  // the lock is either held by another writer or we have active readers
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
@@ -59,22 +59,21 @@ void ReadWriteLock::lockWrite() {
 }
 
 /// @brief lock for writes with microsecond timeout
-bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
+bool ReadWriteLock::tryLockWriteFor(std::chrono::microseconds timeout) {
   if (tryLockWrite()) {
     return true;
   }
 
-  // the lock is either hold by another writer or we have active readers
+  // the lock is either held by another writer or we have active readers
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
-  std::chrono::time_point<std::chrono::steady_clock> end_time;
-  end_time = std::chrono::steady_clock::now() + timeout;
+  auto end_time = std::chrono::steady_clock::now() + timeout;
 
   std::cv_status status(std::cv_status::no_timeout);
   {
     std::unique_lock<std::mutex> guard(_writer_mutex);
-    while (std::cv_status::no_timeout == status) {
+    do {
       auto state = _state.load(std::memory_order_relaxed);
       // try to acquire write lock as long as no readers or writers are active,
       while ((state & ~QUEUED_WRITER_MASK) == 0) {
@@ -85,16 +84,23 @@ bool ReadWriteLock::lockWrite(std::chrono::microseconds timeout) {
           return true;
         }
       }
-      // TODO: it seems this may repeatedly wait for the timeout
-      // it is not guaranteed to finish within timeout
       status = _writers_bell.wait_until(guard, end_time);
-    }
+    } while (std::cv_status::no_timeout == status);
   }
 
   // Undo the counting of us as queued writer:
-  _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed);
-  { std::lock_guard<std::mutex> guard(_reader_mutex); }
-  _readers_bell.notify_all();
+  auto state = _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed) -
+               QUEUED_WRITER_INC;
+
+  if ((state & WRITE_LOCK) == 0) {
+    if ((state & QUEUED_WRITER_MASK) != 0) {
+      { std::lock_guard<std::mutex> guard(_writer_mutex); }
+      _writers_bell.notify_one();
+    } else {
+      { std::lock_guard<std::mutex> guard(_reader_mutex); }
+      _readers_bell.notify_all();
+    }
+  }
 
   return false;
 }
@@ -128,6 +134,22 @@ void ReadWriteLock::lockRead() {
 
     _readers_bell.wait(guard);
   }
+}
+
+bool ReadWriteLock::tryLockReadFor(std::chrono::microseconds timeout) {
+  if (tryLockRead()) {
+    return true;
+  }
+  auto end_time = std::chrono::steady_clock::now() + timeout;
+  std::cv_status status(std::cv_status::no_timeout);
+  std::unique_lock<std::mutex> guard(_reader_mutex);
+  do {
+    if (tryLockRead()) {
+      return true;
+    }
+    status = _readers_bell.wait_until(guard, end_time);
+  } while (std::cv_status::no_timeout == status);
+  return false;
 }
 
 /// @brief locks for reading, tries only
@@ -198,4 +220,26 @@ bool ReadWriteLock::isLockedRead() const noexcept {
 
 bool ReadWriteLock::isLockedWrite() const noexcept {
   return _state.load(std::memory_order_relaxed) & WRITE_LOCK;
+}
+
+std::string ReadWriteLock::stringifyLockState() const {
+  std::string result;
+
+  auto append = [&result](std::string msg) {
+    if (!result.empty()) {
+      result.append(", ");
+    }
+    result.append(msg);
+  };
+
+  auto state = _state.load(std::memory_order_relaxed);
+  auto readers = (state & READER_MASK) >> 32;
+  auto writers = (state & QUEUED_WRITER_MASK) >> 1;
+  append(std::to_string(readers).append(" active reader(s)"));
+  append(std::to_string(writers).append(" queued writer(s)"));
+  if (state & WRITE_LOCK) {
+    append("write-locked");
+  }
+
+  return result;
 }

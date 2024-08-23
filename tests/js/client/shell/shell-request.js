@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, Buffer */
+/*global arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test request module
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2015 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Alan Plum
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require('jsunity');
 var expect = require('chai').expect;
@@ -47,11 +44,11 @@ function BaseRequestSuite () {
   var buildUrl = function (append, base) {
     base = base === false ? '' : '/_admin/echo';
     append = append || '';
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + base + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:') + base + append;
   };
   
   var buildUrlBroken = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + '/_not-there' + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:') + '/_not-there' + append;
   };
 
   return {
@@ -62,7 +59,7 @@ function BaseRequestSuite () {
 
     testDeleteMethod: function () {
       var path = '/lol';
-      var res = request.delete(buildUrl(path), {timeout: 300});
+      var res = request.delete(buildUrl(path), {timeout: 300, headers: {"Accept-Encoding": "identity"}});
 
       expect(res).to.be.an.instanceof(request.Response);
 
@@ -70,7 +67,6 @@ function BaseRequestSuite () {
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +75,7 @@ function BaseRequestSuite () {
 
     testGetMethod: function () {
       var path = '/lol';
-      var res = request.get(buildUrl(path), {timeout: 300});
+      var res = request.get(buildUrl(path), {timeout: 300, headers: {"Accept-Encoding": "identity"}});
       expect(res).to.be.an.instanceof(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
@@ -105,7 +101,7 @@ function BaseRequestSuite () {
 
     testPostMethod: function () {
       var path = '/lol';
-      var res = request.post(buildUrl(path), {timeout: 300});
+      var res = request.post(buildUrl(path), {timeout: 300, headers: {"Accept-Encoding": "identity"}});
       expect(res).to.be.an.instanceof(request.Response);
       expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
@@ -120,7 +116,7 @@ function BaseRequestSuite () {
     testPatchMethod: function () {
       var path = '/lol';
       var body = {hello: 'world'};
-      var res = request.post(buildUrl(path), {body: body, json: true, timeout: 300});
+      var res = request.post(buildUrl(path), {body: body, json: true, timeout: 300, headers: {"Accept-Encoding": "identity"}});
       expect(res).to.be.an.instanceof(request.Response);
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       expect(res.json).to.be.an('object');
@@ -137,7 +133,7 @@ function BaseRequestSuite () {
     testPutMethod: function () {
       var path = '/lol';
       var body = {hello: 'world'};
-      var res = request.put(buildUrl(path), {body: body, json: true, timeout: 300});
+      var res = request.put(buildUrl(path), {body: body, json: true, timeout: 300, headers: {"Accept-Encoding": "identity"}});
       expect(res).to.be.an.instanceof(request.Response);
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
       expect(res.json).to.be.an('object');

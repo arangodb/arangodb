@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
+#include "Graph/Types/ValidationResult.h"
 #include "Transaction/Methods.h"
 
 namespace arangodb::graph {
@@ -97,7 +98,9 @@ class ClusterProviderStep
   [[nodiscard]] Edge const& getEdge() const noexcept { return _edge; }
 
   [[nodiscard]] std::string toString() const {
-    return "<Step><Vertex>: " + _vertex.getID().toString();
+    return "<Step><Vertex>: " + _vertex.getID().toString() +
+           " <Depth>: " + std::to_string(getDepth()) +
+           " <Weight>: " + std::to_string(getWeight());
   }
 
   bool vertexFetched() const noexcept {
@@ -117,6 +120,7 @@ class ClusterProviderStep
            _fetchedStatus == FetchedType::EDGES_FETCHED ||
            _fetchedStatus == FetchedType::VERTEX_FETCHED;
   }
+  bool isUnknown() const noexcept { return _validationStatus.isUnknown(); }
 
   // beware: returns a *copy* of the vertex id
   [[nodiscard]] VertexType getVertexIdentifier() const {
@@ -144,6 +148,7 @@ class ClusterProviderStep
       _fetchedStatus = FetchedType::VERTEX_FETCHED;
     }
   }
+
   void setEdgesFetched() noexcept {
     if (vertexFetched()) {
       _fetchedStatus = FetchedType::VERTEX_AND_EDGES_FETCHED;
@@ -152,10 +157,15 @@ class ClusterProviderStep
     }
   }
 
+  void setValidationResult(ValidationResult res) noexcept {
+    _validationStatus = res;
+  }
+
  private:
   Vertex _vertex;
   Edge _edge;
   FetchedType _fetchedStatus;
+  ValidationResult _validationStatus;
 };
 
 }  // namespace arangodb::graph

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,8 +36,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
@@ -57,6 +55,7 @@
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Random/RandomGenerator.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -123,7 +122,9 @@ bool findNotDoneActions(std::shared_ptr<maintenance::Action> const& action) {
 arangodb::Result arangodb::maintenance::collectionCount(
     arangodb::LogicalCollection const& collection, uint64_t& c) {
   std::string collectionName(collection.name());
-  transaction::StandaloneContext ctx(collection.vocbase());
+  auto origin = transaction::OperationOriginInternal{
+      "counting documents during maintenance"};
+  transaction::StandaloneContext ctx(collection.vocbase(), origin);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
@@ -138,7 +139,7 @@ arangodb::Result arangodb::maintenance::collectionCount(
 
   OperationOptions options(ExecContext::current());
   OperationResult opResult = trx.count(
-      collectionName, arangodb::transaction::CountType::Normal, options);
+      collectionName, arangodb::transaction::CountType::kNormal, options);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
@@ -156,6 +157,10 @@ arangodb::Result arangodb::maintenance::collectionCount(
 
 MaintenanceFeature::MaintenanceFeature(Server& server)
     : ArangodFeature{server, *this},
+      // in the unit tests we can have cases where we have no ClusterFeature
+      _clusterFeature(server.hasFeature<ClusterFeature>()
+                          ? &server.getFeature<ClusterFeature>()
+                          : nullptr),
       _forceActivation(false),
       _resignLeadershipOnShutdown(false),
       _firstRun(true),
@@ -179,6 +184,9 @@ MaintenanceFeature::MaintenanceFeature(Server& server)
   startsAfter<metrics::MetricsFeature>();
 
   setOptional(true);
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  ADB_PROD_ASSERT(_clusterFeature != nullptr);
+#endif
 }
 
 MaintenanceFeature::~MaintenanceFeature() { stop(); }
@@ -390,7 +398,7 @@ void MaintenanceFeature::beginShutdown() {
     };
 
     // create common shared memory with jobid
-    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    auto& ci = _clusterFeature->clusterInfo();
     auto shared = std::make_shared<callback_data>(ci.uniqid());
 
     AgencyComm am(server());
@@ -420,7 +428,7 @@ void MaintenanceFeature::beginShutdown() {
 
     auto endtime = startTime + timeout;
 
-    auto checkAgencyPathExists = [cf = &server().getFeature<ClusterFeature>()](
+    auto checkAgencyPathExists = [&cf = _clusterFeature](
                                      std::string const& path,
                                      uint64_t jobId) -> bool {
       try {
@@ -466,17 +474,17 @@ void MaintenanceFeature::beginShutdown() {
   }
 
   _isShuttingDown = true;
-  CONDITION_LOCKER(cLock, _actionRegistryCond);
-  _actionRegistryCond.broadcast();
+  std::lock_guard cLock{_actionRegistryCond.mutex};
+  _actionRegistryCond.cv.notify_all();
 }  // MaintenanceFeature
 
 void MaintenanceFeature::stop() {
   for (auto const& itWorker : _activeWorkers) {
-    CONDITION_LOCKER(cLock, _workerCompletion);
+    std::unique_lock cLock{_workerCompletion.mutex};
 
     // loop on each worker, retesting at 10ms just in case
     while (itWorker->isRunning()) {
-      _workerCompletion.wait(std::chrono::milliseconds(10));
+      _workerCompletion.cv.wait_for(cLock, std::chrono::milliseconds(10));
     }  // if
   }    // for
 }
@@ -530,7 +538,7 @@ Result MaintenanceFeature::addAction(
   //  but just in case
   try {
     size_t action_hash = newAction->hash();
-    WRITE_LOCKER(wLock, _actionRegistryLock);
+    std::unique_lock guard(_actionRegistryLock);
 
     std::shared_ptr<Action> curAction =
         findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
@@ -583,7 +591,7 @@ Result MaintenanceFeature::addAction(
 
     std::shared_ptr<Action> curAction;
 
-    WRITE_LOCKER(wLock, _actionRegistryLock);
+    std::unique_lock guard(_actionRegistryLock);
     if (!description->isRunEvenIfDuplicate()) {
       size_t action_hash = description->hash();
 
@@ -665,8 +673,8 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action,
     _action_registered_counter->count();
 
     if (!executeNow) {
-      CONDITION_LOCKER(cLock, _actionRegistryCond);
-      _actionRegistryCond.broadcast();
+      std::lock_guard cLock{_actionRegistryCond.mutex};
+      _actionRegistryCond.cv.notify_all();
       // Note that we do a broadcast here for the following reason: if we did
       // signal here, we cannot control which of the sleepers is woken up.
       // If the new action is not fast track, then we could wake up the
@@ -718,7 +726,7 @@ std::shared_ptr<Action> MaintenanceFeature::findFirstActionHash(
     size_t hash,
     std::function<bool(std::shared_ptr<maintenance::Action> const&)> const&
         predicate) {
-  READ_LOCKER(rLock, _actionRegistryLock);
+  std::shared_lock guard(_actionRegistryLock);
 
   return findFirstActionHashNoLock(hash, predicate);
 }
@@ -738,7 +746,7 @@ std::shared_ptr<Action> MaintenanceFeature::findFirstActionHashNoLock(
 }
 
 std::shared_ptr<Action> MaintenanceFeature::findActionId(uint64_t id) {
-  READ_LOCKER(rLock, _actionRegistryLock);
+  std::shared_lock guard(_actionRegistryLock);
 
   return findActionIdNoLock(id);
 }
@@ -761,7 +769,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
   while (!_isShuttingDown) {
     // use priority queue for ready action (and purge any that are done waiting)
     {
-      WRITE_LOCKER(wLock, _actionRegistryLock);
+      std::unique_lock guard(_actionRegistryLock);
 
       while (!_prioQueue.empty()) {
         // If _prioQueue is empty, we have no ready job and simply loop in the
@@ -807,8 +815,8 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
 
     // no pointer ... wait 0.1 seconds unless woken up
     if (!_isShuttingDown) {
-      CONDITION_LOCKER(cLock, _actionRegistryCond);
-      _actionRegistryCond.wait(std::chrono::milliseconds(100));
+      std::unique_lock cLock{_actionRegistryCond.mutex};
+      _actionRegistryCond.cv.wait_for(cLock, std::chrono::milliseconds(100));
     }  // if
 
   }  // while
@@ -823,7 +831,7 @@ VPackBuilder MaintenanceFeature::toVelocyPack() const {
 }
 
 void MaintenanceFeature::toVelocyPack(VPackBuilder& vb) const {
-  READ_LOCKER(rLock, _actionRegistryLock);
+  std::shared_lock guard(_actionRegistryLock);
 
   {
     VPackArrayBuilder ab(&vb);
@@ -852,7 +860,7 @@ arangodb::Result MaintenanceFeature::storeDBError(std::string const& database,
 
 arangodb::Result MaintenanceFeature::storeDBError(
     std::string const& database, std::shared_ptr<VPackBuffer<uint8_t>> error) {
-  MUTEX_LOCKER(guard, _dbeLock);
+  std::lock_guard guard{_dbeLock};
   auto const it = _dbErrors.find(database);
   if (it != _dbErrors.end()) {
     std::stringstream error;
@@ -873,7 +881,7 @@ arangodb::Result MaintenanceFeature::storeDBError(
 arangodb::Result MaintenanceFeature::dbError(
     std::string const& database,
     std::shared_ptr<VPackBuffer<uint8_t>>& error) const {
-  MUTEX_LOCKER(guard, _dbeLock);
+  std::lock_guard guard{_dbeLock};
   auto const it = _dbErrors.find(database);
   error = (it != _dbErrors.end()) ? it->second : nullptr;
   return Result();
@@ -882,7 +890,7 @@ arangodb::Result MaintenanceFeature::dbError(
 arangodb::Result MaintenanceFeature::removeDBError(
     std::string const& database) {
   try {
-    MUTEX_LOCKER(guard, _seLock);
+    std::lock_guard guard{_seLock};
     _dbErrors.erase(database);
   } catch (std::exception const&) {
     std::stringstream error;
@@ -921,7 +929,7 @@ arangodb::Result MaintenanceFeature::storeShardError(
     std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error) {
   std::string const key = database + SLASH + collection + SLASH + shard;
 
-  MUTEX_LOCKER(guard, _seLock);
+  std::lock_guard guard{_seLock};
   try {
     auto emplaced =
         _shardErrors.try_emplace(std::move(key), std::move(error)).second;
@@ -945,7 +953,7 @@ arangodb::Result MaintenanceFeature::shardError(
     std::shared_ptr<VPackBuffer<uint8_t>>& error) const {
   std::string key = database + SLASH + collection + SLASH + shard;
 
-  MUTEX_LOCKER(guard, _seLock);
+  std::lock_guard guard{_seLock};
   auto const it = _shardErrors.find(key);
   error = (it != _shardErrors.end()) ? it->second : nullptr;
   return Result();
@@ -953,7 +961,7 @@ arangodb::Result MaintenanceFeature::shardError(
 
 arangodb::Result MaintenanceFeature::removeShardError(std::string const& key) {
   try {
-    MUTEX_LOCKER(guard, _seLock);
+    std::lock_guard guard{_seLock};
     _shardErrors.erase(key);
   } catch (std::exception const&) {
     std::stringstream error;
@@ -978,7 +986,7 @@ arangodb::Result MaintenanceFeature::storeIndexError(
   using buffer_t = std::shared_ptr<VPackBuffer<uint8_t>>;
   std::string const key = database + SLASH + collection + SLASH + shard;
 
-  MUTEX_LOCKER(guard, _ieLock);
+  std::lock_guard guard{_ieLock};
 
   decltype(_indexErrors.emplace(key)) emplace_result;
   try {
@@ -1007,14 +1015,14 @@ arangodb::Result MaintenanceFeature::storeIndexError(
 
 /// @brief remove all replication errors for all shards of the database
 void MaintenanceFeature::removeReplicationError(std::string const& database) {
-  MUTEX_LOCKER(guard, _replLock);
+  std::lock_guard guard{_replLock};
   _replErrors.erase(database);
 }
 
 /// @brief remove all replication errors for the shard in the database
 void MaintenanceFeature::removeReplicationError(std::string const& database,
                                                 std::string const& shard) {
-  MUTEX_LOCKER(guard, _replLock);
+  std::lock_guard guard{_replLock};
 
   auto it = _replErrors.find(database);
   if (it != _replErrors.end()) {
@@ -1031,7 +1039,7 @@ void MaintenanceFeature::storeReplicationError(std::string const& database,
                                                std::string const& shard) {
   auto now = std::chrono::steady_clock::now();
 
-  MUTEX_LOCKER(guard, _replLock);
+  std::lock_guard guard{_replLock};
   // this may create the new entries on-the-fly
   auto& bucket = _replErrors[database][shard];
   size_t n = bucket.size();
@@ -1064,7 +1072,7 @@ size_t MaintenanceFeature::replicationErrors(std::string const& database,
   auto since =
       std::chrono::steady_clock::now() - maxReplicationErrorsPerShardAge;
 
-  MUTEX_LOCKER(guard, _replLock);
+  std::lock_guard guard{_replLock};
 
   auto it = _replErrors.find(database);
   if (it == _replErrors.end()) {
@@ -1099,7 +1107,7 @@ std::ostream& operator<<(std::ostream& os, std::set<T> const& st) {
 
 arangodb::Result MaintenanceFeature::removeIndexErrors(
     std::string const& key, std::unordered_set<std::string> const& indexIds) {
-  MUTEX_LOCKER(guard, _ieLock);
+  std::lock_guard guard{_ieLock};
 
   // If no entry for this shard exists bail out
   auto kit = _indexErrors.find(key);
@@ -1136,22 +1144,22 @@ arangodb::Result MaintenanceFeature::removeIndexErrors(
 
 arangodb::Result MaintenanceFeature::copyAllErrors(errors_t& errors) const {
   {
-    MUTEX_LOCKER(guard, _seLock);
+    std::lock_guard guard{_seLock};
     errors.shards = _shardErrors;
   }
   {
-    MUTEX_LOCKER(guard, _ieLock);
+    std::lock_guard guard{_ieLock};
     errors.indexes = _indexErrors;
   }
   {
-    MUTEX_LOCKER(guard, _dbeLock);
+    std::lock_guard guard{_dbeLock};
     errors.databases = _dbErrors;
   }
   return Result();
 }
 
 uint64_t MaintenanceFeature::shardVersion(std::string const& shname) const {
-  MUTEX_LOCKER(guard, _versionLock);
+  std::lock_guard guard{_versionLock};
   auto const it = _shardVersion.find(shname);
   LOG_TOPIC("23fbc", TRACE, Logger::MAINTENANCE)
       << "getting shard version for '" << shname << "' from " << _shardVersion;
@@ -1159,7 +1167,7 @@ uint64_t MaintenanceFeature::shardVersion(std::string const& shname) const {
 }
 
 uint64_t MaintenanceFeature::incShardVersion(std::string const& shname) {
-  MUTEX_LOCKER(guard, _versionLock);
+  std::lock_guard guard{_versionLock};
   auto ret = ++_shardVersion[shname];
   LOG_TOPIC("cc492", TRACE, Logger::MAINTENANCE)
       << "incremented shard version for " << shname << " to " << ret;
@@ -1167,7 +1175,7 @@ uint64_t MaintenanceFeature::incShardVersion(std::string const& shname) {
 }
 
 void MaintenanceFeature::delShardVersion(std::string const& shname) {
-  MUTEX_LOCKER(guard, _versionLock);
+  std::lock_guard guard{_versionLock};
   auto const it = _shardVersion.find(shname);
   if (it != _shardVersion.end()) {
     _shardVersion.erase(it);
@@ -1188,11 +1196,11 @@ void MaintenanceFeature::proceed() {
 }
 
 void MaintenanceFeature::addDirty(std::string const& database) {
-  server().getFeature<ClusterFeature>().addDirty(database);
+  _clusterFeature->addDirty(database);
 }
 void MaintenanceFeature::addDirty(
     containers::FlatHashSet<std::string> const& databases, bool callNotify) {
-  server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
+  _clusterFeature->addDirty(databases, callNotify);
 }
 
 containers::FlatHashSet<std::string> MaintenanceFeature::pickRandomDirty(
@@ -1224,8 +1232,7 @@ void MaintenanceFeature::refillToCheck() {
 
 containers::FlatHashSet<std::string> MaintenanceFeature::dirty(
     containers::FlatHashSet<std::string> const& more) {
-  auto& clusterFeature = server().getFeature<ClusterFeature>();
-  auto ret = clusterFeature.dirty();  // plan & current in first run
+  auto ret = _clusterFeature->dirty();  // plan & current in first run
   if (_firstRun) {
     auto all = allDatabases();
     ret.insert(std::make_move_iterator(all.begin()),
@@ -1240,7 +1247,7 @@ containers::FlatHashSet<std::string> MaintenanceFeature::dirty(
 }
 
 std::unordered_set<std::string> MaintenanceFeature::allDatabases() const {
-  return server().getFeature<ClusterFeature>().allDatabases();
+  return _clusterFeature->allDatabases();
 }
 
 size_t MaintenanceFeature::lastNumberOfDatabases() const {
@@ -1250,7 +1257,7 @@ size_t MaintenanceFeature::lastNumberOfDatabases() const {
 
 bool MaintenanceFeature::hasAction(ActionState state, ShardID const& shardId,
                                    std::string const& type) const {
-  READ_LOCKER(rLock, _actionRegistryLock);
+  std::shared_lock guard(_actionRegistryLock);
 
   // this is not ideal, as it needs to do a linear scan of all maintenance jobs
   // in the registry. however, this is our best bet, as we don't have active a
@@ -1271,7 +1278,7 @@ bool MaintenanceFeature::hasAction(ActionState state, ShardID const& shardId,
 }
 
 bool MaintenanceFeature::isDirty(std::string const& dbName) const {
-  return server().getFeature<ClusterFeature>().isDirty(dbName);
+  return _clusterFeature->isDirty(dbName);
 }
 
 bool MaintenanceFeature::lockShard(
@@ -1310,7 +1317,7 @@ Result MaintenanceFeature::requeueAction(
   auto newAction =
       std::make_shared<maintenance::Action>(*this, action->describe());
   newAction->setPriority(newPriority);
-  WRITE_LOCKER(wLock, _actionRegistryLock);
+  std::unique_lock guard(_actionRegistryLock);
   registerAction(std::move(newAction), false);
   return {};
 }

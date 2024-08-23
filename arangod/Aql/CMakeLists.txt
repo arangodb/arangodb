@@ -20,103 +20,70 @@ add_library(arango_aql STATIC
   AstHelper.cpp
   AstNode.cpp
   AstResources.cpp
-  AsyncExecutor.cpp
+  AsyncPrefetchSlotsManager.cpp
   AttributeAccessor.cpp
   AttributeNamePath.cpp
   BindParameters.cpp
   BlocksWithClients.cpp
-  CalculationExecutor.cpp
   CalculationNodeVarFinder.cpp
-  ClusterNodes.cpp
   ClusterQuery.cpp
-  CollectionAccess.cpp
-  CollectionAccessingNode.cpp
-  Collection.cpp
-  Collections.cpp
-  CollectNode.cpp
   CollectOptions.cpp
+  Collection.cpp
+  CollectionAccess.cpp
+  Collections.cpp
   Condition.cpp
   ConditionFinder.cpp
   ConstFetcher.cpp
-  ConstrainedSortExecutor.cpp
   CostEstimate.cpp
-  CountCollectExecutor.cpp
   DependencyProxy.cpp
-  DistinctCollectExecutor.cpp
   DistributeClientBlock.cpp
-  DistributeConsumerNode.cpp
-  DistributeExecutor.cpp
   DocumentExpressionContext.cpp
   DocumentProducingHelper.cpp
-  DocumentProducingNode.cpp
+  EdgeConditionBuilder.cpp
+  EdgeConditionBuilderContainer.cpp
   EngineInfoContainerCoordinator.cpp
   EngineInfoContainerDBServerServerBased.cpp
-  EnumerateCollectionExecutor.cpp
-  EnumerateListExecutor.cpp
-  EnumeratePathsExecutor.cpp
-  EnumeratePathsNode.cpp
   ExecutionBlock.cpp
   ExecutionEngine.cpp
-  ExecutionNode.cpp
   ExecutionNodeId.cpp
   ExecutionPlan.cpp
   ExecutionState.cpp
   ExecutionStats.cpp
   ExecutorExpressionContext.cpp
   Expression.cpp
-  FilterExecutor.cpp
   FixedVarExpressionContext.cpp
   Function.cpp
   Functions.cpp
-  grammar.cpp
-  GraphNode.cpp
-  Graphs.cpp
-  HashedCollectExecutor.cpp
-  IdExecutor.cpp
   InAndOutRowExpressionContext.cpp
-  IndexExecutor.cpp
   IndexHint.cpp
-  IndexNode.cpp
-  IndexNodeOptimizerRules.cpp
+  IndexJoinStrategy.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
-  IResearchViewNode.cpp
-  IResearchViewOptimizerRules.cpp
   LateMaterializedExpressionContext.cpp
-  LateMaterializedOptimizerRulesCommon.cpp
-  LimitExecutor.cpp
+  LazyConditions.cpp
   LimitStats.cpp
-  MaterializeExecutor.cpp
-  ModificationExecutor.cpp
-  ModificationExecutorHelpers.cpp
-  ModificationExecutorInfos.cpp
-  ModificationNodes.cpp
+  ModificationExecutorFlags.h
   ModificationOptions.cpp
   MultiAqlItemBlockInputRange.cpp
   MultiDependencySingleRowFetcher.cpp
-  MutexExecutor.cpp
-  MutexNode.cpp
   NodeFinder.cpp
-  NonConstExpressionContainer.cpp
   NonConstExpression.cpp
-  NoResultsExecutor.cpp
+  NonConstExpressionContainer.cpp
   Optimizer.cpp
-  OptimizerRulesCluster.cpp
   OptimizerRules.cpp
   OptimizerRulesFeature.cpp
-  OptimizerRulesReplaceFunctions.cpp
   OptimizerUtils.cpp
   OutputAqlItemRow.cpp
-  ParallelUnsortedGatherExecutor.cpp
   Parser.cpp
   Projections.cpp
   PruneExpressionEvaluator.cpp
   Quantifier.cpp
+  Query.cpp
   QueryCache.cpp
   QueryContext.cpp
-  Query.cpp
   QueryExecutionState.cpp
   QueryExpressionContext.cpp
+  QueryInfoLoggerFeature.cpp
   QueryList.cpp
   QueryOptions.cpp
   QueryProfile.cpp
@@ -128,50 +95,44 @@ add_library(arango_aql STATIC
   RegisterId.cpp
   RegisterInfos.cpp
   RegisterPlan.cpp
-  RemoteExecutor.cpp
   RemoveModifier.cpp
   RestAqlHandler.cpp
-  ReturnExecutor.cpp
-  ScatterExecutor.cpp
   Scopes.cpp
   ShadowAqlItemRow.cpp
   ShardLocking.cpp
   SharedAqlItemBlockPtr.cpp
   SharedQueryState.cpp
-  ShortestPathExecutor.cpp
-  ShortestPathNode.cpp
   ShortStringStorage.cpp
   SimpleModifier.cpp
-  SingleRemoteModificationExecutor.cpp
   SingleRowFetcher.cpp
   SkipResult.cpp
   SortCondition.cpp
-  SortedCollectExecutor.cpp
+  SortElement.cpp
+  SortInformation.cpp
+  SortRegister.cpp
   SortedRowsStorageBackendMemory.cpp
   SortedRowsStorageBackendStaged.cpp
-  SortExecutor.cpp
-  SortingGatherExecutor.cpp
-  SortNode.cpp
-  SortRegister.cpp
-  SubqueryEndExecutionNode.cpp
-  SubqueryEndExecutor.cpp
-  SubqueryStartExecutionNode.cpp
-  SubqueryStartExecutor.cpp
   Timing.cpp
-  tokens.cpp
   TraversalConditionFinder.cpp
-  TraversalExecutor.cpp
-  TraversalNode.cpp
   TraverserEngineShardLists.cpp
-  UnsortedGatherExecutor.cpp
   UpdateReplaceModifier.cpp
   UpsertModifier.cpp
-  V8Executor.cpp
+  VarUsageFinder.cpp
   Variable.cpp
   VariableGenerator.cpp
-  VarUsageFinder.cpp
-  WindowExecutor.cpp
-  WindowNode.cpp)
+  grammar.cpp
+  tokens.cpp
+)
+
+if (USE_V8) 
+  target_sources(arango_aql PRIVATE
+    V8ErrorHandler.cpp)
+endif()
+
+add_subdirectory(ExecutionNode)
+add_subdirectory(Executor)
+add_subdirectory(Function)
+add_subdirectory(Optimizer)
 
 target_link_libraries(arango_aql
   arango_geo

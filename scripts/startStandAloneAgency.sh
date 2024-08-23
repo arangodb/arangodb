@@ -142,7 +142,7 @@ if [ "$POOLSZ" == "" ]; then
 fi
 
 if [ "$TRANSPORT" == "ssl" ]; then
-  SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
+  SSLKEYFILE="--ssl.keyfile etc/testing/server.pem"
   CURL="curl --insecure -ks https://"
 else
   SSLKEYFILE=""
@@ -161,7 +161,7 @@ printf " start-delays: %s," "$START_DELAYS"
 printf " random-delays: %s," "$RANDOM_DELAYS"
 printf " gossip-mode: %s\n" "$GOSSIP_MODE"
 
-if [ ! -d arangod ] || [ ! -d client-tools ] || [ ! -d UnitTests ] ; then
+if [ ! -d arangod ] || [ ! -d client-tools ] ; then
   echo Must be started in the main ArangoDB source directory.
   exit 1
 fi
@@ -276,5 +276,3 @@ done
 echo "  done. Your agents are ready at port $BASE onward."
 #echo "Process ids: $PIDS"
 echo "Try ${CURL}[::1]:5000/_api/agency/config."
-
-

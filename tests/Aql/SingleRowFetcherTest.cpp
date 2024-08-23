@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,7 +32,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/FilterExecutor.h"
+#include "Aql/Executor/FilterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
@@ -67,8 +67,7 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
   ExecutionState state;
   static constexpr ::arangodb::aql::BlockPassthrough passBlocksThrough =
       ::arangodb::aql::BlockPassthrough::Enable;
-  SingleRowFetcherTestPassBlocks()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {}
+  SingleRowFetcherTestPassBlocks() : itemBlockManager(monitor) {}
 
   void validateInputRange(AqlItemBlockInputRange& input,
                           std::vector<std::string> const& result) {
@@ -128,8 +127,7 @@ class SingleRowFetcherTestDoNotPassBlocks : public ::testing::Test {
   ExecutionState state;
   static constexpr ::arangodb::aql::BlockPassthrough passBlocksThrough =
       ::arangodb::aql::BlockPassthrough::Disable;
-  SingleRowFetcherTestDoNotPassBlocks()
-      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {}
+  SingleRowFetcherTestDoNotPassBlocks() : itemBlockManager(monitor) {}
 };
 
 TEST_F(SingleRowFetcherTestPassBlocks,
@@ -215,7 +213,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_of_relevant_shadow_rows) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
+    auto block = itemBlockManager.requestBlock(4, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -292,7 +290,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 7, 1)};
+    auto block = itemBlockManager.requestBlock(7, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -397,7 +395,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_consecutive_shadowrows) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
+    auto block = itemBlockManager.requestBlock(4, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(0, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -1011,7 +1009,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_of_relevant_shadow_rows) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
+    auto block = itemBlockManager.requestBlock(4, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -1087,7 +1085,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_of_irrelevant_shadow_rows) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 7, 1)};
+    auto block = itemBlockManager.requestBlock(7, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -1192,7 +1190,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_consecutive_shadowrows) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
+    auto block = itemBlockManager.requestBlock(4, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(0, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -1285,7 +1283,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
 
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 7, 1)};
+    auto block = itemBlockManager.requestBlock(7, 1);
     block->emplaceValue(0, 0, "a");
     block->emplaceValue(1, 0, "b");
     block->emplaceValue(2, 0, "c");
@@ -1321,7 +1319,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
 
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 9, 1)};
+    auto block = itemBlockManager.requestBlock(9, 1);
     block->emplaceValue(0, 0, "a");
     block->emplaceValue(1, 0, "b");
     block->emplaceValue(2, 0, "c");

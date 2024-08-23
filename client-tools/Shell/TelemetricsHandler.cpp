@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,10 +28,12 @@
 #include "Basics/EncodingUtils.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
+#include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -56,7 +58,9 @@ TelemetricsHandler::TelemetricsHandler(ArangoshServer& server,
                                        bool sendToEndpoint)
     : _server(server), _sendToEndpoint(sendToEndpoint) {}
 
-TelemetricsHandler::~TelemetricsHandler() {
+TelemetricsHandler::~TelemetricsHandler() { joinThread(); }
+
+void TelemetricsHandler::joinThread() {
   if (_telemetricsThread.joinable()) {
     _telemetricsThread.join();
   }
@@ -94,37 +98,74 @@ Result TelemetricsHandler::checkHttpResponse(
 void TelemetricsHandler::fetchTelemetricsFromServer() {
   std::string const url = "/_admin/telemetrics";
 
+  std::unordered_map<std::string, std::string> headers = {
+      {StaticStrings::UserAgent, std::string("arangosh/") + ARANGODB_VERSION},
+      {StaticStrings::AcceptEncoding, StaticStrings::EncodingGzip}};
+
   uint32_t timeoutInSecs = 1;
   while (!_server.isStopping()) {
-    ClientManager clientManager(
-        _server.getFeature<HttpEndpointProvider, ClientFeature>(),
-        Logger::FIXME);
+    try {
+      ClientManager clientManager(
+          _server.getFeature<HttpEndpointProvider, ClientFeature>(),
+          Logger::FIXME);
 
-    std::unique_lock lk(_mtx);
-    _telemetricsFetchedInfo.clear();
-    _httpClient = clientManager.getConnectedClient(true, false, false, 0);
+      std::unique_lock lk(_mtx);
+      _telemetricsFetchedInfo.clear();
+      _httpClient = clientManager.getConnectedClient(true, false, false, 0);
 
-    if (_httpClient != nullptr && _httpClient->isConnected()) {
-      auto& clientParams = _httpClient->params();
-      clientParams.setRequestTimeout(30);
-      lk.unlock();
-      // perform request outside of lock
-      std::unique_ptr<httpclient::SimpleHttpResult> response(
-          _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
-      lk.lock();
+      if (_httpClient != nullptr && _httpClient->isConnected()) {
+        auto [result, role] = clientManager.getArangoIsCluster(*_httpClient);
+        if (result.fail()) {
+          LOG_TOPIC("a3146", WARN, arangodb::Logger::FIXME)
+              << "Error: could not detect ArangoDB instance type: "
+              << result.errorMessage();
+        } else if (role != "COORDINATOR" && role != "SINGLE") {
+          _sendToEndpoint = false;
+        }
 
-      _telemetricsFetchResponse = checkHttpResponse(response);
-      if (_telemetricsFetchResponse.ok() ||
-          _telemetricsFetchResponse.is(TRI_ERROR_HTTP_FORBIDDEN)) {
-        _telemetricsFetchedInfo.add(response->getBodyVelocyPack()->slice());
-        _httpClient.reset();
-        break;
+        auto& clientParams = _httpClient->params();
+        clientParams.setRequestTimeout(30);
+        lk.unlock();
+        // perform request outside of lock
+        std::unique_ptr<httpclient::SimpleHttpResult> response(
+            _httpClient->request(rest::RequestType::GET, url, nullptr, 0,
+                                 headers));
+        lk.lock();
+
+        _telemetricsFetchResponse = checkHttpResponse(response);
+        if (_telemetricsFetchResponse.ok() ||
+            _telemetricsFetchResponse.is(TRI_ERROR_HTTP_FORBIDDEN) ||
+            _telemetricsFetchResponse.is(TRI_ERROR_HTTP_ENHANCE_YOUR_CALM)) {
+          _telemetricsFetchedInfo.add(response->getBodyVelocyPack()->slice());
+          auto deploymentSlice =
+              _telemetricsFetchedInfo.slice().get("deployment");
+          if (!deploymentSlice.isNone()) {
+            auto deploymentType = deploymentSlice.get("type").stringView();
+            if (deploymentType == "active_failover") {
+              // afo left here so that telemetrics can still handle it when
+              // connected to servers running previous versions of ArangoDB
+              if (auto s = deploymentSlice.get("active_failover_leader");
+                  s.isFalse()) {
+                _sendToEndpoint = false;
+              }
+            }
+          } else {
+            _sendToEndpoint = true;
+          }
+          _httpClient.reset();
+          break;
+        }
       }
+      _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
+                             [this] { return _server.isStopping(); });
+      timeoutInSecs *= 2;
+      timeoutInSecs = std::min<uint32_t>(100, timeoutInSecs);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("e1b5b", WARN, arangodb::Logger::FIXME)
+          << "caught exception while fetching telemetrics from server: "
+          << ex.what();
+      throw;
     }
-    _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
-                           [this] { return _server.isStopping(); });
-    timeoutInSecs *= 2;
-    timeoutInSecs = std::min<uint32_t>(100, timeoutInSecs);
   }
 }
 
@@ -170,70 +211,77 @@ velocypack::Builder TelemetricsHandler::sendTelemetricsToEndpoint(
   uint32_t numRedirects = 0;
 
   while (!_server.isStopping()) {
-    // potential side-effect: buildHttpClient can modify url
-    auto [relativeUrl, httpClient] = buildHttpClient(url);
+    try {
+      // potential side-effect: buildHttpClient can modify url
+      auto [relativeUrl, httpClient] = buildHttpClient(url);
 
-    // from here on we sporadically use the mutex to protect access to
-    // _httpClient and _runCondition
-    std::unique_lock lk(_mtx);
+      // from here on we sporadically use the mutex to protect access to
+      // _httpClient and _runCondition
+      std::unique_lock lk(_mtx);
 
-    if (httpClient != nullptr) {
-      _httpClient = std::move(httpClient);
+      if (httpClient != nullptr) {
+        _httpClient = std::move(httpClient);
 
-      // give up mutex temporarily, while we are making the request, as we want
-      // the request to be cancelable from the outside
-      lk.unlock();
+        // give up mutex temporarily, while we are making the request, as we
+        // want the request to be cancelable from the outside
+        lk.unlock();
 
-      std::unique_ptr<httpclient::SimpleHttpResult> response;
-      response.reset(_httpClient->request(rest::RequestType::POST, relativeUrl,
-                                          compressedBody.data(),
-                                          compressedBody.size(), headers));
+        std::unique_ptr<httpclient::SimpleHttpResult> response;
+        response.reset(_httpClient->request(rest::RequestType::POST,
+                                            relativeUrl, compressedBody.data(),
+                                            compressedBody.size(), headers));
 
-      Result result = checkHttpResponse(response);
+        Result result = checkHttpResponse(response);
 
-      if (result.ok()) {
-        auto returnCode = response->getHttpReturnCode();
-        if (returnCode == 200) {
-          // we're not interested in the object if we're not testing redirection
-          if (reqUrl != ::kTelemetricsGatheringUrl) {
-            responseBuilder.add(response->getBodyVelocyPack()->slice());
+        if (result.ok()) {
+          auto returnCode = response->getHttpReturnCode();
+          if (returnCode == 200) {
+            // we're not interested in the object if we're not testing
+            // redirection
+            if (reqUrl != ::kTelemetricsGatheringUrl) {
+              responseBuilder.add(response->getBodyVelocyPack()->slice());
+            }
+            break;
+          } else if (returnCode == 301 || returnCode == 302 ||
+                     returnCode == 307) {
+            bool foundUrl = false;
+            if (numRedirects < maxRedirects) {
+              url = response->getHeaderField(StaticStrings::Location, foundUrl);
+            }
+            if (foundUrl) {
+              numRedirects++;
+              continue;
+            }
+
+            // if hasn't found the new url from the redirection, there's no use
+            // in trying to redirect again, so will retry to send the request to
+            // the original url first
+            url = reqUrl;
           }
+        } else if (!result.is(TRI_ERROR_INTERNAL)) {
+          // do not retry if 401, 403, 404, 420, etc.
+          // note: if is an internal error, will retry to send the request to
+          // the server
           break;
-        } else if (returnCode == 301 || returnCode == 302 ||
-                   returnCode == 307) {
-          bool foundUrl = false;
-          if (numRedirects < maxRedirects) {
-            url = response->getHeaderField(StaticStrings::Location, foundUrl);
-          }
-          if (foundUrl) {
-            numRedirects++;
-            continue;
-          }
-
-          // if hasn't found the new url from the redirection, there's no use
-          // in trying to redirect again, so will retry to send the request to
-          // the original url first
-          url = reqUrl;
         }
-      } else if (!result.is(TRI_ERROR_INTERNAL)) {
-        // do not retry if 401, 403, 404, etc.
-        // note: if is an internal error, will retry to send the request to the
-        // server
-        break;
+
+        numRedirects = 0;
+        timeoutInSecs *= 3;
+        timeoutInSecs = std::min<uint32_t>(600, timeoutInSecs);
+
+        TRI_ASSERT(!lk.owns_lock());
+        lk.lock();
       }
 
-      numRedirects = 0;
-      timeoutInSecs *= 3;
-      timeoutInSecs = std::min<uint32_t>(600, timeoutInSecs);
-
-      TRI_ASSERT(!lk.owns_lock());
-      lk.lock();
+      TRI_ASSERT(lk.owns_lock());
+      _httpClient.reset();
+      _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
+                             [this] { return _server.isStopping(); });
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("09acf", WARN, arangodb::Logger::FIXME)
+          << "caught exception while sending telemetrics: " << ex.what();
+      throw;
     }
-
-    TRI_ASSERT(lk.owns_lock());
-    _httpClient.reset();
-    _runCondition.wait_for(lk, std::chrono::seconds(timeoutInSecs),
-                           [this] { return _server.isStopping(); });
   }
 
   // note: may be empty
@@ -273,6 +321,7 @@ TelemetricsHandler::buildHttpClient(std::string& url) const {
             cf.getCommFeaturePhase(), newEndpoint, 30, 60, 3, sslProtocol));
 
     if (connection != nullptr) {
+      connection->setSocketNonBlocking(true);
       // note: the returned SimpleHttpClient instance takes over ownership
       // for the connection object
       return std::make_pair(
@@ -311,19 +360,14 @@ void TelemetricsHandler::arrangeTelemetrics() {
     std::unique_lock lk(_mtx);
     if (_telemetricsFetchResponse.ok() && !_telemetricsFetchedInfo.isEmpty()) {
       lk.unlock();
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      bool sendToEndpoint = _sendToEndpoint;
-#else
-      constexpr bool sendToEndpoint = true;
-#endif
-      if (sendToEndpoint) {
+      if (_sendToEndpoint) {
         sendTelemetricsToEndpoint(::kTelemetricsGatheringUrl);
       }
     }
-  } catch (std::exception const& err) {
-    LOG_TOPIC("e1b5b", WARN, arangodb::Logger::FIXME)
-        << "Exception on handling telemetrics: " << err.what();
+  } catch (...) {
+    // no need to do anything special here. exceptions are already
+    // handled in fetchTelemetricsFromServer and in sendTelemetricsToEndpoint.
+    // here we can simply silence them
   }
 }
 

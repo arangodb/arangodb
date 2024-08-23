@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,8 +45,10 @@ class ExecContext : public RequestContext {
 
  protected:
   enum class Type { Default, Internal };
+  class ConstructorToken {};
 
-  ExecContext(ExecContext::Type type, std::string const& user,
+ public:
+  ExecContext(ConstructorToken, ExecContext::Type type, std::string const& user,
               std::string const& database, auth::Level systemLevel,
               auth::Level dbLevel, bool isAdminUser);
   ExecContext(ExecContext const&) = delete;
@@ -60,13 +62,17 @@ class ExecContext : public RequestContext {
 
   /// Should always contain a reference to current user context
   static ExecContext const& current();
+  /// Note that this intentionally returns CURRENT, even if it is a nullptr:
+  /// This makes it suitable to set CURRENT in another thread.
+  static std::shared_ptr<ExecContext const> currentAsShared();
 
   /// @brief an internal superuser context, is
   ///        a singleton instance, deleting is an error
   static ExecContext const& superuser();
+  static std::shared_ptr<ExecContext const> superuserAsShared();
 
-  /// @brief create user context, caller is responsible for deleting
-  static std::unique_ptr<ExecContext> create(std::string const& user,
+  /// @brief create user context
+  static std::shared_ptr<ExecContext> create(std::string const& user,
                                              std::string const& db);
 
   /// @brief an internal user is none / ro / rw for all collections / dbs
@@ -93,13 +99,16 @@ class ExecContext : public RequestContext {
   /// @brief current user, may be empty for internal users
   std::string const& user() const { return _user; }
 
+  /// @brief current database
+  std::string const& database() const { return _database; }
+
   // std::string const& database() const { return _database; }
   /// @brief authentication level on _system. Always RW for superuser
   auth::Level systemAuthLevel() const noexcept { return _systemDbAuthLevel; }
 
   /// @brief Authentication level on database selected in the current
   ///        request scope. Should almost always contain something,
-  ///        if this thread originated in v8 or from HTTP / VST
+  ///        if this thread originated in v8 or from HTTP
   auth::Level databaseAuthLevel() const noexcept { return _databaseAuthLevel; }
 
   /// @brief returns true if auth level is above or equal `requested`
@@ -112,7 +121,7 @@ class ExecContext : public RequestContext {
 
   /// @brief returns auth level for user
   auth::Level collectionAuthLevel(std::string const& dbname,
-                                  std::string const& collection) const;
+                                  std::string_view collection) const;
 
   /// @brief returns true if auth levels is above or equal `requested`
   bool canUseCollection(std::string const& collection,
@@ -146,38 +155,35 @@ class ExecContext : public RequestContext {
   auth::Level _databaseAuthLevel;
 
  private:
-  static ExecContext const Superuser;
-  static thread_local ExecContext const* CURRENT;
+  static std::shared_ptr<ExecContext const> const Superuser;
+  static thread_local std::shared_ptr<ExecContext const> CURRENT;
 };
 
 /// @brief scope guard for the exec context
 struct ExecContextScope {
-  explicit ExecContextScope(ExecContext const* exe)
-      : _old(ExecContext::CURRENT) {
-    ExecContext::CURRENT = exe;
-  }
+  explicit ExecContextScope(std::shared_ptr<ExecContext const> exe);
 
-  ~ExecContextScope() { ExecContext::CURRENT = _old; }
+  ~ExecContextScope();
 
  private:
-  ExecContext const* _old;
+  std::shared_ptr<ExecContext const> _old;
 };
 
 struct ExecContextSuperuserScope {
   explicit ExecContextSuperuserScope() : _old(ExecContext::CURRENT) {
-    ExecContext::CURRENT = &ExecContext::Superuser;
+    ExecContext::CURRENT = ExecContext::Superuser;
   }
 
   explicit ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
     if (cond) {
-      ExecContext::CURRENT = &ExecContext::Superuser;
+      ExecContext::CURRENT = ExecContext::Superuser;
     }
   }
 
   ~ExecContextSuperuserScope() { ExecContext::CURRENT = _old; }
 
  private:
-  ExecContext const* _old;
+  std::shared_ptr<ExecContext const> _old;
 };
 
 }  // namespace arangodb

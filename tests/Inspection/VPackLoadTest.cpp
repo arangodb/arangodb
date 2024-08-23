@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -205,6 +205,42 @@ TEST_F(VPackLoadInspectorTest, load_map) {
       m.map);
   EXPECT_EQ((std::unordered_map<std::string, int>{{"4", 4}, {"5", 5}}),
             m.unordered);
+}
+
+TEST_F(VPackLoadInspectorTest, load_transformed_map) {
+  builder.openObject();
+  builder.add(VPackValue("map"));
+  builder.openArray();
+  builder.openObject();
+  builder.add("key", 1);
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("i", VPackValue(1));
+  builder.close();
+  builder.close();
+  builder.openObject();
+  builder.add("key", 2);
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("i", VPackValue(2));
+  builder.close();
+  builder.close();
+  builder.openObject();
+  builder.add("key", 3);
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("i", VPackValue(3));
+  builder.close();
+  builder.close();
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  TransformedMap m;
+  auto result = inspector.apply(m);
+  ASSERT_TRUE(result.ok());
+
+  EXPECT_EQ((std::map<int, Container>{{1, {1}}, {2, {2}}, {3, {3}}}), m.map);
 }
 
 TEST_F(VPackLoadInspectorTest, load_set) {
@@ -405,6 +441,92 @@ TEST_F(VPackLoadInspectorTest, load_optional) {
   EXPECT_EQ(expected.y, o.y);
   ASSERT_EQ(expected.vec, o.vec);
   EXPECT_EQ(expected.map, o.map);
+}
+
+TEST_F(VPackLoadInspectorTest, load_non_default_constructible_type_vec) {
+  builder.openArray();
+  builder.add(VPackValue(42));
+  builder.close();
+
+  VPackLoadInspector inspector{builder};
+
+  auto vec = std::vector<NonDefaultConstructibleIntLike>();
+  auto result = inspector.apply(vec);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(vec, decltype(vec){NonDefaultConstructibleIntLike{42}});
+}
+
+TEST_F(VPackLoadInspectorTest, load_non_default_constructible_type_map) {
+  builder.openObject();
+  builder.add("foo", VPackValue(42));
+  builder.close();
+
+  VPackLoadInspector inspector{builder};
+
+  auto map = std::map<std::string, NonDefaultConstructibleIntLike>();
+  auto result = inspector.apply(map);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(map, (decltype(map){{"foo", NonDefaultConstructibleIntLike{42}}}));
+}
+
+TEST_F(VPackLoadInspectorTest, load_non_default_constructible_type_optional) {
+  builder.add(VPackValue(42));
+
+  VPackLoadInspector inspector{builder};
+
+  auto x = std::optional<NonDefaultConstructibleIntLike>();
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x, (decltype(x){NonDefaultConstructibleIntLike{42}}));
+}
+
+TEST_F(VPackLoadInspectorTest, load_non_default_constructible_type_unique_ptr) {
+  builder.add(VPackValue(42));
+
+  VPackLoadInspector inspector{builder};
+
+  auto x = std::unique_ptr<NonDefaultConstructibleIntLike>();
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(*x, NonDefaultConstructibleIntLike{42});
+}
+
+TEST_F(VPackLoadInspectorTest, load_non_default_constructible_type_shared_ptr) {
+  builder.add(VPackValue(42));
+
+  VPackLoadInspector inspector{builder};
+
+  auto x = std::shared_ptr<NonDefaultConstructibleIntLike>();
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(*x, NonDefaultConstructibleIntLike{42});
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_non_default_constructible_type_inline_variant) {
+  builder.add(VPackValue(42));
+
+  VPackLoadInspector inspector{builder};
+
+  auto x = InlineVariantWithNonDefaultConstructible{};
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x, (decltype(x){NonDefaultConstructibleIntLike{42}}));
+}
+
+TEST_F(VPackLoadInspectorTest,
+       load_non_default_constructible_type_qualified_variant) {
+  builder.openObject();
+  builder.add("t", "nondc_type");
+  builder.add("v", VPackValue(42));
+  builder.close();
+
+  VPackLoadInspector inspector{builder};
+
+  auto x = QualifiedVariantWithNonDefaultConstructible{};
+  auto result = inspector.apply(x);
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(x, (decltype(x){NonDefaultConstructibleIntLike{42}}));
 }
 
 TEST_F(VPackLoadInspectorTest, load_optional_pointer) {
@@ -1455,6 +1577,21 @@ TEST_F(VPackLoadInspectorTest, load_string_enum) {
   ASSERT_EQ(2u, enums.size());
   EXPECT_EQ(MyStringEnum::kValue1, enums[0]);
   EXPECT_EQ(MyStringEnum::kValue2, enums[1]);
+}
+
+TEST_F(VPackLoadInspectorTest, load_transformed_string_enum) {
+  builder.openArray();
+  builder.add(VPackValue("Value1"));
+  builder.add(VPackValue("value2"));
+  builder.close();
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  std::vector<MyTransformedStringEnum> enums;
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(2u, enums.size());
+  EXPECT_EQ(MyTransformedStringEnum::kValue1, enums[0]);
+  EXPECT_EQ(MyTransformedStringEnum::kValue2, enums[1]);
 }
 
 TEST_F(VPackLoadInspectorTest, load_int_enum) {

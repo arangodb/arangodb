@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ScatterExecutor.h"
+#include "Aql/Executor/ScatterExecutor.h"
 
 #include <velocypack/Builder.h>
 
@@ -55,6 +55,9 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
     ALWAYS  // Return WAITING once for every execute Call.
   };
 
+  using WakeupCallback = std::function<void()>;
+  using ExecuteCallback = std::function<void()>;
+
   /**
    * @brief Create a WAITING ExecutionBlockMock
    *
@@ -68,8 +71,8 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
       arangodb::aql::ExecutionEngine* engine,
       arangodb::aql::ExecutionNode const* node,
       std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data,
-      WaitingBehaviour variant = WaitingBehaviour::ALWAYS,
-      size_t subqueryDepth = 0);
+      WaitingBehaviour variant, size_t subqueryDepth = 0,
+      WakeupCallback wakeUpCallback = {}, ExecuteCallback executeCallback = {});
 
   /**
    * @brief Initialize the cursor. Return values will be alternating.
@@ -93,6 +96,9 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
              arangodb::aql::SharedAqlItemBlockPtr>
   executeWithoutTrace(arangodb::aql::AqlCallStack stack);
 
+  void wakeupCallback();
+  void executeCallback();
+
  private:
   bool _hasWaited;
   WaitingBehaviour _variant;
@@ -100,6 +106,8 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   bool _shouldLieOnLastRow{false};
   arangodb::aql::RegisterInfos _infos;
   typename arangodb::aql::ScatterExecutor::ClientBlockData _blockData;
+  std::function<void()> _wakeUpCallback;
+  std::function<void()> _executeCallback;
 };
 }  // namespace aql
 

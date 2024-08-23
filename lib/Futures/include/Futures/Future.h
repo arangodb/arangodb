@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -161,7 +161,7 @@ void waitImpl(Future<T>& f) {
 
 /// Simple Future library based on Facebooks Folly
 template<typename T>
-class Future {
+class [[nodiscard]] Future {
   static_assert(!std::is_same<void, T>::value,
                 "use futures::Unit instead of void");
 
@@ -239,24 +239,24 @@ class Future {
 
   // template <bool x = std::is_copy_constructible<T>::value,
   //          std::enable_if_t<x,int> = 0>
-  T& get() & {
+  T& waitAndGet() & {
     wait();
     return result().get();
   }
 
   /// waits and moves the result out
-  T get() && {
+  T waitAndGet() && {
     wait();
     return Future<T>(std::move(*this)).result().get();
   }
 
   /// Blocks until the future is fulfilled. Returns the Try of the result
-  Try<T>& getTry() & {
+  Try<T>& waitAndGetTry() & {
     wait();
     return getStateTryChecked();
   }
 
-  Try<T>&& getTry() && {
+  Try<T>&& waitAndGetTry() && {
     wait();
     return std::move(getStateTryChecked());
   }
@@ -343,7 +343,7 @@ class Future {
       } else {
         try {
           auto f = std::invoke(std::forward<DF>(fn), std::move(t).get());
-          std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
+          std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
             pr.setTry(std::move(t));
           });
         } catch (...) {
@@ -394,7 +394,7 @@ class Future {
                             pr = std::move(promise)](Try<T>&& t) mutable {
       try {
         auto f = std::invoke(std::forward<F>(fn), std::move(t));
-        std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
+        std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
           pr.setTry(std::move(t));
         });
       } catch (...) {
@@ -467,7 +467,7 @@ class Future {
         } catch (ET& e) {
           try {
             auto f = std::invoke(std::forward<DF>(fn), e);
-            std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
+            std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
               pr.setTry(std::move(t));
             });
           } catch (...) {
@@ -531,3 +531,6 @@ class Future {
 
 }  // namespace futures
 }  // namespace arangodb
+
+// make this available for convenience
+#include "Futures/coro-helper.h"

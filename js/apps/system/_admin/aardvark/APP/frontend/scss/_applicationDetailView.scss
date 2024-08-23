@@ -1,7 +1,9 @@
+@use "sass:math";
+
 .application-detail-view {
 
   h1, h2, h3, h4 {
-    font-weight: 100;
+    font-weight: 400;
   }
 
   .headerBar {
@@ -18,7 +20,7 @@
 
   .foxx-left {
     font-size: 14px;
-    font-weight: 100;
+    font-weight: 400;
 
     > p {
       margin: 15px;
@@ -105,7 +107,7 @@
     }
 
     .foxx-label-container {
-      font-weight: 100;
+      font-weight: 400;
       margin-bottom: 20px;
       margin-left: 10px;
       margin-top: -10px;
@@ -216,7 +218,7 @@
         input.upgrade,
         input.switch-docu,
         input.switch-mode {
-          margin-top: (173.5px - 5 * 30px) / 3;
+          margin-top: math.div(173.5px - 5 * 30px, 3);
           padding-left: 10px;
           padding-right: 10px;
         }

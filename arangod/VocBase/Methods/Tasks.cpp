@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,8 +48,8 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -74,7 +74,7 @@ bool authorized(
 
 namespace arangodb {
 
-Mutex Task::_tasksLock;
+std::mutex Task::_tasksLock;
 std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>>
     Task::_tasks;
 
@@ -106,7 +106,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id,
   auto task =
       std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
 
-  MUTEX_LOCKER(guard, _tasksLock);
+  std::lock_guard guard{_tasksLock};
 
   if (!_tasks.try_emplace(id, user, task).second) {
     ec = TRI_ERROR_TASK_DUPLICATE_ID;
@@ -124,7 +124,7 @@ ErrorCode Task::unregisterTask(std::string const& id, bool cancel) {
     return TRI_ERROR_TASK_INVALID_ID;
   }
 
-  MUTEX_LOCKER(guard, _tasksLock);
+  std::lock_guard guard{_tasksLock};
 
   auto itr = _tasks.find(id);
 
@@ -142,7 +142,7 @@ ErrorCode Task::unregisterTask(std::string const& id, bool cancel) {
 }
 
 std::shared_ptr<VPackBuilder> Task::registeredTask(std::string const& id) {
-  MUTEX_LOCKER(guard, _tasksLock);
+  std::lock_guard guard{_tasksLock};
 
   auto itr = _tasks.find(id);
 
@@ -159,7 +159,7 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
   try {
     VPackArrayBuilder b1(builder.get());
 
-    MUTEX_LOCKER(guard, _tasksLock);
+    std::lock_guard guard{_tasksLock};
 
     for (auto& it : _tasks) {
       if (::authorized(it.second)) {
@@ -176,7 +176,7 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
 
 void Task::shutdownTasks() {
   {
-    MUTEX_LOCKER(guard, _tasksLock);
+    std::lock_guard guard{_tasksLock};
     for (auto& it : _tasks) {
       it.second.second->cancel();
     }
@@ -187,7 +187,7 @@ void Task::shutdownTasks() {
   while (true) {
     size_t size;
     {
-      MUTEX_LOCKER(guard, _tasksLock);
+      std::lock_guard guard{_tasksLock};
       size = _tasks.size();
     }
 
@@ -201,7 +201,7 @@ void Task::shutdownTasks() {
     } else if (iterations >= 25) {
       LOG_TOPIC("54653", INFO, Logger::FIXME)
           << "giving up waiting for unfinished tasks";
-      MUTEX_LOCKER(guard, _tasksLock);
+      std::lock_guard guard{_tasksLock};
       _tasks.clear();
       break;
     }
@@ -211,7 +211,7 @@ void Task::shutdownTasks() {
 }
 
 void Task::removeTasksForDatabase(std::string const& name) {
-  MUTEX_LOCKER(guard, _tasksLock);
+  std::lock_guard guard{_tasksLock};
 
   for (auto it = _tasks.begin(); it != _tasks.end(); /* no hoisting */) {
     if (!(*it).second.second->databaseMatches(name)) {
@@ -235,11 +235,11 @@ bool Task::tryCompile(ArangodServer& server, v8::Isolate* isolate,
   TRI_ASSERT(isolate != nullptr);
 
   v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
+  v8::Handle<v8::Context> context = isolate->GetCurrentContext();
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-  auto current = isolate->GetCurrentContext()->Global();
+  v8::Handle<v8::Object> global = context->Global();
   auto ctor = v8::Local<v8::Function>::Cast(
-      current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
+      global->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
           .FromMaybe(v8::Local<v8::Value>()));
 
   // Invoke Function constructor to create function with the given body and no
@@ -247,11 +247,11 @@ bool Task::tryCompile(ArangodServer& server, v8::Isolate* isolate,
   v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                    TRI_V8_STD_STRING(isolate, command)};
   v8::Local<v8::Object> function =
-      ctor->NewInstance(TRI_IGETC, 2, args).FromMaybe(v8::Local<v8::Object>());
+      ctor->NewInstance(context, 2, args).FromMaybe(v8::Local<v8::Object>());
 
   v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
-  return (!action.IsEmpty());
+  return !action.IsEmpty();
 }
 
 bool Task::databaseMatches(std::string const& name) const {
@@ -264,7 +264,7 @@ Task::Task(std::string const& id, std::string const& name,
     : _id(id),
       _name(name),
       _created(TRI_microtime()),
-      _dbGuard(new DatabaseGuard(vocbase)),
+      _dbGuard(std::make_unique<DatabaseGuard>(vocbase)),
       _command(command),
       _allowUseDatabase(allowUseDatabase),
       _offset(0),
@@ -293,7 +293,7 @@ void Task::setUser(std::string const& user) { _user = user; }
 std::function<void(bool cancelled)> Task::callbackFunction() {
   return [self = shared_from_this(), this](bool cancelled) {
     if (cancelled) {
-      MUTEX_LOCKER(guard, _tasksLock);
+      std::lock_guard guard{_tasksLock};
 
       auto itr = _tasks.find(_id);
 
@@ -309,12 +309,12 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
     // get the permissions to be used by this task
     bool allowContinue = true;
-    std::shared_ptr<ExecContext> execContext;
+    std::shared_ptr<ExecContext const> execContext;
 
     if (!_user.empty()) {  // not superuser
       auto& dbname = _dbGuard->database().name();
 
-      execContext.reset(ExecContext::create(_user, dbname).release());
+      execContext = ExecContext::create(_user, dbname);
       allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
     }
 
@@ -327,9 +327,9 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     // now do the work:
     SchedulerFeature::SCHEDULER->queue(
         RequestLane::INTERNAL_LOW, [self, this, execContext] {
-          ExecContextScope scope(_user.empty() ? &ExecContext::superuser()
-                                               : execContext.get());
-          work(execContext.get());
+          ExecContextScope scope(
+              _user.empty() ? ExecContext::superuserAsShared() : execContext);
+          work();
 
           if (_periodic.load() && !_dbGuard->database().server().isStopping()) {
             // requeue the task
@@ -355,7 +355,7 @@ void Task::start() {
   TRI_ASSERT(exec.isAdminUser() || (!_user.empty() && exec.user() == _user));
 
   {
-    MUTEX_LOCKER(lock, _taskHandleMutex);
+    std::lock_guard lock{_taskHandleMutex};
     _taskHandle.reset();
   }
 
@@ -382,7 +382,7 @@ bool Task::queue(std::chrono::microseconds offset) {
   if (server.isStopping()) {
     return false;
   }
-  MUTEX_LOCKER(lock, _taskHandleMutex);
+  std::lock_guard lock{_taskHandleMutex};
   _taskHandle = SchedulerFeature::SCHEDULER->queueDelayed(
       "v8-task", RequestLane::INTERNAL_LOW, offset, callbackFunction());
   return true;
@@ -391,7 +391,7 @@ bool Task::queue(std::chrono::microseconds offset) {
 void Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic.store(false);
-  MUTEX_LOCKER(lock, _taskHandleMutex);
+  std::lock_guard lock{_taskHandleMutex};
   _taskHandle.reset();
 }
 
@@ -426,7 +426,7 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
   builder.add("database", VPackValue(_dbGuard->database().name()));
 }
 
-void Task::work(ExecContext const* exec) {
+void Task::work() {
   JavaScriptSecurityContext securityContext =
       _allowUseDatabase
           ? JavaScriptSecurityContext::
@@ -435,23 +435,21 @@ void Task::work(ExecContext const* exec) {
           : JavaScriptSecurityContext::createTaskContext(
                 false /*_allowUseDatabase*/);  // task context that has no
                                                // access to dbs
-  V8ContextGuard guard(&(_dbGuard->database()), securityContext);
+  V8ExecutorGuard guard(&_dbGuard->database(), securityContext);
 
-  // now execute the function within this context
-  {
-    auto isolate = guard.isolate();
+  guard.runInContext([this](v8::Isolate* isolate) -> Result {
     v8::HandleScope scope(isolate);
-    auto context = TRI_IGETC;
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-    auto current = isolate->GetCurrentContext()->Global();
+    v8::Handle<v8::Object> global = isolate->GetCurrentContext()->Global();
     auto ctor = v8::Local<v8::Function>::Cast(
-        current->Get(context, TRI_V8_ASCII_STRING(isolate, "Function"))
+        global
+            ->Get(isolate->GetCurrentContext(),
+                  TRI_V8_ASCII_STRING(isolate, "Function"))
             .FromMaybe(v8::Local<v8::Value>()));
 
     // Invoke Function constructor to create function with the given body and
-    // no
-    // arguments
+    // no arguments
     v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                      TRI_V8_STD_STRING(isolate, _command)};
     v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 2, args)
@@ -472,14 +470,14 @@ void Task::work(ExecContext const* exec) {
       // call the function within a try/catch
       try {
         v8::TryCatch tryCatch(isolate);
-        action->Call(TRI_IGETC, current, 1, &fArgs)
+        action->Call(isolate->GetCurrentContext(), global, 1, &fArgs)
             .FromMaybe(v8::Local<v8::Value>());
         if (tryCatch.HasCaught()) {
           if (tryCatch.CanContinue()) {
             TRI_LogV8Exception(isolate, &tryCatch);
           } else {
-            TRI_GET_GLOBALS();
-
+            TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+                isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
             v8g->_canceled = true;
             LOG_TOPIC("131e8", WARN, arangodb::Logger::FIXME)
                 << "caught non-catchable exception (aka termination) in job";
@@ -498,7 +496,8 @@ void Task::work(ExecContext const* exec) {
             << "caught unknown exception in V8 user task";
       }
     }
-  }
+    return {};
+  });
 }
 
 }  // namespace arangodb

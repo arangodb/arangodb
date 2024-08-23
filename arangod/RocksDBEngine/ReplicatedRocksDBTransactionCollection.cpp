@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "ReplicatedRocksDBTransactionCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RocksDBEngine/Methods/RocksDBReadOnlyMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSingleOperationReadOnlyMethods.h"
@@ -33,6 +34,7 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <algorithm>
@@ -49,8 +51,7 @@ ReplicatedRocksDBTransactionCollection::
 
 Result ReplicatedRocksDBTransactionCollection::beginTransaction() {
   auto* trx = static_cast<RocksDBTransactionState*>(_transaction);
-  auto& selector = trx->vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = trx->vocbase().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
 
   if (trx->isReadOnlyTransaction()) {
@@ -88,7 +89,7 @@ void ReplicatedRocksDBTransactionCollection::maybeDisableIndexing() {
   // single operation transaction or we are sure we are writing
   // unique keys
 
-  auto const indexes = collection()->getIndexes();
+  auto const indexes = collection()->getPhysical()->getAllIndexes();
 
   bool disableIndexing =
       !AccessMode::isWriteOrExclusive(accessType()) ||
@@ -119,10 +120,11 @@ Result ReplicatedRocksDBTransactionCollection::abortTransaction() {
 }
 
 void ReplicatedRocksDBTransactionCollection::beginQuery(
+    std::shared_ptr<ResourceMonitor> resourceMonitor,
     bool isModificationQuery) {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {
-    trxMethods->beginQuery(isModificationQuery);
+    trxMethods->beginQuery(std::move(resourceMonitor), isModificationQuery);
   }
 }
 
@@ -172,10 +174,7 @@ auto ReplicatedRocksDBTransactionCollection::leaderState() -> std::shared_ptr<
 
 rocksdb::SequenceNumber ReplicatedRocksDBTransactionCollection::prepare() {
   auto* trx = static_cast<RocksDBTransactionState*>(_transaction);
-  auto& engine = trx->vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = trx->vocbase().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
   rocksdb::SequenceNumber seq = prepareTransaction(_transaction->id());
@@ -211,13 +210,13 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
       // index creation is read-only, but might still use an exclusive lock
       !_transaction->hasHint(transaction::Hints::Hint::INDEX_CREATION) &&
       _leaderState == nullptr) {
-    // Note that doing this here is only correct as long as we're not supporting
-    // distributeShardsLike.
-    // Later, we must make sure to get the very same state for all collections
-    // (shards) belonging to the same collection group (shard sheaf) (i.e.
-    // belong to the same distributeShardsLike group) See
-    // https://arangodb.atlassian.net/browse/CINFRA-294.
-    _leaderState = _collection->getDocumentStateLeader();
+    try {
+      _leaderState = _collection->getDocumentStateLeader();
+    } catch (basics::Exception const& ex) {
+      return {ex.code(), std::move(ex.message())};
+    } catch (...) {
+      throw;
+    }
     ADB_PROD_ASSERT(_leaderState != nullptr);
   }
 
@@ -227,24 +226,27 @@ auto ReplicatedRocksDBTransactionCollection::ensureCollection() -> Result {
 futures::Future<Result>
 ReplicatedRocksDBTransactionCollection::performIntermediateCommitIfRequired() {
   if (_rocksMethods->isIntermediateCommitNeeded()) {
+    // TODO due to distributeShardsLike, it is possible that we'll replicate
+    // this multiple times in the same replicated log. This is not a serious
+    // problem for intermediate commits, but we should avoid it.
     auto leader = leaderState();
-    auto operation = replication2::replicated_state::document::OperationType::
-        kIntermediateCommit;
+    auto operation = replication2::replicated_state::document::
+        ReplicatedOperation::buildIntermediateCommitOperation(
+            _transaction->id().asFollowerTransactionId());
     auto options = replication2::replicated_state::document::ReplicationOptions{
         .waitForCommit = true};
-    try {
-      return leader
-          ->replicateOperation(velocypack::SharedSlice{}, operation,
-                               _transaction->id(), options)
-          .thenValue([state = _transaction->shared_from_this(),
-                      this](auto&& res) -> Result {
-            return _rocksMethods->triggerIntermediateCommit();
-          });
-    } catch (basics::Exception const& e) {
-      return Result{e.code(), e.what()};
-    } catch (std::exception const& e) {
-      return Result{TRI_ERROR_INTERNAL, e.what()};
-    }
+    return leader->replicateOperation(operation, options)
+        .thenValue([leader, state = _transaction->shared_from_this(),
+                    this](auto&& res) -> Result {
+          if (res.fail()) {
+            return res.result();
+          }
+          if (auto localCommitRes = _rocksMethods->triggerIntermediateCommit();
+              localCommitRes.fail()) {
+            return localCommitRes;
+          }
+          return Result{};
+        });
   }
   return Result{};
 }

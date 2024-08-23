@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/DBServerAgencySync.h"
@@ -39,6 +38,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 
 namespace arangodb {
@@ -134,18 +134,6 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   void runDBServer();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief heartbeat main loop, single server version
-  //////////////////////////////////////////////////////////////////////////////
-
-  void runSingleServer();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief heartbeat main loop for agents
-  //////////////////////////////////////////////////////////////////////////////
-
-  void runAgent();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
@@ -162,6 +150,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   //////////////////////////////////////////////////////////////////////////////
 
   bool sendServerState();
+  void sendServerStateAsync();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get some regular news from the agency, a closure which calls this
@@ -188,11 +177,12 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   // handle changes of user version (Sync/UserVersion)
   void handleUserVersionChange(arangodb::velocypack::Slice userVersion);
 
+#ifdef USE_V8
   // handle changes of foxx queue version (Sync/FoxxQueueVersion)
   void handleFoxxQueueVersionChange(
       arangodb::velocypack::Slice foxxQueueVersion);
+#endif
 
- private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice
   //////////////////////////////////////////////////////////////////////////////
@@ -215,7 +205,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// @brief status lock
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::Mutex> _statusLock;
+  std::shared_ptr<std::mutex> _statusLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyComm instance
@@ -251,7 +241,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// @brief current number of fails in a row
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t _numFails;
+  std::atomic<uint64_t> _numFails;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief last successfully dispatched version
@@ -334,6 +324,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// @brief Sync job
   DBServerAgencySync _agencySync;
 
+  ClusterFeature& _clusterFeature;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _heartbeat_send_time_ms;
   metrics::Counter& _heartbeat_failure_counter;
 };

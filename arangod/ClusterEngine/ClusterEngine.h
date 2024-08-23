@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/StaticStrings.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
@@ -70,7 +68,8 @@ class ClusterEngine final : public StorageEngine {
       transaction::ManagerFeature&) override;
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId tid,
-      transaction::Options const& options) override;
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -158,7 +157,7 @@ class ClusterEngine final : public StorageEngine {
     return {};
   }
 
-  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
+  void waitForEstimatorSync() override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
       arangodb::CreateDatabaseInfo&& info, bool isUpgrade) override;
@@ -195,20 +194,21 @@ class ClusterEngine final : public StorageEngine {
 
   auto dropReplicatedState(
       TRI_vocbase_t& vocbase,
-      std::unique_ptr<
-          arangodb::replication2::replicated_state::IStorageEngineMethods>& ptr)
+      std::unique_ptr<replication2::storage::IStorageEngineMethods>& ptr)
       -> Result override;
   auto createReplicatedState(
       TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-      const replication2::replicated_state::PersistedStateInfo& info)
-      -> ResultT<std::unique_ptr<arangodb::replication2::replicated_state::
-                                     IStorageEngineMethods>> override;
+      const replication2::storage::PersistedStateInfo& info)
+      -> ResultT<std::unique_ptr<
+          replication2::storage::IStorageEngineMethods>> override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
+#ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
+#endif
 
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;

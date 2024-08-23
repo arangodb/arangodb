@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,17 +23,14 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include "Aql/Projections.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Basics/StringHeap.h"
-#include "Aql/Projections.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
+#include "Containers/FlatHashSet.h"
 
 #include <velocypack/HashedStringRef.h>
-
-#include <map>
-#include <unordered_set>
-#include <unordered_map>
 
 namespace arangodb {
 
@@ -69,8 +66,7 @@ class RefactoredTraverserCache {
       arangodb::transaction::Methods* trx, aql::QueryContext* query,
       arangodb::ResourceMonitor& resourceMonitor,
       arangodb::aql::TraversalStats& stats,
-      std::unordered_map<std::string, std::vector<std::string>> const&
-          collectionToShardMap,
+      MonitoredCollectionToShardMap const& collectionToShardMap,
       arangodb::aql::Projections const& vertexProjections,
       arangodb::aql::Projections const& edgeProjections, bool produceVertices);
 
@@ -178,11 +174,11 @@ class RefactoredTraverserCache {
   /// @brief Set of all strings persisted in the stringHeap. So we can save some
   ///        memory by not storing them twice.
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
+  containers::FlatHashSet<arangodb::velocypack::HashedStringRef>
+      _persistedStrings;
 
  private:
-  std::unordered_map<std::string, std::vector<std::string>> const&
-      _collectionToShardMap;
+  MonitoredCollectionToShardMap const& _collectionToShardMap;
   arangodb::ResourceMonitor& _resourceMonitor;
 
   /// @brief whether or not to produce vertices

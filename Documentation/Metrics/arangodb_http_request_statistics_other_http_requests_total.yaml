@@ -13,7 +13,7 @@ exposedBy:
   - agent
   - single
 description: |
-  This counter reflects the total number of HTTP (or VST) **other**
+  This counter reflects the total number of HTTP **other**
   or **ILLEGAL** requests which have hit this particular instance of
   `arangod`. These are all requests, which are not one of the following:
   `DELETE`, `GET`, `HEAD`, `POST`, `PUT`, `OPTIONS`, `PATCH`.

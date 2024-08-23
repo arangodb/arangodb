@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/StringHeap.h"
 
 #include <velocypack/Builder.h>
@@ -81,15 +80,6 @@ class TraverserCache {
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
   virtual aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Append the vertex for the given id
-  ///        The document will be looked up in the StorageEngine
-  //////////////////////////////////////////////////////////////////////////////
-  virtual bool appendVertex(std::string_view idString,
-                            arangodb::velocypack::Builder& result);
-  virtual bool appendVertex(std::string_view idString,
-                            arangodb::aql::AqlValue& result);
 
   [[nodiscard]] std::uint64_t getAndResetInsertedDocuments() {
     return std::exchange(_insertedDocuments, 0);
@@ -172,6 +162,7 @@ class TraverserCache {
   /// @brief Stringheap to take care of _id strings, s.t. they stay valid
   ///        during the entire traversal.
   //////////////////////////////////////////////////////////////////////////////
+  // (already monitored as monitor is required during construction)
   arangodb::StringHeap _stringHeap;
 
   //////////////////////////////////////////////////////////////////////////////

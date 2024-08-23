@@ -1,29 +1,28 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertFalse, assertTrue, arango */
+/* global getOptions, assertEqual, assertFalse, assertTrue, arango, print */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for server startup options
-/// DISCLAIMER
-///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Julia Puget
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
@@ -62,12 +61,13 @@ function HttpAuthenticateSuite() {
 
     testUnauthorized: function() {
       protocols.forEach((protocol) => {
+        print(`connecting with ${protocol}`);
         connectWith(protocol, user, "");
         // need to change password, otherwise, the request will return 200
         users.update(user, "abc");
         let result = arango.GET_RAW("/_api/version");
-        assertEqual(401, result.code);
-        assertTrue(result.headers.hasOwnProperty('www-authenticate'));
+        assertEqual(401, result.code, JSON.stringify(result));
+        assertTrue(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
         // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
         arango.reconnectWithNewPassword("abc");
         users.update(user, "");
@@ -77,12 +77,13 @@ function HttpAuthenticateSuite() {
 
     testUnauthorizedOmit: function() {
       protocols.forEach(protocol => {
+        print(`connecting with ${protocol}`);
         connectWith(protocol, user, "");
         // need to change password, otherwise, the request will return 200
         users.update(user, "abc");
         let result = arango.GET_RAW("/_api/version", {"x-omit-www-authenticate": "abc"});
-        assertEqual(401, result.code);
-        assertFalse(result.headers.hasOwnProperty('www-authenticate'));
+        assertEqual(401, result.code, JSON.stringify(result));
+        assertFalse(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
         // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
         arango.reconnectWithNewPassword("abc");
         users.update(user, "");
@@ -98,10 +99,11 @@ function HttpAuthenticateSuite() {
         "exp": Math.floor(Date.now() / 1000) + 3600
       }, 'HS256');
       protocols.forEach(protocol => {
+        print(`connecting with ${protocol}`);
         connectWith(protocol, user, "");
         let result = arango.GET_RAW("/_api/version", {"bearer": jwtRoot});
-        assertEqual(200, result.code);
-        assertFalse(result.headers.hasOwnProperty('www-authenticate'));
+        assertEqual(200, result.code, JSON.stringify(result));
+        assertFalse(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
       });
     },
   };

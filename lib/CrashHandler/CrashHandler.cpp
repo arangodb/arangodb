@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,10 +33,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#ifdef _WIN32
-#include <DbgHelp.h>
-#endif
-
 #include <algorithm>
 #include <atomic>
 #include <exception>
@@ -47,7 +43,9 @@
 #include <boost/core/demangle.hpp>
 
 #include "CrashHandler.h"
+#include "BuildId/BuildId.h"
 #include "Basics/PhysicalMemory.h"
+#include "Basics/SizeLimitedString.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/files.h"
@@ -65,21 +63,12 @@
 #include <libunwind.h>
 #endif
 
-#ifdef __linux__
 #include <sys/auxv.h>
 #include <elf.h>
-#endif
 
 namespace {
 
-#ifdef _WIN32
-
-// forward-declare a pseudo struct so the following code compiles
-struct siginfo_t;
-
-void createMiniDump(EXCEPTION_POINTERS* pointers);
-
-#else
+using SmallString = arangodb::SizeLimitedString<4096>;
 
 // memory reserved for the signal handler stack
 std::unique_ptr<char[]> alternativeStackMemory;
@@ -87,7 +76,6 @@ std::unique_ptr<char[]> alternativeStackMemory;
 /// @brief an atomic that makes sure there are no races inside the signal
 /// handler callback
 std::atomic<bool> crashHandlerInvoked(false);
-#endif
 
 /// @brief an atomic that controls whether we will log backtraces
 /// (default: yes on Linux, false elsewhere) or not
@@ -97,26 +85,11 @@ std::atomic<bool> enableStacktraces(true);
 /// file generation etc.
 std::atomic<bool> killHard(false);
 
+/// @brief string with server state information. must be null-terminated
+std::atomic<char const*> stateString = nullptr;
+
 /// @brief kills the process with the given signal
 [[noreturn]] void killProcess(int signal) {
-#ifdef _WIN32
-  if (::killHard.load(std::memory_order_relaxed)) {
-    auto hSelf = GetCurrentProcess();
-    TerminateProcess(hSelf, -999);
-    // TerminateProcess is async, alright wait here for selfdestruct (we will
-    // never exit wait)
-    WaitForSingleObject(hSelf, INFINITE);
-  } else {
-    // exit will not trigger dump creation. So do this manually.
-    if (SIGABRT == signal) {
-      SetUnhandledExceptionFilter(NULL);
-      // produce intentional segfault to trigger WER (and attached debugger if
-      // any)
-      *static_cast<volatile int*>(nullptr) = 1;
-    }
-    exit(255 + signal);
-  }
-#else
   if (::killHard.load(std::memory_order_relaxed)) {
     kill(getpid(), SIGKILL);  // to kill the complete process tree.
     std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -134,154 +107,100 @@ std::atomic<bool> killHard(false);
     // coredump)
     kill(::getpid(), signal);
   }
-#endif
 
   std::abort();
 }
 
-/// @brief appends null-terminated string src to dst,
-/// advances dst pointer by length of src
-void appendNullTerminatedString(std::string_view src, char*& dst) {
-  memcpy(static_cast<void*>(dst), src.data(), src.size());
-  dst += src.size();
-  *dst = '\0';
-}
-
-void appendNullTerminatedString(char const* src, size_t maxLength, char*& dst) {
-  size_t len = std::min(strlen(src), maxLength);
-  memcpy(static_cast<void*>(dst), src, len);
-  dst += len;
-  *dst = '\0';
-}
-
-/// @brief appends null-terminated hex string value to dst
-/// advances dst pointer by at most len * 2.
-/// if stripLeadingZeros is true, omits all leading zero characters.
-/// If the value is 0x0 itself, prints one zero character.
-void appendHexValue(unsigned char const* src, size_t len, char*& dst,
-                    bool stripLeadingZeros) {
-  constexpr char chars[] = "0123456789abcdef";
-  unsigned char const* e = src + len;
-  while (--e >= src) {
-    unsigned char c = *e;
-    if (!stripLeadingZeros || (c >> 4U) != 0) {
-      *dst++ = chars[c >> 4U];
-      stripLeadingZeros = false;
-    }
-    if (!stripLeadingZeros || (c & 0xfU) != 0) {
-      *dst++ = chars[c & 0xfU];
-      stripLeadingZeros = false;
-    }
-  }
-  if (stripLeadingZeros) {
-    *dst++ = '0';
-  }
-}
-
-template<typename T>
-void appendHexValue(T value, char*& dst, bool stripLeadingZeros) {
-  static_assert(std::is_integral_v<T> || std::is_pointer_v<T>);
-  unsigned char buffer[sizeof(T)];
-  memcpy(buffer, &value, sizeof(T));
-  appendHexValue(buffer, sizeof(T), dst, stripLeadingZeros);
-}
-
 #ifdef ARANGODB_HAVE_LIBUNWIND
-void appendAddress(unw_word_t pc, long base, char*& dst) {
+void appendAddress(SmallString& dst, unw_word_t pc, long base) {
   if (base == 0) {
     // absolute address of pc
-    appendNullTerminatedString(" [$0x", dst);
-    appendHexValue(reinterpret_cast<unsigned char const*>(&pc),
-                   sizeof(decltype(pc)), dst, false);
+    dst.append(" [$0x").appendHexValue(pc, false).append("] ");
   } else {
     // relative offset of pc
-    appendNullTerminatedString(" [+0x", dst);
     decltype(pc) relative = pc - base;
-    unsigned char const* s = reinterpret_cast<unsigned char const*>(&relative);
-    appendHexValue(s, sizeof(relative), dst, false);
+    dst.append(" [+0x").appendHexValue(relative, false).append("] ");
   }
-  appendNullTerminatedString("] ", dst);
 }
 #endif
 
 /// @brief builds a log message to be logged to the logfile later
 /// does not allocate any memory, so should be safe to call even
 /// in context of SIGSEGV, with a broken heap etc.
-/// Assumes that the buffer pointed to by s has enough space to
-/// hold the thread id, the thread name and the signal name
-/// (4096 bytes should be more than enough).
-size_t buildLogMessage(char* s, std::string_view context, int signal,
-                       siginfo_t const* info, void* ucontext) {
+void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
+                     siginfo_t const* info, void* ucontext) {
   // build a crash message
-  char* p = s;
-  appendNullTerminatedString("💥 ArangoDB ", p);
-  appendNullTerminatedString(ARANGODB_VERSION_FULL, p);
-  appendNullTerminatedString(", thread ", p);
-  p += arangodb::basics::StringUtils::itoa(
-      uint64_t(arangodb::Thread::currentThreadNumber()), p);
+  buffer.append("💥 ArangoDB ").append(ARANGODB_VERSION_FULL);
 
-#ifdef __linux__
+  if constexpr (arangodb::build_id::supportsBuildIdReader()) {
+    // get build-id by reference, so we can avoid a copy here
+    std::string const& buildId = arangodb::rest::Version::getBuildId();
+    if (!buildId.empty()) {
+      buffer.append(", build-id ").append(buildId);
+    }
+  }
+
+  // append thread id
+  buffer.append(", thread ")
+      .appendUInt64(uint64_t(arangodb::Thread::currentThreadNumber()));
+
+  // append thread name
   arangodb::ThreadNameFetcher nameFetcher;
-  std::string_view name = nameFetcher.get();
-  appendNullTerminatedString(" [", p);
-  appendNullTerminatedString(name, p);
-  appendNullTerminatedString("]", p);
-#endif
+  buffer.append(" [").append(nameFetcher.get()).append("]");
 
-  bool printed = false;
-  appendNullTerminatedString(" caught unexpected signal ", p);
-  p += arangodb::basics::StringUtils::itoa(uint64_t(signal), p);
-  appendNullTerminatedString(" (", p);
-  appendNullTerminatedString(arangodb::signals::name(signal), p);
-#ifndef _WIN32
+  // append signal number and name
+  buffer.append(" caught unexpected signal ").appendUInt64(uint64_t(signal));
+  buffer.append(" (").append(arangodb::signals::name(signal));
   if (info != nullptr) {
-    appendNullTerminatedString(") from pid ", p);
-    p += arangodb::basics::StringUtils::itoa(uint64_t(info->si_pid), p);
-    printed = true;
-  }
-#endif
-  if (!printed) {
-    appendNullTerminatedString(")", p);
+    // signal sub type, if available
+    std::string_view subType =
+        arangodb::signals::subtypeName(signal, info->si_code);
+    if (!subType.empty()) {
+      buffer.append(", sub type ");
+      buffer.append(subType);
+    }
+    // pid that sent the signal
+    buffer.append(") from pid ").appendUInt64(uint64_t(info->si_pid));
+  } else {
+    buffer.append(")");
   }
 
-#ifndef _WIN32
+  if (char const* ss = ::stateString.load(); ss != nullptr) {
+    // append application server state
+    buffer.append(" in state \"").append(ss).append("\"");
+  }
+
+  {
+    // append current working directory
+    char cwd[4096];
+    if (getcwd(cwd, sizeof(cwd)) != nullptr) {
+      buffer.append(" in directory \"").append(cwd).append("\"");
+    }
+  }
+
   if (info != nullptr && (signal == SIGSEGV || signal == SIGBUS)) {
     // dump address that was accessed when the failure occurred (this is
     // somewhat likely a nullptr)
-    appendNullTerminatedString(" accessing address 0x", p);
-    unsigned char const* x =
-        reinterpret_cast<unsigned char const*>(info->si_addr);
-    unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
-    appendHexValue(s, sizeof(unsigned char const*), p, false);
+    buffer.append(" accessing address 0x").appendHexValue(info->si_addr, false);
   }
-#endif
 
-  appendNullTerminatedString(": ", p);
-  appendNullTerminatedString(context, p);
+  buffer.append(": ").append(context);
 
-#ifdef __linux__
   {
     // AT_PHDR points to the program header, which is located after the ELF
     // header. This allows us to calculate the base address of the executable.
     auto baseAddr = getauxval(AT_PHDR) - sizeof(Elf64_Ehdr);
-    appendNullTerminatedString(" - image base address: 0x", p);
-    unsigned char const* x = reinterpret_cast<unsigned char const*>(baseAddr);
-    unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
-    appendHexValue(s, sizeof(unsigned char const*), p, false);
+    buffer.append(" - image base address: 0x").appendHexValue(baseAddr, false);
   }
 #if defined(__ARM_NEON) || defined(__ARM_NEON__)
   // FIXME: implement ARM64 context output
-  appendNullTerminatedString(" ARM64 CPU context: is not available ", p);
+  buffer.append(" ARM64 CPU context: is not available ");
 #else
-  auto ctx = static_cast<ucontext_t*>(ucontext);
-  if (ctx) {
-    auto appendRegister = [ctx, &p](const char* prefix, int reg) {
-      appendNullTerminatedString(prefix, p);
-      unsigned char const* s =
-          reinterpret_cast<unsigned char const*>(&ctx->uc_mcontext.gregs[reg]);
-      appendHexValue(s, sizeof(greg_t), p, false);
+  if (auto ctx = static_cast<ucontext_t*>(ucontext); ctx) {
+    auto appendRegister = [ctx, &buffer](char const* prefix, int reg) {
+      buffer.append(prefix).appendHexValue(ctx->uc_mcontext.gregs[reg], false);
     };
-    appendNullTerminatedString(" - CPU context:", p);
+    buffer.append(" - CPU context:");
     appendRegister(" rip: 0x", REG_RIP);
     appendRegister(", rsp: 0x", REG_RSP);
     appendRegister(", efl: 0x", REG_EFL);
@@ -302,22 +221,16 @@ size_t buildLogMessage(char* s, std::string_view context, int signal,
     appendRegister(", r15: 0x", REG_R15);
   }
 #endif
-#endif
-
-  return p - s;
 }
 
 void logCrashInfo(std::string_view context, int signal, siginfo_t* info,
                   void* ucontext) try {
-  // buffer for constructing temporary log messages (to avoid malloc)
-  char buffer[4096];
-  memset(&buffer[0], 0, sizeof(buffer));
+  // fixed buffer for constructing temporary log messages (to avoid malloc)
+  SmallString buffer;
 
-  char* p = &buffer[0];
-  size_t length = buildLogMessage(p, context, signal, info, ucontext);
+  buildLogMessage(buffer, context, signal, info, ucontext);
   // note: LOG_TOPIC() can allocate memory
-  LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)
-      << std::string_view(&buffer[0], length);
+  LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << buffer.view();
 } catch (...) {
   // we better not throw an exception from inside a signal handler
 }
@@ -336,32 +249,19 @@ void logBacktrace() try {
   }
 
 #ifdef ARANGODB_HAVE_LIBUNWIND
-  // buffer for constructing temporary log messages (to avoid malloc)
-  char buffer[4096];
-  memset(&buffer[0], 0, sizeof(buffer));
+  // fixed buffer for constructing temporary log messages (to avoid malloc)
+  SmallString buffer;
 
-  {
-    char* p = &buffer[0];
-    appendNullTerminatedString("Backtrace of thread ", p);
+  buffer.append("Backtrace of thread ");
+  buffer.appendUInt64(arangodb::Thread::currentThreadNumber());
+  buffer.append(" [").append(currentThreadName).append("]");
 
-    p += arangodb::basics::StringUtils::itoa(
-        uint64_t(arangodb::Thread::currentThreadNumber()), p);
-    appendNullTerminatedString(" [", p);
-    appendNullTerminatedString(currentThreadName, p);
-    appendNullTerminatedString("]", p);
-
-    LOG_TOPIC("c962b", INFO, arangodb::Logger::CRASH)
-        << std::string_view(&buffer[0], p - &buffer[0]);
-  }
+  LOG_TOPIC("c962b", INFO, arangodb::Logger::CRASH) << buffer.view();
 
   // log backtrace, of up to maxFrames depth
   {
-#ifdef __linux__
     // The address of the program headers of the executable.
     long base = getauxval(AT_PHDR) - sizeof(Elf64_Ehdr);
-#else
-    long base = 0;
-#endif
 
     unw_cursor_t cursor;
     // unw_word_t ip, sp;
@@ -390,31 +290,26 @@ void logBacktrace() try {
         }
 
         if (frame == maxFrames + skipFrames) {
-          memset(&buffer[0], 0, sizeof(buffer));
-          char* p = &buffer[0];
-          appendNullTerminatedString("..reached maximum frame display depth (",
-                                     p);
-          p += arangodb::basics::StringUtils::itoa(uint64_t(maxFrames), p);
-          appendNullTerminatedString("). stopping backtrace", p);
+          buffer.clear();
+          buffer.append("..reached maximum frame display depth (");
+          buffer.appendUInt64(maxFrames);
+          buffer.append("). stopping backtrace");
 
-          size_t length = p - &buffer[0];
-          LOG_TOPIC("bbb04", INFO, arangodb::Logger::CRASH)
-              << std::string_view(&buffer[0], length);
+          LOG_TOPIC("bbb04", INFO, arangodb::Logger::CRASH) << buffer.view();
           break;
         }
 
         if (frame >= skipFrames) {
           // this is a stack frame we want to display
-          memset(&buffer[0], 0, sizeof(buffer));
-          char* p = &buffer[0];
-          appendNullTerminatedString("frame ", p);
+          buffer.clear();
+          buffer.append("frame ");
           if (frame < 10) {
             // pad frame id to 2 digits length
-            *p++ = ' ';
+            buffer.push_back(' ');
           }
-          p += arangodb::basics::StringUtils::itoa(uint64_t(frame), p);
+          buffer.appendUInt64(uint64_t(frame));
 
-          appendAddress(pc, base, p);
+          appendAddress(buffer, pc, base);
 
           char mangled[512];
           memset(&mangled[0], 0, sizeof(mangled));
@@ -430,26 +325,20 @@ void logBacktrace() try {
             boost::core::scoped_demangled_name demangled(&mangled[0]);
 
             if (demangled.get()) {
-              appendNullTerminatedString(demangled.get(), p);
+              buffer.append(demangled.get());
             } else {
               // demangling has failed.
               // in this case, append mangled version. still better than nothing
-              appendNullTerminatedString(mangled, p);
+              buffer.append(mangled);
             }
             // print offset into function
-            appendNullTerminatedString(" (+0x", p);
-            appendHexValue(reinterpret_cast<unsigned char const*>(&offset),
-                           sizeof(decltype(offset)), p, true);
-            appendNullTerminatedString(")", p);
+            buffer.append(" (+0x").appendHexValue(offset, true).append(")");
           } else {
             // unable to retrieve symbol information
-            appendNullTerminatedString(
-                "*no symbol name available for this frame", p);
+            buffer.append("*no symbol name available for this frame");
           }
 
-          size_t length = p - &buffer[0];
-          LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH)
-              << std::string_view(&buffer[0], length);
+          LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH) << buffer.view();
         }
       } while (++frame < (maxFrames + skipFrames + 1) && unw_step(&cursor) > 0);
       // flush logs as early as possible
@@ -464,27 +353,20 @@ void logBacktrace() try {
 
 // log info about the current process
 void logProcessInfo() {
-  // buffer for constructing temporary log messages (to avoid malloc)
-  char buffer[4096];
-  memset(&buffer[0], 0, sizeof(buffer));
-
   auto processInfo = TRI_ProcessInfoSelf();
-  char* p = &buffer[0];
-  appendNullTerminatedString("available physical memory: ", p);
-  p += arangodb::basics::StringUtils::itoa(arangodb::PhysicalMemory::getValue(),
-                                           p);
-  appendNullTerminatedString(", rss usage: ", p);
-  p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._residentSize),
-                                           p);
-  appendNullTerminatedString(", vsz usage: ", p);
-  p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._virtualSize),
-                                           p);
-  appendNullTerminatedString(", threads: ", p);
-  p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._numberThreads),
-                                           p);
 
-  LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH)
-      << std::string_view(&buffer[0], p - &buffer[0]);
+  // fixed buffer for constructing temporary log messages (to avoid malloc)
+  SmallString buffer;
+  buffer.append("available physical memory: ")
+      .appendUInt64(uint64_t(arangodb::PhysicalMemory::getValue()));
+  buffer.append(", rss usage: ")
+      .appendUInt64(uint64_t(processInfo._residentSize));
+  buffer.append(", vsz usage: ")
+      .appendUInt64(uint64_t(processInfo._virtualSize));
+  buffer.append(", threads: ")
+      .appendUInt64(uint64_t(processInfo._numberThreads));
+
+  LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << buffer.view();
 }
 
 /// @brief Logs the reception of a signal to the logfile.
@@ -507,7 +389,6 @@ void logProcessInfo() {
 /// substantial
 ///   efforts, so we are not even trying this.
 /// - Windows and macOS are currently not supported.
-#ifndef _WIN32
 void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   if (!::crashHandlerInvoked.exchange(true)) {
     logCrashInfo("signal handler invoked", signal, info, ucontext);
@@ -528,201 +409,6 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
   killProcess(signal);
 }
-#endif
-
-#ifdef _WIN32
-
-static std::string miniDumpDirectory = "C:\\temp";
-static std::mutex miniDumpLock;
-
-// TODO - ATM if these are put inside the function MSVC complains that they
-// are not captured in the lambda, but a lamba with captures cannot convert
-// to a function pointer. Since these are constexpr is should not be necessary
-// to capture them, and with C++20 enabled MSVC no longer complains.
-// So once we have upgraded to C++20 these should be move into the function.
-constexpr DWORD64 blockSize = 1024;  // 1kb
-constexpr DWORD64 maxStackAddrs = 2048;
-constexpr DWORD maxNumAddrs = 160000;
-constexpr DWORD numRegs = 16;
-
-void createMiniDump(EXCEPTION_POINTERS* pointers) {
-  // we have to serialize calls to MiniDumpWriteDump
-  std::lock_guard<std::mutex> lock(miniDumpLock);
-
-  char buffer[4096];
-  memset(&buffer[0], 0, sizeof(buffer));
-
-  time_t rawtime;
-  time(&rawtime);
-  struct tm timeinfo;
-  _gmtime64_s(&timeinfo, &rawtime);
-  char time[20];
-  strftime(time, sizeof(time), "%Y-%m-%dT%H-%M-%S", &timeinfo);
-
-  char filename[MAX_PATH];
-  _snprintf_s(filename, sizeof(filename), "%s\\%s_%d_%d.dmp",
-              miniDumpDirectory.c_str(), time, GetCurrentProcessId(),
-              GetCurrentThreadId());
-  HANDLE hFile = CreateFile(filename, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
-                            FILE_ATTRIBUTE_NORMAL, NULL);
-
-  if (hFile == INVALID_HANDLE_VALUE) {
-    char* p = &buffer[0];
-    appendNullTerminatedString("Could not open minidump file: ", p);
-    p += arangodb::basics::StringUtils::itoa(GetLastError(), p);
-    LOG_TOPIC("ba80e", WARN, arangodb::Logger::CRASH)
-        << std::string_view(&buffer[0], p - &buffer[0]);
-    return;
-  }
-
-  MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
-  exceptionInfo.ThreadId = GetCurrentThreadId();
-  exceptionInfo.ExceptionPointers = pointers;
-  exceptionInfo.ClientPointers = FALSE;
-
-  // We try to gather some additional information from referenced memory
-  // In total we gather up to 16000 memory blocks of 1kb each.
-  // We consider only addresses that reference some memory block that can
-  // actually be read (-> !IsBadReadPtr).
-
-  // we want to have enough addresses to cover all 16 registers plus all
-  // indirections and all maxStackAddrs stack addresses
-  static_assert(maxNumAddrs >
-                maxStackAddrs + numRegs * (blockSize / sizeof(void*)));
-
-  DWORD64 addrs[maxNumAddrs];
-  DWORD numAddrs = 0;
-
-  if (pointers) {
-    auto addAddr = [&addrs, &numAddrs](DWORD64 reg) {
-      auto base = reg & ~(blockSize - 1);
-      if (base == 0 || IsBadReadPtr((void*)base, blockSize) ||
-          numAddrs >= maxNumAddrs) {
-        return;
-      }
-      for (DWORD i = 0; i < numAddrs; ++i) {
-        if (addrs[i] == base) {
-          return;
-        }
-      }
-      addrs[numAddrs++] = base;
-    };
-
-    // we take the values of all general purpose registers
-    auto& ctx = *pointers->ContextRecord;
-    addAddr(ctx.Rax);
-    addAddr(ctx.Rcx);
-    addAddr(ctx.Rdx);
-    addAddr(ctx.Rbx);
-    addAddr(ctx.Rsp);
-    addAddr(ctx.Rbp);
-    addAddr(ctx.Rsi);
-    addAddr(ctx.Rdi);
-    addAddr(ctx.R8);
-    addAddr(ctx.R9);
-    addAddr(ctx.R10);
-    addAddr(ctx.R11);
-    addAddr(ctx.R12);
-    addAddr(ctx.R13);
-    addAddr(ctx.R14);
-    addAddr(ctx.R15);
-    TRI_ASSERT(numAddrs <= numRegs);
-
-    // Take the first 2048 pointers from the stack and add them to the address
-    // list. We use the thread information block (TIB) to get the base address
-    // of the stack to handle the (unlikely) cases where the stack has less than
-    // 2048 items.
-    auto* tib = (PNT_TIB)NtCurrentTeb();
-    auto numStackAddrs = std::min(
-        ((DWORD64)tib->StackBase - ctx.Rsp) / sizeof(void*), maxStackAddrs);
-    void** p = (void**)ctx.Rsp;
-    for (DWORD64 i = 0; i < numStackAddrs; ++i) {
-      addAddr((DWORD64)p[i]);
-    }
-
-    // Now we take all the addresses we gathered so far and add all indirect
-    // addresses, i.e., we take each 1024 byte block and add all 128 potential
-    // addresses from that block (as long as we don't exceed our limit). That
-    // way can follow at least one level of indirection when analyzing the dump.
-    DWORD idx = numAddrs;
-    do {
-      --idx;
-      void** p = (void**)addrs[idx];
-      for (DWORD i = 0; i < blockSize / sizeof(void*) && numAddrs < maxNumAddrs;
-           ++i) {
-        auto base = (DWORD64)p[i] & ~(blockSize - 1);
-        if (base != 0) {
-          addrs[numAddrs++] = base;
-        }
-      }
-    } while (idx != 0 && numAddrs < maxNumAddrs);
-  }
-
-  struct CallbackParam {
-    DWORD64* addrs;
-    DWORD idx;
-    DWORD numAddrs;
-  };
-  CallbackParam param{addrs, 0, numAddrs};
-
-  auto callback = [](PVOID callbackParam,
-                     PMINIDUMP_CALLBACK_INPUT callbackInput,
-                     PMINIDUMP_CALLBACK_OUTPUT callbackOutput) -> BOOL {
-    auto* param = static_cast<CallbackParam*>(callbackParam);
-    if (callbackInput->CallbackType == MemoryCallback &&
-        param->idx < param->numAddrs) {
-      callbackOutput->MemoryBase = param->addrs[param->idx];
-      callbackOutput->MemorySize = blockSize;
-      ++param->idx;
-    }
-    return TRUE;
-  };
-
-  MINIDUMP_CALLBACK_INFORMATION callbackInfo{callback, &param};
-
-  if (MiniDumpWriteDump(
-          GetCurrentProcess(), GetCurrentProcessId(), hFile,
-          MINIDUMP_TYPE(MiniDumpNormal | MiniDumpWithProcessThreadData |
-                        MiniDumpWithDataSegs |
-                        MiniDumpIgnoreInaccessibleMemory),
-          pointers ? &exceptionInfo : nullptr, nullptr,
-          pointers ? &callbackInfo : nullptr)) {
-    char* p = &buffer[0];
-    appendNullTerminatedString("Wrote minidump: ", p);
-    appendNullTerminatedString(filename, p);
-    LOG_TOPIC("93315", INFO, arangodb::Logger::CRASH)
-        << std::string_view(&buffer[0], p - &buffer[0]);
-  } else {
-    char* p = &buffer[0];
-    appendNullTerminatedString("Failed to write minidump: ", p);
-    p += arangodb::basics::StringUtils::itoa(GetLastError(), p);
-    LOG_TOPIC("af06b", WARN, arangodb::Logger::CRASH)
-        << std::string_view(&buffer[0], p - &buffer[0]);
-  }
-
-  CloseHandle(hFile);
-}
-
-LONG CALLBACK unhandledExceptionFilter(EXCEPTION_POINTERS* pointers) {
-  TRI_ASSERT(pointers && pointers->ExceptionRecord);
-
-  {
-    char buffer[4096];
-    memset(&buffer[0], 0, sizeof(buffer));
-    char* p = &buffer[0];
-    appendNullTerminatedString("Unhandled exception: ", p);
-    appendHexValue(pointers->ExceptionRecord->ExceptionCode, p, false);
-    appendNullTerminatedString(" at address ", p);
-    appendHexValue(pointers->ContextRecord->Rip, p, false);
-    appendNullTerminatedString(" in thread ", p);
-    appendHexValue(GetCurrentThreadId(), p, true);
-    LOG_TOPIC("87ff4", INFO, arangodb::Logger::CRASH)
-        << std::string_view(&buffer[0], p - &buffer[0]);
-  }
-  createMiniDump(pointers);
-  return EXCEPTION_CONTINUE_SEARCH;
-}
-#endif
 
 }  // namespace
 
@@ -746,33 +432,32 @@ void CrashHandler::crash(std::string_view context) {
   ::killProcess(SIGABRT);
 }
 
+void CrashHandler::setState(std::string_view state) {
+  ::stateString.store(state.data());
+}
+
 /// @brief logs an assertion failure and crashes the program
 [[noreturn]] void CrashHandler::assertionFailure(char const* file, int line,
                                                  char const* func,
                                                  char const* context,
                                                  char const* message) {
   // assemble an "assertion failured in file:line: message" string
-  char buffer[4096];
-  memset(&buffer[0], 0, sizeof(buffer));
+  SmallString buffer;
 
-  char* p = &buffer[0];
-  appendNullTerminatedString("assertion failed in ", p);
-  appendNullTerminatedString((file == nullptr ? "unknown file" : file), 128, p);
-  appendNullTerminatedString(":", p);
-  p += arangodb::basics::StringUtils::itoa(uint64_t(line), p);
+  buffer.append("assertion failed in ")
+      .append(file == nullptr ? "unknown file" : file)
+      .append(":");
+  buffer.appendUInt64(uint64_t(line));
   if (func != nullptr) {
-    appendNullTerminatedString(" [", p);
-    appendNullTerminatedString(func, p);
-    appendNullTerminatedString("]", p);
+    buffer.append(" [").append(func).append("]");
   }
-  appendNullTerminatedString(": ", p);
-  appendNullTerminatedString(context, 256, p);
+  buffer.append(": ");
+  buffer.append(context);
   if (message != nullptr) {
-    appendNullTerminatedString(" ; ", p);
-    appendNullTerminatedString(message, p);
+    buffer.append(" ; ").append(message);
   }
 
-  crash(std::string_view(&buffer[0], p - &buffer[0]));
+  crash(buffer.view());
 }
 
 /// @brief set flag to kill process hard using SIGKILL, in order to circumvent
@@ -802,7 +487,6 @@ void CrashHandler::installCrashHandler() {
     }
   }
 
-#ifndef _WIN32
   try {
     size_t const stackSize =
         std::max<size_t>(128 * 1024, std::max<size_t>(MINSIGSTKSZ, SIGSTKSZ));
@@ -834,18 +518,10 @@ void CrashHandler::installCrashHandler() {
   sigaction(SIGILL, &act, nullptr);
   sigaction(SIGFPE, &act, nullptr);
   sigaction(SIGABRT, &act, nullptr);
-#else  // _WIN32
-  SetUnhandledExceptionFilter(unhandledExceptionFilter);
-#endif
 
   // install handler for std::terminate()
   std::set_terminate([]() {
-    using namespace std::string_view_literals;
-
-    constexpr static auto bufferSize = 256;
-    char buffer[bufferSize];
-    memset(&buffer[0], 0, sizeof(buffer));
-    char* p = &buffer[0];
+    SmallString buffer;
 
     if (auto ex = std::current_exception()) {
       // there is an active exception going on...
@@ -853,45 +529,23 @@ void CrashHandler::installCrashHandler() {
         // rethrow so we can get the exception type and its message
         std::rethrow_exception(ex);
       } catch (std::exception const& ex) {
-        constexpr static auto msg =
-            "handler for std::terminate() invoked with an std::exception: "sv;
-        static_assert(msg.size() < bufferSize);
-        appendNullTerminatedString(msg, p);
+        buffer.append(
+            "handler for std::terminate() invoked with an std::exception: ");
         char const* e = ex.what();
         if (e != nullptr) {
-          constexpr static auto maxDynMsgSize = bufferSize - msg.size() - 1;
-          if (strlen(e) > maxDynMsgSize) {
-            constexpr static auto truncatedSuffix = " (truncated)"sv;
-            static_assert(truncatedSuffix.size() <= maxDynMsgSize);
-            constexpr static auto remainingMsgSize =
-                maxDynMsgSize - truncatedSuffix.size();
-            static_assert(remainingMsgSize > 100);
-            memcpy(p, e, remainingMsgSize);
-            p += remainingMsgSize;
-            appendNullTerminatedString(truncatedSuffix, p);
-          } else {
-            appendNullTerminatedString(e, p);
-          }
+          buffer.append(e);
         }
       } catch (...) {
-        constexpr static auto msg =
-            "handler for std::terminate() invoked with an unknown exception"sv;
-        appendNullTerminatedString(msg, p);
+        buffer.append(
+            "handler for std::terminate() invoked with an unknown exception");
       }
     } else {
-      constexpr static auto msg =
-          "handler for std::terminate() invoked without active exception"sv;
-      appendNullTerminatedString(msg, p);
+      buffer.append(
+          "handler for std::terminate() invoked without active exception");
     }
 
-    CrashHandler::crash(std::string_view(&buffer[0], p - &buffer[0]));
+    CrashHandler::crash(buffer.view());
   });
 }
-
-#ifdef _WIN32
-void CrashHandler::setMiniDumpDirectory(std::string path) {
-  ::miniDumpDirectory = std::move(path);
-}
-#endif
 
 }  // namespace arangodb

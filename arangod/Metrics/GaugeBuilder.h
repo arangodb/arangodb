@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,11 +30,12 @@ namespace arangodb::metrics {
 template<typename Derived, typename T>
 class GaugeBuilder : public GenericBuilder<Derived> {
  public:
-  using MetricT = Gauge<T>;
+  using MetricT = std::conditional_t<std::is_base_of_v<Metric, T>, T, Gauge<T>>;
+  using MetricV = typename MetricT::Value;
 
   [[nodiscard]] std::string_view type() const noexcept final { return "gauge"; }
   [[nodiscard]] std::shared_ptr<Metric> build() const final {
-    return std::make_shared<MetricT>(T{}, this->_name, this->_help,
+    return std::make_shared<MetricT>(MetricV{}, this->_name, this->_help,
                                      this->_labels);
   }
 };

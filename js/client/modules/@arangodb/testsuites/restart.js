@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,6 +32,8 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
+const trs = require('@arangodb/testutils/testrunners');
 
 const toArgv = require('internal').toArgv;
 const executeScript = require('internal').executeScript;
@@ -54,7 +56,7 @@ const testPaths = {
   'restart': [tu.pathForTesting('client/restart')]
 };
 
-class broadcastInstance extends tu.runLocalInArangoshRunner {
+class broadcastInstance extends trs.runLocalInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "localArangosh";
@@ -74,12 +76,13 @@ function restart (options) {
     clonedOpts.coordinators = 2;
   }
   let testCases = tu.scanTestPaths(testPaths.restart, clonedOpts);
-  global.obj = new broadcastInstance(clonedOpts, 'restart', Object.assign(
+  global.obj = new broadcastInstance(
+    clonedOpts, 'restart', Object.assign(
     {},
     tu.testServerAuthInfo, {
       'server.authentication': false
     }),
-                                               false, false);
+    tr.sutFilters.checkUsers.concat(tr.sutFilters.checkCollections));
   let rc = global.obj.run(testCases);
   options.cleanup = options.cleanup && clonedOpts.cleanup;
   return rc;
@@ -88,5 +91,5 @@ function restart (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['restart'] = restart;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

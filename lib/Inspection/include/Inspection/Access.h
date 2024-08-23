@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,6 +35,7 @@
 #include <velocypack/Value.h>
 
 #include "Inspection/detail/traits.h"
+#include "Inspection/Factory.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 
@@ -283,18 +284,18 @@ struct OptionalAccess {
 
 template<class T>
 struct Access<std::optional<T>> : OptionalAccess<std::optional<T>> {
-  static auto make() { return T{}; }
+  static auto make() { return Factory<T>::make_value(); }
 };
 
 template<class T, class Deleter>
 struct Access<std::unique_ptr<T, Deleter>>
     : OptionalAccess<std::unique_ptr<T, Deleter>> {
-  static auto make() { return std::make_unique<T>(); }
+  static auto make() { return Factory<T>::make_unique(); }
 };
 
 template<class T>
 struct Access<std::shared_ptr<T>> : OptionalAccess<std::shared_ptr<T>> {
-  static auto make() { return std::make_shared<T>(); }
+  static auto make() { return Factory<T>::make_shared(); }
 };
 
 template<>

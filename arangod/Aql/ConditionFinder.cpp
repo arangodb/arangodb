@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,12 +23,18 @@
 
 #include "ConditionFinder.h"
 
+#include "Aql/Ast.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
-#include "Aql/SortNode.h"
 #include "Basics/tryEmplaceHelper.h"
 
 using namespace arangodb::aql;
@@ -44,6 +50,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
+    case EN::JOIN:
     case EN::RETURN:
     case EN::TRAVERSAL:
     case EN::ENUMERATE_PATHS:
@@ -114,8 +121,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
         break;
       }
 
+      bool isAllCoveredByIndex = true;
       auto condition = std::make_unique<Condition>(_plan->getAst());
-      bool ok = handleFilterCondition(en, condition);
+      bool ok = handleFilterCondition(en, condition, isAllCoveredByIndex);
       if (!ok) {
         break;
       }
@@ -129,9 +137,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      bool oneIndexCondition{false};
       auto [filtering, sorting] = condition->findIndexes(
-          node, usedIndexes, sortCondition.get(), oneIndexCondition);
+          node, usedIndexes, sortCondition.get(), isAllCoveredByIndex);
 
       if (filtering || sorting) {
         bool descending = false;
@@ -163,10 +170,10 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // We keep this node's change
         _changes.try_emplace(
             node->id(), arangodb::lazyConstruct([&] {
-              IndexNode* idx =
-                  new IndexNode(_plan, _plan->nextId(), node->collection(),
-                                node->outVariable(), usedIndexes,
-                                oneIndexCondition, std::move(condition), opts);
+              IndexNode* idx = new IndexNode(
+                  _plan, _plan->nextId(), node->collection(),
+                  node->outVariable(), usedIndexes, isAllCoveredByIndex,
+                  std::move(condition), opts);
               // if the enumerate collection node had the counting flag
               // set, we can copy it over to the index node as well
               idx->copyCountFlag(node);
@@ -196,7 +203,8 @@ bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 bool ConditionFinder::handleFilterCondition(
-    ExecutionNode* en, std::unique_ptr<Condition> const& condition) {
+    ExecutionNode* en, std::unique_ptr<Condition> const& condition,
+    bool& noRemoves) {
   bool foundCondition = false;
 
   for (auto& it : _variableDefinitions) {
@@ -249,8 +257,7 @@ bool ConditionFinder::handleFilterCondition(
   if (conditionIsImpossible) {
     // condition is always false
     for (auto const& x : en->getParents()) {
-      auto noRes = new NoResultsNode(_plan, _plan->nextId());
-      _plan->registerNode(noRes);
+      auto noRes = _plan->createNode<NoResultsNode>(_plan, _plan->nextId());
       _plan->insertDependency(x, noRes);
       _producesEmptyResult = true;
     }
@@ -260,7 +267,7 @@ bool ConditionFinder::handleFilterCondition(
   auto const& varsValid = en->getVarsValid();
 
   // remove all invalid variables from the condition
-  if (condition->removeInvalidVariables(varsValid)) {
+  if (condition->removeInvalidVariables(varsValid, noRemoves)) {
     // removing left a previously non-empty OR block empty...
     // this means we can't use the index to restrict the results
     return false;
@@ -274,11 +281,11 @@ void ConditionFinder::handleSortCondition(
     std::unique_ptr<SortCondition>& sortCondition) {
   if (!en->isInInnerLoop()) {
     // we cannot optimize away a sort if we're in an inner loop ourselves
-    sortCondition.reset(new SortCondition(
+    sortCondition = std::make_unique<SortCondition>(
         _plan, _sorts, condition->getConstAttributes(outVar, false),
-        condition->getNonNullAttributes(outVar), _variableDefinitions));
+        condition->getNonNullAttributes(outVar), _variableDefinitions);
   } else {
-    sortCondition.reset(new SortCondition());
+    sortCondition = std::make_unique<SortCondition>();
   }
 }
 

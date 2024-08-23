@@ -1,7 +1,7 @@
 add_library(arango_v8server STATIC
   FoxxFeature.cpp
-  GlobalContextMethods.cpp
-  V8Context.cpp
+  GlobalExecutorMethods.cpp
+  V8Executor.cpp
   V8DealerFeature.cpp
   v8-actions.cpp
   v8-analyzers.cpp
@@ -9,8 +9,6 @@ add_library(arango_v8server STATIC
   v8-collection.cpp
   v8-dispatcher.cpp
   v8-general-graph.cpp
-  v8-pregel.cpp
-  v8-prototype-states.cpp
   v8-query.cpp
   v8-replicated-logs.cpp
   v8-replication.cpp

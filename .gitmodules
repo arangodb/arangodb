@@ -1,6 +1,6 @@
 [submodule "iresearch"]
 	path = 3rdParty/iresearch
-	url = https://github.com/iresearch-toolkit/iresearch.git
+	url = https://github.com/arangodb/iresearch.git
 [submodule "velocypack"]
 	path = 3rdParty/velocypack
 	url = https://github.com/arangodb/velocypack.git
@@ -20,3 +20,15 @@
 	path = 3rdParty/immer
 	url = https://github.com/arangodb/immer
 	branch = release-v0.8
+[submodule "3rdParty/rta-makedata"]
+	path = 3rdParty/rta-makedata
+	url = https://github.com/arangodb/rta-makedata
+[submodule "scripts/toolbox/feed"]
+	path = scripts/toolbox/feed
+	url = https://github.com/arangodb/feed.git
+[submodule "3rdParty/v8-build"]
+	path = 3rdParty/v8-build/v8
+	url = https://github.com/arangodb/v8.git
+[submodule "3rdParty/nghttp2"]
+	path = 3rdParty/nghttp2-lib
+	url = https://github.com/arangodb/nghttp2.git

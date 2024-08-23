@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RocksDBSyncThread.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -56,24 +55,32 @@ Result RocksDBSyncThread::syncWal() {
 
   // set time of last syncing under the lock
   auto const now = std::chrono::steady_clock::now();
-  {
-    CONDITION_LOCKER(guard, _condition);
+  auto const lastSequenceNumber = db->GetLatestSequenceNumber();
+
+  // actual syncing is done without holding the lock
+  auto result = sync(db);
+
+  bool sequenceNumberUpdate = false;
+  if (result.ok()) {
+    std::lock_guard guard{_condition.mutex};
 
     if (now > _lastSyncTime) {
       // update last sync time...
       _lastSyncTime = now;
     }
 
-    auto lastSequenceNumber = db->GetLatestSequenceNumber();
-
     if (lastSequenceNumber > _lastSequenceNumber) {
       // update last sequence number
       _lastSequenceNumber = lastSequenceNumber;
+      sequenceNumberUpdate = true;
     }
   }
 
-  // actual syncing is done without holding the lock
-  return sync(db);
+  if (sequenceNumberUpdate) {
+    notifySyncListeners(lastSequenceNumber);
+  }
+
+  return result;
 }
 
 Result RocksDBSyncThread::sync(rocksdb::DB* db) {
@@ -90,8 +97,14 @@ void RocksDBSyncThread::beginShutdown() {
   Thread::beginShutdown();
 
   // wake up the thread that may be waiting in run()
-  CONDITION_LOCKER(guard, _condition);
-  guard.broadcast();
+  std::lock_guard guard{_condition.mutex};
+  _condition.cv.notify_all();
+}
+
+void RocksDBSyncThread::registerSyncListener(
+    std::shared_ptr<ISyncListener> listener) {
+  std::unique_lock lock{_syncListenersMutex};
+  _syncListeners.emplace_back(std::move(listener));
 }
 
 void RocksDBSyncThread::run() {
@@ -112,15 +125,15 @@ void RocksDBSyncThread::run() {
 
       {
         // wait for time to elapse, and after that update last sync time
-        CONDITION_LOCKER(guard, _condition);
+        std::unique_lock guard{_condition.mutex};
 
         previousLastSequenceNumber = _lastSequenceNumber;
         previousLastSyncTime = _lastSyncTime;
         auto const end = _lastSyncTime + _interval;
         if (end > now) {
-          guard.wait(std::chrono::microseconds(
-              std::chrono::duration_cast<std::chrono::microseconds>(end -
-                                                                    now)));
+          _condition.cv.wait_for(
+              guard,
+              std::chrono::duration_cast<std::chrono::microseconds>(end - now));
         }
 
         if (_lastSyncTime > previousLastSyncTime) {
@@ -157,13 +170,15 @@ void RocksDBSyncThread::run() {
 
       Result res = this->sync(db);
 
+      bool sequenceNumberUpdate = false;
       if (res.ok()) {
         // success case
-        CONDITION_LOCKER(guard, _condition);
+        std::lock_guard guard{_condition.mutex};
 
         if (lastSequenceNumber > _lastSequenceNumber) {
           // bump last sequence number we have synced
           _lastSequenceNumber = lastSequenceNumber;
+          sequenceNumberUpdate = true;
         }
         if (lastSyncTime > _lastSyncTime) {
           _lastSyncTime = lastSyncTime;
@@ -174,6 +189,10 @@ void RocksDBSyncThread::run() {
         LOG_TOPIC("5e275", ERR, Logger::ENGINES)
             << "could not sync RocksDB WAL: " << res.errorMessage();
       }
+
+      if (sequenceNumberUpdate) {
+        notifySyncListeners(lastSequenceNumber);
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("77b1e", ERR, Logger::ENGINES)
           << "caught exception in RocksDBSyncThread: " << ex.what();
@@ -181,5 +200,13 @@ void RocksDBSyncThread::run() {
       LOG_TOPIC("90e8e", ERR, Logger::ENGINES)
           << "caught unknown exception in RocksDBSyncThread";
     }
+  }
+}
+
+void RocksDBSyncThread::notifySyncListeners(
+    rocksdb::SequenceNumber seq) noexcept {
+  std::shared_lock lock(_syncListenersMutex);
+  for (auto& listener : _syncListeners) {
+    listener->onSync(seq);
   }
 }

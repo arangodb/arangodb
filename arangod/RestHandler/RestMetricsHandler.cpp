@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,14 +29,15 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
+#include "Metrics/MetricsParts.h"
+#include "Metrics/Types.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
-#include "Metrics/ClusterMetricsFeature.h"
-#include "Metrics/MetricsFeature.h"
-#include "Metrics/Types.h"
 
 #include <frozen/string.h>
 #include <frozen/unordered_map.h>
@@ -51,21 +52,6 @@ constexpr frozen::unordered_map<frozen::string, metrics::CollectMode, 4> kModes{
     {"read_global", metrics::CollectMode::ReadGlobal},
     {"write_global", metrics::CollectMode::WriteGlobal},
 };
-
-network::Headers buildHeaders(
-    std::unordered_map<std::string, std::string> const& originalHeaders) {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  for (auto& header : originalHeaders) {
-    headers.try_emplace(header.first, header.second);
-  }
-  return headers;
-}
 
 bool isOutdated(
     GeneralRequest const& oldData,
@@ -201,6 +187,9 @@ RestStatus RestMetricsHandler::execute() {
     return makeRedirection(serverId, false);
   }
 
+  _response->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
+
   if (type == metrics::kCDJson) {
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::VPACK);
@@ -221,9 +210,12 @@ RestStatus RestMetricsHandler::execute() {
     return RestStatus::DONE;
   }
 
+  // only export standard metrics
+  metrics::MetricsParts metricsParts(metrics::MetricsSection::Standard);
+
   if (type == metrics::kDBJson) {
     VPackBuilder builder;
-    metrics.toVPack(builder);
+    metrics.toVPack(builder, metricsParts);
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::VPACK);
     _response->addPayload(builder.slice());
@@ -246,7 +238,7 @@ RestStatus RestMetricsHandler::execute() {
 
   if (!leader) {
     std::string result;
-    metrics.toPrometheus(result, mode);
+    metrics.toPrometheus(result, metricsParts, mode);
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::TEXT);
     _response->addRawPayload(result);
@@ -273,34 +265,40 @@ RestStatus RestMetricsHandler::makeRedirection(std::string const& serverId,
     options.parameters.try_emplace("type", metrics::kLast);
   }
 
-  auto f =
-      network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Get,
-                           _request->requestPath(), VPackBuffer<uint8_t>{},
-                           options, buildHeaders(_request->headers()));
+  auto f = network::sendRequest(pool, "server:" + serverId,
+                                fuerte::RestVerb::Get, _request->requestPath(),
+                                VPackBuffer<uint8_t>{}, options);
 
-  return waitForFuture(std::move(f).thenValue(
-      [self = shared_from_this(), last](network::Response&& r) {
-        auto& me = basics::downCast<RestMetricsHandler>(*self);
-        if (r.fail() || !r.hasResponse()) {
-          TRI_ASSERT(r.fail());
-          me.generateError(r.combinedResult());
-          return;
-        }
-        if (last) {
-          auto& cm = me.server().getFeature<metrics::ClusterMetricsFeature>();
-          if (cm.isEnabled()) {
-            cm.update(metrics::CollectMode::TriggerGlobal);
-          }
-        }
-        // TODO(MBkkt) move response
-        // the response will not contain any velocypack.
-        // we need to forward the request with content-type text/plain.
-        me._response->setResponseCode(rest::ResponseCode::OK);
-        me._response->setContentType(rest::ContentType::TEXT);
-        auto payload = r.response().stealPayload();
-        me._response->addRawPayload(
-            {reinterpret_cast<char const*>(payload->data()), payload->size()});
-      }));
+  return waitForFuture(std::move(f).thenValue([self = shared_from_this(),
+                                               last](network::Response&& r) {
+    auto& me = basics::downCast<RestMetricsHandler>(*self);
+    if (r.fail() || !r.hasResponse()) {
+      TRI_ASSERT(r.fail());
+      me.generateError(r.combinedResult());
+      return;
+    }
+    if (last) {
+      auto& cm = me.server().getFeature<metrics::ClusterMetricsFeature>();
+      if (cm.isEnabled()) {
+        cm.update(metrics::CollectMode::TriggerGlobal);
+      }
+    }
+    // TODO(MBkkt) move response
+    // the response will not contain any velocypack.
+    // we need to forward the request with content-type text/plain.
+    if (r.response().header.meta().contains(StaticStrings::ContentEncoding)) {
+      // forward original Content-Encoding header
+      me._response->setHeaderNC(
+          StaticStrings::ContentEncoding,
+          r.response().header.metaByKey(StaticStrings::ContentEncoding));
+    }
+
+    me._response->setResponseCode(rest::ResponseCode::OK);
+    me._response->setContentType(rest::ContentType::TEXT);
+    auto payload = r.response().stealPayload();
+    me._response->addRawPayload(
+        {reinterpret_cast<char const*>(payload->data()), payload->size()});
+  }));
 }
 
 }  // namespace arangodb

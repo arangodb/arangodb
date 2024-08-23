@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,10 +25,8 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
-
-#include "Basics/Common.h"
-#include "Basics/Mutex.h"
 
 struct TRI_vocbase_t;
 
@@ -61,10 +59,9 @@ class TRI_action_t {
 
   virtual TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
                                       arangodb::GeneralResponse*,
-                                      arangodb::Mutex* dataLock,
-                                      void** data) = 0;
+                                      std::mutex* dataLock, void** data) = 0;
 
-  virtual void cancel(arangodb::Mutex* dataLock, void** data) = 0;
+  virtual void cancel(std::mutex* dataLock, void** data) = 0;
 
   void setUrl(std::string const& url, size_t urlParts) {
     _url = url;
@@ -91,12 +88,12 @@ class TRI_fake_action_t final : public TRI_action_t {
 
   /// @brief actions of this type are executed directly. nothing to do here
   TRI_action_result_t execute(TRI_vocbase_t*, arangodb::GeneralRequest*,
-                              arangodb::GeneralResponse*, arangodb::Mutex*,
+                              arangodb::GeneralResponse*, std::mutex*,
                               void**) override;
 
   /// @brief actions of this type are not registered anywhere, and thus
   /// cannot be canceled
-  void cancel(arangodb::Mutex*, void**) override {}
+  void cancel(std::mutex*, void**) override {}
 };
 
 /// @brief defines an action

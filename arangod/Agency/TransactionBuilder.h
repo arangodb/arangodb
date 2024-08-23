@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -50,12 +50,14 @@ inline void add_to_builder(VPackBuilder& b, VPackSlice const& v) { b.add(v); }
 template<typename V>
 auto add_to_builder(VPackBuilder& b, V const& v)
     -> std::enable_if_t<std::is_constructible_v<velocypack::Value, V>, void> {
+  // cppcheck-suppress missingReturn
   b.add(VPackValue(v));
 }
 
 template<typename Path>
 inline auto add_to_builder(VPackBuilder& b, Path const& v)
     -> std::enable_if_t<std::is_base_of_v<cluster::paths::Path, Path>, void> {
+  // cppcheck-suppress missingReturn
   b.add(VPackValue(v.str()));
 }
 
@@ -109,6 +111,20 @@ struct envelope {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("oldEmpty", VPackValue(true));
+      _builder->close();
+      return std::move(*this);
+    }
+
+    template<typename K, typename V>
+    precs_trx isIntersectionEmpty(K&& k, V const& values) && {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      detail::add_to_builder(*_builder.get(), "intersectionEmpty");
+      _builder->openArray();
+      for (auto const& v : values) {
+        detail::add_to_builder(*_builder.get(), v);
+      }
+      _builder->close();
       _builder->close();
       return std::move(*this);
     }
@@ -198,6 +214,17 @@ struct envelope {
       return std::move(*this);
     }
 
+    template<typename K, typename F>
+    write_trx push_object(K&& k, F&& f) {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      _builder->add("op", VPackValue("push"));
+      detail::add_to_builder(*_builder.get(), "new");
+      std::invoke(std::forward<F>(f), *_builder);
+      _builder->close();
+      return std::move(*this);
+    }
+
     template<typename K, typename V>
     write_trx set(K&& k, V&& v) {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
@@ -213,6 +240,30 @@ struct envelope {
       detail::add_to_builder(*_builder.get(), std::forward<K>(k));
       _builder->openObject();
       _builder->add("op", VPackValue("delete"));
+      _builder->close();
+      return std::move(*this);
+    }
+
+    template<typename K, typename F>
+    write_trx erase_object(K&& k, F&& f) {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      _builder->add("op", VPackValue("erase"));
+      detail::add_to_builder(*_builder.get(), "val");
+      std::invoke(std::forward<F>(f), *_builder);
+      _builder->close();
+      return std::move(*this);
+    }
+
+    template<typename K, typename oldF, typename newF>
+    write_trx replace(K&& k, oldF&& old, newF&& next) {
+      detail::add_to_builder(*_builder.get(), std::forward<K>(k));
+      _builder->openObject();
+      _builder->add("op", VPackValue("replace"));
+      detail::add_to_builder(*_builder.get(), "val");
+      std::invoke(std::forward<oldF>(old), *_builder);
+      detail::add_to_builder(*_builder.get(), "new");
+      std::invoke(std::forward<newF>(next), *_builder);
       _builder->close();
       return std::move(*this);
     }

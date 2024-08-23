@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,9 +39,6 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
-
-// TODO do we need to add some sort of coordinator?
-// builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
 
 struct DBUser {
   DBUser() = default;
@@ -78,13 +75,10 @@ struct DBUser {
 class CreateDatabaseInfo {
  public:
   CreateDatabaseInfo(ArangodServer&, ExecContext const&);
-  Result load(std::string const& name, uint64_t id);
+  Result load(std::string_view name, uint64_t id);
 
-  Result load(std::string const& name, VPackSlice options,
+  Result load(std::string_view name, VPackSlice options,
               VPackSlice users = VPackSlice::emptyArraySlice());
-
-  Result load(std::string const& name, uint64_t id, VPackSlice options,
-              VPackSlice users);
 
   Result load(VPackSlice options, VPackSlice users);
 
@@ -93,11 +87,9 @@ class CreateDatabaseInfo {
 
   ArangodServer& server() const;
 
-  uint64_t getId() const {
-    TRI_ASSERT(_valid);
-    TRI_ASSERT(_validId);
-    return _id;
-  }
+  uint64_t getId() const;
+
+  void validateNames(bool value) noexcept { _validateNames = value; }
 
   void strictValidation(bool value) noexcept { _strictValidation = value; }
 
@@ -140,6 +132,16 @@ class CreateDatabaseInfo {
 
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
+  void setSharding(std::string_view sharding);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ protected:
+  struct MockConstruct {
+  } constexpr static mockConstruct = {};
+  CreateDatabaseInfo(MockConstruct, ArangodServer& server,
+                     ExecContext const& execContext, std::string const& name,
+                     std::uint64_t id, replication::Version version);
+#endif
 
  private:
   Result extractUsers(VPackSlice users);
@@ -147,7 +149,6 @@ class CreateDatabaseInfo {
                         bool extractName = true);
   Result checkOptions();
 
- private:
   ArangodServer& _server;
   ExecContext const& _context;
 
@@ -162,6 +163,7 @@ class CreateDatabaseInfo {
   ShardingPrototype _shardingPrototype = ShardingPrototype::Undefined;
 
   bool _strictValidation = true;
+  bool _validateNames = true;
   bool _validId = false;
   bool _valid = false;
 };

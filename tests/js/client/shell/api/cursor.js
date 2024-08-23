@@ -2,18 +2,16 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotEqual, assertMatch, assertUndefined, assertNotUndefined, assertNotNull */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,8 +29,8 @@
 const jsunity = require("jsunity");
 const internal = require('internal');
 const sleep = internal.sleep;
-let api = "/_api/cursor";
-let reId = /^\d+$/;
+const api = "/_api/cursor";
+const reId = /^\d+$/;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" : "application/x-velocypack";
 
@@ -702,7 +700,7 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
     test_creates_a_streaming_cursor_with_a_low_TTL: function () {
       let cmd = api;
       let body = {
-        "query": "FOR i IN 1..10 LET x = SLEEP(5) RETURN i",
+        "query": "FOR i IN 1..10 LET x = SLEEP(4) RETURN i",
         "batchSize": 1,
         "ttl": 2,
         "options": {"stream": true}
@@ -741,7 +739,7 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_non_streaming_cursor_with_a_low_TTL: function () {
       let cmd = api;
-      let body = {"query": "FOR i IN 1..10 LET x = SLEEP(5) RETURN i", "batchSize": 1, "ttl": 2};
+      let body = {"query": "FOR i IN 1..10 LET x = SLEEP(1) RETURN i", "batchSize": 1, "ttl": 2};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1156,7 +1154,7 @@ function dealing_with_cursorsSuite_checking_a_querySuite() {
 
     test_window_aggregate_no_arguments_query: function () {
       let cmd = "/_api/query";
-      let body = {"query": `FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1`};
+      let body = {"query": `FOR e IN [] WINDOW { preceding: 1 } AGGREGATE i = LENGTH() RETURN 1`};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -1258,6 +1256,118 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       db._drop(cn);
     },
 
+    test_cursor_non_stream_request_retriable_multiple_refetches: function () {
+      let cmd = api;
+      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": false, "allowRetry": true}};
+      let doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 201);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 201);
+      assertEqual(typeof doc.parsedBody['id'], "string");
+      assertMatch(reId, doc.parsedBody['id']);
+      assertTrue(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1000);
+      assertFalse(doc.parsedBody['cached']);
+      let cursorId = doc.parsedBody['id'];
+      let nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, "2");
+
+      cmd = api + `/${cursorId}/${parseInt(nextBatchId) - 1}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 201);
+      assertTrue(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1000);
+      assertFalse(doc.parsedBody['cached']);
+      assertEqual(doc.parsedBody['id'], cursorId);
+      nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, "2");
+
+      cmd = api + `/${cursorId}/${parseInt(nextBatchId) - 1}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 201);
+      assertTrue(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1000);
+      assertFalse(doc.parsedBody['cached']);
+      assertEqual(doc.parsedBody['id'], cursorId);
+      nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, "2");
+
+      cmd = api + `/${cursorId}/${nextBatchId}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertTrue(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1000);
+      assertFalse(doc.parsedBody['cached']);
+      assertEqual(doc.parsedBody['id'], cursorId);
+      nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, "3");
+
+      cmd = api + `/${cursorId}/${parseInt(nextBatchId) - 1}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertTrue(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1000);
+      assertFalse(doc.parsedBody['cached']);
+      assertEqual(doc.parsedBody['id'], cursorId);
+      nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, "3");
+
+      cmd = api + `/${cursorId}/${parseInt(nextBatchId)}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertFalse(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1);
+      assertFalse(doc.parsedBody['cached']);
+      assertUndefined(doc.parsedBody['id'], cursorId);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${parseInt(nextBatchId)}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertFalse(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1);
+      assertFalse(doc.parsedBody['cached']);
+      assertUndefined(doc.parsedBody['id'], cursorId);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${parseInt(parseInt(nextBatchId) + 1)}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 404);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.parsedBody.errorNum, 1600);
+      assertEqual(doc.parsedBody.errorMessage, "batch id not found");
+      assertEqual(doc.parsedBody['code'], 404);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+    },
+
     test_cursor_non_stream_request_retriable: function () {
       let cmd = api;
       let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": false, "allowRetry": true}};
@@ -1303,10 +1413,36 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       cmd = api + `/${cursorId}/${nextBatchId}`;
       doc = arango.POST_RAW(cmd, "");
 
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertFalse(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1);
+      assertFalse(doc.parsedBody['cached']);
+      assertUndefined(doc.parsedBody['id'], cursorId);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${nextBatchId}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertFalse(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1);
+      assertFalse(doc.parsedBody['cached']);
+      assertUndefined(doc.parsedBody['id'], cursorId);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${parseInt(nextBatchId) + 1}`;
+      doc = arango.POST_RAW(cmd, "");
+
       assertEqual(doc.code, 404);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody.error);
-      assertEqual(doc.parsedBody.errorNum, 404);
+      assertEqual(doc.parsedBody.errorNum, 1600);
       assertEqual(doc.parsedBody.errorMessage, "batch id not found");
       assertEqual(doc.parsedBody['code'], 404);
       assertUndefined(doc.parsedBody['nextBatchId']);
@@ -1317,7 +1453,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.code, 404);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody.error);
-      assertEqual(doc.parsedBody.errorNum, 404);
+      assertEqual(doc.parsedBody.errorNum, 1600);
       assertEqual(doc.parsedBody.errorMessage, "batch id not found");
       assertEqual(doc.parsedBody['code'], 404);
       assertUndefined(doc.parsedBody['nextBatchId']);
@@ -1331,18 +1467,97 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.parsedBody['code'], 200);
       assertFalse(doc.parsedBody['hasMore']);
       assertUndefined(doc.parsedBody['id']);
-      assertEqual(doc.parsedBody['result'].length, 1);
+      assertEqual(doc.parsedBody['result'].length, 0);
       assertFalse(doc.parsedBody['cached']);
+      assertUndefined(doc.parsedBody['id'], cursorId);
       assertUndefined(doc.parsedBody['nextBatchId']);
 
+      // must kill the cursor explicitly, so we don't need to wait for the
+      // cursor's full TTL
+      arango.DELETE_RAW(api + `/${cursorId}`, "");
+    },
+
+    test_cursor_non_stream_request_non_retriable_next_batch: function () {
+      let cmd = api;
+      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": false, "allowRetry": false}};
+      let doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 201);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 201);
+      assertEqual(typeof doc.parsedBody['id'], "string");
+      assertMatch(reId, doc.parsedBody['id']);
+      assertTrue(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1000);
+      assertFalse(doc.parsedBody['cached']);
+      let cursorId = doc.parsedBody['id'];
+      let nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, "2");
+
+      cmd = api + `/${cursorId}/${nextBatchId}`;
       doc = arango.POST_RAW(cmd, "");
 
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertTrue(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1000);
+      assertFalse(doc.parsedBody['cached']);
+      assertEqual(doc.parsedBody['id'], cursorId);
+      const latestBatchId = nextBatchId;
+      nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, "3");
+
+      cmd = api + `/${cursorId}/${latestBatchId}`;
+      doc = arango.POST_RAW(cmd, "");
+      assertEqual(doc.code, 400);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.parsedBody.errorNum, 400);
+      assertEqual(doc.parsedBody.errorMessage, "expecting allowRetry option to be true");
+      assertEqual(doc.parsedBody['code'], 400);
+      assertUndefined(doc.parsedBody['hasMore']);
+      assertFalse(doc.parsedBody['cached']);
+      assertUndefined(doc.parsedBody['id'], cursorId);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${parseInt(nextBatchId) + 1}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 404);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.parsedBody.errorNum, 1600);
+      assertEqual(doc.parsedBody.errorMessage, "batch id not found");
+      assertEqual(doc.parsedBody['code'], 404);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${nextBatchId}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertFalse(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1);
+      assertFalse(doc.parsedBody['cached']);
+      assertUndefined(doc.parsedBody['id'], cursorId);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${nextBatchId}`;
+      doc = arango.POST_RAW(cmd, "");
+      assertEqual(doc.code, 404);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.parsedBody.errorNum, 1600);
+      assertEqual(doc.parsedBody.errorMessage, "cursor not found");
+      assertEqual(doc.parsedBody['code'], 404);
+      assertUndefined(doc.parsedBody['nextBatchId']);
     },
+
 
     test_cursor_stream_request_retriable: function () {
       let cmd = api;
@@ -1388,10 +1603,22 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       cmd = api + `/${cursorId}/${nextBatchId}`;
       doc = arango.POST_RAW(cmd, "");
 
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertFalse(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1);
+      assertUndefined(doc.parsedBody['id'], cursorId);
+      assertFalse(doc.parsedBody['cached']);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${parseInt(nextBatchId) + 1}`;
+      doc = arango.POST_RAW(cmd, "");
+
       assertEqual(doc.code, 404);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody.error);
-      assertEqual(doc.parsedBody.errorNum, 404);
+      assertEqual(doc.parsedBody.errorNum, 1600);
       assertEqual(doc.parsedBody.errorMessage, "batch id not found");
       assertEqual(doc.parsedBody['code'], 404);
       assertUndefined(doc.parsedBody['nextBatchId']);
@@ -1402,7 +1629,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.code, 404);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody.error);
-      assertEqual(doc.parsedBody.errorNum, 404);
+      assertEqual(doc.parsedBody.errorNum, 1600);
       assertEqual(doc.parsedBody.errorMessage, "batch id not found");
       assertEqual(doc.parsedBody['code'], 404);
       assertUndefined(doc.parsedBody['nextBatchId']);
@@ -1416,17 +1643,93 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.parsedBody['code'], 200);
       assertFalse(doc.parsedBody['hasMore']);
       assertUndefined(doc.parsedBody['id']);
-      assertEqual(doc.parsedBody['result'].length, 1);
       assertFalse(doc.parsedBody['cached']);
       assertUndefined(doc.parsedBody['nextBatchId']);
 
+      // must kill the cursor explicitly, so we don't need to wait for the
+      // cursor's full TTL
+      arango.DELETE_RAW(api + `/${cursorId}`, "");
+    },
+
+    test_cursor_stream_request_non_retriable_next_batch: function () {
+      let cmd = api;
+      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": true, "allowRetry": false}};
+      let doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 201);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 201);
+      assertEqual(typeof doc.parsedBody['id'], "string");
+      assertMatch(reId, doc.parsedBody['id']);
+      assertTrue(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1000);
+      assertFalse(doc.parsedBody['cached']);
+      let cursorId = doc.parsedBody['id'];
+      let nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, 2);
+
+      cmd = api + `/${cursorId}/${nextBatchId}`;
       doc = arango.POST_RAW(cmd, "");
 
-      assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertTrue(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1000);
+      assertFalse(doc.parsedBody['cached']);
+      assertEqual(doc.parsedBody['id'], cursorId);
+      const latestBatchId = nextBatchId;
+      nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, "3");
+
+      cmd = api + `/${cursorId}/${latestBatchId}`;
+      doc = arango.POST_RAW(cmd, "");
+      assertEqual(doc.code, 400);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_CURSOR_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
+      assertEqual(doc.parsedBody.errorNum, 400);
+      assertEqual(doc.parsedBody.errorMessage, "expecting allowRetry option to be true");
+      assertEqual(doc.parsedBody['code'], 400);
+      assertUndefined(doc.parsedBody['hasMore']);
+      assertFalse(doc.parsedBody['cached']);
+      assertUndefined(doc.parsedBody['id'], cursorId);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${parseInt(nextBatchId) + 1}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 404);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.parsedBody.errorNum, 1600);
+      assertEqual(doc.parsedBody.errorMessage, "batch id not found");
+      assertEqual(doc.parsedBody['code'], 404);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${nextBatchId}`;
+      doc = arango.POST_RAW(cmd, "");
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertFalse(doc.parsedBody['hasMore']);
+      assertEqual(doc.parsedBody['result'].length, 1);
+      assertFalse(doc.parsedBody['cached']);
+      assertUndefined(doc.parsedBody['id'], cursorId);
+      assertUndefined(doc.parsedBody['nextBatchId']);
+
+      cmd = api + `/${cursorId}/${nextBatchId}`;
+      doc = arango.POST_RAW(cmd, "");
+      assertEqual(doc.code, 404);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertTrue(doc.parsedBody.error);
+      assertEqual(doc.parsedBody.errorNum, 1600);
+      assertEqual(doc.parsedBody.errorMessage, "cursor not found");
+      assertEqual(doc.parsedBody['code'], 404);
+      assertUndefined(doc.parsedBody['nextBatchId']);
     },
 
     test_cursor_stream_request_non_retriable: function () {
@@ -1445,10 +1748,10 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertFalse(doc.parsedBody['cached']);
 
       let cursorId = doc.parsedBody['id'];
-      assertUndefined(doc.parsedBody['nextBatchId']);
+      const nextBatchId = doc.parsedBody['nextBatchId'];
+      assertEqual(nextBatchId, 2);
 
       internal.debugSetFailAt("MakeConnectionErrorForRetry");
-
 
       cmd = api + `/${cursorId}`;
       doc = arango.POST_RAW(cmd, "");
@@ -1457,9 +1760,8 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertTrue(doc.error);
 
       internal.debugClearFailAt();
-      // as the `batchId` field starts with 1 for the first batch, we assume the next batch id would be 2 for
-      // the failing request to send another request to retrieve its result, knowing it would fail because
-      // the flag `allowRetry`is false
+      // as we can fetch the next batch id and advance the cursor with /<cursorId>/<nextBatchId>, but can't retry the
+      // latest batch, we try to get the former batch again
       cmd = api + `/${cursorId}/2`;
       doc = arango.POST_RAW(cmd, "");
       assertEqual(doc.code, 400);
@@ -1469,6 +1771,10 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
       assertEqual(doc.parsedBody['errorMessage'], 'expecting allowRetry option to be true');
       assertUndefined(doc.parsedBody['id']);
       assertUndefined(doc.parsedBody['nextBatchId']);
+
+      // must kill the cursor explicitly, so we don't need to wait for the
+      // cursor's full TTL
+      arango.DELETE_RAW(api + `/${cursorId}`, "");
     },
 
     test_cursor_non_stream_retriable: function () {
@@ -1493,6 +1799,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
         assertEqual(i !== 2000, cursor.hasNext());
       }
       assertFalse(cursor.hasNext());
+      cursor.dispose();
     },
 
     test_cursor_stream_retriable: function () {
@@ -1514,7 +1821,9 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
         assertEqual(i !== 2000, cursor.hasNext());
       }
       assertFalse(cursor.hasNext());
+      cursor.dispose();
     },
+
   };
 }
 

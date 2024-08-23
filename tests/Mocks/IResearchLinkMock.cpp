@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,13 +35,14 @@
 #include "Logger/Logger.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb::iresearch {
 
 IResearchLinkMock::IResearchLinkMock(IndexId iid, LogicalCollection& collection)
     : Index{iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()},
-      IResearchLink{collection.vocbase().server()} {
+      IResearchLink{collection.vocbase().server(), collection} {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
@@ -83,14 +84,11 @@ void IResearchLinkMock::toVelocyPack(
 std::function<irs::directory_attributes()> IResearchLinkMock::InitCallback;
 
 Result IResearchLinkMock::remove(transaction::Methods& trx,
-                                 LocalDocumentId documentId, bool nested,
-                                 uint64_t const* recoveryTick) {
-  if (recoveryTick == nullptr) {
-    auto* state = basics::downCast<::TransactionStateMock>(trx.state());
-    TRI_ASSERT(state != nullptr);
-    state->incrementRemove();
-  }
-  return IResearchDataStore::remove(trx, documentId, nested, recoveryTick);
+                                 LocalDocumentId documentId) {
+  auto* state = basics::downCast<::TransactionStateMock>(trx.state());
+  TRI_ASSERT(state != nullptr);
+  state->incrementRemove();
+  return IResearchDataStore::remove(trx, documentId);
 }
 
 }  // namespace arangodb::iresearch

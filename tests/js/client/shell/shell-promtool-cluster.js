@@ -1,28 +1,28 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
 /* global print, assertNotEqual, assertFalse, assertTrue, assertEqual, fail, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const internal = require('internal');
@@ -32,8 +32,6 @@ const console = require('console');
 const request = require("@arangodb/request");
 const expect = require('chai').expect;
 const errors = require('@arangodb').errors;
-const suspendExternal = internal.suspendExternal;
-const continueExternal = internal.continueExternal;
 
 // name of environment variable
 const PATH = 'PROMTOOL_PATH';
@@ -43,7 +41,9 @@ let promtoolPath = internal.env[PATH];
 if (!promtoolPath) {
   promtoolPath = '.';
 }
-promtoolPath = fs.join(promtoolPath, 'promtool' + pu.executableExt);
+if (fs.isDirectory(promtoolPath)) {
+  promtoolPath = fs.join(promtoolPath, 'promtool' + pu.executableExt);
+}
 
 const metricsUrlPath = "/_admin/metrics/v2";
 const serverIdPath = "/_admin/server/id";
@@ -181,10 +181,9 @@ function promtoolClusterSuite() {
   if (!internal.env.hasOwnProperty('INSTANCEINFO')) {
     throw new Error('env.INSTANCEINFO was not set by caller!');
   }
-  const instanceManager = JSON.parse(internal.env.INSTANCEINFO);
-  let dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
-  let agents = instanceManager.arangods.filter(arangod => arangod.instanceRole === "agent");
-  let coordinators = instanceManager.arangods.filter(arangod => arangod.instanceRole === "coordinator");
+  let dbServers = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
+  let agents = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "agent");
+  let coordinators = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "coordinator");
 
   return {
     testMetricsOnDbServers: function () {
@@ -225,8 +224,7 @@ function promtoolClusterSuite() {
       //query metrics from coordinator, supplying id of a server, that is shut down
       let dbServer = dbServers[0];
       let serverId = getServerId(dbServer);
-      assertTrue(suspendExternal(dbServer.pid));
-      dbServer.suspended = true;
+      assertTrue(dbServer.suspend());
       try {
         let metricsUrl = metricsUrlPath + "?serverId=" + serverId;
         let res = arango.GET_RAW(metricsUrl);
@@ -237,10 +235,9 @@ function promtoolClusterSuite() {
         //        expect(body.errorNum).to.equal(errors.ERROR_CLUSTER_CONNECTION_LOST.code);
       } finally {
         let clusterHealthOk = false;
-        assertTrue(continueExternal(dbServer.pid));
+        assertTrue(dbServer.resume());
         for (let i = 0; i < 60; i++) {
           if (checkThatServerIsResponsive(dbServer)) {
-            delete dbServer.suspended;
             break;
           }
           internal.sleep(1);

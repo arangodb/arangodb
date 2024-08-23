@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,6 +38,10 @@
 #include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
 #include "IResearchCompression.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
+#endif
 
 namespace arangodb {
 namespace velocypack {
@@ -128,9 +132,6 @@ struct FieldMeta {
   FieldMeta& operator=(FieldMeta&&) = default;
 
   bool operator==(FieldMeta const& rhs) const noexcept;
-  bool operator!=(FieldMeta const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize FieldMeta with values from a JSON description
@@ -224,6 +225,7 @@ struct IResearchLinkMeta : public FieldMeta {
 #ifdef USE_ENTERPRISE
           _sortCache(mask),
           _pkCache(mask),
+          _optimizeTopK(mask),
 #endif
           _version(mask) {
     }
@@ -236,6 +238,7 @@ struct IResearchLinkMeta : public FieldMeta {
 #ifdef USE_ENTERPRISE
     bool _sortCache;
     bool _pkCache;
+    bool _optimizeTopK;
 #endif
     bool _version;
   };
@@ -243,6 +246,9 @@ struct IResearchLinkMeta : public FieldMeta {
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort;
   IResearchViewStoredValues _storedValues;
+#ifdef USE_ENTERPRISE
+  IResearchOptimizeTopK _optimizeTopK;
+#endif
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
 
 #ifdef USE_ENTERPRISE
@@ -273,9 +279,6 @@ struct IResearchLinkMeta : public FieldMeta {
   IResearchLinkMeta& operator=(IResearchLinkMeta const& other) = default;
 
   bool operator==(IResearchLinkMeta const& rhs) const noexcept;
-  bool operator!=(IResearchLinkMeta const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchLinkMeta with values from a JSON description

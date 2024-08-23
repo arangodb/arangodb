@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,8 +26,13 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
+#include "Cluster/ClusterTypes.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
+class LogicalCollection;
+
 namespace maintenance {
 
 class UpdateCollection : public ActionBase, public ShardDefinition {
@@ -38,6 +43,12 @@ class UpdateCollection : public ActionBase, public ShardDefinition {
 
   virtual bool first() override final;
   void setState(ActionState state) override final;
+
+ private:
+  static auto updateCollectionReplication2(
+      ShardID const& shard, CollectionID const& collection,
+      velocypack::SharedSlice props,
+      std::shared_ptr<LogicalCollection> coll) noexcept -> Result;
 };
 
 }  // namespace maintenance

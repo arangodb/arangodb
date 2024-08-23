@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,6 +29,9 @@
 #include "IResearchDataStoreMeta.h"
 #include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
+#endif
 
 #include <velocypack/Builder.h>
 
@@ -63,6 +66,7 @@ struct IResearchViewMeta : public IResearchDataStoreMeta {
 #ifdef USE_ENTERPRISE
     bool _sortCache;
     bool _pkCache;
+    bool _optimizeTopK;
 #endif
     bool _primarySortCompression;
     explicit Mask(bool mask = false) noexcept;
@@ -70,6 +74,9 @@ struct IResearchViewMeta : public IResearchDataStoreMeta {
 
   IResearchViewSort _primarySort;
   IResearchViewStoredValues _storedValues;
+#ifdef USE_ENTERPRISE
+  IResearchOptimizeTopK _optimizeTopK;
+#endif
   irs::type_info::type_id _primarySortCompression{};
 #ifdef USE_ENTERPRISE
   bool _sortCache{false};
@@ -108,7 +115,6 @@ struct IResearchViewMeta : public IResearchDataStoreMeta {
   void storeFull(IResearchViewMeta&& other) noexcept;
 
   bool operator==(IResearchViewMeta const& other) const noexcept;
-  bool operator!=(IResearchViewMeta const& other) const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return default IResearchViewMeta values
@@ -174,7 +180,6 @@ struct IResearchViewMetaState {
   IResearchViewMetaState& operator=(IResearchViewMetaState const& other);
 
   bool operator==(IResearchViewMetaState const& other) const noexcept;
-  bool operator!=(IResearchViewMetaState const& other) const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchViewMeta with values from a JSON description

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,7 +38,6 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
@@ -280,10 +279,10 @@ void ApplicationServer::beginShutdown() {
 
   // make sure that we advance the state when we get out of here
   auto waitAborter = scopeGuard([this]() noexcept {
-    CONDITION_LOCKER(guard, _shutdownCondition);
+    std::lock_guard guard{_shutdownCondition.mutex};
 
     _abortWaiting = true;
-    guard.signal();
+    _shutdownCondition.cv.notify_one();
   });
 
   // now we can execute the actual shutdown sequence
@@ -714,10 +713,11 @@ void ApplicationServer::start() {
             feature.stop();
             feature.state(ApplicationFeature::State::STOPPED);
           } catch (...) {
-            // ignore errors on shutdown
-            LOG_TOPIC("13223", TRACE, Logger::STARTUP)
+            // if something goes wrong, we simply rethrow to abort!
+            LOG_TOPIC("13223", FATAL, Logger::STARTUP)
                 << "caught exception while stopping feature '" << feature.name()
                 << "'";
+            throw;
           }
         }
       }
@@ -726,18 +726,22 @@ void ApplicationServer::start() {
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
            ++it) {
         ApplicationFeature& feature = *it;
-        if (feature.state() == ApplicationFeature::State::STOPPED) {
-          LOG_TOPIC("6ba4f", TRACE, Logger::STARTUP)
-              << "forcefully unpreparing feature '" << feature.name() << "'";
-          try {
-            feature.unprepare();
-            feature.state(ApplicationFeature::State::UNPREPARED);
-          } catch (...) {
-            // ignore errors on shutdown
-            LOG_TOPIC("7d68f", TRACE, Logger::STARTUP)
-                << "caught exception while unpreparing feature '"
-                << feature.name() << "'";
-          }
+        ADB_PROD_ASSERT(feature.state() == ApplicationFeature::State::STOPPED ||
+                        feature.state() == ApplicationFeature::State::PREPARED)
+            << "feature " << feature.name() << " is in state "
+            << (int)feature.state();
+
+        LOG_TOPIC("6ba4f", TRACE, Logger::STARTUP)
+            << "forcefully unpreparing feature '" << feature.name() << "'";
+        try {
+          feature.unprepare();
+          feature.state(ApplicationFeature::State::UNPREPARED);
+        } catch (...) {
+          // if something goes wrong, we simply rethrow to abort!
+          LOG_TOPIC("7d68f", FATAL, Logger::STARTUP)
+              << "caught exception while unpreparing feature '"
+              << feature.name() << "'";
+          throw;
         }
       }
       shutdownFatalError();
@@ -818,7 +822,7 @@ void ApplicationServer::wait() {
     }
 
     // wait until somebody calls beginShutdown and it finishes
-    CONDITION_LOCKER(guard, _shutdownCondition);
+    std::unique_lock guard{_shutdownCondition.mutex};
 
     if (_abortWaiting) {
       // yippieh!
@@ -826,7 +830,7 @@ void ApplicationServer::wait() {
     }
 
     using namespace std::chrono_literals;
-    guard.wait(100ms);
+    _shutdownCondition.cv.wait_for(guard, 100ms);
   }
 }
 

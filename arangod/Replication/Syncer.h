@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/SyncerId.h"
@@ -32,6 +31,8 @@
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
+
+#include <function2.hpp>
 
 #include <memory>
 #include <string>
@@ -64,7 +65,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     JobSynchronizer(JobSynchronizer const&) = delete;
     JobSynchronizer& operator=(JobSynchronizer const&) = delete;
 
-    explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer);
+    explicit JobSynchronizer(std::shared_ptr<Syncer const> syncer);
     ~JobSynchronizer();
 
     /// @brief whether or not a response has arrived
@@ -87,7 +88,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief post an async request to the scheduler
     /// this will increase the number of inflight jobs, and count it down
     /// when the posted request has finished
-    void request(std::function<void()> const& cb);
+    void request(fu2::unique_function<void()> cb);
 
     /// @brief notifies that a job was posted
     /// returns false if job counter could not be increased (e.g. because
@@ -121,12 +122,45 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// response was received or if something went wrong)
     arangodb::Result _res;
 
+    /// @brief the callback to execute
+    fu2::unique_function<void()> _cb;
+
+    /// @brief id of the current callback to execute. this is necessary
+    /// because if we post a job to the scheduler and then execute it
+    /// ourselves before the scheduler has a chance to do so, we need a
+    /// way to abort the scheduler callback, so it does not execute the
+    /// old job once more. we do so by posting the job's original id
+    /// along with the job to the scheduler, and check in the scheduler
+    /// callback if the stored id is still the same as the posted one.
+    uint64_t _id;
+
+    /// @brief id of the last job posted (will be increased whenever a new
+    /// job is posted)
+    uint64_t _nextId;
+
     /// @brief the response received by the job (nullptr if no response
     /// received)
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> _response;
 
     /// @brief number of posted jobs in flight
     uint64_t _jobsInFlight;
+  };
+
+  class JobSynchronizerScope {
+   public:
+    JobSynchronizerScope(JobSynchronizerScope const&) = delete;
+    JobSynchronizerScope& operator=(JobSynchronizerScope const&) = delete;
+
+    explicit JobSynchronizerScope(std::shared_ptr<Syncer const> syncer);
+    ~JobSynchronizerScope();
+
+    JobSynchronizer* operator->();
+    JobSynchronizer const* operator->() const;
+
+    std::shared_ptr<JobSynchronizer> clone() const;
+
+   private:
+    std::shared_ptr<JobSynchronizer> _synchronizer;
   };
 
   struct SyncerState {

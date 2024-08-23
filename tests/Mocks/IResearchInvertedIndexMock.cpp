@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,17 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchInvertedIndexMock.h"
+
+#include "Basics/StaticStrings.h"
 #include "IResearch/IResearchDataStore.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::iresearch {
 
 IResearchInvertedIndexMock::IResearchInvertedIndexMock(
     IndexId iid, arangodb::LogicalCollection& collection,
-    const std::string& idxName,
+    std::string const& idxName,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse)
     : Index{iid, collection, idxName, attributes, unique, sparse},
-      IResearchInvertedIndex{collection.vocbase().server()} {}
+      IResearchInvertedIndex{collection.vocbase().server(), collection} {}
 
 void IResearchInvertedIndexMock::toVelocyPack(
     velocypack::Builder& builder,
@@ -96,11 +99,6 @@ Result IResearchInvertedIndexMock::drop() { return deleteDataStore(); }
 
 void IResearchInvertedIndexMock::load() {}
 
-void IResearchInvertedIndexMock::afterTruncate(TRI_voc_tick_t tick,
-                                               transaction::Methods* trx) {
-  return IResearchDataStore::afterTruncate(tick, trx);
-}
-
 std::unique_ptr<IndexIterator> IResearchInvertedIndexMock::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
@@ -138,8 +136,7 @@ Result IResearchInvertedIndexMock::insert(transaction::Methods& trx,
   IResearchInvertedIndexMetaIndexingContext ctx(&this->meta());
   return IResearchDataStore::insert<
       FieldIterator<IResearchInvertedIndexMetaIndexingContext>,
-      IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc, ctx,
-                                                 nullptr);
+      IResearchInvertedIndexMetaIndexingContext>(trx, documentId, doc, ctx);
 }
 
 AnalyzerPool::ptr IResearchInvertedIndexMock::findAnalyzer(

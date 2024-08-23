@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,11 +41,7 @@ using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query)
-    : BaseOptions(query),
-      minDepth(1),
-      maxDepth(1),
-      bidirectional(true),
-      multiThreaded(true) {
+    : BaseOptions(query), _minDepth(1), _maxDepth(1) {
   setWeightAttribute("");
   setDefaultWeight(1);
 }
@@ -60,8 +56,8 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   TRI_ASSERT(type.isEqualString("shortestPath"));
 #endif
   parseShardIndependentFlags(info);
-  minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
-  maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
+  _minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
+  _maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
 
   setWeightAttribute(
       VelocyPackHelper::getStringValue(info, "weightAttribute", ""));
@@ -74,17 +70,15 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
                                          VPackSlice info,
                                          VPackSlice collections)
-    : BaseOptions(query, info, collections),
-      bidirectional(true),
-      multiThreaded(true) {
+    : BaseOptions(query, info, collections) {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
   TRI_ASSERT(type.isString());
   TRI_ASSERT(type.isEqualString("shortestPath"));
 #endif
-  minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
-  maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
+  _minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
+  _maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
 
   setWeightAttribute(
       VelocyPackHelper::getStringValue(info, "weightAttribute", ""));
@@ -107,7 +101,16 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   }
 }
 
-ShortestPathOptions::~ShortestPathOptions() = default;
+ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
+                                         bool const allowAlreadyBuiltCopy)
+    : BaseOptions(other, allowAlreadyBuiltCopy),
+      _minDepth(other._minDepth),
+      _maxDepth(other._maxDepth),
+      _weightAttribute{other._weightAttribute},
+      _defaultWeight{other._defaultWeight},
+      _reverseLookupInfos{other._reverseLookupInfos} {
+  TRI_ASSERT(other._defaultWeight >= 0.);
+}
 
 void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
@@ -132,8 +135,8 @@ bool ShortestPathOptions::useWeight() const {
 void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
   toVelocyPackBase(builder);
-  builder.add("minDepth", VPackValue(minDepth));
-  builder.add("maxDepth", VPackValue(maxDepth));
+  builder.add("minDepth", VPackValue(_minDepth));
+  builder.add("maxDepth", VPackValue(_maxDepth));
   builder.add("weightAttribute", VPackValue(getWeightAttribute()));
   builder.add("defaultWeight", VPackValue(getDefaultWeight()));
   builder.add("produceVertices", VPackValue(produceVertices()));
@@ -169,7 +172,8 @@ void ShortestPathOptions::addReverseLookupInfo(
     std::string const& attributeName, aql::AstNode* condition,
     bool onlyEdgeIndexes, TRI_edge_direction_e direction) {
   injectLookupInfoInList(_reverseLookupInfos, plan, collectionName,
-                         attributeName, condition, onlyEdgeIndexes, direction);
+                         attributeName, condition, onlyEdgeIndexes, direction,
+                         std::nullopt);
 }
 
 double ShortestPathOptions::weightEdge(VPackSlice edge) const {
@@ -194,32 +198,6 @@ std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
   return std::make_unique<SingleServerEdgeCursor>(
       this, _tmpVar, nullptr,
       backward ? _reverseLookupInfos : _baseLookupInfos);
-}
-
-template<typename ListType>
-void ShortestPathOptions::fetchVerticesCoordinator(ListType const& vertexIds) {
-  if (!arangodb::ServerState::instance()->isCoordinator()) {
-    return;
-  }
-
-  // In Coordinator all caches are ClusterTraverserCache instances
-  auto ch = reinterpret_cast<ClusterTraverserCache*>(cache());
-  TRI_ASSERT(ch != nullptr);
-  // get the map of _ids into the datalake
-  graph::ClusterTraverserCache::Cache& cache = ch->cache();
-
-  std::unordered_set<arangodb::velocypack::HashedStringRef> fetch;
-  for (auto const& it : vertexIds) {
-    arangodb::velocypack::HashedStringRef hashedId(
-        it.data(), static_cast<uint32_t>(it.length()));
-    if (cache.find(hashedId) == cache.end()) {
-      // We do not have this vertex
-      fetch.emplace(hashedId);
-    }
-  }
-  if (!fetch.empty()) {
-    fetchVerticesFromEngines(_trx, *ch, fetch, cache, /*forShortestPath*/ true);
-  }
 }
 
 auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {
@@ -252,24 +230,18 @@ auto ShortestPathOptions::getWeightAttribute() const& -> std::string {
   return _weightAttribute;
 }
 
-ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
-                                         bool const allowAlreadyBuiltCopy)
-    : BaseOptions(other, allowAlreadyBuiltCopy),
-      minDepth(other.minDepth),
-      maxDepth(other.maxDepth),
-      start{other.start},
-      end{other.end},
-      bidirectional{other.bidirectional},
-      multiThreaded{other.multiThreaded},
-      _reverseLookupInfos{other._reverseLookupInfos},
-      _weightAttribute{other._weightAttribute},
-      _defaultWeight{other._defaultWeight} {
-  TRI_ASSERT(other._defaultWeight >= 0.);
+auto ShortestPathOptions::setMinDepth(uint64_t minDepth) noexcept -> void {
+  _minDepth = minDepth;
 }
 
-template void
-ShortestPathOptions::fetchVerticesCoordinator<std::deque<std::string_view>>(
-    std::deque<std::string_view> const& vertexIds);
-template void ShortestPathOptions::fetchVerticesCoordinator<
-    std::vector<arangodb::velocypack::HashedStringRef>>(
-    std::vector<arangodb::velocypack::HashedStringRef> const& vertexIds);
+auto ShortestPathOptions::getMinDepth() const noexcept -> uint64_t {
+  return _minDepth;
+}
+
+auto ShortestPathOptions::setMaxDepth(uint64_t maxDepth) noexcept -> void {
+  _maxDepth = maxDepth;
+}
+
+auto ShortestPathOptions::getMaxDepth() const noexcept -> uint64_t {
+  return _maxDepth;
+}

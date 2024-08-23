@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,26 +32,19 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 
 namespace arangodb::basics {
 
 class HybridLogicalClock {
  public:
-  typedef std::chrono::high_resolution_clock ClockT;
-
- private:
-  ClockT _clock;
-  std::atomic<uint64_t> _lastTimeStamp;
-  uint64_t _offset1970;
-
- public:
   HybridLogicalClock() : _lastTimeStamp(0), _offset1970(computeOffset1970()) {}
   HybridLogicalClock(HybridLogicalClock const& other) = delete;
   HybridLogicalClock(HybridLogicalClock&& other) = delete;
   HybridLogicalClock& operator=(HybridLogicalClock const& other) = delete;
   HybridLogicalClock& operator=(HybridLogicalClock&& other) = delete;
+
+  TEST_VIRTUAL ~HybridLogicalClock() = default;
 
   uint64_t getTimeStamp() {
     uint64_t oldTimeStamp;
@@ -165,8 +158,17 @@ class HybridLogicalClock {
     return r;
   }
 
+  static uint64_t extractTime(uint64_t t) { return t >> 20; }
+
+  static uint64_t extractCount(uint64_t t) { return t & 0xfffffUL; }
+
+  static uint64_t assembleTimeStamp(uint64_t time, uint64_t count) {
+    return (time << 20) + count;
+  }
+
+ protected:
   // helper to get the physical time in milliseconds since the epoch:
-  uint64_t getPhysicalTime() {
+  TEST_VIRTUAL uint64_t getPhysicalTime() {
     auto now = _clock.now();
     uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                       now.time_since_epoch())
@@ -178,15 +180,13 @@ class HybridLogicalClock {
   // helper to compute the offset between epoch and 1970
   uint64_t computeOffset1970();
 
-  static uint64_t extractTime(uint64_t t) { return t >> 20; }
-
-  static uint64_t extractCount(uint64_t t) { return t & 0xfffffUL; }
-
-  static uint64_t assembleTimeStamp(uint64_t time, uint64_t count) {
-    return (time << 20) + count;
-  }
-
  private:
+  using ClockT = std::chrono::high_resolution_clock;
+  ClockT _clock;
+
+  std::atomic<uint64_t> _lastTimeStamp;
+  uint64_t _offset1970;
+
   static char encodeTable[65];
 
   static signed char decodeTable[256];

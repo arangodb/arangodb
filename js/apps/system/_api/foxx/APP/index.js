@@ -3,14 +3,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2010-2013 triAGENS GmbH, Cologne, Germany
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -183,6 +183,12 @@ serviceRouter.get((req, res) => {
 
 serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
+  if (mount.startsWith('/_')) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_FORBIDDEN.code,
+      errorMessage: errors.ERROR_FORBIDDEN.message
+    });
+  }
   FoxxManager.upgrade(req.body.source, mount, Object.assign(
     _.omit(req.queryParams, ['mount']),
     {
@@ -203,6 +209,12 @@ serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
 
 serviceRouter.put(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
+  if (mount.startsWith('/_')) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_FORBIDDEN.code,
+      errorMessage: errors.ERROR_FORBIDDEN.message
+    });
+  }
   FoxxManager.replace(req.body.source, mount, Object.assign(
     _.omit(req.queryParams, ['mount']),
     {
@@ -222,8 +234,15 @@ serviceRouter.put(prepareServiceRequestBody, (req, res) => {
 .response(200, schemas.fullInfo);
 
 serviceRouter.delete((req, res) => {
+  const mount = req.queryParams.mount;
+  if (mount.startsWith('/_')) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_FORBIDDEN.code,
+      errorMessage: errors.ERROR_FORBIDDEN.message
+    });
+  }
   FoxxManager.uninstall(
-    req.queryParams.mount,
+    mount,
     _.omit(req.queryParams, ['mount'])
   );
   res.status(204);
@@ -351,11 +370,23 @@ instanceRouter.use('/development', devRouter)
 .response(200, schemas.fullInfo);
 
 devRouter.post((req, res) => {
+  if (req.service.mount.startsWith('/_')) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_FORBIDDEN.code,
+      errorMessage: errors.ERROR_FORBIDDEN.message
+    });
+  }
   const service = FoxxManager.development(req.service.mount);
   res.json(serviceToJson(service));
 });
 
 devRouter.delete((req, res) => {
+  if (req.service.mount.startsWith('/_')) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_FORBIDDEN.code,
+      errorMessage: errors.ERROR_FORBIDDEN.message
+    });
+  }
   const service = FoxxManager.production(req.service.mount);
   res.json(serviceToJson(service));
 });
@@ -417,6 +448,12 @@ instanceRouter.post('/tests', (req, res) => {
 .response(200, ['json', LDJSON, 'xml', 'text']);
 
 instanceRouter.post('/download', (req, res) => {
+  if (req.service.mount.startsWith('/_')) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_FORBIDDEN.code,
+      errorMessage: errors.ERROR_FORBIDDEN.message
+    });
+  }
   const service = req.service;
   const filename = service.mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
   res.attachment(`${filename}.zip`);

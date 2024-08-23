@@ -6,13 +6,12 @@ to detect serious incidents like oom
 
 import logging
 import psutil
-
 from async_client import (
-    ArangoCLIprogressiveTimeoutExecutor,
     make_tail_params,
     tail_line_result,
     delete_tail_params,
 )
+from async_client import ArangoCLIprogressiveTimeoutExecutor
 
 
 def dmesg_runner(dmesg):
@@ -45,7 +44,6 @@ class DmesgWatcher(ArangoCLIprogressiveTimeoutExecutor):
             result_line_handler=tail_line_result,
             identifier="0_dmesg",
         )
-        # delete_logfile_params(params)
         ret = {}
         ret["error"] = self.params["error"]
         delete_tail_params(self.params)

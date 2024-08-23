@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include "Aql/Expression.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/QueryContext.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tryEmplaceHelper.h"
@@ -46,10 +47,10 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
       _baseVertexExpression(nullptr),
       minDepth(1),
       maxDepth(1),
+      mode(Order::DFS),
       useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
-      mode(Order::DFS),
       defaultWeight(1.0) {}
 
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
@@ -97,7 +98,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "uniqueVertices: 'global' is only "
-          "supported, with mode: bfs|weighted due to "
+          "supported, with order: bfs|weighted due to "
           "otherwise unpredictable results.");
     }
     uniqueVertices = TraverserOptions::UniquenessLevel::GLOBAL;
@@ -175,10 +176,10 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       _baseVertexExpression(nullptr),
       minDepth(1),
       maxDepth(1),
+      mode(Order::DFS),
       useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
-      uniqueEdges(UniquenessLevel::PATH),
-      mode(Order::DFS) {
+      uniqueEdges(UniquenessLevel::PATH) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
   TRI_ASSERT(type.isString());
@@ -401,10 +402,10 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
       _producePathsWeights(other._producePathsWeights),
       minDepth(other.minDepth),
       maxDepth(other.maxDepth),
+      mode(other.mode),
       useNeighbors(other.useNeighbors),
       uniqueVertices(other.uniqueVertices),
       uniqueEdges(other.uniqueEdges),
-      mode(other.mode),
       weightAttribute(other.weightAttribute),
       defaultWeight(other.defaultWeight),
       vertexCollections(other.vertexCollections),
@@ -654,11 +655,11 @@ void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           std::string const& collectionName,
                                           std::string const& attributeName,
                                           aql::AstNode* condition,
-                                          uint64_t depth, bool onlyEdgeIndexes,
+                                          uint64_t depth,
                                           TRI_edge_direction_e direction) {
   auto& list = _depthLookupInfo[depth];
   injectLookupInfoInList(list, plan, collectionName, attributeName, condition,
-                         onlyEdgeIndexes, direction);
+                         /*onlyEdgeIndexes*/ false, direction, depth);
 }
 
 bool TraverserOptions::hasSpecificCursorForDepth(uint64_t depth) const {

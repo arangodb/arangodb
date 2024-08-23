@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -74,8 +75,9 @@ class GraphProviderTest : public ::testing::Test {
   arangodb::ResourceMonitor resourceMonitor{global};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
   std::unique_ptr<arangodb::aql::FixedVarExpressionContext> _expressionContext;
-
-  std::unordered_map<std::string, std::vector<std::string>> _emptyShardMap{};
+  ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor> alloc =
+      {resourceMonitor};
+  MonitoredCollectionToShardMap _emptyShardMap{alloc};
   aql::Projections _vertexProjections{};
   aql::Projections _edgeProjections{};
 
@@ -136,7 +138,7 @@ class GraphProviderTest : public ::testing::Test {
               std::move(usedIndexes),
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
           *_expressionContext.get(), {}, _emptyShardMap, _vertexProjections,
-          _edgeProjections, /*produceVertices*/ true);
+          _edgeProjections, /*produceVertices*/ true, /*useCache*/ true);
       return SingleServerProvider<SingleServerProviderStep>(
           *query.get(), std::move(opts), resourceMonitor);
     }
@@ -153,14 +155,14 @@ class GraphProviderTest : public ::testing::Test {
             arangodb::aql::QueryString(std::string_view("RETURN 1"));
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
-            server.getSystemDatabase());
+            server.getSystemDatabase(), transaction::OperationOriginTestCase{});
         auto fakeQuery = std::make_shared<MockQuery>(ctx, queryString);
         try {
           fakeQuery->collections().add("s9880", AccessMode::Type::READ,
                                        arangodb::aql::Collection::Hint::Shard);
         } catch (...) {
         }
-        fakeQuery->prepareQuery(SerializationFormat::SHADOWROWS);
+        fakeQuery->prepareQuery();
         auto ast = fakeQuery->ast();
         auto tmpVar = ast->variables()->createTemporaryVariable();
         auto tmpVarRef = ast->createNodeReference(tmpVar);
@@ -219,7 +221,8 @@ class GraphProviderTest : public ::testing::Test {
             arangodb::aql::QueryString(std::string_view("RETURN 1"));
 
         auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
-            server->getSystemDatabase());
+            server->getSystemDatabase(),
+            transaction::OperationOriginTestCase{});
         query = arangodb::aql::Query::create(ctx, queryString, nullptr);
 
         query->collections().add("v", AccessMode::Type::READ,
@@ -227,7 +230,7 @@ class GraphProviderTest : public ::testing::Test {
         query->collections().add("e", AccessMode::Type::READ,
                                  arangodb::aql::Collection::Hint::Collection);
 
-        query->prepareQuery(SerializationFormat::SHADOWROWS);
+        query->prepareQuery();
       }
 
       clusterEngines =
@@ -267,7 +270,7 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
     std::vector<decltype(start)*> looseEnds{};
     looseEnds.emplace_back(&start);
     auto futures = testee.fetch(looseEnds);
-    auto steps = futures.get();
+    auto steps = futures.waitAndGet();
   }
 
   std::vector<typename decltype(testee)::Step> result{};
@@ -311,7 +314,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
     std::vector<decltype(start)*> looseEnds{};
     looseEnds.emplace_back(&start);
     auto futures = testee.fetch(looseEnds);
-    auto steps = futures.get();
+    auto steps = futures.waitAndGet();
   }
 
   std::vector<typename decltype(testee)::Step> result{};
@@ -379,7 +382,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
     std::vector<decltype(start)*> looseEnds{};
     looseEnds.emplace_back(&start);
     auto futures = testee.fetch(looseEnds);
-    auto steps = futures.get();
+    auto steps = futures.waitAndGet();
   }
 
   std::vector<typename decltype(testee)::Step> result{};

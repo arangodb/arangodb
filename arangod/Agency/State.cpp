@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,13 +34,13 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -66,19 +66,17 @@ DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
               "Current number of entries in agency client id lookup table");
 
 /// Constructor:
-State::State(ArangodServer& server)
-    : _server(server),
-      _agent(nullptr),
+State::State(metrics::MetricsFeature& metrics)
+    : _agent(nullptr),
       _vocbase(nullptr),
       _ready(false),
       _collectionsLoaded(false),
       _nextCompactionAfter(0),
       _lastCompactionAt(0),
       _cur(0),
-      _log_size(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_agency_log_size_bytes{})),
-      _clientIdLookupCount(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_agency_client_lookup_table_size{})) {}
+      _log_size(metrics.add(arangodb_agency_log_size_bytes{})),
+      _clientIdLookupCount(
+          metrics.add(arangodb_agency_client_lookup_table_size{})) {}
 
 /// Default dtor
 State::~State() = default;
@@ -127,7 +125,9 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   }
 
   TRI_ASSERT(_vocbase != nullptr);
-  transaction::StandaloneContext ctx(*_vocbase);
+  auto origin =
+      transaction::OperationOriginInternal{"persisting agency log entry"};
+  transaction::StandaloneContext ctx(*_vocbase, origin);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
@@ -215,7 +215,9 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
   // Multi docment transaction for log entry and configuration replacement -----
   TRI_ASSERT(_vocbase != nullptr);
 
-  transaction::StandaloneContext ctx(*_vocbase);
+  auto origin =
+      transaction::OperationOriginInternal{"persisting agency configuration"};
+  transaction::StandaloneContext ctx(*_vocbase, origin);
   transaction::Methods trx(std::shared_ptr<transaction::Context>(
                                std::shared_ptr<transaction::Context>(), &ctx),
                            {}, {"log", "configuration"}, {},
@@ -270,7 +272,7 @@ std::vector<index_t> State::logLeaderMulti(
                                    "Invalid transaction syntax");
   }
 
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
 
   TRI_ASSERT(!_log.empty());  // log must never be empty
 
@@ -304,7 +306,7 @@ std::vector<index_t> State::logLeaderMulti(
 
 index_t State::logLeaderSingle(arangodb::velocypack::Slice slice, term_t term,
                                std::string const& clientId) {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
+  std::lock_guard mutexLocker{_logLock};  // log entries must stay in order
   using namespace std::chrono;
   return logNonBlocking(
       _log.back().index + 1, slice, term,
@@ -317,8 +319,6 @@ index_t State::logLeaderSingle(arangodb::velocypack::Slice slice, term_t term,
 index_t State::logNonBlocking(index_t idx, velocypack::Slice slice, term_t term,
                               uint64_t millis, std::string const& clientId,
                               bool leading, bool reconfiguration) {
-  _logLock.assertLockedByCurrentThread();
-
   // verbose logging for all agency operations
   // there are two different log levels in use here for the AGENCYSTORE topic
   // - DEBUG: will log writes only on the leader
@@ -391,7 +391,7 @@ index_t State::logFollower(VPackSlice transactions) {
   bool gotSnapshot = transactions.length() > 0 && transactions[0].isObject() &&
                      !transactions[0].get("readDB").isNone();
 
-  MUTEX_LOCKER(logLock, _logLock);
+  std::lock_guard logLock{_logLock};
 
   // In case of a snapshot, there are three possibilities:
   //   1. Our highest log index is smaller than the snapshot index, in this
@@ -433,8 +433,8 @@ index_t State::logFollower(VPackSlice transactions) {
     if (useSnapshot) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
-      Store snapshot(_agent->server(), _agent, "snapshot");
-      snapshot = transactions[0];
+      Store snapshot("snapshot");
+      snapshot.setNodeValue(transactions[0]);
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
             << "Could not restore received log snapshot.";
@@ -551,8 +551,10 @@ size_t State::removeConflicts(VPackSlice transactions, bool gotSnapshot) {
         TRI_ASSERT(
             nullptr !=
             _vocbase);  // this check was previously in the Query constructor
+        auto origin = transaction::OperationOriginInternal{
+            "removing agency log conflicts"};
         auto query = arangodb::aql::Query::create(
-            transaction::StandaloneContext::Create(*_vocbase),
+            transaction::StandaloneContext::create(*_vocbase, origin),
             aql::QueryString(aql), std::move(bindVars));
 
         aql::QueryResult queryResult = query->executeSync();
@@ -609,18 +611,14 @@ void State::logEraseNoLock(std::deque<log_t>::iterator rbegin,
   _log_size -= delSize;
 }
 
-/// Get log entries from indices "start" to "end"
-std::vector<log_t> State::get(index_t start, index_t end) const {
-  std::vector<log_t> entries;
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
-
-  if (_log.empty()) {
-    return entries;
-  }
+std::pair<index_t, index_t> State::determineLogBounds(
+    index_t start, index_t end) const noexcept {
+  // _logLock must be held when this method is called
+  TRI_ASSERT(!_log.empty());
 
   // start must be greater than or equal to the lowest index
   // and smaller than or equal to the largest index
-  if (start < _log[0].index) {
+  if (start < _log.front().index) {
     start = _log.front().index;
   } else if (start > _log.back().index) {
     start = _log.back().index;
@@ -639,17 +637,64 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
   start -= _cur;
   end -= (_cur - 1);
 
-  for (size_t i = start; i < end; ++i) {
+  TRI_ASSERT(start <= end);
+  return std::make_pair(start, end);
+}
+
+/// Get log entries from indices "start" to "end"
+std::vector<log_t> State::get(index_t start, index_t end) const {
+  std::vector<log_t> entries;
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
+
+  if (_log.empty()) {
+    return entries;
+  }
+
+  auto [s, e] = determineLogBounds(start, end);
+
+  for (size_t i = s; i < e; ++i) {
+    // only for debugging purposes
+    TRI_ASSERT(i < _log.size()) << [this, sNow = s, eNow = e, start, end]() {
+      std::stringstream s;
+      s << "log size: " << _log.size() << ", start: " << sNow
+        << ", end: " << eNow << ", cur: " << _cur << ", orig start: " << start
+        << ", orig end: " << end << ", log entry indexes:";
+      for (auto const& it : _log) {
+        s << " " << it.index;
+      }
+      return s.str();
+    }();
+
     entries.push_back(_log[i]);
   }
 
   return entries;
 }
 
+/// Get log entries from indices "start" to "end", into the builder as an array
+index_t State::toVelocyPack(velocypack::Builder& result, index_t start,
+                            index_t end) const {
+  VPackArrayBuilder guard(&result, /*allowUnindexed*/ true);
+
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
+
+  if (_log.empty()) {
+    return 0;
+  }
+
+  auto [s, e] = determineLogBounds(start, end);
+
+  for (size_t i = s; i < e; ++i) {
+    _log[i].toVelocyPackCompact(result);
+  }
+
+  return _log[s].index;
+}
+
 /// Get log entries from indices "start" to "end"
 /// Throws std::out_of_range exception
 log_t State::at(index_t index) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
   return atNoLock(index);
 }
 
@@ -664,7 +709,7 @@ log_t State::atNoLock(index_t index) const {
   }
 
   auto pos = index - _cur;
-  if (pos > _log.size()) {
+  if (pos >= _log.size()) {
     std::string excMessage =
         std::string(
             "Access beyond the end of the log deque: (last, requested): (") +
@@ -680,41 +725,31 @@ log_t State::atNoLock(index_t index) const {
 /// with index `index`, 1, if it does contain one with term `term` and
 /// -1, if it does contain one with another term than `term`:
 int State::checkLog(index_t index, term_t term) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
 
   // If index above highest entry
-  if (_log.size() > 0 && index > _log.back().index) {
+  if (!_log.empty() && index > _log.back().index) {
     return -1;
   }
 
   // Catch exceptions and avoid overflow:
-  if (index < _cur || index - _cur > _log.size()) {
+  if (index < _cur || index - _cur >= _log.size()) {
     return 0;
   }
 
-  try {
-    return _log.at(index - _cur).term == term ? 1 : -1;
-  } catch (...) {
-  }
-
-  return 0;
+  return _log[index - _cur].term == term ? 1 : -1;
 }
 
 /// Have log with specified index and term
 bool State::has(index_t index, term_t term) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
 
   // Catch exceptions and avoid overflow:
-  if (index < _cur || index - _cur > _log.size()) {
+  if (index < _cur || index - _cur >= _log.size()) {
     return false;
   }
 
-  try {
-    return _log.at(index - _cur).term == term;
-  } catch (...) {
-  }
-
-  return false;
+  return _log[index - _cur].term == term;
 }
 
 /// Get vector of past transaction from 'start' to 'end'
@@ -722,7 +757,7 @@ VPackBuilder State::slices(index_t start, index_t end) const {
   VPackBuilder slices;
   slices.openArray();
 
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::unique_lock mutexLocker{_logLock};  // Cannot be read lock (Compaction)
 
   if (!_log.empty()) {
     if (start < _log.front().index) {  // no start specified
@@ -773,7 +808,7 @@ VPackBuilder State::slices(index_t start, index_t end) const {
 /// Get log entry by log index, copy entry because we do no longer have the
 /// lock after the return
 log_t State::operator[](index_t index) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
   TRI_ASSERT(index - _cur < _log.size());
   return _log.at(index - _cur);
 }
@@ -781,7 +816,7 @@ log_t State::operator[](index_t index) const {
 /// Get last log entry, copy entry because we do no longer have the lock
 /// after the return
 log_t State::lastLog() const {
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
   TRI_ASSERT(!_log.empty());
   return _log.back();
 }
@@ -866,7 +901,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase, bool waitForSync) {
   _options.silent = true;
 
   if (loadPersisted()) {
-    MUTEX_LOCKER(logLock, _logLock);
+    std::lock_guard logLock{_logLock};
     if (_log.empty()) {
       std::shared_ptr<Buffer<uint8_t>> buf =
           std::make_shared<Buffer<uint8_t>>();
@@ -901,8 +936,11 @@ bool State::loadPersisted() {
       LOG_TOPIC("1a476", INFO, Logger::AGENCY)
           << "Non matching compaction and log indexes. Dropping both "
              "collections";
-      _log.clear();
-      _cur = 0;
+      {
+        std::lock_guard logLock{_logLock};
+        _log.clear();
+        _cur = 0;
+      }
       dropCollection("log");
       dropCollection("compact");
     }
@@ -915,6 +953,8 @@ bool State::loadPersisted() {
   // in log and compact cannot be mitigated after this point. We are here
   // because of the above missing / incomplete log / compaction. Including the
   // case of only one of the two collections being present.
+  dropCollection("log");
+  dropCollection("compact");
   ensureCollection("log", true);
   ensureCollection("compact", true);
 
@@ -930,9 +970,11 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
   std::string const aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
 
   TRI_ASSERT(nullptr != _vocbase);
+  auto origin = transaction::OperationOriginInternal{
+      "loading last compacted agency snapshot"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -954,7 +996,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
 
     VPackSlice ii = result[0];
     try {
-      store = ii;
+      store.setNodeValue(ii);
       index = extractIndexFromKey(ii);
       term = ii.get("term").getNumber<uint64_t>();
     } catch (std::exception const& e) {
@@ -972,9 +1014,11 @@ index_t State::loadCompacted() {
 
   TRI_ASSERT(nullptr !=
              _vocbase);  // this check was previously in the Query constructor
+  auto origin =
+      transaction::OperationOriginInternal{"loading compacted agency snapshot"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -990,7 +1034,7 @@ index_t State::loadCompacted() {
     // Result can only have length 0 or 1.
     VPackSlice ii = result[0];
 
-    MUTEX_LOCKER(logLock, _logLock);
+    std::lock_guard logLock{_logLock};
     _agent->setPersistedState(ii);
     try {
       _cur = extractIndexFromKey(ii);
@@ -1012,16 +1056,22 @@ index_t State::loadCompacted() {
 
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
-  std::string const aql(
-      "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
+  auto loadConfiguration = [&]() -> aql::QueryResult {
+    std::string const aql(
+        "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
 
-  TRI_ASSERT(nullptr !=
-             _vocbase);  // this check was previously in the Query constructor
-  auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+    TRI_ASSERT(nullptr !=
+               _vocbase);  // this check was previously in the Query constructor
+    auto origin =
+        transaction::OperationOriginInternal{"loading agency configuration"};
+    auto query = arangodb::aql::Query::create(
+        transaction::StandaloneContext::create(*_vocbase, origin),
+        aql::QueryString(aql), nullptr);
 
-  aql::QueryResult queryResult = query->executeSync();
+    return query->executeSync();
+  };
+
+  aql::QueryResult queryResult = loadConfiguration();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1066,7 +1116,7 @@ bool State::loadOrPersistConfiguration() {
 
   } else {  // Fresh start or disaster recovery
 
-    MUTEX_LOCKER(guard, _configurationWriteLock);
+    std::lock_guard guard{_configurationWriteLock};
 
     LOG_TOPIC("a27cb", DEBUG, Logger::AGENCY) << "New agency!";
 
@@ -1091,7 +1141,9 @@ bool State::loadOrPersistConfiguration() {
     _agent->id(uuid);
     ServerState::instance()->setId(uuid);
 
-    transaction::StandaloneContext ctx(*_vocbase);
+    auto origin =
+        transaction::OperationOriginInternal{"storing agency configuration"};
+    transaction::StandaloneContext ctx(*_vocbase, origin);
     SingleCollectionTransaction trx(
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
@@ -1142,7 +1194,7 @@ bool State::loadRemaining(index_t cind) {
     // we are using the initial _cur value only as a lower bound in the
     // AQL query, but use the second _cur value for the actual, per-log
     // entry filtering.
-    MUTEX_LOCKER(logLock, _logLock);
+    std::lock_guard logLock{_logLock};
     lastIndex = _cur;
   }
 
@@ -1159,9 +1211,11 @@ bool State::loadRemaining(index_t cind) {
 
   TRI_ASSERT(nullptr !=
              _vocbase);  // this check was previously in the Query constructor
+  auto origin = transaction::OperationOriginInternal{
+      "loading remaining agency log entries"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      std::move(bindVars));
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(aql), std::move(bindVars));
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1171,7 +1225,7 @@ bool State::loadRemaining(index_t cind) {
 
   auto result = queryResult.data->slice();
 
-  MUTEX_LOCKER(logLock, _logLock);
+  std::lock_guard logLock{_logLock};
   if (result.isArray() && result.length() > 0) {
     TRI_ASSERT(_log.empty());  // was cleared in loadCompacted
     // We know that _cur has been set in loadCompacted to the index of the
@@ -1247,11 +1301,11 @@ bool State::loadRemaining(index_t cind) {
 
 /// Find entry by index and term
 bool State::find(index_t prevIndex, term_t prevTerm) {
-  MUTEX_LOCKER(mutexLocker, _logLock);
-  if (prevIndex > _log.size()) {
+  std::lock_guard mutexLocker{_logLock};
+  if (prevIndex >= _log.size()) {
     return false;
   }
-  return _log.at(prevIndex).term == prevTerm;
+  return _log[prevIndex].term == prevTerm;
 }
 
 index_t State::lastCompactionAt() const { return _lastCompactionAt; }
@@ -1266,7 +1320,7 @@ bool State::compact(index_t cind, index_t keep) {
   // We keep at least `keep` log entries before the compacted state,
   // for forensic analysis and such that the log is never empty.
   {
-    MUTEX_LOCKER(_logLocker, _logLock);
+    std::lock_guard _logLocker{_logLock};
     if (cind <= _cur) {
       LOG_TOPIC("69afe", DEBUG, Logger::AGENCY)
           << "Not compacting log at index " << cind
@@ -1281,7 +1335,7 @@ bool State::compact(index_t cind, index_t keep) {
       (std::max)(_nextCompactionAfter.load(),
                  cind + _agent->config().compactionStepSize());
 
-  Store snapshot(_agent->server(), _agent, "snapshot");
+  Store snapshot("snapshot");
   index_t index;
   term_t term;
   if (!loadLastCompactedSnapshot(snapshot, index, term)) {
@@ -1298,8 +1352,7 @@ bool State::compact(index_t cind, index_t keep) {
     // Apply log entries to snapshot up to and including index cind:
     auto logs = slices(index + 1, cind);
     log_t last = at(cind);
-    snapshot.applyLogEntries(logs, cind, last.term,
-                             false /* do not perform callbacks */);
+    snapshot.applyLogEntries(logs, cind, last.term);
 
     if (!persistCompactionSnapshot(cind, last.term, snapshot)) {
       LOG_TOPIC("3b34a", ERR, Logger::AGENCY)
@@ -1340,7 +1393,7 @@ bool State::compactVolatile(index_t cind, index_t keep) {
   }
   TRI_ASSERT(keep < cind);
   index_t cut = cind - keep;
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
   if (!_log.empty() && cut > _cur && cut - _cur < _log.size()) {
     logEraseNoLock(_log.begin(), _log.begin() + (cut - _cur));
     TRI_ASSERT(_log.begin()->index == cut);
@@ -1376,9 +1429,11 @@ bool State::compactPersisted(index_t cind, index_t keep) {
   LOG_TOPIC("a8123", DEBUG, Logger::AGENCY)
       << "Removing log entries with keys lower than " << cutStr;
 
+  auto origin =
+      transaction::OperationOriginInternal{"compacting agency log entries"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      std::move(bindVars));
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(aql), std::move(bindVars));
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1419,8 +1474,10 @@ bool State::removeObsolete(index_t cind) {
 
     TRI_ASSERT(nullptr !=
                _vocbase);  // this check was previously in the Query constructor
+    auto origin = transaction::OperationOriginInternal{
+        "removing obsolete agency snapshots"};
     auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*_vocbase),
+        transaction::StandaloneContext::create(*_vocbase, origin),
         aql::QueryString(aql), std::move(bindVars));
 
     aql::QueryResult queryResult = query->executeSync();
@@ -1454,7 +1511,9 @@ bool State::persistCompactionSnapshot(index_t cind,
     }
 
     TRI_ASSERT(_vocbase != nullptr);
-    transaction::StandaloneContext ctx(*_vocbase);
+    auto origin = transaction::OperationOriginInternal{
+        "persisting agency compacted snapshot"};
+    transaction::StandaloneContext ctx(*_vocbase, origin);
     SingleCollectionTransaction trx(
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
@@ -1506,8 +1565,6 @@ bool State::persistCompactionSnapshot(index_t cind,
 /// complete log and persists the given snapshot. After this operation, the
 /// log is empty and something ought to be appended to it rather quickly.
 bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
-  _logLock.assertLockedByCurrentThread();
-
   if (!persistCompactionSnapshot(index, term, snapshot)) {
     LOG_TOPIC("a3f20", ERR, Logger::AGENCY)
         << "Could not persist received log snapshot.";
@@ -1523,9 +1580,11 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
 
   TRI_ASSERT(nullptr !=
              _vocbase);  // this check was previously in the Query constructor
+  auto origin =
+      transaction::OperationOriginInternal{"removing all agency log entries"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1558,9 +1617,11 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
     }
   }
 
-  transaction::StandaloneContext ctx(*_vocbase);
+  auto origin =
+      transaction::OperationOriginInternal{"updating agency configuration"};
+  transaction::StandaloneContext ctx(*_vocbase, origin);
 
-  MUTEX_LOCKER(guard, _configurationWriteLock);
+  std::lock_guard guard{_configurationWriteLock};
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
@@ -1593,14 +1654,16 @@ query_t State::allLogs() const {
 
   TRI_ASSERT(nullptr != _vocbase);
 
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
 
+  auto origin =
+      transaction::OperationOriginInternal{"retrieving all agency logs"};
   auto compq = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(comp),
-      nullptr);
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(comp), nullptr);
   auto logsq = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(logs),
-      nullptr);
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(logs), nullptr);
 
   aql::QueryResult compqResult = compq->executeSync();
 
@@ -1645,7 +1708,7 @@ std::vector<index_t> State::inquire(velocypack::Slice query) const {
   std::vector<index_t> result;
   size_t pos = 0;
 
-  MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
+  std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
   for (auto i : VPackArrayIterator(query)) {
     if (!i.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1670,14 +1733,14 @@ std::vector<index_t> State::inquire(velocypack::Slice query) const {
 
 // Index of last log entry
 index_t State::lastIndex() const {
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
   TRI_ASSERT(!_log.empty());
   return _log.back().index;
 }
 
 // Index of last log entry
 index_t State::firstIndex() const {
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
   TRI_ASSERT(!_log.empty());
   return _cur;
 }
@@ -1690,11 +1753,13 @@ index_t State::firstIndex() const {
 std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
                                                        index_t& index,
                                                        term_t& term) {
+  auto origin = transaction::OperationOriginInternal{
+      "querying latest agency snapshot state"};
   // First get the latest snapshot, if there is any:
   std::string aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(vocbase), aql::QueryString(aql),
-      nullptr);
+      transaction::StandaloneContext::create(vocbase, origin),
+      aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1705,13 +1770,13 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   VPackSlice result = queryResult.data->slice();
   TRI_ASSERT(result.isArray());
 
-  Store store(vocbase.server(), nullptr);
+  Store store;
   index = 0;
   term = 0;
   if (result.length() == 1) {
     // Result can only have length 0 or 1.
     VPackSlice s = result[0];
-    store = s;
+    store.setNodeValue(s);
     index = extractIndexFromKey(s);
     term = s.get("term").getNumber<uint64_t>();
     LOG_TOPIC("d838b", INFO, Logger::AGENCY)
@@ -1721,8 +1786,8 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   // Now get the rest of the log entries, if there are any:
   aql = "FOR l IN log SORT l._key RETURN l";
   auto query2 = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(vocbase), aql::QueryString(aql),
-      nullptr);
+      transaction::StandaloneContext::create(vocbase, origin),
+      aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult2 = query2->executeSync();
 
@@ -1773,7 +1838,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
         }
       }
     }
-    store.applyLogEntries(b, index, term, false);
+    store.applyLogEntries(b, index, term);
   }
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1795,8 +1860,10 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   TRI_ASSERT(nullptr !=
              _vocbase);  // this check was previously in the Query constructor
+  auto origin = transaction::OperationOriginInternal{
+      "serializing agency log to velocypack"};
   auto logQuery = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase),
+      transaction::StandaloneContext::create(*_vocbase, origin),
       aql::QueryString(logQueryStr), std::move(bindVars));
 
   aql::QueryResult logQueryResult = logQuery->executeSync();
@@ -1848,8 +1915,11 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     std::string const compQueryStr(
         "FOR c in compact FILTER c._key >= @key SORT c._key LIMIT 1 RETURN c");
 
+    auto origin = transaction::OperationOriginInternal{
+        "serializing agency snapshot to velocypack"};
+
     auto compQuery = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*_vocbase),
+        transaction::StandaloneContext::create(*_vocbase, origin),
         aql::QueryString(compQueryStr), std::move(bindVars));
 
     aql::QueryResult compQueryResult = compQuery->executeSync();
@@ -1879,7 +1949,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 /// @brief dump the entire in-memory state to velocypack.
 /// should be used for testing only
 void State::toVelocyPack(velocypack::Builder& builder) const {
-  MUTEX_LOCKER(mutexLocker, _logLock);
+  std::lock_guard mutexLocker{_logLock};
 
   builder.openObject();
   builder.add("current", VPackValue(_cur));

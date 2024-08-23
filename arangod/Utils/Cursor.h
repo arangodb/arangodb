@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,17 +24,16 @@
 #pragma once
 
 #include "Aql/ExecutionState.h"
-#include "Assertions/Assert.h"
-#include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Basics/system-functions.h"
-#include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
 
-#include "velocypack/Buffer.h"
-#include <velocypack/Iterator.h>
-#include <velocypack/Builder.h>
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <utility>
 
 namespace arangodb {
 
@@ -43,11 +42,13 @@ class Context;
 }
 
 namespace velocypack {
+template<typename T>
+class Buffer;
 class Builder;
 class Slice;
 }  // namespace velocypack
 
-typedef TRI_voc_tick_t CursorId;
+using CursorId = TRI_voc_tick_t;
 
 class Cursor {
  public:
@@ -55,23 +56,14 @@ class Cursor {
   Cursor& operator=(Cursor const&) = delete;
 
   Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount,
-         bool isRetriable)
-      : _id(id),
-        _batchSize(batchSize == 0 ? 1 : batchSize),
-        _currentBatchId(0),
-        _ttl(ttl),
-        _expires(TRI_microtime() + _ttl),
-        _hasCount(hasCount),
-        _isDeleted(false),
-        _isRetriable(isRetriable),
-        _isUsed(false) {}
+         bool isRetriable);
 
-  virtual ~Cursor() = default;
+  virtual ~Cursor();
 
  public:
-  CursorId id() const { return _id; }
+  CursorId id() const noexcept { return _id; }
 
-  inline size_t batchSize() const { return _batchSize; }
+  size_t batchSize() const noexcept { return _batchSize; }
 
   bool hasCount() const noexcept { return _hasCount; }
 
@@ -79,54 +71,30 @@ class Cursor {
 
   double ttl() const noexcept { return _ttl; }
 
-  double expires() const noexcept {
-    return _expires.load(std::memory_order_relaxed);
-  }
+  double expires() const noexcept;
 
-  inline bool isUsed() const {
-    // (1) - this release-store synchronizes-with the acquire-load (2)
-    return _isUsed.load(std::memory_order_acquire);
-  }
+  bool isUsed() const noexcept;
 
-  inline bool isDeleted() const { return _isDeleted; }
+  bool isDeleted() const noexcept;
 
-  void setDeleted() { _isDeleted = true; }
+  void setDeleted() noexcept;
+
+  bool isCurrentBatchId(uint64_t id) const noexcept;
+
+  bool isNextBatchId(uint64_t id) const;
 
   void setLastQueryBatchObject(
-      std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) {
-    _currentBatchResult.second = std::move(buffer);
-  }
+      std::shared_ptr<velocypack::Buffer<uint8_t>> buffer) noexcept;
 
-  std::pair<std::shared_ptr<VPackBufferUInt8>, Result> getLastBatchResult(
-      std::string const& batchId) {
-    if (_currentBatchResult.first != batchId) {
-      return {nullptr, Result(TRI_ERROR_HTTP_NOT_FOUND, "batch id not found")};
-    }
-    return {_currentBatchResult.second, TRI_ERROR_NO_ERROR};
-  }
+  std::shared_ptr<velocypack::Buffer<uint8_t>> getLastBatch() const;
 
-  void handleNextBatchIdValue(VPackBuilder& builder, bool hasMore) {
-    if (isRetriable()) {
-      _currentBatchResult.first = std::to_string(++_currentBatchId);
-      if (hasMore) {
-        builder.add("nextBatchId", std::to_string(_currentBatchId + 1));
-      }
-    }
-  }
+  uint64_t storedBatchId() const;
 
-  void use() {
-    TRI_ASSERT(!_isDeleted);
-    TRI_ASSERT(!_isUsed);
+  void handleNextBatchIdValue(velocypack::Builder& builder, bool hasMore);
 
-    _isUsed.store(true, std::memory_order_relaxed);
-  }
+  void use() noexcept;
 
-  void release() noexcept {
-    TRI_ASSERT(_isUsed);
-    _expires.store(TRI_microtime() + _ttl, std::memory_order_relaxed);
-    // (2) - this release-store synchronizes-with the acquire-load (1)
-    _isUsed.store(false, std::memory_order_release);
-  }
+  void release() noexcept;
 
   virtual void kill() {}
 
@@ -135,6 +103,8 @@ class Cursor {
   // is actually visible through other APIS (e.g. current queries)
   // so user actually has a chance to kill it here.
   virtual void debugKillQuery() {}
+
+  virtual uint64_t memoryUsage() const noexcept = 0;
 
   virtual size_t count() const = 0;
 
@@ -169,19 +139,20 @@ class Cursor {
   virtual void setWakeupHandler(std::function<bool()> const& cb) {}
   virtual void resetWakeupHandler() {}
 
-  virtual bool allowDirtyReads() const { return false; }
+  virtual bool allowDirtyReads() const noexcept { return false; }
 
  protected:
   CursorId const _id;
   size_t const _batchSize;
   size_t _currentBatchId;
-  double _ttl;
+  size_t _lastAvailableBatchId;
+  double const _ttl;
   std::atomic<double> _expires;
   bool const _hasCount;
+  bool const _isRetriable;
   bool _isDeleted;
-  bool _isRetriable;
   std::atomic<bool> _isUsed;
-  std::pair<std::string, std::shared_ptr<velocypack::Buffer<uint8_t>>>
+  std::pair<uint64_t, std::shared_ptr<velocypack::Buffer<uint8_t>>>
       _currentBatchResult;
 };
 }  // namespace arangodb

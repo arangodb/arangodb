@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,23 +24,17 @@
 
 #include "IResearchOrderFactory.h"
 
-// otherwise define conflict between 3rdParty\date\include\date\date.h and
-// 3rdParty\iresearch\core\shared.hpp
-#if defined(_MSC_VER)
-#include "date/date.h"
-#endif
-
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
-#include "Basics/fasthash.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "IResearch/VelocyPackHelper.h"
 
 #include <search/scorers.hpp>
@@ -49,10 +43,10 @@ namespace {
 
 using namespace arangodb;
 
-bool makeScorer(irs::sort::ptr& scorer, std::string_view name,
+bool makeScorer(irs::Scorer::ptr& scorer, std::string_view name,
                 aql::AstNode const& args,
                 arangodb::iresearch::QueryContext const& ctx) {
-  TRI_ASSERT(!args.numMembers() ||
+  TRI_ASSERT(!args.numMembers() || !ctx.ref ||
              arangodb::iresearch::findReference(*args.getMember(0), *ctx.ref));
 
   switch (args.numMembers()) {
@@ -106,7 +100,7 @@ bool makeScorer(irs::sort::ptr& scorer, std::string_view name,
   return bool(scorer);
 }
 
-bool fromFCall(irs::sort::ptr* scorer, std::string_view scorerName,
+bool fromFCall(irs::Scorer::ptr* scorer, std::string_view scorerName,
                aql::AstNode const* args,
                arangodb::iresearch::QueryContext const& ctx) {
   auto const* ref = arangodb::iresearch::getSearchFuncRef(args);
@@ -147,7 +141,7 @@ bool nameFromFCall(std::string& scorerName, aql::AstNode const& node) {
   return true;
 }
 
-bool fromFCall(irs::sort::ptr* scorer, aql::AstNode const& node,
+bool fromFCall(irs::Scorer::ptr* scorer, aql::AstNode const& node,
                arangodb::iresearch::QueryContext const& ctx) {
   std::string scorerName;
 
@@ -168,7 +162,7 @@ bool nameFromFCallUser(std::string_view& scorerName, aql::AstNode const& node) {
   return arangodb::iresearch::parseValue(scorerName, node);
 }
 
-bool fromFCallUser(irs::sort::ptr* scorer, aql::AstNode const& node,
+bool fromFCallUser(irs::Scorer::ptr* scorer, aql::AstNode const& node,
                    arangodb::iresearch::QueryContext const& ctx) {
   std::string_view scorerName;
 
@@ -206,7 +200,7 @@ aql::Variable const* refFromScorer(aql::AstNode const& node) {
   return ref;
 }
 
-bool scorer(irs::sort::ptr* scorer, aql::AstNode const& node,
+bool scorer(irs::Scorer::ptr* scorer, aql::AstNode const& node,
             QueryContext const& ctx) {
   switch (node.type) {
     case aql::NODE_TYPE_FCALL:  // function call
@@ -220,7 +214,7 @@ bool scorer(irs::sort::ptr* scorer, aql::AstNode const& node,
   }
 }
 
-bool comparer(irs::sort::ptr* comparer, aql::AstNode const& node) {
+bool comparer(irs::Scorer::ptr* comparer, aql::AstNode const& node) {
   std::string buf;
   std::string_view scorerName;
 

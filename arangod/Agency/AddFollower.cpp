@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,12 +25,14 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          std::string const& jobId, std::string const& creator,
@@ -82,8 +84,8 @@ void AddFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("8f72c", INFO, Logger::SUPERVISION)
-      << "Todo: AddFollower(s) "
-      << " to shard " << _shard << " in collection " << _collection;
+      << "Todo: AddFollower(s) to shard " << _shard << " in collection "
+      << _collection;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -145,7 +147,7 @@ bool AddFollower::start(bool&) {
     return false;
   }
   Node const& collection =
-      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection)->get();
+      *_snapshot.get(planColPrefix + _database + "/" + _collection);
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
@@ -156,8 +158,8 @@ bool AddFollower::start(bool&) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).value();
-
+  auto plannedBuilder = _snapshot.get(planPath)->toBuilder();
+  auto planned = plannedBuilder.slice();
   TRI_ASSERT(planned.isArray());
 
   // First check that we still have too few followers for the current
@@ -348,9 +350,9 @@ bool AddFollower::start(bool&) {
             // "failoverCandidates":
             std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
             foCandsPath += StaticStrings::FailoverCandidates;
-            auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+            auto foCands = this->_snapshot.hasAsBuilder(foCandsPath);
             if (foCands) {
-              addPreconditionUnchanged(trx, foCandsPath, foCands.value());
+              addPreconditionUnchanged(trx, foCandsPath, foCands->slice());
             }
           });
       addPreconditionShardNotBlocked(trx, _shard);
@@ -367,7 +369,7 @@ bool AddFollower::start(bool&) {
     _status = FINISHED;
     LOG_TOPIC("961a4", INFO, Logger::SUPERVISION)
         << "Finished: Addfollower(s) to shard " << _shard << " in collection "
-        << _collection;
+        << _collection << ": " << chosen;
     return true;
   }
 

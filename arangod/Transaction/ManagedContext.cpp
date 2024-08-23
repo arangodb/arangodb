@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,7 +31,7 @@ namespace arangodb::transaction {
 ManagedContext::ManagedContext(TransactionId globalId,
                                std::shared_ptr<TransactionState> state,
                                bool responsibleForCommit, bool cloned)
-    : SmartContext(state->vocbase(), globalId, state),
+    : SmartContext(state->vocbase(), globalId, state, state->operationOrigin()),
       _responsibleForCommit(responsibleForCommit),
       _cloned(cloned),
       _isSideUser(false) {}
@@ -39,7 +39,7 @@ ManagedContext::ManagedContext(TransactionId globalId,
 ManagedContext::ManagedContext(TransactionId globalId,
                                std::shared_ptr<TransactionState> state,
                                TransactionContextSideUser /*sideUser*/)
-    : SmartContext(state->vocbase(), globalId, state),
+    : SmartContext(state->vocbase(), globalId, state, state->operationOrigin()),
       _responsibleForCommit(false),
       _cloned(true),
       _isSideUser(true) {}
@@ -73,6 +73,7 @@ transaction::ManagedContext::acquireState(transaction::Options const& options,
   // single document transaction should never be leased out
   TRI_ASSERT(!_state->hasHint(Hints::Hint::SINGLE_OPERATION));
   responsibleForCommit = _responsibleForCommit;
+  // intentionally do not update operationOrigin of existing _state
   return _state;
 }
 
@@ -82,6 +83,7 @@ void ManagedContext::unregisterTransaction() noexcept {
 }
 
 std::shared_ptr<transaction::Context> ManagedContext::clone() const {
+  TRI_ASSERT(_state != nullptr);
   // cloned transactions may never be responsible for commits
   auto clone = std::make_shared<transaction::ManagedContext>(
       _globalId, _state,

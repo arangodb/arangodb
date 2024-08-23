@@ -2,19 +2,16 @@
 /* global more:true */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoQueryCursor
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2013 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,21 +19,22 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Achim Brandt
 // / @author Dr. Frank Celler
 // / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangosh = require('@arangodb/arangosh');
+const internal = require('internal');
+const arangosh = require('@arangodb/arangosh');
+const errors = internal.errors;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief constructor
 // //////////////////////////////////////////////////////////////////////////////
 
-function ArangoQueryCursor(database, data, stream) {
+function ArangoQueryCursor(database, data, stream, retriable) {
   this._database = database;
   this._dbName = database._name();
   this.data = data;
@@ -47,6 +45,7 @@ function ArangoQueryCursor(database, data, stream) {
   this._total = 0;
   this._stream = stream || false;
   this._cached = false;
+  this._retriable = retriable || false;
 
   if (data.result !== undefined) {
     this._count = data.result.length;
@@ -56,7 +55,7 @@ function ArangoQueryCursor(database, data, stream) {
       this._hasNext = true;
     }
 
-    if (data.hasMore !== undefined && data.hasMore) {
+    if (data.hasMore) {
       this._hasMore = true;
     }
   }
@@ -151,7 +150,7 @@ ArangoQueryCursor.prototype.toString = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.toArray = function () {
-  var result = [];
+  let result = [];
 
   while (this.hasNext()) {
     result.push(this.next());
@@ -186,6 +185,18 @@ ArangoQueryCursor.prototype._help = function () {
   internal.print(helpArangoQueryCursor);
 };
 
+ArangoQueryCursor.prototype.cached = function () {
+  return this._cached;
+};
+
+ArangoQueryCursor.prototype.stream = function () {
+  return this._stream;
+};
+
+ArangoQueryCursor.prototype.retriable = function () {
+  return this._retriable;
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return whether there are more results available in the cursor
 // //////////////////////////////////////////////////////////////////////////////
@@ -207,7 +218,7 @@ ArangoQueryCursor.prototype.next = function () {
   }
   const latestBatchId = this.data.nextBatchId;
 
-  var result = this.data.result[this._pos];
+  let result = this.data.result[this._pos];
   this._pos++;
 
   // reached last result
@@ -219,22 +230,44 @@ ArangoQueryCursor.prototype.next = function () {
       this._hasMore = false;
 
       // load more results
-      var requestResult = this._database._connection.POST(this._baseurl(), null);
-
-
-      try {
-        arangosh.checkRequestResult(requestResult);
-      } catch (err) {
-        if (latestBatchId !== undefined) {
-          requestResult = this._database._connection.POST(this._baseurl() + '/' + encodeURIComponent(latestBatchId), null);
-          arangosh.checkRequestResult(requestResult);
+      // in case we have the latestBatchId and the cursor is retriable, try up to 3 times.
+      // otherwise, try only once
+      let tries = (!this._retriable || latestBatchId === undefined ? 1 : 3);
+      let requestResult;
+      do {
+        if (latestBatchId === undefined) {
+          requestResult = this._database._connection.POST(this._baseurl(), null);
         } else {
-          // throw the error again for the case in which the request to the latest batch is not retryable
-          throw err;
+          requestResult = this._database._connection.POST(this._baseurl() + '/' + encodeURIComponent(latestBatchId), null);
         }
-      }
 
+        try {
+          arangosh.checkRequestResult(requestResult);
+          // success
+          break;
+        } catch (err) {
+          if (err.errorNum === errors.ERROR_QUERY_KILLED.code ||
+              err.errorNum === errors.ERROR_CURSOR_NOT_FOUND.code || 
+              err.errorNum === errors.ERROR_CURSOR_BUSY.code) {
+            // in these cases, a retry is useless
+            throw err;
+          }
+          if (--tries === 0) {
+            // no (more) retries
+            throw err;
+          }
+          // try again
+        }
+      } while (true);
+
+      let oldId; // undefined
+      if (this._retriable && this.data.id !== undefined) {
+        oldId = this.data.id;
+      }
       this.data = requestResult;
+      if (oldId !== undefined) {
+        this.data.id = oldId;
+      }
       this._count = requestResult.result.length;
 
       if (this._pos < this._count) {
@@ -265,12 +298,12 @@ ArangoQueryCursor.prototype[Symbol.iterator] = function* () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.dispose = function () {
-  if (!this.data.id || !this._hasMore) {
+  if (!this._retriable && (!this.data.id || !this._hasMore)) {
     // client side only cursor, or already disposed
     return;
   }
 
-  var requestResult = this._database._connection.DELETE(this._baseurl());
+  let requestResult = this._database._connection.DELETE(this._baseurl());
   arangosh.checkRequestResult(requestResult);
   this.data.id = undefined;
 };

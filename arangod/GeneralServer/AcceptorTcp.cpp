@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #include "AcceptorTcp.h"
 
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/EndpointIp.h"
@@ -56,11 +55,11 @@ void AcceptorTcp<T>::open() {
   } else {  // we need to resolve the string containing the ip
     std::unique_ptr<asio_ns::ip::tcp::resolver::query> query;
     if (_endpoint->domain() == AF_INET6) {
-      query.reset(new asio_ns::ip::tcp::resolver::query(
-          asio_ns::ip::tcp::v6(), hostname, std::to_string(portNumber)));
+      query = std::make_unique<asio_ns::ip::tcp::resolver::query>(
+          asio_ns::ip::tcp::v6(), hostname, std::to_string(portNumber));
     } else if (_endpoint->domain() == AF_INET) {
-      query.reset(new asio_ns::ip::tcp::resolver::query(
-          asio_ns::ip::tcp::v4(), hostname, std::to_string(portNumber)));
+      query = std::make_unique<asio_ns::ip::tcp::resolver::query>(
+          asio_ns::ip::tcp::v4(), hostname, std::to_string(portNumber));
     } else {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
     }
@@ -82,24 +81,8 @@ void AcceptorTcp<T>::open() {
   }
   _acceptor.open(asioEndpoint.protocol());
 
-#ifdef _WIN32
-  // on Windows everything is different of course:
-  // we need to set SO_EXCLUSIVEADDRUSE to prevent others from binding to our
-  // ip/port.
-  // https://msdn.microsoft.com/en-us/library/windows/desktop/ms740621(v=vs.85).aspx
-  BOOL trueOption = 1;
-
-  if (::setsockopt(_acceptor.native_handle(), SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
-                   (char const*)&trueOption, sizeof(BOOL)) != 0) {
-    LOG_TOPIC("1bcff", ERR, Logger::COMMUNICATION)
-        << "unable to set acceptor socket option: " << WSAGetLastError();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
-                                   "unable to set acceptor socket option");
-  }
-#else
   _acceptor.set_option(asio_ns::ip::tcp::acceptor::reuse_address(
       ((EndpointIp*)_endpoint)->reuseAddress()));
-#endif
 
   _acceptor.bind(asioEndpoint, ec);
   if (ec) {
@@ -131,13 +114,13 @@ void AcceptorTcp<T>::close() {
     _open = false;  // make sure the _open flag is `false` before we
                     // cancel/close the acceptor, since otherwise the
                     // handleError method will restart async_accept.
-    _acceptor.close();
+    _ctx.io_context.wrap([this]() { _acceptor.close(); });
   }
 }
 
 template<SocketType T>
 void AcceptorTcp<T>::cancel() {
-  _acceptor.cancel();
+  _ctx.io_context.wrap([this]() { _acceptor.cancel(); });
 }
 
 template<>
@@ -145,7 +128,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
 
   auto asioSocket =
-      std::make_unique<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
+      std::make_shared<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
   auto handler = [this, asioSocket = std::move(asioSocket)](
@@ -182,7 +165,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
 
 template<>
 void AcceptorTcp<SocketType::Tcp>::performHandshake(
-    std::unique_ptr<AsioSocket<SocketType::Tcp>> proto) {
+    std::shared_ptr<AsioSocket<SocketType::Tcp>> proto) {
   TRI_ASSERT(false);  // MSVC requires the implementation to exist
 }
 
@@ -205,7 +188,7 @@ bool tls_h2_negotiated(SSL* ssl) {
 
 template<>
 void AcceptorTcp<SocketType::Ssl>::performHandshake(
-    std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
+    std::shared_ptr<AsioSocket<SocketType::Ssl>> proto) {
   // io_context is single-threaded, no sync needed
   auto* ptr = proto.get();
   proto->timer.expires_from_now(std::chrono::seconds(60));
@@ -259,7 +242,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   auto& ctx = _server.selectIoContext();
 
   auto asioSocket =
-      std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
+      std::make_shared<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
   auto& socket = asioSocket->socket.lowest_layer();
   auto& peer = asioSocket->peer;
   auto handler = [this, asioSocket = std::move(asioSocket)](

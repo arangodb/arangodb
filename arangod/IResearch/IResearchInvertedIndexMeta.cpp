@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -124,7 +124,7 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
 
 namespace arangodb::iresearch {
 
-const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
+IResearchInvertedIndexMeta const& IResearchInvertedIndexMeta::DEFAULT() {
   static const IResearchInvertedIndexMeta meta{};
   return meta;
 }
@@ -209,7 +209,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     }
   }
   bool const extendedNames =
-      server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+      server.getFeature<DatabaseFeature>().extendedNames();
 
   auto const& identity = *IResearchAnalyzerFeature::identity();
   AnalyzerPool::ptr versionSpecificIdentity;
@@ -360,6 +360,16 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       _pkCache = pkCacheSlice.getBool();
     }
   }
+  {
+    auto optimizeTopKSlice = slice.get(StaticStrings::kOptimizeTopKField);
+    if (!optimizeTopKSlice.isNone()) {
+      std::string err;
+      if (!_optimizeTopK.fromVelocyPack(optimizeTopKSlice, err)) {
+        errorField = absl::StrCat(StaticStrings::kOptimizeTopKField, ": ", err);
+        return false;
+      }
+    }
+  }
 #endif
 
   if (!InvertedIndexField::init(
@@ -433,6 +443,10 @@ bool IResearchInvertedIndexMeta::json(
   if (_pkCache) {
     builder.add(StaticStrings::kCachePrimaryKeyField, _pkCache);
   }
+  {
+    VPackArrayBuilder arrayScope(&builder, StaticStrings::kOptimizeTopKField);
+    _optimizeTopK.toVelocyPack(builder);
+  }
 #endif
 
   return InvertedIndexField::json(server, builder, *this, true, defaultVocbase);
@@ -444,8 +458,11 @@ bool IResearchInvertedIndexMeta::operator==(
          (static_cast<IResearchDataStoreMeta const&>(*this) ==
           static_cast<IResearchDataStoreMeta const&>(other)) &&
          (static_cast<InvertedIndexField const&>(*this) ==
-          static_cast<InvertedIndexField const&>(other)) &&
-         _sort == other._sort && _storedValues == other._storedValues;
+          static_cast<InvertedIndexField const&>(other))
+#ifdef USE_ENTERPRISE
+         && _optimizeTopK == other._optimizeTopK
+#endif
+         && _sort == other._sort && _storedValues == other._storedValues;
 }
 
 bool IResearchInvertedIndexMeta::matchesDefinition(
@@ -658,8 +675,10 @@ bool InvertedIndexField::init(
           // for cluster only check cache to avoid ClusterInfo locking
           // issues analyzer should have been populated via
           // 'analyzerDefinitions' above
-          analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
-                                   ServerState::instance()->isClusterRole());
+          analyzer = analyzers.get(
+              name, QueryAnalyzerRevisions::QUERY_LATEST,
+              transaction::OperationOriginInternal{"fetching analyzer"},
+              ServerState::instance()->isClusterRole());
           if (analyzer) {
             // Remap analyzer features to match version.
             AnalyzerPool::ptr remappedAnalyzer;
@@ -973,7 +992,7 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
     }
     // intentional string copy here as createCanonical expects null-terminated
     // string and string_view has no such guarantees
-    _locale = icu::Locale::createCanonical(
+    _locale = icu_64_64::Locale::createCanonical(
         std::string{localeSlice.stringView()}.c_str());
     if (_locale.isBogus()) {
       error = kLocaleFieldName;

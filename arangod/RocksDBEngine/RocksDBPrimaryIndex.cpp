@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
@@ -38,6 +39,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -45,6 +47,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -57,8 +60,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
@@ -96,6 +97,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
         _index(index),
         _key(std::move(key)),
         _isId(lookupByIdAttribute),
+        _withCache(_index->useCache() != nullptr),
         _done(false) {
     TRI_ASSERT(_key.slice().isString());
 
@@ -148,7 +150,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
     if (documentId.isSet()) {
       cb(documentId);
     }
-    if (_index->hasCache()) {
+    if (_withCache) {
       incrCacheStats(foundInCache);
     }
     return false;
@@ -172,7 +174,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
       auto data = SliceCoveringData(_key.slice());
       cb(documentId, data);
     }
-    if (_index->hasCache()) {
+    if (_withCache) {
       incrCacheStats(foundInCache);
     }
     return false;
@@ -184,6 +186,7 @@ class RocksDBPrimaryIndexEqIterator final : public IndexIterator {
   RocksDBPrimaryIndex* _index;
   VPackBuilder _key;
   bool const _isId;
+  bool const _withCache;
   bool _done;
 };
 
@@ -202,7 +205,8 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
         _keys(std::move(keys)),
         _iterator(_keys.slice()),
         _memoryUsage(0),
-        _isId(lookupByIdAttribute) {
+        _isId(lookupByIdAttribute),
+        _withCache(_index->useCache() != nullptr) {
     TRI_ASSERT(_keys.slice().isArray());
 
     ResourceUsageScope scope(_resourceMonitor, _keys.size());
@@ -267,7 +271,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
         cb(documentId);
         --limit;
       }
-      if (_index->hasCache()) {
+      if (_withCache) {
         incrCacheStats(foundInCache);
       }
 
@@ -298,7 +302,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
         cb(documentId, data);
         --limit;
       }
-      if (_index->hasCache()) {
+      if (_withCache) {
         incrCacheStats(foundInCache);
       }
 
@@ -319,6 +323,7 @@ class RocksDBPrimaryIndexInIterator final : public IndexIterator {
   velocypack::ArrayIterator _iterator;
   size_t _memoryUsage;
   bool const _isId;
+  bool const _withCache;
 };
 
 template<bool reverse, bool mustCheckBounds>
@@ -416,6 +421,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     transaction::BuilderLeaser builder(transaction());
 
     do {
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
       LocalDocumentId documentId = RocksDBValue::documentId(_iterator->value());
       std::string_view key = RocksDBKey::primaryKey(_iterator->key());
 
@@ -498,12 +504,30 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       _iterator = mthds->NewIterator(
           _index->columnFamily(), [&](rocksdb::ReadOptions& options) {
             TRI_ASSERT(options.prefix_same_as_start);
-            // we need to have a pointer to a slice for the upper bound
-            // so we need to assign the slice to an instance variable here
-            if constexpr (reverse) {
-              options.iterate_lower_bound = &_rangeBound;
-            } else {
-              options.iterate_upper_bound = &_rangeBound;
+            // note: iterate_lower_bound/iterate_upper_bound should only be
+            // set if the iterator is not supposed to check the bounds
+            // for every operation.
+            // when the iterator is a db snapshot-based iterator, it is ok
+            // to set iterate_lower_bound/iterate_upper_bound, because this
+            // is well supported by RocksDB.
+            // if the iterator is a multi-level iterator that merges data from
+            // the db snapshot with data from an ongoing in-memory transaction
+            // (contained in a WriteBatchWithIndex, WBWI), then RocksDB does
+            // not properly support the bounds checking using
+            // iterate_lower_bound/ iterate_upper_bound. in this case we must
+            // avoid setting the bounds here and rely on our own bounds checking
+            // using the comparator. at least one underlying issue was fixed in
+            // RocksDB in version 8.8.0 via
+            // https://github.com/facebook/rocksdb/pull/11680. we can revisit
+            // the issue once we have upgraded to RocksDB >= 8.8.0.
+            if constexpr (!mustCheckBounds) {
+              // we need to have a pointer to a slice for the upper bound
+              // so we need to assign the slice to an instance variable here
+              if constexpr (reverse) {
+                options.iterate_lower_bound = &_rangeBound;
+              } else {
+                options.iterate_upper_bound = &_rangeBound;
+              }
             }
           });
       TRI_ASSERT(_mustSeek);
@@ -585,13 +609,11 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(LogicalCollection& collection,
               .getFeature<CacheManagerFeature>()
               .manager(),
           /*engine*/
-          collection.vocbase()
-              .server()
-              .getFeature<EngineSelectorFeature>()
-              .engine<RocksDBEngine>()),
+          collection.vocbase().engine<RocksDBEngine>()),
       _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
                       {AttributeName(StaticStrings::IdString, false)}}),
-      _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
+      _maxCacheValueSize(
+          _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::PrimaryIndex));
   TRI_ASSERT(objectId() != 0);
@@ -610,14 +632,14 @@ RocksDBPrimaryIndex::coveredFields() const {
 
 void RocksDBPrimaryIndex::load() {
   RocksDBIndex::load();
-  if (hasCache()) {
+  if (auto cache = useCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb =
         static_cast<RocksDBCollection*>(_collection.getPhysical());
     uint64_t numDocs = rdb->meta().numberDocuments();
 
     if (numDocs > 0) {
-      _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
+      cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
     }
   }
 }
@@ -639,11 +661,11 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   foundInCache = false;
   bool lockTimeout = false;
-  if (hasCache()) {
-    TRI_ASSERT(_cache != nullptr);
+  auto cache = useCache();
+  if (cache != nullptr) {
     // check cache first for fast path
-    auto f = _cache->find(key->string().data(),
-                          static_cast<uint32_t>(key->string().size()));
+    auto f = cache->find(key->string().data(),
+                         static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
       foundInCache = true;
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
@@ -664,11 +686,10 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     return LocalDocumentId();
   }
 
-  if (hasCache() && !lockTimeout) {
-    TRI_ASSERT(_cache != nullptr);
+  if (cache != nullptr && !lockTimeout && val.size() <= _maxCacheValueSize) {
     // write entry back to cache
     cache::Cache::SimpleInserter<PrimaryIndexCacheType>{
-        static_cast<PrimaryIndexCacheType&>(*_cache), key->string().data(),
+        static_cast<PrimaryIndexCacheType&>(*cache), key->string().data(),
         static_cast<uint32_t>(key->string().size()), val.data(),
         static_cast<uint64_t>(val.size())};
   }
@@ -721,7 +742,7 @@ Result RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
 
 Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
                                         RocksDBMethods* mthd,
-                                        LocalDocumentId const& /*documentId*/,
+                                        LocalDocumentId /*documentId*/,
                                         velocypack::Slice slice,
                                         OperationOptions const& options) {
   // this is already handled earlier - nothing to do here!
@@ -730,7 +751,7 @@ Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx,
 
 Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
                                          RocksDBMethods* mthd,
-                                         LocalDocumentId const& /*documentId*/,
+                                         LocalDocumentId /*documentId*/,
                                          velocypack::Slice slice,
                                          OperationOptions const& options) {
   // this is already handled earlier - nothing to do here!
@@ -739,7 +760,7 @@ Result RocksDBPrimaryIndex::checkReplace(transaction::Methods& trx,
 
 Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
                                    RocksDBMethods* mthd,
-                                   LocalDocumentId const& documentId,
+                                   LocalDocumentId documentId,
                                    velocypack::Slice slice,
                                    OperationOptions const& options,
                                    bool performChecks) {
@@ -775,12 +796,29 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
 
 Result RocksDBPrimaryIndex::update(
     transaction::Methods& trx, RocksDBMethods* mthd,
-    LocalDocumentId const& /*oldDocumentId*/, velocypack::Slice oldDoc,
-    LocalDocumentId const& newDocumentId, velocypack::Slice newDoc,
+    LocalDocumentId /*oldDocumentId*/, velocypack::Slice oldDoc,
+    LocalDocumentId newDocumentId, velocypack::Slice newDoc,
     OperationOptions const& /*options*/, bool /*performChecks*/) {
-  Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
+
+  Result res;
+  if (oldDoc.get(StaticStrings::KeyString).stringView() !=
+      newDoc.get(StaticStrings::KeyString).stringView()) {
+    res.reset(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("invalid primary index update in '",
+                     _collection.vocbase().name(), "/", _collection.name()));
+    res.withError([&oldDoc, &newDoc](result::Error& err) {
+      err.appendErrorMessage("; old key: ");
+      err.appendErrorMessage(oldDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage("; new key: ");
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+    });
+    TRI_ASSERT(false) << res.errorMessage();
+    return res;
+  }
+
   RocksDBKeyLeaser key(&trx);
 
   key->constructPrimaryIndexValue(objectId(), keySlice.stringView());
@@ -791,6 +829,27 @@ Result RocksDBPrimaryIndex::update(
   // invalidate new index cache entry to avoid caching without committing first
   invalidateCacheEntry(key->string().data(),
                        static_cast<uint32_t>(key->string().size()));
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), nullptr);
+    if (s.IsNotFound()) {
+      // the key must have existed before in the primary index
+      res.reset(TRI_ERROR_ARANGO_CONFLICT,
+                "inconsistency with non-existing primary key detected");
+      res.withError([&oldDoc, &newDoc](result::Error& err) {
+        err.appendErrorMessage("; old key: ");
+        err.appendErrorMessage(
+            oldDoc.get(StaticStrings::KeyString).copyString());
+        err.appendErrorMessage("; new key: ");
+        err.appendErrorMessage(
+            newDoc.get(StaticStrings::KeyString).copyString());
+      });
+      TRI_ASSERT(false) << "primary index update: " << res.errorMessage();
+      return res;
+    }
+  }
+#endif
 
   rocksdb::Status s =
       mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/ false);
@@ -803,7 +862,7 @@ Result RocksDBPrimaryIndex::update(
 
 Result RocksDBPrimaryIndex::remove(transaction::Methods& trx,
                                    RocksDBMethods* /*mthd*/,
-                                   LocalDocumentId const& /*documentId*/,
+                                   LocalDocumentId /*documentId*/,
                                    velocypack::Slice slice,
                                    OperationOptions const& /*options*/) {
   Result res;
@@ -925,9 +984,11 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       Result res = trx->resolveId(value.data(), value.length(), collection, key,
                                   outLength);
 
+      bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+
       if (!res.ok()) {
         // using the name of an unknown collection
-        if (_isRunningInCluster) {
+        if (isRunningInCluster) {
           // translate from our own shard name to "real" collection name
           return value.compare(
               trx->resolver()->getCollectionName(_collection.id()));
@@ -938,10 +999,10 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       TRI_ASSERT(key);
       TRI_ASSERT(collection);
 
-      if (!_isRunningInCluster && collection->id() != _collection.id()) {
+      if (!isRunningInCluster && collection->id() != _collection.id()) {
         // using the name of a different collection...
         return value.compare(_collection.name());
-      } else if (_isRunningInCluster &&
+      } else if (isRunningInCluster &&
                  collection->planId() != _collection.planId()) {
         // using a different collection
         // translate from our own shard name to "real" collection name
@@ -1215,13 +1276,15 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(key != nullptr);
 
-    if (!_isRunningInCluster && collection->id() != _collection.id()) {
+    bool isRunningInCluster = ServerState::instance()->isRunningInCluster();
+
+    if (!isRunningInCluster && collection->id() != _collection.id()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
     }
 
-    if (_isRunningInCluster) {
+    if (isRunningInCluster) {
 #ifdef USE_ENTERPRISE
       if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) {
         auto c = dynamic_cast<VirtualClusterSmartEdgeCollection const*>(
@@ -1257,4 +1320,157 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
                             valNode->getStringLength(),
                             VPackValueType::String));
   }
+}
+
+namespace {
+
+struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
+  RocksDBPrimaryIndex const* _index;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+
+  VPackBuilder _builder;
+  VPackString _cache;
+  RocksDBKeyBounds _bounds;
+  rocksdb::Slice _end;
+  RocksDBKey _rocksdbKey;
+
+  RocksDBPrimaryIndexStreamIterator(RocksDBPrimaryIndex const* index,
+                                    transaction::Methods* trx)
+      : _index(index),
+        _bounds(RocksDBKeyBounds::PrimaryIndex(
+            index->objectId(), KeyGeneratorHelper::lowestKey,
+            KeyGeneratorHelper::highestKey)) {
+    _end = _bounds.end();
+    RocksDBTransactionMethods* mthds =
+        RocksDBTransactionState::toMethods(trx, index->collection().id());
+    _iterator = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+      TRI_ASSERT(opts.prefix_same_as_start);
+      opts.iterate_upper_bound = &_end;
+    });
+    seekInternal({});
+  }
+
+  bool position(std::span<VPackSlice> span) const override {
+    if (!_iterator->Valid()) {
+      return false;
+    }
+
+    TRI_ASSERT(span.size() == 1);
+    // store the actual key
+    span[0] = _builder.slice();
+    return true;
+  }
+
+  void seekInternal(std::string_view key) {
+    if (key.empty()) {
+      _iterator->Seek(_bounds.start());
+    } else {
+      _rocksdbKey.constructPrimaryIndexValue(_index->objectId(), key);
+      _iterator->Seek(_rocksdbKey.string());
+    }
+
+    if (_iterator->Valid()) {
+      auto keySlice = RocksDBKey::primaryKey(_iterator->key());
+      _builder.clear();
+      _builder.add(VPackValue(std::string{keySlice.begin(), keySlice.end()}));
+    }
+  }
+
+  bool seek(std::span<VPackSlice> span) override {
+    TRI_ASSERT(span.size() == 1 && span[0].isString());
+    seekInternal(span[0].stringView());
+
+    return position(span);
+  }
+
+  LocalDocumentId load(std::span<VPackSlice> projections) const override {
+    TRI_ASSERT(_iterator->Valid());
+
+    for (auto& slice : projections) {
+      slice = _builder.slice();
+    }
+
+    return RocksDBValue::documentId(_iterator->value());
+  }
+
+  bool next(std::span<VPackSlice> key, LocalDocumentId& docId,
+            std::span<VPackSlice> projections) override {
+    _iterator->Next();
+
+    if (!_iterator->Valid()) {
+      return false;
+    }
+    auto keySlice = RocksDBKey::primaryKey(_iterator->key());
+    _builder.clear();
+    _builder.add(VPackValue(std::string{keySlice.begin(), keySlice.end()}));
+    key[0] = _builder.slice();
+    docId = load(projections);
+
+    return true;
+  }
+
+  void cacheCurrentKey(std::span<VPackSlice> cache) override {
+    _cache = VPackString{_builder.slice()};
+    cache[0] = _cache;
+  }
+
+  bool reset(std::span<VPackSlice> span,
+             std::span<VPackSlice> constants) override {
+    TRI_ASSERT(constants.empty());
+    seekInternal({});
+    return position(span);
+  }
+};
+
+}  // namespace
+
+std::unique_ptr<AqlIndexStreamIterator> RocksDBPrimaryIndex::streamForCondition(
+    transaction::Methods* trx, IndexStreamOptions const& opts) {
+  if (!supportsStreamInterface(opts)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "RocksDBPrimaryIndex streamForCondition was "
+                                   "called with unsupported options.");
+  }
+
+  auto stream = [&]() -> std::unique_ptr<AqlIndexStreamIterator> {
+    TRI_ASSERT(isSorted());
+    return std::make_unique<RocksDBPrimaryIndexStreamIterator>(this, trx);
+  }();
+
+  return stream;
+}
+
+bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
+    std::vector<std::vector<basics::AttributeName>> const& coveredFields,
+    IndexStreamOptions const& streamOpts) noexcept {
+  // we can only project values that are in range
+  TRI_ASSERT(coveredFields.size() == 2);
+  TRI_ASSERT(coveredFields[0][0].name == StaticStrings::KeyString &&
+             coveredFields[1][0].name == StaticStrings::IdString);
+
+  if (!streamOpts.constantFields.empty()) {
+    return false;
+  }
+
+  for (auto idx : streamOpts.projectedFields) {
+    if (idx != 0) {
+      return false;
+    }
+  }
+
+  // For the primary index, there is only one property set, which is "_key".
+  if (streamOpts.usedKeyFields.size() != 1) {
+    return false;
+  }
+
+  if (streamOpts.usedKeyFields[0] != 0) {
+    return false;
+  }
+
+  return true;
+}
+
+bool RocksDBPrimaryIndex::supportsStreamInterface(
+    IndexStreamOptions const& streamOpts) const noexcept {
+  return checkSupportsStreamInterface(_coveredFields, streamOpts);
 }

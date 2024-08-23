@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@
 
 #include "ShellFeature.h"
 
+#include "Basics/debugging.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -41,7 +42,6 @@ namespace arangodb {
 
 ShellFeature::ShellFeature(Server& server, int* result)
     : ArangoshFeature(server, *this),
-      _jslint(),
       _result(result),
       _runMode(RunMode::INTERACTIVE) {
   setOptional(false);
@@ -52,9 +52,6 @@ ShellFeature::~ShellFeature() = default;
 
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption("--jslint", "Do not start as a shell, run jslint instead.",
-                     new VectorParameter<StringParameter>(&_jslint));
-
   options->addSection("javascript", "JavaScript engine");
 
   options->addOption("--javascript.execute",
@@ -84,6 +81,13 @@ void ShellFeature::collectOptions(
   options->addOption("--javascript.run-main", "Execute main function.",
                      new BooleanParameter(&_runMain));
 #endif
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  options->addOption(
+      "--client.failure-points",
+      "The failure point to set during shell startup (requires compilation "
+      "with failure points support).",
+      new VectorParameter<StringParameter>(&_failurePoints));
+#endif
 }
 
 void ShellFeature::validateOptions(
@@ -95,10 +99,6 @@ void ShellFeature::validateOptions(
   ShellConsoleFeature& console = server().getFeature<ShellConsoleFeature>();
 
   if (client.endpoint() == "none") {
-    client.disable();
-  }
-
-  if (!_jslint.empty()) {
     client.disable();
   }
 
@@ -130,17 +130,17 @@ void ShellFeature::validateOptions(
     ++n;
   }
 
-  if (!_jslint.empty()) {
-    console.setQuiet(true);
-    _runMode = RunMode::JSLINT;
-    ++n;
-  }
-
   if (1 < n) {
     LOG_TOPIC("80a8c", ERR, arangodb::Logger::FIXME)
         << "you cannot specify more than one type ("
-        << "jslint, execute, execute-string, check-syntax, unit-tests)";
+        << "execute, execute-string, check-syntax, unit-tests)";
   }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  for (auto const& it : _failurePoints) {
+    TRI_AddFailurePointDebugging(it);
+  }
+#endif
 }
 
 void ShellFeature::start() {
@@ -162,6 +162,9 @@ void ShellFeature::start() {
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
         startTelemetrics();
 #endif
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        TRI_IF_FAILURE("startTelemetricsForTest") { startTelemetrics(); }
+#endif
         ok = shell.runScript(_executeScripts, _positionals, true,
                              _scriptParameters, _runMain);
         break;
@@ -177,10 +180,6 @@ void ShellFeature::start() {
 
       case RunMode::UNIT_TESTS:
         ok = shell.runUnitTests(_unitTests, _positionals, _unitTestFilter);
-        break;
-
-      case RunMode::JSLINT:
-        ok = shell.jslint(_jslint);
         break;
     }
   } catch (std::exception const& ex) {
@@ -201,6 +200,12 @@ void ShellFeature::start() {
 void ShellFeature::beginShutdown() {
   if (_telemetricsHandler != nullptr) {
     _telemetricsHandler->beginShutdown();
+  }
+}
+
+void ShellFeature::stop() {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->joinThread();
   }
 }
 

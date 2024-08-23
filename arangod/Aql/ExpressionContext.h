@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -56,13 +56,13 @@ class ExpressionContext {
   virtual void registerWarning(ErrorCode errorCode, std::string_view msg) = 0;
   virtual void registerError(ErrorCode errorCode, std::string_view msg) = 0;
 
-  virtual icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
-                                               bool caseInsensitive) = 0;
-  virtual icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
-                                              bool caseInsensitive) = 0;
-  virtual icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression,
-                                               velocypack::Options const* opts,
-                                               bool& isEmptyExpression) = 0;
+  virtual icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
+                                                     bool caseInsensitive) = 0;
+  virtual icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
+                                                    bool caseInsensitive) = 0;
+  virtual icu_64_64::RegexMatcher* buildSplitMatcher(
+      AqlValue splitExpression, velocypack::Options const* opts,
+      bool& isEmptyExpression) = 0;
   virtual arangodb::ValidatorBase* buildValidator(velocypack::Slice) = 0;
 
   virtual TRI_vocbase_t& vocbase() const = 0;

@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,13 +30,65 @@
 
 using namespace arangodb;
 
-[[nodiscard]] arangodb::Result
+[[nodiscard]] auto
+UserInputCollectionProperties::Invariants::isSmartConfiguration(
+    UserInputCollectionProperties const& props) -> inspection::Status {
+  if (props.smartGraphAttribute.has_value()) {
+    if (props.getType() != TRI_COL_TYPE_DOCUMENT) {
+      return {"Only document collections can have a smartGraphAttribute."};
+    }
+    if (!props.isSmart) {
+      return {
+          "A smart vertex collection needs to be "
+          "marked with \"isSmart: true\"."};
+    }
+    if ((props.shardKeys->size() != 1 ||
+         props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString)) {
+      return {
+          R"(A smart vertex collection needs to have "shardKeys": ["_key:"].)"};
+    }
+  } else if (props.isSmart) {
+    if (props.getType() == TRI_COL_TYPE_EDGE) {
+      if (props.shardKeys.has_value()) {
+        // Check if SmartSharding is set correctly, but only if we have one.
+        // Otherwise our default sharding will set correct values.
+        if (props.shardKeys->size() != 1) {
+          return {R"(A smart collection needs to have a single shardKey)"};
+        } else {
+          TRI_ASSERT(props.shardKeys->size() == 1);
+          if (props.getType() == TRI_COL_TYPE_EDGE) {
+            if (props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString &&
+                props.shardKeys->at(0) != StaticStrings::PostfixOfKeyString &&
+                props.shardKeys->at(0) != StaticStrings::KeyString) {
+              // For Smart Edges Post and Prefix are allowed (for connecting
+              // satellites) Also just _key is allowed, as the shardKey for this
+              // collection is not really used. We use the shadows ShardKeys,
+              // which are _key based.
+              return {
+                  R"(A smart edge collection needs to have "shardKeys": ["_key:"], [":_key"] or ["_key"].)"};
+            }
+          }
+        }
+      }
+    } else {
+      if (!props.shardKeys.has_value() || props.shardKeys->size() != 1 ||
+          props.shardKeys->at(0) != StaticStrings::PrefixOfKeyString) {
+        return {R"(A smart collection needs to have "shardKeys": ["_key:"].)"};
+      }
+    }
+  }
+
+  return inspection::Status::Success{};
+}
+
+[[nodiscard]] Result
 UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
     DatabaseConfiguration const& config) {
   //  Check name is allowed
-  if (!CollectionNameValidator::isAllowedName(
-          isSystem, config.allowExtendedNames, name)) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  if (auto res = CollectionNameValidator::validateName(
+          isSystem, config.allowExtendedNames, name);
+      res.fail()) {
+    return res;
   }
 
   auto res = CollectionInternalProperties::
@@ -50,19 +103,11 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
   // into ClusteringProperties. Doing it here was the quicker to implement way,
   // so we went with it first DistributeShardsLike has the strongest binding. We
   // have to handle this first
-  if (!config.defaultDistributeShardsLike.empty()) {
-    if (!distributeShardsLike.has_value()) {
-      distributeShardsLike = config.defaultDistributeShardsLike;
-    } else {
-      // NOTE: For the time being only oneShardDBs have a default
-      // distributeShardsLikeValue. So this error message is good enough. If
-      // this should ever change we need to adapt the message here. NOTE: The
-      // assertion is a reminder to update the following error message.
-      TRI_ASSERT(config.isOneShardDB);
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Collection in a 'oneShardDatabase' cannot define "
-              "distributeShardsLike"};
-    }
+
+  if (!config.defaultDistributeShardsLike.empty() &&
+      !distributeShardsLike.has_value() &&
+      name != config.defaultDistributeShardsLike) {
+    distributeShardsLike = config.defaultDistributeShardsLike;
   }
 
   if (!shardKeys.has_value()) {
@@ -117,6 +162,21 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
       }
     } else {
       numberOfShards = groupInfo->numberOfShards;
+    }
+    TRI_ASSERT(groupInfo->writeConcern.has_value());
+    if (writeConcern.has_value()) {
+      if (config.replicationVersion == replication::Version::TWO) {
+        // Replication 2 requires teh writeConcern to be equal within a group.
+        if (writeConcern != groupInfo->writeConcern) {
+          return {TRI_ERROR_BAD_PARAMETER,
+                  "Cannot have a different writeConcern (" +
+                      std::to_string(writeConcern.value()) +
+                      "), than the leading collection (" +
+                      std::to_string(groupInfo->writeConcern.value()) + ")"};
+        }
+      }
+    } else {
+      writeConcern = groupInfo->writeConcern;
     }
     TRI_ASSERT(groupInfo->replicationFactor.has_value());
     if (replicationFactor.has_value()) {
@@ -195,6 +255,14 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
               "supported for collections with more than one shard"};
     }
   }
+
+#ifdef USE_ENTERPRISE
+  res = validateOrSetSmartEdgeValidators();
+  if (res.fail()) {
+    return res;
+  }
+#endif
+
   return {TRI_ERROR_NO_ERROR};
 }
 

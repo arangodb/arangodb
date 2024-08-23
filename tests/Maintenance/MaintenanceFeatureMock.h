@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,7 +28,6 @@
 #include <thread>
 #include <iostream>
 
-#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -65,9 +64,9 @@ class TestProgressHandler : public arangodb::application_features::
       arangodb::application_features::ApplicationServer::State newState) {
     if (arangodb::application_features::ApplicationServer::State::IN_WAIT ==
         newState) {
-      CONDITION_LOCKER(clock, _serverReadyCond);
+      std::lock_guard clock{_serverReadyCond.mutex};
       _serverReady = true;
-      _serverReadyCond.broadcast();
+      _serverReadyCond.cv.notify_all();
     }
   }
 
@@ -117,9 +116,9 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
   ///   Code waits until background ApplicationServer known to have fully
   ///   started.
   void setMaintenanceThreadsMax(uint32_t threads) {
-    CONDITION_LOCKER(clock, _progressHandler._serverReadyCond);
+    std::unique_lock clock{_progressHandler._serverReadyCond.mutex};
     while (!_progressHandler._serverReady) {
-      _progressHandler._serverReadyCond.wait();
+      _progressHandler._serverReadyCond.cv.wait(clock);
     }  // while
 
     _maintenanceThreadsMax = threads;
@@ -174,19 +173,22 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
       }  // if
 
       VPackSlice progress = (*action).get("progress");
-      if (!(progress.isInteger() && check->_progress == progress.getInt())) {
-        std::cerr << "Progress mismatch: action has " << progress.getInt()
-                  << " expected " << check->_progress << std::endl;
+      if (!(progress.isNumber() &&
+            check->_progress == progress.getNumber<double>())) {
+        std::cerr << "Progress mismatch: action has "
+                  << progress.getNumber<double>() << " expected "
+                  << check->_progress << std::endl;
         good = false;
       }  // if
     }    // for
 
     if (registry.end() != action) {
-      std::cerr << "Found more actions in registry than expected!";
+      std::cerr << "Found more actions in registry than expected!" << std::endl;
       good = false;
     }
     if (expected.end() != check) {
-      std::cerr << "Found fewer actions in registry than expected!";
+      std::cerr << "Found fewer actions in registry than expected!"
+                << std::endl;
       good = false;
     }
     return good;
@@ -194,21 +196,25 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
   }  // verifyRegistryState
 
   /// @brief poll registry until all actions finish
-  void waitRegistryComplete() {
+  std::size_t waitRegistryComplete() {
     bool again;
-
+    std::size_t numActions;
     do {
       again = false;
+      numActions = 0;
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
       VPackBuilder registryBuilder(toVelocyPack());
       VPackArrayIterator registry(registryBuilder.slice());
       for (auto action : registry) {
         VPackSlice state = action.get("state");
+        numActions += 1;
         again =
             again || (COMPLETE != state.getInt() && FAILED != state.getInt());
       }  // for
     } while (again);
+
+    return numActions;
   }  // waitRegistryComplete
 
  public:

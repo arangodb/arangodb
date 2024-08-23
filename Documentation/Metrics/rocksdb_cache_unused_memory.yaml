@@ -15,4 +15,4 @@ description: |
   used by the in-memory cache which sits in front of RocksDB. Unused tables 
   can be kept as backups to provide new, readily initialized tables for new 
   caches. The overall memory usage of unused tables is capped by the system,
-  so it will not grow overly large.
+  so it does not grow overly large.

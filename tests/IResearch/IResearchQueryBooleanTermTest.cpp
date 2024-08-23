@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchQueryCommon.h"
+
+#include "IResearch/VelocyPackHelper.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::tests {
 namespace {
@@ -51,8 +54,9 @@ class QueryBooleanTerm : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -82,8 +86,9 @@ class QueryBooleanTerm : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {

@@ -1,5 +1,3 @@
-/* global window, Backbone */
-
 window.StatisticsDescription = Backbone.Model.extend({
   defaults: {
     'figures': '',

@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,11 +23,12 @@
 
 #include "ClusteringMutableProperties.h"
 
-#include "Basics/StaticStrings.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
+#include "Inspection/VPack.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
-#include "Inspection/VPack.h"
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
@@ -50,12 +52,30 @@ auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
     result = 0;
     return {};
   } else if (v.isNumber()) {
-    result = v.getNumber<MemoryType>();
-    if (result != 0) {
-      return {};
+    try {
+      result = v.getNumber<MemoryType>();
+      if (result != 0) {
+        return {};
+      }
+    } catch (...) {
+      // intentionally fall through. We got disallowed number type (e.g.
+      // negative value)
     }
   }
   return {"Only an integer number or 'satellite' is allowed"};
+}
+
+[[nodiscard]] auto ClusteringMutableProperties::Invariants::
+    writeConcernAllowedToBeZeroForSatellite(
+        ClusteringMutableProperties const& props) -> inspection::Status {
+  if (props.writeConcern.has_value() && props.writeConcern.value() == 0) {
+    // Special case: We are allowed to give writeConcern 0 for satellites
+    if (props.replicationFactor.has_value() && props.isSatellite()) {
+      return inspection::Status::Success{};
+    }
+    return {"writeConcern has to be > 0"};
+  }
+  return inspection::Status::Success{};
 }
 
 [[nodiscard]] bool ClusteringMutableProperties::isSatellite() const noexcept {
@@ -88,17 +108,17 @@ ClusteringMutableProperties::validateDatabaseConfiguration(
       if (config.maxReplicationFactor > 0 &&
           replicationFactor.value() > config.maxReplicationFactor) {
         return {TRI_ERROR_BAD_PARAMETER,
-                std::string("replicationFactor must not be higher than "
-                            "maximum allowed replicationFactor (") +
-                    std::to_string(config.maxReplicationFactor) + ")"};
+                absl::StrCat("replicationFactor must not be higher than "
+                             "maximum allowed replicationFactor (",
+                             config.maxReplicationFactor, ")")};
       }
 
       if (!isSatellite() &&
           replicationFactor.value() < config.minReplicationFactor) {
         return {TRI_ERROR_BAD_PARAMETER,
-                std::string("replicationFactor must not be lower than "
-                            "minimum allowed replicationFactor (") +
-                    std::to_string(config.minReplicationFactor) + ")"};
+                absl::StrCat("replicationFactor must not be lower than "
+                             "minimum allowed replicationFactor (",
+                             config.minReplicationFactor, ")")};
       }
     }
 
@@ -122,8 +142,14 @@ ClusteringMutableProperties::validateDatabaseConfiguration(
 
   if (config.isOneShardDB && isSatellite()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "Collection in a 'oneShardDatabase' cannot be a "
+            "Collection in a OneShard database cannot have replicationFactor "
             "'satellite'"};
   }
-  return {TRI_ERROR_NO_ERROR};
+#ifndef USE_ENTERPRISE
+  if (isSatellite()) {
+    return {TRI_ERROR_ONLY_ENTERPRISE,
+            "'satellite' collections only allowed in Enterprise Edition"};
+  }
+#endif
+  return {};
 }

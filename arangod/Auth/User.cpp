@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -91,19 +91,6 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
   return TRI_ERROR_NO_ERROR;
 }
 
-static void AddSource(VPackBuilder& builder, auth::Source source) {
-  switch (source) {
-    case auth::Source::Local:  // used to be collection
-      builder.add("source", VPackValue("LOCAL"));
-      break;
-    case auth::Source::LDAP:
-      builder.add("source", VPackValue("LDAP"));
-      break;
-    default:
-      TRI_ASSERT(false);
-  }
-}
-
 static void AddAuthLevel(VPackBuilder& builder, auth::Level lvl) {
   if (lvl == auth::Level::RW) {
     builder.add("read", VPackValue(true));
@@ -139,11 +126,9 @@ static auth::Level AuthLevelFromSlice(VPackSlice slice) {
 // ============= static ==================
 
 auth::User auth::User::newUser(std::string const& user,
-                               std::string const& password,
-                               auth::Source source) {
+                               std::string const& password) {
   auth::User entry("", RevisionId::none());
   entry._active = true;
-  entry._source = source;
 
   entry._username = user;
   entry._passwordMethod = "sha256";
@@ -204,7 +189,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
     } else {
       LOG_TOPIC("c4dd7", DEBUG, arangodb::Logger::CONFIG)
           << "updating deprecated access rights struct for user '"
-          << userSlice.copyString() << "'";
+          << userSlice.stringView() << "'";
       VPackValueLength length;
       char const* value = obj.value.getString(length);
 
@@ -281,7 +266,6 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
   auth::User entry(keySlice.copyString(), rev);
   entry._active = activeSlice.getBool();
-  entry._source = auth::Source::Local;
   entry._username = userSlice.copyString();
   entry._passwordMethod = methodSlice.copyString();
   entry._passwordSalt = saltSlice.copyString();
@@ -360,13 +344,12 @@ VPackBuilder auth::User::toVPackBuilder() const {
     }
 
     builder.add("user", VPackValue(_username));
-    AddSource(builder, _source);
 
     // authData sub-object
     {
       VPackObjectBuilder o2(&builder, "authData", true);
       builder.add("active", VPackValue(_active));
-      if (_source == auth::Source::Local) {
+      {
         VPackObjectBuilder o3(&builder, "simple", true);
         builder.add("hash", VPackValue(_passwordHash));
         builder.add("salt", VPackValue(_passwordSalt));
@@ -555,7 +538,7 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
 
 /// Find the access level for a collection. Will automatically try to fall back
 auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
-                                            std::string const& cname) const {
+                                            std::string_view cname) const {
   if (cname.empty() || (dbname == "*" && cname != "*")) {
     return auth::Level::NONE;  // invalid collection names
   }
@@ -570,8 +553,6 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
       return auth::Level::NONE;
     } else if (cname == StaticStrings::QueuesCollection) {
       return auth::Level::RO;
-    } else if (cname == StaticStrings::PregelCollection) {
-      return auth::Level::RW;
     } else if (cname == StaticStrings::FrontendCollection) {
       return auth::Level::RW;
     }

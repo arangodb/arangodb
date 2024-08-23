@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -132,24 +132,30 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
              "arangosearch view '"
           << impl->name() << "'";
     }
-    // refresh view from Agency
+    // refresh view from Agency to get latest state with populated collections
     view = ci.getView(vocbase.name(), absl::AlphaNum{impl->id().id()}.Piece());
-    TRI_ASSERT(view);
+    // view might be already dropped
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
       // and original behavior of TRI_vocbase_t::createView
       view->open();
+    } else {
+      return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              absl::StrCat("ArangoSearch view '", impl->name(),
+                           "' was dropped during creation "
+                           "from database '" +
+                               vocbase.name() + "'")};
     }
     return {};
   }
 
   Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                      velocypack::Slice definition,
-                     bool /*isUserRequest*/) const final {
+                     bool isUserRequest) const final {
     std::string error;
     // TODO make_shared instead of new
     auto impl = std::shared_ptr<IResearchViewCoordinator>(
-        new IResearchViewCoordinator(vocbase, definition));
+        new IResearchViewCoordinator(vocbase, definition, isUserRequest));
     if (!impl->_meta.init(definition, error)) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat(
@@ -188,6 +194,11 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
     build.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
     auto const accept = [](std::string_view key) {
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField &&
+#ifdef USE_ENTERPRISE
+             key != iresearch::StaticStrings::kOptimizeTopKField &&
+             key != iresearch::StaticStrings::kPrimarySortCacheField &&
+             key != iresearch::StaticStrings::kCachePrimaryKeyField &&
+#endif
              key != iresearch::StaticStrings::PrimarySortField &&
              key != iresearch::StaticStrings::PrimarySortCompressionField &&
              key != iresearch::StaticStrings::StoredValuesField &&
@@ -245,6 +256,7 @@ ViewFactory const& IResearchViewCoordinator::factory() {
 }
 
 Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
+  TRI_IF_FAILURE("IResearchLink::alwaysDangling") { return {}; }
   auto& collection = link.collection();
   auto const& cname = collection.name();
   if (!ClusterMethods::includeHiddenCollectionInLink(cname)) {
@@ -289,6 +301,7 @@ Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
 }
 
 Result IResearchViewCoordinator::renameImpl(std::string const&) {
+  TRI_ASSERT(false);
   return {TRI_ERROR_CLUSTER_UNSUPPORTED};
 }
 
@@ -297,8 +310,9 @@ Result IResearchViewCoordinator::unlink(DataSourceId) noexcept {
 }
 
 IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
-                                                   velocypack::Slice info)
-    : LogicalView(*this, vocbase, info) {
+                                                   velocypack::Slice info,
+                                                   bool isUserRequest)
+    : LogicalView(*this, vocbase, info, isUserRequest) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 

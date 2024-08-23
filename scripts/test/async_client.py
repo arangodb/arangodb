@@ -3,25 +3,21 @@
     to the configured connection """
 
 import os
-from queue import Queue, Empty
 import logging
-import platform
-import pty
 import signal
 import sys
-from datetime import datetime, timedelta
-from subprocess import PIPE
+from queue import Queue, Empty
 from threading import Thread
+import pty
+from datetime import datetime, timedelta
 import psutil
-from allure_commons._allure import attach
-
 from tools.asciiprint import print_progress as progress
+from allure_commons._allure import attach
 
 # import tools.loghelper as lh
 # pylint: disable=dangerous-default-value
 
 ON_POSIX = "posix" in sys.builtin_module_names
-IS_WINDOWS = platform.win32_ver()[0] != ""
 
 
 def print_log(string, params):
@@ -175,6 +171,8 @@ def add_message_to_report(params, string, print_it=True, add_to_error=False):
     offset = 80 - (len(string) + len(datestr) + 2 * len(oskar))
     if print_it:
         logging.info(string)
+        # we also want these messages to be written to stdout, so they also show up in CircleCI
+        print(string)
     if add_to_error:
         params["error"] += "async_client.py: " + string + "\n"
     if isinstance(params["output"], list):
@@ -201,12 +199,14 @@ def kill_children(identifier, params, children):
         if one_child.pid in killed:
             continue
         try:
-            killed.append(one_child.pid)
-            err += add_message_to_report(
-                params,
-                f"{identifier}: killing {one_child.name()} - {str(one_child.pid)}",
-            )
-            one_child.resume()
+            pname = one_child.name()
+            if pname not in ["svchost.exe", "conhost.exe", "mscorsvw.exe"]:
+                killed.append(one_child.pid)
+                err += add_message_to_report(
+                    params,
+                    f"{identifier}: killing {pname} - {str(one_child.pid)}",
+                )
+                one_child.resume()
         except FileNotFoundError:
             pass
         except AttributeError:
@@ -290,12 +290,7 @@ class ArangoCLIprogressiveTimeoutExecutor:
         self.deadline_signal = deadline_signal
         self.pid = None
         if self.deadline_signal == -1:
-            # pylint: disable=no-member
-            # yes, one is only there on the wintendo, the other one elsewhere.
-            if IS_WINDOWS:
-                self.deadline_signal = signal.CTRL_BREAK_EVENT
-            else:
-                self.deadline_signal = signal.SIGINT
+            self.deadline_signal = signal.SIGINT
 
     def dig_for_children(self, params):
         """manual search for children that may be there without the self.pid still being there"""

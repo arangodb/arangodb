@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,13 +24,20 @@
 #pragma once
 
 #include "Aql/types.h"
-#include "Basics/Common.h"
+#include "Futures/Future.h"
+#include "Logger/LogContext.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+
+#include <memory>
+#include <string>
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::velocypack {
+class Slice;
+}
+
+namespace arangodb::aql {
 class Query;
 class QueryRegistry;
 
@@ -39,12 +46,13 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
   RestAqlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
                  QueryRegistry*);
+  ~RestAqlHandler();
 
- public:
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final;
   RestStatus execute() override;
   RestStatus continueExecute() override;
+  void prepareExecute(bool isContinue) override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
   class Route {
@@ -52,6 +60,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
     static auto execute() -> const char* { return "/_api/aql/execute"; }
   };
 
+ private:
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "execute", "skipSome" "initializeCursor" or
@@ -96,7 +105,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus useQuery(std::string const& operation,
                       std::string const& idString);
 
- private:
   // POST method for /_api/aql/setup (internal)
   // Only available on DBServers in the Cluster.
   // This route sets-up all the query engines required
@@ -120,7 +128,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //    variables: [ <variables> ]
   //  }
 
-  void setupClusterQuery();
+  [[nodiscard]] futures::Future<futures::Unit> setupClusterQuery();
 
   // handle for useQuery
   RestStatus handleUseQuery(std::string const&,
@@ -129,14 +137,16 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // handle query finalization for all engines
   RestStatus handleFinishQuery(std::string const& idString);
 
- private:
   // dig out vocbase from context and query from ID, handle errors
-  ExecutionEngine* findEngine(std::string const& idString);
+  Result findEngine(std::string const& idString);
 
   // our query registry
   QueryRegistry* _queryRegistry;
 
-  aql::ExecutionEngine* _engine;
+  ExecutionEngine* _engine;
+
+  std::shared_ptr<LogContext::Values> _logContextQueryIdValue;
+  LogContext::EntryPtr _logContextQueryIdEntry;
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql
