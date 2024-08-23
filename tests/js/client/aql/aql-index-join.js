@@ -1200,8 +1200,11 @@ const IndexJoinTestSuite = function () {
 
     testUniqueStreamProperty: function () {
       const A = createCollection("A", ["x"]);
-      A.ensureIndex({type: "persistent", fields: ["x", "y", "z"], unique: true});
+      A.ensureIndex({type: "persistent", fields: ["y", "z", "x"], unique: true});
       fillCollection("A", attributeGenerator(100, {x: x => x, y: x => x, z: x => x}));
+      const C = createCollection("C", ["z"]);
+      C.ensureIndex({type: "persistent", fields: ["y", "z", "x"], unique: true});
+      fillCollection("C", attributeGenerator(100, {x: x => x, y: x => x, z: x => x}));
       const B = createCollection("B", ["x"]);
       B.ensureIndex({type: "persistent", fields: ["x"], unique: true});
       fillCollection("B", singleAttributeGenerator(100, "x", x => x));
@@ -1210,7 +1213,7 @@ const IndexJoinTestSuite = function () {
         const query = `
         FOR a IN A
           FOR b in B
-            FILTER a.x == 12 && a.y == 12 && b.x == a.z
+            FILTER a.z == 12 && a.y == 12 && b.x == a.x
             RETURN [a, b]
       `;
 
@@ -1234,9 +1237,9 @@ const IndexJoinTestSuite = function () {
 
       {
         const query = `
-        FOR a IN A
+        FOR a IN C
           FOR b in B
-            FILTER a.x == 12 && b.x == a.y
+            FILTER a.y == 12 && b.x == a.z
             RETURN [a, b]
       `;
 
@@ -1260,9 +1263,9 @@ const IndexJoinTestSuite = function () {
 
       {
         const query = `
-        FOR a IN A
+        FOR a IN C
           FOR b in B
-            FILTER a.x == "DOES NOT EXIST" && b.x == a.y
+            FILTER a.y == "DOES NOT EXIST" && b.x == a.z
             RETURN [a, b]
       `;
 
