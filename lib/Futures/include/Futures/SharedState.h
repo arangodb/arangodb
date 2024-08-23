@@ -80,17 +80,13 @@ class SharedState : async_registry::PromiseInList {
 
  public:
   /// State will be Start
-  static SharedState* make(
-      std::source_location loc = std::source_location::current()) {
+  static SharedState* make(std::source_location loc) {
     return new SharedState(std::move(loc));
   }
 
   /// State will be OnlyResult
   /// Result held will be move-constructed from `t`
-  static SharedState* make(
-      Try<T>&& t, std::source_location loc = std::source_location::current()) {
-    return new SharedState(std::move(t), std::move(loc));
-  }
+  static SharedState* make(Try<T>&& t) { return new SharedState(std::move(t)); }
 
   /// State will be OnlyResult
   /// Result held will be the `T` constructed from forwarded `args`
@@ -247,12 +243,13 @@ class SharedState : async_registry::PromiseInList {
   }
 
   /// use to construct a ready future
-  explicit SharedState(Try<T>&& t, std::source_location loc)
-      : async_registry::PromiseInList(std::move(loc)),
+  explicit SharedState(Try<T>&& t)
+      : async_registry::PromiseInList(std::source_location::current()),
         _result(std::move(t)),
         _state(State::OnlyResult),
         _attached(1) {
-    async_registry::get_thread_registry().add(this);
+    // is not added to coroutine thread registry because it is immediately
+    // resolved
   }
 
   /// use to construct a ready future
