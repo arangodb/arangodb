@@ -21,6 +21,9 @@ devel
   we can also utilize descending SORTs as in the example above, and perhaps
   even utilize an index if we have one.
 
+* FE-422: Permissions of users managed by ArangoGraph are now shown as read-only.
+
+
 3.12.2 (XXXX-XX-XX)
 -------------------
 
