@@ -2049,21 +2049,32 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     if (!groupVariables.empty()) {
       // check if our input is already sorted
       SortNode* sortNode = nullptr;
-      auto d = n->getFirstDependency();
+      auto* d = n->getFirstDependency();
       while (d) {
-        if (d->getType() == EN::SORT) {
-          sortNode = ExecutionNode::castTo<SortNode*>(d);
-          break;
+        switch (d->getType()) {
+          case EN::SORT:
+            sortNode = ExecutionNode::castTo<SortNode*>(d);
+            d = nullptr;  // stop the loop
+            break;
+
+          case EN::FILTER:
+          case EN::LIMIT:
+          case EN::CALCULATION:
+          case EN::SUBQUERY:
+          case EN::INSERT:
+          case EN::REMOVE:
+          case EN::REPLACE:
+          case EN::UPDATE:
+          case EN::UPSERT:
+            // these nodes do not affect our sort order,
+            // so we can safely ignore them
+            d = d->getFirstDependency();  // continue search
+            break;
+
+          default:
+            d = nullptr;  // stop the loop
+            break;
         }
-        if (d->getType() == EN::INDEX ||
-            d->getType() == EN::ENUMERATE_COLLECTION ||
-            d->getType() == EN::ENUMERATE_LIST ||
-            d->getType() == EN::TRAVERSAL ||
-            d->getType() == EN::ENUMERATE_PATHS ||
-            d->getType() == EN::SHORTEST_PATH) {
-          break;
-        }
-        d = d->getFirstDependency();
       }
 
       bool needNewSortNode = true;
@@ -2090,7 +2101,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
                                               std::move(sortElements), true);
 
         TRI_ASSERT(collectNode->hasDependency());
-        auto dep = collectNode->getFirstDependency();
+        auto* dep = collectNode->getFirstDependency();
         TRI_ASSERT(dep != nullptr);
         sortNode->addDependency(dep);
         collectNode->replaceDependency(dep, sortNode);
