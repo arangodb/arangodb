@@ -81,7 +81,7 @@ def main():
         runner = TestingRunner(SiteConfig(base_source_dir, build_dir))
 
         if args.allProtocols:
-            for proto in ["http", "http2", "vst"]:
+            for proto in ["http", "http2"]:
                 runner.scenarios.append(
                     TestConfig(
                         runner.cfg,

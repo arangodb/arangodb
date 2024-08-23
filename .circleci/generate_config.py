@@ -34,7 +34,7 @@ known_flags = {
     "!arm": "test is excluded when launched on Arm Linux/MacOS hosts",
     "!coverage": "test is excluded when coverage scenario are ran",
     "no_report": "disable reporting",
-    "allProtocols": "run the test suite(s) for all protocols (http, http2, vst)",
+    "allProtocols": "run the test suite(s) for all protocols (http, http2)",
 }
 
 known_parameter = {
