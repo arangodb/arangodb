@@ -1,5 +1,5 @@
 #!/bin/env python3
-""" run specified test suite(s) with the given configuration """
+""" read test definition, and generate the output for the specified target """
 import logging
 import argparse
 import sys
@@ -48,9 +48,6 @@ def parse_arguments():
     )
     parser.add_argument("--extraArgs", help="", type=str)
     parser.add_argument("--suffix", help="", type=str)
-    parser.add_argument(
-        "--allProtocols", type=str2bool, nargs="?", const=True, default=False, help=""
-    )
     parser.add_argument("--build", help="build folder", type=str)
     return parser.parse_args()
 
@@ -75,17 +72,9 @@ def main():
             else base_source_dir / "build"
         )
         runner = TestingRunner(SiteConfig(base_source_dir, build_dir))
-
-        if args.allProtocols:
-            for proto in ["http", "http2"]:
-                args = [*extra_args, f"--{proto}", "true"]
-                runner.scenarios.append(
-                    TestConfig(runner.cfg, f"{name}_{proto}", suite, args, 1, 1, [])
-                )
-        else:
-            runner.scenarios.append(
-                TestConfig(runner.cfg, name, suite, [*extra_args], 1, 1, [])
-            )
+        runner.scenarios.append(
+            TestConfig(runner.cfg, name, suite, [*extra_args], 1, 1, [])
+        )
         launch_runner(runner, True)
     except Exception as exc:
         print(exc, file=sys.stderr)

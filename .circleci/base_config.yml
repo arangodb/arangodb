@@ -454,9 +454,6 @@ jobs:
         type: string
       size:
         type: string
-      suffix:
-        type: string
-        default: ""
       extraArgs:
         type: string
         default: ""
@@ -464,8 +461,6 @@ jobs:
         type: integer
         default: 1
       cluster:
-        type: boolean
-      allProtocols:
         type: boolean
       timeLimit:
         type: integer
@@ -525,8 +520,6 @@ jobs:
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
-              --suffix "<< parameters.suffix >>" \
-              --allProtocols << parameters.allProtocols >> \
               --extraArgs ' << parameters.extraArgs >>'
       - run:
           name: Copy test results

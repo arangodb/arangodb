@@ -34,7 +34,6 @@ known_flags = {
     "!arm": "test is excluded when launched on Arm Linux/MacOS hosts",
     "!coverage": "test is excluded when coverage scenario are ran",
     "no_report": "disable reporting",
-    "allProtocols": "run the test suite(s) for all protocols (http, http2)",
 }
 
 known_parameter = {
@@ -213,6 +212,7 @@ def read_definitions(filename):
                 continue  # ignore comments
             try:
                 test = read_definition_line(line)
+                test["lineNumber"] = line_no
                 tests.append(test)
             except Exception as exc:
                 print(f"{filename}:{line_no + 1}: \n`{line}`\n {exc}", file=sys.stderr)
@@ -311,13 +311,8 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
         "suites": test["suites"],
         "size": get_test_size(size, build_config, cluster),
         "cluster": cluster,
-        "allProtocols": "allProtocols" in test["flags"],
         "requires": build_jobs,
     }
-
-    if suffix:
-        job["suffix"] = suffix
-
     if suite_name == "chaos" and build_config.isNightly:
         # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
         job["timeLimit"] = 32 * 5 * 60

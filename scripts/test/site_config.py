@@ -101,7 +101,6 @@ class SiteConfig:
             self.timeout *= 6
 
         self.small_machine = False
-        self.serialize_execution = False
         self.extra_args = []
         if psutil.cpu_count(logical=False) <= 12:
             logging.info(
