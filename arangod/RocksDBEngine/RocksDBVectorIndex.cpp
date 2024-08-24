@@ -31,7 +31,6 @@
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
-#include "Indexes/VectorIndexDefinition.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -39,6 +38,7 @@
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
+#include <sys/types.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -52,17 +52,25 @@
 namespace arangodb {
 
 RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
-    RocksDBVectorIndex* index, std::size_t listNumber, std::size_t codeSize)
+    RocksDBVectorIndex* index, LogicalCollection* collection,
+    transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
     : InvertedListsIterator(),
       _index(index),
       _listNumber(codeSize),
       _codeSize(codeSize),
       _codes(codeSize) {
   _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
+  RocksDBTransactionMethods* mthds =
+      RocksDBTransactionState::toMethods(trx, collection->id());
+  _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+    TRI_ASSERT(opts.prefix_same_as_start);
+  });
+
   _it->Seek(_rocksdbKey.string());
 }
 
 bool RocksDBInvertedListsIterator::is_available() const {
+  // RocksDB key here is without document id
   return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
 }
 
@@ -70,19 +78,23 @@ void RocksDBInvertedListsIterator::next() { _it->Next(); }
 
 std::pair<std::int64_t, const uint8_t*>
 RocksDBInvertedListsIterator::get_id_and_codes() {
-  // TODO This is already handled somewhere
-  std::int64_t id = *reinterpret_cast<const std::int64_t*>(
-      &_it->key().data()[sizeof(size_t)]);
+  faiss::idx_t id = *reinterpret_cast<const std::int64_t*>(
+      &_it->key().data()[sizeof(faiss::idx_t)]);
   assert(code_size == it->value().size());
+
   return {id, reinterpret_cast<const uint8_t*>(_it->value().data())};
 }
 
 RocksDBInvertedLists::RocksDBInvertedLists(RocksDBVectorIndex* index,
+                                           LogicalCollection* collection,
+                                           transaction::Methods* trx,
                                            RocksDBMethods* rocksDBMethods,
                                            rocksdb::ColumnFamilyHandle* cf,
                                            size_t nlist, size_t code_size)
     : InvertedLists(nlist, code_size),
       _index(index),
+      _collection(collection),
+      _trx(trx),
       _rocksDBMethods(rocksDBMethods),
       _cf(cf) {
   use_iterator = true;
@@ -116,9 +128,7 @@ size_t RocksDBInvertedLists::add_entries(std::size_t listNumber,
     // use IdSelector in options during search
     rocksdbKey.constructVectorIndexValue(_index->objectId(), listNumber,
                                          LocalDocumentId(*(ids + i)));
-
-    // Is this code neccessary... I think it is to represent vector
-    auto value = RocksDBValue::VectorIndexValue(
+    auto const value = RocksDBValue::VectorIndexValue(
         reinterpret_cast<const char*>(code + i * code_size), code_size);
 
     _rocksDBMethods->PutUntracked(_cf, rocksdbKey, value.string());
@@ -143,27 +153,22 @@ void RocksDBInvertedLists::resize(size_t /*list_no*/, size_t /*new_size*/) {
 
 faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
     size_t listNumber, void* inverted_list_context) const {
-  return new RocksDBInvertedListsIterator(_index, listNumber, this->code_size);
+  return new RocksDBInvertedListsIterator(_index, _collection, _trx, listNumber,
+                                          this->code_size);
 }
 
 class RocksDBVectorIndexIterator final : public IndexIterator {
  public:
-  RocksDBVectorIndexIterator(ResourceMonitor& monitor,
-                             LogicalCollection* collection,
-                             RocksDBVectorIndex* index,
+  RocksDBVectorIndexIterator(LogicalCollection* collection,
                              transaction::Methods* trx,
-                             std::vector<double>&& input,
+                             std::vector<float>&& input,
                              ReadOwnWrites readOwnWrites,
-                             std::size_t numberOfLists, std::size_t codeSize)
+                             faiss::IndexIVFFlat&& flatIndex, std::size_t topK)
       : IndexIterator(collection, trx, readOwnWrites),
-        _bound(RocksDBKeyBounds::VectorVPackIndex(index->objectId())),
-        _index(index) {
-    _numberOfLists = numberOfLists;
-    _codeSize = codeSize;
-
-    _rocksdbKey.constructVectorIndexValue(_index->objectId(), _numberOfLists);
-    _iter->Seek(_rocksdbKey.string());
-  }
+        _ids(topK),
+        _flatIndex(std::move(flatIndex)),
+        _input(input),
+        _topK(topK) {}
 
   std::string_view typeName() const noexcept final {
     return "rocksdb-vector-index-iterator";
@@ -172,19 +177,24 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
  protected:
   bool nextImpl(LocalDocumentIdCallback const& callback,
                 uint64_t limit) override {
-    // TODO
-    // for (uint64_t i = 0; i < limit;) {
-    /*   if (!_iter->Valid()) {*/
-    /*return false;*/
-    /*}*/
-    /*auto key = _iter->key();*/
-    /*auto indexValue = RocksDBKey::vectorVPackIndexValue(key);*/
+    if (!_initialized) {
+      std::vector<float> distances(_topK);
+      LOG_DEVEL << __FUNCTION__ << " BEFORE SEARCH";
+      _flatIndex.search(1, _input.data(), _topK, distances.data(), _ids.data(),
+                        nullptr);
+      LOG_DEVEL << __FUNCTION__ << " AFTER SEARCH";
+      _initialized = true;
+    }
 
-    /*_flatIndex->search(nq, xb.data(), k, distances.data(), labels.data(),*/
-    /*nullptr);*/
-    //}
+    for (std::size_t i{0}; i < limit && _producedElements < _topK;
+         ++i, ++_producedElements) {
+      LocalDocumentId docId = LocalDocumentId(_ids[i]);
+      if (docId.isSet()) {
+        callback(docId);
+      }
+    }
 
-    return true;
+    return false;
   }
 
   void resetImpl() override {
@@ -201,12 +211,13 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
   rocksdb::Slice _upperBound;
   RocksDBKey _upperBoundKey;
   std::vector<std::uint8_t> _cur;
-  RocksDBKeyBounds _bound;
+  std::vector<faiss::idx_t> _ids;
+  bool _initialized{false};
+  std::size_t _producedElements{0};
 
-  std::unique_ptr<rocksdb::Iterator> _iter;
-  RocksDBVectorIndex* _index{nullptr};
-  std::size_t _numberOfLists;
-  std::size_t _codeSize;
+  faiss::IndexIVFFlat _flatIndex;
+  std::vector<float> _input;
+  std::size_t _topK;
 };
 
 RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
@@ -218,7 +229,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                    /*cacheManager*/ nullptr,
                    /*engine*/
                    coll.vocbase().engine<RocksDBEngine>()) {
-  LOG_DEVEL << "RocksDBVectorIndex ctor";
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
 
@@ -227,6 +237,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     _quantizer.code_size = _definition.trainedData->codeSize;
     _quantizer.ntotal = _definition.trainedData->numberOfCodes;
     _quantizer.codes = _definition.trainedData->codeData;
+    _quantizer.is_trained = true;
     LOG_DEVEL << "Trained data is: " << _quantizer.ntotal << ", "
               << _quantizer.code_size;
   }
@@ -273,8 +284,8 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   TRI_ASSERT(_fields.size() == 1);
   faiss::IndexIVFFlat flatIndex(&_quantizer, _definition.dimensions,
                                 _definition.nLists);
-  RocksDBInvertedLists ril(this, methods, _cf, _definition.nLists,
-                           flatIndex.code_size);
+  RocksDBInvertedLists ril(this, nullptr, nullptr, methods, _cf,
+                           _definition.nLists, flatIndex.code_size);
   flatIndex.replace_invlists(&ril, false);
 
   VPackSlice value = accessDocumentPath(doc, _fields[0]);
@@ -291,9 +302,8 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
             "input vector does not have correct dimensions"};
   }
 
-  auto docId = static_cast<faiss::idx_t>(documentId.id());
+  auto const docId = static_cast<faiss::idx_t>(documentId.id());
   flatIndex.add_with_ids(1, input.data(), &docId);
-  count++;
 
   return Result{};
 #else
@@ -330,17 +340,15 @@ Index::FilterCosts RocksDBVectorIndex::supportsFilterCondition(
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                                       rocksdb::Slice upper,
                                       RocksDBMethods* methods) {
-  LOG_DEVEL << __FUNCTION__;
   faiss::IndexIVFFlat flatIndex(&_quantizer, _definition.dimensions,
                                 _definition.nLists);
-  RocksDBInvertedLists ril(this, methods, _cf, _definition.nLists,
-                           flatIndex.code_size);
+  RocksDBInvertedLists ril(this, &_collection, nullptr, methods, _cf,
+                           _definition.nLists, flatIndex.code_size);
   flatIndex.replace_invlists(&ril, false);
 
   std::vector<float> trainingData;
 
   std::size_t counter{0};
-  LOG_DEVEL << "Is iterator valid " << it->Valid();
   while (counter < 50000 && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     std::vector<float> input;
@@ -349,7 +357,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
     VPackSlice value = accessDocumentPath(doc, _fields[0]);
     if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
-      LOG_DEVEL << "HANDLE THIS";
+      // TODO Handle this
       // return {TRI_ERROR_BAD_PARAMETER, res.error()};
     }
     TRI_ASSERT(input.size() ==
@@ -360,15 +368,12 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     ++counter;
   }
 
-  LOG_DEVEL << "Prepared and now train " << counter;
   flatIndex.train(counter, trainingData.data());
   // Update vector definition data with quantitizer data
   _definition.trainedData =
       TrainedData{.codeData = _quantizer.codes,
                   .numberOfCodes = static_cast<size_t>(_quantizer.ntotal),
                   .codeSize = _quantizer.code_size};
-
-  LOG_DEVEL << __FUNCTION__ << ": Trained " << flatIndex.is_trained;
 }
 
 /// @brief removes a document from the index
@@ -405,7 +410,7 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
 
   auto const* rhs = functionCallParams->getMember(1);
 
-  std::vector<double> input;
+  std::vector<float> input;
   if (rhs->numMembers() != static_cast<std::size_t>(_definition.dimensions)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
@@ -429,11 +434,18 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
     input.push_back(dv);
   }
 
-  // auto const topK = functionCallParams->getMember(2)->getIntValue();
+  auto const topK = functionCallParams->getMember(2)->getIntValue();
+
+  faiss::IndexIVFFlat flatIndex(&_quantizer, _definition.dimensions,
+                                _definition.nLists);
+  RocksDBInvertedLists* ril =
+      new RocksDBInvertedLists(this, &_collection, trx, nullptr, _cf,
+                               _definition.nLists, flatIndex.code_size);
+  flatIndex.replace_invlists(ril, true);
 
   return std::make_unique<RocksDBVectorIndexIterator>(
-      monitor, &_collection, this, trx, std::move(input), readOwnWrites,
-      _definition.nLists, _definition.trainedData->codeSize);
+      &_collection, trx, std::move(input), readOwnWrites, std::move(flatIndex),
+      topK);
 }
 
 // Remove conditions covered by this index

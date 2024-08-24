@@ -46,6 +46,8 @@ class RocksDBVectorIndex;
 
 struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
+                               LogicalCollection* collection,
+                               transaction::Methods* trx,
                                std::size_t listNumber, std::size_t codeSize);
   virtual bool is_available() const override;
   virtual void next() override;
@@ -62,7 +64,8 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
 };
 
 struct RocksDBInvertedLists : faiss::InvertedLists {
-  RocksDBInvertedLists(RocksDBVectorIndex* index,
+  RocksDBInvertedLists(RocksDBVectorIndex* index, LogicalCollection* collection,
+                       transaction::Methods* trx,
                        RocksDBMethods* rocksDBMethods,
                        rocksdb::ColumnFamilyHandle* cf, std::size_t nlist,
                        size_t codeSize);
@@ -88,6 +91,8 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
 
  private:
   RocksDBVectorIndex* _index;
+  LogicalCollection* _collection;
+  transaction::Methods* _trx;
   RocksDBMethods* _rocksDBMethods;
   rocksdb::ColumnFamilyHandle* _cf;
 };
@@ -157,7 +162,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   FullVectorIndexDefinition _definition;
   faiss::IndexFlatL2 _quantizer;
-  int count{0};
 };
 
 }  // namespace arangodb
