@@ -163,12 +163,20 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
                              transaction::Methods* trx,
                              std::vector<float>&& input,
                              ReadOwnWrites readOwnWrites,
-                             faiss::IndexIVFFlat&& flatIndex, std::size_t topK)
+                             faiss::IndexFlatL2& quantitizer,
+                             FullVectorIndexDefinition& indexDefinition,
+                             RocksDBVectorIndex* index,
+                             rocksdb::ColumnFamilyHandle* cf, std::size_t topK)
       : IndexIterator(collection, trx, readOwnWrites),
         _ids(topK),
-        _flatIndex(std::move(flatIndex)),
+        _flatIndex(&quantitizer, indexDefinition.dimensions,
+                   indexDefinition.nLists),
+        _ril(index, _collection, trx, nullptr, cf, indexDefinition.nLists,
+             _flatIndex.code_size),
         _input(input),
-        _topK(topK) {}
+        _topK(topK) {
+    _flatIndex.replace_invlists(&_ril, false);
+  }
 
   std::string_view typeName() const noexcept final {
     return "rocksdb-vector-index-iterator";
@@ -216,6 +224,7 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
   std::size_t _producedElements{0};
 
   faiss::IndexIVFFlat _flatIndex;
+  RocksDBInvertedLists _ril;
   std::vector<float> _input;
   std::size_t _topK;
 };
@@ -436,16 +445,9 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
 
   auto const topK = functionCallParams->getMember(2)->getIntValue();
 
-  faiss::IndexIVFFlat flatIndex(&_quantizer, _definition.dimensions,
-                                _definition.nLists);
-  RocksDBInvertedLists* ril =
-      new RocksDBInvertedLists(this, &_collection, trx, nullptr, _cf,
-                               _definition.nLists, flatIndex.code_size);
-  flatIndex.replace_invlists(ril, true);
-
   return std::make_unique<RocksDBVectorIndexIterator>(
-      &_collection, trx, std::move(input), readOwnWrites, std::move(flatIndex),
-      topK);
+      &_collection, trx, std::move(input), readOwnWrites, _quantizer,
+      _definition, this, _cf, topK);
 }
 
 // Remove conditions covered by this index
