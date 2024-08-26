@@ -6,6 +6,7 @@
 #include <string>
 #include <thread>
 #include "fmt/format.h"
+#include "fmt/std.h"
 
 namespace arangodb::async_registry {
 
@@ -43,7 +44,8 @@ auto inspect(Inspector& f, PromiseInList& x) {
       f.field("source_location",
               fmt::format("{}:{} {}", x._where.file_name(), x._where.line(),
                           x._where.function_name())),
-      f.field("thread_name", x.thread_name), f.field("thread_id", x.thread_id));
+      f.field("thread_name", x.thread_name),
+      f.field("thread_id", fmt::format("{}", x.thread_id)));
 }
 
 }  // namespace arangodb::async_registry
