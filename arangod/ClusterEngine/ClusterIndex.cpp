@@ -496,5 +496,5 @@ Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
     default:
       break;
   }
-  return {};
+  return Index::StreamSupportResult::makeUnsupported();
 }

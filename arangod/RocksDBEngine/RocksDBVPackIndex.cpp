@@ -3191,8 +3191,8 @@ Index::StreamSupportResult RocksDBVPackIndex::checkSupportsStreamInterface(
   // The uniqueness of this index can only be used if all fields are used.
   // Example: if we index triples [doc.a, doc.b, doc.c] then the uniqueness
   // refers to the triples and just taking a prefix [doc.a, doc.b] is not
-  // unique. Thus, we should not pick an optimized strategy for joining two
-  // unique indexes.
+  // necessarily unique. Thus, we should not pick an optimized strategy for
+  // joining two unique indexes.
   TRI_ASSERT(streamOpts.usedKeyFields.size() == 1);
   bool const hasUniqueTuples = isUnique && idx == fields.size();
 

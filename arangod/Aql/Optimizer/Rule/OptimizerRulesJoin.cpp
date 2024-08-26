@@ -789,7 +789,6 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
             << "-> Index name: " << node->getIndexes()[0]->name()
             << ", id: " << node->getIndexes()[0]->id();
       } else {
-        // the index stream is a unique stream
         indexOffset.isUniqueStream = supportResult.isUniqueStream();
       }
     }
