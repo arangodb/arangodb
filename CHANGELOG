@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-462: saved queries view scrollbar is not visible.
+
 * Extend COLLECT optimizer rule to consider existing SORT nodes that cover
   all group variables. Previously the following query would use a hash collect
   instead of a sorted collect:
@@ -22,8 +24,6 @@ devel
   even utilize an index if we have one.
 
 * FE-422: Permissions of users managed by ArangoGraph are now shown as read-only.
-
-* FE-462: saved query view scrollbar is not visible.
 
 
 3.12.2 (XXXX-XX-XX)
