@@ -321,6 +321,7 @@ class RocksDBKey {
       rocksdb::Slice const& slice);
   static byte_string_view mdiIndexCurveValue(rocksdb::Slice const& slice);
   static byte_string_view mdiUniqueIndexCurveValue(rocksdb::Slice const& slice);
+  static std::size_t vectorVPackIndexListValue(const rocksdb::Slice& slice);
 
   static byte_string_view vectorVPackIndexValue(const rocksdb::Slice& slice);
 
@@ -392,7 +393,7 @@ class RocksDBKey {
                                                   size_t size);
   static byte_string_view mdiUniqueVPackIndexCurveValue(char const* data,
                                                         size_t size);
-  static byte_string_view vectorVPackIndexValue(char const* data, size_t size);
+  static std::size_t vectorVPackIndexListValue(char const* data, size_t size);
 
  private:
   static const char _stringSeparator;

@@ -51,22 +51,30 @@
 
 namespace arangodb {
 
+static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
+              "Faiss id and LocalDocumentId must be of same size");
+
 RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
     RocksDBVectorIndex* index, LogicalCollection* collection,
     transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
     : InvertedListsIterator(),
       _index(index),
-      _listNumber(codeSize),
-      _codeSize(codeSize),
-      _codes(codeSize) {
-  _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
+      _listNumber(listNumber),
+      _codeSize(codeSize) {
   RocksDBTransactionMethods* mthds =
       RocksDBTransactionState::toMethods(trx, collection->id());
+  TRI_ASSERT(index->columnFamily() ==
+             RocksDBColumnFamilyManager::get(
+                 RocksDBColumnFamilyManager::Family::VectorIndex));
+
   _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
     TRI_ASSERT(opts.prefix_same_as_start);
   });
 
+  _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
   _it->Seek(_rocksdbKey.string());
+
+  LOG_DEVEL << __FUNCTION__ << " iter is valid: " << _it->Valid();
 }
 
 bool RocksDBInvertedListsIterator::is_available() const {
@@ -76,13 +84,19 @@ bool RocksDBInvertedListsIterator::is_available() const {
 
 void RocksDBInvertedListsIterator::next() { _it->Next(); }
 
-std::pair<std::int64_t, const uint8_t*>
+std::pair<faiss::idx_t, const uint8_t*>
 RocksDBInvertedListsIterator::get_id_and_codes() {
-  faiss::idx_t id = *reinterpret_cast<const std::int64_t*>(
-      &_it->key().data()[sizeof(faiss::idx_t)]);
-  assert(code_size == it->value().size());
+  // constexpr std::size_t kIdOffset = sizeof(uint64_t) + sizeof(std::size_t);
 
-  return {id, reinterpret_cast<const uint8_t*>(_it->value().data())};
+  auto const id = RocksDBKey::indexDocumentId(_it->key());
+  TRI_ASSERT(_codeSize == _it->value().size());
+  LOG_DEVEL << __FUNCTION__ << ", id: " << id;
+  LOG_DEVEL << __FUNCTION__
+            << ", key: objectId: " << RocksDBKey::objectId(_it->key())
+            << ", listId: " << RocksDBKey::vectorVPackIndexListValue(_it->key())
+            << ", id: " << RocksDBKey::indexDocumentId(_it->key());
+  auto value = reinterpret_cast<const uint8_t*>(_it->value().data());
+  return {static_cast<faiss::idx_t>(id.id()), value};
 }
 
 RocksDBInvertedLists::RocksDBInvertedLists(RocksDBVectorIndex* index,
@@ -116,21 +130,29 @@ const faiss::idx_t* RocksDBInvertedLists::get_ids(size_t /*list_no*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
 }
 
-size_t RocksDBInvertedLists::add_entries(std::size_t listNumber,
-                                         std::size_t nEntry,
-                                         const faiss::idx_t* ids,
-                                         const std::uint8_t* code) {
-  for (size_t i = 0; i < nEntry; i++) {
+std::size_t RocksDBInvertedLists::add_entries(std::size_t listNumber,
+                                              std::size_t nEntry,
+                                              const faiss::idx_t* ids,
+                                              const std::uint8_t* code) {
+  for (std::size_t i = 0; i < nEntry; i++) {
     RocksDBKey rocksdbKey;
-    static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
-                  "Faiss id and LocalDocumentId must be of same size");
     // Can we get away with saving LocalDocumentID in key, maybe we need to the
     // use IdSelector in options during search
-    rocksdbKey.constructVectorIndexValue(_index->objectId(), listNumber,
-                                         LocalDocumentId(*(ids + i)));
+    auto const docId = LocalDocumentId(*(ids + i));
+    rocksdbKey.constructVectorIndexValue(_index->objectId(), listNumber, docId);
+
+    LOG_DEVEL << __FUNCTION__ << " Adding key " << docId.id();
+    /*    LOG_DEVEL << __FUNCTION__ << ", key: objectId: "*/
+    /*<< rocksdbKey.documentId(const rocksdb::Slice &)              << ",
+     * listId: "*/
+    /*<< *reinterpret_cast<const uint64_t*>(*/
+    /*&rocksdbKey.buffer()[sizeof(uint64_t)])*/
+    /*<< ", id: "*/
+    /*<< *reinterpret_cast<const std::uint64_t*>(*/
+    /*&rocksdbKey.buffer()[sizeof(uint64_t) + sizeof(size_t)]);*/
+
     auto const value = RocksDBValue::VectorIndexValue(
         reinterpret_cast<const char*>(code + i * code_size), code_size);
-
     _rocksDBMethods->PutUntracked(_cf, rocksdbKey, value.string());
 
     assert(status.ok());
@@ -168,7 +190,7 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
                              RocksDBVectorIndex* index,
                              rocksdb::ColumnFamilyHandle* cf, std::size_t topK)
       : IndexIterator(collection, trx, readOwnWrites),
-        _ids(topK),
+        _ids(topK, -1),
         _flatIndex(&quantitizer, indexDefinition.dimensions,
                    indexDefinition.nLists),
         _ril(index, _collection, trx, nullptr, cf, indexDefinition.nLists,
@@ -185,23 +207,38 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
  protected:
   bool nextImpl(LocalDocumentIdCallback const& callback,
                 uint64_t limit) override {
+    if (limit == 0) {
+      // No limit no data, or we are actually done. The last call should have
+      // returned false
+      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      return false;
+    }
+
     if (!_initialized) {
       std::vector<float> distances(_topK);
-      LOG_DEVEL << __FUNCTION__ << " BEFORE SEARCH";
+      LOG_DEVEL << __FUNCTION__ << " BEFORE SEARCH, ids: " << _ids;
       _flatIndex.search(1, _input.data(), _topK, distances.data(), _ids.data(),
                         nullptr);
-      LOG_DEVEL << __FUNCTION__ << " AFTER SEARCH";
+      LOG_DEVEL << __FUNCTION__ << " AFTER SEARCH, ids: " << _ids;
+      TRI_ASSERT(std::ranges::any_of(_ids, [](auto const& elem) {
+        return elem != -1;
+      })) << "Elements not found";
       _initialized = true;
     }
 
     for (std::size_t i{0}; i < limit && _producedElements < _topK;
          ++i, ++_producedElements) {
+      LOG_DEVEL << __FUNCTION__ << "Producing documents current limit: " << i
+                << ", current producedElems: " << _producedElements
+                << ", id: " << _ids[_producedElements];
       LocalDocumentId docId = LocalDocumentId(_ids[i]);
       if (docId.isSet()) {
+        LOG_DEVEL << __FUNCTION__ << " Is set";
         callback(docId);
       }
     }
 
+    LOG_DEVEL << __FUNCTION__ << " Done producing";
     return false;
   }
 
@@ -312,6 +349,8 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   }
 
   auto const docId = static_cast<faiss::idx_t>(documentId.id());
+  LOG_DEVEL << __FUNCTION__ << " normal vs faiss: " << documentId.id() << " "
+            << docId;
   flatIndex.add_with_ids(1, input.data(), &docId);
 
   return Result{};

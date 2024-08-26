@@ -674,18 +674,18 @@ byte_string_view RocksDBKey::mdiUniqueIndexCurveValue(
   return mdiUniqueIndexCurveValue(slice.data(), slice.size());
 }
 
-byte_string_view RocksDBKey::vectorVPackIndexValue(
-    const rocksdb::Slice& slice) {
-  return vectorVPackIndexValue(slice.data(), slice.size());
+std::size_t RocksDBKey::vectorVPackIndexListValue(const rocksdb::Slice& slice) {
+  return vectorVPackIndexListValue(slice.data(), slice.size());
 }
 
-byte_string_view RocksDBKey::vectorVPackIndexValue(char const* data,
-                                                   size_t size) {
+std::size_t RocksDBKey::vectorVPackIndexListValue(char const* data,
+                                                  size_t size) {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size > sizeof(uint64_t) * 2);
-  return byte_string_view(
-      reinterpret_cast<const std::byte*>(data) + sizeof(uint64_t),
-      size - sizeof(uint64_t) * 2);
+  constexpr auto vectorIndexKeySize =
+      sizeof(std::uint64_t) + sizeof(std::size_t) + sizeof(std::uint64_t);
+  TRI_ASSERT(size == vectorIndexKeySize);
+
+  return uint64FromPersistent(data + size - sizeof(std::uint64_t));
 }
 
 namespace arangodb {
