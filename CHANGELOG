@@ -1,6 +1,26 @@
 devel
 -----
 
+* Extend COLLECT optimizer rule to consider existing SORT nodes that cover
+  all group variables. Previously the following query would use a hash collect
+  instead of a sorted collect:
+  ```
+  FOR d IN docs
+    SORT d.value DESC
+    COLLECT v = d.value
+    RETURN v
+  ```
+  The reason is that previously the rule unconditionally created a SORT node
+  with all group variables sorted in ascending order, but because that
+  resulted in a plan with two different SORT nodes which obviously is more
+  expensive than the hash collect, which was thus preferred.
+  The sorted collect doesn't need the values to be sorted in a particular
+  order, it just needs the values to be grouped correctly. So the new version
+  now checks if there are existing SORT nodes that already cover all the group
+  values, and in that case does not create an additional SORT node. That way
+  we can also utilize descending SORTs as in the example above, and perhaps
+  even utilize an index if we have one.
+
 * FE-422: Permissions of users managed by ArangoGraph are now shown as read-only.
 
 
