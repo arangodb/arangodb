@@ -61,6 +61,14 @@ class PathResult {
   auto isEmpty() const -> bool;
   auto getWeight() const -> double { return _pathWeight; }
 
+  auto getLength() const -> size_t { return _edges.size(); }
+  auto getVertex(size_t which) const -> Step::Vertex {
+    return _vertices[which];
+  }
+  auto getEdge(size_t which) const -> Step::Edge { return _edges[which]; }
+  auto getSourceProvider() const -> ProviderType& { return _sourceProvider; }
+  auto getTargetProvider() const -> ProviderType& { return _targetProvider; }
+
  private:
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;

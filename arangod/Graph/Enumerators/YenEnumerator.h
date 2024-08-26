@@ -62,8 +62,8 @@ template<class QueueType, class PathStoreType, class ProviderType,
 class YenEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
-  using VertexRef = arangodb::velocypack::HashedStringRef;
-  using Edge = arangodb::graph::EdgeDocumentToken;
+  using VertexRef = ProviderType::Step::VertexType;
+  using Edge = ProviderType::Step::EdgeType;
 
   using VertexSet =
       arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
@@ -146,8 +146,11 @@ class YenEnumerator {
 
  private:
   std::unique_ptr<ShortestPathEnumerator> _shortestPathEnumerator;
-  std::vector<PathStoreType> _shortestPaths;
-  std::vector<PathStoreType> _candidatePaths;
+  std::vector<PathResult<ProviderType, typename ProviderType::Step>>
+      _shortestPaths;
+  std::vector<
+      std::unique_ptr<PathResult<ProviderType, typename ProviderType::Step>>>
+      _candidatePaths;
   arangodb::ResourceMonitor& _resourceMonitor;
   bool _isDone;  // shortcut to indicate all is done
   VertexRef _source;

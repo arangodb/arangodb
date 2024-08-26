@@ -136,20 +136,104 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool YenEnumerator<QueueType, PathStoreType, ProviderType,
                    PathValidator>::getNextPath(VPackBuilder& result) {
-  if (_isDone || !_shortestPaths.empty()) {
+  if (_isDone) {
     return false;
   }
-  // First find the shortest path using the _shortestPathEnumerator:
-  bool found = _shortestPathEnumerator->getNextPath(result);
-  if (!found) {
+  if (_shortestPaths.empty()) {
+    // First find the shortest path using the _shortestPathEnumerator:
+    bool found = _shortestPathEnumerator->getNextPath(result);
+    if (!found) {
+      _isDone = true;
+      return false;
+    }
+    LOG_DEVEL << "Found one shortest path:" << result.slice().toJson();
+    PathResult<ProviderType, typename ProviderType::Step> const& path =
+        _shortestPathEnumerator->getLastPathResult();
+    _shortestPaths.emplace_back(path);  // Copy the path!
+    // When we are called next, we will continue below!
+    return true;
+  }
+  // Here comes the code to find the next shortest path: We must try all
+  // proper prefixes of the previous shortest path and start a shortest
+  // path computation for each prefix with some forbidden vertices and
+  // edges. This then adds to the candidates and in the end we either
+  // take the best candidate or have proven that no more shortest paths
+  // exist.
+  auto& prevPath = _shortestPaths.back();
+  auto len = prevPath.getLength();
+  for (size_t prefixLen = 0; prefixLen < len; ++prefixLen) {
+    auto spurVertex = prevPath.getVertex(prefixLen);
+    // To avoid cycles, forbid all vertices before the spurVertex in the
+    // previous path:
+    VertexSet forbiddenVertices;
+    for (size_t i = 0; i < prefixLen; ++i) {
+      forbiddenVertices.insert(prevPath.getVertex(i).getID());
+    }
+    // To avoid finding old shortest paths again, we must forbid every edge,
+    // which is a continuation of a previous shortest path which has the
+    // same prefix:
+    EdgeSet forbiddenEdges;
+    forbiddenEdges.insert(prevPath.getEdge(prefixLen).getID());
+    // This handles the previous one, now do the ones before:
+    for (size_t i = 0; i + 1 < _shortestPaths.size(); ++i) {
+      // Check if that shortest path has the same prefix:
+      if (_shortestPaths[i].getLength() > prefixLen) {
+        bool samePrefix = true;
+        for (size_t j = 0; j < prefixLen; ++j) {
+          if (!_shortestPaths[i].getEdge(j).getID().equals(
+                  prevPath.getEdge(j).getID())) {
+            samePrefix = false;
+            break;
+          }
+        }
+        if (samePrefix) {
+          forbiddenEdges.insert(_shortestPaths[i].getEdge(prefixLen).getID());
+        }
+      }
+    }
+    // And run a shortest path computation from the spur vertex to the sink
+    // with forbidden vertices and edges:
+    _shortestPathEnumerator->reset(spurVertex.getID(), _target);
+    VPackBuilder temp;
+    if (_shortestPathEnumerator->getNextPath(temp)) {
+      LOG_DEVEL << "Found another shortest path:" << temp.slice().toJson();
+      PathResult<ProviderType, typename ProviderType::Step> const& path =
+          _shortestPathEnumerator->getLastPathResult();
+      auto newPath = std::make_unique<
+          PathResult<ProviderType, typename ProviderType::Step>>(
+          path.getSourceProvider(),
+          path.getTargetProvider());  // empty path
+      for (size_t i = 0; i < prefixLen; ++i) {
+        newPath->appendVertex(prevPath.getVertex(i));
+        newPath->appendEdge(prevPath.getEdge(i));
+      }
+      for (size_t i = 0; i < path.getLength(); ++i) {
+        newPath->appendVertex(path.getVertex(i));
+        newPath->appendEdge(path.getEdge(i));
+      }
+      newPath->appendVertex(path.getVertex(path.getLength()));
+      _candidatePaths.emplace_back(std::move(newPath));
+    }
+  }
+
+  // Finally get the best candidate:
+  if (_candidatePaths.empty()) {
     _isDone = true;
     return false;
   }
-  // PathResult<ProviderType, typename ProviderType::Step> const& path =
-  //     _shortestPathEnumerator->getLastPathResult;
-  LOG_DEVEL << "Found one shortest path:" << result.slice().toJson();
-  _isDone = true;
-  return true;
+
+  size_t posBest = 0;
+  for (size_t i = 1; i < _candidatePaths.size(); ++i) {
+    if (_candidatePaths[i]->getWeight() <
+        _candidatePaths[posBest]->getWeight()) {
+      posBest = i;
+    }
+  }
+  _shortestPaths.emplace_back(std::move(*_candidatePaths[posBest]));
+  _shortestPaths.back().toVelocyPack(result);
+  _candidatePaths.erase(_candidatePaths.begin() + posBest);
+
+  return false;
 }
 
 /**
