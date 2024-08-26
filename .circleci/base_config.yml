@@ -520,7 +520,7 @@ jobs:
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
-              --extraArgs " << parameters.extraArgs >>"
+              --extraArgs ' << parameters.extraArgs >>'
       - run:
           name: Copy test results
           when: always
