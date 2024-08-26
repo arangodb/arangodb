@@ -37,8 +37,7 @@ recovery_cluster_server priority=2000 buckets=1 parallelity=1 size=small
 
 shell_api priority=500 single -- $EncryptionAtRest
 
-shell_api_multi priority=500 single suffix=http -- $EncryptionAtRest
-shell_api_multi priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
+shell_api_multi,shell_api_multi name=shell_api_multi priority=500 single -- --optionsJson [{"http":true},{"ssl":true}] $EncryptionAtRest
 
 # Shell client tests Single Server; distribute evenly
 shell_client priority=250 parallelity=2 buckets=4 single size=medium -- $EncryptionAtRest
@@ -48,8 +47,7 @@ shell_client_multi priority=1500 parallelity=2 single suffix=http2 -- --http2 tr
 shell_client_multi priority=1500 parallelity=2 single suffix=http -- --http true
 
 shell_client_transaction,shell_client_transaction name=shell_client_transaction priority=750 single -- --optionsJson [{"http":true},{"http2":true}] $EncryptionAtRest
-shell_client_traffic,shell_client_traffic name=shell_client_traffic priority=250 parallelity=1 single -- --optionsJson [{"http":true},{"http2":true}]
-shell_client_traffic,shell_client_traffic name=shell_client_traffic priority=250 parallelity=1 single suffix=ssl -- --optionsJson [{"http":true},{"http2":true}] --protocol ssl
+shell_client_traffic,shell_client_traffic,shell_client_traffic,shell_client_traffic name=shell_client_traffic priority=250 parallelity=1 single -- --optionsJson [{"http":true},{"http2":true},{"http":true,"ssl":true},{"http2":true,"ssl":true}]
 
 shell_client_aql buckets=17 priority=250  single
 
