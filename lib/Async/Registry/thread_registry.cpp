@@ -31,8 +31,8 @@ ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
 auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
   // promise needs to live on the same thread as this registry
   ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
-  if (metrics->total_coroutines != nullptr) {
-    metrics->total_coroutines->count();
+  if (metrics->total_functions != nullptr) {
+    metrics->total_functions->count();
   }
   auto current_head = promise_head.load(std::memory_order_relaxed);
   promise->next = current_head;
@@ -44,8 +44,8 @@ auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
   }
   // (1) - this store synchronizes with load in (2)
   promise_head.store(promise, std::memory_order_release);
-  if (metrics->running_coroutines != nullptr) {
-    metrics->running_coroutines->fetch_add(1);
+  if (metrics->active_functions != nullptr) {
+    metrics->active_functions->fetch_add(1);
   }
 }
 
@@ -63,11 +63,11 @@ auto ThreadRegistry::mark_for_deletion(PromiseInList* promise) noexcept
 
   // decrement the registries ref-count
   promise->registry.reset();
-  if (metrics->running_coroutines != nullptr) {
-    metrics->running_coroutines->fetch_sub(1);
+  if (metrics->active_functions != nullptr) {
+    metrics->active_functions->fetch_sub(1);
   }
-  if (metrics->ready_for_deletion_coroutines != nullptr) {
-    metrics->ready_for_deletion_coroutines->fetch_add(1);
+  if (metrics->ready_for_deletion_functions != nullptr) {
+    metrics->ready_for_deletion_functions->fetch_add(1);
   }
 }
 
@@ -83,8 +83,8 @@ auto ThreadRegistry::garbage_collect() noexcept -> void {
     next = next->next_to_free;
     remove(current);
     current->destroy();
-    if (metrics->ready_for_deletion_coroutines != nullptr) {
-      metrics->ready_for_deletion_coroutines->fetch_sub(1);
+    if (metrics->ready_for_deletion_functions != nullptr) {
+      metrics->ready_for_deletion_functions->fetch_sub(1);
     }
   }
 }
