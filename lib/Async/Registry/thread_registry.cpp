@@ -18,19 +18,20 @@ auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics)
 
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
     : thread_name{ThreadNameFetcher{}.get()},
-      running_threads{*metrics->running_threads, 1},
+      running_threads{metrics->running_threads.get(), 1},
       metrics{metrics} {
   if (metrics->total_threads != nullptr) {
     metrics->total_threads->count();
-  } else {
-    LOG_TOPIC("4be6e", WARN, Logger::STARTUP)
-        << "An async thread registry was created with empty metrics.";
   }
 }
 
 auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
   // promise needs to live on the same thread as this registry
-  ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
+  ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread)
+      << "ThreadRegistry::add was called from thread "
+      << std::this_thread::get_id()
+      << " but needs to be called from ThreadRegistry's owning thread "
+      << owning_thread << ".";
   if (metrics->total_functions != nullptr) {
     metrics->total_functions->count();
   }
@@ -72,12 +73,15 @@ auto ThreadRegistry::mark_for_deletion(PromiseInList* promise) noexcept
 }
 
 auto ThreadRegistry::garbage_collect() noexcept -> void {
-  ADB_PROD_ASSERT(weak_from_this().expired() ||
-                  std::this_thread::get_id() == owning_thread);
+  ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
+  auto guard = std::lock_guard(mutex);
+  cleanup();
+}
+
+auto ThreadRegistry::cleanup() noexcept -> void {
   // (5) - this exchange synchronizes with compare_exchange_weak in (4)
   PromiseInList *current,
       *next = free_head.exchange(nullptr, std::memory_order_acquire);
-  auto guard = std::lock_guard(mutex);
   while (next != nullptr) {
     current = next;
     next = next->next_to_free;
