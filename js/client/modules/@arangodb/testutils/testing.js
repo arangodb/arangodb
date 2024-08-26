@@ -415,7 +415,10 @@ function iterateTests(cases, options) {
       localOptions = _.defaults(optionsList[n], localOptions);
     }
     let printTestName = currentTest;
-    let resultTestName = currentTest + localOptions.suffix;
+    let resultTestName = currentTest;
+    if (localOptions.suffix && localOptions.suffix !== "") {
+      resultTestName += localOptions.suffix;
+    }
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
     }
