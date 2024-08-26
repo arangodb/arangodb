@@ -73,6 +73,7 @@ let optionsDocumentation = [
   '   - `failed`: if set to true, re-runs only those tests that failed in the',
   '     previous test run. The information which tests previously failed is taken',
   '     from the "UNITTEST_RESULT.json" (if available).',
+  '   - `suffix` append to the representation name',
   '   - `optionsJson`: all of the above, as json list for mutliple suite launches',
   ''
 ];
@@ -95,6 +96,7 @@ const optionsDefaults = {
   'vst': false,
   'http2': false,
   'failed': false,
+  'suffix': '',
   'optionsJson': null,
 };
 
@@ -413,6 +415,7 @@ function iterateTests(cases, options) {
       localOptions = _.defaults(optionsList[n], localOptions);
     }
     let printTestName = currentTest;
+    let resultTestName = currentTest + localOptions.suffix;
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
     }
@@ -445,7 +448,7 @@ function iterateTests(cases, options) {
     }
     result.failed = failed;
     result.status = status;
-    results[currentTest] = result;
+    results[resultTestName] = result;
   }
 
   results.status = globalStatus;
