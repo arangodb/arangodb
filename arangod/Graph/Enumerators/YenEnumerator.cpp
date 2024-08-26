@@ -142,6 +142,7 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
   // First find the shortest path using the _shortestPathEnumerator:
   bool found = _shortestPathEnumerator->getNextPath(result);
   if (!found) {
+    _isDone = true;
     return false;
   }
   // PathResult<ProviderType, typename ProviderType::Step> const& path =
