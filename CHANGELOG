@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-463: Query UI view crashes for empty collections
+
 * Extend COLLECT optimizer rule to consider existing SORT nodes that cover
   all group variables. Previously the following query would use a hash collect
   instead of a sorted collect:
