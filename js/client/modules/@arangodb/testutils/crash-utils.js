@@ -823,7 +823,7 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
       }
     }
   } else {
-    readGdbFileFiltered(instanceInfo.debuggerInfo.file);
+    readGdbFileFiltered(instanceInfo.debuggerInfo.file, options);
   }
   return instanceInfo.debuggerInfo.hint;
 }
