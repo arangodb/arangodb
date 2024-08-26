@@ -472,7 +472,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       duration: deltaTime
     };
   } else if (res.status === 'TIMEOUT') {
-    print('Date() + Killing ' + cmd + ' - ' + JSON.stringify(args));
+    print(Date() + 'Killing ' + cmd + ' - ' + JSON.stringify(args));
     let resKill = killExternal(res.pid, abortSignal);
     if (coreCheck) {
       print(Date() + " executeAndWait: Marking crashy because of timeout - " + JSON.stringify(instanceInfo));
