@@ -25,6 +25,8 @@ class Feature final : public application_features::ApplicationFeature {
     // startsAfter<Bla, Server>();
   }
 
+  ~Feature() { coroutine_registry.set_metrics(std::make_shared<Metrics>()); }
+
  private:
   std::shared_ptr<const Metrics> metrics;
 };

@@ -238,7 +238,8 @@ class SharedState : async_registry::PromiseInList {
   SharedState(std::source_location loc)
       : async_registry::PromiseInList(std::move(loc)),
         _state(State::Start),
-        _attached(2) {
+        _attached(2),
+        _managed_by_registry{true} {
     async_registry::get_thread_registry().add(this);
   }
 
@@ -276,8 +277,12 @@ class SharedState : async_registry::PromiseInList {
     TRI_ASSERT(a >= 1);
     if (a == 1) {
       _callback = nullptr;
-      if (registry != nullptr) {
-        registry->mark_for_deletion(this);
+      if (_managed_by_registry) {
+        if (registry != nullptr) {
+          registry->mark_for_deletion(this);
+        }
+      } else {
+        destroy();
       }
     }
   }
@@ -302,6 +307,7 @@ class SharedState : async_registry::PromiseInList {
   };
   std::atomic<State> _state;
   std::atomic<uint8_t> _attached;
+  bool _managed_by_registry = false;
 };
 
 }  // namespace detail

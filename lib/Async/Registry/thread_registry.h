@@ -35,7 +35,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   static auto make(std::shared_ptr<const Metrics> metrics)
       -> std::shared_ptr<ThreadRegistry>;
 
-  ~ThreadRegistry() noexcept { garbage_collect(); }
+  ~ThreadRegistry() noexcept { cleanup(); }
 
   /**
      Adds a promise on the registry's thread to the registry.
@@ -90,6 +90,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   // metrics::CounterGuard
 
   ThreadRegistry(std::shared_ptr<const Metrics> metrics);
+  auto cleanup() noexcept -> void;
 
   /**
      Removes the promise from the registry.
