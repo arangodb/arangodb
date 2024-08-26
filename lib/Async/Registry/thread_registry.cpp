@@ -2,6 +2,7 @@
 
 #include "Assertions/ProdAssert.h"
 #include "Async/Registry/Metrics.h"
+#include "Basics/Thread.h"
 #include "Inspection/Format.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -16,7 +17,9 @@ auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics)
 }
 
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
-    : running_threads{*metrics->running_threads, 1}, metrics{metrics} {
+    : thread_name{ThreadNameFetcher{}.get()},
+      running_threads{*metrics->running_threads, 1},
+      metrics{metrics} {
   if (metrics->total_threads != nullptr) {
     metrics->total_threads->count();
   } else {
@@ -34,6 +37,8 @@ auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
   auto current_head = promise_head.load(std::memory_order_relaxed);
   promise->next = current_head;
   promise->registry = shared_from_this();
+  promise->thread_name = thread_name;
+  promise->thread_id = owning_thread;
   if (current_head != nullptr) {
     current_head->previous = promise;
   }
@@ -55,9 +60,6 @@ auto ThreadRegistry::mark_for_deletion(PromiseInList* promise) noexcept
   } while (not free_head.compare_exchange_weak(current_head, promise,
                                                std::memory_order_release,
                                                std::memory_order_acquire));
-  // log this promise
-  LOG_TOPIC("4be6e", WARN, Logger::STARTUP)
-      << fmt::format("[{}]", inspection::json(*promise));
 
   // decrement the registries ref-count
   promise->registry.reset();
