@@ -46,6 +46,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
+#include "Assertions/ProdAssert.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
@@ -759,13 +760,23 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     // instantiate the engine on a local server
     EngineId eId =
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;
+
+    std::shared_ptr<SharedQueryState> sharedState;
+    // on coordinators the engine should be created via buildEngines!
+    ADB_PROD_ASSERT(!ServerState::isCoordinator(role));
+    if (ServerState::isDBServer(role)) {
+      ADB_PROD_ASSERT(query.sharedState() == nullptr);
+      sharedState =
+          std::make_shared<SharedQueryState>(query.vocbase().server());
+    } else {
+      TRI_ASSERT(ServerState::isSingleServer(role) ||
+                 ServerState::isAgent(role));
+      ADB_PROD_ASSERT(query.sharedState() != nullptr);
+      sharedState = query.sharedState();
+    }
     // we have to ensure that each ExecutionEngine has its own SharedQueryState,
     // because different snippets (engines) can operate concurrently and each
     // needs to have its own wakeupCallback
-    auto sharedState =
-        query.sharedState()
-            ? std::make_shared<SharedQueryState>(*query.sharedState())
-            : std::make_shared<SharedQueryState>(query.vocbase().server());
     auto retEngine = std::make_unique<ExecutionEngine>(eId, query, mgr,
                                                        std::move(sharedState));
 
