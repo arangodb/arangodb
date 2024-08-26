@@ -25,13 +25,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Context.h"
-#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
