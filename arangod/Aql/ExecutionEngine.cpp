@@ -28,6 +28,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/BlocksWithClients.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
@@ -761,16 +762,15 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     EngineId eId =
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;
 
+    TRI_ASSERT(!ServerState::isCoordinator(role));
+    bool isClusterQuery = dynamic_cast<ClusterQuery*>(&query) != nullptr;
     std::shared_ptr<SharedQueryState> sharedState;
-    // on coordinators the engine should be created via buildEngines!
-    ADB_PROD_ASSERT(!ServerState::isCoordinator(role));
-    if (ServerState::isDBServer(role)) {
+    if (isClusterQuery) {
+      ADB_PROD_ASSERT(ServerState::isDBServer(role));
       ADB_PROD_ASSERT(query.sharedState() == nullptr);
       sharedState =
           std::make_shared<SharedQueryState>(query.vocbase().server());
     } else {
-      TRI_ASSERT(ServerState::isSingleServer(role) ||
-                 ServerState::isAgent(role));
       ADB_PROD_ASSERT(query.sharedState() != nullptr);
       sharedState = query.sharedState();
     }
