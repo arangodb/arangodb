@@ -417,7 +417,7 @@ function iterateTests(cases, options) {
     let printTestName = currentTest;
     let resultTestName = currentTest;
     if (localOptions.suffix && localOptions.suffix !== "") {
-      resultTestName += "_" + localOptions.suffix;
+      resultTestName += "-" + localOptions.suffix;
     }
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
