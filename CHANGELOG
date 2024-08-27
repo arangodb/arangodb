@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-463: Query UI view crashes for empty collections.
+
 * FE-462: saved queries view scrollbar is not visible.
 
 * Remove restriction that disabled async prefetching for all query nodes that
