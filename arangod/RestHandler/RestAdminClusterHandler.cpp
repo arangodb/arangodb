@@ -300,6 +300,7 @@ std::string const RestAdminClusterHandler::VPackSortMigration =
 std::string const RestAdminClusterHandler::VPackSortMigrationCheck = "check";
 std::string const RestAdminClusterHandler::VPackSortMigrationMigrate =
     "migrate";
+std::string const RestAdminClusterHandler::VPackSortMigrationStatus = "status";
 std::string const RestAdminClusterHandler::FailureOracle = "failureOracle";
 
 RestStatus RestAdminClusterHandler::execute() {
@@ -2993,7 +2994,9 @@ RestStatus RestAdminClusterHandler::handleVPackSortMigration(
   if (!((request()->requestType() == rest::RequestType::GET &&
          subCommand == VPackSortMigrationCheck) ||
         (request()->requestType() == rest::RequestType::PUT &&
-         subCommand == VPackSortMigrationMigrate))) {
+         subCommand == VPackSortMigrationMigrate) ||
+        (request()->requestType() == rest::RequestType::GET &&
+         subCommand == VPackSortMigrationStatus))) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
@@ -3009,17 +3012,20 @@ RestStatus RestAdminClusterHandler::handleVPackSortMigration(
   Result res;
   if (!ServerState::instance()->isCoordinator()) {
     if (request()->requestType() == rest::RequestType::GET) {
-      res = ::analyzeVPackIndexSorting(_vocbase, result);
+      if (subCommand == VPackSortMigrationCheck) {
+        res = ::analyzeVPackIndexSorting(_vocbase, result);
+      } else {
+        res = ::statusVPackIndexSorting(_vocbase, result);
+      }
     } else {  // PUT
       res = ::migrateVPackIndexSorting(_vocbase, result);
     }
   } else {
     // Coordinators from here:
-    if (request()->requestType() == rest::RequestType::GET) {
-      res = handleVPackSortMigrationTest(_vocbase, result);
-    } else {  // PUT
-      res = handleVPackSortMigrationAction(_vocbase, result);
-    }
+    fuerte::RestVerb verb = request()->requestType() == rest::RequestType::GET +
+                                ? fuerte::RestVerb::Get +
+                                : fuerte::RestVerb::Put;
+    res = ::fanOutRequests(_vocbase, verb, subCommand, result);
   }
   if (res.fail()) {
     generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
