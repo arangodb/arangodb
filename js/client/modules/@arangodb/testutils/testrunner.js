@@ -32,8 +32,6 @@ const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const time = require('internal').time;
 const sleep = require('internal').sleep;
-const { versionHas } = require("@arangodb/test-helper");
-const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
@@ -299,7 +297,7 @@ class testRunner {
     let forceTerminate = false;
     let moreReason = "";
     let shellTimeout = arango.timeout();
-    let checkTimeout = isInstrumented ? 120:60;
+    let checkTimeout = this.options.isInstrumented ? 120:60;
     for (let i = 0; i < this.testList.length; i++) {
       let te = this.testList[i];
       let filtered = {};
