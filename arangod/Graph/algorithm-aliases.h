@@ -36,6 +36,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
+#include "Graph/PathManagement/PathValidatorTabooWrapper.h"
 #include "Graph/PathManagement/PathValidatorTracer.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Types/UniquenessLevel.h"
@@ -97,21 +98,23 @@ using TracedKShortestPathsEnumerator =
 
 // Yen's algorithm implementation
 template<class Provider>
-using YenEnumeratorWithProvider = YenEnumerator<
-    FifoQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
-    Provider,
-    PathValidator<Provider, PathStore<typename Provider::Step>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+using YenEnumeratorWithProvider =
+    YenEnumerator<FifoQueue<typename Provider::Step>,
+                  PathStore<typename Provider::Step>, Provider,
+                  PathValidatorTabooWrapper<PathValidator<
+                      Provider, PathStore<typename Provider::Step>,
+                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
 
 // Yen's algorithm implementation using Tracing
 template<class Provider>
-using TracedYenEnumeratorWithProvider = YenEnumerator<
-    QueueTracer<FifoQueue<typename Provider::Step>>,
-    PathStoreTracer<PathStore<typename Provider::Step>>,
-    ProviderTracer<Provider>,
-    PathValidator<ProviderTracer<Provider>,
+using TracedYenEnumeratorWithProvider =
+    YenEnumerator<QueueTracer<FifoQueue<typename Provider::Step>>,
                   PathStoreTracer<PathStore<typename Provider::Step>>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+                  ProviderTracer<Provider>,
+                  PathValidatorTabooWrapper<PathValidator<
+                      ProviderTracer<Provider>,
+                      PathStoreTracer<PathStore<typename Provider::Step>>,
+                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
 
 // WEIGHTED_K_SHORTEST_PATHS implementation
 template<class Provider>

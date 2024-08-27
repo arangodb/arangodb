@@ -584,6 +584,16 @@ template class ::arangodb::graph::TwoSidedEnumerator<
         EdgeUniquenessLevel::PATH>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
+    ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
+    ::arangodb::graph::PathStore<SingleServerProviderStep>,
+    SingleServerProvider<SingleServerProviderStep>,
+    ::arangodb::graph::PathValidatorTabooWrapper<
+        ::arangodb::graph::PathValidator<
+            SingleServerProvider<SingleServerProviderStep>,
+            PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
+            EdgeUniquenessLevel::PATH>>>;
+
+template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<
         ::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
     ::arangodb::graph::PathStoreTracer<
@@ -597,6 +607,21 @@ template class ::arangodb::graph::TwoSidedEnumerator<
             ::arangodb::graph::PathStore<SingleServerProviderStep>>,
         VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
+template class ::arangodb::graph::TwoSidedEnumerator<
+    ::arangodb::graph::QueueTracer<
+        ::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
+    ::arangodb::graph::ProviderTracer<
+        SingleServerProvider<SingleServerProviderStep>>,
+    ::arangodb::graph::PathValidatorTabooWrapper<
+        ::arangodb::graph::PathValidator<
+            ::arangodb::graph::ProviderTracer<
+                SingleServerProvider<SingleServerProviderStep>>,
+            ::arangodb::graph::PathStoreTracer<
+                ::arangodb::graph::PathStore<SingleServerProviderStep>>,
+            VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+
 /* ClusterProvider Section */
 
 template class ::arangodb::graph::TwoSidedEnumerator<
@@ -606,6 +631,16 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::PathValidator<
         ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
         VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::TwoSidedEnumerator<
+    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>,
+    ::arangodb::graph::PathStore<ClusterProviderStep>,
+    ClusterProvider<ClusterProviderStep>,
+    ::arangodb::graph::PathValidatorTabooWrapper<
+        ::arangodb::graph::PathValidator<ClusterProvider<ClusterProviderStep>,
+                                         PathStore<ClusterProviderStep>,
+                                         VertexUniquenessLevel::PATH,
+                                         EdgeUniquenessLevel::PATH>>>;
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::QueueTracer<
@@ -618,3 +653,17 @@ template class ::arangodb::graph::TwoSidedEnumerator<
         ::arangodb::graph::PathStoreTracer<
             ::arangodb::graph::PathStore<ClusterProviderStep>>,
         VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::TwoSidedEnumerator<
+    ::arangodb::graph::QueueTracer<
+        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>>,
+    ::arangodb::graph::PathStoreTracer<
+        ::arangodb::graph::PathStore<ClusterProviderStep>>,
+    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
+    ::arangodb::graph::PathValidatorTabooWrapper<
+        ::arangodb::graph::PathValidator<
+            ::arangodb::graph::ProviderTracer<
+                ClusterProvider<ClusterProviderStep>>,
+            ::arangodb::graph::PathStoreTracer<
+                ::arangodb::graph::PathStore<ClusterProviderStep>>,
+            VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
