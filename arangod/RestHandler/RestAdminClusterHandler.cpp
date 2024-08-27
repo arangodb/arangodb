@@ -3022,8 +3022,8 @@ RestStatus RestAdminClusterHandler::handleVPackSortMigration(
     }
   } else {
     // Coordinators from here:
-    fuerte::RestVerb verb = request()->requestType() == rest::RequestType::GET +
-                                ? fuerte::RestVerb::Get +
+    fuerte::RestVerb verb = request()->requestType() == rest::RequestType::GET
+                                ? fuerte::RestVerb::Get
                                 : fuerte::RestVerb::Put;
     res = ::fanOutRequests(_vocbase, verb, subCommand, result);
   }
