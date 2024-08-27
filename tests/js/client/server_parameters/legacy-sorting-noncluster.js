@@ -132,6 +132,13 @@ function legacySortingTestSuite() {
       poisonCollection("_system", cn, "a", "b");
       poisonCollection(dn, cn, "a", "b");
 
+      // Check info API:
+      let res = arango.GET("/_admin/cluster/vpackSortMigration/status");
+      assertFalse(res.error);
+      assertEqual(200, res.code);
+      assertEqual("LEGACY", res.result.next);
+      assertEqual("LEGACY", res.result.current);
+
       let c = db._collection(cn);
       let indexes = c.getIndexes();
       let names = indexes.map(x => x.name);
@@ -189,6 +196,18 @@ function legacySortingTestSuite() {
       assertEqual(0, r.result.errorCode);
       assertTrue(Array.isArray(r.result.affected));
       assertEqual(0, r.result.affected.length);
+
+      // Migrate:
+      res = arango.PUT("/_admin/cluster/vpackSortMigration/migrate", {});
+      assertFalse(res.error);
+      assertEqual(200, res.code);
+
+      // Check info API:
+      res = arango.GET("/_admin/cluster/vpackSortMigration/status");
+      assertFalse(res.error);
+      assertEqual(200, res.code);
+      assertEqual("CORRECT", res.result.next);
+      assertEqual("LEGACY", res.result.current);
     }
   };
 }

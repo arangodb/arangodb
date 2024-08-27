@@ -25,13 +25,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Context.h"
-#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -42,19 +39,22 @@ SharedQueryState::SharedQueryState(ArangodServer& server)
 SharedQueryState::SharedQueryState(ArangodServer& server, Scheduler* scheduler)
     : _server(server),
       _scheduler(scheduler),
-      _wakeupCb(nullptr),
+      _wakeupCallback(nullptr),
       _numWakeups(0),
-      _cbVersion(0),
+      _callbackVersion(0),
       _maxTasks(static_cast<unsigned>(
           _server.getFeature<QueryRegistryFeature>().maxParallelism())),
       _numTasks(0),
       _valid(true) {}
 
+SharedQueryState::SharedQueryState(SharedQueryState const& other)
+    : SharedQueryState(other._server, other._scheduler) {}
+
 void SharedQueryState::invalidate() {
   {
     std::lock_guard<std::mutex> guard(_mutex);
-    _wakeupCb = nullptr;
-    _cbVersion++;
+    _wakeupCallback = nullptr;
+    _callbackVersion++;
     _valid = false;
   }
   _cv.notify_all();  // wakeup everyone else
@@ -72,33 +72,31 @@ void SharedQueryState::waitForAsyncWakeup() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
-  TRI_ASSERT(!_wakeupCb);
+  TRI_ASSERT(!_wakeupCallback);
   _cv.wait(guard, [&] { return _numWakeups > 0 || !_valid; });
   TRI_ASSERT(_numWakeups > 0 || !_valid);
-  _numWakeups--;
+  if (_valid) {
+    TRI_ASSERT(_numWakeups > 0);
+    --_numWakeups;
+  }
 }
 
 /// @brief setter for the continue handler:
 ///        We can either have a handler or a callback
 void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   std::lock_guard<std::mutex> guard(_mutex);
-  _wakeupCb = cb;
+  // whenever we update the wakeupCallback, we also have to increase the
+  // callbackVersion and reset the numWakeups. Updating the callbackVersion is
+  // necessary to ensure that wakeup handlers that are still queued realize that
+  // they are no longer relevant (their associated RestHandler is already gone).
+  // Resetting the numWakeups is necessary to ensure that later wakeups actually
+  // schedule a new handler.
+  _wakeupCallback = cb;
   _numWakeups = 0;
-  _cbVersion++;
+  _callbackVersion++;
 }
 
-void SharedQueryState::resetWakeupHandler() {
-  std::lock_guard<std::mutex> guard(_mutex);
-  _wakeupCb = nullptr;
-  _numWakeups = 0;
-  _cbVersion++;
-}
-
-void SharedQueryState::resetNumWakeups() {
-  std::lock_guard<std::mutex> guard(_mutex);
-  _numWakeups = 0;
-  _cbVersion++;
-}
+void SharedQueryState::resetWakeupHandler() { setWakeupHandler(nullptr); }
 
 /// execute the _continueCallback. must hold _mutex,
 void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
@@ -110,7 +108,7 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
   }
 
   unsigned n = _numWakeups++;
-  if (!_wakeupCb) {
+  if (!_wakeupCallback) {
     guard.unlock();
     _cv.notify_one();
     return;
@@ -124,7 +122,7 @@ void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
 }
 
 void SharedQueryState::queueHandler() {
-  if (_numWakeups == 0 || !_wakeupCb || !_valid) {
+  if (_numWakeups == 0 || !_wakeupCallback || !_valid) {
     return;
   }
 
@@ -137,8 +135,15 @@ void SharedQueryState::queueHandler() {
                         ? RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR
                         : RequestLane::CLUSTER_AQL;
 
+  // we capture the current values of wakeupCallback and callbackVersion at the
+  // time we schedule the task. The callback has captured a shared_ptr to the
+  // RestHandler, so it is always safe to call it. If the RestHandler has
+  // already finished, the callback will simply do nothing and return
+  // immediately. The callbackVersion allows us to realize that the captured
+  // callback is no longer valid and simply return _without consuming a wakeup_.
   bool queued = _scheduler->tryBoundedQueue(
-      lane, [self = shared_from_this(), cb = _wakeupCb, v = _cbVersion]() {
+      lane, [self = shared_from_this(), cb = _wakeupCallback,
+             version = _callbackVersion]() {
         std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
         do {
@@ -149,7 +154,7 @@ void SharedQueryState::queueHandler() {
           }
 
           lck.lock();
-          if (v == self->_cbVersion) {
+          if (version == self->_callbackVersion) {
             unsigned c = self->_numWakeups--;
             TRI_ASSERT(c > 0);
             if (c == 1 || !cntn || !self->_valid) {
@@ -166,7 +171,7 @@ void SharedQueryState::queueHandler() {
       });
 
   if (!queued) {  // just invalidate
-    _wakeupCb = nullptr;
+    _wakeupCallback = nullptr;
     _valid = false;
     _cv.notify_all();
   }

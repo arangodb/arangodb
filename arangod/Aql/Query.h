@@ -25,22 +25,16 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/BindParameters.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResult.h"
 #include "Basics/Guarded.h"
-#ifdef USE_V8
-#include "Aql/QueryResultV8.h"
-#endif
 #include "Aql/QueryString.h"
 #include "Basics/ResourceUsage.h"
 #include "Scheduler/SchedulerFeature.h"
-#ifdef USE_V8
-#include "V8Server/V8Executor.h"
-#endif
+#include "VocBase/Identifiers/TransactionId.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -53,10 +47,17 @@
 
 struct TRI_vocbase_t;
 
+#ifdef USE_V8
+namespace v8 {
+class Isolate;
+}
+#endif
+
 namespace arangodb {
 
 class CollectionNameResolver;
 class LogicalDataSource;
+class V8Executor;
 
 namespace transaction {
 class Context;
@@ -67,10 +68,12 @@ namespace aql {
 class Ast;
 struct AstNode;
 class ExecutionEngine;
+class ExecutionPlan;
 struct ExecutionStats;
 struct QueryCacheResultEntry;
 class QueryList;
 struct QueryProfile;
+struct QueryResultV8;
 class SharedQueryState;
 
 /// @brief an AQL query

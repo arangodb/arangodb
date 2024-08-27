@@ -18,7 +18,7 @@ export const fetchGraphData = async ({
     `/aardvark/graphs-v2/${graphName}`,
     params
   );
-  return data.body;
+  return data.parsedBody;
 };
 
 export const useFetchGraphData = ({

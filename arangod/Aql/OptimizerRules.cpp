@@ -85,7 +85,6 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Containers/FlatHashSet.h"
-#include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
 #include "Containers/SmallVector.h"
 #include "Geo/GeoParams.h"
@@ -2045,23 +2044,70 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     // finally, adjust the original plan and create a sorted version of COLLECT.
     collectNode->aggregationMethod(CollectOptions::CollectMethod::kSorted);
 
-    // insert a SortNode IN FRONT OF the CollectNode
+    // insert a SortNode IN FRONT OF the CollectNode, if we don't already have
+    // one that can be used instead
     if (!groupVariables.empty()) {
-      SortElementVector sortElements;
-      for (auto const& v : groupVariables) {
-        sortElements.push_back(SortElement::create(v.inVar, true));
+      // check if our input is already sorted
+      SortNode* sortNode = nullptr;
+      auto* d = n->getFirstDependency();
+      while (d) {
+        switch (d->getType()) {
+          case EN::SORT:
+            sortNode = ExecutionNode::castTo<SortNode*>(d);
+            d = nullptr;  // stop the loop
+            break;
+
+          case EN::FILTER:
+          case EN::LIMIT:
+          case EN::CALCULATION:
+          case EN::SUBQUERY:
+          case EN::INSERT:
+          case EN::REMOVE:
+          case EN::REPLACE:
+          case EN::UPDATE:
+          case EN::UPSERT:
+            // these nodes do not affect our sort order,
+            // so we can safely ignore them
+            d = d->getFirstDependency();  // continue search
+            break;
+
+          default:
+            d = nullptr;  // stop the loop
+            break;
+        }
       }
 
-      auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
-                                                 std::move(sortElements), true);
+      bool needNewSortNode = true;
+      if (sortNode != nullptr) {
+        needNewSortNode = false;
+        // we found a SORT node, now let's check if it covers all our group
+        // variables
+        auto& elems = sortNode->elements();
+        for (auto const& v : groupVariables) {
+          needNewSortNode |= std::find_if(elems.begin(), elems.end(),
+                                          [&v](SortElement const& e) {
+                                            return e.var == v.inVar;
+                                          }) == elems.end();
+        }
+      }
 
-      TRI_ASSERT(collectNode->hasDependency());
-      auto dep = collectNode->getFirstDependency();
-      TRI_ASSERT(dep != nullptr);
-      sortNode->addDependency(dep);
-      collectNode->replaceDependency(dep, sortNode);
+      if (needNewSortNode) {
+        SortElementVector sortElements;
+        for (auto const& v : groupVariables) {
+          sortElements.push_back(SortElement::create(v.inVar, true));
+        }
 
-      modified = true;
+        sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
+                                              std::move(sortElements), true);
+
+        TRI_ASSERT(collectNode->hasDependency());
+        auto* dep = collectNode->getFirstDependency();
+        TRI_ASSERT(dep != nullptr);
+        sortNode->addDependency(dep);
+        collectNode->replaceDependency(dep, sortNode);
+
+        modified = true;
+      }
     }
   }
 
@@ -8367,9 +8413,6 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
 
     void after(ExecutionNode* n) override {
       TRI_ASSERT(!stack.empty());
-      if (n->getType() == EN::REMOTE) {
-        ++stack.back();
-      }
       auto eligibility = n->canUseAsyncPrefetching();
       if (stack.back() == 0 &&
           eligibility == AsyncPrefetchEligibility::kEnableForNode) {

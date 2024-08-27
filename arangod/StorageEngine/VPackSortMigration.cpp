@@ -204,9 +204,41 @@ Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
   return res;
 }
 
-namespace {
+Result statusVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result) {
+  // Just for the sake of completeness, restrict ourselves to the RocksDB
+  // storage engine:
+  auto& engineSelectorFeature =
+      vocbase.server().getFeature<EngineSelectorFeature>();
+  if (!engineSelectorFeature.isRocksDB()) {
+    return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                  "VPack sorting migration is unnecessary for storage engines "
+                  "other than RocksDB");
+  }
+
+  auto& engine = engineSelectorFeature.engine<RocksDBEngine>();
+  auto sortingFileMethod = engine.readSortingFile();
+  {
+    VPackObjectBuilder guard(&result);
+    std::string next =
+        sortingFileMethod == basics::VelocyPackHelper::SortingMethod::Correct
+            ? "CORRECT"
+            : "LEGACY";
+    std::string current =
+        engine.currentSortingMethod() ==
+                basics::VelocyPackHelper::SortingMethod::Correct
+            ? "CORRECT"
+            : "LEGACY";
+    guard->add("next", VPackValue(next));
+    guard->add("current", VPackValue(current));
+  }
+
+  return {};
+}
+
+// On coordinators:
 async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
-                             VPackBuilder& result, bool includeAgents) {
+                             std::string_view subCommand,
+                             VPackBuilder& result) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
@@ -217,11 +249,16 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
   requests.reserve(dbs.size());
 
   network::RequestOptions opts;
+  if (verb == fuerte::RestVerb::Get && subCommand == "check") {
+    // We want to use a long timeout for the check, since going through
+    // the indexes might take a while. The user is supposed to call this
+    // route asynchronously anyway:
+    opts.timeout = arangodb::network::Timeout(12 * 3600.0);
+  }
   opts.database = vocbase.name();
 
   std::string path =
-      absl::StrCat("/_admin/cluster/vpackSortMigration/",
-                   verb == fuerte::RestVerb::Get ? "check" : "migrate");
+      absl::StrCat("/_admin/cluster/vpackSortMigration/", subCommand);
   for (auto const& server : dbs) {
     auto f = network::sendRequest(nf.pool(), "server:" + server, verb, path, {},
                                   opts);
@@ -261,22 +298,6 @@ async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
   }
 
   co_return {};
-}
-}  // namespace
-
-// On coordinators:
-async<Result> handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
-                                           VPackBuilder& result) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-
-  return fanOutRequests(vocbase, fuerte::RestVerb::Get, result, false);
-}
-
-async<Result> handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
-                                             VPackBuilder& result) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-
-  return fanOutRequests(vocbase, fuerte::RestVerb::Put, result, true);
 }
 
 }  // namespace arangodb

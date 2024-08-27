@@ -25,6 +25,7 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 using namespace arangodb::tests::aql;
 

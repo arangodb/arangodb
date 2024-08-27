@@ -28,17 +28,19 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Executor/EmptyExecutorInfos.h"
-#include "Aql/Executor/IResearchViewExecutor.tpp"
+#include "Aql/Executor/IResearchViewExecutor.h"
+#include "Aql/Executor/IResearchViewHeapSortExecutor.h"
+#include "Aql/Executor/IResearchViewMergeExecutor.h"
 #include "Aql/Executor/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
+#include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/DownCast.h"
 #include "Basics/NumberUtils.h"
@@ -516,7 +518,7 @@ int evaluateVolatility(IResearchViewNode const& node) {
   auto& filterCondition = node.filterCondition();
   if (!isFilterConditionEmpty(&filterCondition) && inDependentScope) {
     irs::set_bit<0>(hasDependencies(plan, filterCondition, outVariable, vars,
-                                    [](Variable const*) { return true; }),
+                                    [](aql::Variable const*) { return true; }),
                     mask);
   }
   // evaluate sort condition volatility
@@ -525,7 +527,7 @@ int evaluateVolatility(IResearchViewNode const& node) {
     vars.clear();
     for (auto const& scorer : scorers) {
       if (hasDependencies(plan, *scorer.node, outVariable, vars,
-                          [](Variable const*) { return true; })) {
+                          [](aql::Variable const*) { return true; })) {
         irs::set_bit<1>(mask);
         break;
       }
@@ -1795,7 +1797,7 @@ aql::AsyncPrefetchEligibility IResearchViewNode::canUseAsyncPrefetching()
 void IResearchViewNode::replaceVariables(
     std::unordered_map<aql::VariableId, aql::Variable const*> const&
         replacements) {
-  Ast* ast = plan()->getAst();
+  aql::Ast* ast = plan()->getAst();
   // replace in filter condition
   aql::AstNode const& search = filterCondition();
   if (!isFilterConditionEmpty(&search)) {
@@ -1830,13 +1832,13 @@ void IResearchViewNode::replaceAttributeAccess(
     aql::ExecutionNode const* self, aql::Variable const* searchVariable,
     std::span<std::string_view> attribute, aql::Variable const* replaceVariable,
     size_t /*index*/) {
-  Ast* ast = plan()->getAst();
+  aql::Ast* ast = plan()->getAst();
   // replace in filter condition
   aql::AstNode const& search = filterCondition();
   if (!isFilterConditionEmpty(&search)) {
-    AstNode* cloned = ast->clone(&search);
-    cloned = Ast::replaceAttributeAccess(ast, cloned, searchVariable, attribute,
-                                         replaceVariable);
+    aql::AstNode* cloned = ast->clone(&search);
+    cloned = aql::Ast::replaceAttributeAccess(ast, cloned, searchVariable,
+                                              attribute, replaceVariable);
     setFilterCondition(cloned);
   }
 

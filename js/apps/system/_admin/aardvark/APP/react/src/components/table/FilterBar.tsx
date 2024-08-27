@@ -92,9 +92,6 @@ const ClearButton = ({
   onClear: () => void;
   appliedFiltersCount: number;
 }) => {
-  if (appliedFiltersCount === 0) {
-    return null;
-  }
   return (
     <Button
       textTransform="uppercase"
@@ -104,6 +101,7 @@ const ClearButton = ({
       variant="ghost"
       size="xs"
       colorScheme="blue"
+      isDisabled={appliedFiltersCount === 0}
     >
       Clear
     </Button>
@@ -139,12 +137,21 @@ const AddFilterButton = <Data extends object>({
       <MenuList>
         {filterOptions.map(filter => {
           const column = filter.id && table.getColumn(filter.id);
-          if (!column || !column.getCanFilter()) {
+          const header = table
+            .getFlatHeaders()
+            .find(header => header.id === filter.id);
+          if (!column || !column.getCanFilter() || !header) {
             return null;
           }
           return (
             <MenuItem onClick={() => addFilter(filter)} key={filter.id}>
-              {filter.header}
+              {typeof filter.header === "function"
+                ? filter.header({
+                    column,
+                    header,
+                    table
+                  })
+                : filter.header}
             </MenuItem>
           );
         })}

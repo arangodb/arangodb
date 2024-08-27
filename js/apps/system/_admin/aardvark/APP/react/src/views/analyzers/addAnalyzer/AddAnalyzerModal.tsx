@@ -1,5 +1,5 @@
 import { Button, Flex, Heading, Stack } from "@chakra-ui/react";
-import { AnalyzerDescription } from "arangojs/analyzer";
+import { CreateAnalyzerOptions } from "arangojs/analyzer";
 import { Form, Formik } from "formik";
 import React from "react";
 import { mutate } from "swr";
@@ -21,7 +21,7 @@ const INITIAL_VALUES = {
   type: "identity",
   features: [],
   properties: {}
-} as AnalyzerDescription;
+} as CreateAnalyzerOptions & { name: string };
 
 export const AddAnalyzerModal = ({
   isOpen,
@@ -31,7 +31,9 @@ export const AddAnalyzerModal = ({
   onClose: () => void;
 }) => {
   const initialFocusRef = React.useRef<HTMLInputElement>(null);
-  const handleSubmit = async (values: AnalyzerDescription) => {
+  const handleSubmit = async (
+    values: CreateAnalyzerOptions & { name: string }
+  ) => {
     const currentDB = getCurrentDB();
     try {
       await currentDB.analyzer(values.name).create(values);
@@ -39,7 +41,7 @@ export const AddAnalyzerModal = ({
       mutate("/analyzers");
       onClose();
     } catch (error: any) {
-      const errorMessage = error?.response?.body?.errorMessage;
+      const errorMessage = error?.response?.parsedBody?.errorMessage;
       if (errorMessage) {
         window.arangoHelper.arangoError("Analyzer", errorMessage);
       }

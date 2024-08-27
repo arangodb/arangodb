@@ -1,4 +1,7 @@
-#include "Basics/async.h"
+#include "Async/async.h"
+#include "Async/Registry/registry.h"
+#include "Async/Registry/thread_registry.h"
+
 #include <gtest/gtest.h>
 #include <thread>
 #include <deque>
@@ -21,6 +24,8 @@ struct WaitSlot {
     _continuation = continuation;
   }
 
+  void stop() {}
+
   bool ready = false;
 };
 
@@ -29,6 +34,7 @@ struct NoWait {
   void await() {}
 
   auto operator co_await() { return std::suspend_never{}; }
+  void stop() {}
 };
 
 struct ConcurrentNoWait {
@@ -66,9 +72,10 @@ struct ConcurrentNoWait {
             }
             handle.resume();
           }
+          arangodb::coroutine::get_thread_registry().garbage_collect();
         }) {}
 
-  ~ConcurrentNoWait() {
+  auto stop() -> void {
     if (_thread.joinable()) {
       await_suspend(std::noop_coroutine());
       _thread.join();
@@ -129,6 +136,8 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
   void SetUp() override { InstanceCounterValue::instanceCounter = 0; }
 
   void TearDown() override {
+    arangodb::coroutine::get_thread_registry().garbage_collect();
+    wait.stop();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
   }
 
@@ -331,4 +340,61 @@ TYPED_TEST(AsyncTest, multiple_suspension_points) {
   this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 0);
+}
+
+TYPED_TEST(AsyncTest, promises_are_only_removed_after_garbage_collection) {
+  using ValueType = TypeParam::second_type;
+
+  auto coro = []() -> async<ValueType> { co_return 12; };
+
+  {
+    coro().reset();
+
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+  }
+  {
+    std::move(coro()).operator co_await().await_resume();
+
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+  }
+  {
+    { coro(); }
+
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+  }
+}
+
+auto foo() -> async<CopyOnlyValue> { co_return 1; }
+auto bar() -> async<CopyOnlyValue> { co_return 4; }
+auto baz() -> async<CopyOnlyValue> { co_return 2; }
+TEST(AsyncTest, promises_are_registered) {
+  auto coro_foo = foo();
+
+  std::jthread([&]() {
+    auto coro_bar = bar();
+    auto coro_baz = baz();
+
+    std::vector<std::string> names;
+    arangodb::async_registry::coroutine_registry.for_promise(
+        [&](arangodb::async_registry::PromiseInList* promise) {
+          names.push_back(promise->_where.function_name());
+        });
+    EXPECT_EQ(names.size(), 3);
+    EXPECT_TRUE(names[0].find("foo") != std::string::npos);
+    EXPECT_TRUE(names[1].find("baz") != std::string::npos);
+    EXPECT_TRUE(names[2].find("bar") != std::string::npos);
+
+    coro_bar.reset();
+    coro_baz.reset();
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+  });
+
+  coro_foo.reset();
+  arangodb::async_registry::get_thread_registry().garbage_collect();
 }

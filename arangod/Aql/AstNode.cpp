@@ -38,6 +38,7 @@
 #include "Basics/fasthash.h"
 #include "Containers/FlatHashSet.h"
 #include "Transaction/Methods.h"
+#include "VocBase/vocbase.h"
 
 #include <array>
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

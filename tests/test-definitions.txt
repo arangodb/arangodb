@@ -37,20 +37,17 @@ recovery_cluster_server priority=2000 buckets=1 parallelity=1 size=small
 
 shell_api priority=500 single -- $EncryptionAtRest
 
-shell_api_multi priority=500 single suffix=http -- $EncryptionAtRest
-shell_api_multi priority=500 single suffix=https -- $EncryptionAtRest --protocol ssl
+shell_api_multi,shell_api_multi name=shell_api_multi priority=500 single -- --optionsJson [{"http":true},{"ssl":true,"suffix":"ssl"}] $EncryptionAtRest
 
 # Shell client tests Single Server; distribute evenly
 shell_client priority=250 parallelity=2 buckets=4 single size=medium -- $EncryptionAtRest
+
+# shell_client_multi tests run quite long, so want to have a separate job for each protocol
 shell_client_multi priority=1500 parallelity=2 single suffix=http2 -- --http2 true
 shell_client_multi priority=1500 parallelity=2 single suffix=http -- --http true
 
-shell_client_transaction priority=750 single suffix=http -- --http true $EncryptionAtRest
-shell_client_transaction single suffix=http2 -- --http2 true
-shell_client_traffic priority=250 parallelity=1 single suffix=http -- --http true
-shell_client_traffic priority=250 parallelity=1 single suffix=http2 -- --http2 true 
-shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http -- http true --protocol ssl
-shell_client_traffic priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
+shell_client_transaction,shell_client_transaction name=shell_client_transaction priority=750 single -- $EncryptionAtRest --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"}]
+shell_client_traffic,shell_client_traffic,shell_client_traffic,shell_client_traffic name=shell_client_traffic priority=250 parallelity=1 single -- --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"},{"http":true,"ssl":true,"suffix":"http-ssl"},{"http2":true,"ssl":true,"suffix":"http2-ssl"}]
 
 shell_client_aql buckets=17 priority=250  single
 
@@ -88,12 +85,13 @@ shell_api priority=500 cluster -- $EncryptionAtRest
 shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
 shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protocol ssl
 
+# shell_client_multi tests run quite long, so want to have a separate job for each protocol
 shell_client_multi priority=1500 cluster suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 
 # different number of buckets in cluster
 shell_client_aql priority=1000 size=medium+ cluster buckets=20 -- --dumpAgencyOnError true
-shell_client priority=500 cluster size=medium+ buckets=18 -- --dumpAgencyOnError true
+shell_client priority=500 cluster size=medium+ buckets=20 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
 

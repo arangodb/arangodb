@@ -1,14 +1,18 @@
 import useSWR from "swr";
-import { getApiRouteForCurrentDB } from "./arangoClient";
+import { getCurrentDB } from "./arangoClient";
 
 const usePermissions = () => {
   const { data } = useSWR(
     `/user/${window.arangoHelper.getCurrentJwtUsername()}/database/${
       window.frontendConfig.db
     }`,
-    path => getApiRouteForCurrentDB().get(path)
+    () =>
+      getCurrentDB().getUserAccessLevel(
+        window.arangoHelper.getCurrentJwtUsername(),
+        { database: window.frontendConfig.db }
+      )
   );
-  return data ? data.body.result : "none";
+  return data || "none";
 };
 
 const userIsAdmin = (permission: string) =>

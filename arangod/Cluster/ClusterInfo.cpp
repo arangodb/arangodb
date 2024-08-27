@@ -402,7 +402,6 @@ class ClusterInfo::SyncerThread final
   auto call() noexcept -> std::optional<consensus::index_t>;
   futures::Future<futures::Unit> fetchUpdates();
 
- private:
   std::mutex _m;
   std::condition_variable _cv;
   bool _news;
@@ -1766,7 +1765,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         // be old.
         if (systemDB->replicationVersion() == replication::Version::ONE) {
           // find _graphs collection in Plan
-          if (auto it2 = it->second->find(StaticStrings::GraphCollection);
+          if (auto it2 = it->second->find(StaticStrings::GraphsCollection);
               it2 != it->second->end()) {
             // found!
             if (it2->second.collection->distributeShardsLike().empty()) {

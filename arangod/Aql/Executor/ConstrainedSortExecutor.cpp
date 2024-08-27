@@ -25,6 +25,7 @@
 #include "ConstrainedSortExecutor.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
@@ -36,30 +37,28 @@
 
 #include <algorithm>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
   auto const nrRegs = block->numRegisters();
-  for (arangodb::aql::RegisterId::value_t i = 0; i < nrRegs; i++) {
+  for (RegisterId::value_t i = 0; i < nrRegs; i++) {
     block->destroyValue(row, i);
   }
 }
 
 }  // namespace
 
-class arangodb::aql::ConstrainedLessThan {
+class ConstrainedLessThan {
  public:
-  ConstrainedLessThan(
-      velocypack::Options const* options,
-      std::vector<arangodb::aql::SortRegister> const& sortRegisters) noexcept
+  ConstrainedLessThan(velocypack::Options const* options,
+                      std::vector<SortRegister> const& sortRegisters) noexcept
       : _vpackOptions(options),
         _heapBuffer(nullptr),
         _sortRegisters(sortRegisters) {}
 
-  void setBuffer(arangodb::aql::AqlItemBlock* heap) { _heapBuffer = heap; }
+  void setBuffer(AqlItemBlock* heap) { _heapBuffer = heap; }
 
   bool operator()(size_t const& a, size_t const& b) const {
     TRI_ASSERT(_heapBuffer);
@@ -68,8 +67,7 @@ class arangodb::aql::ConstrainedLessThan {
       auto const& lhs = _heapBuffer->getValueReference(a, sortReg.reg);
       auto const& rhs = _heapBuffer->getValueReference(b, sortReg.reg);
 
-      int const cmp =
-          arangodb::aql::AqlValue::Compare(_vpackOptions, lhs, rhs, true);
+      int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
 
       if (cmp < 0) {
         return sortReg.asc;
@@ -83,8 +81,8 @@ class arangodb::aql::ConstrainedLessThan {
 
  private:
   velocypack::Options const* const _vpackOptions;
-  arangodb::aql::AqlItemBlock* _heapBuffer;
-  std::vector<arangodb::aql::SortRegister> const& _sortRegisters;
+  AqlItemBlock* _heapBuffer;
+  std::vector<SortRegister> const& _sortRegisters;
 };  // ConstrainedLessThan
 
 void ConstrainedSortExecutor::pushRow(InputAqlItemRow const& input,
@@ -122,8 +120,7 @@ bool ConstrainedSortExecutor::compareInput(size_t rowPos,
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
     auto const& rhs = row.getValue(reg.reg);
 
-    int cmp =
-        arangodb::aql::AqlValue::Compare(_infos.vpackOptions(), lhs, rhs, true);
+    int cmp = AqlValue::Compare(_infos.vpackOptions(), lhs, rhs, true);
 
     if (cmp < 0) {
       return reg.asc;
@@ -332,3 +329,7 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 size_t ConstrainedSortExecutor::memoryUsageForSort() const noexcept {
   return _infos.limit() * sizeof(decltype(_rows)::value_type);
 }
+
+template class ExecutionBlockImpl<ConstrainedSortExecutor>;
+
+}  // namespace arangodb::aql

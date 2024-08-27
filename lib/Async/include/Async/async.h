@@ -1,6 +1,12 @@
 #pragma once
 
-#include "expected.h"
+#include "Async/Registry/registry_variable.h"
+#include "Async/Registry/promise.h"
+#include "Async/expected.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
 #include <coroutine>
 #include <atomic>
 #include <stdexcept>
@@ -15,8 +21,11 @@ template<typename T>
 struct async;
 
 template<typename T>
-struct async_promise_base {
+struct async_promise_base : async_registry::PromiseInList {
   using promise_type = async_promise<T>;
+
+  async_promise_base(std::source_location loc)
+      : PromiseInList(std::move(loc)) {}
 
   std::suspend_never initial_suspend() noexcept { return {}; }
   auto final_suspend() noexcept {
@@ -29,7 +38,7 @@ struct async_promise_base {
         if (addr == nullptr) {
           return std::noop_coroutine();
         } else if (addr == self.address()) {
-          self.destroy();
+          _promise->registry->mark_for_deletion(_promise);
           return std::noop_coroutine();
         } else {
           return std::coroutine_handle<>::from_address(addr);
@@ -42,8 +51,21 @@ struct async_promise_base {
   }
   void unhandled_exception() { _value.set_exception(std::current_exception()); }
   auto get_return_object() {
+    async_registry::get_thread_registry().add(this);
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
+  }
+
+  auto destroy() noexcept -> void override {
+    try {
+      std::coroutine_handle<promise_type>::from_promise(
+          *static_cast<promise_type*>(this))
+          .destroy();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("4b96e", WARN, Logger::CRASH)
+          << "caught exception when destorying coroutine promise: "
+          << ex.what();
+    }
   }
 
   std::atomic<void*> _continuation = nullptr;
@@ -52,6 +74,8 @@ struct async_promise_base {
 
 template<typename T>
 struct async_promise : async_promise_base<T> {
+  async_promise(std::source_location loc = std::source_location::current())
+      : async_promise_base<T>(std::move(loc)) {}
   template<typename V = T>
   void return_value(V&& v) {
     async_promise_base<T>::_value.emplace(std::forward<V>(v));
@@ -60,6 +84,8 @@ struct async_promise : async_promise_base<T> {
 
 template<>
 struct async_promise<void> : async_promise_base<void> {
+  async_promise(std::source_location loc = std::source_location::current())
+      : async_promise_base<void>(std::move(loc)) {}
   void return_void() { async_promise_base<void>::_value.emplace(); }
 };
 
@@ -78,8 +104,9 @@ struct async {
                    c.address(), std::memory_order_acq_rel) == nullptr;
       }
       auto await_resume() {
-        expected<T> r = std::move(_handle.promise()._value);
-        _handle.destroy();
+        auto& promise = _handle.promise();
+        expected<T> r = std::move(promise._value);
+        promise.registry->mark_for_deletion(&promise);
         return std::move(r).get();
       }
       explicit awaitable(std::coroutine_handle<promise_type> handle)
@@ -96,9 +123,10 @@ struct async {
 
   void reset() {
     if (_handle) {
-      if (_handle.promise()._continuation.exchange(
+      auto& promise = _handle.promise();
+      if (promise._continuation.exchange(
               _handle.address(), std::memory_order_release) != nullptr) {
-        _handle.destroy();
+        promise.registry->mark_for_deletion(&promise);
       }
       _handle = nullptr;
     }
