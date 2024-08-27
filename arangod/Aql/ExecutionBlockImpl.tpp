@@ -940,11 +940,29 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
           // some other thread is currently executing our prefetch task
           // -> wait till it has finished.
           _prefetchTask->waitFor();
-          return _prefetchTask->stealResult();
+          auto result = _prefetchTask->stealResult();
+          if (std::get<ExecutionState>(result) == ExecutionState::WAITING) {
+            // if we got WAITING, we have to immediately call the fetcher again,
+            // because it is possible that we already got a wakeup that got
+            // swallowed. If the wakeup has already occurred, this call will
+            // return actual data, otherwise we will get another WAITING, but we
+            // won't have wasted a lot of CPU cycles.
+            return fetcher().execute(ctx.stack);
+          }
+
+          if (_profileLevel >= ProfileLevel::TraceOne) {
+            auto const queryId = this->_engine->getQuery().id();
+            LOG_TOPIC("14d20", INFO, Logger::QUERIES)
+                << "[query#" << queryId << "] "
+                << "returning prefetched result type="
+                << getPlanNode()->getTypeString() << " this=" << (uintptr_t)this
+                << " id=" << getPlanNode()->id();
+          }
+          return result;
         }
 
-        // we have claimed the task, but we are executing the fetcher
-        // ourselves. so let's reset the task's internals properly.
+        // we have claimed the task and are executing the fetcher ourselves, so
+        // let's reset the task's internals properly.
         _prefetchTask->discard(/*isFinished*/ false);
       }
       return fetcher().execute(ctx.stack);
@@ -1003,6 +1021,12 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
         if (!queued) {
           // clear prefetch task
           _prefetchTask.reset();
+        } else if (_profileLevel >= ProfileLevel::TraceOne) {
+          auto const queryId = this->_engine->getQuery().id();
+          LOG_TOPIC("cbf44", INFO, Logger::QUERIES)
+              << "[query#" << queryId << "] "
+              << "queued prefetch task type=" << getPlanNode()->getTypeString()
+              << " this=" << (uintptr_t)this << " id=" << getPlanNode()->id();
         }
       }
     }

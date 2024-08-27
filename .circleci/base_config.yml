@@ -8,6 +8,9 @@ parameters:
   enterprise-commit:
     type: string
     default: ""
+  use-minimal-debug-info:
+    type: boolean
+    default: true
   build-docker-image:
     type: string
     default: "arangodb/ubuntubuildarangodb-devel:6"
@@ -306,6 +309,10 @@ jobs:
       - run:
           name: Configure
           command: |
+            MINIMAL_DEBUGINFO="OFF"
+            if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
+              MINIMAL_DEBUGINFO="ON"
+            fi
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
@@ -314,6 +321,7 @@ jobs:
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
+              -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
               -DCMAKE_INSTALL_PREFIX=/
       - run:
           name: Build
