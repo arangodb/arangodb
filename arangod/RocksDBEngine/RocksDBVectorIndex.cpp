@@ -73,8 +73,6 @@ RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
 
   _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
   _it->Seek(_rocksdbKey.string());
-
-  LOG_DEVEL << __FUNCTION__ << " iter is valid: " << _it->Valid();
 }
 
 bool RocksDBInvertedListsIterator::is_available() const {
@@ -90,11 +88,6 @@ RocksDBInvertedListsIterator::get_id_and_codes() {
 
   auto const id = RocksDBKey::indexDocumentId(_it->key());
   TRI_ASSERT(_codeSize == _it->value().size());
-  LOG_DEVEL << __FUNCTION__ << ", id: " << id;
-  LOG_DEVEL << __FUNCTION__
-            << ", key: objectId: " << RocksDBKey::objectId(_it->key())
-            << ", listId: " << RocksDBKey::vectorVPackIndexListValue(_it->key())
-            << ", id: " << RocksDBKey::indexDocumentId(_it->key());
   auto value = reinterpret_cast<const uint8_t*>(_it->value().data());
   return {static_cast<faiss::idx_t>(id.id()), value};
 }
@@ -140,16 +133,6 @@ std::size_t RocksDBInvertedLists::add_entries(std::size_t listNumber,
     // use IdSelector in options during search
     auto const docId = LocalDocumentId(*(ids + i));
     rocksdbKey.constructVectorIndexValue(_index->objectId(), listNumber, docId);
-
-    LOG_DEVEL << __FUNCTION__ << " Adding key " << docId.id();
-    /*    LOG_DEVEL << __FUNCTION__ << ", key: objectId: "*/
-    /*<< rocksdbKey.documentId(const rocksdb::Slice &)              << ",
-     * listId: "*/
-    /*<< *reinterpret_cast<const uint64_t*>(*/
-    /*&rocksdbKey.buffer()[sizeof(uint64_t)])*/
-    /*<< ", id: "*/
-    /*<< *reinterpret_cast<const std::uint64_t*>(*/
-    /*&rocksdbKey.buffer()[sizeof(uint64_t) + sizeof(size_t)]);*/
 
     auto const value = RocksDBValue::VectorIndexValue(
         reinterpret_cast<const char*>(code + i * code_size), code_size);
@@ -216,10 +199,8 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
 
     if (!_initialized) {
       std::vector<float> distances(_topK);
-      LOG_DEVEL << __FUNCTION__ << " BEFORE SEARCH, ids: " << _ids;
       _flatIndex.search(1, _input.data(), _topK, distances.data(), _ids.data(),
                         nullptr);
-      LOG_DEVEL << __FUNCTION__ << " AFTER SEARCH, ids: " << _ids;
       TRI_ASSERT(std::ranges::any_of(_ids, [](auto const& elem) {
         return elem != -1;
       })) << "Elements not found";
@@ -228,17 +209,12 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
 
     for (std::size_t i{0}; i < limit && _producedElements < _topK;
          ++i, ++_producedElements) {
-      LOG_DEVEL << __FUNCTION__ << "Producing documents current limit: " << i
-                << ", current producedElems: " << _producedElements
-                << ", id: " << _ids[_producedElements];
       LocalDocumentId docId = LocalDocumentId(_ids[i]);
       if (docId.isSet()) {
-        LOG_DEVEL << __FUNCTION__ << " Is set";
         callback(docId);
       }
     }
 
-    LOG_DEVEL << __FUNCTION__ << " Done producing";
     return false;
   }
 
@@ -284,8 +260,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     _quantizer.ntotal = _definition.trainedData->numberOfCodes;
     _quantizer.codes = _definition.trainedData->codeData;
     _quantizer.is_trained = true;
-    LOG_DEVEL << "Trained data is: " << _quantizer.ntotal << ", "
-              << _quantizer.code_size;
   }
 }
 
@@ -349,8 +323,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   }
 
   auto const docId = static_cast<faiss::idx_t>(documentId.id());
-  LOG_DEVEL << __FUNCTION__ << " normal vs faiss: " << documentId.id() << " "
-            << docId;
   flatIndex.add_with_ids(1, input.data(), &docId);
 
   return Result{};
