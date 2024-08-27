@@ -58,7 +58,7 @@ class agencyMgr {
     this.supervision = String(options.agencySupervision);
     this.waitForSync = false;
     if (options.agencyWaitForSync !== undefined) {
-      this.waitForSync = options.agencyWaitForSync = false;
+      this.waitForSync = options.agencyWaitForSync;
     }
     this.agencyInstances = [];
     this.agencyEndpoint = "";
