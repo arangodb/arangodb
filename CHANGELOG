@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-462: saved queries view scrollbar is not visible.
+
 * Remove restriction that disabled async prefetching for all query nodes that
   (indirectly) depended on a RemoteNode. This allows more query parts to run
   concurrently.
