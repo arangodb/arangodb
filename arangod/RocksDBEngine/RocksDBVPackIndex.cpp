@@ -3088,7 +3088,9 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
 
   bool reset(std::span<VPackSlice> span,
              std::span<VPackSlice> constants) override {
-    TRI_ASSERT(constants.size() == _options.constantsSize);
+    TRI_ASSERT(constants.size() == _options.constantsSize)
+        << "constants.size() = " << constants.size()
+        << ", options = " << _options.constantsSize;
     _constants = constants;
     VPackBuilder keyBuilder;
     constructKey(keyBuilder, constants, {});
@@ -3113,7 +3115,7 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
 
 std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
     transaction::Methods* trx, IndexStreamOptions const& opts) {
-  if (!supportsStreamInterface(opts)) {
+  if (!supportsStreamInterface(opts).hasSupport()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "RocksDBVPackIndex streamForCondition was "
                                    "called with unsupported options.");
@@ -3147,44 +3149,60 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
   return stream;
 }
 
-bool RocksDBVPackIndex::checkSupportsStreamInterface(
+Index::StreamSupportResult RocksDBVPackIndex::checkSupportsStreamInterface(
     std::vector<std::vector<basics::AttributeName>> const& coveredFields,
-    IndexStreamOptions const& streamOpts) noexcept {
-  // TODO expand this for fixed values that can be moved into the index
-
+    std::vector<std::vector<basics::AttributeName>> const& fields,
+    bool isUnique, IndexStreamOptions const& streamOpts) noexcept {
   // we can only project values that are in range
   for (auto idx : streamOpts.projectedFields) {
     if (idx > coveredFields.size()) {
-      return false;
+      return StreamSupportResult::makeUnsupported();
     }
+  }
+
+  // only one key fields is supported currently
+  if (streamOpts.usedKeyFields.size() != 1) {
+    return StreamSupportResult::makeUnsupported();
+  }
+  if (streamOpts.usedKeyFields[0] >= fields.size()) {
+    return StreamSupportResult::makeUnsupported();
   }
 
   // for persisted indexes, we can only use a prefix of the indexed keys
   std::size_t idx = 0;
-  if (streamOpts.usedKeyFields.size() != 1) {
-    return false;
-  }
-
   for (auto constantValue : streamOpts.constantFields) {
     if (constantValue != idx) {
-      return false;
+      return StreamSupportResult::makeUnsupported();
     }
     idx += 1;
   }
 
   for (auto keyIdx : streamOpts.usedKeyFields) {
     if (keyIdx != idx) {
-      return false;
+      return StreamSupportResult::makeUnsupported();
     }
     idx += 1;
   }
 
-  return true;
+  if (idx > fields.size()) {
+    return StreamSupportResult::makeUnsupported();
+  }
+
+  // The uniqueness of this index can only be used if all fields are used.
+  // Example: if we index triples [doc.a, doc.b, doc.c] then the uniqueness
+  // refers to the triples and just taking a prefix [doc.a, doc.b] is not
+  // necessarily unique. Thus, we should not pick an optimized strategy for
+  // joining two unique indexes.
+  TRI_ASSERT(streamOpts.usedKeyFields.size() == 1);
+  bool const hasUniqueTuples = isUnique && idx == fields.size();
+
+  return StreamSupportResult::makeSupported(hasUniqueTuples);
 }
 
-bool RocksDBVPackIndex::supportsStreamInterface(
+Index::StreamSupportResult RocksDBVPackIndex::supportsStreamInterface(
     IndexStreamOptions const& streamOpts) const noexcept {
-  return checkSupportsStreamInterface(_coveredFields, streamOpts);
+  return checkSupportsStreamInterface(_coveredFields, _fields, _unique,
+                                      streamOpts);
 }
 
 }  // namespace arangodb

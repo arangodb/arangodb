@@ -82,6 +82,7 @@ struct IndexOffsets {
   std::vector<size_t> keyFields;
   std::vector<size_t> constantFields;
   std::vector<AstNode const*> constantValues;
+  bool isUniqueStream = false;
 
   bool hasConstantValues() const { return !constantValues.empty(); }
 
@@ -736,7 +737,7 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
                                     << indicesOffsets.size();
 
     bool allCandidatesSupportStreamInterface = true;
-    for (auto const& [candidateId, indexOffset] : indicesOffsets) {
+    for (auto& [candidateId, indexOffset] : indicesOffsets) {
       // if constants found, we need to use the computed offsets
       auto& idxOffsetRef = indexOffset;
       LOG_JOIN_OPTIMIZER_RULE_OFFSETS << "==> Candidate: " << candidateId
@@ -779,13 +780,16 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
                        [](auto const& p) { return p.coveringIndexPosition; });
       }
 
-      if (!node->getIndexes()[0]->supportsStreamInterface(opts)) {
+      auto supportResult = node->getIndexes()[0]->supportsStreamInterface(opts);
+      if (!supportResult.hasSupport()) {
         allCandidatesSupportStreamInterface = false;
         LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
                                    "support streaming interface";
         LOG_JOIN_OPTIMIZER_RULE
             << "-> Index name: " << node->getIndexes()[0]->name()
             << ", id: " << node->getIndexes()[0]->id();
+      } else {
+        indexOffset.isUniqueStream = supportResult.isUniqueStream();
       }
     }
 
@@ -1041,6 +1045,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
               std::vector<std::unique_ptr<Expression>> constExpressions{};
               std::vector<size_t> computedUseKeyFields{};
               std::vector<size_t> computedConstantFields{};
+              bool isUniqueStream = false;
 
               if (indicesOffsets.contains(c->id())) {
                 auto const& idxOffset = indicesOffsets[c->id()];
@@ -1057,6 +1062,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                 computedUseKeyFields = std::move(idxOffset.getKeyFields());
                 computedConstantFields =
                     std::move(idxOffset.getConstantFields());
+                isUniqueStream = idxOffset.isUniqueStream;
               } else {
                 // if no constants have been found, we'll stick to the
                 // defaults.
@@ -1075,6 +1081,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   .filterProjections = c->filterProjections(),
                   .usedAsSatellite = c->isUsedAsSatellite(),
                   .producesOutput = c->isProduceResult(),
+                  .isUniqueStream = isUniqueStream,
                   .expressions = std::move(constExpressions),
                   .usedKeyFields = computedUseKeyFields,
                   .constantFields = computedConstantFields};
