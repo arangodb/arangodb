@@ -44,58 +44,6 @@ class Slice;
 
 class RocksDBVectorIndex;
 
-struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
-  RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
-                               LogicalCollection* collection,
-                               transaction::Methods* trx,
-                               std::size_t listNumber, std::size_t codeSize);
-  virtual bool is_available() const override;
-  virtual void next() override;
-  virtual std::pair<faiss::idx_t, const uint8_t*> get_id_and_codes() override;
-
- private:
-  RocksDBKey _rocksdbKey;
-  arangodb::RocksDBVectorIndex* _index = nullptr;
-
-  std::unique_ptr<rocksdb::Iterator> _it;
-  std::size_t _listNumber;
-  std::size_t _codeSize;
-};
-
-struct RocksDBInvertedLists : faiss::InvertedLists {
-  RocksDBInvertedLists(RocksDBVectorIndex* index, LogicalCollection* collection,
-                       transaction::Methods* trx,
-                       RocksDBMethods* rocksDBMethods,
-                       rocksdb::ColumnFamilyHandle* cf, std::size_t nlist,
-                       size_t codeSize);
-
-  std::size_t list_size(std::size_t listNumber) const override;
-
-  const std::uint8_t* get_codes(std::size_t listNumber) const override;
-
-  const faiss::idx_t* get_ids(std::size_t listNumber) const override;
-
-  size_t add_entries(std::size_t listNumber, std::size_t n_entry,
-                     const faiss::idx_t* ids,
-                     const std::uint8_t* code) override;
-
-  void update_entries(std::size_t listNumber, std::size_t offset,
-                      std::size_t n_entry, const faiss::idx_t* ids,
-                      const std::uint8_t* code) override;
-
-  void resize(std::size_t listNumber, std::size_t new_size) override;
-
-  faiss::InvertedListsIterator* get_iterator(
-      std::size_t listNumber, void* inverted_list_context) const override;
-
- private:
-  RocksDBVectorIndex* _index;
-  LogicalCollection* _collection;
-  transaction::Methods* _trx;
-  RocksDBMethods* _rocksDBMethods;
-  rocksdb::ColumnFamilyHandle* _cf;
-};
-
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
   RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,

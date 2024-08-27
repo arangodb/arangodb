@@ -51,116 +51,131 @@
 
 namespace arangodb {
 
+// This assertion must hold for faiss idx_t to be used
 static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
               "Faiss id and LocalDocumentId must be of same size");
 
-RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
-    RocksDBVectorIndex* index, LogicalCollection* collection,
-    transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
-    : InvertedListsIterator(),
-      _index(index),
-      _listNumber(listNumber),
-      _codeSize(codeSize) {
-  RocksDBTransactionMethods* mthds =
-      RocksDBTransactionState::toMethods(trx, collection->id());
-  TRI_ASSERT(index->columnFamily() ==
-             RocksDBColumnFamilyManager::get(
-                 RocksDBColumnFamilyManager::Family::VectorIndex));
+struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
+  RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
+                               LogicalCollection* collection,
+                               transaction::Methods* trx,
+                               std::size_t listNumber, std::size_t codeSize)
+      : InvertedListsIterator(),
+        _index(index),
+        _listNumber(listNumber),
+        _codeSize(codeSize) {
+    RocksDBTransactionMethods* mthds =
+        RocksDBTransactionState::toMethods(trx, collection->id());
+    TRI_ASSERT(index->columnFamily() ==
+               RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::VectorIndex));
 
-  _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
-    TRI_ASSERT(opts.prefix_same_as_start);
-  });
+    _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+      TRI_ASSERT(opts.prefix_same_as_start);
+    });
 
-  _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
-  _it->Seek(_rocksdbKey.string());
-}
+    _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
+    _it->Seek(_rocksdbKey.string());
+  }
 
-bool RocksDBInvertedListsIterator::is_available() const {
-  // RocksDB key here is without document id
-  return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
-}
+  virtual bool is_available() const override {
+    return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
+  }
 
-void RocksDBInvertedListsIterator::next() { _it->Next(); }
+  virtual void next() override { _it->Next(); }
 
-std::pair<faiss::idx_t, const uint8_t*>
-RocksDBInvertedListsIterator::get_id_and_codes() {
-  // constexpr std::size_t kIdOffset = sizeof(uint64_t) + sizeof(std::size_t);
+  virtual std::pair<faiss::idx_t, const uint8_t*> get_id_and_codes() override {
+    auto const id = RocksDBKey::indexDocumentId(_it->key());
+    TRI_ASSERT(_codeSize == _it->value().size());
+    auto value = reinterpret_cast<const uint8_t*>(_it->value().data());
+    return {static_cast<faiss::idx_t>(id.id()), value};
+  }
 
-  auto const id = RocksDBKey::indexDocumentId(_it->key());
-  TRI_ASSERT(_codeSize == _it->value().size());
-  auto value = reinterpret_cast<const uint8_t*>(_it->value().data());
-  return {static_cast<faiss::idx_t>(id.id()), value};
-}
+ private:
+  RocksDBKey _rocksdbKey;
+  arangodb::RocksDBVectorIndex* _index = nullptr;
 
-RocksDBInvertedLists::RocksDBInvertedLists(RocksDBVectorIndex* index,
-                                           LogicalCollection* collection,
-                                           transaction::Methods* trx,
-                                           RocksDBMethods* rocksDBMethods,
-                                           rocksdb::ColumnFamilyHandle* cf,
-                                           size_t nlist, size_t code_size)
-    : InvertedLists(nlist, code_size),
-      _index(index),
-      _collection(collection),
-      _trx(trx),
-      _rocksDBMethods(rocksDBMethods),
-      _cf(cf) {
-  use_iterator = true;
-  assert(status.ok());
-}
+  std::unique_ptr<rocksdb::Iterator> _it;
+  std::size_t _listNumber;
+  std::size_t _codeSize;
+};
 
-size_t RocksDBInvertedLists::list_size(std::size_t /*list_no*/) const {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-}
-
-const uint8_t* RocksDBInvertedLists::get_codes(std::size_t /*list_no*/) const {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-}
-
-const faiss::idx_t* RocksDBInvertedLists::get_ids(size_t /*list_no*/) const {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-}
-
-std::size_t RocksDBInvertedLists::add_entries(std::size_t listNumber,
-                                              std::size_t nEntry,
-                                              const faiss::idx_t* ids,
-                                              const std::uint8_t* code) {
-  for (std::size_t i = 0; i < nEntry; i++) {
-    RocksDBKey rocksdbKey;
-    // Can we get away with saving LocalDocumentID in key, maybe we need to the
-    // use IdSelector in options during search
-    auto const docId = LocalDocumentId(*(ids + i));
-    rocksdbKey.constructVectorIndexValue(_index->objectId(), listNumber, docId);
-
-    auto const value = RocksDBValue::VectorIndexValue(
-        reinterpret_cast<const char*>(code + i * code_size), code_size);
-    _rocksDBMethods->PutUntracked(_cf, rocksdbKey, value.string());
-
+struct RocksDBInvertedLists : faiss::InvertedLists {
+  RocksDBInvertedLists(RocksDBVectorIndex* index, LogicalCollection* collection,
+                       transaction::Methods* trx,
+                       RocksDBMethods* rocksDBMethods,
+                       rocksdb::ColumnFamilyHandle* cf, std::size_t nlist,
+                       size_t codeSize)
+      : InvertedLists(nlist, codeSize),
+        _index(index),
+        _collection(collection),
+        _trx(trx),
+        _rocksDBMethods(rocksDBMethods),
+        _cf(cf) {
+    use_iterator = true;
     assert(status.ok());
   }
-  return 0;  // ignored
-}
 
-void RocksDBInvertedLists::update_entries(size_t /*list_no*/, size_t /*offset*/,
-                                          size_t /*n_entry*/,
-                                          const faiss::idx_t* /*ids*/,
-                                          const uint8_t* /*code*/) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-}
+  std::size_t list_size(std::size_t listNumber) const override {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+                                   "faiss list_size not supported");
+  }
 
-void RocksDBInvertedLists::resize(size_t /*list_no*/, size_t /*new_size*/) {
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-}
+  const std::uint8_t* get_codes(std::size_t listNumber) const override {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+                                   "faiss get_codes not supported");
+  }
 
-faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
-    size_t listNumber, void* inverted_list_context) const {
-  return new RocksDBInvertedListsIterator(_index, _collection, _trx, listNumber,
-                                          this->code_size);
-}
+  const faiss::idx_t* get_ids(std::size_t listNumber) const override {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+                                   "faiss get_ids not supported");
+  }
+
+  size_t add_entries(std::size_t listNumber, std::size_t nEntry,
+                     const faiss::idx_t* ids,
+                     const std::uint8_t* code) override {
+    for (std::size_t i = 0; i < nEntry; i++) {
+      RocksDBKey rocksdbKey;
+      // Can we get away with saving LocalDocumentID in key, maybe we need to
+      // the use IdSelector in options during search
+      auto const docId = LocalDocumentId(*(ids + i));
+      rocksdbKey.constructVectorIndexValue(_index->objectId(), listNumber,
+                                           docId);
+
+      auto const value = RocksDBValue::VectorIndexValue(
+          reinterpret_cast<const char*>(code + i * code_size), code_size);
+      _rocksDBMethods->PutUntracked(_cf, rocksdbKey, value.string());
+
+      assert(status.ok());
+    }
+    return 0;  // ignored
+  }
+
+  void update_entries(std::size_t listNumber, std::size_t offset,
+                      std::size_t n_entry, const faiss::idx_t* ids,
+                      const std::uint8_t* code) override {
+    // TODO
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
+  void resize(std::size_t listNumber, std::size_t new_size) override {
+    // TODO
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
+  faiss::InvertedListsIterator* get_iterator(
+      std::size_t listNumber, void* inverted_list_context) const override {
+    return new RocksDBInvertedListsIterator(_index, _collection, _trx,
+                                            listNumber, this->code_size);
+  }
+
+ private:
+  RocksDBVectorIndex* _index;
+  LogicalCollection* _collection;
+  transaction::Methods* _trx;
+  RocksDBMethods* _rocksDBMethods;
+  rocksdb::ColumnFamilyHandle* _cf;
+};
 
 class RocksDBVectorIndexIterator final : public IndexIterator {
  public:
