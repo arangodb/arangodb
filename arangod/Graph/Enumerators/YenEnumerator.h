@@ -155,6 +155,7 @@ class YenEnumerator {
   bool _isDone;  // shortcut to indicate all is done
   VertexRef _source;
   VertexRef _target;
+  bool _isInitialized;
 };
 }  // namespace graph
 }  // namespace arangodb

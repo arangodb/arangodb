@@ -49,6 +49,7 @@ struct TwoSidedEnumeratorOptions {
 
   void setStopAtFirstDepth(bool stopAtFirstDepth);
   void setOnlyProduceOnePath(bool onlyProduceOnePath);
+  void setPathType(PathType::Type pathType) { _pathType = pathType; }
 
  private:
   size_t _minDepth;

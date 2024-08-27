@@ -57,7 +57,11 @@ YenEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
                   TwoSidedEnumeratorOptions&& options,
                   PathValidatorOptions validatorOptions,
                   arangodb::ResourceMonitor& resourceMonitor)
-    : _resourceMonitor(resourceMonitor), _isDone(false) {
+    : _resourceMonitor(resourceMonitor), _isDone(true), _isInitialized(false) {
+  // Yen's algorithm only ever uses the TwoSidedEnumerator here to find
+  // exactly one shortest path:
+  options.setOnlyProduceOnePath(true);
+  options.setPathType(PathType::Type::ShortestPath);
   _shortestPathEnumerator = std::make_unique<ShortestPathEnumerator>(
       std::move(forwardProvider), std::move(backwardProvider),
       std::move(options), std::move(validatorOptions), resourceMonitor);
@@ -82,7 +86,8 @@ void YenEnumerator<QueueType, PathStoreType, ProviderType,
   _shortestPathEnumerator->clear();
   _shortestPaths.clear();
   _candidatePaths.clear();
-  _isDone = false;
+  _isDone = true;
+  _isInitialized = false;
 }
 
 /**
@@ -95,6 +100,12 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool YenEnumerator<QueueType, PathStoreType, ProviderType,
                    PathValidator>::isDone() const {
+  // This is more subtle than first meets the eye: If we are not yet
+  // initialized, we must return `true`.
+  // This is necessary such that the EnumeratePathsExecutor works. Once
+  // we are initialized with `reset()`, we return `true` once we have
+  // proved that no further path will be found. Note that it might be that
+  // we have returned `false` and yet no further path is found.
   return _isDone;
 }
 
@@ -117,6 +128,8 @@ void YenEnumerator<QueueType, PathStoreType, ProviderType,
   _target = target;
   clear();
   _shortestPathEnumerator->reset(source, target);
+  _isDone = false;
+  _isInitialized = true;
 }
 
 /**
@@ -136,11 +149,15 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool YenEnumerator<QueueType, PathStoreType, ProviderType,
                    PathValidator>::getNextPath(VPackBuilder& result) {
+  if (!_isInitialized) {
+    return false;
+  }
   if (_isDone) {
     return false;
   }
   if (_shortestPaths.empty()) {
     // First find the shortest path using the _shortestPathEnumerator:
+    _shortestPathEnumerator->reset(_source, _target);
     bool found = _shortestPathEnumerator->getNextPath(result);
     if (!found) {
       _isDone = true;
