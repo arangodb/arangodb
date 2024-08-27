@@ -58,6 +58,13 @@ PathValidatorTabooWrapper<
 template<class PathValidatorImplementation>
 auto PathValidatorTabooWrapper<PathValidatorImplementation>::validatePath(
     typename PathStoreImpl::Step& step) -> ValidationResult {
+  auto v = step.getVertex().getID();
+  if (_forbiddenVertices->contains(step.getVertex().getID())) {
+    return ValidationResult(ValidationResult::Type::FILTER_AND_PRUNE);
+  }
+  if (_forbiddenEdges->contains(step.getEdge().getID())) {
+    return ValidationResult(ValidationResult::Type::FILTER_AND_PRUNE);
+  }
   return _impl.validatePath(step);
 }
 
@@ -66,6 +73,12 @@ auto PathValidatorTabooWrapper<PathValidatorImplementation>::validatePath(
     typename PathStoreImpl::Step const& step,
     PathValidatorTabooWrapper<PathValidatorImplementation> const&
         otherValidator) -> ValidationResult {
+  if (_forbiddenVertices->contains(step.getVertex().getID())) {
+    return ValidationResult(ValidationResult::Type::FILTER_AND_PRUNE);
+  }
+  if (_forbiddenEdges->contains(step.getEdge().getID())) {
+    return ValidationResult(ValidationResult::Type::FILTER_AND_PRUNE);
+  }
   return _impl.validatePath(step, otherValidator._impl);
 }
 
@@ -76,7 +89,7 @@ void PathValidatorTabooWrapper<PathValidatorImplementation>::reset() {
 
 template<class PathValidatorImplementation>
 bool PathValidatorTabooWrapper<PathValidatorImplementation>::usesPrune() const {
-  return _impl.usesPrune();
+  return true;  // We do prune if we hit forbidden vertices or edges!
 }
 
 template<class PathValidatorImplementation>

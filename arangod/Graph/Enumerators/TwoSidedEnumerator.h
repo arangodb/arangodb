@@ -35,6 +35,16 @@
 
 namespace arangodb {
 
+using VertexRef = arangodb::velocypack::HashedStringRef;
+using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                                std::equal_to<VertexRef>>;
+template<typename T>
+concept HasForbidden = requires(T t) {
+  {
+    t.setForbiddenVertices(std::make_unique<VertexSet>())
+    } -> std::same_as<void>;
+};
+
 namespace aql {
 class TraversalStats;
 }
@@ -62,6 +72,12 @@ class TwoSidedEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
   using VertexRef = arangodb::velocypack::HashedStringRef;
+  using VertexSet =
+      arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                    std::equal_to<VertexRef>>;
+  using Edge = ProviderType::Step::EdgeType;
+  using EdgeSet =
+      arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>;
 
   using Shell = std::multiset<Step>;
   using ResultList = std::vector<std::pair<Step, Step>>;
@@ -98,6 +114,16 @@ class TwoSidedEnumerator {
     auto fetchResults(ResultList& results) -> void;
 
     auto provider() -> ProviderType&;
+
+    auto setForbiddenVertices(std::unique_ptr<VertexSet> forbidden)
+        -> void requires HasForbidden<PathValidatorType> {
+      _validator.setForbiddenVertices(std::move(forbidden));
+    };
+
+    auto setForbiddenEdges(std::unique_ptr<EdgeSet> forbidden)
+        -> void requires HasForbidden<PathValidatorType> {
+      _validator.setForbiddenEdges(std::move(forbidden));
+    };
 
    private:
     auto clearProvider() -> void;
@@ -199,6 +225,20 @@ class TwoSidedEnumerator {
    * the last time this method was called.
    */
   auto stealStats() -> aql::TraversalStats;
+
+  auto setForbiddenVertices(std::unique_ptr<VertexSet> forbidden)
+      -> void requires HasForbidden<PathValidatorType> {
+    auto copy = std::make_unique<VertexSet>(*forbidden);
+    _left.setForbiddenVertices(std::move(copy));
+    _right.setForbiddenVertices(std::move(forbidden));
+  };
+
+  auto setForbiddenEdges(std::unique_ptr<EdgeSet> forbidden)
+      -> void requires HasForbidden<PathValidatorType> {
+    auto copy = std::make_unique<EdgeSet>(*forbidden);
+    _left.setForbiddenEdges(std::move(copy));
+    _right.setForbiddenEdges(std::move(forbidden));
+  };
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;

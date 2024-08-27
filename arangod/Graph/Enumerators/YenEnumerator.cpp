@@ -165,9 +165,9 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
     auto spurVertex = prevPath.getVertex(prefixLen);
     // To avoid cycles, forbid all vertices before the spurVertex in the
     // previous path:
-    VertexSet forbiddenVertices;
+    auto forbiddenVertices = std::make_unique<VertexSet>();
     for (size_t i = 0; i < prefixLen; ++i) {
-      forbiddenVertices.insert(prevPath.getVertex(i).getID());
+      forbiddenVertices->insert(prevPath.getVertex(i).getID());
     }
     // To avoid finding old shortest paths again, we must forbid every edge,
     // which is a continuation of a previous shortest path which has the
@@ -193,6 +193,8 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
     }
     // And run a shortest path computation from the spur vertex to the sink
     // with forbidden vertices and edges:
+    _shortestPathEnumerator->setForbiddenVertices(std::move(forbiddenVertices));
+
     _shortestPathEnumerator->reset(spurVertex.getID(), _target);
     VPackBuilder temp;
     if (_shortestPathEnumerator->getNextPath(temp)) {
