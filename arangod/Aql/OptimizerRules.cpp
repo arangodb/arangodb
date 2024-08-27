@@ -8413,9 +8413,6 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
 
     void after(ExecutionNode* n) override {
       TRI_ASSERT(!stack.empty());
-      if (n->getType() == EN::REMOTE) {
-        ++stack.back();
-      }
       auto eligibility = n->canUseAsyncPrefetching();
       if (stack.back() == 0 &&
           eligibility == AsyncPrefetchEligibility::kEnableForNode) {

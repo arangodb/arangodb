@@ -3,6 +3,10 @@ devel
 
 * FE-463: Query UI view crashes for empty collections.
 
+* Remove restriction that disabled async prefetching for all query nodes that
+  (indirectly) depended on a RemoteNode. This allows more query parts to run
+  concurrently.
+
 * Extend COLLECT optimizer rule to consider existing SORT nodes that cover
   all group variables. Previously the following query would use a hash collect
   instead of a sorted collect:
