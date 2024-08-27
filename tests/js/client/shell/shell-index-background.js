@@ -29,7 +29,6 @@ const internal = require("internal");
 const errors = internal.errors;
 const db = internal.db;
 const {waitForEstimatorSync } = require('@arangodb/test-helper');
-const isCov = require("@arangodb/test-helper").versionHas('coverage');
 
 function backgroundIndexSuite() {
   'use strict';
@@ -451,9 +450,8 @@ function backgroundIndexSuite() {
     testUpdateParallel: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
-      let countDocs = isCov ? 1000 : 100000;
       let x = 0;
-      while (x < countDocs) {
+      while (x < 100000) {
         let docs = []; 
         for(let i = 0; i < 1000; i++) {
           docs.push({_key: "test_" + x, value: x});
@@ -462,7 +460,7 @@ function backgroundIndexSuite() {
         c.save(docs);
       }
       
-      assertEqual(c.count(), countDocs);
+      assertEqual(c.count(), 100000);
 
       // lets update all via tasks
       for (let i = 0; i < 10; ++i) {
@@ -480,7 +478,7 @@ function backgroundIndexSuite() {
                          let updated = false;
                          const current = x++;
                          const key = "test_" + current
-                         const doc = {value: current + ${countDocs}};
+                         const doc = {value: current + 100000};
                          while (!updated) {
                            try {
                              const res = c.update(key, doc);
@@ -495,15 +493,15 @@ function backgroundIndexSuite() {
       waitForTasks();
       
       // basic checks
-      assertEqual(c.count(), countDocs);
+      assertEqual(c.count(), 100000);
       // check for new entries via index
       const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1", 
-                                  {'@coll': cn, 'val': countDocs}, {count:true});
-      assertEqual(newCursor.count(), countDocs);
+                                  {'@coll': cn, 'val': 100000}, {count:true});
+      assertEqual(newCursor.count(), 100000);
 
       // check for old entries via index
       const oldCursor = db._query("FOR doc IN @@coll FILTER doc.value < @val RETURN 1", 
-                                  {'@coll': cn, 'val': countDocs}, {count:true});
+                                  {'@coll': cn, 'val': 100000}, {count:true});
       assertEqual(oldCursor.count(), 0);
 
       waitForEstimatorSync(); // make sure estimates are consistent
