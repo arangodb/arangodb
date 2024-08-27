@@ -218,7 +218,7 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
       gridTemplateColumns="minmax(450px, 0.5fr) 1fr"
       height="full"
     >
-      <Stack height="full" overflow="auto">
+      <Stack height="full" overflow="hidden">
         <Box paddingLeft="2" paddingTop="1">
           <TableControl
             table={tableInstance}
@@ -238,6 +238,12 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
             if (!row.getIsSelected()) {
               row.toggleSelected();
             }
+          }}
+          // 100% - height of the control element - gap
+          height="calc(100% - 36px - 8px)"
+          tableContainerProps={{
+            // just overflow: auto doesn't work due to chakra impl details
+            overflowY: "auto"
           }}
         />
       </Stack>
