@@ -596,11 +596,18 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::SelectSmartDistributeGraphInput});
-  add({"APPROX_NEAR", ".,.,.",
+  add({"APPROX_NEAR_COSINE", ".,.",
        Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
-       &functions::ApproxNear});
-
+       &functions::ApproxNearCosine});
+  add({"APPROX_NEAR_L1", ".,.",
+       Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &functions::ApproxNearL1});
+  add({"APPROX_NEAR_L2", ".,.",
+       Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &functions::ApproxNearL2});
 #endif
 
   // this is an internal function that is only here for testing. it cannot

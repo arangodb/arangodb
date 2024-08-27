@@ -26,11 +26,20 @@
 
 namespace arangodb::aql::functions {
 
-AqlValue ApproxNear(ExpressionContext*, AstNode const&,
-                    VPackFunctionParametersView parameters) {
-  // TODO Improve on error message
-  /*  THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_RUNTIME_ERROR,*/
-  /*"APPROX_NEAR should not be called");*/
-  return AqlValue(AqlValueHintBool(true));
+AqlValue ApproxNearCosine(ExpressionContext* expressionContext,
+                          AstNode const& node,
+                          VPackFunctionParametersView parameters) {
+  return CosineSimilarity(expressionContext, node, parameters);
 }
+
+AqlValue ApproxNearL1(ExpressionContext* expressionContext, AstNode const& node,
+                      VPackFunctionParametersView parameters) {
+  return L1Distance(expressionContext, node, parameters);
+}
+
+AqlValue ApproxNearL2(ExpressionContext* expressionContext, AstNode const& node,
+                      VPackFunctionParametersView parameters) {
+  return L2Distance(expressionContext, node, parameters);
+}
+
 }  // namespace arangodb::aql::functions

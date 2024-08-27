@@ -572,8 +572,13 @@ AqlValue SelectSmartDistributeGraphInput(arangodb::aql::ExpressionContext*,
                                          AstNode const&,
                                          VPackFunctionParametersView);
 
-AqlValue ApproxNear(arangodb::aql::ExpressionContext*, AstNode const&,
-                    VPackFunctionParametersView);
+AqlValue ApproxNearCosine(arangodb::aql::ExpressionContext*, AstNode const&,
+                          VPackFunctionParametersView);
+AqlValue ApproxNearL1(arangodb::aql::ExpressionContext*, AstNode const&,
+                      VPackFunctionParametersView);
+AqlValue ApproxNearL2(arangodb::aql::ExpressionContext*, AstNode const&,
+                      VPackFunctionParametersView);
+
 #endif
 
 AqlValue DecayGauss(arangodb::aql::ExpressionContext*, AstNode const&,

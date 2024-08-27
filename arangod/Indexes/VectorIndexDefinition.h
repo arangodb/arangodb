@@ -53,13 +53,15 @@ struct VectorHashFunction {
 };
 
 enum class SimilarityMetric : std::uint8_t {
-  kEuclidian,
+  kL1,
+  kL2,
   kCosine,
 };
 
 template<class Inspector>
 inline auto inspect(Inspector& f, SimilarityMetric& x) {
-  return f.enumeration(x).values(SimilarityMetric::kEuclidian, "euclidian",
+  return f.enumeration(x).values(SimilarityMetric::kL1, "l1",
+                                 SimilarityMetric::kL2, "l2",
                                  SimilarityMetric::kCosine, "cosine");
 }
 
@@ -91,7 +93,7 @@ struct UserVectorIndexDefinition {
               }
               return inspection::Status::Success{};
             }),
-        f.field("metric", x.metric).fallback(SimilarityMetric::kEuclidian),
+        f.field("metric", x.metric).fallback(SimilarityMetric::kCosine),
         f.field("nLists", x.nLists));
   }
 };
