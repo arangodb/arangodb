@@ -72,7 +72,7 @@
     execute: function (callback, args, handler, skipDirtyViewCheck = false) {
       const self = this;
 
-      if (this.lastRoute === '#queries') {
+      if (this.lastRoute === '#queries' && this.queryView) {
         // cleanup input editors
         this.queryView.removeInputEditors();
         // cleanup old canvas elements
