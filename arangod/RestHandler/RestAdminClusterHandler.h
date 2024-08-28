@@ -69,6 +69,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const VPackSortMigration;
   static std::string const VPackSortMigrationCheck;
   static std::string const VPackSortMigrationMigrate;
+  static std::string const VPackSortMigrationStatus;
   static std::string const FailureOracle;
 
   RestStatus handleHealth();
