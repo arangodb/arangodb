@@ -136,6 +136,5 @@ describe('User Rights Management', () => {
 
 after(() => {
   arango.connectHandle(connectionHandle);
-  db._drop(colName);
   db._useDatabase('_system');
 });

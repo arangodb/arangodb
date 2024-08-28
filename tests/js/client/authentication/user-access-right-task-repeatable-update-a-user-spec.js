@@ -33,6 +33,7 @@ const tasks = require('@arangodb/tasks');
 const pu = require('@arangodb/testutils/process-utils');
 const users = require('@arangodb/users');
 const internal = require('internal');
+const db = internal.db;
 const helper = require('@arangodb/testutils/user-helper');
 const download = internal.download;
 const keySpaceId = 'task_update_user_keyspace';

@@ -42,9 +42,7 @@ const db = require('internal').db;
 const arango = require('internal').arango;
 let connectionHandle = arango.getConnectionHandle();
 
-print(connectionHandle)
-print(arango.connectedUser())
-db._useDatabase('_system')
+db._useDatabase('_system');
 
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
