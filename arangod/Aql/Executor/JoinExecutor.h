@@ -70,6 +70,7 @@ struct JoinExecutorInfos {
     RegisterId documentOutputRegister;
     RegisterId docIdOutputRegister;
     bool isLateMaterialized;
+    bool isUniqueStream;  // index can be used for unique join
 
     // Associated document collection for this index
     Collection const* collection;
@@ -147,6 +148,7 @@ class JoinExecutor {
 
  private:
   void constructStrategy();
+  void clearProjectionsBuilder() noexcept;
   [[nodiscard]] ResourceMonitor& resourceMonitor();
 
   aql::AqlFunctionsInternalCache _functionsCache;

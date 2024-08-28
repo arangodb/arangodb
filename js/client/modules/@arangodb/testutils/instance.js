@@ -188,7 +188,7 @@ class instance {
     }
     this.JWT = null;
     this.jwtFiles = null;
-    this.sanHandler = new sanHandler('arangod', this.options.sanOptions, this.options.isSan, this.options.extremeVerbosity);
+    this.sanHandler = new sanHandler('arangod', this.options);
 
     this._makeArgsArangod();
 
@@ -375,10 +375,18 @@ class instance {
       }
     }
 
+    let output = this.args.hasOwnProperty('log.output') ? this.args['log.output'] : [];
+    if (typeof output === 'string') {
+      output = [output];
+    }
+
     if (this.options.verbose) {
       this.args['log.level'] = 'debug';
+      output.push('-'); // make sure we always have a stdout appender
     } else if (this.options.noStartStopLogs) {
-      let logs = ['all=error', 'crash=info'];
+      // set the stdout appender to error only
+      output.push('-;all=error');
+      let logs = ['crash=info'];
       if (this.args['log.level'] !== undefined) {
         if (Array.isArray(this.args['log.level'])) {
           logs = logs.concat(this.args['log.level']);
@@ -387,7 +395,10 @@ class instance {
         }
       }
       this.args['log.level'] = logs;
+    } else {
+      output.push('-'); // make sure we always have a stdout appender
     }
+    this.args['log.output'] = output;
     if (this.isAgent()) {
       this.args = Object.assign(this.args, {
         'agency.activate': 'true',
@@ -654,7 +665,7 @@ class instance {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
 
-    this.sanHandler.setSanOptions();
+    let subEnv = this.sanHandler.getSanOptions();
 
     if ((this.useableMemory === undefined) && (this.options.memory !== undefined)){
       throw new Error(`${this.name} don't have planned memory though its configured!`);
@@ -663,15 +674,10 @@ class instance {
       if (this.options.extremeVerbosity) {
         print(`appointed ${this.name} memory: ${this.useableMemory}`);
       }
-      process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'] = this.useableMemory;
+      subEnv.push(`ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY=${this.useableMemory}`);
     }
-    process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
-    let ret = executeExternal(cmd, argv, false, pu.coverageEnvironment());
-    
-    this.sanHandler.resetSanOptions();
-    if (this.useableMemory !== 0) {
-      delete process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'];
-    }
+    subEnv.push(`ARANGODB_SERVER_DIR=${this.rootDir}`);
+    let ret = executeExternal(cmd, argv, false, subEnv);
     return ret;
   }
   // //////////////////////////////////////////////////////////////////////////////

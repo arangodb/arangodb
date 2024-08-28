@@ -28,6 +28,8 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
+const tmpDirMngr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 
 function arangoSecureInstallationSuite () {
   'use strict';
@@ -60,7 +62,11 @@ function arangoSecureInstallationSuite () {
       try {
         let args = [path];
         // invoke arango-secure-installation without password. this will fail
-        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args);
+        let sh = new sanHandler(pu.ARANGOD_BIN, global.instanceManager.options);
+        let tmpMgr = new tmpDirMngr(fs.join('shell-arango-secure-installation-noncluster-1'), global.instanceManager.options);
+        sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
+        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args, false, 0, sh.getSanOptions());
+        sh.fetchSanFileAfterExit(actualRc.pid);
         assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
         assertEqual(1, actualRc.exit, actualRc);
       } finally {
@@ -80,7 +86,11 @@ function arangoSecureInstallationSuite () {
       try {
         let args = [path];
         // invoke arango-secure-installation with password. this must succeed
-        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args);
+        let sh = new sanHandler(pu.ARANGOD_BIN, global.instanceManager.options);
+        let tmpMgr = new tmpDirMngr(fs.join('shell-arango-secure-installation-noncluster-2'), global.instanceManager.options);
+        sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
+        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args, false, 0, sh.getSanOptions());
+        sh.fetchSanFileAfterExit(actualRc.pid);
         assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
         assertEqual(0, actualRc.exit, actualRc);
       } finally {

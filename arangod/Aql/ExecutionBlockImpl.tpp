@@ -36,7 +36,6 @@
 #include "Aql/Executor/IResearchViewExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SimpleModifier.h"
 #include "Aql/SkipResult.h"
 #include "Aql/Timing.h"
@@ -114,6 +113,7 @@ class CountCollectExecutor;
 class DistinctCollectExecutor;
 class EnumerateCollectionExecutor;
 class EnumerateListExecutor;
+class EnumerateListObjectExecutor;
 }  // namespace aql
 
 namespace graph {
@@ -796,7 +796,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   ModificationExecutor<
                       SingleRowFetcher<BlockPassthrough::Disable>,
                       UpsertModifier>,
-                  TraversalExecutor, EnumerateListExecutor,
+                  TraversalExecutor, EnumerateListObjectExecutor,
                   SubqueryStartExecutor, SubqueryEndExecutor,
                   SortedCollectExecutor, LimitExecutor, UnsortedGatherExecutor,
                   SortingGatherExecutor, SortExecutor, TraversalExecutor,
@@ -867,6 +867,10 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                                   AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   double start = -1.0;
   auto profilingGuard = scopeGuard([&]() noexcept {
     _execNodeStats.fetching += currentSteadyClockValue() - start;
@@ -936,11 +940,29 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
           // some other thread is currently executing our prefetch task
           // -> wait till it has finished.
           _prefetchTask->waitFor();
-          return _prefetchTask->stealResult();
+          auto result = _prefetchTask->stealResult();
+          if (std::get<ExecutionState>(result) == ExecutionState::WAITING) {
+            // if we got WAITING, we have to immediately call the fetcher again,
+            // because it is possible that we already got a wakeup that got
+            // swallowed. If the wakeup has already occurred, this call will
+            // return actual data, otherwise we will get another WAITING, but we
+            // won't have wasted a lot of CPU cycles.
+            return fetcher().execute(ctx.stack);
+          }
+
+          if (_profileLevel >= ProfileLevel::TraceOne) {
+            auto const queryId = this->_engine->getQuery().id();
+            LOG_TOPIC("14d20", INFO, Logger::QUERIES)
+                << "[query#" << queryId << "] "
+                << "returning prefetched result type="
+                << getPlanNode()->getTypeString() << " this=" << (uintptr_t)this
+                << " id=" << getPlanNode()->id();
+          }
+          return result;
         }
 
-        // we have claimed the task, but we are executing the fetcher
-        // ourselves. so let's reset the task's internals properly.
+        // we have claimed the task and are executing the fetcher ourselves, so
+        // let's reset the task's internals properly.
         _prefetchTask->discard(/*isFinished*/ false);
       }
       return fetcher().execute(ctx.stack);
@@ -999,6 +1021,12 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
         if (!queued) {
           // clear prefetch task
           _prefetchTask.reset();
+        } else if (_profileLevel >= ProfileLevel::TraceOne) {
+          auto const queryId = this->_engine->getQuery().id();
+          LOG_TOPIC("cbf44", INFO, Logger::QUERIES)
+              << "[query#" << queryId << "] "
+              << "queued prefetch task type=" << getPlanNode()->getTypeString()
+              << " this=" << (uintptr_t)this << " id=" << getPlanNode()->id();
         }
       }
     }
@@ -1079,9 +1107,11 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
 }
 
 template<class Executor>
+template<class E>
 auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
     AqlCallStack& stack, SkipResult& skipResult) -> ExecState {
-  static_assert(executorHasSideEffects<Executor>);
+  static_assert(std::is_same_v<Executor, E> &&
+                executorHasSideEffects<Executor>);
   if (!stack.needToCountSubquery()) {
     // We need to really produce things here
     // fall back to original version as any other executor.
@@ -1676,17 +1706,15 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
 
   if constexpr (executorCanReturnWaiting<Executor>) {
     // If state is SKIP, PRODUCE or FASTFORWARD, we were WAITING.
-    // The call stack must be restored in all cases, but only SKIP needs to
-    // restore the clientCall.
+    // The clientCall and call stack must be restored.
     switch (_execState) {
       default:
         break;
       case ExecState::SKIP:
-        TRI_ASSERT(_clientRequest.requestLessDataThan(ctx.clientCall));
-        ctx.clientCall = _clientRequest;
-        [[fallthrough]];
       case ExecState::PRODUCE:
       case ExecState::FASTFORWARD:
+        TRI_ASSERT(_clientRequest.requestLessDataThan(ctx.clientCall));
+        ctx.clientCall = _clientRequest;
         TRI_ASSERT(_stackBeforeWaiting.requestLessDataThan(ctx.stack));
         ctx.stack = _stackBeforeWaiting;
     }
@@ -1830,7 +1858,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
               executor().produceRows(_lastRange, *_outputItemRow);
 
           if (executorState == ExecutionState::WAITING) {
-            // We need to persist the old stack before we return.
+            // We need to persist the old call before we return.
+            // We might have some local accounting to this call.
+            _clientRequest = ctx.clientCall;
             // We might have some local accounting in this stack.
             _stackBeforeWaiting = ctx.stack;
             // We do not return anything in WAITING state, also NOT skipped.
@@ -1861,7 +1891,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
                     ctx.clientCall.getLimit() > 0) &&
                    outputIsFull()) {
           // In pass through variant we need to stop whenever the block is full.
-          // In all other branches only if the client Still needs more data.
+          // In all other branches only if the client still needs more data.
           _execState = ExecState::DONE;
           break;
         } else if (ctx.clientCall.getLimit() > 0 && executorNeedsCall(call)) {
@@ -1904,7 +1934,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
           std::tie(executorState, stats, skippedLocal, call) =
               executor().skipRowsRange(_lastRange, dummy);
           if (executorState == ExecutionState::WAITING) {
-            // We need to persist the old stack before we return.
+            // We need to persist the old call before we return.
+            // We might have some local accounting to this call.
+            _clientRequest = ctx.clientCall;
             // We might have some local accounting in this stack.
             _stackBeforeWaiting = ctx.stack;
             // We do not return anything in WAITING state, also NOT skipped.

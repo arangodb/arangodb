@@ -28,11 +28,11 @@
 #include "Aql/Ast.h"
 #include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/BlocksWithClients.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionNode/GraphNode.h"
@@ -47,13 +47,12 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
-#include "Basics/ScopeGuard.h"
+#include "Assertions/ProdAssert.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
-#include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -61,13 +60,10 @@
 
 #include <absl/strings/str_cat.h>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 namespace {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-using namespace arangodb;
-using namespace arangodb::aql;
 
 // Validating fullCount usage.
 // For fullCount the following applies:
@@ -250,9 +246,7 @@ ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
     : _engineId(eId),
       _query(query),
       _itemBlockManager(itemBlockMgr),
-      _sharedState((sqs != nullptr) ? std::move(sqs)
-                                    : std::make_shared<SharedQueryState>(
-                                          query.vocbase().server())),
+      _sharedState(std::move(sqs)),
       _blocks(),
       _root(nullptr),
       _resultRegister(RegisterId::maxRegisterId),
@@ -736,7 +730,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
 #endif
 
   auto& mgr = query.itemBlockManager();
-  initializeConstValueBlock(plan, mgr);
+  initializeConstValueBlock(plan, query.bindParameters(), mgr);
 
   aql::SnippetList& snippets = query.snippets();
   TRI_ASSERT(snippets.empty() || ServerState::instance()->isClusterRole(role));
@@ -767,8 +761,24 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     // instantiate the engine on a local server
     EngineId eId =
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;
-    auto retEngine =
-        std::make_unique<ExecutionEngine>(eId, query, mgr, query.sharedState());
+
+    TRI_ASSERT(!ServerState::isCoordinator(role));
+    bool isClusterQuery = dynamic_cast<ClusterQuery*>(&query) != nullptr;
+    std::shared_ptr<SharedQueryState> sharedState;
+    if (isClusterQuery) {
+      ADB_PROD_ASSERT(ServerState::isDBServer(role));
+      ADB_PROD_ASSERT(query.sharedState() == nullptr);
+      sharedState =
+          std::make_shared<SharedQueryState>(query.vocbase().server());
+    } else {
+      ADB_PROD_ASSERT(query.sharedState() != nullptr);
+      sharedState = query.sharedState();
+    }
+    // we have to ensure that each ExecutionEngine has its own SharedQueryState,
+    // because different snippets (engines) can operate concurrently and each
+    // needs to have its own wakeupCallback
+    auto retEngine = std::make_unique<ExecutionEngine>(eId, query, mgr,
+                                                       std::move(sharedState));
 
 #ifdef USE_ENTERPRISE
     query.executionStatsGuard().doUnderLock([&](auto& executionStats) {
@@ -841,7 +851,8 @@ void arangodb::aql::ExecutionEngine::initFromPlanForCalculation(
     ExecutionPlan& plan) {
   plan.findVarUsage();
   plan.planRegisters(ExplainRegisterPlan::No);
-  initializeConstValueBlock(plan, _itemBlockManager);
+  initializeConstValueBlock(plan, BindParameters{_query.resourceMonitor()},
+                            _itemBlockManager);
 
   SingleServerQueryInstanciator inst(*this);
   plan.root()->walk(inst);
@@ -849,17 +860,18 @@ void arangodb::aql::ExecutionEngine::initFromPlanForCalculation(
   setupEngineRoot(*inst.root);
 }
 
-void ExecutionEngine::initializeConstValueBlock(ExecutionPlan& plan,
-                                                AqlItemBlockManager& mgr) {
+void ExecutionEngine::initializeConstValueBlock(
+    ExecutionPlan& plan, BindParameters const& bindParameters,
+    AqlItemBlockManager& mgr) {
   auto registerPlan = plan.root()->getRegisterPlan();
   auto nrConstRegs = registerPlan->nrConstRegs;
   if (nrConstRegs > 0 && mgr.getConstValueBlock() == nullptr) {
     mgr.initializeConstValueBlock(nrConstRegs);
     plan.getAst()->variables()->visit(
-        [plan = plan.root()->getRegisterPlan(),
+        [&, regPlan = plan.root()->getRegisterPlan(),
          block = mgr.getConstValueBlock()](Variable* var) {
           if (var->type() == Variable::Type::Const) {
-            RegisterId reg = plan->variableToOptionalRegisterId(var->id);
+            RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);
             if (reg.value() != RegisterId::maxRegisterId) {
               TRI_ASSERT(reg.isConstRegister());
               AqlValue value = var->constantValue();
@@ -867,6 +879,16 @@ void ExecutionEngine::initializeConstValueBlock(ExecutionPlan& plan,
               // the constValueBlock takes ownership, so we have to create a
               // copy here.
               block->emplaceValue(0, reg.value(), AqlValue(value.slice()));
+            }
+          } else if (var->type() == Variable::Type::BindParameter) {
+            RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);
+            if (reg.value() != RegisterId::maxRegisterId) {
+              auto [slice, node] = bindParameters.get(var->bindParameterName());
+              if (slice.isNone()) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING);
+              }
+
+              block->emplaceValue(0, reg.value(), AqlValue(slice));
             }
           }
         });
@@ -934,3 +956,5 @@ ExecutionEngine::rebootTrackers() {
 std::shared_ptr<SharedQueryState> const& ExecutionEngine::sharedState() const {
   return _sharedState;
 }
+
+}  // namespace arangodb::aql

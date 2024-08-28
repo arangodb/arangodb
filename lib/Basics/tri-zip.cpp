@@ -425,8 +425,6 @@ ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum) {
   TRI_stat_t statbuf;
   int res = TRI_FSTAT(fd, &statbuf);
   if (res < 0) {
-    TRI_ERRORBUF;
-    TRI_SYSTEM_ERROR();
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 

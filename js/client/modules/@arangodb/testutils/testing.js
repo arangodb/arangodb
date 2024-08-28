@@ -73,12 +73,11 @@ let optionsDocumentation = [
   '   - `failed`: if set to true, re-runs only those tests that failed in the',
   '     previous test run. The information which tests previously failed is taken',
   '     from the "UNITTEST_RESULT.json" (if available).',
+  '   - `suffix` append to the representation name',
   '   - `optionsJson`: all of the above, as json list for mutliple suite launches',
   ''
 ];
 
-const isCoverage = versionHas('coverage');
-const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
   'cleanup': true,
   'concurrency': 3,
@@ -90,9 +89,6 @@ const optionsDefaults = {
   'protocol': 'tcp',
   'replication': false,
   'setInterruptable': ! internal.isATTy(),
-  'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
-  'isCov': isCoverage,
-  'isInstrumented': isInstrumented,
   'useReconnect': true,
   'username': 'root',
   'verbose': false,
@@ -100,6 +96,7 @@ const optionsDefaults = {
   'vst': false,
   'http2': false,
   'failed': false,
+  'suffix': '',
   'optionsJson': null,
 };
 
@@ -326,8 +323,8 @@ function loadModuleOptions () {
         m.registerOptions(optionsDefaults, optionsDocumentation, optionHandlers);
       }
     } catch (x) {
-      print('failed to load module ' + testModules[j]);
-      throw x;
+      print(`${RED}failed to load module${testModules[j]}:  ${x.message} \n${x.stack}` + RESET);
+      process.exit(1);
     }
   }
   optionsDocumentation.push(' testsuite specific options:');
@@ -418,6 +415,10 @@ function iterateTests(cases, options) {
       localOptions = _.defaults(optionsList[n], localOptions);
     }
     let printTestName = currentTest;
+    let resultTestName = currentTest;
+    if (localOptions.suffix && localOptions.suffix !== "") {
+      resultTestName += "-" + localOptions.suffix;
+    }
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
     }
@@ -450,7 +451,7 @@ function iterateTests(cases, options) {
     }
     result.failed = failed;
     result.status = status;
-    results[currentTest] = result;
+    results[resultTestName] = result;
   }
 
   results.status = globalStatus;

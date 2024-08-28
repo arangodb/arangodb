@@ -28,13 +28,16 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 
 #include <memory>
@@ -45,8 +48,8 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
-static void parseNodeInput(AstNode const* node, std::string& id,
-                           Variable const*& variable, char const* part) {
+void parseNodeInput(AstNode const* node, std::string& id,
+                    Variable const*& variable, char const* part) {
   switch (node->type) {
     case NODE_TYPE_REFERENCE:
       variable = static_cast<Variable*>(node->getData());
@@ -55,18 +58,20 @@ static void parseNodeInput(AstNode const* node, std::string& id,
     case NODE_TYPE_VALUE:
       if (node->value.type != VALUE_TYPE_STRING) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_PARSE, std::string("invalid ") + part +
-                                       " vertex. Must either be "
-                                       "an _id string or an object with _id.");
+            TRI_ERROR_QUERY_PARSE,
+            absl::StrCat("invalid ", part,
+                         " vertex. Must either be an _id string or an object "
+                         "with _id."));
       }
       variable = nullptr;
       id = node->getString();
       break;
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     std::string("invalid ") + part +
-                                         " vertex. Must either be an "
-                                         "_id string or an object with _id.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          absl::StrCat(
+              "invalid ", part,
+              " vertex. Must either be an _id string or an object with _id."));
   }
 }
 static GraphNode::InputVertex prepareVertexInput(ShortestPathNode const* node,
@@ -159,8 +164,7 @@ ShortestPathNode::ShortestPathNode(
 
 ShortestPathNode::~ShortestPathNode() = default;
 
-ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
-                                   arangodb::velocypack::Slice const& base)
+ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, velocypack::Slice base)
     : GraphNode(plan, base),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
@@ -433,13 +437,13 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     SingleServerBaseProviderOptions forwardProviderOptions(
         opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
         opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections(), opts->produceVertices());
+        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache());
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections(),
-        opts->produceVertices());
+        opts->produceVertices(), opts->useCache());
 
     auto usesWeight =
         checkWeight(forwardProviderOptions, backwardProviderOptions);
@@ -702,7 +706,6 @@ std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildIndexes(
   // EnumeratePathsNode.cpp). Move this method to a dedicated place where it can
   // be re-used.
   size_t numEdgeColls = _edgeColls.size();
-  constexpr bool onlyEdgeIndexes = true;
 
   std::vector<IndexAccessor> indexAccessors;
   indexAccessors.reserve(numEdgeColls);
@@ -725,11 +728,22 @@ std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildIndexes(
     // arbitrary value for "number of edges in collection" used here. the
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
+
+    // use most specific index hint here.
+    // TODO: this code is prepared to use index hints, but due to the
+    // "onlyEdgeIndexes" flag set to true here, the optimizer will _always_ pick
+    // the edge index for the shortest path query. we should fix the condition
+    // handling inside shortest path queries so that it can work with arbitrary,
+    // multi-field conditions and thus indexes.
+    auto indexHint = hint().getFromNested(
+        (reverse ? opposite : dir) == TRI_EDGE_IN ? "inbound" : "outbound",
+        _edgeColls[i]->name(), IndexHint::BaseDepth);
+
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
-        onlyEdgeIndexes);
+        itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
+        /*onlyEdgeIndexes*/ true);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");

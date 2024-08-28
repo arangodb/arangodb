@@ -49,7 +49,7 @@ auto IndexJoinStrategyFactory::createStrategy(
     -> std::unique_ptr<AqlIndexJoinStrategy> {
   if (desc.size() == 2 &&
       joinStrategy != aql::QueryOptions::JoinStrategyType::kGeneric) {
-    if (desc[0].isUnique && desc[1].isUnique) {
+    if (desc[0].isUniqueStream && desc[1].isUniqueStream) {
       // build optimized merge join strategy for two unique indices
       return std::make_unique<TwoIndicesUniqueMergeJoin<
           velocypack::Slice, LocalDocumentId, VPackSliceComparator>>(

@@ -23,10 +23,10 @@
 
 #include "OptimizerRulesFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/IResearchViewOptimizerRules.h"
-#include "Aql/IndexNodeOptimizerRules.h"
-#include "Aql/GraphOptimizerRules.h"
-#include "Aql/Optimizer/Rules/EnumeratePathsFilter/EnumeratePathsFilter.h"
+#include "Aql/Optimizer/Rule/EnumeratePathsFilter/EnumeratePathsFilter.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
@@ -181,6 +181,13 @@ void OptimizerRulesFeature::addRules() {
   registerRule("replace-like-with-range", replaceLikeWithRangeRule,
                OptimizerRule::replaceLikeWithRange, OptimizerRule::makeFlags(),
                R"(Replace LIKE() function with range scans where possible.)");
+
+  registerRule(
+      "replace-entries-with-object-iteration",
+      replaceEntriesWithObjectIteration,
+      OptimizerRule::replaceEntriesWithObjectIteration,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace FOR ... ENTRIES(obj) enumeration with proper object iteration.)");
 
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule,
@@ -807,6 +814,11 @@ involved attributes are covered by inverted indexes.)");
                OptimizerRule::pushDownLateMaterialization,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Push down late materialization.)");
+
+  registerRule("push-limit-into-index", pushLimitIntoIndexRule,
+               OptimizerRule::pushLimitIntoIndexRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Push limit into index node.)");
 
   registerRule("materialize-into-separate-variable",
                materializeIntoSeparateVariable,

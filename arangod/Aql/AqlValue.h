@@ -25,9 +25,9 @@
 #pragma once
 
 #include "Aql/AqlValueFwd.h"
-#include "Aql/types.h"
+#include "Aql/RegisterId.h"
+#include "Aql/RegIdFlatSet.h"
 #include "Basics/Endian.h"
-#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "IResearch/Misc.h"
 
 #include <velocypack/Slice.h>
@@ -416,6 +416,12 @@ struct AqlValue final {
   double toDouble(bool& failed) const;
   int64_t toInt64() const;
 
+ private:
+  int64_t asInt64() const;    // Only valid if type is VPACK_INLINE_INT64!
+  uint64_t asUInt64() const;  // Only valid if type is VPACK_INLINE_UINT64!
+  double asDouble() const;    // Only valid if type is VPACK_INLINE_DOUBLE!
+
+ public:
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;
 

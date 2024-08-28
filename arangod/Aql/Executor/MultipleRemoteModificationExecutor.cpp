@@ -25,6 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -95,7 +96,7 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
                                      "fetch data from produceRows only once");
     }
     _hasFetchedDataRow = true;
-    auto [state, row] = input.nextDataRow();
+    auto [state, row] = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     if (input.hasDataRow()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
@@ -258,4 +259,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
     output.moveValueInto(_info._outputNewRegisterId, input, &guard);
   }
 }
+
+template class ExecutionBlockImpl<MultipleRemoteModificationExecutor>;
+
 }  // namespace arangodb::aql

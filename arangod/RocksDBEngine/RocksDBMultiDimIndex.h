@@ -128,15 +128,8 @@ class RocksDBUniqueMdiIndex final : public RocksDBMdiIndexBase {
 namespace mdi {
 
 struct ExpressionBounds {
-  struct Bound {
-    aql::AstNode const* op_node = nullptr;
-    aql::AstNode const* bounded_expr = nullptr;
-    aql::AstNode const* bound_value = nullptr;
-    bool isStrict = false;
-  };
-
-  Bound lower;
-  Bound upper;
+  std::optional<zkd::byte_string> lower;
+  std::optional<zkd::byte_string> upper;
 };
 
 void extractBoundsFromCondition(

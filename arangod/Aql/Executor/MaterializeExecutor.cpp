@@ -23,6 +23,8 @@
 
 #include "MaterializeExecutor.h"
 
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/QueryContext.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
@@ -104,6 +106,8 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
             _projectionsBuilder.openObject(true);
             proj.toVelocyPackFromDocument(_projectionsBuilder, doc, &_trx);
             _projectionsBuilder.close();
+            output.moveValueInto(docOutReg, *inputRowIterator,
+                                 _projectionsBuilder.slice());
           }
         } else {
           if (data) {
@@ -315,5 +319,8 @@ RegisterId MaterializerExecutorInfos::getRegisterForVariable(
   TRI_ASSERT(iter != _variablesToRegisters.end());
   return iter->second;
 }
+
+template class ExecutionBlockImpl<MaterializeRocksDBExecutor>;
+template class ExecutionBlockImpl<MaterializeSearchExecutor>;
 
 }  // namespace arangodb::aql

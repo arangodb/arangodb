@@ -33,15 +33,15 @@
 namespace arangodb {
 
 LoggerStreamBase::LoggerStreamBase(bool enabled)
-    : _topicId(LogTopic::MAX_LOG_TOPICS),
+    : _topicId(LogTopic::GLOBAL_LOG_TOPIC),
       _level(LogLevel::DEFAULT),
       _line(0),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _enabled(enabled),
 #endif
-      _logid(nullptr),
-      _file(nullptr),
-      _function(nullptr) {
+      _logid(),
+      _file(),
+      _function() {
 }
 
 LoggerStreamBase::LoggerStreamBase() : LoggerStreamBase(true) {}

@@ -99,23 +99,15 @@ function explainSuite () {
       assertFalse(node.stable);
 
       node = nodes[6];
-      assertEqual("SortNode", node.type);
-      assertEqual([ 6 ], node.dependencies);
-      assertEqual(9, node.id);
-      assertEqual(1, node.elements.length);
-      assertEqual("a", node.elements[0].inVariable.name);
-      assertTrue(node.stable);
-      
-      node = nodes[7];
       assertEqual("CollectNode", node.type);
-      assertEqual([ 9 ], node.dependencies);
+      assertEqual([ 6 ], node.dependencies);
       assertEqual(7, node.id);
       assertEqual(1, node.groups.length);
       assertEqual("a", node.groups[0].inVariable.name);
       assertEqual("x", node.groups[0].outVariable.name);
       assertEqual("g", node.outVariable.name);
       
-      node = nodes[8];
+      node = nodes[7];
       assertEqual("ReturnNode", node.type);
       assertEqual([ 7 ], node.dependencies);
       assertEqual(8, node.id);

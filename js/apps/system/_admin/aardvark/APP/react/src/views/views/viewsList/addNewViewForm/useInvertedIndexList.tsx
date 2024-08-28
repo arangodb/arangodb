@@ -1,30 +1,20 @@
-import { ArangojsResponse } from "arangojs/lib/request";
+import { InvertedIndex } from "arangojs/indexes";
 import useSWR from "swr";
-import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { getCurrentDB } from "../../../../utils/arangoClient";
 import { encodeHelper } from "../../../../utils/encodeHelper";
-
-export type IndexType = {
-  id: string;
-  name: string;
-  type: "inverted";
-};
-interface CollectionsListResponse extends ArangojsResponse {
-  body: { indexes: Array<IndexType> };
-}
 
 export const useInvertedIndexList = (collection: string) => {
   const { encoded: encodedCollectionName } = encodeHelper(collection);
-  const { data, ...rest } = useSWR<CollectionsListResponse>(
+  const { data: indexes, ...rest } = useSWR(
     ["/index", `collection=${encodedCollectionName}`],
-    (args: string[]) => {
-      const [path, qs] = args;
+    () => {
       if (collection) {
-        return getApiRouteForCurrentDB().get(path, qs) as any;
+        return getCurrentDB().collection(encodedCollectionName).indexes();
       }
     }
   );
-  const invertedIndexes = data?.body.indexes.filter(indexValue => {
+  const invertedIndexes = indexes?.filter(indexValue => {
     return indexValue.type === "inverted";
-  });
+  }) as InvertedIndex[] | undefined;
   return { indexesList: invertedIndexes, ...rest };
 };

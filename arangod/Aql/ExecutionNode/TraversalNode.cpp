@@ -33,6 +33,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/TraversalExecutor.h"
 #include "Aql/Expression.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -674,7 +675,6 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   std::vector<IndexAccessor> indexAccessors{};
   auto ast = _plan->getAst();
   size_t numEdgeColls = _edgeColls.size();
-  bool onlyEdgeIndexes = false;
 
   auto calculateMemberToUpdate = [&](std::string const& memberString,
                                      std::optional<size_t>& memberToUpdate,
@@ -744,14 +744,19 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
 
+    // use most specific index hint here
+    auto indexHint =
+        hint().getFromNested(dir == TRI_EDGE_IN ? "inbound" : "outbound",
+                             _edgeColls[i]->name(), IndexHint::BaseDepth);
+
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
-        onlyEdgeIndexes);
+        itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
+        /*onlyEdgeIndexes*/ false);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "expected edge index not found");
+                                     "expected index not found for traversal");
     }
 
     std::optional<size_t> memberToUpdate{std::nullopt};
@@ -930,7 +935,8 @@ TraversalNode::getSingleServerBaseProviderOptions(
           opts->collectionToShard(),
           opts->getVertexProjections(),
           opts->getEdgeProjections(),
-          opts->produceVertices()};
+          opts->produceVertices(),
+          opts->useCache()};
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1231,6 +1237,8 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   c.checkConditionsDefined();
+  // validate that we copied index hints correctly
+  TRI_ASSERT(c.hint().isSet() == hint().isSet());
 #endif
 }
 

@@ -27,7 +27,10 @@
 #include "Cluster/Utils/ShardID.h"
 #include "Transaction/CountCache.h"
 #include "VocBase/AccessMode.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/voc-types.h"
+
+#include <unordered_set>
 
 struct TRI_vocbase_t;
 
@@ -37,6 +40,7 @@ class Methods;
 }
 
 class Index;
+class LogicalCollection;
 
 namespace aql {
 
@@ -133,17 +137,16 @@ struct Collection {
 
   /// @brief get the index by its identifier. Will either throw or
   ///        return a valid index. nullptr is impossible.
-  std::shared_ptr<arangodb::Index> indexByIdentifier(
-      std::string const& idxId) const;
+  std::shared_ptr<Index> indexByIdentifier(std::string const& idxId) const;
 
-  std::vector<std::shared_ptr<arangodb::Index>> indexes() const;
+  std::vector<std::shared_ptr<Index>> indexes() const;
 
   /// @brief use the already set collection
   /// Whenever getCollection() is called, _collection must be a non-nullptr or
   /// an assertion will be triggered. In non-maintainer mode an exception will
   /// be thrown. that means getCollection() must not be called on non-existing
   /// collections or views
-  std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
+  std::shared_ptr<LogicalCollection> getCollection() const;
 
   /// @brief whether or not we have a collection object underneath (true for
   /// existing collections, false for non-existing collections and for views).

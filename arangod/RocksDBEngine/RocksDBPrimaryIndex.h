@@ -107,10 +107,10 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       transaction::Methods& trx, aql::AstNode* node,
       aql::Variable const* reference) const override;
 
-  bool supportsStreamInterface(
+  StreamSupportResult supportsStreamInterface(
       IndexStreamOptions const&) const noexcept override;
 
-  static bool checkSupportsStreamInterface(
+  static StreamSupportResult checkSupportsStreamInterface(
       std::vector<std::vector<basics::AttributeName>> const& coveredFields,
       IndexStreamOptions const&) noexcept;
 

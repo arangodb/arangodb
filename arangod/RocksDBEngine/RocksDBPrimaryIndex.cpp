@@ -37,9 +37,6 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-#include "CrashHandler/CrashHandler.h"
-#endif
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -50,6 +47,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -62,8 +60,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
@@ -819,10 +815,6 @@ Result RocksDBPrimaryIndex::update(
       err.appendErrorMessage("; new key: ");
       err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
     });
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f3b56", ERR, Logger::ENGINES) << res.errorMessage();
-    CrashHandler::logBacktrace();
-#endif
     TRI_ASSERT(false) << res.errorMessage();
     return res;
   }
@@ -1434,7 +1426,7 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
 
 std::unique_ptr<AqlIndexStreamIterator> RocksDBPrimaryIndex::streamForCondition(
     transaction::Methods* trx, IndexStreamOptions const& opts) {
-  if (!supportsStreamInterface(opts)) {
+  if (!supportsStreamInterface(opts).hasSupport()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "RocksDBPrimaryIndex streamForCondition was "
                                    "called with unsupported options.");
@@ -1448,7 +1440,7 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBPrimaryIndex::streamForCondition(
   return stream;
 }
 
-bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
+Index::StreamSupportResult RocksDBPrimaryIndex::checkSupportsStreamInterface(
     std::vector<std::vector<basics::AttributeName>> const& coveredFields,
     IndexStreamOptions const& streamOpts) noexcept {
   // we can only project values that are in range
@@ -1457,28 +1449,28 @@ bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
              coveredFields[1][0].name == StaticStrings::IdString);
 
   if (!streamOpts.constantFields.empty()) {
-    return false;
+    return StreamSupportResult::makeUnsupported();
   }
 
   for (auto idx : streamOpts.projectedFields) {
     if (idx != 0) {
-      return false;
+      return StreamSupportResult::makeUnsupported();
     }
   }
 
   // For the primary index, there is only one property set, which is "_key".
   if (streamOpts.usedKeyFields.size() != 1) {
-    return false;
+    return StreamSupportResult::makeUnsupported();
   }
 
   if (streamOpts.usedKeyFields[0] != 0) {
-    return false;
+    return StreamSupportResult::makeUnsupported();
   }
 
-  return true;
+  return StreamSupportResult::makeSupported(true);
 }
 
-bool RocksDBPrimaryIndex::supportsStreamInterface(
+Index::StreamSupportResult RocksDBPrimaryIndex::supportsStreamInterface(
     IndexStreamOptions const& streamOpts) const noexcept {
   return checkSupportsStreamInterface(_coveredFields, streamOpts);
 }

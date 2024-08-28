@@ -1,5 +1,5 @@
-import { Stack } from "@chakra-ui/react";
-import React from "react";
+import { Alert, AlertDescription, AlertIcon, Stack } from "@chakra-ui/react";
+import React, { useEffect } from "react";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { TableControl } from "../../../components/table/TableControl";
 import {
@@ -7,6 +7,7 @@ import {
   DatabaseTableType
 } from "./CollectionsPermissionsTable";
 import { SystemDatabaseWarningModal } from "./SystemDatabaseWarningModal";
+import { useUsername } from "./useFetchDatabasePermissions";
 import {
   TABLE_COLUMNS,
   UserPermissionsContextProvider,
@@ -23,6 +24,12 @@ export const UserPermissionsTable = () => {
 
 const UserPermissionsTableInner = () => {
   const { tableInstance } = useUserPermissionsContext();
+  const { username } = useUsername();
+  useEffect(() => {
+    window.arangoHelper.buildUserSubNav(username, "Permissions");
+  }, [username]);
+
+  const { isManagedUser, isRootUser } = tableInstance.options.meta as any;
 
   return (
     <Stack padding="4">
@@ -32,6 +39,15 @@ const UserPermissionsTableInner = () => {
         table={tableInstance}
         showColumnSelector={false}
       />
+      {isManagedUser ? (
+        <Alert status="error">
+          <AlertIcon />
+          <AlertDescription>
+            This user's permissions are managed by ArangoGraph and cannot be
+            modified in this deployment.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <ReactTable<DatabaseTableType>
         tableWidth="auto"
         table={tableInstance}
@@ -46,7 +62,13 @@ const UserPermissionsTableInner = () => {
           }
         }}
         renderSubComponent={row => {
-          return <CollectionsPermissionsTable row={row} />;
+          return (
+            <CollectionsPermissionsTable
+              row={row}
+              isManagedUser={isManagedUser}
+              isRootUser={isRootUser}
+            />
+          );
         }}
       />
     </Stack>

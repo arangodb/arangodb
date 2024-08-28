@@ -35,6 +35,7 @@
 #include "Aql/ProfileLevel.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Providers/ClusterProvider.h"
@@ -46,6 +47,7 @@
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 
 #include <memory>
@@ -56,8 +58,8 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
-static void parseNodeInput(AstNode const* node, std::string& id,
-                           Variable const*& variable, char const* part) {
+void parseNodeInput(AstNode const* node, std::string& id,
+                    Variable const*& variable, char const* part) {
   switch (node->type) {
     case NODE_TYPE_REFERENCE:
       variable = static_cast<Variable*>(node->getData());
@@ -66,18 +68,20 @@ static void parseNodeInput(AstNode const* node, std::string& id,
     case NODE_TYPE_VALUE:
       if (node->value.type != VALUE_TYPE_STRING) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_PARSE, std::string("invalid ") + part +
-                                       " vertex. Must either be "
-                                       "an _id string or an object with _id.");
+            TRI_ERROR_QUERY_PARSE,
+            absl::StrCat("invalid ", part,
+                         " vertex. Must either be an _id string or an object "
+                         "with _id."));
       }
       variable = nullptr;
       id = node->getString();
       break;
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     std::string("invalid ") + part +
-                                         " vertex. Must either be an "
-                                         "_id string or an object with _id.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          absl::StrCat(
+              "invalid ", part,
+              " vertex. Must either be an _id string or an object with _id."));
   }
 }
 
@@ -176,7 +180,7 @@ EnumeratePathsNode::EnumeratePathsNode(
 EnumeratePathsNode::~EnumeratePathsNode() = default;
 
 EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
-                                       arangodb::velocypack::Slice const& base)
+                                       velocypack::Slice base)
     : GraphNode(plan, base),
       _pathType(arangodb::graph::PathType::Type::KShortestPaths),
       _pathOutVariable(nullptr),
@@ -189,9 +193,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
       _distributeVariable(nullptr) {
   if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
     _pathType = arangodb::graph::PathType::fromString(
-        base.get(StaticStrings::GraphQueryShortestPathType)
-            .copyString()
-            .c_str());
+        base.get(StaticStrings::GraphQueryShortestPathType).stringView());
   }
 
   // Path out variable
@@ -249,7 +251,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   {
     auto list = base.get("globalEdgeConditions");
     if (list.isArray()) {
-      for (auto const& cond : VPackArrayIterator(list)) {
+      for (auto cond : VPackArrayIterator(list)) {
         _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
       }
     }
@@ -258,7 +260,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   {
     auto list = base.get("globalVertexConditions");
     if (list.isArray()) {
-      for (auto const& cond : VPackArrayIterator(list)) {
+      for (auto cond : VPackArrayIterator(list)) {
         _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
       }
     }
@@ -473,13 +475,13 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     SingleServerBaseProviderOptions forwardProviderOptions(
         opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
         opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections(), opts->produceVertices());
+        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache());
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections(),
-        opts->produceVertices());
+        opts->produceVertices(), opts->useCache());
 
     using Provider = SingleServerProvider<SingleServerProviderStep>;
     if (opts->query().queryOptions().getTraversalProfileLevel() ==
@@ -878,7 +880,6 @@ EnumeratePathsNode::buildReverseUsedIndexes() const {
 std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     bool reverse) const {
   size_t numEdgeColls = _edgeColls.size();
-  constexpr bool onlyEdgeIndexes = true;
 
   std::vector<IndexAccessor> indexAccessors;
   indexAccessors.reserve(numEdgeColls);
@@ -901,11 +902,22 @@ std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     // arbitrary value for "number of edges in collection" used here. the
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
+
+    // use most specific index hint here
+    // TODO: this code is prepared to use index hints, but due to the
+    // "onlyEdgeIndexes" flag set to true here, the optimizer will _always_ pick
+    // the edge index for the paths query. we should fix the condition handling
+    // inside path queries so that it can work with arbitrary, multi-field
+    // conditions and thus indexes.
+    auto indexHint = hint().getFromNested(
+        (reverse ? opposite : dir) == TRI_EDGE_IN ? "inbound" : "outbound",
+        _edgeColls[i]->name(), IndexHint::BaseDepth);
+
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
-        onlyEdgeIndexes);
+        itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
+        /*onlyEdgeIndexes*/ true);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");

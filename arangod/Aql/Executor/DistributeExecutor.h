@@ -39,6 +39,8 @@ namespace velocypack {
 class Slice;
 }
 
+class LogicalCollection;
+
 namespace aql {
 
 class AqlItemBlockManager;
@@ -76,7 +78,7 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
 
   /// @brief Cache for the Logical Collection. This way it is not refetched
   /// on every document.
-  std::shared_ptr<arangodb::LogicalCollection> _logCol;
+  std::shared_ptr<LogicalCollection> _logCol;
 
   /// @brief list of collections that should be used
   std::vector<aql::Collection*> _satellites;

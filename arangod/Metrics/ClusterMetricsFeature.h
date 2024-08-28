@@ -42,7 +42,7 @@
 #include "Metrics/Parse.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "Statistics/ServerStatistics.h"
 
 namespace arangodb::metrics {

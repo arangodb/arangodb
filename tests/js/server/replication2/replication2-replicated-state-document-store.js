@@ -1036,8 +1036,9 @@ const replicatedStateSnapshotTransferSuite = function () {
       });
       extraCollections.push(col2);
 
+      const numExtraCollections = 30;
       // For extra fun, create some more collections that are distributed like the first one.
-      for (let counter = 0; counter < 30; ++counter) {
+      for (let counter = 0; counter < numExtraCollections; ++counter) {
         const col = db._create(`${extraCollectionName}-${counter}`, {
           numberOfShards: 1,
           distributeShardsLike: collectionName,
@@ -1185,7 +1186,7 @@ const replicatedStateSnapshotTransferSuite = function () {
         `log contents: ${JSON.stringify(logContents)}`);
 
       // Check all other collections from this group.
-      for (let counter = 0; counter < 10; ++counter) {
+      for (let counter = 0; counter < numExtraCollections; ++counter) {
         const name = `${extraCollectionName}-${counter}`;
         const key = `${testName}-${counter}`;
         const col = db._collection(name);

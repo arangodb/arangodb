@@ -25,6 +25,7 @@
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutionNode/DocumentProducingNode.h"
+#include "Aql/IndexHint.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
@@ -33,6 +34,7 @@
 #include "Transaction/Methods.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -152,13 +154,17 @@ struct BaseOptions {
 
   void setCollectionToShard(std::unordered_map<std::string, ShardID> const&);
 
-  bool produceVertices() const { return _produceVertices; }
+  bool produceVertices() const noexcept { return _produceVertices; }
 
-  bool produceEdges() const { return _produceEdges; }
+  bool produceEdges() const noexcept { return _produceEdges; }
 
-  void setProduceVertices(bool value) { _produceVertices = value; }
+  bool useCache() const noexcept { return _useCache; }
 
-  void setProduceEdges(bool value) { _produceEdges = value; }
+  void setProduceVertices(bool value) noexcept { _produceVertices = value; }
+
+  void setProduceEdges(bool value) noexcept { _produceEdges = value; }
+
+  void setUseCache(bool value) noexcept { _useCache = value; }
 
   transaction::Methods* trx() const;
 
@@ -176,7 +182,7 @@ struct BaseOptions {
 
   /// @brief whether or not an edge collection shall be excluded
   /// this can be overridden in TraverserOptions
-  virtual bool shouldExcludeEdgeCollection(std::string const& name) const {
+  virtual bool shouldExcludeEdgeCollection(std::string const& /*name*/) const {
     return false;
   }
 
@@ -203,7 +209,7 @@ struct BaseOptions {
 
   void setParallelism(size_t p) noexcept { _parallelism = p; }
 
-  size_t parallelism() const { return _parallelism; }
+  size_t parallelism() const noexcept { return _parallelism; }
 
   void isQueryKilledCallback() const;
 
@@ -218,6 +224,10 @@ struct BaseOptions {
   aql::Projections const& getVertexProjections() const;
 
   aql::Projections const& getEdgeProjections() const;
+
+  aql::IndexHint const& hint() const;
+
+  void setHint(aql::IndexHint hint);
 
   aql::Variable const* tmpVar();  // TODO check public
   arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
@@ -250,7 +260,8 @@ struct BaseOptions {
                               std::string const& collectionName,
                               std::string const& attributeName,
                               aql::AstNode* condition, bool onlyEdgeIndexes,
-                              TRI_edge_direction_e direction);
+                              TRI_edge_direction_e direction,
+                              std::optional<uint64_t> depth);
 
   void toVelocyPackBase(VPackBuilder& builder) const;
 
@@ -312,6 +323,10 @@ struct BaseOptions {
   /// query.
   bool _produceEdges{true};
 
+  /// @brief whether or not to use the edge cache or other indexes' caches
+  /// during edge lookups
+  bool _useCache{true};
+
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
 
@@ -322,6 +337,9 @@ struct BaseOptions {
 
   /// @brief Projections used on edge data (monitored)
   aql::Projections _edgeProjections;
+
+  /// @brief user hint regarding which indexes to use
+  aql::IndexHint _hint;
 };
 
 }  // namespace graph

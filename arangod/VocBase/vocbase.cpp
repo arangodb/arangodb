@@ -656,7 +656,11 @@ void TRI_vocbase_t::inventory(
       *this, [&result](LogicalView::ptr const& view) -> bool {
         if (view) {
           result.openObject();
-          view->properties(result, LogicalDataSource::Serialization::Inventory);
+          auto res = view->properties(
+              result, LogicalDataSource::Serialization::Inventory);
+          if (res.fail()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
           result.close();
         }
 
@@ -1471,14 +1475,14 @@ std::string const& TRI_vocbase_t::shardingPrototypeName() const {
       return StaticStrings::UsersCollection;
     case ShardingPrototype::Graphs:
       // Specifically set defaults should win
-      return StaticStrings::GraphCollection;
+      return StaticStrings::GraphsCollection;
     case ShardingPrototype::Undefined:
       if (isSystem()) {
         // The sharding Prototype for system databases is always the users
         return StaticStrings::UsersCollection;
       } else {
         // All others should follow _graphs
-        return StaticStrings::GraphCollection;
+        return StaticStrings::GraphsCollection;
       }
   }
 }

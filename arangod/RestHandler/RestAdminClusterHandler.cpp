@@ -59,6 +59,7 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
+#include "StorageEngine/VPackSortMigration.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -347,6 +348,12 @@ std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 std::string const RestAdminClusterHandler::Rebalance = "rebalance";
 std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
+std::string const RestAdminClusterHandler::VPackSortMigration =
+    "vpackSortMigration";
+std::string const RestAdminClusterHandler::VPackSortMigrationCheck = "check";
+std::string const RestAdminClusterHandler::VPackSortMigrationMigrate =
+    "migrate";
+std::string const RestAdminClusterHandler::VPackSortMigrationStatus = "status";
 
 RestStatus RestAdminClusterHandler::execute() {
   // here we first do a glboal check, which is based on the setting in startup
@@ -433,6 +440,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRebalance();
     } else if (command == Maintenance) {
       return handleDBServerMaintenance(suffixes.at(1));
+    } else if (command == VPackSortMigration) {
+      return waitForFuture(handleVPackSortMigration(suffixes.at(1)));
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command +
@@ -2901,4 +2910,61 @@ RestAdminClusterHandler::collectRebalanceInformation(
   }
 
   return p;
+}
+
+RestAdminClusterHandler::FutureVoid
+RestAdminClusterHandler::handleVPackSortMigration(
+    std::string const& subCommand) {
+  // First we do the authentication: We only allow superuser access, since
+  // this is a critical migration operation:
+  if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "only superusers may run vpack index migration");
+    co_return;
+  }
+
+  // First check methods:
+  if (!((request()->requestType() == rest::RequestType::GET &&
+         subCommand == VPackSortMigrationCheck) ||
+        (request()->requestType() == rest::RequestType::PUT &&
+         subCommand == VPackSortMigrationMigrate) ||
+        (request()->requestType() == rest::RequestType::GET &&
+         subCommand == VPackSortMigrationStatus))) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    co_return;
+  }
+
+  // We behave differently on a coordinator and on a single server,
+  // dbserver or agent.
+  // On a coordinator, we basically implement a trampoline to all dbservers.
+  // On the other instance types, we implement the actual checking and
+  // migration logic. Agents do not have to be checked since they do not
+  // use VPack indexes.
+  VPackBuilder result;
+  Result res;
+  if (!ServerState::instance()->isCoordinator()) {
+    if (request()->requestType() == rest::RequestType::GET) {
+      if (subCommand == VPackSortMigrationCheck) {
+        res = ::analyzeVPackIndexSorting(_vocbase, result);
+      } else {
+        res = ::statusVPackIndexSorting(_vocbase, result);
+      }
+    } else {  // PUT
+      res = ::migrateVPackIndexSorting(_vocbase, result);
+    }
+  } else {
+    // Coordinators from here:
+    fuerte::RestVerb verb = request()->requestType() == rest::RequestType::GET
+                                ? fuerte::RestVerb::Get
+                                : fuerte::RestVerb::Put;
+    res = co_await ::fanOutRequests(_vocbase, verb, subCommand, result);
+  }
+  if (res.fail()) {
+    generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
+                  res.errorMessage());
+  } else {
+    generateOk(rest::ResponseCode::OK, result.slice());
+  }
+  co_return;
 }

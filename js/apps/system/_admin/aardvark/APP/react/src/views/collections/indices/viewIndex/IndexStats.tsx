@@ -1,11 +1,11 @@
 import React from "react";
 import { Flex, Stat, StatLabel, StatNumber } from "@chakra-ui/react";
-import { IndexWithFigures } from "../useFetchCollectionIndices";
+import { Index } from "arangojs/indexes";
 
 export const IndexStats = ({
   foundCollectionIndex
 }: {
-  foundCollectionIndex: IndexWithFigures;
+  foundCollectionIndex: Index;
 }) => {
   const { figures, type } = foundCollectionIndex;
 
