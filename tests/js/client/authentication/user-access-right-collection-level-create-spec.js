@@ -40,7 +40,7 @@ const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
-
+const arango = require('internal').arango;
 let connectionHandle = arango.getConnectionHandle();
 
 const db = require('internal').db;
