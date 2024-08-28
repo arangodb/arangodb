@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add native support for strict ranges for MDI.
+
 * Rebuilt included rclone v1.65.2 with go1.22.6.
 
 * FE-463: Query UI view crashes for empty collections.
