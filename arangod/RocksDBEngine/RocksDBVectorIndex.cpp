@@ -346,30 +346,73 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
 #endif
 }
 
-Index::FilterCosts RocksDBVectorIndex::supportsFilterCondition(
-    transaction::Methods& /*trx*/,
-    std::vector<std::shared_ptr<Index>> const& allIndexes,
-    aql::AstNode const* node, aql::Variable const* reference,
-    size_t itemsInIndex) const {
-  if (node->numMembers() != 1) {
-    return {};
-  }
-  auto const* firstMemeber = node->getMember(0);
-  if (firstMemeber->type == aql::NODE_TYPE_FCALL) {
-    auto const* funcNode =
-        static_cast<aql::Function const*>(firstMemeber->getData());
-
-    if (funcNode->name == "APPROX_NEAR") {
-      auto const* args = firstMemeber->getMember(0);
-      auto const* indexName = args->getMember(0);
-      if (indexName->isValueType(aql::AstNodeValueType::VALUE_TYPE_STRING)) {
-        if (indexName->getStringView() == _name) {
-          return {.supportsCondition = true};
-        }
-      }
+bool RocksDBVectorIndex::checkFunction(
+    std::string_view const functionName) const noexcept {
+  switch (_definition.metric) {
+    case SimilarityMetric::kL1: {
+      return functionName == "APPROX_NEAR_L1";
+    }
+    case SimilarityMetric::kL2: {
+      return functionName == "APPROX_NEAR_L2";
+    }
+    case SimilarityMetric::kCosine: {
+      return functionName == "APPROX_NEAR_COSINE";
     }
   }
-  return {};
+}
+
+Index::SortCosts RocksDBVectorIndex::supportsSortCondition(
+    aql::SortCondition const* sortCondition, aql::Variable const* reference,
+    size_t itemsInIndex) const {
+  TRI_ASSERT(sortCondition != nullptr);
+
+  LOG_DEVEL << __FUNCTION__ << " itemsInIndex: " << itemsInIndex
+            << ", sortCondition numAttributes: "
+            << sortCondition->numAttributes();
+  if (sortCondition->numAttributes() != 1) {
+    return {};
+  }
+
+  [[maybe_unused]] auto const [var, node, asc] = sortCondition->field(0);
+  if (node->type != aql::NODE_TYPE_FCALL) {
+    return {};
+  }
+
+  auto const functionName = aql::functions::getFunctionName(*node);
+  if (!checkFunction(functionName)) {
+    return {};
+  }
+
+  // First must be attribute access and the second a query points
+  auto const* nodeFunctionCallMember = node->getMember(0);
+  TRI_ASSERT(nodeFunctionCallMember->numMembers() == 2);
+
+  auto const* attributeAccess = nodeFunctionCallMember->getMember(0);
+  auto const* queryPoint = nodeFunctionCallMember->getMember(1);
+  if (attributeAccess->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
+      queryPoint->type != aql::NODE_TYPE_ARRAY) {
+    return {};
+  }
+
+  std::pair<aql::Variable const*, std::vector<basics::AttributeName>>
+      attributeData;
+  if (!attributeAccess->isAttributeAccessForVariable(attributeData) ||
+      attributeData.first != reference) {
+    // this access is not referencing this index
+    return {};
+  }
+
+  // Vector index can be on only single field
+  if (attributeData.second.size() != 1) {
+    return {};
+  }
+  for (auto const& [idx, field] : enumerate(this->fields())) {
+    if (attributeData.second != field) {
+      return {};
+    }
+  }
+
+  return {.supportsCondition = true, .coveredAttributes = 1};
 }
 
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
