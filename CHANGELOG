@@ -1,6 +1,8 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* FE-380: prevent crash when redirecting from query view after page reload.
+
 * Updated ArangoDB Starter to v0.18.8 and arangosync to v2.19.8.
 
 * FE-378: fix fields containing spaces during index creation on web UI.
