@@ -68,7 +68,7 @@ function mdiIndexStoredValues() {
       const indexNodes = res.plan.nodes.filter(n => n.type === "IndexNode");
       assertEqual(indexNodes.length, 1);
       const index = indexNodes[0];
-      assertTrue(index.indexCoversProjections, true);
+      assertTrue(index.indexCoversProjections);
       assertEqual(normalize(index.projections), normalize(["z", ["w", "w"], "_id"]));
 
       const result = db._createStatement({query: query.query, bindVars: query.bindVars}).execute().toArray();
@@ -82,7 +82,7 @@ function mdiIndexStoredValues() {
     testWithPostFilter: function () {
       const query = aql`
         FOR d IN ${col}
-          FILTER d.x > 5 && d.y < 7
+          FILTER d.x > 5 && d.y < 7 && d.z[0] > 5
           RETURN [d.w.w, d.z, d._id]
       `;
 
@@ -90,10 +90,10 @@ function mdiIndexStoredValues() {
       const indexNodes = res.plan.nodes.filter(n => n.type === "IndexNode");
       assertEqual(indexNodes.length, 1);
       const index = indexNodes[0];
-      assertTrue(index.indexCoversProjections, true);
+      assertTrue(index.indexCoversProjections);
       assertEqual(normalize(index.projections), normalize(["z", ["w", "w"], "_id"]));
       assertTrue(index.indexCoversFilterProjections, true);
-      assertEqual(normalize(index.filterProjections), normalize(["x", "y"]));
+      assertEqual(normalize(index.filterProjections), normalize(["z"]));
 
       const result = db._createStatement({query: query.query, bindVars: query.bindVars}).execute().toArray();
       assertEqual(result.length, 199); // 5.1 - 6.9

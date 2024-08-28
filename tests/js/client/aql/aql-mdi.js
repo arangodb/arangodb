@@ -273,7 +273,6 @@ function optimizerRuleMdi2dIndexTestSuite() {
       assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-      assertTrue(appliedRules.includes(moveFiltersIntoEnumerate));
       const executeRes = db._query(query.query, query.bindVars);
       const res = executeRes.toArray();
       res.sort();
@@ -414,13 +413,13 @@ function optimizerRuleMdi2dIndexTestSuite() {
           .filter((n) => !["GatherNode", "RemoteNode"].includes(n));
         assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
         assertTrue(appliedRules.includes(useIndexes));
-        assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
+        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
 
         const indexNodes = explainRes.plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(indexNodes.length, 1);
 
         const indexNode = indexNodes[0];
-        assertNotEqual(indexNode.filter, undefined);
+        assertEqual(indexNode.filter, undefined);
 
         const executeRes = db._query(query.query, query.bindVars);
         const res = executeRes.toArray();
@@ -451,18 +450,14 @@ function optimizerRuleMdi2dIndexTestSuite() {
           .map((n) => n.type)
           .filter((n) => !["GatherNode", "RemoteNode"].includes(n));
         assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-        if (queries[i].inRange) {
-          assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
-        } else {
-          assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-        }
+        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
         assertTrue(appliedRules.includes(useIndexes));
 
         const indexNodes = explainRes.plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(indexNodes.length, 1);
 
         const indexNode = indexNodes[0];
-        assertNotEqual(indexNode.filter, undefined);
+        assertEqual(indexNode.filter, undefined);
 
         const executeRes = db._query(query.query, query.bindVars);
         const res = executeRes.toArray();
@@ -493,18 +488,15 @@ function optimizerRuleMdi2dIndexTestSuite() {
           .map((n) => n.type)
           .filter((n) => !["GatherNode", "RemoteNode"].includes(n));
         assertEqual(["SingletonNode", "IndexNode", "ReturnNode"], nodeTypes);
-        if (queries[i].inRange) {
-          assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
-        } else {
-          assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-        }
+
+        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
         assertTrue(appliedRules.includes(useIndexes));
 
         const indexNodes = explainRes.plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(indexNodes.length, 1);
 
         const indexNode = indexNodes[0];
-        assertNotEqual(indexNode.filter, undefined);
+        assertEqual(indexNode.filter, undefined);
 
         const executeRes = db._query(query.query, query.bindVars);
         const res = executeRes.toArray();
