@@ -1516,6 +1516,18 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
       if (auto np = newPlan.find(databaseName); np != newPlan.end()) {
         auto nps = np->second->slice()[0];
         for (auto const& ec : *(stillExistingCollections->second)) {
+          auto leaderShards = [&] {
+            auto groupLeaderName = ec.second.collection->distributeShardsLike();
+
+            if (!groupLeaderName.empty()) {
+              if (auto it = newShards.find(groupLeaderName);
+                  it != newShards.end()) {
+                return it->second;
+              }
+            }
+            return std::shared_ptr<std::vector<ShardID> const>{};
+          }();
+
           auto const& cid = ec.first;
           if (!std::isdigit(cid.front())) {
             continue;
@@ -1525,6 +1537,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
             collectionsPath.emplace_back("shards");
             READ_LOCKER(guard, _planProt.lock);
             TRI_ASSERT(_plan.contains(databaseName));
+            unsigned idx = 0;
             for (auto sh : VPackObjectIterator(_plan.find(databaseName)
                                                    ->second->slice()[0]
                                                    .get(collectionsPath))) {
@@ -1538,6 +1551,16 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
               // not in there, should it be a shard group leader!
               newShardToShardGroupLeader.erase(sId);
               newShardGroups.erase(sId);
+              if (leaderShards != nullptr) {
+                TRI_ASSERT(idx < leaderShards->size());
+                if (auto it =
+                        newShardGroups.find(leaderShards->operator[](idx));
+                    it != newShardGroups.end()) {
+                  // Remove from the collection leaders shard group list
+                  std::erase(*it->second, sId);
+                  idx += 1;
+                }
+              }
             }
             collectionsPath.pop_back();
           }
