@@ -1,6 +1,8 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* FE-380: prevent crash when redirecting from query view after page reload.
+
 * Add API GET /_admin/cluster/vpackSortMigration/status to query the status
   of the vpack sorting migration on dbservers, single servers and
   coordinators.
