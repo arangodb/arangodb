@@ -157,7 +157,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
     // check if we have a connection for that endpoint in our cache
     auto it = _connectionCache.find(id);
     auto iit = _connectionBuilderCache.find(id);
-    if ((*it).second.get() == nullptr) {
+    if (it != _connectionCache.end() && (*it).second.get() == nullptr) {
       _connectionCache.erase(it);
       _connectionBuilderCache.erase(iit);
     } else if (it != _connectionCache.end()) {
