@@ -1552,10 +1552,14 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
               newShardToShardGroupLeader.erase(sId);
               newShardGroups.erase(sId);
               if (leaderShards != nullptr) {
-                // Remove from the collection leaders shard group list
-                auto shard = leaderShards->at(idx);
-                std::erase(*newShardGroups.at(shard), sId);
-                idx += 1;
+                TRI_ASSERT(idx < leaderShards->size());
+                if (auto it =
+                        newShardGroups.find(leaderShards->operator[](idx));
+                    it != newShardGroups.end()) {
+                  // Remove from the collection leaders shard group list
+                  std::erase(*it->second, sId);
+                  idx += 1;
+                }
               }
             }
             collectionsPath.pop_back();
