@@ -1,6 +1,8 @@
 devel
 -----
 
+* Rebuilt included rclone v1.65.2 with go1.22.6.
+
 * FE-463: Query UI view crashes for empty collections.
 
 * FE-462: saved queries view scrollbar is not visible.
@@ -32,7 +34,7 @@ devel
 * FE-422: Permissions of users managed by ArangoGraph are now shown as read-only.
 
 
-3.12.2 (XXXX-XX-XX)
+3.12.2 (2024-08-21)
 -------------------
 
 * Add API GET /_admin/cluster/vpackSortMigration/status to query the status of
