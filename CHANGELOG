@@ -1,6 +1,10 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* Add API GET /_admin/cluster/vpackSortMigration/status to query the status
+  of the vpack sorting migration on dbservers, single servers and
+  coordinators.
+
 * Updated ArangoDB Starter to v0.18.8 and arangosync to v2.19.8.
 
 * FE-378: fix fields containing spaces during index creation on web UI.
