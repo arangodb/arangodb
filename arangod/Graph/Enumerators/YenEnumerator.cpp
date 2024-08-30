@@ -57,7 +57,10 @@ YenEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
                   TwoSidedEnumeratorOptions&& options,
                   PathValidatorOptions validatorOptions,
                   arangodb::ResourceMonitor& resourceMonitor)
-    : _resourceMonitor(resourceMonitor), _isDone(true), _isInitialized(false) {
+    : _arena(resourceMonitor),
+      _resourceMonitor(resourceMonitor),
+      _isDone(true),
+      _isInitialized(false) {
   // Yen's algorithm only ever uses the TwoSidedEnumerator here to find
   // exactly one shortest path:
   options.setOnlyProduceOnePath(true);
@@ -86,6 +89,7 @@ void YenEnumerator<QueueType, PathStoreType, ProviderType,
   _shortestPathEnumerator->clear();
   _shortestPaths.clear();
   _candidatePaths.clear();
+  _arena.clear();
   _isDone = true;
   _isInitialized = false;
 }
@@ -127,9 +131,31 @@ void YenEnumerator<QueueType, PathStoreType, ProviderType,
   _source = source;
   _target = target;
   clear();
-  _shortestPathEnumerator->reset(source, target);
   _isDone = false;
   _isInitialized = true;
+}
+
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+PathResult<ProviderType, typename ProviderType::Step>
+YenEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::toOwned(
+    PathResult<ProviderType, typename ProviderType::Step> const& path) {
+  PathResult<ProviderType, typename ProviderType::Step> copy{
+      path.getSourceProvider(), path.getTargetProvider()};  // empty path
+  size_t l = path.getLength();
+  for (size_t i = 0; i < l + 1; ++i) {
+    typename ProviderType::Step::Vertex v{
+        _arena.toOwned(path.getVertex(i).getID())};
+    copy.appendVertex(v);
+    if (i == l) {
+      break;  // one more vertex than edge
+    }
+    typename ProviderType::Step::Edge e{
+        _arena.toOwned(path.getEdge(i).getID())};
+    copy.appendEdge(e);
+  }
+  copy.addWeight(path.getWeight());
+  return copy;
 }
 
 /**
@@ -166,7 +192,8 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
     LOG_DEVEL << "Found one shortest path:" << result.slice().toJson();
     PathResult<ProviderType, typename ProviderType::Step> const& path =
         _shortestPathEnumerator->getLastPathResult();
-    _shortestPaths.emplace_back(path);  // Copy the path!
+    _shortestPaths.emplace_back(toOwned(path));  // Copy the path with all
+                                                 // its referenced data!
     // When we are called next, we will continue below!
     return true;
   }
@@ -189,8 +216,8 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
     // To avoid finding old shortest paths again, we must forbid every edge,
     // which is a continuation of a previous shortest path which has the
     // same prefix:
-    EdgeSet forbiddenEdges;
-    forbiddenEdges.insert(prevPath.getEdge(prefixLen).getID());
+    auto forbiddenEdges = std::make_unique<EdgeSet>();
+    forbiddenEdges->insert(prevPath.getEdge(prefixLen).getID());
     // This handles the previous one, now do the ones before:
     for (size_t i = 0; i + 1 < _shortestPaths.size(); ++i) {
       // Check if that shortest path has the same prefix:
@@ -204,34 +231,43 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
           }
         }
         if (samePrefix) {
-          forbiddenEdges.insert(_shortestPaths[i].getEdge(prefixLen).getID());
+          forbiddenEdges->insert(_shortestPaths[i].getEdge(prefixLen).getID());
         }
       }
     }
     // And run a shortest path computation from the spur vertex to the sink
     // with forbidden vertices and edges:
     _shortestPathEnumerator->setForbiddenVertices(std::move(forbiddenVertices));
+    _shortestPathEnumerator->setForbiddenEdges(std::move(forbiddenEdges));
 
+    _shortestPathEnumerator->clear();  // needed, otherwise algorithm
+                                       // finished remains!
     _shortestPathEnumerator->reset(spurVertex.getID(), _target);
     VPackBuilder temp;
     if (_shortestPathEnumerator->getNextPath(temp)) {
       LOG_DEVEL << "Found another shortest path:" << temp.slice().toJson();
       PathResult<ProviderType, typename ProviderType::Step> const& path =
           _shortestPathEnumerator->getLastPathResult();
-      auto newPath = std::make_unique<
-          PathResult<ProviderType, typename ProviderType::Step>>(
-          path.getSourceProvider(),
-          path.getTargetProvider());  // empty path
+      PathResult<ProviderType, typename ProviderType::Step> newPath{
+          path.getSourceProvider(), path.getTargetProvider()};  // empty path
       for (size_t i = 0; i < prefixLen; ++i) {
-        newPath->appendVertex(prevPath.getVertex(i));
-        newPath->appendEdge(prevPath.getEdge(i));
+        newPath.appendVertex(prevPath.getVertex(i));
+        newPath.appendEdge(prevPath.getEdge(i));
       }
+      newPath.addWeight(1.0 * prefixLen);
       for (size_t i = 0; i < path.getLength(); ++i) {
-        newPath->appendVertex(path.getVertex(i));
-        newPath->appendEdge(path.getEdge(i));
+        newPath.appendVertex(path.getVertex(i));
+        newPath.appendEdge(path.getEdge(i));
       }
-      newPath->appendVertex(path.getVertex(path.getLength()));
-      _candidatePaths.emplace_back(std::move(newPath));
+      newPath.appendVertex(path.getVertex(path.getLength()));
+      newPath.addWeight(1.0 * path.getLength());
+      // Note that we must copy all vertex and edge data and make them
+      // our own. Otherwise, once the providers are cleared, the references
+      // might no longer be valid!
+      auto copy = std::make_unique<
+          PathResult<ProviderType, typename ProviderType::Step>>(
+          toOwned(newPath));
+      _candidatePaths.emplace_back(std::move(copy));
     }
   }
 
@@ -252,7 +288,7 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
   _shortestPaths.back().toVelocyPack(result);
   _candidatePaths.erase(_candidatePaths.begin() + posBest);
 
-  return false;
+  return true;
 }
 
 /**

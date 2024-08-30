@@ -51,6 +51,82 @@ class HashedStringRef;
 
 namespace graph {
 
+class GraphArena {
+  // This is an object which tracks allocations which are needed to store
+  // vertex and edge data for references we keep to stay valid.
+  static constexpr size_t const BATCH_SIZE = 16384;
+  struct Batch {
+    std::vector<char> buffer;
+    size_t nextFree;
+    Batch(size_t capacity = BATCH_SIZE) : buffer(capacity, 0), nextFree(0) {}
+  };
+  std::vector<Batch> _data;
+  size_t _totalSize;
+  arangodb::ResourceMonitor& _resourceMonitor;
+
+ public:
+  GraphArena(arangodb::ResourceMonitor& resourceMonitor)
+      : _totalSize(0), _resourceMonitor(resourceMonitor) {
+    // Start with at least one buffer and make `_data` never empty!
+    _data.emplace_back();
+    _totalSize += BATCH_SIZE;
+    _resourceMonitor.increaseMemoryUsage(BATCH_SIZE);
+  }
+
+  ~GraphArena() { _resourceMonitor.decreaseMemoryUsage(_totalSize); }
+
+  arangodb::velocypack::HashedStringRef toOwned(
+      arangodb::velocypack::HashedStringRef const& item) {
+    char const* place = makeLocalCopy(item.data(), item.size());
+    return arangodb::velocypack::HashedStringRef(place, item.size());
+  }
+
+  void clear() {
+    _resourceMonitor.decreaseMemoryUsage(_totalSize);
+    _data.clear();
+    _data.emplace_back();
+    _totalSize = BATCH_SIZE;
+    _resourceMonitor.increaseMemoryUsage(BATCH_SIZE);
+  }
+
+  EdgeDocumentToken toOwned(EdgeDocumentToken const& item) {
+    // We know this: On a coordinator, an EdgeDocumentToken is not owning
+    // its allocation, rather it is pointing to a vpack, which others own.
+    // On a DBServer or SingleServer, an EdgeDocumentToken is owning its
+    // allocation, since it only consists of two uint64_t values. This is
+    // why we only act on coordinators here:
+    if (!ServerState::instance()->isCoordinator()) {
+      return item;  // A copy, but this is cheap!
+    }
+    uint8_t const* p = item.vpack();
+    VPackSlice v{p};
+    velocypack::ValueLength s = v.byteSize();
+    auto q = (uint8_t const*)(makeLocalCopy((char const*)p, (size_t)s));
+    return EdgeDocumentToken(VPackSlice{q});
+  }
+
+ private:
+  char* makeLocalCopy(char const* p, size_t s) {
+    auto& batch = _data.back();
+    if (s > batch.buffer.size() - batch.nextFree) {
+      if (s <= BATCH_SIZE) {
+        _data.emplace_back();
+        _totalSize += BATCH_SIZE;
+        _resourceMonitor.increaseMemoryUsage(BATCH_SIZE);
+      } else {
+        _data.emplace_back(s);
+        _totalSize += s;
+        _resourceMonitor.increaseMemoryUsage(s);
+      }
+      batch = _data.back();
+    }
+    char* place = &batch.buffer[batch.nextFree];
+    batch.nextFree += s;
+    memcpy(place, p, s);
+    return place;
+  }
+};
+
 class PathValidatorOptions;
 struct TwoSidedEnumeratorOptions;
 
@@ -114,6 +190,14 @@ class YenEnumerator {
   void reset(VertexRef source, VertexRef target, size_t depth = 0);
 
   /**
+   * For a path, we must transfer vertices and edges, so that we own
+   * the memory they reference. This method copies the necessary data
+   * into our own GraphArena:
+   */
+  PathResult<ProviderType, typename ProviderType::Step> toOwned(
+      PathResult<ProviderType, typename ProviderType::Step> const& path);
+
+  /**
    * @brief Get the next path, if available written into the result build.
    * The given builder will be not be cleared, this function requires a
    * prepared builder to write into.
@@ -146,6 +230,15 @@ class YenEnumerator {
 
  private:
   std::unique_ptr<ShortestPathEnumerator> _shortestPathEnumerator;
+  // We need to store paths here. Note that the template type `ProviderType`
+  // dictates the types for `VertexRef` and `Edge`. `VertexRef` is a
+  // reference not owning its own data, so it can become invalid.
+  // `Edge` is sometimes a value type and sometimes a reference (depending
+  // on the template instantiation). In any case, we must make sure that
+  // the vertices and edges we store here will not become invalid. Therefore,
+  // we copy the data into a place which we own, before we put anything
+  // in here. That is why we keep a GraphArena here.
+  GraphArena _arena;
   std::vector<PathResult<ProviderType, typename ProviderType::Step>>
       _shortestPaths;
   std::vector<
