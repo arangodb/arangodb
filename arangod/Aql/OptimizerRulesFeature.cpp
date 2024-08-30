@@ -836,6 +836,12 @@ involved attributes are covered by inverted indexes.)");
                                         OptimizerRule::Flags::EnterpriseOnly),
                R"(Get the search highlighting offsets as late as possible to
 avoid unnecessary reads.)");
+
+  registerRule("use-vector-index", useVectorIndexRule,
+               OptimizerRule::useVectorIndexForSort,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Apply vector index.)");
+
 #endif
 
   registerRule(
