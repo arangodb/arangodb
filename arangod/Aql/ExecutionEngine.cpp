@@ -28,6 +28,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/BlocksWithClients.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
@@ -46,6 +47,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
+#include "Assertions/ProdAssert.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
@@ -244,9 +246,7 @@ ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
     : _engineId(eId),
       _query(query),
       _itemBlockManager(itemBlockMgr),
-      _sharedState((sqs != nullptr) ? std::move(sqs)
-                                    : std::make_shared<SharedQueryState>(
-                                          query.vocbase().server())),
+      _sharedState(std::move(sqs)),
       _blocks(),
       _root(nullptr),
       _resultRegister(RegisterId::maxRegisterId),
@@ -761,8 +761,24 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     // instantiate the engine on a local server
     EngineId eId =
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;
-    auto retEngine =
-        std::make_unique<ExecutionEngine>(eId, query, mgr, query.sharedState());
+
+    TRI_ASSERT(!ServerState::isCoordinator(role));
+    bool isClusterQuery = dynamic_cast<ClusterQuery*>(&query) != nullptr;
+    std::shared_ptr<SharedQueryState> sharedState;
+    if (isClusterQuery) {
+      ADB_PROD_ASSERT(ServerState::isDBServer(role));
+      ADB_PROD_ASSERT(query.sharedState() == nullptr);
+      sharedState =
+          std::make_shared<SharedQueryState>(query.vocbase().server());
+    } else {
+      ADB_PROD_ASSERT(query.sharedState() != nullptr);
+      sharedState = query.sharedState();
+    }
+    // we have to ensure that each ExecutionEngine has its own SharedQueryState,
+    // because different snippets (engines) can operate concurrently and each
+    // needs to have its own wakeupCallback
+    auto retEngine = std::make_unique<ExecutionEngine>(eId, query, mgr,
+                                                       std::move(sharedState));
 
 #ifdef USE_ENTERPRISE
     query.executionStatsGuard().doUnderLock([&](auto& executionStats) {

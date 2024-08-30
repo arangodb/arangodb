@@ -396,9 +396,33 @@ class Index {
       aql::AstNode const* op, aql::Variable const* reference,
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
 
-  virtual bool supportsStreamInterface(
+  struct StreamSupportResult {
+    bool hasSupport() const noexcept { return _isSupported; }
+
+    bool isUniqueStream() const noexcept {
+      TRI_ASSERT(_isSupported);
+      return _isUniqueStream;
+    }
+
+    static StreamSupportResult makeSupported(bool isUniqueStream) noexcept {
+      StreamSupportResult r;
+      r._isSupported = true;
+      r._isUniqueStream = isUniqueStream;
+      return r;
+    }
+
+    static StreamSupportResult makeUnsupported() noexcept { return {}; }
+
+    StreamSupportResult() = default;
+
+   private:
+    bool _isSupported = false;
+    bool _isUniqueStream = false;
+  };
+
+  virtual StreamSupportResult supportsStreamInterface(
       IndexStreamOptions const&) const noexcept {
-    return false;
+    return StreamSupportResult{};
   }
 
   virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
