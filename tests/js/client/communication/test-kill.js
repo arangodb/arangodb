@@ -154,10 +154,9 @@ try {
 
       let killCode = `
 let queries = require("@arangodb/aql/queries");
-let abort = false;
 queries.current().forEach(function(query) {
-  if (abort || checkStop(true)) {
-    abort = true;
+  if (checkStop(true)) {
+    return false;
   } else try {
     queries.kill(query.id);
 
@@ -187,10 +186,9 @@ if (result.code !== 202) {
 let jobId = result.headers["x-arango-async-id"];
 let id = null;
 while (id === null) {
-console.log('query1')
-  if (checkStop(true)) {
+  if (checkStop(false)) {
     id = null;
-    break;
+    return false;
   }
   result = arango.PUT_RAW("/_api/job/" + encodeURIComponent(jobId), {});
   if (result.code === 410 || result.code === 404) {
@@ -203,9 +201,8 @@ console.log('query1')
   require("internal").sleep(0.1);
 }
 while (id !== null) {
-console.log('query2')
-  if (checkStop(true)) {
-    break;
+  if (checkStop(false)) {
+    return false;
   }
   result = arango.POST_RAW("/_api/cursor/" + encodeURIComponent(id), {});
   if (result.code === 410) {

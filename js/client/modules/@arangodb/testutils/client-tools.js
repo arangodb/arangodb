@@ -344,6 +344,7 @@ function launchInShellBG  (file) {
     'server.database': arango.getDatabaseName(),
     'server.request-timeout': '30',
     'log.foreground-tty': 'false',
+    //'log.level': ['info', 'httpclient=debug', 'V8=debug'],
     'log.output': logFile,
     'javascript.execute': file,
     'server.endpoint': IM.endpoint,
@@ -375,7 +376,9 @@ function launchSnippetInBG (options, snippet, key, cn, single=false) {
     fs.write(file, `
     (function() {
         function checkStop(noJitter){}
-        ${snippet}
+ ////////////////////////////////////////////////////////////////////////////////
+       ${snippet}
+////////////////////////////////////////////////////////////////////////////////
         db['${cn}'].insert({ _key: "${key}", done: true, iterations: 1, b: [{c: [{d: 'qwerty'}]}] });
     })();
     `);
@@ -385,22 +388,44 @@ function launchSnippetInBG (options, snippet, key, cn, single=false) {
   let tries = 0;
   function checkStop(noJitter) {
     tries += 1;
-    if (noJitter || tries % 10 === 0) {
-      if (${options.extremeVerbosity}) {
-        console.log('checking ' +tries)
-      }
-      return db['${cn}'].exists('stop');
-    }
-  }
-  while (true) {
-    if (checkStop(false)) {
-      console.log("exiting");
-      break;
-    }
-    ${snippet}
     if (${options.extremeVerbosity}) {
-      console.log(\`.\${tries} - \${tries%10}\`);
+      console.info(\`checking \${tries} \${noJitter} => \${tries % 10 === 0 || noJitter}\`)
     }
+    if (noJitter || tries % 10 === 0) {
+     
+      let ret = db['${cn}'].exists('stop');
+      if (${options.extremeVerbosity}) {
+       console.info(\`\${JSON.stringify(ret)} ret. \${ret !== false}\`)
+      }
+      return ret !== false;
+    }
+    if (${options.extremeVerbosity}) {
+      console.info('continue')
+    }
+    return false;
+  }
+  try {
+    while (true) {
+      if (checkStop(false)) {
+        console.info("exiting");
+        break;
+      }
+////////////////////////////////////////////////////////////////////////////////
+      function testCode() {
+      ${snippet} ;
+        return true;
+      };
+      if (!testCode()){
+        break;
+      }
+////////////////////////////////////////////////////////////////////////////////
+      if (${options.extremeVerbosity}) {
+        console.info(\`.\${tries} - \${tries%10}\`);
+      }
+    }
+  } catch (ex) {
+     console.error(\`test has thrown: \${ex}\n\${ex.stack}\`);
+     throw ex;
   }
   db['${cn}'].insert({ _key: "${key}", done: true, iterations: tries });
 })();
@@ -449,6 +474,7 @@ function joinBGShells (options, clients, waitFor, cn) {
   }
 
   if (done !== clients.length) {
+    options.cleanup = false;
     throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}`);
   }
 }
