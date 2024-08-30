@@ -12,6 +12,19 @@ namespace arangodb::async_registry {
 
 struct ThreadRegistry;
 
+enum class State {
+  Initialized = 0,
+  Suspended,
+  Resumed,
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, State& x) {
+  return f.enumeration(x).values(State::Initialized, "Initialized",
+                                 State::Suspended, "Suspended", State::Resumed,
+                                 "Resumed");
+}
+
 struct Observables {
   Observables(std::source_location loc) : _where(std::move(loc)) {}
 
@@ -29,6 +42,8 @@ struct PromiseInList : Observables {
 
   std::string thread_name;
   std::thread::id thread_id;
+
+  void* awaiter_id;
 
   PromiseInList* next = nullptr;
   // only needed to remove an item

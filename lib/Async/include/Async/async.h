@@ -7,6 +7,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#include <concepts>
 #include <coroutine>
 #include <atomic>
 #include <stdexcept>
@@ -55,6 +56,27 @@ struct async_promise_base : async_registry::PromiseInList {
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
   }
+  // on co_await'ing a function f with this promise-type, await_transform(f)
+  // is the awaitable
+  auto await_transform(
+      auto original_awaitable,
+      std::source_location loc = std::source_location::current()) noexcept {
+    struct awaitable {
+      auto await_ready() noexcept { return original_awaitable.await_ready(); }
+      auto await_suspend(std::coroutine_handle<> c) noexcept {
+        _promise->awaiter_id = original_awaitable.await_unique_id();
+        // TODO update state
+        return original_awaitable.await_suspend(c);
+      }
+      auto await_resume() {
+        _promise->awaiter_id = nullptr;
+        // TODO update state
+        return original_awaitable.await_resume();
+      }
+      async_promise_base* _promise;
+    };
+    return awaitable{this};
+  }
 
   auto destroy() noexcept -> void override {
     try {
@@ -90,11 +112,18 @@ struct async_promise<void> : async_promise_base<void> {
 };
 
 template<typename T>
+concept Uniquely_identifiable = requires(std::remove_reference_t<T> const a) {
+  { a.await_unique_id() } -> std::convertible_to<void*>;
+  requires noexcept(a.await_unique_id());
+};
+
+template<typename T>
 struct async {
   using promise_type = async_promise<T>;
 
   auto operator co_await() && {
     struct awaitable {
+      void* await_unique_id() const noexcept { return &_handle.promise(); }
       bool await_ready() noexcept {
         return _handle.promise()._continuation.load(
                    std::memory_order_acquire) != nullptr;
