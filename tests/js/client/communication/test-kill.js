@@ -23,138 +23,74 @@
 // /
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
-
+const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
+const isEnterprise = require("internal").isEnterprise();
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
-const versionHas = require("@arangodb/test-helper").versionHas;
 
-let timeout = 60;
+let { debugCanUseFailAt,
+      debugSetFailAt,
+      debugResetRaceControl,
+      debugRemoveFailAt,
+      debugClearFailAt,
+      versionHas
+    } = require('@arangodb/test-helper');
+
+const isCov = versionHas('coverage');
+const {
+  launchSnippetInBG,
+  joinBGShells,
+  cleanupBGShells
+} = require('@arangodb/testutils/client-tools').run;
+
+let IM = global.instanceManager;
+
+let waitFor = 60; //isCov ? 60 * 4 : 60;
 if (versionHas('asan') || versionHas('tsan') || versionHas('coverage')) {
-  timeout *= 10;
+  waitFor *= 10;
 }
+
+
 function KillSuite () {
   'use strict';
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
-  
-  const arangosh = pu.ARANGOSH_BIN;
-
-  assertTrue(fs.isFile(arangosh), "arangosh executable not found!");
 
   let debug = function(text) {
     console.warn(text);
   };
-  
-  let runShell = function(args, prefix) {
-    let options = internal.options();
-    args.push('--javascript.startup-directory');
-    args.push(options['javascript.startup-directory']);
-    for (let o in options['javascript.module-directory']) {
-      args.push('--javascript.module-directory');
-      args.push(options['javascript.module-directory'][o]);
-    }
-
-    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
-    args.push('--server.endpoint');
-    args.push(endpoint);
-    args.push('--server.database');
-    args.push(arango.getDatabaseName());
-    args.push('--server.username');
-    args.push(arango.connectedUser());
-    args.push('--server.password');
-    args.push('');
-    args.push('--log.foreground-tty');
-    args.push('false');
-    args.push('--log.output');
-    args.push('file://' + prefix + '.log');
-
-    let result = internal.executeExternal(arangosh, args, false /*usePipes*/);
-    assertTrue(result.hasOwnProperty('pid'));
-    let status = internal.statusExternal(result.pid);
-    assertEqual(status.status, "RUNNING");
-    return result.pid;
-  };
-
-  let buildCode = function (key, command) {
-    let file = fs.getTempFile() + "-" + key;
-    fs.write(file, `
-(function() {
-  let tries = 0;
-  while (true) {
-    if (++tries % 10 === 0) {
-      if (db['${cn}'].exists('stop')) {
-        break;
-      }
-    }
-    ${command}
-  }
-  db['${cn}'].insert({ _key: "${key}", done: true, iterations: tries });
-})();
-    `);
-
-    let args = ['--javascript.execute', file];
-    let pid = runShell(args, file);
-    debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-    return { key, file, pid }; 
-  };
-
   let runTests = function (tests, duration) {
     assertFalse(db[cn].exists("stop"));
     let clients = [];
     debug("starting " + tests.length + " test clients");
     try {
-      tests.forEach(function(test) {
+      tests.forEach(function (test) {
         let key = test[0];
         let code = test[1];
-        let client = buildCode(key, code);
+        let client = launchSnippetInBG(IM.options, code, key, cn);
         client.done = false;
         client.failed = true; // assume the worst
         clients.push(client);
       });
 
       debug("running test for " + duration + " s...");
-      
-      require('internal').sleep(duration);
-      
+
+      internal.sleep(duration);
+
       debug("stopping all test clients");
 
       // broad cast stop signal
       assertFalse(db[cn].exists("stop"));
       db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
-      let tries = 0;
-      let done = 0;
-      while (++tries < timeout) {
-        clients.forEach(function(client) {
-          if (!client.done) { 
-            let status = internal.statusExternal(client.pid);
-            if (status.status === 'NOT-FOUND' || status.status === 'TERMINATED') {
-              client.done = true;
-            }
-            if (status.status === 'TERMINATED' && status.exit === 0) {
-              client.failed = false;
-            }
-          }
-        });
+      joinBGShells(IM.options, clients, waitFor, cn);
 
-        done = clients.reduce(function(accumulator, currentValue) {
-          return accumulator + (currentValue.done ? 1 : 0);
-        }, 0);
-
-        if (done === clients.length) {
-          break;
-        }
-          
-        require('internal').sleep(0.5);
-      }
-
-      assertEqual(done, clients.length, "not all shells could be joined");
       assertEqual(1 + clients.length, db[cn].count());
       let stats = {};
-      clients.forEach(function(client) {
+      clients.forEach(function (client) {
         let doc = db[cn].document(client.key);
         assertEqual(client.key, doc._key);
         assertTrue(doc.done);
@@ -164,34 +100,7 @@ function KillSuite () {
 
       debug("test run iterations: " + JSON.stringify(stats));
     } finally {
-      clients.forEach(function(client) {
-        try {
-          fs.remove(client.file);
-        } catch (err) {}
-      
-        const logfile = client.file + '.log';
-        if (client.failed) {
-          if (fs.exists(logfile)) {
-            debug("test client with pid " + client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
-          } else {
-            debug("test client with pid " + client.pid + " has failed and did not write a logfile");
-          }
-        }
-        try {
-          fs.remove(logfile);
-        } catch (err) {}
-
-        if (!client.done) {
-          // hard-kill all running instances
-          try {
-            let status = internal.statusExternal(client.pid).status;
-            if (status === 'RUNNING') {
-              debug("forcefully killing test client with pid " + client.pid);
-              internal.killExternal(client.pid, 9 /*SIGKILL*/);
-            }
-          } catch (err) {}
-        }
-      });
+      cleanupBGShells(clients, cn);
     }
   };
 
@@ -200,7 +109,7 @@ function KillSuite () {
     setUp: function () {
       db._drop(cn);
       db._create(cn);
-      
+
       db._drop("UnitTestsTemp");
       let c = db._create("UnitTestsTemp", { numberOfShards: 4 });
       let docs = [];
@@ -221,7 +130,7 @@ function KillSuite () {
     testKillInParallel: function () {
       let queryCode = `
 let ERRORS = require('@arangodb').errors;
-try { 
+try {
   db._query("FOR doc IN UnitTestsTemp RETURN doc").toArray();
 } catch (err) {
   if (err.errorNum !== ERRORS.ERROR_QUERY_KILLED.code) {
@@ -230,10 +139,10 @@ try {
   }
 }
 `;
-      
+
       let queryStreamCode = `
 let ERRORS = require('@arangodb').errors;
-try { 
+try {
   db.UnitTestsTemp.toArray();
 } catch (err) {
   if (err.errorNum !== ERRORS.ERROR_QUERY_KILLED.code) {
@@ -244,11 +153,14 @@ try {
 `;
 
       let killCode = `
-let queries = require("@arangodb/aql/queries"); 
-queries.current().forEach(function(query) { 
-  try { 
-    queries.kill(query.id); 
-  } catch (err) { /* ignore any errors */ } 
+let queries = require("@arangodb/aql/queries");
+queries.current().forEach(function(query) {
+  if (checkStop(true)) {
+    return false;
+  } else try {
+    queries.kill(query.id);
+
+  } catch (err) { /* ignore any errors */ }
 });
 `;
       let tests = [
@@ -261,7 +173,7 @@ queries.current().forEach(function(query) {
       // run the suite for a while...
       runTests(tests, 90);
     },
-    
+
     testCancelInParallel: function () {
       let queryCode = `
 let result = arango.POST_RAW("/_api/cursor", {
@@ -274,6 +186,10 @@ if (result.code !== 202) {
 let jobId = result.headers["x-arango-async-id"];
 let id = null;
 while (id === null) {
+  if (checkStop(false)) {
+    id = null;
+    return false;
+  }
   result = arango.PUT_RAW("/_api/job/" + encodeURIComponent(jobId), {});
   if (result.code === 410 || result.code === 404) {
     // killed
@@ -285,6 +201,9 @@ while (id === null) {
   require("internal").sleep(0.1);
 }
 while (id !== null) {
+  if (checkStop(false)) {
+    return false;
+  }
   result = arango.POST_RAW("/_api/cursor/" + encodeURIComponent(id), {});
   if (result.code === 410) {
     // killed
@@ -299,7 +218,7 @@ while (id !== null) {
   }
 }
 `;
-      
+
       let cancelCode = `
   let result = arango.GET("/_api/job/pending");
   result.forEach(function(jobId) {
@@ -316,20 +235,20 @@ while (id !== null) {
 
       // run the suite for a while...
       runTests(tests, 30);
-  
+
       // finally kill off all remaining pending jobs
       let tries = 0;
-      while (tries++ < timeout) {
+      while (tries++ < waitFor) {
         let result = arango.GET("/_api/job/pending");
         if (result.length === 0) {
           break;
         }
         result.forEach(function(jobId) {
-          arango.DELETE("/_api/job/" + encodeURIComponent(jobId), {}); 
+          arango.DELETE("/_api/job/" + encodeURIComponent(jobId), {});
         });
         require("internal").sleep(1.0);
       }
-      
+
       // sleep again to make sure every killed query had a chance to finish
       require("internal").sleep(3.0);
       let killed = 0;
@@ -345,7 +264,7 @@ while (id !== null) {
         throw "got " + killed + " queries in state killed, but expected none!";
       }
     },
-    
+
   };
 }
 

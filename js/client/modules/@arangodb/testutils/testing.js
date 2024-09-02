@@ -59,6 +59,7 @@ let optionsDocumentation = [
   '   - `setInterruptable`: register special break handler',
   '',
   '   - `forceJson`: don\'t use vpack - for better debugability',
+  '   - `forceNoCompress`: don\'t zip encoding - for better debugability',
   '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
   '   - `vst`: attempt to connect to the SUT via vst',
   '   - `http2`: attempt to connect to the SUT via http2',
@@ -85,6 +86,7 @@ const optionsDefaults = {
   'extremeVerbosity': false,
   'force': true,
   'forceJson': false,
+  'forceNoCompress': false,
   'password': '',
   'protocol': 'tcp',
   'replication': false,
@@ -510,7 +512,9 @@ function unitTest (cases, options) {
   }
 
   arango.forceJson(options.forceJson);
-
+  if (options.forceNoCompress) {
+    arango.compressTransfer(false);
+  }
   if ((cases.length === 1) && cases[0] === 'auto') {
     return autoTest(options);
   } else {
