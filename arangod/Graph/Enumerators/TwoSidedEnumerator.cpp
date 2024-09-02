@@ -183,7 +183,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
     futureEnds.waitAndGet();
     // Notes for the future:
-    // Vertices are now fetched. Thnink about other less-blocking and batch-wise
+    // Vertices are now fetched. Think about other less-blocking and batch-wise
     // fetching (e.g. re-fetch at some later point).
     // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in
     // fetch as fetched. This works, but we might create a batch limit here in
