@@ -285,7 +285,7 @@ class agencyMgr {
         this.moreIsAlreadyRunning()) {
       return;
     }
-    let count = isArm ? 75 : 25;
+    let count = (isArm || this.options.isInstrumented) ? 75 : 25;
     while (count > 0) {
       let haveConfig = 0;
       let haveLeader = 0;
