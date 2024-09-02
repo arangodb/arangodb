@@ -190,11 +190,13 @@ template class PathValidatorTracer<PathValidator<
         ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
     VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
+#if 0
 template class PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
     ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
     PathStoreTracer<PathStore<
         ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
     VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+#endif
 
 template class PathValidatorTracer<PathValidator<
     SingleServerProvider<SingleServerProviderStep>,
@@ -243,11 +245,13 @@ template class PathValidatorTracer<PathValidator<
         SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
     VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
+#if 0
 template class PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
     ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
     PathStoreTracer<PathStore<ProviderTracer<
         SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
     VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+#endif
 
 template class PathValidatorTracer<PathValidator<
     SingleServerProvider<enterprise::SmartGraphStep>,

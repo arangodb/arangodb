@@ -326,7 +326,7 @@ template class ::arangodb::graph::YenEnumerator<
     ::arangodb::graph::PathValidatorTabooWrapper<
         ::arangodb::graph::PathValidator<
             SingleServerProvider<SingleServerProviderStep>,
-            PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
+            PathStore<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL,
             EdgeUniquenessLevel::PATH>>>;
 
 template class ::arangodb::graph::YenEnumerator<
@@ -342,7 +342,7 @@ template class ::arangodb::graph::YenEnumerator<
                 SingleServerProvider<SingleServerProviderStep>>,
             ::arangodb::graph::PathStoreTracer<
                 ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-            VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
 // ClusterProvider Section:
 
@@ -353,7 +353,7 @@ template class ::arangodb::graph::YenEnumerator<
     ::arangodb::graph::PathValidatorTabooWrapper<
         ::arangodb::graph::PathValidator<ClusterProvider<ClusterProviderStep>,
                                          PathStore<ClusterProviderStep>,
-                                         VertexUniquenessLevel::PATH,
+                                         VertexUniquenessLevel::GLOBAL,
                                          EdgeUniquenessLevel::PATH>>>;
 
 template class ::arangodb::graph::YenEnumerator<
@@ -368,4 +368,4 @@ template class ::arangodb::graph::YenEnumerator<
                 ClusterProvider<ClusterProviderStep>>,
             ::arangodb::graph::PathStoreTracer<
                 ::arangodb::graph::PathStore<ClusterProviderStep>>,
-            VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;

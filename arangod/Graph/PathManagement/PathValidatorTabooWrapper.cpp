@@ -136,50 +136,50 @@ using SmartGraphStep = ::arangodb::graph::enterprise::SmartGraphStep;
 template class PathValidatorTabooWrapper<PathValidator<
     SingleServerProvider<SingleServerProviderStep>,
     PathStore<SingleServerProvider<SingleServerProviderStep>::Step>,
-    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 template class PathValidatorTabooWrapper<PathValidator<
     ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
     PathStoreTracer<PathStore<
         ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
-    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 #ifdef USE_ENTERPRISE
 template class PathValidatorTabooWrapper<PathValidator<
     SingleServerProvider<enterprise::SmartGraphStep>,
     PathStore<SingleServerProvider<enterprise::SmartGraphStep>::Step>,
-    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 template class PathValidatorTabooWrapper<PathValidator<
     ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
     PathStoreTracer<PathStore<ProviderTracer<
         SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
-    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 #endif
 
 /* ClusterProvider Section */
 template class PathValidatorTabooWrapper<
     PathValidator<ClusterProvider<ClusterProviderStep>,
                   PathStore<ClusterProvider<ClusterProviderStep>::Step>,
-                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 template class PathValidatorTabooWrapper<PathValidator<
     ProviderTracer<ClusterProvider<ClusterProviderStep>>,
     PathStoreTracer<
         PathStore<ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>,
-    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 #ifdef USE_ENTERPRISE
 template class PathValidatorTabooWrapper<PathValidator<
     enterprise::SmartGraphProvider<ClusterProviderStep>,
     PathStore<enterprise::SmartGraphProvider<ClusterProviderStep>::Step>,
-    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 template class PathValidatorTabooWrapper<PathValidator<
     ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
     PathStoreTracer<PathStore<ProviderTracer<
         enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>>,
-    VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 #endif
 
 }  // namespace arangodb::graph
