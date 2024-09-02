@@ -44,8 +44,8 @@ byte_string operator"" _bs(const char* str, std::size_t len);
 byte_string operator"" _bss(const char* str, std::size_t len);
 
 auto interleave(std::vector<byte_string> const& vec) -> byte_string;
-auto transpose(byte_string_view bs, std::size_t dimensions)
-    -> std::vector<byte_string>;
+auto transpose(byte_string_view bs,
+               std::size_t dimensions) -> std::vector<byte_string>;
 
 struct alignas(32) CompareResult {
   static constexpr auto max = std::numeric_limits<std::size_t>::max();
@@ -59,8 +59,8 @@ struct alignas(32) CompareResult {
 std::ostream& operator<<(std::ostream& ostream, CompareResult const& string);
 
 auto compareWithBox(byte_string_view cur, byte_string_view min,
-                    byte_string_view max, std::size_t dimensions)
-    -> std::vector<CompareResult>;
+                    byte_string_view max,
+                    std::size_t dimensions) -> std::vector<CompareResult>;
 void compareWithBoxInto(byte_string_view cur, byte_string_view min,
                         byte_string_view max, std::size_t dimensions,
                         std::vector<CompareResult>& result);
@@ -174,5 +174,6 @@ std::ostream& operator<<(std::ostream& os, struct floating_point const& fp);
 
 std::ostream& operator<<(std::ostream& ostream,
                          arangodb::zkd::byte_string const& string);
-std::ostream& operator<<(std::ostream& ostream,
-                         arangodb::zkd::byte_string_view string);  // namespace arangodb::zkd
+std::ostream& operator<<(
+    std::ostream& ostream,
+    arangodb::zkd::byte_string_view string);  // namespace arangodb::zkd

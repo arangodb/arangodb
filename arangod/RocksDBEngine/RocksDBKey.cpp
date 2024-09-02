@@ -151,22 +151,6 @@ void RocksDBKey::constructMdiIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
-                                           zkd::byte_string_view value,
-                                           LocalDocumentId documentId) {
-  _type = RocksDBEntryType::VectorVPackIndexValue;
-  size_t keyLength =
-      sizeof(uint64_t) + value.size() + sizeof(LocalDocumentId::BaseType);
-  _buffer->clear();
-  _buffer->reserve(keyLength);
-  uint64ToPersistent(*_buffer, indexId);
-  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
-                             value.size()};
-  _buffer->append(sv.data(), sv.size());
-  uint64ToPersistent(*_buffer, documentId.id());
-  TRI_ASSERT(_buffer->size() == keyLength);
-}
-
-void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
                                            std::size_t listNumber) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
   // Key contains: indexId(uint64_t) + listNumber(size_t)

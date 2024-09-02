@@ -196,12 +196,6 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for vector index
   //////////////////////////////////////////////////////////////////////////////
-  void constructVectorIndexValue(uint64_t objectId, zkd::byte_string_view value,
-                                 LocalDocumentId documentId);
-
-  void constructVectorIndexValue(uint64_t objectId,
-                                 zkd::byte_string_view value);
-
   void constructVectorIndexValue(uint64_t indexId, std::size_t listNumber);
 
   void constructVectorIndexValue(uint64_t indexId, std::size_t listNumber,
@@ -325,9 +319,6 @@ class RocksDBKey {
   static zkd::byte_string_view mdiUniqueIndexCurveValue(
       rocksdb::Slice const& slice);
   static std::size_t vectorVPackIndexListValue(const rocksdb::Slice& slice);
-
-  static zkd::byte_string_view vectorVPackIndexValue(
-      const rocksdb::Slice& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts log index from key
