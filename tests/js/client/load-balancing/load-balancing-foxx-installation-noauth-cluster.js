@@ -75,6 +75,7 @@ function sendRequest(method, endpoint, body, usePrimary) {
     console.error(`Exception processing ${method} ${endpoint}`, err.stack);
     return {};
   }
+  assertTrue(res.hasOwnProperty('body'), JSON.stringify(res));
   let resultBody = res.body;
   if (typeof resultBody === "string") {
     resultBody = JSON.parse(resultBody);
