@@ -36,9 +36,11 @@ let { getEndpointById,
       debugSetFailAt,
       debugClearFailAt,
       getChecksum,
-      getMetric
+      getMetric,
+      versionHas
     } = require('@arangodb/test-helper');
-  
+const isCov = versionHas('coverage');
+
 const cn = 'UnitTestsReplication';
   
 let getBatch = (ep) => {
@@ -71,7 +73,8 @@ function assertInSync(leader, follower, shardId) {
   let leaderEqual = false;
   let followerEqual = false;
   let tries = 0;
-  while (++tries < 300) {
+  const maxTries = isCov ? 600 : 300;
+  while (++tries < maxTries) {
     let batchId = getBatch(leader);
     let result = getTree(leader, batchId, shardId);
     deleteBatch(leader, batchId);

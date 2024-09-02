@@ -55,6 +55,7 @@ class sanHandler {
     this.backup = {};
   }
   detectLogfiles(rootDir, tmpDir) {
+    this.tmpDir = tmpDir;
     if (this.enabled) {
       if (containsDoubleByte(rootDir)) {
         rootDir = tmpDir;
@@ -72,7 +73,7 @@ class sanHandler {
     }
   }
   getSanOptions() {
-    let subProcesEnv = [];
+    let subProcesEnv = [`TMPDIR=${this.tmpDir}`];
     if (this.enabled) {
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
