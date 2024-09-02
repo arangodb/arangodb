@@ -72,8 +72,8 @@ class sanHandler {
       }
     }
   }
-  getSanOptions(subProcesEnv) {
-    subProcesEnv.push([`TMPDIR=${this.tmpDir}`]);
+  getSanOptions() {
+    let subProcesEnv = [`TMPDIR=${this.tmpDir}`];
     if (this.enabled) {
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
