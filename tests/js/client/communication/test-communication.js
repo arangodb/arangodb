@@ -596,6 +596,7 @@ function GenericAqlSetupPathSuite(type) {
     },
 
     tearDown: function () {
+      IM.debugClearFailAt();
       deactivateShardLockingFailure();
       db[twoShardColName].truncate({ compact: false });
       db[cn].truncate({ compact: false });
