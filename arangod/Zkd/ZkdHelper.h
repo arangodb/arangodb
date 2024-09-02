@@ -31,9 +31,17 @@
 #include <string>
 #include <vector>
 
-#include "Utils/ByteString.h"
-
 namespace arangodb::zkd {
+
+inline static std::byte operator"" _b(unsigned long long b) {
+  return std::byte{(unsigned char)b};
+}
+
+using byte_string = std::basic_string<std::byte>;
+using byte_string_view = std::basic_string_view<std::byte>;
+
+byte_string operator"" _bs(const char* str, std::size_t len);
+byte_string operator"" _bss(const char* str, std::size_t len);
 
 auto interleave(std::vector<byte_string> const& vec) -> byte_string;
 auto transpose(byte_string_view bs, std::size_t dimensions)
@@ -64,7 +72,7 @@ auto getNextZValue(byte_string_view cur, byte_string_view min,
     -> std::optional<byte_string>;
 
 template<typename T>
-auto to_byte_string_fixed_length(T) -> byte_string;
+auto to_byte_string_fixed_length(T) -> zkd::byte_string;
 template<typename T>
 auto from_byte_string_fixed_length(byte_string_view) -> T;
 template<>
@@ -163,3 +171,8 @@ auto construct_double(floating_point const& fp) -> double;
 std::ostream& operator<<(std::ostream& os, struct floating_point const& fp);
 
 }  // namespace arangodb::zkd
+
+std::ostream& operator<<(std::ostream& ostream,
+                         arangodb::zkd::byte_string const& string);
+std::ostream& operator<<(std::ostream& ostream,
+                         arangodb::zkd::byte_string_view string);  // namespace arangodb::zkd

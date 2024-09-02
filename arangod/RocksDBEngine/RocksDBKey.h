@@ -29,7 +29,7 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
-#include "Utils/ByteString.h"
+#include "Zkd/ZkdHelper.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -185,21 +185,22 @@ class RocksDBKey {
   /// @brief Create a fully-specified key for mdi
   //////////////////////////////////////////////////////////////////////////////
   void constructMdiIndexValue(uint64_t objectId, velocypack::Slice prefix,
-                              const byte_string& value);
+                              const zkd::byte_string& value);
   void constructMdiIndexValue(uint64_t objectId, velocypack::Slice prefix,
-                              const byte_string& value,
+                              const zkd::byte_string& value,
                               LocalDocumentId documentId);
-  void constructMdiIndexValue(uint64_t objectId, const byte_string& value);
-  void constructMdiIndexValue(uint64_t objectId, const byte_string& value,
+  void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value);
+  void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value,
                               LocalDocumentId documentId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for vector index
   //////////////////////////////////////////////////////////////////////////////
-  void constructVectorIndexValue(uint64_t objectId, byte_string_view value,
+  void constructVectorIndexValue(uint64_t objectId, zkd::byte_string_view value,
                                  LocalDocumentId documentId);
 
-  void constructVectorIndexValue(uint64_t objectId, byte_string_view value);
+  void constructVectorIndexValue(uint64_t objectId,
+                                 zkd::byte_string_view value);
 
   void constructVectorIndexValue(uint64_t indexId, std::size_t listNumber);
 
@@ -316,14 +317,17 @@ class RocksDBKey {
   /// @brief Extracts the mdi value
   ///
   /// May be called only on mdi values
-  static byte_string_view mdiVPackIndexCurveValue(rocksdb::Slice const& slice);
-  static byte_string_view mdiUniqueVPackIndexCurveValue(
+  static zkd::byte_string_view mdiVPackIndexCurveValue(
       rocksdb::Slice const& slice);
-  static byte_string_view mdiIndexCurveValue(rocksdb::Slice const& slice);
-  static byte_string_view mdiUniqueIndexCurveValue(rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(
+      rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiIndexCurveValue(rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiUniqueIndexCurveValue(
+      rocksdb::Slice const& slice);
   static std::size_t vectorVPackIndexListValue(const rocksdb::Slice& slice);
 
-  static byte_string_view vectorVPackIndexValue(const rocksdb::Slice& slice);
+  static zkd::byte_string_view vectorVPackIndexValue(
+      const rocksdb::Slice& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts log index from key
@@ -386,13 +390,14 @@ class RocksDBKey {
   static std::string_view primaryKey(char const* data, size_t size);
   static std::string_view vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
-  static byte_string_view mdiIndexCurveValue(char const* data, size_t size);
-  static byte_string_view mdiUniqueIndexCurveValue(char const* data,
-                                                   size_t size);
-  static byte_string_view mdiVPackIndexCurveValue(char const* data,
+  static zkd::byte_string_view mdiIndexCurveValue(char const* data,
                                                   size_t size);
-  static byte_string_view mdiUniqueVPackIndexCurveValue(char const* data,
+  static zkd::byte_string_view mdiUniqueIndexCurveValue(char const* data,
                                                         size_t size);
+  static zkd::byte_string_view mdiVPackIndexCurveValue(char const* data,
+                                                       size_t size);
+  static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(char const* data,
+                                                             size_t size);
   static std::size_t vectorVPackIndexListValue(char const* data, size_t size);
 
  private:

@@ -4,7 +4,6 @@ add_library(arango_utils STATIC
   OperationOptions.cpp
   SupportInfoBuilder.cpp
   UrlHelper.cpp
-  ByteString.cpp
 )
 
 if (NOT USE_ENTERPRISE)
