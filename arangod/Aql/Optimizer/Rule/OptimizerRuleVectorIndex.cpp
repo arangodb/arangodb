@@ -44,11 +44,12 @@ using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 std::unique_ptr<Condition> buildVectorCondition(
-    std::unique_ptr<ExecutionPlan>& plan) {
+    std::unique_ptr<ExecutionPlan>& plan, AstNode const* functionCallNode) {
   Ast* ast = plan->getAst();
   auto cond = std::make_unique<Condition>(ast);
+  cond->andCombine(functionCallNode);
+  cond->normalize();
 
-  cond->normalize(plan.get());
   return cond;
 }
 
@@ -67,38 +68,43 @@ bool checkAqlFunction(std::string_view const functionName,
   }
 }
 
-bool isSortNodeValid(auto const* sortNode, std::unique_ptr<ExecutionPlan>& plan,
-                     FullVectorIndexDefinition const& definition,
-                     Variable const* enumerateNodeOutVar) {
+AstNode const* isSortNodeValid(auto const* sortNode,
+                               std::unique_ptr<ExecutionPlan>& plan,
+                               FullVectorIndexDefinition const& definition,
+                               Variable const* enumerateNodeOutVar) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
   // simple
   if (sortFields.size() != 1) {
-    return false;
+    return nullptr;
   }
   auto const& sortField = sortFields[0];
+  // Cannot be descending
+  if (!sortField.ascending) {
+    return nullptr;
+  }
 
   // Check if SORT node contains APPROX function
   auto const* executionNode = plan->getVarSetBy(sortField.var->id);
   if (executionNode == nullptr || executionNode->getType() != EN::CALCULATION) {
-    return false;
+    return nullptr;
   }
   auto const* calculationNode =
       ExecutionNode::castTo<CalculationNode const*>(executionNode);
   auto const* calculationNodeExpression = calculationNode->expression();
   if (calculationNodeExpression == nullptr) {
-    return false;
+    return nullptr;
   }
   AstNode const* calculationNodeExpressionNode =
       calculationNodeExpression->node();
   if (calculationNodeExpressionNode == nullptr ||
       calculationNodeExpressionNode->type != AstNodeType::NODE_TYPE_FCALL) {
-    return false;
+    return nullptr;
   }
   if (auto const functionName =
           aql::functions::getFunctionName(*calculationNodeExpressionNode);
       !checkAqlFunction(functionName, definition)) {
-    return false;
+    return nullptr;
   }
 
   // Check if APPROX function parameter is on indexed field
@@ -111,17 +117,15 @@ bool isSortNodeValid(auto const* sortNode, std::unique_ptr<ExecutionPlan>& plan,
   if (approxFunctionParam == nullptr ||
       !approxFunctionParam->isAttributeAccessForVariable(attributeAccessResult,
                                                          false)) {
-    LOG_DEVEL << __FUNCTION__ << ":" << __LINE__;
-    return false;
+    return nullptr;
   }
   // if variable whose attributes are being accessed is not the same as
   // indexed, we cannot apply the rule
   if (attributeAccessResult.first != enumerateNodeOutVar) {
-    LOG_DEVEL << __FUNCTION__ << ":" << __LINE__;
-    return false;
+    return nullptr;
   }
 
-  return true;
+  return calculationNodeExpressionNode;
 }
 
 void arangodb::aql::useVectorIndexRule(Optimizer* opt,
@@ -168,8 +172,10 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     if (vectorIndex == nullptr) {
       continue;
     }
-    if (!isSortNodeValid(sortNode, plan, vectorIndex->getDefinition(),
-                         enumerateColNode->outVariable())) {
+    auto const* functionCallNode =
+        isSortNodeValid(sortNode, plan, vectorIndex->getDefinition(),
+                        enumerateColNode->outVariable());
+    if (functionCallNode == nullptr) {
       continue;
     }
     LOG_DEVEL << "SORT CHECK PASSED";
@@ -184,10 +190,12 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
     auto const* limitNode =
         ExecutionNode::castTo<LimitNode const*>(maybeLimitNode);
-    if (limitNode->offset() != 0) {
+    // Offset cannot be handled, and there must be a limit which means topK
+    if (limitNode->offset() != 0 || limitNode->limit() == 0) {
       continue;
     }
-    LOG_DEVEL << "LIMIT CHECK PASSED";
+
+    LOG_DEVEL << "LIMIT CHECK PASSED topK are " << limitNode->limit();
     // auto const topK = limitNode->limit();
     //  now we have a sequence of ENUMERATE_COLLECTION -> SORT -> LIMIT
 
@@ -195,8 +203,9 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     IndexIteratorOptions opts;
     opts.sorted = true;
     opts.ascending = true;
-    opts.limit = 5;
-    std::unique_ptr<Condition> condition = buildVectorCondition(plan);
+    opts.limit = limitNode->limit();
+    std::unique_ptr<Condition> condition =
+        buildVectorCondition(plan, functionCallNode);
     LOG_DEVEL << "CREATING INDEX NODE";
     auto indexNode = plan->createNode<IndexNode>(
         plan.get(), plan->nextId(), enumerateColNode->collection(),
