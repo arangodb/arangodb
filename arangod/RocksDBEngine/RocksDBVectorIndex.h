@@ -79,12 +79,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _definition;
   }
 
-  bool checkFunction(std::string_view const functionName) const noexcept;
-
-  SortCosts supportsSortCondition(aql::SortCondition const* sortCondition,
-                                  aql::Variable const* reference,
-                                  size_t itemsInIndex) const override;
-
   aql::AstNode* specializeCondition(
       transaction::Methods& trx, aql::AstNode* condition,
       aql::Variable const* reference) const override;

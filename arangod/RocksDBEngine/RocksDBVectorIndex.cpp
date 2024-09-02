@@ -28,9 +28,11 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
+#include "Aql/SortCondition.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Containers/Enumerate.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -346,75 +348,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
 #endif
 }
 
-bool RocksDBVectorIndex::checkFunction(
-    std::string_view const functionName) const noexcept {
-  switch (_definition.metric) {
-    case SimilarityMetric::kL1: {
-      return functionName == "APPROX_NEAR_L1";
-    }
-    case SimilarityMetric::kL2: {
-      return functionName == "APPROX_NEAR_L2";
-    }
-    case SimilarityMetric::kCosine: {
-      return functionName == "APPROX_NEAR_COSINE";
-    }
-  }
-}
-
-Index::SortCosts RocksDBVectorIndex::supportsSortCondition(
-    aql::SortCondition const* sortCondition, aql::Variable const* reference,
-    size_t itemsInIndex) const {
-  TRI_ASSERT(sortCondition != nullptr);
-
-  LOG_DEVEL << __FUNCTION__ << " itemsInIndex: " << itemsInIndex
-            << ", sortCondition numAttributes: "
-            << sortCondition->numAttributes();
-  if (sortCondition->numAttributes() != 1) {
-    return {};
-  }
-
-  [[maybe_unused]] auto const [var, node, asc] = sortCondition->field(0);
-  if (node->type != aql::NODE_TYPE_FCALL) {
-    return {};
-  }
-
-  auto const functionName = aql::functions::getFunctionName(*node);
-  if (!checkFunction(functionName)) {
-    return {};
-  }
-
-  // First must be attribute access and the second a query points
-  auto const* nodeFunctionCallMember = node->getMember(0);
-  TRI_ASSERT(nodeFunctionCallMember->numMembers() == 2);
-
-  auto const* attributeAccess = nodeFunctionCallMember->getMember(0);
-  auto const* queryPoint = nodeFunctionCallMember->getMember(1);
-  if (attributeAccess->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
-      queryPoint->type != aql::NODE_TYPE_ARRAY) {
-    return {};
-  }
-
-  std::pair<aql::Variable const*, std::vector<basics::AttributeName>>
-      attributeData;
-  if (!attributeAccess->isAttributeAccessForVariable(attributeData) ||
-      attributeData.first != reference) {
-    // this access is not referencing this index
-    return {};
-  }
-
-  // Vector index can be on only single field
-  if (attributeData.second.size() != 1) {
-    return {};
-  }
-  for (auto const& [idx, field] : enumerate(this->fields())) {
-    if (attributeData.second != field) {
-      return {};
-    }
-  }
-
-  return {.supportsCondition = true, .coveredAttributes = 1};
-}
-
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                                       rocksdb::Slice upper,
                                       RocksDBMethods* methods) {
@@ -425,7 +358,6 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   flatIndex.replace_invlists(&ril, false);
 
   std::vector<float> trainingData;
-
   std::size_t counter{0};
   while (counter < 50000 && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
@@ -476,29 +408,29 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
-  node = node->getMember(0);
-  TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
-  auto const* funcNode = static_cast<aql::Function const*>(node->getData());
+  TRI_ASSERT(node->numMembers() == 1);
 
-  TRI_ASSERT(funcNode->name == "APPROX_NEAR");
+  auto const* functionCallNode = node->getMember(0);
+  TRI_ASSERT(functionCallNode->type == aql::NODE_TYPE_FCALL);
 
-  auto const* functionCallParams = node->getMember(0);
-  TRI_ASSERT(functionCallParams->numMembers() == 3);
+  auto const* functionCallParams = functionCallNode->getMember(0);
+  TRI_ASSERT(functionCallParams->numMembers() == 2);
   TRI_ASSERT(functionCallParams->type == aql::NODE_TYPE_ARRAY);
 
-  auto const* rhs = functionCallParams->getMember(1);
+  auto const* queryPoint = functionCallParams->getMember(1);
 
-  std::vector<float> input;
-  if (rhs->numMembers() != static_cast<std::size_t>(_definition.dimensions)) {
+  if (queryPoint->numMembers() !=
+      static_cast<std::size_t>(_definition.dimensions)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
         fmt::format(
             "vector length must be of size {}, same as index dimensions!",
             _definition.dimensions));
   }
-  input.reserve(rhs->numMembers());
-  for (size_t i = 0; i < rhs->numMembers(); ++i) {
-    auto const vectorField = rhs->getMember(i);
+  std::vector<float> input;
+  input.reserve(queryPoint->numMembers());
+  for (size_t i = 0; i < queryPoint->numMembers(); ++i) {
+    auto const vectorField = queryPoint->getMember(i);
     if (!vectorField->isNumericValue()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
                                      "vector field must be numeric value");
@@ -512,7 +444,8 @@ std::unique_ptr<IndexIterator> RocksDBVectorIndex::iteratorForCondition(
     input.push_back(dv);
   }
 
-  auto const topK = functionCallParams->getMember(2)->getIntValue();
+  // TODO should IndexIteratorOptions be used
+  auto const topK = opts.limit;
 
   return std::make_unique<RocksDBVectorIndexIterator>(
       &_collection, trx, std::move(input), readOwnWrites, _quantizer,
