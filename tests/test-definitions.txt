@@ -9,7 +9,7 @@ arangobench,permissions,paths_server,version single name=single_server_only_part
 
 
 # Single Server Replication Tests
-replication_fuzz priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_fuzz priority=500 parallelity=4 size=small single -- --extraArgs:log.level replication=trace
 replication_ongoing priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_ongoing_frompresent parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_ongoing_global priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
@@ -156,5 +156,5 @@ wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
 communication full priority=1000 parallelity=2 single
 communication_ssl full priority=1000 parallelity=2 single
 
-communication full priority=1000 parallelity=5 cluster
-communication_ssl full priority=1000 parallelity=5 cluster
+communication full priority=1000 parallelity=6 cluster
+communication_ssl full priority=1000 parallelity=6 cluster
