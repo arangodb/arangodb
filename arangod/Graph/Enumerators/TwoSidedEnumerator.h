@@ -46,7 +46,7 @@ concept HasForbidden = requires(T t) {
 };
 
 namespace aql {
-class TraversalStats;
+  class TraversalStats;
 }
 
 namespace velocypack {
@@ -125,9 +125,7 @@ class TwoSidedEnumerator {
       _validator.setForbiddenEdges(std::move(forbidden));
     };
 
-   private:
-    auto clearProvider() -> void;
-
+   private : auto clearProvider() -> void;
    private:
     // Fast path, to test if we find a connecting vertex between left and right.
     Shell _shell{};
@@ -240,8 +238,7 @@ class TwoSidedEnumerator {
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
- private:
-  [[nodiscard]] auto searchDone() const -> bool;
+ private : [[nodiscard]] auto searchDone() const -> bool;
   auto startNextDepth() -> void;
 
   // Ensure that we have fetched all vertices
