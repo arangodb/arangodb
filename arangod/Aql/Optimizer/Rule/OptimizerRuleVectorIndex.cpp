@@ -131,7 +131,6 @@ AstNode const* isSortNodeValid(auto const* sortNode,
 void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
-  LOG_DEVEL << __FUNCTION__ << " START";
   bool modified{false};
 
   containers::SmallVector<ExecutionNode*, 8> nodes;
@@ -178,10 +177,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     if (functionCallNode == nullptr) {
       continue;
     }
-    LOG_DEVEL << "SORT CHECK PASSED";
-    /*    for (const auto& elem : sortFields) {*/
-    /*LOG_DEVEL << "ELEM " << elem.toString();*/
-    /*}*/
 
     // Check LIMIT NODE
     auto const* maybeLimitNode = sortNode->getFirstParent();
@@ -194,9 +189,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     if (limitNode->offset() != 0 || limitNode->limit() == 0) {
       continue;
     }
-
-    LOG_DEVEL << "LIMIT CHECK PASSED topK are " << limitNode->limit();
-    // auto const topK = limitNode->limit();
     //  now we have a sequence of ENUMERATE_COLLECTION -> SORT -> LIMIT
 
     // replace ENUMERATE_COLLECTION with INDEX if possible
@@ -206,7 +198,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     opts.limit = limitNode->limit();
     std::unique_ptr<Condition> condition =
         buildVectorCondition(plan, functionCallNode);
-    LOG_DEVEL << "CREATING INDEX NODE";
     auto indexNode = plan->createNode<IndexNode>(
         plan.get(), plan->nextId(), enumerateColNode->collection(),
         enumerateColNode->outVariable(),

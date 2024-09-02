@@ -334,7 +334,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   TRI_ASSERT(input.size() == static_cast<std::size_t>(_definition.dimensions));
 
   if (input.size() != static_cast<std::size_t>(_definition.dimensions)) {
-    // TODO Find better error code
     return {TRI_ERROR_BAD_PARAMETER,
             "input vector does not have correct dimensions"};
   }
@@ -367,8 +366,11 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
     VPackSlice value = accessDocumentPath(doc, _fields[0]);
     if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
-      // TODO Handle this
-      // return {TRI_ERROR_BAD_PARAMETER, res.error()};
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+          fmt::format(
+              "vector length must be of size {}, same as index dimensions!",
+              _definition.dimensions));
     }
     TRI_ASSERT(input.size() ==
                static_cast<std::size_t>(_definition.dimensions));
@@ -393,11 +395,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& options) {
 #ifdef USE_ENTERPRISE
-  // TODO
-  /*return processDocument(doc, documentId, [this, &methods](auto const& key)
-   * {*/
-  /*return methods->Delete(this->_cf, key);*/
-  /*});*/
+  // TODO Handle remove
   return Result(TRI_ERROR_ONLY_ENTERPRISE);
 #else
   return Result(TRI_ERROR_ONLY_ENTERPRISE);
