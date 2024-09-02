@@ -587,7 +587,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     inventoryLocker.unlock();
 
     // prepare index for insertion, e.g. vector index needs to be trained
-    buildIdx->prepareIndex2();
+    buildIdx->beforeCreate();
 
     // Step 4. fill index
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(

@@ -370,7 +370,7 @@ static Result fillIndex(
   return res;
 }
 
-void RocksDBBuilderIndex::prepareIndex2() {
+void RocksDBBuilderIndex::beforeCreate() {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(_wrapped.get() != nullptr);
   rocksdb::Snapshot const* snap = nullptr;
