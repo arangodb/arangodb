@@ -30,24 +30,14 @@
 
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
+#include "Graph/Types/ForbiddenVertices.h"
 
 #include <set>
 
 namespace arangodb {
 
-using VertexRef = arangodb::velocypack::HashedStringRef;
-using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
-                                                std::equal_to<VertexRef>>;
-
-template<typename T>
-concept HasForbidden = requires(T t) {
-  {
-    t.setForbiddenVertices(std::make_unique<VertexSet>())
-    } -> std::same_as<void>;
-};
-
 namespace aql {
-  class TraversalStats;
+class TraversalStats;
 }
 
 namespace velocypack {

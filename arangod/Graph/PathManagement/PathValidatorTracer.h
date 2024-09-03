@@ -26,6 +26,7 @@
 #include <velocypack/HashedStringRef.h>
 #include "Containers/HashSet.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
+#include "Graph/Types/ForbiddenVertices.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Helpers/TraceEntry.h"
@@ -46,9 +47,15 @@ template<class PathValidatorImplementation>
 class PathValidatorTracer {
  public:
   using VertexRef = arangodb::velocypack::HashedStringRef;
+  using VertexSet =
+      arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                    std::equal_to<VertexRef>>;
   using Provider = typename PathValidatorImplementation::ProviderImpl;
   using Step = typename Provider::Step;
   using PathStore = typename PathValidatorImplementation::PathStoreImpl;
+  using Edge = typename Step::EdgeType;
+  using EdgeSet =
+      arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>;
 
   PathValidatorTracer(Provider& provider, PathStore& store,
                       PathValidatorOptions opts);
@@ -77,8 +84,19 @@ class PathValidatorTracer {
   void unpreparePruneContext();
   void unpreparePostFilterContext();
 
- private:
-  PathValidatorImplementation _impl;
+  auto setForbiddenVertices(std::unique_ptr<VertexSet> forbidden)
+      -> void requires HasForbidden<PathValidatorImplementation> {
+    auto copy = std::make_unique<VertexSet>(*forbidden);
+    _impl.setForbiddenVertices(std::move(copy));
+  };
+
+  auto setForbiddenEdges(std::unique_ptr<EdgeSet> forbidden)
+      -> void requires HasForbidden<PathValidatorImplementation> {
+    auto copy = std::make_unique<EdgeSet>(*forbidden);
+    _impl.setForbiddenEdges(std::move(copy));
+  };
+
+ private : PathValidatorImplementation _impl;
   // Mapping MethodName => Statistics
   // We make this mutable to not violate the captured API
   mutable containers::FlatHashMap<std::string, TraceEntry> _stats;

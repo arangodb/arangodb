@@ -133,8 +133,7 @@ struct TwoSidedEnumeratorOptions;
 template<class ProviderType, class Step>
 class PathResult;
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidatorType>
+template<class ProviderType, class EnumeratorType>
 class YenEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
@@ -148,12 +147,6 @@ class YenEnumerator {
       arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>;
 
   using GraphOptions = arangodb::graph::TwoSidedEnumeratorOptions;
-
-  // This is also in algorithm-aliases.h, but we must not include this here,
-  // since it also contains aliases for YenEnumerator!
-  using ShortestPathEnumerator =
-      TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                         PathValidatorType>;
 
  public:
   YenEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider,
@@ -229,7 +222,7 @@ class YenEnumerator {
   auto stealStats() -> aql::TraversalStats;
 
  private:
-  std::unique_ptr<ShortestPathEnumerator> _shortestPathEnumerator;
+  std::unique_ptr<EnumeratorType> _shortestPathEnumerator;
   // We need to store paths here. Note that the template type `ProviderType`
   // dictates the types for `VertexRef` and `Edge`. `VertexRef` is a
   // reference not owning its own data, so it can become invalid.

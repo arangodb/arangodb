@@ -27,9 +27,9 @@
 #include "Assertions/Assert.h"
 #include "Basics/ResourceUsage.h"
 #include "Containers/HashSet.h"
-#include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
+#include "Graph/Types/ForbiddenVertices.h"
 #include "Containers/FlatHashMap.h"
 
 #include <limits>
@@ -207,9 +207,17 @@ class WeightedTwoSidedEnumerator {
 
     auto getDiameter() const noexcept -> double { return _diameter; }
 
-   private:
-    auto clearProvider() -> void;
+    auto setForbiddenVertices(std::unique_ptr<VertexSet> forbidden)
+        -> void requires HasForbidden<PathValidatorType> {
+      _validator.setForbiddenVertices(std::move(forbidden));
+    };
 
+    auto setForbiddenEdges(std::unique_ptr<EdgeSet> forbidden)
+        -> void requires HasForbidden<PathValidatorType> {
+      _validator.setForbiddenEdges(std::move(forbidden));
+    };
+
+   private : auto clearProvider() -> void;
    private:
     // TODO: Double check if we really need the monitor here. Currently unused.
     arangodb::ResourceMonitor& _resourceMonitor;

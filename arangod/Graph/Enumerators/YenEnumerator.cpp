@@ -48,14 +48,11 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-YenEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
-    YenEnumerator(ProviderType&& forwardProvider,
-                  ProviderType&& backwardProvider,
-                  TwoSidedEnumeratorOptions&& options,
-                  PathValidatorOptions validatorOptions,
-                  arangodb::ResourceMonitor& resourceMonitor)
+template<class ProviderType, class EnumeratorType>
+YenEnumerator<ProviderType, EnumeratorType>::YenEnumerator(
+    ProviderType&& forwardProvider, ProviderType&& backwardProvider,
+    TwoSidedEnumeratorOptions&& options, PathValidatorOptions validatorOptions,
+    arangodb::ResourceMonitor& resourceMonitor)
     : _arena(resourceMonitor),
       _resourceMonitor(resourceMonitor),
       _isDone(true),
@@ -64,27 +61,21 @@ YenEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   // exactly one shortest path:
   options.setOnlyProduceOnePath(true);
   options.setPathType(PathType::Type::ShortestPath);
-  _shortestPathEnumerator = std::make_unique<ShortestPathEnumerator>(
+  _shortestPathEnumerator = std::make_unique<EnumeratorType>(
       std::move(forwardProvider), std::move(backwardProvider),
       std::move(options), std::move(validatorOptions), resourceMonitor);
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-YenEnumerator<QueueType, PathStoreType, ProviderType,
-              PathValidator>::~YenEnumerator() {}
+template<class ProviderType, class EnumeratorType>
+YenEnumerator<ProviderType, EnumeratorType>::~YenEnumerator() {}
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto YenEnumerator<QueueType, PathStoreType, ProviderType,
-                   PathValidator>::destroyEngines() -> void {
+template<class ProviderType, class EnumeratorType>
+auto YenEnumerator<ProviderType, EnumeratorType>::destroyEngines() -> void {
   _shortestPathEnumerator->destroyEngines();
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void YenEnumerator<QueueType, PathStoreType, ProviderType,
-                   PathValidator>::clear() {
+template<class ProviderType, class EnumeratorType>
+void YenEnumerator<ProviderType, EnumeratorType>::clear() {
   _shortestPathEnumerator->clear();
   _shortestPaths.clear();
   _candidatePaths.clear();
@@ -99,10 +90,8 @@ void YenEnumerator<QueueType, PathStoreType, ProviderType,
  * @return true There will be no further path.
  * @return false There is a chance that there is more data available.
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool YenEnumerator<QueueType, PathStoreType, ProviderType,
-                   PathValidator>::isDone() const {
+template<class ProviderType, class EnumeratorType>
+bool YenEnumerator<ProviderType, EnumeratorType>::isDone() const {
   // This is more subtle than first meets the eye: If we are not yet
   // initialized, we must return `true`.
   // This is necessary such that the EnumeratePathsExecutor works. Once
@@ -122,11 +111,10 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
  * @param source The source vertex to start the paths
  * @param target The target vertex to end the paths
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-void YenEnumerator<QueueType, PathStoreType, ProviderType,
-                   PathValidator>::reset(VertexRef source, VertexRef target,
-                                         size_t depth) {
+template<class ProviderType, class EnumeratorType>
+void YenEnumerator<ProviderType, EnumeratorType>::reset(VertexRef source,
+                                                        VertexRef target,
+                                                        size_t depth) {
   _source = source;
   _target = target;
   clear();
@@ -134,10 +122,9 @@ void YenEnumerator<QueueType, PathStoreType, ProviderType,
   _isInitialized = true;
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
+template<class ProviderType, class EnumeratorType>
 PathResult<ProviderType, typename ProviderType::Step>
-YenEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::toOwned(
+YenEnumerator<ProviderType, EnumeratorType>::toOwned(
     PathResult<ProviderType, typename ProviderType::Step> const& path) {
   PathResult<ProviderType, typename ProviderType::Step> copy{
       path.getSourceProvider(), path.getTargetProvider()};  // empty path
@@ -170,10 +157,9 @@ YenEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::toOwned(
  * @return true Found and written a path, result is modified.
  * @return false No path found, result has not been changed.
  */
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool YenEnumerator<QueueType, PathStoreType, ProviderType,
-                   PathValidator>::getNextPath(VPackBuilder& result) {
+template<class ProviderType, class EnumeratorType>
+bool YenEnumerator<ProviderType, EnumeratorType>::getNextPath(
+    VPackBuilder& result) {
   if (!_isInitialized) {
     return false;
   }
@@ -189,7 +175,8 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
       return false;
     }
     LOG_DEVEL << "Found one shortest path:" << result.slice().toJson();
-    PathResult<ProviderType, typename ProviderType::Step> const& path =
+    auto const& path =
+        // PathResult<ProviderType, typename ProviderType::Step> const& path =
         _shortestPathEnumerator->getLastPathResult();
     _shortestPaths.emplace_back(toOwned(path));  // Copy the path with all
                                                  // its referenced data!
@@ -262,7 +249,6 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
         newPath.addWeight(weight);
       }
       newPath.appendVertex(path.getVertex(path.getLength()));
-      newPath.addWeight(1.0 * path.getLength());
       // Note that we must copy all vertex and edge data and make them
       // our own. Otherwise, once the providers are cleared, the references
       // might no longer be valid!
@@ -300,74 +286,53 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
  * @return false No path found.
  */
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool YenEnumerator<QueueType, PathStoreType, ProviderType,
-                   PathValidator>::skipPath() {
+template<class ProviderType, class EnumeratorType>
+bool YenEnumerator<ProviderType, EnumeratorType>::skipPath() {
   VPackBuilder builder;
   // TODO, we might be able to improve this by not producing the result:
   return getNextPath(builder);
 }
 
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto YenEnumerator<QueueType, PathStoreType, ProviderType,
-                   PathValidator>::stealStats() -> aql::TraversalStats {
+template<class ProviderType, class EnumeratorType>
+auto YenEnumerator<ProviderType, EnumeratorType>::stealStats()
+    -> aql::TraversalStats {
   return _shortestPathEnumerator->stealStats();
 }
 
 // Explicit instantiations:
 
 // SingleServerProvider Section:
-using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+
+using SingleProvider = SingleServerProvider<SingleServerProviderStep>;
 
 template class ::arangodb::graph::YenEnumerator<
-    ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>,
-    SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<
-            SingleServerProvider<SingleServerProviderStep>,
-            PathStore<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL,
-            EdgeUniquenessLevel::PATH>>>;
+    SingleProvider, ShortestPathEnumeratorForYen<SingleProvider>>;
 
 template class ::arangodb::graph::YenEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<
-            ::arangodb::graph::ProviderTracer<
-                SingleServerProvider<SingleServerProviderStep>>,
-            ::arangodb::graph::PathStoreTracer<
-                ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+    ProviderTracer<SingleProvider>,
+    TracedShortestPathEnumeratorForYen<SingleProvider>>;
+
+template class ::arangodb::graph::YenEnumerator<
+    SingleProvider, WeightedShortestPathEnumeratorForYen<SingleProvider>>;
+
+template class ::arangodb::graph::YenEnumerator<
+    ProviderTracer<SingleProvider>,
+    TracedWeightedShortestPathEnumeratorForYen<SingleProvider>>;
 
 // ClusterProvider Section:
 
-template class ::arangodb::graph::YenEnumerator<
-    ::arangodb::graph::FifoQueue<ClusterProviderStep>,
-    ::arangodb::graph::PathStore<ClusterProviderStep>,
-    ClusterProvider<ClusterProviderStep>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<ClusterProvider<ClusterProviderStep>,
-                                         PathStore<ClusterProviderStep>,
-                                         VertexUniquenessLevel::GLOBAL,
-                                         EdgeUniquenessLevel::PATH>>>;
+using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
 template class ::arangodb::graph::YenEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProviderStep>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<
-            ::arangodb::graph::ProviderTracer<
-                ClusterProvider<ClusterProviderStep>>,
-            ::arangodb::graph::PathStoreTracer<
-                ::arangodb::graph::PathStore<ClusterProviderStep>>,
-            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+    ClustProvider, ShortestPathEnumeratorForYen<ClustProvider>>;
+
+template class ::arangodb::graph::YenEnumerator<
+    ProviderTracer<ClustProvider>,
+    TracedShortestPathEnumeratorForYen<ClustProvider>>;
+
+template class ::arangodb::graph::YenEnumerator<
+    ClustProvider, WeightedShortestPathEnumeratorForYen<ClustProvider>>;
+
+template class ::arangodb::graph::YenEnumerator<
+    ProviderTracer<ClustProvider>,
+    TracedWeightedShortestPathEnumeratorForYen<ClustProvider>>;

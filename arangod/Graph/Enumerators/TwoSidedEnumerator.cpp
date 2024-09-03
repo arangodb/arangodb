@@ -48,8 +48,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 
-using namespace arangodb;
-using namespace arangodb::graph;
+namespace arangodb::graph {
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -622,197 +621,114 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+using SingleProvider = SingleServerProvider<SingleServerProviderStep>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>,
-    SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathValidator<
-        SingleServerProvider<SingleServerProviderStep>,
-        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-        EdgeUniquenessLevel::PATH>>;
+// TwoSidedEnumeratorWithProvider<SingleProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<SingleServerProviderStep>, PathStore<SingleServerProviderStep>,
+    SingleProvider,
+    PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>,
-    SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathValidator<
-        SingleServerProvider<SingleServerProviderStep>,
-        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL,
-        EdgeUniquenessLevel::PATH>>;
+// ShortestPathEnumerator<SingleProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<SingleServerProviderStep>, PathStore<SingleServerProviderStep>,
+    SingleProvider,
+    PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
-#if 0
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>,
-    SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<
-            SingleServerProvider<SingleServerProviderStep>,
-            PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-            EdgeUniquenessLevel::PATH>>>;
-#endif
+// ShortestPathEnumeratorForYen<SingleProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<SingleServerProviderStep>, PathStore<SingleServerProviderStep>,
+    SingleProvider,
+    PathValidatorTabooWrapper<PathValidator<
+        SingleProvider, PathStore<SingleServerProviderStep>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>,
-    SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<
-            SingleServerProvider<SingleServerProviderStep>,
-            PathStore<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL,
-            EdgeUniquenessLevel::PATH>>>;
+// TracedTwoSidedEnumeratorWithProvider<SingleProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<SingleServerProviderStep>>,
+    PathStoreTracer<PathStore<SingleServerProviderStep>>,
+    ProviderTracer<SingleProvider>,
+    PathValidatorTracer<
+        PathValidator<ProviderTracer<SingleProvider>,
+                      PathStoreTracer<PathStore<SingleServerProviderStep>>,
+                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<
-            SingleServerProvider<SingleServerProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+// TracedShortestPathEnumerator<SingleProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<SingleServerProviderStep>>,
+    PathStoreTracer<PathStore<SingleServerProviderStep>>,
+    ProviderTracer<SingleProvider>,
+    PathValidatorTracer<PathValidator<
+        ProviderTracer<SingleProvider>,
+        PathStoreTracer<PathStore<SingleServerProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<
-            SingleServerProvider<SingleServerProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-#if 0
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<
-            ::arangodb::graph::ProviderTracer<
-                SingleServerProvider<SingleServerProviderStep>>,
-            ::arangodb::graph::PathStoreTracer<
-                ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-            VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
-#endif
-
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<
-            ::arangodb::graph::ProviderTracer<
-                SingleServerProvider<SingleServerProviderStep>>,
-            ::arangodb::graph::PathStoreTracer<
-                ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+// TracedShortestPathEnumeratorForYen<SingleProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<SingleServerProviderStep>>,
+    PathStoreTracer<PathStore<SingleServerProviderStep>>,
+    ProviderTracer<SingleProvider>,
+    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
+        ProviderTracer<SingleProvider>,
+        PathStoreTracer<PathStore<SingleServerProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
 
 /* ClusterProvider Section */
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>,
-    ::arangodb::graph::PathStore<ClusterProviderStep>,
-    ClusterProvider<ClusterProviderStep>,
-    ::arangodb::graph::PathValidator<
-        ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>,
-    ::arangodb::graph::PathStore<ClusterProviderStep>,
-    ClusterProvider<ClusterProviderStep>,
-    ::arangodb::graph::PathValidator<
-        ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+// TwoSidedEnumeratorWithProvider<ClustProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    ClustProvider,
+    PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-#if 0
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>,
-    ::arangodb::graph::PathStore<ClusterProviderStep>,
-    ClusterProvider<ClusterProviderStep>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<ClusterProvider<ClusterProviderStep>,
-                                         PathStore<ClusterProviderStep>,
-                                         VertexUniquenessLevel::PATH,
-                                         EdgeUniquenessLevel::PATH>>>;
-#endif
+// ShortestPathEnumerator<ClustProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    ClustProvider,
+    PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>,
-    ::arangodb::graph::PathStore<ClusterProviderStep>,
-    ClusterProvider<ClusterProviderStep>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<ClusterProvider<ClusterProviderStep>,
-                                         PathStore<ClusterProviderStep>,
-                                         VertexUniquenessLevel::GLOBAL,
-                                         EdgeUniquenessLevel::PATH>>>;
+// ShortestPathEnumeratorForYen<ClustProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    ClustProvider,
+    PathValidatorTabooWrapper<PathValidator<
+        ClustProvider, PathStore<ClusterProviderStep>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProviderStep>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+// TracedTwoSidedEnumeratorWithProvider<ClustProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ClusterProviderStep>>,
+    ProviderTracer<ClustProvider>,
+    PathValidatorTracer<
+        PathValidator<ProviderTracer<ClustProvider>,
+                      PathStoreTracer<PathStore<ClusterProviderStep>>,
+                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProviderStep>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+// TracedShortestPathEnumerator<ClustProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ClusterProviderStep>>,
+    ProviderTracer<ClustProvider>,
+    PathValidatorTracer<PathValidator<
+        ProviderTracer<ClustProvider>,
+        PathStoreTracer<PathStore<ClusterProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
-#if 0
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProviderStep>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<
-            ::arangodb::graph::ProviderTracer<
-                ClusterProvider<ClusterProviderStep>>,
-            ::arangodb::graph::PathStoreTracer<
-                ::arangodb::graph::PathStore<ClusterProviderStep>>,
-            VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
-#endif
+// TracedShortestPathEnumeratorForYen<ClustProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ClusterProviderStep>>,
+    ProviderTracer<ClustProvider>,
+    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
+        ProviderTracer<ClustProvider>,
+        PathStoreTracer<PathStore<ClusterProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProviderStep>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathValidatorTabooWrapper<
-        ::arangodb::graph::PathValidator<
-            ::arangodb::graph::ProviderTracer<
-                ClusterProvider<ClusterProviderStep>>,
-            ::arangodb::graph::PathStoreTracer<
-                ::arangodb::graph::PathStore<ClusterProviderStep>>,
-            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+}  // namespace arangodb::graph
