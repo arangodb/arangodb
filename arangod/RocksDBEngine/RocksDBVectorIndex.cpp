@@ -32,7 +32,6 @@
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
-#include "Containers/Enumerate.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -52,6 +51,17 @@
 #include "faiss/MetricType.h"
 
 namespace arangodb {
+
+faiss::IndexIVFFlat createFaissIndex(auto& quantitizer,
+                                     auto& vectorDefinition) {
+  return std::visit(
+      [&](auto&& quant) {
+        return faiss::IndexIVFFlat(
+            &quant, vectorDefinition.dimensions, vectorDefinition.nLists,
+            metricToFaissMetric(vectorDefinition.metric));
+      },
+      quantitizer);
+}
 
 // This assertion must hold for faiss idx_t to be used
 static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
@@ -185,14 +195,13 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
                              transaction::Methods* trx,
                              std::vector<float>&& input,
                              ReadOwnWrites readOwnWrites,
-                             faiss::IndexFlatL2& quantitizer,
+                             Quantitizer& quantitizer,
                              FullVectorIndexDefinition& indexDefinition,
                              RocksDBVectorIndex* index,
                              rocksdb::ColumnFamilyHandle* cf, std::size_t topK)
       : IndexIterator(collection, trx, readOwnWrites),
         _ids(topK, -1),
-        _flatIndex(&quantitizer, indexDefinition.dimensions,
-                   indexDefinition.nLists),
+        _flatIndex(createFaissIndex(quantitizer, indexDefinition)),
         _ril(index, _collection, trx, nullptr, cf, indexDefinition.nLists,
              _flatIndex.code_size),
         _input(input),
@@ -259,6 +268,18 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
   std::size_t _topK;
 };
 
+faiss::MetricType metricToFaissMetric(const SimilarityMetric metric) {
+  switch (metric) {
+    case SimilarityMetric::kL1:
+      return faiss::MetricType::METRIC_L1;
+    case SimilarityMetric::kL2:
+      return faiss::MetricType::METRIC_L2;
+    case SimilarityMetric::kCosine:
+      // This case has to be handled later on as well
+      return faiss::MetricType::METRIC_INNER_PRODUCT;
+  }
+}
+
 RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                        arangodb::velocypack::Slice info)
     : RocksDBIndex(iid, coll, info,
@@ -271,12 +292,29 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
 
-  _quantizer = faiss::IndexFlatL2(_definition.dimensions);
+  _quantizer = std::invoke(
+      [&vectorDefinition =
+           _definition]() -> std::variant<faiss::IndexFlat, faiss::IndexFlatL2,
+                                          faiss::IndexFlatIP> {
+        switch (vectorDefinition.metric) {
+          case arangodb::SimilarityMetric::kCosine:
+            return {faiss::IndexFlatIP(vectorDefinition.dimensions)};
+          case arangodb::SimilarityMetric::kL1:
+            return {faiss::IndexFlat(vectorDefinition.dimensions,
+                                     faiss::MetricType::METRIC_L1)};
+          case arangodb::SimilarityMetric::kL2:
+            return {faiss::IndexFlatL2(vectorDefinition.dimensions)};
+        }
+      });
   if (_definition.trainedData) {
-    _quantizer.code_size = _definition.trainedData->codeSize;
-    _quantizer.ntotal = _definition.trainedData->numberOfCodes;
-    _quantizer.codes = _definition.trainedData->codeData;
-    _quantizer.is_trained = true;
+    std::visit(
+        [&trainedData = _definition.trainedData](auto&& quant) {
+          quant.code_size = trainedData->codeSize;
+          quant.ntotal = trainedData->numberOfCodes;
+          quant.codes = trainedData->codeData;
+          quant.is_trained = true;
+        },
+        _quantizer);
   }
 }
 
@@ -319,8 +357,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   bool performChecks) {
 #ifdef USE_ENTERPRISE
   TRI_ASSERT(_fields.size() == 1);
-  faiss::IndexIVFFlat flatIndex(&_quantizer, _definition.dimensions,
-                                _definition.nLists);
+  auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, nullptr, nullptr, methods, _cf,
                            _definition.nLists, flatIndex.code_size);
   flatIndex.replace_invlists(&ril, false);
@@ -350,8 +387,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                                       rocksdb::Slice upper,
                                       RocksDBMethods* methods) {
-  faiss::IndexIVFFlat flatIndex(&_quantizer, _definition.dimensions,
-                                _definition.nLists);
+  auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, &_collection, nullptr, methods, _cf,
                            _definition.nLists, flatIndex.code_size);
   flatIndex.replace_invlists(&ril, false);
@@ -382,10 +418,13 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
 
   flatIndex.train(counter, trainingData.data());
   // Update vector definition data with quantitizer data
-  _definition.trainedData =
-      TrainedData{.codeData = _quantizer.codes,
-                  .numberOfCodes = static_cast<size_t>(_quantizer.ntotal),
-                  .codeSize = _quantizer.code_size};
+  _definition.trainedData = std::visit(
+      [](auto&& quant) {
+        return TrainedData{.codeData = quant.codes,
+                           .numberOfCodes = static_cast<size_t>(quant.ntotal),
+                           .codeSize = quant.code_size};
+      },
+      _quantizer);
 }
 
 /// @brief removes a document from the index

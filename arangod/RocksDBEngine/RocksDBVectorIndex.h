@@ -23,7 +23,6 @@
 #include <faiss/invlists/InvertedLists.h>
 #include <faiss/IndexFlat.h>
 #include <faiss/IndexIVFFlat.h>
-#include <cstdint>
 
 #include "RocksDBIndex.h"
 #include "Indexes/VectorIndexDefinition.h"
@@ -31,7 +30,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
-#include "faiss/MetricType.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -43,6 +41,9 @@ class Slice;
 }  // namespace velocypack
 
 class RocksDBVectorIndex;
+
+using Quantitizer =
+    std::variant<faiss::IndexFlat, faiss::IndexFlatL2, faiss::IndexFlatIP>;
 
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
@@ -64,6 +65,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   void prepareIndex(std::unique_ptr<rocksdb::Iterator> it, rocksdb::Slice upper,
                     RocksDBMethods* methods) override;
+
 
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
@@ -102,7 +104,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void finishTraining();
 
   FullVectorIndexDefinition _definition;
-  faiss::IndexFlatL2 _quantizer;
+  Quantitizer _quantizer;
 };
 
 }  // namespace arangodb
