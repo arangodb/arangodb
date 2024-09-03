@@ -18,8 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "YenEnumerator.h"
@@ -152,7 +151,7 @@ YenEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::toOwned(
     }
     typename ProviderType::Step::Edge e{
         _arena.toOwned(path.getEdge(i).getID())};
-    copy.appendEdge(e);
+    copy.appendEdge(e, path.getWeight(i));
   }
   copy.addWeight(path.getWeight());
   return copy;
@@ -252,12 +251,15 @@ bool YenEnumerator<QueueType, PathStoreType, ProviderType,
           path.getSourceProvider(), path.getTargetProvider()};  // empty path
       for (size_t i = 0; i < prefixLen; ++i) {
         newPath.appendVertex(prevPath.getVertex(i));
-        newPath.appendEdge(prevPath.getEdge(i));
+        auto weight = prevPath.getWeight(i);
+        newPath.appendEdge(prevPath.getEdge(i), weight);
+        newPath.addWeight(weight);
       }
-      newPath.addWeight(1.0 * prefixLen);
       for (size_t i = 0; i < path.getLength(); ++i) {
         newPath.appendVertex(path.getVertex(i));
-        newPath.appendEdge(path.getEdge(i));
+        auto weight = path.getWeight(i);
+        newPath.appendEdge(path.getEdge(i), weight);
+        newPath.addWeight(weight);
       }
       newPath.appendVertex(path.getVertex(path.getLength()));
       newPath.addWeight(1.0 * path.getLength());

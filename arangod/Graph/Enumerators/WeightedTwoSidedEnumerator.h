@@ -27,6 +27,7 @@
 #include "Assertions/Assert.h"
 #include "Basics/ResourceUsage.h"
 #include "Containers/HashSet.h"
+#include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Containers/FlatHashMap.h"
@@ -36,6 +37,10 @@
 #include <deque>
 
 namespace arangodb {
+
+using VertexRef = arangodb::velocypack::HashedStringRef;
+using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                                std::equal_to<VertexRef>>;
 
 namespace aql {
 class TraversalStats;
@@ -67,6 +72,10 @@ class WeightedTwoSidedEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
   using VertexRef = arangodb::velocypack::HashedStringRef;
+
+  using Edge = ProviderType::Step::EdgeType;
+  using EdgeSet =
+      arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>;
 
   using Shell = std::multiset<Step>;
   using ResultList = std::deque<CalculatedCandidate>;
@@ -297,6 +306,14 @@ class WeightedTwoSidedEnumerator {
    */
   bool getNextPath(arangodb::velocypack::Builder& result);
 
+  // The reference returned by the following call is only valid until
+  // getNextPath is called again or until the WeightedTwoSidedEnumerator
+  // is destroyed or otherwise modified!
+  PathResult<ProviderType, typename ProviderType::Step> const&
+  getLastPathResult() const {
+    return _resultPath;
+  }
+
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
    *
@@ -313,9 +330,21 @@ class WeightedTwoSidedEnumerator {
    */
   auto stealStats() -> aql::TraversalStats;
 
- private:
-  [[nodiscard]] auto searchDone() const -> bool;
+  auto setForbiddenVertices(std::unique_ptr<VertexSet> forbidden)
+      -> void requires HasForbidden<PathValidatorType> {
+    auto copy = std::make_unique<VertexSet>(*forbidden);
+    _left.setForbiddenVertices(std::move(copy));
+    _right.setForbiddenVertices(std::move(forbidden));
+  };
 
+  auto setForbiddenEdges(std::unique_ptr<EdgeSet> forbidden)
+      -> void requires HasForbidden<PathValidatorType> {
+    auto copy = std::make_unique<EdgeSet>(*forbidden);
+    _left.setForbiddenEdges(std::move(copy));
+    _right.setForbiddenEdges(std::move(forbidden));
+  };
+
+ private : [[nodiscard]] auto searchDone() const -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
   // we will not be able to generate the resulting path
   auto fetchResults() -> void;

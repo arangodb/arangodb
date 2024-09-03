@@ -48,8 +48,8 @@ class PathResult {
   auto clear() -> void;
   auto appendVertex(typename Step::Vertex v) -> void;
   auto prependVertex(typename Step::Vertex v) -> void;
-  auto appendEdge(typename Step::Edge e) -> void;
-  auto prependEdge(typename Step::Edge e) -> void;
+  auto appendEdge(typename Step::Edge e, double weight) -> void;
+  auto prependEdge(typename Step::Edge e, double weight) -> void;
   auto addWeight(double weight) -> void;
   auto toVelocyPack(arangodb::velocypack::Builder& builder,
                     WeightType addWeight = WeightType::NONE) -> void;
@@ -60,18 +60,21 @@ class PathResult {
 
   auto isEmpty() const -> bool;
   auto getWeight() const -> double { return _pathWeight; }
+  auto getWeight(size_t which) -> double { return _weights[which]; }
 
   auto getLength() const -> size_t { return _edges.size(); }
   auto getVertex(size_t which) const -> Step::Vertex {
     return _vertices[which];
   }
   auto getEdge(size_t which) const -> Step::Edge { return _edges[which]; }
+  auto getWeight(size_t which) const -> double { return _weights[which]; }
   auto getSourceProvider() const -> ProviderType& { return _sourceProvider; }
   auto getTargetProvider() const -> ProviderType& { return _targetProvider; }
 
  private:
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
+  std::vector<double> _weights;
 
   // The number of vertices delivered by the source provider in the vector.
   // We need to load this amount of vertices from source, all others from target

@@ -56,6 +56,7 @@ auto PathResult<ProviderType, Step>::clear() -> void {
   _numEdgesFromSourceProvider = 0;
   _vertices.clear();
   _edges.clear();
+  _weights.clear();
   _pathWeight = 0.0;
 }
 
@@ -73,15 +74,18 @@ auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v)
 }
 
 template<class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::appendEdge(typename Step::Edge e) -> void {
+auto PathResult<ProviderType, Step>::appendEdge(typename Step::Edge e,
+                                                double weight) -> void {
   _edges.push_back(std::move(e));
+  _weights.push_back(weight);
 }
 
 template<class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
-    -> void {
+auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e,
+                                                 double weight) -> void {
   _numEdgesFromSourceProvider++;
   _edges.insert(_edges.begin(), std::move(e));
+  _weights.insert(_weights.begin(), weight);
 }
 
 template<class ProviderType, class Step>

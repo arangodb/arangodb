@@ -38,6 +38,7 @@ namespace arangodb {
 using VertexRef = arangodb::velocypack::HashedStringRef;
 using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
                                                 std::equal_to<VertexRef>>;
+
 template<typename T>
 concept HasForbidden = requires(T t) {
   {

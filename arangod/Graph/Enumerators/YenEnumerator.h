@@ -149,7 +149,7 @@ class YenEnumerator {
 
   using GraphOptions = arangodb::graph::TwoSidedEnumeratorOptions;
 
-  // This is also in algorith-aliases.h, but we must not include this here,
+  // This is also in algorithm-aliases.h, but we must not include this here,
   // since it also contains aliases for YenEnumerator!
   using ShortestPathEnumerator =
       TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
