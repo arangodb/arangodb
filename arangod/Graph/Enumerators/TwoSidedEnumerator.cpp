@@ -572,6 +572,54 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   return stats;
 }
 
+//
+// The `TwoSidedEnumerator` template is currently used in the following
+// template instantiations:
+//
+// Name                           Queue   Store   Prov    Valid
+//
+// # ShortestPath:
+// ShortestPath (single)          Fi      No      Si      Va<Gl,Pa>
+// ShortestPath (cluster)         Fi      No      Cl      Va<Gl,Pa>
+// TracedShortestPath (single)    Tr<Fi>  Tr      Tr<Si>  Va<Tr,Gl,Pa>
+// TracedShortestPath (cluster)   Tr<Fi>  Tr      Tr<Cl>  Va<Tr,Gl,Pa>
+//
+// # ShortestPath for Yen:
+// ShortestPath (yen, single)     Fi      No      Si      Ta<Va<Gl,Pa>>
+// ShortestPath (yen, cluster)    Fi      No      Cl      Ta<Va<Gl,Pa>>
+// TracedShortestPath (yen, sing) Tr<Fi>  Tr      Tr<Si>  Ta<Va<Tr,Gl,Pa>>>
+// TracedShortestPath (yen, clus) Tr<Fi>  Tr      Tr<Cl>  Ta<Va<Tr,Gl,Pa>>>
+//
+// # K-Shortest-Paths (legacy):
+// KShortestPath (single)         Fi      No      Si      Va<Pa,Pa>
+// KShortestPath (cluster)        Fi      No      Cl      Va<Pa,Pa>
+// TracedKShortestPath (single)   Tr<Fi>  Tr      Tr<Si>  Va<Tr,Pa,Pa>
+// TracedKShortestPath (cluster)  Tr<Fi>  Tr      Tr<Cl>  Va<Tr,Pa,Pa>
+//
+// # AllShortestPaths (legacy):
+// AllShortestPath (single)       Fi      No      Si      Va<Pa,Pa>
+// AllShortestPath (cluster)      Fi      No      Cl      Va<Pa,Pa>
+// TracedAllShortestPath (single) Tr<Fi>  Tr      Tr<Si>  Va<Tr,Pa,Pa>
+// TracedAllShortestPath (clust)  Tr<Fi>  Tr      Tr<Cl>  Va<Tr,Pa,Pa>
+// # (see K-Shortest-Paths (legacy), this is all contained there already)
+//
+// # KPaths (legacy):
+// KPaths (single)                Fi      No      Si      Va<Pa,Pa>
+// KPaths (cluster)               Fi      No      Cl      Va<Pa,Pa>
+// TracedKPaths (single)          Tr<Fi>  Tr      Tr<Si>  Va<Tr,Pa,Pa>
+// TracedKPaths (cluster)         Tr<Fi>  Tr      Tr<Cl>  Va<Tr,Pa,Pa>
+// # see K-Shortest-Paths (legacy), this is all contained there already)
+//
+//
+// Where:
+//   Si/Cl    Single or Cluster provider
+//   No/Tr    Non-traced or traced
+//   Fi/We    Fifo-Queue or WeightedQueue (prio)
+//   Va/Ta    Path validator or Taboo validator (wrapping normal)
+//   No/Pa/Gl For validator: no uniqueness vs. path uniq. vs. global uniq.
+//
+// Therefore, we need the following explicit template instantiations:
+
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
