@@ -259,13 +259,14 @@ class instance {
     if (role !== undefined && role !== '' && !this.isRole(role)) {
       return false;
     }
+
     if (urlIDOrShortName !== undefined &&
         this.url !== urlIDOrShortName &&
         this.shortName !== urlIDOrShortName &&
         this.endpoint !== urlIDOrShortName &&
         this.id !== urlIDOrShortName) {
-        return false;
-      }
+      return false;
+    }
     return true;
   }
   
