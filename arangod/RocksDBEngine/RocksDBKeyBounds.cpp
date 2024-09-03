@@ -426,8 +426,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
   }
 }
 
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t indexId,
-                                   bool reverse)
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
+                                   bool second)
     : _type(type) {
   switch (_type) {
     case RocksDBEntryType::MdiVPackIndexValue:
@@ -438,15 +438,15 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t indexId,
       VPackSlice max(maxSlice);
 
       _internals.reserve(2 * sizeof(uint64_t) + max.byteSize());
-      uint64ToPersistent(_internals.buffer(), indexId);
+      uint64ToPersistent(_internals.buffer(), first);
       _internals.separate();
 
-      if (reverse) {
+      if (second) {
         // in case of reverse iteration, this is our starting point, so it must
         // be in the same prefix, otherwise we'll get no results; so here we
         // use the same objectId and the max vpack slice to make sure we find
         // everything
-        uint64ToPersistent(_internals.buffer(), indexId);
+        uint64ToPersistent(_internals.buffer(), first);
         _internals.buffer().append((char const*)(max.begin()), max.byteSize());
       } else {
         // in case of forward iteration, we can use the next objectId as
@@ -454,10 +454,10 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t indexId,
         // however, this trick only works when we have the big endian
         // data format:
         if (rocksDBEndianness == RocksDBEndianness::Big) {
-          uint64ToPersistent(_internals.buffer(), indexId + 1);
+          uint64ToPersistent(_internals.buffer(), first + 1);
         } else {
           // little endian:
-          uint64ToPersistent(_internals.buffer(), indexId);
+          uint64ToPersistent(_internals.buffer(), first);
           _internals.buffer().append((char const*)(max.begin()),
                                      max.byteSize());
         }
@@ -468,11 +468,11 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t indexId,
     case RocksDBEntryType::MdiIndexValue:
     case RocksDBEntryType::UniqueMdiIndexValue:
     case RocksDBEntryType::VectorVPackIndexValue:
-      TRI_ASSERT(reverse == false) << "reverse not supported";
+      TRI_ASSERT(second == false) << "reverse not supported";
       _internals.reserve(2 * sizeof(uint64_t));
-      uint64ToPersistent(_internals.buffer(), indexId);
+      uint64ToPersistent(_internals.buffer(), first);
       _internals.separate();
-      uint64ToPersistent(_internals.buffer(), indexId + 1);
+      uint64ToPersistent(_internals.buffer(), first + 1);
       break;
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);

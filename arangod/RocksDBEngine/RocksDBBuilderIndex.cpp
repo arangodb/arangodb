@@ -391,12 +391,12 @@ void RocksDBBuilderIndex::beforeCreate() {
   RocksDBBatchedMethods methods(&batch, memoryTracker);
 
   // From fillIndex
-  auto mode =
+  auto const mode =
       snap == nullptr ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
-  LogicalCollection& coll = internal->collection();
+  LogicalCollection const& coll = internal->collection();
   transaction::Options trxOpts;
   trxOpts.requiresReplication = false;
-  auto origin = transaction::OperationOriginREST{"building index"};
+  auto const origin = transaction::OperationOriginREST{"building index"};
   trx::BuilderTrx trx(
       transaction::StandaloneContext::create(coll.vocbase(), origin), coll,
       mode, trxOpts);
@@ -405,9 +405,9 @@ void RocksDBBuilderIndex::beforeCreate() {
   }
   trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
 
-  RocksDBCollection* rcoll =
+  RocksDBCollection const* rcoll =
       static_cast<RocksDBCollection*>(internal->collection().getPhysical());
-  auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
+  auto const bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
   rocksdb::Slice upper(bounds.end());
 
   rocksdb::ReadOptions ro(/*cksum*/ false, /*cache*/ false);

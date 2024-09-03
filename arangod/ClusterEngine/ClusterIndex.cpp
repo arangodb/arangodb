@@ -336,7 +336,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
                                           itemsInIndex);
 
     case TRI_IDX_TYPE_VECTOR_INDEX: {
-      // TODO
+      // vector index is only triggered by rule
       break;
     }
     case TRI_IDX_TYPE_UNKNOWN:

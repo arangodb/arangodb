@@ -142,12 +142,9 @@ target_link_libraries(arango_aql
   arango_network
   immer)
 
-
 target_include_directories(arango_aql PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_link_libraries(arango_aql arango_lsh)
 
 ################################################################################
 ## BISON/FLEX
