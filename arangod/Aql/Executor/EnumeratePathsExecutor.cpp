@@ -339,6 +339,8 @@ template class ::arangodb::aql::EnumeratePathsExecutorInfos<
 
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
     YenEnumeratorWithProvider<SingleServer>>;
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    TracedYenEnumeratorWithProvider<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     AllShortestPathsEnumerator<SingleServer>>;
@@ -352,6 +354,8 @@ template class ::arangodb::aql::EnumeratePathsExecutor<
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
     YenEnumeratorWithProvider<SingleServer>>;
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    TracedYenEnumeratorWithProvider<SingleServer>>;
 
 /* ClusterProvider Section */
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<

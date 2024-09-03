@@ -596,8 +596,16 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
 
           if (!opts->useWeight()) {
-            // TODOMAX: Put traced Yen here!
             // Non-Weighted Variant
+            if (opts->getAlgorithm() == "yen") {
+              return _makeExecutionBlockImpl<
+                  TracedYenEnumeratorWithProvider<Provider>,
+                  ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
+                  opts, std::move(forwardProviderOptions),
+                  std::move(backwardProviderOptions), enumeratorOptions,
+                  validatorOptions, outputRegister, engine, sourceInput,
+                  targetInput, registerInfos);
+            }
             return _makeExecutionBlockImpl<
                 TracedKShortestPathsEnumerator<Provider>,
                 ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
@@ -638,8 +646,8 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
             // TODOMAX: Put traced weighted Yen here
             return _makeExecutionBlockImpl<
-                WeightedKShortestPathsEnumerator<Provider>, Provider,
-                SingleServerBaseProviderOptions>(
+                TracedWeightedKShortestPathsEnumerator<Provider>,
+                ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
                 opts, std::move(forwardProviderOptions),
                 std::move(backwardProviderOptions), enumeratorOptions,
                 validatorOptions, outputRegister, engine, sourceInput,
@@ -660,80 +668,164 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                                                        opts->produceVertices());
 
     using ClusterProvider = ClusterProvider<ClusterProviderStep>;
-    switch (pathType()) {
-      case arangodb::graph::PathType::Type::KPaths:
-        return _makeExecutionBlockImpl<KPathEnumerator<ClusterProvider>,
-                                       ClusterProvider,
-                                       ClusterBaseProviderOptions>(
-            opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, outputRegister, engine, sourceInput, targetInput,
-            registerInfos);
-      case arangodb::graph::PathType::Type::AllShortestPaths:
-        return _makeExecutionBlockImpl<
-            AllShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
-            ClusterBaseProviderOptions>(opts, std::move(forwardProviderOptions),
-                                        std::move(backwardProviderOptions),
-                                        enumeratorOptions, validatorOptions,
-                                        outputRegister, engine, sourceInput,
-                                        targetInput, registerInfos);
-      case arangodb::graph::PathType::Type::KShortestPaths:
-        // TODO: deduplicate with SingleServer && SingleServer non-traced
-        //  variant. Too much code duplication right now.
-        enumeratorOptions.setMinDepth(0);
-        enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
-
-        if (!opts->useWeight()) {
-          // TODOMAX: Put Yen here!
-          // Non-Weighted Variant
+    if (opts->query().queryOptions().getTraversalProfileLevel() ==
+        TraversalProfileLevel::None) {
+      switch (pathType()) {
+        case arangodb::graph::PathType::Type::KPaths:
+          return _makeExecutionBlockImpl<KPathEnumerator<ClusterProvider>,
+                                         ClusterProvider,
+                                         ClusterBaseProviderOptions>(
+              opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions), enumeratorOptions,
+              validatorOptions, outputRegister, engine, sourceInput,
+              targetInput, registerInfos);
+        case arangodb::graph::PathType::Type::AllShortestPaths:
           return _makeExecutionBlockImpl<
-              KShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
+              AllShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
               ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
-        } else {
-          // Weighted Variant
-          double defaultWeight = opts->getDefaultWeight();
-          std::string weightAttribute = opts->getWeightAttribute();
-          forwardProviderOptions.setWeightEdgeCallback(
-              [weightAttribute = weightAttribute, defaultWeight](
-                  double previousWeight, VPackSlice edge) -> double {
-                auto const weight =
-                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                        edge, weightAttribute, defaultWeight);
-                if (weight < 0.) {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-                }
+        case arangodb::graph::PathType::Type::KShortestPaths:
+          // TODO: deduplicate with SingleServer && SingleServer non-traced
+          //  variant. Too much code duplication right now.
+          enumeratorOptions.setMinDepth(0);
+          enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
 
-                return previousWeight + weight;
-              });
-          backwardProviderOptions.setWeightEdgeCallback(
-              [weightAttribute = weightAttribute, defaultWeight](
-                  double previousWeight, VPackSlice edge) -> double {
-                auto const weight =
-                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                        edge, weightAttribute, defaultWeight);
-                if (weight < 0.) {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-                }
+          if (!opts->useWeight()) {
+            // TODOMAX: Put Yen here!
+            // Non-Weighted Variant
+            return _makeExecutionBlockImpl<
+                KShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
+                ClusterBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          } else {
+            // Weighted Variant
+            double defaultWeight = opts->getDefaultWeight();
+            std::string weightAttribute = opts->getWeightAttribute();
+            forwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
 
-                return previousWeight + weight;
-              });
+                  return previousWeight + weight;
+                });
+            backwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
 
-          // TODOMAX: Put weighted Yen here!
-          return _makeExecutionBlockImpl<
-              WeightedKShortestPathsEnumerator<ClusterProvider>,
-              ClusterProvider, ClusterBaseProviderOptions>(
+                  return previousWeight + weight;
+                });
+
+            // TODOMAX: Put weighted Yen here!
+            return _makeExecutionBlockImpl<
+                WeightedKShortestPathsEnumerator<ClusterProvider>,
+                ClusterProvider, ClusterBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          }
+        default:
+          ADB_PROD_ASSERT(false)
+              << "unknown PathType in EnumeratePathsNode::createBlock";
+      }
+    } else {
+      // Tracing variants for cluster:
+      switch (pathType()) {
+        case arangodb::graph::PathType::Type::KPaths:
+          return _makeExecutionBlockImpl<TracedKPathEnumerator<ClusterProvider>,
+                                         ProviderTracer<ClusterProvider>,
+                                         ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
-        }
-      default:
-        ADB_PROD_ASSERT(false)
-            << "unknown PathType in EnumeratePathsNode::createBlock";
+        case arangodb::graph::PathType::Type::AllShortestPaths:
+          return _makeExecutionBlockImpl<
+              TracedAllShortestPathsEnumerator<ClusterProvider>,
+              ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
+              opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions), enumeratorOptions,
+              validatorOptions, outputRegister, engine, sourceInput,
+              targetInput, registerInfos);
+        case arangodb::graph::PathType::Type::KShortestPaths:
+          // TODO: deduplicate with SingleServer && SingleServer non-traced
+          //  variant. Too much code duplication right now.
+          enumeratorOptions.setMinDepth(0);
+          enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
+
+          if (!opts->useWeight()) {
+            // TODOMAX: Put Yen here!
+            // Non-Weighted Variant
+            return _makeExecutionBlockImpl<
+                TracedKShortestPathsEnumerator<ClusterProvider>,
+                ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          } else {
+            // Weighted Variant
+            double defaultWeight = opts->getDefaultWeight();
+            std::string weightAttribute = opts->getWeightAttribute();
+            forwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
+
+                  return previousWeight + weight;
+                });
+            backwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
+
+                  return previousWeight + weight;
+                });
+
+            // TODOMAX: Put weighted Yen here!
+            return _makeExecutionBlockImpl<
+                TracedWeightedKShortestPathsEnumerator<ClusterProvider>,
+                ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          }
+        default:
+          ADB_PROD_ASSERT(false)
+              << "unknown PathType in EnumeratePathsNode::createBlock";
+      }
     }
   }
 

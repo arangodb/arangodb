@@ -153,6 +153,10 @@ using YenPaths = arangodb::graph::YenEnumeratorWithProvider<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
+using YenPathsTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
 using WeightedKShortestPaths =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
@@ -780,6 +784,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
                   EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<YenPaths>,
+                  EnumeratePathsExecutor<YenPathsTracer>,
                   ParallelUnsortedGatherExecutor, JoinExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
