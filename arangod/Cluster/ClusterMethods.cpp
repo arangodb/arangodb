@@ -145,30 +145,13 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
 
   ClusterTrxMethods::SortedServersSet servers{};
 
-  if (state.options().allowDirtyReads) {
-    // In this case we do not always choose the leader, but take the
-    // choice stored in the TransactionState. We might hit some followers
-    // in this case, but this is the purpose of `allowDirtyReads`.
-    for (auto const& pair : shards) {
-      ServerID const& replica = state.whichReplica(pair.first);
-      if (!state.knowsServer(replica)) {
-        servers.emplace(replica);
-      }
-    }
-  } else {
-    std::shared_ptr<ShardMap> shardMap = coll.shardIds();
-    for (auto const& pair : shards) {
-      auto const& it = shardMap->find(pair.first);
-      if (it->second.empty()) {
-        return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;  // something is broken
-      }
-      // now we got the shard leader
-      std::string const& leader = it->second[0];
-      if (!state.knowsServer(leader)) {
-        servers.emplace(leader);
-      }
+  for (auto const& pair : shards) {
+    ServerID const& replica = state.whichReplica(pair.first);
+    if (!state.knowsServer(replica)) {
+      servers.emplace(replica);
     }
   }
+
   return ClusterTrxMethods::beginTransactionOnLeaders(state.shared_from_this(),
                                                       std::move(servers), api);
 }
@@ -180,22 +163,10 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx,
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
   ClusterTrxMethods::SortedServersSet servers{};
-  if (trx.state()->options().allowDirtyReads) {
-    // In this case we do not always choose the leader, but take the
-    // choice stored in the TransactionState. We might hit some followers
-    // in this case, but this is the purpose of `allowDirtyReads`.
-    for (auto const& pair : shards) {
-      ServerID const& replica = trx.state()->whichReplica(pair.first);
-      if (!trx.state()->knowsServer(replica)) {
-        servers.emplace(replica);
-      }
-    }
-  } else {
-    for (auto const& shardServers : shards) {
-      ServerID const& srv = shardServers.second.at(0);
-      if (!trx.state()->knowsServer(srv)) {
-        servers.emplace(srv);
-      }
+  for (auto const& pair : shards) {
+    ServerID const& replica = trx.state()->whichReplica(pair.first);
+    if (!trx.state()->knowsServer(replica)) {
+      servers.emplace(replica);
     }
   }
   return ClusterTrxMethods::beginTransactionOnLeaders(trx.stateShrdPtr(),
@@ -217,23 +188,8 @@ void addTransactionHeaderForShard(transaction::Methods const& trx,
   // sometimes also to followers. The `TransactionState` knows this and so
   // we must consult `whichReplica` instead of blindly taking the leader.
   // Note that this essentially only happens in `getDocumentOnCoordinator`.
-  if (trx.state()->options().allowDirtyReads) {
-    ServerID const& server = trx.state()->whichReplica(shard);
-    ClusterTrxMethods::addTransactionHeader(trx, server, headers);
-  } else {
-    auto const& it = shardMap.find(shard);
-    if (it != shardMap.end()) {
-      if (it->second.empty()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
-      }
-      ServerID const& leader = it->second[0];
-      ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
-    } else {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "couldn't find shard in shardMap");
-    }
-  }
+  ServerID const& server = trx.state()->whichReplica(shard);
+  ClusterTrxMethods::addTransactionHeader(trx, server, headers);
 }
 
 /// @brief iterate over shard responses and compile a result
@@ -2051,9 +2007,9 @@ Future<OperationResult> getDocumentOnCoordinator(
         if (allowDirtyReads) {
           auto& cf = trx.vocbase().server().getFeature<ClusterFeature>();
           ++cf.potentiallyDirtyDocumentReadsCounter();
-          reqOpts.overrideDestination = trx.state()->whichReplica(it.first);
           headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
         }
+        reqOpts.overrideDestination = trx.state()->whichReplica(it.first);
         futures.emplace_back(network::sendRequestRetry(
             pool, "shard:" + it.first, restVerb, std::move(url),
             std::move(buffer), reqOpts, std::move(headers)));
@@ -2125,10 +2081,10 @@ Future<OperationResult> getDocumentOnCoordinator(
 
       if (allowDirtyReads) {
         ++cf.potentiallyDirtyDocumentReadsCounter();
-        reqOpts.overrideDestination = trx.state()->whichReplica(shard);
         headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
       }
 
+      reqOpts.overrideDestination = trx.state()->whichReplica(shard);
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb,
           absl::StrCat("/_api/document/", std::string{shard}, "/",
@@ -2145,10 +2101,10 @@ Future<OperationResult> getDocumentOnCoordinator(
 
       if (allowDirtyReads) {
         ++cf.potentiallyDirtyDocumentReadsCounter();
-        reqOpts.overrideDestination = trx.state()->whichReplica(shard);
         headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
       }
 
+      reqOpts.overrideDestination = trx.state()->whichReplica(shard);
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb,
           absl::StrCat("/_api/document/", std::string{shard}),

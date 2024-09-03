@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Async/async.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
@@ -316,7 +317,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   void clearKnownServers();
 
-  void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
+  async<Result> chooseReplicas(containers::FlatHashSet<ShardID> const& shards,
+                               bool readFromFollowers);
 
   /// @brief lookup a replica choice for some shard, this basically looks
   /// up things in `_chosenReplicas`, but if the shard is not found there,
@@ -390,16 +392,6 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 #endif
 
  private:
-  /// @brief add the choice of replica for some more shards to the map
-  /// _chosenReplicas. Please note that the choice of replicas is not
-  /// arbitrary! If two collections have the same `distributeShardsLike`
-  /// (or one has the other as `distributeShardsLike`), then the choices for
-  /// corresponding shards must be made in a coherent fashion. Therefore:
-  /// Do not fill in this map yourself, always use this method for this.
-  /// The Nolock version does not acquire the _replicaMutex and is only
-  /// called from other, public methods in this class.
-  void chooseReplicasNolock(containers::FlatHashSet<ShardID> const& shards);
-
   template<typename Callbacks>
   void applyCallbackImpl(Callbacks& callbacks) noexcept {
     for (auto& callback : callbacks) {
@@ -483,11 +475,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// sure that the server chosen is in sync **for all shards in the group**!
   /// We store this choice in this map here for the shard group leader as well
   /// as for the shard which just occurred.
-  /// Do not fill in this map yourself, always use the method `chooseReplicas`
-  /// for this. If you use `whichReplica(<shardID>)`, then this happens
-  /// automatically. This member is only relevant (and != nullptr) if the
-  /// transaction option allowDirtyReads is set.
-  std::mutex _replicaMutex;  // protects access to _chosenReplicas
+  /// This map is filled on transaction creation.
   std::unique_ptr<containers::FlatHashMap<ShardID, ServerID>> _chosenReplicas;
 
   QueryAnalyzerRevisions _analyzersRevision;

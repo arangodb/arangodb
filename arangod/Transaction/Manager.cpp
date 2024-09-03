@@ -629,8 +629,7 @@ futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
   TRI_ASSERT(state != nullptr);
   TRI_ASSERT(state->id() == tid);
 
-  if (options.allowDirtyReads) {
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
+  if (ServerState::instance()->isCoordinator()) {
     // Choose the replica we read from for all shards of all collections in
     // the reads list:
     containers::FlatHashSet<ShardID> shards;
@@ -642,7 +641,7 @@ futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
         shards.emplace(p.first);
       }
     }
-    state->chooseReplicas(shards);
+    state->chooseReplicas(shards, options.allowDirtyReads);
   }
 
   // add collections

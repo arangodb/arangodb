@@ -4670,6 +4670,28 @@ futures::Future<ResultT<ServerID>> ClusterInfo::getLeaderForShard(
   co_return resultBuffer;
 }
 
+async<Result> ClusterInfo::getLeadersForShards(
+    containers::FlatHashSet<ShardID> shards,
+    containers::FlatHashMap<ShardID, ServerID>& result) {
+  std::vector<ShardID> shards_vector;
+  shards_vector.reserve(shards.size());
+  std::copy(shards.begin(), shards.end(), std::back_inserter(shards_vector));
+
+  std::vector<ServerID> servers;
+  servers.resize(shards.size());
+
+  auto res = co_await getLeadersForShards(shards_vector, servers);
+  if (res.fail()) {
+    co_return res;
+  }
+
+  for (size_t k = 0; k < shards.size(); k++) {
+    result.emplace(shards_vector[k], std::move(servers[k]));
+  }
+
+  co_return {};
+}
+
 futures::Future<Result> ClusterInfo::getLeadersForShards(
     std::span<ShardID const> shards, std::span<ServerID> result) {
   if (!_currentProt.isValid) {

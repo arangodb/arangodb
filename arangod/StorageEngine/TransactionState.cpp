@@ -859,8 +859,8 @@ TransactionStatistics& TransactionState::statistics() const noexcept {
       ._transactionsStatistics;
 }
 
-void TransactionState::chooseReplicasNolock(
-    containers::FlatHashSet<ShardID> const& shards) {
+async<Result> TransactionState::chooseReplicas(
+    containers::FlatHashSet<ShardID> const& shards, bool readFromFollowers) {
   if (_chosenReplicas == nullptr) {
     _chosenReplicas =
         std::make_unique<containers::FlatHashMap<ShardID, ServerID>>(
@@ -869,41 +869,30 @@ void TransactionState::chooseReplicasNolock(
   auto& cf = _vocbase.server().getFeature<ClusterFeature>();
   auto& ci = cf.clusterInfo();
 #ifdef USE_ENTERPRISE
-  ci.getResponsibleServersReadFromFollower(shards, *_chosenReplicas);
-#else
-  *_chosenReplicas = ci.getResponsibleServers(shards);
+  if (readFromFollowers) {
+    co_await ci.getResponsibleServersReadFromFollower(shards, *_chosenReplicas);
+  } else
 #endif
-}
+  {
+    auto res = co_await ci.getLeadersForShards(shards, *_chosenReplicas);
+    if (res.fail()) {
+      co_return res;
+    }
+  }
 
-void TransactionState::chooseReplicas(
-    containers::FlatHashSet<ShardID> const& shards) {
-  std::lock_guard guard{_replicaMutex};
-  chooseReplicasNolock(shards);
+  co_return {};
 }
 
 ServerID TransactionState::whichReplica(ShardID const& shard) {
-  std::lock_guard guard{_replicaMutex};
-  if (_chosenReplicas != nullptr) {
-    auto it = _chosenReplicas->find(shard);
-    if (it != _chosenReplicas->end()) {
-      return it->second;
-    }
-  }
-  // Not yet decided
-  containers::FlatHashSet<ShardID> shards;
-  shards.emplace(shard);
-  chooseReplicasNolock(shards);
-  // cppcheck-suppress nullPointerRedundantCheck
+  ADB_PROD_ASSERT(_chosenReplicas != nullptr);
   auto it = _chosenReplicas->find(shard);
-  // cppcheck-suppress nullPointerRedundantCheck
-  TRI_ASSERT(it != _chosenReplicas->end());
+  ADB_PROD_ASSERT(it != _chosenReplicas->end());
   return it->second;
 }
 
 containers::FlatHashMap<ShardID, ServerID> TransactionState::whichReplicas(
     containers::FlatHashSet<ShardID> const& shardIds) {
-  std::lock_guard guard{_replicaMutex};
-  chooseReplicasNolock(shardIds);
+  ADB_PROD_ASSERT(_chosenReplicas != nullptr);
   containers::FlatHashMap<ShardID, ServerID> result;
   for (auto const& shard : shardIds) {
     auto it = _chosenReplicas->find(shard);

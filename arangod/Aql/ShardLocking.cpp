@@ -404,20 +404,18 @@ ShardLocking::getShardMapping() {
     if (!server.hasFeature<ClusterFeature>()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
+    auto& trx = _query.trxForOptimization();
     auto& cf = server.getFeature<ClusterFeature>();
-    auto& ci = cf.clusterInfo();
 #ifdef USE_ENTERPRISE
     TRI_ASSERT(ServerState::instance()->isCoordinator());
-    auto& trx = _query.trxForOptimization();
     if (trx.state()->options().allowDirtyReads) {
       ++cf.dirtyReadQueriesCounter();
-      _shardMapping = trx.state()->whichReplicas(shardIds);
-    } else
-#endif
-    {
-      // We have at least one shard, otherwise we would not have snippets!
-      _shardMapping = ci.getResponsibleServers(shardIds);
     }
+#endif
+
+    // We have at least one shard, otherwise we would not have snippets!
+    _shardMapping = trx.state()->whichReplicas(shardIds);
+
     TRI_ASSERT(_shardMapping.size() == shardIds.size());
 
     for (auto const& lockInfo : _collectionLocking) {

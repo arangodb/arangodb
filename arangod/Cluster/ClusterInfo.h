@@ -47,6 +47,7 @@
 #include "Replication2/Version.h"
 
 #include "Basics/ResourceUsage.h"
+#include "Async/async.h"
 
 struct TRI_vocbase_t;
 
@@ -789,6 +790,9 @@ class ClusterInfo final {
 
   futures::Future<Result> getLeadersForShards(std::span<ShardID const> shard,
                                               std::span<ServerID> result);
+  async<Result> getLeadersForShards(
+      containers::FlatHashSet<ShardID> shards,
+      containers::FlatHashMap<ShardID, ServerID>& result);
 
   enum class ShardLeadership { kLeader, kFollower, kUnclear };
   ShardLeadership getShardLeadership(ServerID const& server,
@@ -823,7 +827,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_ENTERPRISE
-  void getResponsibleServersReadFromFollower(
+  async<void> getResponsibleServersReadFromFollower(
       containers::FlatHashSet<ShardID> const& list,
       containers::FlatHashMap<ShardID, ServerID>& result);
 #endif
