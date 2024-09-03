@@ -74,7 +74,7 @@ function SynchronousReplicationSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function waitForSynchronousReplication(database) {
-    console.info("Waiting for synchronous replication to settle...");
+    print("Waiting for synchronous replication to settle...");
     arangoClusterInfoFlush();
     cinfo = arangoClusterInfoGetCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
@@ -84,10 +84,10 @@ function SynchronousReplicationSuite() {
       ccinfo = shards.map(
         s => arangoClusterInfoGetCollectionInfoCurrent(database, cn, s)
       );
-      console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
+      print("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       replicas = ccinfo.map(s => s.servers.length);
       if (replicas.every(x => x > 1)) {
-        console.info("Replication up and running!");
+        print("Replication up and running!");
         // The following wait has a purpose, so please do not remove it.
         // We have just seen that all followers are in sync. However, this
         // means that the leader has told the agency so, it has not necessarily
@@ -112,20 +112,16 @@ function SynchronousReplicationSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function failFollower(failAt = null, follower = null) {
+    IM.arangods.forEach(arangod => { print("I: " + arangod.endpoint + " id " + arangod.id)})
     if (follower == null) follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
-
-    var pos = _.findIndex(arangods,
-                          x => x.url === endpoint);
-  
-    assertTrue(pos >= 0, pos);
+    let arangods = IM.arangods.filter(arangod => { return arangod.id === follower; });
+    assertTrue(arangods.length === 1, JSON.stringify({'follower': follower, 'inst': IM.getStructure()}));
     if (failAt) {
-      IM.debugSetFailAt(failAt, '', endpoint);
-      console.info("Have added failure in follower", follower, " at ", failAt);
+      IM.debugSetFailAt(failAt, '', follower);
+      print("Have added failure in follower", follower, " at ", failAt);
     } else {
-      assertTrue(suspendExternal(arangods[pos].pid));
-      console.info("Have failed follower", follower);
+      assertTrue(suspendExternal(arangods[0].pid));
+      print("Have failed follower", follower);
     }
     failedState.follower = { failAt: (failAt ? failAt : null), failedServer: follower };
   }
@@ -136,18 +132,15 @@ function SynchronousReplicationSuite() {
 
   function healFollower(failAt = null, follower = null) {
     if (follower == null) follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
 
-    var pos = _.findIndex(arangods,
-      x => x.url === endpoint);
-    assertTrue(pos >= 0);
+    let arangods = IM.arangods.filter(arangod => { return arangod.id === follower; });
+    assertTrue(arangods.length === 1, JSON.stringify({'follower': follower, 'inst': IM.getStructure()}));
     if (failAt) {
-      IM.debugSetFailAt(failAt, '', endpoint);
-      console.info("Have removed failure in follower", follower, " at ", failAt);
+      IM.debugRemoveFailAt(failAt, '', follower);
+      print("Have removed failure in follower", follower, " at ", failAt);
     } else {
-      assertTrue(continueExternal(arangods[pos].pid));
-      console.info("Have healed follower", follower);
+      assertTrue(continueExternal(arangods[0].pid));
+      print("Have healed follower", follower);
     }
     failedState.follower = null;
   }
@@ -158,18 +151,14 @@ function SynchronousReplicationSuite() {
 
   function failLeader(failAt = null, leader = null) {
     if (leader == null) leader = cinfo.shards[shards[0]][0];
-    var endpoint =getEndpointById(leader);
-    let arangods = getDBServers();
-
-    var pos = _.findIndex(arangods,
-      x => x.url === endpoint);
-    assertTrue(pos >= 0);
+    let arangods = IM.arangods.filter(arangod => { return arangod.id === leader; });
+    assertTrue(arangods.length === 1, JSON.stringify({'leader': leader, 'inst': IM.getStructure()}));
     if (failAt) {
       IM.debugSetFailAt(failAt, '', endpoint);
-      console.info("Have failed leader", leader, " at ", failAt);
+      print("Have failed leader", leader, " at ", failAt);
     } else {
-      assertTrue(suspendExternal(arangods[pos].pid));
-      console.info("Have failed leader", leader);
+      assertTrue(suspendExternal(arangods[0].pid));
+      print("Have failed leader", leader);
     }
     failedState.leader = { failAt: (failAt ? failAt : null), failedServer: leader };
     return leader;
@@ -181,18 +170,14 @@ function SynchronousReplicationSuite() {
 
   function healLeader(failAt = null, leader = null) {
     if (leader == null) leader = cinfo.shards[shards[0]][0];
-    var endpoint =getEndpointById(leader);
-    let arangods = getDBServers();
-
-    var pos = _.findIndex(arangods,
-      x => x.url === endpoint);
-    assertTrue(pos >= 0);
+    let arangods = IM.arangods.filter(arangod => { return arangod.id === leader; });
+    assertTrue(arangods.length === 1, JSON.stringify({'leader': leader, 'inst': IM.getStructure()}));
     if (failAt) {
-      IM.debugSetFailAt(failAt, '', endpoint);
-      console.info("Have removed failure in leader", leader, " at ", failAt);
+      IM.debugRemoveFailAt(failAt, '', endpoint);
+      print("Have removed failure in leader", leader, " at ", failAt);
     } else {
-      assertTrue(continueExternal(arangods[pos].pid));
-      console.info("Have healed leader", leader);
+      assertTrue(continueExternal(arangods[0].pid));
+      print("Have healed leader", leader);
     }
     failedState.leader = null;
   }
@@ -327,7 +312,7 @@ function SynchronousReplicationSuite() {
 
     setUp: function () {
       var systemCollServers = findCollectionServers("_system", "_graphs");
-      console.info("System collections use servers:", systemCollServers);
+      print("System collections use servers:", systemCollServers);
       while (true) {
         db._drop(cn);
         c = db._create(cn, {
@@ -335,13 +320,13 @@ function SynchronousReplicationSuite() {
           avoidServers: systemCollServers
         });
         var servers = findCollectionServers("_system", cn);
-        console.info("Test collections uses servers:", servers);
+        print("Test collections uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           return;
         }
-        console.info("Need to recreate collection to avoid system collection servers.");
+        print("Need to recreate collection to avoid system collection servers.");
         //waitForSynchronousReplication("_system");
-        console.info("Synchronous replication has settled, now dropping again.");
+        print("Synchronous replication has settled, now dropping again.");
       }
     },
 
