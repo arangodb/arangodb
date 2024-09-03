@@ -84,7 +84,7 @@ AstNode const* isSortNodeValid(auto const* sortNode,
     return nullptr;
   }
 
-  // Check if SORT node contains APPROX function
+  // check if SORT node contains APPROX function
   auto const* executionNode = plan->getVarSetBy(sortField.var->id);
   if (executionNode == nullptr || executionNode->getType() != EN::CALCULATION) {
     return nullptr;
@@ -107,7 +107,7 @@ AstNode const* isSortNodeValid(auto const* sortNode,
     return nullptr;
   }
 
-  // Check if APPROX function parameter is on indexed field
+  // check if APPROX function parameter is on indexed field
   TRI_ASSERT(calculationNodeExpressionNode->numMembers() > 0);
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
@@ -164,8 +164,12 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     if (currentNode == nullptr || currentNode->getType() != EN::SORT) {
       continue;
     }
-
     auto const* sortNode = ExecutionNode::castTo<SortNode const*>(currentNode);
+    auto const* maybeLimitNode = sortNode->getFirstParent();
+    if (!maybeLimitNode || maybeLimitNode->getType() != EN::LIMIT) {
+      continue;
+    }
+
     auto const* vectorIndex =
         dynamic_cast<RocksDBVectorIndex const*>(index.get());
     if (vectorIndex == nullptr) {
@@ -178,11 +182,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       continue;
     }
 
-    // Check LIMIT NODE
-    auto const* maybeLimitNode = sortNode->getFirstParent();
-    if (!maybeLimitNode || maybeLimitNode->getType() != EN::LIMIT) {
-      continue;
-    }
+    // check LIMIT NODE
     auto const* limitNode =
         ExecutionNode::castTo<LimitNode const*>(maybeLimitNode);
     // Offset cannot be handled, and there must be a limit which means topK
