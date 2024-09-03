@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, arango */
+/*global assertTrue, assertFalse, assertEqual, fail, arango, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -154,7 +154,7 @@ function SynchronousReplicationSuite() {
     let arangods = IM.arangods.filter(arangod => { return arangod.id === leader; });
     assertTrue(arangods.length === 1, JSON.stringify({'leader': leader, 'inst': IM.getStructure()}));
     if (failAt) {
-      IM.debugSetFailAt(failAt, '', endpoint);
+      IM.debugSetFailAt(failAt, '', leader);
       print("Have failed leader", leader, " at ", failAt);
     } else {
       assertTrue(suspendExternal(arangods[0].pid));
@@ -173,7 +173,7 @@ function SynchronousReplicationSuite() {
     let arangods = IM.arangods.filter(arangod => { return arangod.id === leader; });
     assertTrue(arangods.length === 1, JSON.stringify({'leader': leader, 'inst': IM.getStructure()}));
     if (failAt) {
-      IM.debugRemoveFailAt(failAt, '', endpoint);
+      IM.debugRemoveFailAt(failAt, '', leader);
       print("Have removed failure in leader", leader, " at ", failAt);
     } else {
       assertTrue(continueExternal(arangods[0].pid));
