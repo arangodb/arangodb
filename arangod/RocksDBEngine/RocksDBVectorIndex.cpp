@@ -291,6 +291,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                    coll.vocbase().engine<RocksDBEngine>()) {
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
+  _trainingDataSize = _definition.nLists * 1000;
 
   _quantizer = std::invoke(
       [&vectorDefinition =
@@ -394,7 +395,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
 
   std::vector<float> trainingData;
   std::size_t counter{0};
-  while (counter < 50000 && it->Valid()) {
+  while (counter < _trainingDataSize && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     std::vector<float> input;
     input.reserve(_definition.dimensions);

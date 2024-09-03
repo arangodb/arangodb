@@ -105,6 +105,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   FullVectorIndexDefinition _definition;
   Quantitizer _quantizer;
+  std::size_t _trainingDataSize;
 };
 
 }  // namespace arangodb
