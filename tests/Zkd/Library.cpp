@@ -29,7 +29,6 @@
 #include <functional>
 #include <algorithm>
 #include "Zkd/ZkdHelper.h"
-#include "Utils/ByteString.h"
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/slice.h>
@@ -37,7 +36,7 @@
 using namespace arangodb;
 
 static std::ostream& operator<<(std::ostream& os,
-                                std::vector<byte_string> const& bsvec) {
+                                std::vector<zkd::byte_string> const& bsvec) {
   os << "{";
   if (!bsvec.empty()) {
     auto it = bsvec.begin();
