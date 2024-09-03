@@ -556,6 +556,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
+            // TODOMAX: Add weighted Yen here
             return _makeExecutionBlockImpl<
                 WeightedKShortestPathsEnumerator<Provider>, Provider,
                 SingleServerBaseProviderOptions>(
@@ -595,6 +596,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
 
           if (!opts->useWeight()) {
+            // TODOMAX: Put traced Yen here!
             // Non-Weighted Variant
             return _makeExecutionBlockImpl<
                 TracedKShortestPathsEnumerator<Provider>,
@@ -634,6 +636,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
+            // TODOMAX: Put traced weighted Yen here
             return _makeExecutionBlockImpl<
                 WeightedKShortestPathsEnumerator<Provider>, Provider,
                 SingleServerBaseProviderOptions>(
@@ -681,6 +684,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
         enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
 
         if (!opts->useWeight()) {
+          // TODOMAX: Put Yen here!
           // Non-Weighted Variant
           return _makeExecutionBlockImpl<
               KShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
@@ -718,6 +722,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                 return previousWeight + weight;
               });
 
+          // TODOMAX: Put weighted Yen here!
           return _makeExecutionBlockImpl<
               WeightedKShortestPathsEnumerator<ClusterProvider>,
               ClusterProvider, ClusterBaseProviderOptions>(
