@@ -45,6 +45,7 @@ const colLevel = helper.colLevel;
 
 const arangodb = require('@arangodb');
 const arango = require('@arangodb').arango;
+let connectionHandle = arango.getConnectionHandle();
 const aql = arangodb.aql;
 const db = require('internal').db;
 for (let l of rightLevels) {
@@ -132,4 +133,9 @@ describe('User Rights Management', () => {
       }
     }
   });
+});
+after(() => {
+  arango.connectHandle(connectionHandle);
+  db._drop('UnitTestCollection');
+  db._useDatabase('_system');
 });

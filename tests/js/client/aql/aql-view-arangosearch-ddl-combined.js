@@ -36,10 +36,6 @@ const isEnterprise = require("internal").isEnterprise();
 const request = require("@arangodb/request");
 const {
   triggerMetrics,
-  debugSetFailAt,
-  debugRemoveFailAt,
-  getEndpointById,
-  getCoordinators,
 } = require('@arangodb/test-helper');
 const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 const tasks = require('@arangodb/tasks');
@@ -139,16 +135,12 @@ function IResearchFeatureDDLTestSuite1() {
     },
 
     testViewIsBuilding: function () {
+      let { instanceRole } = require('@arangodb/testutils/instance');
+      let IM = global.instanceManager;
       if (isCluster) {
-        if (isServer) {
-          debugSetFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
-        } else {
-          for (const server of getCoordinators()) {
-            debugSetFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
-          }
-        }
+        IM.debugSetFailAt("search::AlwaysIsBuildingCluster", instanceRole.coordinator);
       } else {
-        internal.debugSetFailAt("search::AlwaysIsBuildingSingle");
+        IM.debugSetFailAt("search::AlwaysIsBuildingSingle");
       }
 
       db._drop("TestCollection0");
@@ -169,15 +161,9 @@ function IResearchFeatureDDLTestSuite1() {
         "message": "ArangoSearch view 'TestView' building is in progress. Results can be incomplete."
       }]);
       if (isCluster) {
-        if (isServer) {
-          debugRemoveFailAt("/_db/_system", "search::AlwaysIsBuildingCluster");
-        } else {
-          for (const server of getCoordinators()) {
-            debugRemoveFailAt(getEndpointById(server.id), "search::AlwaysIsBuildingCluster");
-          }
-        }
+        IM.debugRemoveFailAt("search::AlwaysIsBuildingCluster", instanceRole.coordinator);
       } else {
-        internal.debugRemoveFailAt("search::AlwaysIsBuildingSingle");
+        IM.debugRemoveFailAt("search::AlwaysIsBuildingSingle");
       }
     },
 

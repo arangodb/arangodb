@@ -32,13 +32,12 @@ let request = require("@arangodb/request");
 let errors = arangodb.errors;
 let { getEndpointById,
       getEndpointsByType,
-      debugCanUseFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
       getChecksum,
       getMetric
     } = require('@arangodb/test-helper');
-  
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
+
 const cn = 'UnitTestsTransaction';
 
 function assertInSync(leader, follower, shardId) {
@@ -69,11 +68,11 @@ function replicationIntermediateCommitsSuite() {
 
   return {
     setUp: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
     },
 
     tearDown: function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
@@ -100,7 +99,7 @@ function replicationIntermediateCommitsSuite() {
         }
         if (count === n / 2) {
           // do not replicate from leader to follower after half of documents
-          debugSetFailAt(leader, "replicateOperations::skip");
+          IM.debugSetFailAt("replicateOperations::skip", instanceRole.dbServer, leader);
         }
         c.insert(docs);
       }
@@ -117,9 +116,9 @@ function replicationIntermediateCommitsSuite() {
         assertEqual(n / 2, result.json.count);
       }
       
-      debugClearFailAt(leader);
+      IM.debugClearFailAt('', instanceRole.dbServer, leader);
       // this will trigger a drop-follower operation on the next insert on the leader
-      debugSetFailAt(leader, "replicateOperationsDropFollower");
+      IM.debugSetFailAt("replicateOperationsDropFollower", instanceRole.dbServer, leader);
 
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits_total");
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
@@ -142,8 +141,7 @@ function replicationIntermediateCommitsSuite() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
-if (ep.length && debugCanUseFailAt(ep[0])) {
+if (IM.debugCanUseFailAt()) {
   // only execute if failure tests are available
   jsunity.run(replicationIntermediateCommitsSuite);
 }

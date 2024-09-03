@@ -34,6 +34,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const trs = require('@arangodb/testutils/testrunners');
 const inst = require('@arangodb/testutils/instance');
+const {agencyMgr} = require('@arangodb/testutils/agency');
 const _ = require('lodash');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 
@@ -52,7 +53,7 @@ const testPaths = {
 // / @brief TEST: agency_restart
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params, agencyConfig) {
+function runArangodRecovery (params, agencyMgr) {
   let additionalParams= {
     'javascript.enabled': 'true',
     'agency.activate': 'true',
@@ -83,7 +84,7 @@ function runArangodRecovery (params, agencyConfig) {
     params['instance'] = new inst.instance(params.options,
                                            inst.instanceRole.agent,
                                            args, {}, 'tcp', params.rootDir, '',
-                                           agencyConfig);
+                                           agencyMgr);
 
     argv = toArgv(Object.assign(params.instance.args, additionalParams));
   } else {
@@ -146,8 +147,8 @@ function agencyRestart (options) {
       };
       fs.makeDirectoryRecursive(params.crashLogDir);
       params.crashLog = fs.join(params.crashLogDir, 'crash.log');
-      let agencyConfig = new inst.agencyConfig(options, null);
-      runArangodRecovery(params, agencyConfig);
+      let agencyMgrInst = new agencyMgr(options, null);
+      runArangodRecovery(params, agencyMgrInst);
 
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
@@ -161,7 +162,7 @@ function agencyRestart (options) {
           duration: -1
         });
       } catch (er) {}
-      runArangodRecovery(params, agencyConfig);
+      runArangodRecovery(params, agencyMgrInst);
 
       results[test] = trs.readTestResult(
         params.instance.args['temp.path'],

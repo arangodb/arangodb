@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue */
+/* global runSetup assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -28,9 +28,11 @@
 const internal = require('internal');
 const jsunity = require('jsunity');
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
   // intentionall do nothing, so we will see a normal shutdown!
+  global.instanceManager.shutdownInstance();
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -107,13 +109,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

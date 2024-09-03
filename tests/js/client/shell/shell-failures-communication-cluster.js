@@ -29,35 +29,29 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require("internal");
+let IM = global.instanceManager;
+
 
 function shellCommunicationsFailureSuite () {
   'use strict';
   const cn = "UnitTestsAhuacatlCommFailures";
 
   return {
-    setUpAll: function () {
-      internal.debugClearFailAt();
+    setUp: function () {
+      IM.debugClearFailAt();
       db._drop(cn);
       db._create(cn, { numberOfShards: 3 });
     },
 
-    setUp: function () {
-      internal.debugClearFailAt();
-    },
-
-    tearDownAll: function () {
-      internal.debugClearFailAt();
-      db._drop(cn);
-    },
-
     tearDown: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
+      db._drop(cn);
     },
 
     testRetryOnLeaderRefusal: function() {
       // This tests if the coordinator retries an insert request if
       // a leader refuses to do the insert by sending a 421:
-      internal.debugSetFailAt("documents::insertLeaderRefusal");
+      IM.debugSetFailAt("documents::insertLeaderRefusal");
       let res = db._connection.POST_RAW("/_api/document/" + cn, {ThisIsTheRetryOnLeaderRefusalTest:12},
                                         {"x-arango-async": "store"});
       assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
@@ -72,7 +66,7 @@ function shellCommunicationsFailureSuite () {
       assertEqual(204, inq.code);
       assertFalse(inq.error);
       // Allow the leader to write
-      internal.debugClearFailAt("documents::insertLeaderRefusal");
+      IM.debugClearFailAt("documents::insertLeaderRefusal");
       let startTime = new Date();
       while (new Date() - startTime < 10000) {
         // Eventually the write will succeed
@@ -88,7 +82,7 @@ function shellCommunicationsFailureSuite () {
   };
 }
  
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(shellCommunicationsFailureSuite);
 }
 
