@@ -405,8 +405,8 @@ ShardLocking::getShardMapping() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
     auto& trx = _query.trxForOptimization();
-    auto& cf = server.getFeature<ClusterFeature>();
 #ifdef USE_ENTERPRISE
+    auto& cf = server.getFeature<ClusterFeature>();
     TRI_ASSERT(ServerState::instance()->isCoordinator());
     if (trx.state()->options().allowDirtyReads) {
       ++cf.dirtyReadQueriesCounter();
