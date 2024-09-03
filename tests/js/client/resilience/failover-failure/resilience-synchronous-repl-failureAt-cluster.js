@@ -112,7 +112,6 @@ function SynchronousReplicationSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function failFollower(failAt = null, follower = null) {
-    IM.arangods.forEach(arangod => { print("I: " + arangod.endpoint + " id " + arangod.id)})
     if (follower == null) follower = cinfo.shards[shards[0]][1];
     let arangods = IM.arangods.filter(arangod => { return arangod.id === follower; });
     assertTrue(arangods.length === 1, JSON.stringify({'follower': follower, 'inst': IM.getStructure()}));
