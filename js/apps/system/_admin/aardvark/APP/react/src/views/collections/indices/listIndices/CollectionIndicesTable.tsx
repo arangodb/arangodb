@@ -1,6 +1,7 @@
 import { Link, Spinner, Stack, Text } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import { Index } from "arangojs/indexes";
+import { isArray } from "lodash";
 import React from "react";
 import { ReactTable } from "../../../../components/table/ReactTable";
 import { TableControl } from "../../../../components/table/TableControl";
@@ -59,7 +60,7 @@ const TABLE_COLUMNS = [
   }),
   columnHelper.accessor(
     row => {
-      if (!row.fields || row.fields.length === 0) {
+      if (!row.fields || !isArray(row.fields) || row.fields.length === 0) {
         return "-";
       }
       return row.fields
