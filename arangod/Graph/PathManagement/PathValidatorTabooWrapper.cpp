@@ -42,8 +42,7 @@
 
 #include "Logger/LogMacros.h"
 
-using namespace arangodb;
-using namespace arangodb::graph;
+namespace arangodb::graph {
 
 template<class PathValidatorImplementation>
 PathValidatorTabooWrapper<PathValidatorImplementation>::
@@ -126,60 +125,61 @@ void PathValidatorTabooWrapper<
   return _impl.unpreparePostFilterContext();
 }
 
-namespace arangodb::graph {
-using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+using SingleProvider = SingleServerProvider<SingleServerProviderStep>;
 
 #ifdef USE_ENTERPRISE
 using SmartGraphStep = ::arangodb::graph::enterprise::SmartGraphStep;
 #endif
 
-template class PathValidatorTabooWrapper<PathValidator<
-    SingleServerProvider<SingleServerProviderStep>,
-    PathStore<SingleServerProvider<SingleServerProviderStep>::Step>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+template class PathValidatorTabooWrapper<
+    PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
-template class PathValidatorTabooWrapper<PathValidator<
-    ProviderTracer<SingleServerProvider<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<
-        ProviderTracer<SingleServerProvider<SingleServerProviderStep>>::Step>>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+template class PathValidatorTabooWrapper<
+    PathValidator<ProviderTracer<SingleProvider>,
+                  PathStoreTracer<PathStore<SingleServerProviderStep>>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
+// Probably not needed, since Yen does not do smart:
+#if 0
 #ifdef USE_ENTERPRISE
 template class PathValidatorTabooWrapper<PathValidator<
-    SingleServerProvider<enterprise::SmartGraphStep>,
-    PathStore<SingleServerProvider<enterprise::SmartGraphStep>::Step>,
+    SingleServerProvider<SmartGraphStep>, PathStore<SmartGraphStep>,
     VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
-template class PathValidatorTabooWrapper<PathValidator<
-    ProviderTracer<SingleServerProvider<enterprise::SmartGraphStep>>,
-    PathStoreTracer<PathStore<ProviderTracer<
-        SingleServerProvider<enterprise::SmartGraphStep>>::Step>>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+template class PathValidatorTabooWrapper<
+    PathValidator<ProviderTracer<SingleServerProvider<SmartGraphStep>>,
+                  PathStoreTracer<PathStore<SmartGraphStep>>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 #endif
+#endif
+
+using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
 /* ClusterProvider Section */
 template class PathValidatorTabooWrapper<
-    PathValidator<ClusterProvider<ClusterProviderStep>,
-                  PathStore<ClusterProvider<ClusterProviderStep>::Step>,
+    PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
                   VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
-template class PathValidatorTabooWrapper<PathValidator<
-    ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-    PathStoreTracer<
-        PathStore<ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+template class PathValidatorTabooWrapper<
+    PathValidator<ProviderTracer<ClustProvider>,
+                  PathStoreTracer<PathStore<ClusterProviderStep>>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
+// Probably not needed, since Yen does not do smart:
+
+#if 0
 #ifdef USE_ENTERPRISE
-template class PathValidatorTabooWrapper<PathValidator<
-    enterprise::SmartGraphProvider<ClusterProviderStep>,
-    PathStore<enterprise::SmartGraphProvider<ClusterProviderStep>::Step>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+template class PathValidatorTabooWrapper<
+    PathValidator<enterprise::SmartGraphProvider<ClusterProviderStep>,
+                  PathStore<ClusterProviderStep>, VertexUniquenessLevel::GLOBAL,
+                  EdgeUniquenessLevel::PATH>>;
 
 template class PathValidatorTabooWrapper<PathValidator<
     ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ProviderTracer<
-        enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>>,
+    PathStoreTracer<PathStore<ClusterProviderStep>>,
     VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+#endif
 #endif
 
 }  // namespace arangodb::graph

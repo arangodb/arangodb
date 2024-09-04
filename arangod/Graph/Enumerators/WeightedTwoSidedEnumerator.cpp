@@ -983,7 +983,7 @@ template class WeightedTwoSidedEnumerator<
 
 // TracedWeightedTwoSidedEnumeratorWithProvider<SingleProvider>:
 template class WeightedTwoSidedEnumerator<
-    QueueTracer<FifoQueue<SingleServerProviderStep>>,
+    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
     PathStoreTracer<PathStore<SingleServerProviderStep>>,
     ProviderTracer<SingleProvider>,
     PathValidatorTracer<
@@ -1039,7 +1039,7 @@ template class WeightedTwoSidedEnumerator<
 
 // TracedWeightedTwoSidedEnumeratorWithProvider<ClustProvider>:
 template class WeightedTwoSidedEnumerator<
-    QueueTracer<FifoQueue<ClusterProviderStep>>,
+    QueueTracer<WeightedQueue<ClusterProviderStep>>,
     PathStoreTracer<PathStore<ClusterProviderStep>>,
     ProviderTracer<ClustProvider>,
     PathValidatorTracer<
