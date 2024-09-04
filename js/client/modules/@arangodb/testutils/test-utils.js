@@ -212,7 +212,7 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-r2') !== -1) && (options.replicationVersion != 2)) {
+  if ((testname.indexOf('-r2') !== -1) && (options.replicationVersion !== 2)) {
     whichFilter.filter = 'skip when running without replication 2';
     return false;
   }
