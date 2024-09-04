@@ -275,7 +275,7 @@ function enumerateObjectTestSuite() {
         return value
       `;
   
-      return queryDocuments(docCollection, query, fullCount=true, isOptimized=true);
+      return queryDocuments(docCollection, query, true, true);
     }
   };
 }
