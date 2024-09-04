@@ -1429,6 +1429,8 @@ function processQuery(query, explain, planIndex) {
           return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
         }
         break;
+      case 'EnumerateNearVectors':
+        return keyword('FOR') + ' ' + variableName(node.documentOutVariable) + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable);
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {

@@ -81,7 +81,7 @@ using namespace arangodb::basics;
 namespace {
 
 /// @brief NodeType to string mapping
-frozen::unordered_map<int, std::string_view, 36> const kTypeNames{
+frozen::unordered_map<int, std::string_view, 37> const kTypeNames{
     {static_cast<int>(ExecutionNode::SINGLETON), "SingletonNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_COLLECTION),
      "EnumerateCollectionNode"},
@@ -124,6 +124,8 @@ frozen::unordered_map<int, std::string_view, 36> const kTypeNames{
     {static_cast<int>(ExecutionNode::OFFSET_INFO_MATERIALIZE),
      "OffsetMaterializeNode"},
     {static_cast<int>(ExecutionNode::JOIN), "JoinNode"},
+    {static_cast<int>(ExecutionNode::ENUMERATE_NEAR_VECTORS),
+     "EnumerateNearVectors"},
 };
 
 }  // namespace
@@ -1588,6 +1590,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case TRAVERSAL:
     case INDEX:
     case JOIN:
+    case ENUMERATE_NEAR_VECTORS:
     case SHORTEST_PATH:
     case ENUMERATE_PATHS:
     case REMOTESINGLE:

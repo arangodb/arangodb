@@ -3353,6 +3353,8 @@ struct SortToIndexNode final
       case EN::INDEX:
         return handleIndexNode(ExecutionNode::castTo<IndexNode*>(en));
 
+      case EN::ENUMERATE_NEAR_VECTORS:
+        return true;  // TODO
       case EN::ENUMERATE_COLLECTION:
         return handleEnumerateCollectionNode(
             ExecutionNode::castTo<EnumerateCollectionNode*>(en));
@@ -3849,6 +3851,8 @@ auto insertGatherNode(
       }
       return gatherNode;
     }
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
+      abort();
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE:
@@ -4934,6 +4938,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::SINGLETON:
         case EN::ENUMERATE_COLLECTION:
         case EN::ENUMERATE_LIST:
+        case EN::ENUMERATE_NEAR_VECTORS:
         case EN::COLLECT:
         case EN::INSERT:
         case EN::REMOVE:
@@ -7520,6 +7525,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::SINGLETON:
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
     case ExecutionNode::FILTER:
     case ExecutionNode::LIMIT:
     case ExecutionNode::SORT:

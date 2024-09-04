@@ -21,14 +21,14 @@
 
 #include <functional>
 
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/Functions.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
-#include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
-#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/EnumerateNearVectors.h"
 #include "Aql/ExecutionNode/LimitNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
@@ -43,18 +43,15 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-std::unique_ptr<Condition> buildVectorCondition(
-    std::unique_ptr<ExecutionPlan>& plan, AstNode const* functionCallNode) {
-  Ast* ast = plan->getAst();
-  auto cond = std::make_unique<Condition>(ast);
-  cond->andCombine(functionCallNode);
-  cond->normalize();
+#define LOG_RULE_ENABLED true
+#define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
+#define LOG_RULE LOG_RULE_IF(true)
 
-  return cond;
-}
+namespace {
 
-bool checkAqlFunction(std::string_view const functionName,
-                      FullVectorIndexDefinition const& definition) {
+bool checkFunctionNameMatchesIndexMetric(
+    std::string_view const functionName,
+    FullVectorIndexDefinition const& definition) {
   switch (definition.metric) {
     case SimilarityMetric::kL1: {
       return functionName == "APPROX_NEAR_L1";
@@ -68,10 +65,10 @@ bool checkAqlFunction(std::string_view const functionName,
   }
 }
 
-AstNode const* isSortNodeValid(auto const* sortNode,
-                               std::unique_ptr<ExecutionPlan>& plan,
-                               FullVectorIndexDefinition const& definition,
-                               Variable const* enumerateNodeOutVar) {
+AstNode* isSortNodeValid(auto const* sortNode,
+                         std::unique_ptr<ExecutionPlan>& plan,
+                         FullVectorIndexDefinition const& definition,
+                         Variable const* enumerateNodeOutVar) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
   // simple
@@ -103,7 +100,7 @@ AstNode const* isSortNodeValid(auto const* sortNode,
   }
   if (auto const functionName =
           aql::functions::getFunctionName(*calculationNodeExpressionNode);
-      !checkAqlFunction(functionName, definition)) {
+      !checkFunctionNameMatchesIndexMetric(functionName, definition)) {
     return nullptr;
   }
 
@@ -112,6 +109,7 @@ AstNode const* isSortNodeValid(auto const* sortNode,
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
   auto const* approxFunctionParam = approxFunctionParameters->getMember(0);
+  // TODO check both parameters, because those functions are commutative
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       attributeAccessResult;
   if (approxFunctionParam == nullptr ||
@@ -125,8 +123,10 @@ AstNode const* isSortNodeValid(auto const* sortNode,
     return nullptr;
   }
 
-  return calculationNodeExpressionNode;
+  return approxFunctionParameters->getMember(1);
 }
+
+}  // namespace
 
 void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
@@ -137,13 +137,13 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
   // avoid subqueries for now
   plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, false);
   for (ExecutionNode* node : nodes) {
-    auto const* enumerateColNode =
-        ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+    auto enumerateCollectionNode =
+        ExecutionNode::castTo<EnumerateCollectionNode*>(node);
 
     // check if there is a vector index on collection
-    auto const index =
-        std::invoke([&enumerateColNode]() -> std::shared_ptr<arangodb::Index> {
-          auto indexes = enumerateColNode->collection()->indexes();
+    auto const index = std::invoke(
+        [&enumerateCollectionNode]() -> std::shared_ptr<arangodb::Index> {
+          auto indexes = enumerateCollectionNode->collection()->indexes();
           for (auto const& index : indexes) {
             if (index->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX) {
               return index;
@@ -156,15 +156,19 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
 
     // check that enumerateColNode has both sort and limit
-    auto* currentNode = enumerateColNode->getFirstParent();
+    auto* currentNode = enumerateCollectionNode->getFirstParent();
+
+    // skip over some calculation nodes
     while (currentNode != nullptr &&
            currentNode->getType() == EN::CALCULATION) {
       currentNode = currentNode->getFirstParent();
     }
+
     if (currentNode == nullptr || currentNode->getType() != EN::SORT) {
       continue;
     }
     auto const* sortNode = ExecutionNode::castTo<SortNode const*>(currentNode);
+
     auto const* maybeLimitNode = sortNode->getFirstParent();
     if (!maybeLimitNode || maybeLimitNode->getType() != EN::LIMIT) {
       continue;
@@ -175,10 +179,11 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     if (vectorIndex == nullptr) {
       continue;
     }
-    auto const* functionCallNode =
+    auto queryExpression =
         isSortNodeValid(sortNode, plan, vectorIndex->getDefinition(),
-                        enumerateColNode->outVariable());
-    if (functionCallNode == nullptr) {
+                        enumerateCollectionNode->outVariable());
+    if (queryExpression == nullptr) {
+      LOG_RULE << "Query expression not valid";
       continue;
     }
 
@@ -191,23 +196,33 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
     //  now we have a sequence of ENUMERATE_COLLECTION -> SORT -> LIMIT
 
-    // replace ENUMERATE_COLLECTION with INDEX if possible
-    IndexIteratorOptions opts;
-    opts.sorted = true;
-    opts.ascending = true;
-    opts.limit = limitNode->limit();
-    std::unique_ptr<Condition> condition =
-        buildVectorCondition(plan, functionCallNode);
-    auto indexNode = plan->createNode<IndexNode>(
-        plan.get(), plan->nextId(), enumerateColNode->collection(),
-        enumerateColNode->outVariable(),
-        std::vector<transaction::Methods::IndexHandle>{
-            transaction::Methods::IndexHandle{index}},
-        false,  // here we are not using inverted index so
-        // for sure no "whole" coverage
-        std::move(condition), opts);
+    // replace the collection enumeration with the enumerate near node
+    // furthermore, we have to remove the calculation node
+    auto documentVariable = enumerateCollectionNode->outVariable();
+    auto distanceVariable = sortNode->elements()[0].var;
+    auto limit = limitNode->limit();
+    auto inVariable = plan->getAst()->variables()->createTemporaryVariable();
+    auto queryPointCalculationNode = plan->createNode<CalculationNode>(
+        plan.get(), plan->nextId(),
+        std::make_unique<Expression>(plan->getAst(), queryExpression),
+        inVariable);
 
-    plan->replaceNode(node, indexNode);
+    LOG_RULE << "Enumerate Near in " << inVariable->id
+             << " out = " << documentVariable->id
+             << " distance = " << distanceVariable->id << " limit = " << limit;
+
+    auto enumerateNear = plan->createNode<EnumerateNearVectors>(
+        plan.get(), plan->nextId(), inVariable, documentVariable,
+        distanceVariable, limit);
+
+    plan->replaceNode(enumerateCollectionNode, enumerateNear);
+    plan->insertBefore(enumerateNear, queryPointCalculationNode);
+
+    auto distanceCalculationNode = plan->getVarSetBy(distanceVariable->id);
+    plan->unlinkNode(distanceCalculationNode);
+
+    plan->show();
+
     modified = true;
   }
 
