@@ -32,12 +32,10 @@ let { getEndpointById,
       getCoordinators,
       getDBServers,
       getServersByType,
-      debugCanUseFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
       reconnectRetry
     } = require('@arangodb/test-helper');
 const primaryEndpoint = arango.getEndpoint();
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 function waitUntil(coordinator, targetStatus, id, timeout) {
   let tries = 0;
@@ -80,14 +78,14 @@ function storageEngineErrorSuite() {
       });
     
       // set failure point that triggers a storage engine error
-      debugSetFailAt(getEndpointById(dbservers[0].id), "RocksDBEngine::healthCheck");
+      global.instanceManager.debugSetFailAt("RocksDBEngine::healthCheck", '', dbservers[0].shortName);
       try {
         // wait until the DB server went into status BAD
         let result = waitUntil(coordinators[0], "BAD", dbservers[0].id, 20);
         assertEqual("BAD", result.Status);
       } finally {
         // remove failure point
-        getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+        global.instanceManager.debugClearFailAt('', instanceRole.dbServer);
         // wait until it is good again
         waitUntil(coordinators[0], "GOOD", dbservers[0].id, 30);
       }

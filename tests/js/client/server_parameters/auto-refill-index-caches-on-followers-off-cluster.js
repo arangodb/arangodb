@@ -37,12 +37,8 @@ if (getOptions === true) {
 const db = require('@arangodb').db;
 const jsunity = require('jsunity');
 const errors = require('internal').errors;
-
-let { getEndpointsByType,
-      debugCanUseFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
-    } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 const cn = 'UnitTestsCollection';
 
@@ -57,7 +53,7 @@ function AutoRefillIndexCachesOnFollowers() {
     },
 
     tearDown: function() {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       try {
         c.remove("test");
       } catch (err) {}
@@ -68,21 +64,21 @@ function AutoRefillIndexCachesOnFollowers() {
     },
     
     testInsertDefaultOk: function() {
-      getEndpointsByType("dbserver").forEach((ep) => debugSetFailAt(ep, "RefillIndexCacheOnFollowers::failIfTrue"));
+      IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfTrue", instanceRole.dbServer);
       // insert should just work
       c.insert({_key: "test"});
       assertEqual(1, c.count());
     },
     
     testInsertRequestedOk: function() {
-      getEndpointsByType("dbserver").forEach((ep) => debugSetFailAt(ep, "RefillIndexCacheOnFollowers::failIfTrue"));
+      IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfTrue", instanceRole.dbServer);
       // insert should just work
       c.insert({_key: "test"}, { refillIndexCaches: true });
       assertEqual(1, c.count());
     },
     
     testInsertOptOutOk: function() {
-      getEndpointsByType("dbserver").forEach((ep) => debugSetFailAt(ep, "RefillIndexCacheOnFollowers::failIfTrue"));
+      IM.debugSetFailAt("RefillIndexCacheOnFollowers::failIfTrue", instanceRole.dbServer);
       // insert should just work
       c.insert({_key: "test"}, { refillIndexCaches: false });
       assertEqual(1, c.count());
@@ -91,8 +87,7 @@ function AutoRefillIndexCachesOnFollowers() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
-if (ep && debugCanUseFailAt(ep[0])) {
+if (IM.debugCanUseFailAt()) {
   // only execute if failure tests are available
   jsunity.run(AutoRefillIndexCachesOnFollowers);
 }

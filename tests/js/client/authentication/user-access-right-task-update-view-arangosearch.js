@@ -54,6 +54,7 @@ const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
 
 const arango = require('internal').arango;
+let connectionHandle = arango.getConnectionHandle();
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -527,4 +528,7 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
   }
 
 }
-return jsunity.done();
+let ret = jsunity.done();
+arango.connectHandle(connectionHandle);
+db._useDatabase('_system');
+return ret;
