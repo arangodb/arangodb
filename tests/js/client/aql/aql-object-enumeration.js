@@ -265,6 +265,17 @@ function enumerateObjectTestSuite() {
 
       actual = actual.toArray();
       assertTrue(actual.length === 0);
+    },
+
+    testFilterOptimization: function () {
+      const query = `
+      FOR doc IN ${docCollection}
+        FOR [key, value] IN ENTRIES(doc)
+        FILTER key == 'key1' and value == 'a'
+        return value
+      `;
+  
+      return queryDocuments(docCollection, query, fullCount=true, isOptimized=true);
     }
   };
 }

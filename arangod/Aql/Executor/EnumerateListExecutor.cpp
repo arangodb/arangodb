@@ -66,11 +66,12 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
       transaction::Methods& trx, QueryContext& context,
       AqlFunctionsInternalCache& cache,
       std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
-      VariableId outputVariableId)
+      std::vector<const Variable*> const& outputVariables)
       : QueryExpressionContext(trx, context, cache),
         _varsToRegister(varsToRegister),
-        _outputVariableId(outputVariableId),
-        _currentValue{AqlValueHintNull{}} {}
+        _outputVariables(outputVariables),
+        _currentValueK{AqlValueHintNull{}},
+        _currentValueV{AqlValueHintNull{}} {}
 
   ~EnumerateListExpressionContext() override = default;
 
@@ -82,12 +83,20 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
                bool& mustDestroy) -> AqlValue {
           mustDestroy = doCopy;
           auto const searchId = variable->id;
-          if (searchId == _outputVariableId) {
+          if (searchId == _outputVariables[0]->id) {
             if (doCopy) {
-              return _currentValue.clone();
+              return _currentValueK.clone();
             }
-            return _currentValue;
+            return _currentValueK;
           }
+          if (_outputVariables.size() > 1 &&
+              searchId == _outputVariables[1]->id) {
+            if (doCopy) {
+              return _currentValueV.clone();
+            }
+            return _currentValueV;
+          }
+
           for (auto const& [varId, regId] : _varsToRegister) {
             if (varId == searchId) {
               TRI_ASSERT(_inputRow.has_value());
@@ -104,7 +113,8 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
         });
   }
 
-  void adjustCurrentValue(AqlValue const& value) { _currentValue = value; }
+  void adjustCurrentValueK(AqlValue const& value) { _currentValueK = value; }
+  void adjustCurrentValueV(AqlValue const& value) { _currentValueV = value; }
 
   void adjustCurrentRow(InputAqlItemRow const& inputRow) {
     _inputRow = inputRow;
@@ -114,24 +124,31 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
   /// @brief temporary storage for expression data context
   std::optional<std::reference_wrapper<InputAqlItemRow const>> _inputRow;
   std::vector<std::pair<VariableId, RegisterId>> const& _varsToRegister;
-  VariableId _outputVariableId;
-  AqlValue _currentValue;
+  std::vector<const Variable*> _outputVariables;
+  AqlValue _currentValueK;  // This could be a Key
+  AqlValue _currentValueV;  // This could be a Value
 };
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, const std::vector<RegisterId>&& outputRegisters,
-    QueryContext& query, Expression* filter, VariableId outputVariableId,
+    QueryContext& query, Expression* filter,
+    std::vector<const Variable*>&& outputVariables,
     std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs,
     EnumerateListNode::Mode mode)
     : _query(query),
       _inputRegister(inputRegister),
       _outputRegisters(outputRegisters),
-      _outputVariableId(outputVariableId),
+      _outputVariables(outputVariables),
       _filter(filter),
       _varsToRegs(std::move(varsToRegs)),
       _mode(mode) {
-  TRI_ASSERT(!hasFilter() ||
-             _outputVariableId != std::numeric_limits<VariableId>::max());
+  bool isValidId =
+      outputVariables[0]->id != std::numeric_limits<VariableId>::max();
+  if (outputVariables.size() > 1) {
+    isValidId &=
+        outputVariables[1]->id != std::numeric_limits<VariableId>::max();
+  }
+  TRI_ASSERT(!hasFilter() || isValidId);
 }
 
 QueryContext& EnumerateListExecutorInfos::getQuery() const noexcept {
@@ -147,8 +164,9 @@ const std::vector<RegisterId>& EnumerateListExecutorInfos::getOutputRegister()
   return _outputRegisters;
 }
 
-VariableId EnumerateListExecutorInfos::getOutputVariableId() const noexcept {
-  return _outputVariableId;
+std::vector<const Variable*> const&
+EnumerateListExecutorInfos::getOutputVariables() const noexcept {
+  return _outputVariables;
 }
 
 bool EnumerateListExecutorInfos::hasFilter() const noexcept {
@@ -179,7 +197,7 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
   if (_infos.hasFilter()) {
     _expressionContext = std::make_unique<EnumerateListExpressionContext>(
         _trx, _infos.getQuery(), _aqlFunctionsInternalCache,
-        _infos.getVarsToRegs(), _infos.getOutputVariableId());
+        _infos.getVarsToRegs(), _infos.getOutputVariables());
   }
 }
 
@@ -356,7 +374,7 @@ bool EnumerateListExecutor::checkFilter(AqlValue const& currentValue) {
   TRI_ASSERT(_expressionContext != nullptr);
 
   _expressionContext->adjustCurrentRow(_currentRow);
-  _expressionContext->adjustCurrentValue(currentValue);
+  _expressionContext->adjustCurrentValueK(currentValue);
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a =
@@ -386,7 +404,7 @@ EnumerateListObjectExecutor::EnumerateListObjectExecutor(
   if (_infos.hasFilter()) {
     _expressionContext = std::make_unique<EnumerateListExpressionContext>(
         _trx, _infos.getQuery(), _aqlFunctionsInternalCache,
-        _infos.getVarsToRegs(), _infos.getOutputVariableId());
+        _infos.getVarsToRegs(), _infos.getOutputVariables());
   }
 }
 
@@ -414,10 +432,8 @@ void EnumerateListObjectExecutor::initializeNewRow(
   _objIterator = VPackObjectIterator(inputList.slice(), true);
 }
 
-bool EnumerateListObjectExecutor::processElement(OutputAqlItemRow& output) {
-  bool mustDestroy = true;  // Must be true because we create AqlValue here???
-
-  velocypack::ObjectIteratorPair innerValue = *_objIterator;
+std::tuple<AqlValue, AqlValue> EnumerateListObjectExecutor::keyValueExtractor(
+    velocypack::ObjectIteratorPair innerValue) {
   AqlValue key = AqlValue(innerValue.key);
   AqlValue value;
   if (innerValue.key.stringView() == arangodb::StaticStrings::IdString &&
@@ -428,6 +444,13 @@ bool EnumerateListObjectExecutor::processElement(OutputAqlItemRow& output) {
     value = AqlValue(innerValue.value);
   }
 
+  return std::tuple<AqlValue, AqlValue>{key, value};
+}
+
+bool EnumerateListObjectExecutor::processElement(OutputAqlItemRow& output) {
+  bool mustDestroy = true;  // Must be true because we create AqlValue here???
+
+  auto [key, value] = keyValueExtractor(*_objIterator);
   AqlValueGuard guardKey(key, mustDestroy);
   AqlValueGuard guardValue(value, mustDestroy);
 
@@ -435,10 +458,9 @@ bool EnumerateListObjectExecutor::processElement(OutputAqlItemRow& output) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  // TODO: Implement later
-  // if (_infos.hasFilter() && !checkFilter(innerValue)) {
-  //   return false;
-  // }
+  if (_infos.hasFilter() && !(checkFilter(key, value))) {
+    return false;
+  }
 
   auto outputRegs = _infos.getOutputRegister();
   output.moveValueInto(outputRegs[0], _currentRow, &guardKey);
@@ -531,20 +553,17 @@ EnumerateListObjectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
       // document first, and only count those as skipped that
       // matched the filter.
 
-      // TODO: Implement filter
+      bool mustDestroy = true;
 
-      // AqlValue const& inputList =
-      // _currentRow.getValue(_infos.getInputRegister());
-      // bool mustDestroy;
-      // AqlValue innerValue =
-      //     getAqlValue(inputList, _inputArrayPosition, mustDestroy);
-      // AqlValueGuard guard(innerValue, mustDestroy);
+      auto [key, value] = keyValueExtractor(*_objIterator);
+      AqlValueGuard guardKey(key, mustDestroy);
+      AqlValueGuard guardValue(value, mustDestroy);
 
-      // if (checkFilter(innerValue)) {
-      //   call.didSkip(1);
-      // } else {
-      //   stats.incrFiltered();
-      // }
+      if (checkFilter(key, value)) {
+        call.didSkip(1);
+      } else {
+        stats.incrFiltered();
+      }
 
       // always advance input position
       _objIterator.next();
@@ -579,12 +598,14 @@ EnumerateListObjectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, call.getSkipCount(), AqlCall{}};
 }
 
-bool EnumerateListObjectExecutor::checkFilter(AqlValue const& currentValue) {
+bool EnumerateListObjectExecutor::checkFilter(AqlValue const& currentK,
+                                              AqlValue const& currentV) {
   TRI_ASSERT(_infos.hasFilter());
   TRI_ASSERT(_expressionContext != nullptr);
 
   _expressionContext->adjustCurrentRow(_currentRow);
-  _expressionContext->adjustCurrentValue(currentValue);
+  _expressionContext->adjustCurrentValueK(currentK);
+  _expressionContext->adjustCurrentValueV(currentV);
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a =

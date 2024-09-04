@@ -142,7 +142,7 @@ std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
   }
   auto executorInfos = EnumerateListExecutorInfos(
       inputRegister, std::move(outRegisters), engine.getQuery(), filter(),
-      _outVariable->id, std::move(varsToRegs), _mode);
+      this->getVariablesSetHere(), std::move(varsToRegs), _mode);
 
   if (_mode == EnumerateListNode::kEnumerateArray) {
     return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(
@@ -216,7 +216,11 @@ void EnumerateListNode::getVariablesUsedHere(VarSet& vars) const {
     // otherwise the register planning runs into trouble. the register
     // planning's assumption is that all variables that are used in a
     // node must also be used later.
-    vars.erase(outVariable());
+    auto outVars = outVariable();
+    vars.erase(outVars[0]);
+    if (outVars.size() > 1) {
+      vars.erase(outVars[1]);
+    }
   }
 }
 
@@ -245,4 +249,6 @@ void EnumerateListNode::setFilter(std::unique_ptr<Expression> filter) {
 
 Variable const* EnumerateListNode::inVariable() const { return _inVariable; }
 
-Variable const* EnumerateListNode::outVariable() const { return _outVariable; }
+std::vector<Variable const*> EnumerateListNode::outVariable() const {
+  return getVariablesSetHere();
+}

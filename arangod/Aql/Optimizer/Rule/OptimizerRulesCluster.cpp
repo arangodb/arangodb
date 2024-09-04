@@ -495,7 +495,8 @@ bool substituteClusterMultipleDocumentInsertOperations(
   }
 
   auto* enumerateNode = ExecutionNode::castTo<EnumerateListNode const*>(dep);
-  if (enumerateNode->outVariable() != mod->inVariable()) {
+  TRI_ASSERT(enumerateNode->getMode() == EnumerateListNode::kEnumerateArray);
+  if (enumerateNode->outVariable()[0] != mod->inVariable()) {
     return false;
   }
 
