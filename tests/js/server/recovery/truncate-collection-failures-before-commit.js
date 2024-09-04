@@ -131,15 +131,11 @@ const recoverySuite = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
-  if (internal.debugCanUseFailAt()) {
-    if (argv[1] === 'setup') {
-      runSetup();
-      return 0;
-    } else {
-      jsunity.run(recoverySuite);
-      return jsunity.writeDone().status ? 0 : 1;
-    }
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
   } else {
+    jsunity.run(recoverySuite);
     return jsunity.writeDone().status ? 0 : 1;
   }
 }

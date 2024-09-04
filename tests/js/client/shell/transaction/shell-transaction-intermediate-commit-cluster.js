@@ -577,11 +577,9 @@ function transactionIntermediateCommitsMultiSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  // only execute if failure tests are available
-  jsunity.run(transactionIntermediateCommitsSingleSuite);
-  if (IM.options.dbServers >= 3) {
-    jsunity.run(transactionIntermediateCommitsMultiSuite);
-  }
+
+jsunity.run(transactionIntermediateCommitsSingleSuite);
+if (IM.options.dbServers >= 3) {
+  jsunity.run(transactionIntermediateCommitsMultiSuite);
 }
 return jsunity.done();

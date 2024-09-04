@@ -348,12 +348,8 @@ function lockTimeoutSuite() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
-if (ep.length && debugCanUseFailAt(ep[0])) {
-  // only execute if failure tests are available
-  if (db._properties().replicationVersion !== "2") {
-    jsunity.run(dropFollowersElCheapoSuite);
-  }
-  jsunity.run(lockTimeoutSuite);
+if (db._properties().replicationVersion !== "2") {
+  jsunity.run(dropFollowersElCheapoSuite);
 }
+jsunity.run(lockTimeoutSuite);
 return jsunity.done();

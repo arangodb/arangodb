@@ -154,8 +154,6 @@ function aqlFailureSuite () {
   };
 }
  
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(aqlFailureSuite);
-}
+jsunity.run(aqlFailureSuite);
 
 return jsunity.done();

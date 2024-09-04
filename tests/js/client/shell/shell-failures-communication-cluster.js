@@ -82,8 +82,5 @@ function shellCommunicationsFailureSuite () {
   };
 }
  
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(shellCommunicationsFailureSuite);
-}
-
+jsunity.run(shellCommunicationsFailureSuite);
 return jsunity.done();

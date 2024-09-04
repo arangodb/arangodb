@@ -78,8 +78,5 @@ function aqlQuerySetupTimeout() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  // only execute if failure tests are available
-  jsunity.run(aqlQuerySetupTimeout);
-}
+jsunity.run(aqlQuerySetupTimeout);
 return jsunity.done();

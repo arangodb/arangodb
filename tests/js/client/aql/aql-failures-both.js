@@ -86,9 +86,7 @@ function queryFailureSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(queryFailureSuite);
-}
+jsunity.run(queryFailureSuite);
 
 return jsunity.done();
 

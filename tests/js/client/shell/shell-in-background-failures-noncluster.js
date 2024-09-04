@@ -159,8 +159,5 @@ function IndexInBackgroundFailuresSuite () {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(IndexInBackgroundFailuresSuite);
-}
-
+jsunity.run(IndexInBackgroundFailuresSuite);
 return jsunity.done();

@@ -628,9 +628,6 @@ function ahuacatlFailureModifySuite () {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(ahuacatlFailureModifySuite);
-  jsunity.run(ahuacatlFailureSuite);
-}
-
+jsunity.run(ahuacatlFailureModifySuite);
+jsunity.run(ahuacatlFailureSuite);
 return jsunity.done();

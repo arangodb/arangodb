@@ -95,8 +95,5 @@ function corruptRepairSuite () {
   };
 }
 
-if (global.instanceManager.debugCanUseFailAt()) {
-  jsunity.run(corruptRepairSuite);
-}
-
+jsunity.run(corruptRepairSuite);
 return jsunity.done();

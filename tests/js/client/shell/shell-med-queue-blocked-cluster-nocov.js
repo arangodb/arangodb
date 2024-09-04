@@ -133,8 +133,5 @@ function medQueueBlockedSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  // only execute if failure tests are available
-  jsunity.run(medQueueBlockedSuite);
-}
+jsunity.run(medQueueBlockedSuite);
 return jsunity.done();

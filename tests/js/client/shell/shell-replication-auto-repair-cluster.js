@@ -294,8 +294,5 @@ function replicationAutoRepairSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt() && db._properties().replicationVersion !== "2") {
-  // only execute if failure tests are available
-  jsunity.run(replicationAutoRepairSuite);
-}
+jsunity.run(replicationAutoRepairSuite);
 return jsunity.done();

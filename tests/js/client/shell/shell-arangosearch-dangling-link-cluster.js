@@ -86,8 +86,5 @@ function ArangoSearchDanglingLinkSuite () {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(ArangoSearchDanglingLinkSuite);
-}
-
+jsunity.run(ArangoSearchDanglingLinkSuite);
 return jsunity.done();

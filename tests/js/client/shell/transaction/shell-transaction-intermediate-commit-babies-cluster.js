@@ -291,9 +291,6 @@ function transactionIntermediateCommitsBabiesSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  // only execute if failure tests are available
-  jsunity.run(transactionIntermediateCommitsBabiesFollowerSuite);
-  jsunity.run(transactionIntermediateCommitsBabiesSuite);
-}
+jsunity.run(transactionIntermediateCommitsBabiesFollowerSuite);
+jsunity.run(transactionIntermediateCommitsBabiesSuite);
 return jsunity.done();

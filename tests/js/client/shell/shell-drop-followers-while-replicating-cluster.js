@@ -137,8 +137,5 @@ function dropFollowersWhileReplicatingSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  // only execute if failure tests are available
-  jsunity.run(dropFollowersWhileReplicatingSuite);
-}
+jsunity.run(dropFollowersWhileReplicatingSuite);
 return jsunity.done();

@@ -141,8 +141,5 @@ function replicationIntermediateCommitsSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  // only execute if failure tests are available
-  jsunity.run(replicationIntermediateCommitsSuite);
-}
+jsunity.run(replicationIntermediateCommitsSuite);
 return jsunity.done();

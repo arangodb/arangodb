@@ -58,9 +58,6 @@ function optimizerPlansTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreatePlansOom : function () {
-      if (!IM.debugCanUseFailAt()) {
-        return;
-      }
       IM.debugSetFailAt("Optimizer::createPlansOom");
       try {
         db._query("FOR i IN 1..10 FILTER i == 1 || i == 2 RETURN i");
@@ -79,6 +76,5 @@ function optimizerPlansTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerPlansTestSuite);
-
 return jsunity.done();
 

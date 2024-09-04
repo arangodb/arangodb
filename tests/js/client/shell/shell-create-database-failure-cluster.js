@@ -69,8 +69,5 @@ function createDatabaseFailureSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  // only execute if failure tests are available
-  jsunity.run(createDatabaseFailureSuite);
-}
+jsunity.run(createDatabaseFailureSuite);
 return jsunity.done();

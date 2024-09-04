@@ -417,7 +417,5 @@ function ArangoSearchOutOfSyncSuite () {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(ArangoSearchOutOfSyncSuite);
-}
+jsunity.run(ArangoSearchOutOfSyncSuite);
 return jsunity.done();

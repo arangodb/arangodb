@@ -160,8 +160,5 @@ function detachSchedulerThreadsSuite2() {
   };
 }
 
-if (db._properties().replicationVersion !== "2" &&
-    IM.debugCanUseFailAt()) {
-  jsunity.run(detachSchedulerThreadsSuite2);
-}
+jsunity.run(detachSchedulerThreadsSuite2);
 return jsunity.done();

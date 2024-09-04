@@ -193,8 +193,5 @@ function moveShardSynchronizeShardFailureSuite() {
   };
 }
 
-if (db._properties().replicationVersion !== "2" &&
-    IM.debugCanUseFailAt()) {
-  jsunity.run(moveShardSynchronizeShardFailureSuite);
-}
+jsunity.run(moveShardSynchronizeShardFailureSuite);
 return jsunity.done();

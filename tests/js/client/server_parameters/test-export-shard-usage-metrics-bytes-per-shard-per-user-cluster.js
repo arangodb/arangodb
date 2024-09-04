@@ -1634,9 +1634,6 @@ function TestUser2Suite() {
   return suite;
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(TestUser1Suite);
-  jsunity.run(TestUser2Suite);
-}
-
+jsunity.run(TestUser1Suite);
+jsunity.run(TestUser2Suite);
 return jsunity.done();

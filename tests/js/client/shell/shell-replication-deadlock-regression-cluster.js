@@ -92,8 +92,5 @@ function ReplicationDeadLockSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(ReplicationDeadLockSuite);
-}
-
+jsunity.run(ReplicationDeadLockSuite);
 return jsunity.done();

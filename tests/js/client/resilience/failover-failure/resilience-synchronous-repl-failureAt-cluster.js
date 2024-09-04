@@ -646,9 +646,5 @@ function SynchronousReplicationSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(SynchronousReplicationSuite);
-}
-
+jsunity.run(SynchronousReplicationSuite);
 return jsunity.done();
-

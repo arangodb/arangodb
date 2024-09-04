@@ -178,8 +178,5 @@ function databaseFailureSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(databaseFailureSuite);
-}
-
+jsunity.run(databaseFailureSuite);
 return jsunity.done();

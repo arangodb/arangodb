@@ -73,7 +73,5 @@ function RecalculateCountSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(RecalculateCountSuite);
-}
+jsunity.run(RecalculateCountSuite);
 return jsunity.done();

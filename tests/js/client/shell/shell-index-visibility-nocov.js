@@ -160,8 +160,5 @@ function IndexSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(IndexSuite);
-}
-
+jsunity.run(IndexSuite);
 return jsunity.done();

@@ -141,8 +141,5 @@ function quickKeysSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt(primaryEndpoint)) {
-  // only execute if failure tests are available
-  jsunity.run(quickKeysSuite);
-}
+jsunity.run(quickKeysSuite);
 return jsunity.done();

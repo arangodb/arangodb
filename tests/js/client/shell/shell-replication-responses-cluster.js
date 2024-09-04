@@ -205,7 +205,5 @@ function followerResponsesSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(followerResponsesSuite);
-}
+jsunity.run(followerResponsesSuite);
 return jsunity.done();

@@ -231,9 +231,7 @@ function ahuacatlFailureOneShardSuite () {
   };
 }
  
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(ahuacatlFailureSuite);
-  jsunity.run(ahuacatlFailureOneShardSuite);
-}
+jsunity.run(ahuacatlFailureSuite);
+jsunity.run(ahuacatlFailureOneShardSuite);
 
 return jsunity.done();

@@ -272,8 +272,5 @@ function QueryKillSuite() {
   return GenericQueryKillSuite();
 }
 
-if (global.instanceManager.debugCanUseFailAt()) {
-  jsunity.run(QueryKillSuite);
-}
-
+jsunity.run(QueryKillSuite);
 return jsunity.done();

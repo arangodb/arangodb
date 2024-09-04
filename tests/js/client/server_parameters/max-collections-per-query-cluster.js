@@ -93,7 +93,5 @@ function OptionsTestSuite () {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(OptionsTestSuite);
-}
+jsunity.run(OptionsTestSuite);
 return jsunity.done();

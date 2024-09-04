@@ -137,8 +137,5 @@ function CollectionRangeDeleteSuite () {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(CollectionRangeDeleteSuite);
-}
-
+jsunity.run(CollectionRangeDeleteSuite);
 return jsunity.done();

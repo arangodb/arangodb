@@ -625,10 +625,7 @@ function IntermediateCommitFailureSuite() {
   };
 }
     
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(DocumentOperationsFailuresSuite);
-  jsunity.run(CollectionTruncateFailuresSuite);
-  jsunity.run(IntermediateCommitFailureSuite);
-}
-
+jsunity.run(DocumentOperationsFailuresSuite);
+jsunity.run(CollectionTruncateFailuresSuite);
+jsunity.run(IntermediateCommitFailureSuite);
 return jsunity.done();

@@ -229,8 +229,5 @@ function adminClusterSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  // only run when failure tests are available
-  jsunity.run(adminClusterSuite);
-}
+jsunity.run(adminClusterSuite);
 return jsunity.done();

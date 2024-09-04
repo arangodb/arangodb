@@ -263,10 +263,9 @@ function IndexMultiBugsSuite() {
   };
 }
 
-if (IM.debugCanUseFailAt()) {
-  jsunity.run(UniqueIndexFailuresSuite);
-  jsunity.run(IndexMultiFailuresSuite);
-}
+jsunity.run(UniqueIndexFailuresSuite);
+jsunity.run(IndexMultiFailuresSuite);
+
 jsunity.run(IndexMultiBugsSuite);
 
 return jsunity.done();
