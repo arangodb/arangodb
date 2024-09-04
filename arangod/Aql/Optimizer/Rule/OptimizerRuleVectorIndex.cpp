@@ -217,7 +217,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
     auto enumerateNear = plan->createNode<EnumerateNearVectors>(
         plan.get(), plan->nextId(), inVariable, documentIdVariable,
-        distanceVariable, limit);
+        distanceVariable, limit, enumerateCollectionNode->collection(), index);
 
     auto materializer = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
@@ -230,7 +230,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     auto distanceCalculationNode = plan->getVarSetBy(distanceVariable->id);
     plan->unlinkNode(distanceCalculationNode);
 
-    plan->show();
     modified = true;
   }
 

@@ -22,6 +22,10 @@
 #include "EnumerateNearVectors.h"
 
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Collection.h"
+#include "Aql/Query.h"
+#include "Indexes/Index.h"
+#include "Aql/Ast.h"
 
 namespace arangodb::aql {
 
@@ -32,17 +36,19 @@ constexpr std::string_view kDistanceOutVariable = "distanceOutVariable";
 constexpr std::string_view kLimit = "limit";
 }  // namespace
 
-EnumerateNearVectors::EnumerateNearVectors(ExecutionPlan* plan,
-                                           arangodb::aql::ExecutionNodeId id,
-                                           Variable const* inVariable,
-                                           Variable const* documentOutVariable,
-                                           Variable const* distanceOutVariable,
-                                           std::size_t limit)
+EnumerateNearVectors::EnumerateNearVectors(
+    ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id,
+    Variable const* inVariable, Variable const* documentOutVariable,
+    Variable const* distanceOutVariable, std::size_t limit,
+    aql::Collection const* collection,
+    transaction::Methods::IndexHandle indexHandle)
     : ExecutionNode(plan, id),
       _inVariable(inVariable),
       _documentOutVariable(documentOutVariable),
       _distanceOutVariable(distanceOutVariable),
-      _limit(limit) {}
+      _limit(limit),
+      _index(std::move(indexHandle)),
+      _collection(collection) {}
 
 ExecutionNode::NodeType EnumerateNearVectors::getType() const {
   return ENUMERATE_NEAR_VECTORS;
@@ -57,9 +63,9 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectors::createBlock(
 
 ExecutionNode* EnumerateNearVectors::clone(ExecutionPlan* plan,
                                            bool withDependencies) const {
-  auto c = std::make_unique<EnumerateNearVectors>(plan, _id, _inVariable,
-                                                  _documentOutVariable,
-                                                  _distanceOutVariable, _limit);
+  auto c = std::make_unique<EnumerateNearVectors>(
+      plan, _id, _inVariable, _documentOutVariable, _distanceOutVariable,
+      _limit, _collection, _index);
 
   return cloneHelper(std::move(c), withDependencies);
 }
@@ -88,6 +94,11 @@ void EnumerateNearVectors::doToVelocyPack(velocypack::Builder& builder,
   builder.add(VPackValue(kDistanceOutVariable));
   _distanceOutVariable->toVelocyPack(builder);
   builder.add(kLimit, VPackValue(_limit));
+
+  builder.add("collection", VPackValue(_collection->name()));
+
+  builder.add(VPackValue("index"));
+  _index->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Estimates));
 }
 
 EnumerateNearVectors::EnumerateNearVectors(ExecutionPlan* plan,
@@ -99,7 +110,14 @@ EnumerateNearVectors::EnumerateNearVectors(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, kDocumentOutVariable)),
       _distanceOutVariable(
           Variable::varFromVPack(plan->getAst(), base, kDistanceOutVariable)),
-      _limit(base.get(kLimit).getNumericValue<std::size_t>()) {}
+      _limit(base.get(kLimit).getNumericValue<std::size_t>()) {
+  aql::Collections const& collections = plan->getAst()->query().collections();
+
+  std::string iid = base.get("index").get("id").copyString();
+  _collection = collections.get(base.get("collection").copyString());
+
+  _index = _collection->indexByIdentifier(iid);
+}
 
 void EnumerateNearVectors::replaceVariables(
     const std::unordered_map<VariableId, const Variable*>& replacements) {

@@ -41,7 +41,9 @@ class EnumerateNearVectors : public ExecutionNode {
   EnumerateNearVectors(ExecutionPlan* plan, ExecutionNodeId id,
                        Variable const* inVariable,
                        Variable const* documentOutVariable,
-                       Variable const* distanceOutVariable, std::size_t limit);
+                       Variable const* distanceOutVariable, std::size_t limit,
+                       aql::Collection const* collection,
+                       transaction::Methods::IndexHandle indexHandle);
 
   EnumerateNearVectors(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -63,6 +65,10 @@ class EnumerateNearVectors : public ExecutionNode {
   Variable const* documentOutVariable() const { return _documentOutVariable; }
   Variable const* distanceOutVariable() const { return _distanceOutVariable; }
 
+  transaction::Methods::IndexHandle const& index() const { return _index; }
+
+  aql::Collection const* collection() const { return _collection; }
+
  protected:
   CostEstimate estimateCost() const override;
 
@@ -82,8 +88,11 @@ class EnumerateNearVectors : public ExecutionNode {
   /// @brief contains the limit, this node only produces the top k results
   std::size_t _limit;
 
-  /// @brief
-  transaction::Methods::IndexHandle _vectorIndex;
+  /// @brief selected index for vector search
+  transaction::Methods::IndexHandle _index;
+
+  /// @brief collection to pick document from
+  aql::Collection const* _collection;
 };
 }  // namespace aql
 }  // namespace arangodb
