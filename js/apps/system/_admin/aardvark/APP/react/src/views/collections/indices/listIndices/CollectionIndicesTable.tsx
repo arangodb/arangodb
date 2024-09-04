@@ -59,6 +59,9 @@ const TABLE_COLUMNS = [
   }),
   columnHelper.accessor(
     row => {
+      if (!row.fields || row.fields.length === 0) {
+        return "-";
+      }
       return row.fields
         .map(field => {
           if (typeof field === "string") return field;
