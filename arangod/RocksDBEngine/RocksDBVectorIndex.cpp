@@ -49,6 +49,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "faiss/IndexIVFFlat.h"
 #include "faiss/MetricType.h"
+#include "faiss/utils/distances.h"
 
 namespace arangodb {
 
@@ -225,6 +226,8 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
 
     if (!_initialized) {
       std::vector<float> distances(_topK);
+      // TODO later on only on cosine
+      // faiss::fvec_renorm_L2(_flatIndex.d, 1, _input.data());
       _flatIndex.search(1, _input.data(), _topK, distances.data(), _ids.data(),
                         nullptr);
       TRI_ASSERT(std::ranges::any_of(_ids, [](auto const& elem) {
@@ -377,6 +380,9 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   }
 
   auto const docId = static_cast<faiss::idx_t>(documentId.id());
+  if (_definition.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(_definition.dimensions, 1, input.data());
+  }
   flatIndex.add_with_ids(1, input.data(), &docId);
 
   return Result{};
@@ -411,6 +417,10 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     }
     TRI_ASSERT(input.size() ==
                static_cast<std::size_t>(_definition.dimensions));
+
+    if (_definition.metric == SimilarityMetric::kCosine) {
+      faiss::fvec_renorm_L2(_definition.dimensions, 1, input.data());
+    }
     trainingData.insert(trainingData.end(), input.begin(), input.end());
 
     it->Next();
