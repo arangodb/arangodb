@@ -3337,6 +3337,7 @@ struct SortToIndexNode final
       case EN::DISTRIBUTE:
       case EN::GATHER:
       case EN::REMOTE:
+      case EN::MATERIALIZE:
       case EN::LIMIT:  // LIMIT is criterion to stop
         return true;   // abort.
 

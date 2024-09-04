@@ -29,6 +29,7 @@
 #include "Aql/Expression.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/EnumerateNearVectors.h"
+#include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
@@ -135,7 +136,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
   containers::SmallVector<ExecutionNode*, 8> nodes;
   // avoid subqueries for now
-  plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, false);
+  plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
   for (ExecutionNode* node : nodes) {
     auto enumerateCollectionNode =
         ExecutionNode::castTo<EnumerateCollectionNode*>(node);
@@ -199,9 +200,12 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     // replace the collection enumeration with the enumerate near node
     // furthermore, we have to remove the calculation node
     auto documentVariable = enumerateCollectionNode->outVariable();
+    auto documentIdVariable =
+        plan->getAst()->variables()->createTemporaryVariable();
     auto distanceVariable = sortNode->elements()[0].var;
     auto limit = limitNode->limit();
     auto inVariable = plan->getAst()->variables()->createTemporaryVariable();
+
     auto queryPointCalculationNode = plan->createNode<CalculationNode>(
         plan.get(), plan->nextId(),
         std::make_unique<Expression>(plan->getAst(), queryExpression),
@@ -212,17 +216,21 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
              << " distance = " << distanceVariable->id << " limit = " << limit;
 
     auto enumerateNear = plan->createNode<EnumerateNearVectors>(
-        plan.get(), plan->nextId(), inVariable, documentVariable,
+        plan.get(), plan->nextId(), inVariable, documentIdVariable,
         distanceVariable, limit);
+
+    auto materializer = plan->createNode<materialize::MaterializeRocksDBNode>(
+        plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
+        *documentIdVariable, *documentVariable, *documentVariable);
 
     plan->replaceNode(enumerateCollectionNode, enumerateNear);
     plan->insertBefore(enumerateNear, queryPointCalculationNode);
+    plan->insertAfter(enumerateNear, materializer);
 
     auto distanceCalculationNode = plan->getVarSetBy(distanceVariable->id);
     plan->unlinkNode(distanceCalculationNode);
 
     plan->show();
-
     modified = true;
   }
 

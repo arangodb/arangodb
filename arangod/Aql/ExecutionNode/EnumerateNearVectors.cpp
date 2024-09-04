@@ -66,7 +66,8 @@ ExecutionNode* EnumerateNearVectors::clone(ExecutionPlan* plan,
 
 CostEstimate EnumerateNearVectors::estimateCost() const {
   // TODO
-  return CostEstimate(1, _limit);
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  return estimate;
 }
 
 void EnumerateNearVectors::getVariablesUsedHere(VarSet& vars) const {
@@ -99,5 +100,12 @@ EnumerateNearVectors::EnumerateNearVectors(ExecutionPlan* plan,
       _distanceOutVariable(
           Variable::varFromVPack(plan->getAst(), base, kDistanceOutVariable)),
       _limit(base.get(kLimit).getNumericValue<std::size_t>()) {}
+
+void EnumerateNearVectors::replaceVariables(
+    const std::unordered_map<VariableId, const Variable*>& replacements) {
+  _inVariable = Variable::replace(_inVariable, replacements);
+  _documentOutVariable = Variable::replace(_documentOutVariable, replacements);
+  _distanceOutVariable = Variable::replace(_distanceOutVariable, replacements);
+}
 
 }  // namespace arangodb::aql

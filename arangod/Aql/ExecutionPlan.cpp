@@ -33,6 +33,7 @@
 #include "Aql/ExecutionNode/CollectNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumerateNearVectors.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
@@ -3109,6 +3110,12 @@ struct Shower final
         }
         break;
       }
+      case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
+        auto* enumNode =
+            ExecutionNode::castTo<EnumerateNearVectors const*>(&node);
+        absl::StrAppend(&result, " $", enumNode->documentOutVariable()->id,
+                        " NEAR $", enumNode->inVariable()->id);
+      } break;
       case ExecutionNode::INDEX: {
         auto* indexNode = ExecutionNode::castTo<IndexNode const*>(&node);
         absl::StrAppend(&result, " ", indexNode->collection()->name(), " -> ",
@@ -3121,6 +3128,12 @@ struct Shower final
         break;
       }
       case ExecutionNode::ENUMERATE_COLLECTION:
+        absl::StrAppend(
+            &result, " -> $",
+            ExecutionNode::castTo<EnumerateCollectionNode const*>(&node)
+                ->outVariable()
+                ->id);
+        [[fallthrough]];
       case ExecutionNode::UPDATE:
       case ExecutionNode::INSERT:
       case ExecutionNode::REMOVE:

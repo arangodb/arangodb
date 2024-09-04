@@ -23,6 +23,7 @@
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Transaction/Methods.h"
 
 #include <memory>
 
@@ -53,9 +54,14 @@ class EnumerateNearVectors : public ExecutionNode {
 
   ExecutionNode* clone(ExecutionPlan* plan,
                        bool withDependencies) const override;
-
+  void replaceVariables(const std::unordered_map<VariableId, const Variable*>&
+                            replacements) override;
   void getVariablesUsedHere(VarSet& vars) const override;
   std::vector<const Variable*> getVariablesSetHere() const override;
+
+  Variable const* inVariable() const { return _inVariable; }
+  Variable const* documentOutVariable() const { return _documentOutVariable; }
+  Variable const* distanceOutVariable() const { return _distanceOutVariable; }
 
  protected:
   CostEstimate estimateCost() const override;
@@ -75,6 +81,9 @@ class EnumerateNearVectors : public ExecutionNode {
 
   /// @brief contains the limit, this node only produces the top k results
   std::size_t _limit;
+
+  /// @brief
+  transaction::Methods::IndexHandle _vectorIndex;
 };
 }  // namespace aql
 }  // namespace arangodb
