@@ -157,6 +157,30 @@ using YenPathsTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
+using YenPathsCluster = arangodb::graph::YenEnumeratorWithProvider<
+    arangodb::graph::ClusterProvider<
+        arangodb::graph::ClusterProviderStep>>;
+
+using YenPathsClusterTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
+    arangodb::graph::ClusterProvider<
+        arangodb::graph::ClusterProviderStep>>;
+
+using WeightedYenPaths = arangodb::graph::WeightedYenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using WeightedYenPathsTracer = arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using WeightedYenPathsCluster = arangodb::graph::WeightedYenEnumeratorWithProvider<
+    arangodb::graph::ClusterProvider<
+        arangodb::graph::ClusterProviderStep>>;
+
+using WeightedYenPathsClusterTracer = arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
+    arangodb::graph::ClusterProvider<
+        arangodb::graph::ClusterProviderStep>>;
+
 using WeightedKShortestPaths =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
@@ -785,6 +809,12 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
                   EnumeratePathsExecutor<YenPaths>,
                   EnumeratePathsExecutor<YenPathsTracer>,
+                  EnumeratePathsExecutor<YenPathsCluster>,
+                  EnumeratePathsExecutor<YenPathsClusterTracer>,
+                  EnumeratePathsExecutor<WeightedYenPaths>,
+                  EnumeratePathsExecutor<WeightedYenPathsTracer>,
+                  EnumeratePathsExecutor<WeightedYenPathsCluster>,
+                  EnumeratePathsExecutor<WeightedYenPathsClusterTracer>,
                   ParallelUnsortedGatherExecutor, JoinExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
