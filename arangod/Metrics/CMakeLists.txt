@@ -1,4 +1,4 @@
-add_library(arango_metrics_base OBJECT
+add_library(arango_metrics_base STATIC
   Builder.cpp
   Counter.cpp
   Metric.cpp)
@@ -7,7 +7,9 @@ target_include_directories(arango_metrics_base PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-target_link_libraries(arango_metrics_base PRIVATE
+target_link_libraries(arango_metrics_base
+  PUBLIC
+  absl::strings
   arango_lightweight)
 
 add_library(arango_metrics STATIC
