@@ -65,7 +65,10 @@ export function CollectionIndexActionButtons({
         aria-label="Delete Index"
         icon={<DeleteIcon />}
         disabled={readOnly}
-        onClick={() => setShowDeleteModal(true)}
+        onClick={event => {
+          event.stopPropagation();
+          setShowDeleteModal(true);
+        }}
       />
       {showDeleteModal && (
         <DeleteIndexModal
