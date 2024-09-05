@@ -1,3 +1,4 @@
+#include "Async/Registry/Metrics.h"
 #include "Async/Registry/promise.h"
 #include "Async/Registry/thread_registry.h"
 
@@ -34,7 +35,7 @@ using CoroutineThreadRegistryDeathTest = CoroutineThreadRegistryTest;
 
 TEST_F(CoroutineThreadRegistryTest, adds_a_promise) {
   auto promise = MyTestPromise{1};
-  auto registry = ThreadRegistry::make();
+  auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
   registry->add(&promise);
   EXPECT_EQ(all_ids(registry), std::vector<uint64_t>{promise.id});
@@ -46,7 +47,7 @@ TEST_F(CoroutineThreadRegistryTest, adds_a_promise) {
 // TEST_F(CoroutineThreadRegistryDeathTest, another_thread_cannot_add_a_promise)
 // {
 //   GTEST_FLAG_SET(death_test_style, "threadsafe");
-//   auto registry = ThreadRegistry::make();
+//   auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
 //   std::jthread([&]() {
 //     auto promise = MyTestPromise{1};
@@ -59,7 +60,7 @@ TEST_F(CoroutineThreadRegistryTest, iterates_over_all_promises) {
   auto first_promise = MyTestPromise{1};
   auto second_promise = MyTestPromise{2};
   auto third_promise = MyTestPromise{3};
-  auto registry = ThreadRegistry::make();
+  auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
   registry->add(&first_promise);
   registry->add(&second_promise);
@@ -83,7 +84,7 @@ TEST_F(CoroutineThreadRegistryTest,
   auto first_promise = MyTestPromise{1};
   auto second_promise = MyTestPromise{2};
   auto third_promise = MyTestPromise{3};
-  auto registry = ThreadRegistry::make();
+  auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
   registry->add(&first_promise);
   registry->add(&second_promise);
@@ -109,7 +110,7 @@ TEST_F(CoroutineThreadRegistryTest,
        marked_promises_are_deleted_in_garbage_collection) {
   auto promise_to_delete = MyTestPromise{1};
   auto another_promise = MyTestPromise{2};
-  auto registry = ThreadRegistry::make();
+  auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
   registry->add(&promise_to_delete);
   registry->add(&another_promise);
@@ -129,7 +130,7 @@ TEST_F(CoroutineThreadRegistryTest,
 TEST_F(CoroutineThreadRegistryTest, garbage_collection_runs_on_destruction) {
   auto promise = MyTestPromise{1};
   {
-    auto registry = ThreadRegistry::make();
+    auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
     registry->add(&promise);
     registry->mark_for_deletion(&promise);
   }
@@ -142,7 +143,7 @@ TEST_F(CoroutineThreadRegistryTest,
     auto first_promise = MyTestPromise{1};
     auto second_promise = MyTestPromise{2};
     auto third_promise = MyTestPromise{3};
-    auto registry = ThreadRegistry::make();
+    auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
     registry->add(&first_promise);
     registry->add(&second_promise);
@@ -164,7 +165,7 @@ TEST_F(CoroutineThreadRegistryTest,
     auto first_promise = MyTestPromise{1};
     auto second_promise = MyTestPromise{2};
     auto third_promise = MyTestPromise{3};
-    auto registry = ThreadRegistry::make();
+    auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
     registry->add(&first_promise);
     registry->add(&second_promise);
@@ -186,7 +187,7 @@ TEST_F(CoroutineThreadRegistryTest,
     auto first_promise = MyTestPromise{1};
     auto second_promise = MyTestPromise{2};
     auto third_promise = MyTestPromise{3};
-    auto registry = ThreadRegistry::make();
+    auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
     registry->add(&first_promise);
     registry->add(&second_promise);
@@ -211,7 +212,7 @@ TEST_F(CoroutineThreadRegistryTest,
 //   GTEST_FLAG_SET(death_test_style, "threadsafe");
 
 //   auto promise = MyTestPromise{1};
-//   auto registry = ThreadRegistry::make();
+//   auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
 //   EXPECT_DEATH(registry->mark_for_deletion(&promise), "Assertion failed");
 // }
@@ -220,7 +221,7 @@ TEST_F(CoroutineThreadRegistryTest,
        another_thread_can_mark_a_promise_for_deletion) {
   auto promise_to_delete = MyTestPromise{1};
   auto another_promise = MyTestPromise{2};
-  auto registry = ThreadRegistry::make();
+  auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
   registry->add(&promise_to_delete);
   registry->add(&another_promise);
@@ -243,7 +244,7 @@ TEST_F(CoroutineThreadRegistryTest,
 //   GTEST_FLAG_SET(death_test_style, "threadsafe");
 
 //   {
-//     auto registry = ThreadRegistry::make();
+//     auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
 //     std::jthread([&] { registry->garbage_collect(); });
 //   }
@@ -253,7 +254,7 @@ TEST_F(CoroutineThreadRegistryTest,
 //        garbage_collection_cannot_be_called_on_different_thread) {
 //   GTEST_FLAG_SET(death_test_style, "threadsafe");
 
-//   auto registry = ThreadRegistry::make();
+//   auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 //   auto promise = MyTestPromise{1};
 //   registry->add(&promise);
 
