@@ -1430,7 +1430,7 @@ function processQuery(query, explain, planIndex) {
         }
         break;
       case 'EnumerateNearVectors':
-        return keyword('FOR') + ' ' + variableName(node.documentOutVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable);
+        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable);
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {

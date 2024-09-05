@@ -33,18 +33,20 @@ namespace {
 constexpr std::string_view kInVariableName = "inVariable";
 constexpr std::string_view kDocumentOutVariable = "documentOutVariable";
 constexpr std::string_view kDistanceOutVariable = "distanceOutVariable";
+constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
 constexpr std::string_view kLimit = "limit";
 }  // namespace
 
 EnumerateNearVectors::EnumerateNearVectors(
     ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id,
-    Variable const* inVariable, Variable const* documentOutVariable,
-    Variable const* distanceOutVariable, std::size_t limit,
-    aql::Collection const* collection,
+    Variable const* inVariable, Variable const* oldDocumentVariable,
+    Variable const* documentOutVariable, Variable const* distanceOutVariable,
+    std::size_t limit, aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
       _inVariable(inVariable),
+      _oldDocumentVariable(oldDocumentVariable),
       _documentOutVariable(documentOutVariable),
       _distanceOutVariable(distanceOutVariable),
       _limit(limit),
@@ -64,8 +66,8 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectors::createBlock(
 ExecutionNode* EnumerateNearVectors::clone(ExecutionPlan* plan,
                                            bool withDependencies) const {
   auto c = std::make_unique<EnumerateNearVectors>(
-      plan, _id, _inVariable, _documentOutVariable, _distanceOutVariable,
-      _limit, collection(), _index);
+      plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
+      _distanceOutVariable, _limit, collection(), _index);
 
   return cloneHelper(std::move(c), withDependencies);
 }
@@ -90,6 +92,8 @@ void EnumerateNearVectors::doToVelocyPack(velocypack::Builder& builder,
   builder.add(VPackValue(kInVariableName));
   _inVariable->toVelocyPack(builder);
 
+  builder.add(VPackValue(kOldDocumentVariable));
+  _oldDocumentVariable->toVelocyPack(builder);
   builder.add(VPackValue(kDocumentOutVariable));
   _documentOutVariable->toVelocyPack(builder);
   builder.add(VPackValue(kDistanceOutVariable));
@@ -108,6 +112,8 @@ EnumerateNearVectors::EnumerateNearVectors(ExecutionPlan* plan,
       CollectionAccessingNode(plan, base),
       _inVariable(
           Variable::varFromVPack(plan->getAst(), base, kInVariableName)),
+      _oldDocumentVariable(
+          Variable::varFromVPack(plan->getAst(), base, kOldDocumentVariable)),
       _documentOutVariable(
           Variable::varFromVPack(plan->getAst(), base, kDocumentOutVariable)),
       _distanceOutVariable(

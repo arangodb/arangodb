@@ -42,6 +42,7 @@ class EnumerateNearVectors : public ExecutionNode,
  public:
   EnumerateNearVectors(ExecutionPlan* plan, ExecutionNodeId id,
                        Variable const* inVariable,
+                       Variable const* oldDocumentVariable,
                        Variable const* documentOutVariable,
                        Variable const* distanceOutVariable, std::size_t limit,
                        aql::Collection const* collection,
@@ -80,6 +81,9 @@ class EnumerateNearVectors : public ExecutionNode,
  private:
   /// @brief input variable to read the query point from
   Variable const* _inVariable;
+
+  /// @brief old document variable, only used for book keeping
+  Variable const* _oldDocumentVariable;
 
   /// @brief document id and distance out variables
   Variable const* _documentOutVariable;

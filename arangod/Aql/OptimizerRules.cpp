@@ -637,9 +637,7 @@ std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
     scatterInClusterNodeTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
         arangodb::aql::ExecutionNode::ENUMERATE_NEAR_VECTORS,
-        arangodb::aql::ExecutionNode::MATERIALIZE,
         arangodb::aql::ExecutionNode::INDEX,
-        arangodb::aql::ExecutionNode::JOIN,
         arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
         arangodb::aql::ExecutionNode::INSERT,
         arangodb::aql::ExecutionNode::UPDATE,

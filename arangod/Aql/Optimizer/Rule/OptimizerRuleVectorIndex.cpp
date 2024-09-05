@@ -200,9 +200,16 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     // replace the collection enumeration with the enumerate near node
     // furthermore, we have to remove the calculation node
     auto documentVariable = enumerateCollectionNode->outVariable();
-    auto documentIdVariable =
-        plan->getAst()->variables()->createTemporaryVariable();
+
     auto distanceVariable = sortNode->elements()[0].var;
+    auto oldDocumentVariable = enumerateCollectionNode->outVariable();
+
+    // actually we want this to be late materialized.
+    // But this is too complicated for now. A later optimizer rule should
+    // but the late materialization into place.
+    auto documentIdVariable = oldDocumentVariable;
+    // plan->getAst()->variables()->createTemporaryVariable();
+
     auto limit = limitNode->limit();
     auto inVariable = plan->getAst()->variables()->createTemporaryVariable();
 
@@ -216,17 +223,21 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
              << " distance = " << distanceVariable->id << " limit = " << limit;
 
     auto enumerateNear = plan->createNode<EnumerateNearVectors>(
-        plan.get(), plan->nextId(), inVariable, documentIdVariable,
-        distanceVariable, limit, enumerateCollectionNode->collection(), index);
+        plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
+        documentIdVariable, distanceVariable, limit,
+        enumerateCollectionNode->collection(), index);
 
-    auto materializer = plan->createNode<materialize::MaterializeRocksDBNode>(
-        plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
-        *documentIdVariable, *documentVariable, *documentVariable);
-    plan->excludeFromScatterGather(enumerateNear);
+    // auto materializer =
+    // plan->createNode<materialize::MaterializeRocksDBNode>(
+    //     plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
+    //     *documentIdVariable, *documentVariable, *documentVariable);
+    // plan->excludeFromScatterGather(enumerateNear);
 
     plan->replaceNode(enumerateCollectionNode, enumerateNear);
     plan->insertBefore(enumerateNear, queryPointCalculationNode);
-    plan->insertAfter(enumerateNear, materializer);
+    // plan->insertAfter(enumerateNear, materializer);
+
+    // we don't need this sort node at all, because we produce sorted output
     plan->unlinkNode(sortNode);
 
     auto distanceCalculationNode = plan->getVarSetBy(distanceVariable->id);
