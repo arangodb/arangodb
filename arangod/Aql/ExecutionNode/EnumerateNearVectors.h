@@ -23,6 +23,7 @@
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
@@ -36,7 +37,8 @@ class ExecutionPlan;
 class Expression;
 
 /// @brief class EnumerateNearVectors
-class EnumerateNearVectors : public ExecutionNode {
+class EnumerateNearVectors : public ExecutionNode,
+                             public CollectionAccessingNode {
  public:
   EnumerateNearVectors(ExecutionPlan* plan, ExecutionNodeId id,
                        Variable const* inVariable,
@@ -67,8 +69,6 @@ class EnumerateNearVectors : public ExecutionNode {
 
   transaction::Methods::IndexHandle const& index() const { return _index; }
 
-  aql::Collection const* collection() const { return _collection; }
-
  protected:
   CostEstimate estimateCost() const override;
 
@@ -90,9 +90,6 @@ class EnumerateNearVectors : public ExecutionNode {
 
   /// @brief selected index for vector search
   transaction::Methods::IndexHandle _index;
-
-  /// @brief collection to pick document from
-  aql::Collection const* _collection;
 };
 }  // namespace aql
 }  // namespace arangodb

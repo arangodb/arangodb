@@ -1021,6 +1021,13 @@ bool Index::covers(aql::Projections& projections) const {
 
 bool Index::canWarmup() const noexcept { return false; }
 
+UserVectorIndexDefinition const& Index::getVectorIndexDefinition() {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "Requesting vector index definition on a non-vector index");
+}
+
 Result Index::warmup() {
   // we should never be called in the base class.
   TRI_ASSERT(!canWarmup());

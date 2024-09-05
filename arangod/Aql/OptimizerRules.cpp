@@ -94,6 +94,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
+#include "Aql/ExecutionNode/EnumerateNearVectors.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -635,7 +636,10 @@ std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
 std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
     scatterInClusterNodeTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+        arangodb::aql::ExecutionNode::ENUMERATE_NEAR_VECTORS,
+        arangodb::aql::ExecutionNode::MATERIALIZE,
         arangodb::aql::ExecutionNode::INDEX,
+        arangodb::aql::ExecutionNode::JOIN,
         arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
         arangodb::aql::ExecutionNode::INSERT,
         arangodb::aql::ExecutionNode::UPDATE,
@@ -3852,8 +3856,29 @@ auto insertGatherNode(
       }
       return gatherNode;
     }
-    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
-      abort();
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
+      auto elements = SortElementVector{};
+      auto envNode = ExecutionNode::castTo<EnumerateNearVectors const*>(node);
+      auto collection = envNode->collection();
+      TRI_ASSERT(collection != nullptr);
+      auto numberOfShards = collection->numberOfShards();
+
+      Variable const* sortVariable = envNode->distanceOutVariable();
+      bool const isSortAscending = true;
+      elements.push_back(
+          SortElement::createWithPath(sortVariable, isSortAscending, {}));
+
+      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
+      auto parallelism = GatherNode::evaluateParallelism(*collection);
+
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode,
+                                               parallelism);
+
+      if (!elements.empty() && numberOfShards != 1) {
+        gatherNode->elements(elements);
+      }
+      return gatherNode;
+    }
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE:
@@ -4832,12 +4857,14 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
         case EN::LIMIT:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
+        case EN::ENUMERATE_NEAR_VECTORS:
         case EN::TRAVERSAL:
         case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
         case EN::SUBQUERY:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
+        case EN::MATERIALIZE:
           // do break
           stopSearching = true;
           break;
@@ -4888,7 +4915,8 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
 
         default: {
           // should not reach this point
-          TRI_ASSERT(false);
+          TRI_ASSERT(false)
+              << "Unhandled node type " << inspectNode->getTypeString();
         }
       }
 
@@ -4965,6 +4993,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::REMOTE_MULTIPLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
+        case EN::MATERIALIZE:
         case EN::OFFSET_INFO_MATERIALIZE:
 
           // For all these, we do not want to pull a SortNode further down
@@ -5016,10 +5045,7 @@ void arangodb::aql::distributeSortToClusterRule(
           // ready to rumble!
           break;
         }
-        // late-materialization should be set only after sort nodes are
-        // distributed in cluster as it accounts this disctribution. So we
-        // should not encounter this kind of nodes for now
-        case EN::MATERIALIZE:
+        // we should not encounter this kind of nodes for now
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:

@@ -582,6 +582,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::RETURN:
     case EN::SORT:
     case EN::ENUMERATE_COLLECTION:
+    case EN::ENUMERATE_NEAR_VECTORS:
     case EN::LIMIT:
     case EN::SHORTEST_PATH:
     case EN::ENUMERATE_PATHS:

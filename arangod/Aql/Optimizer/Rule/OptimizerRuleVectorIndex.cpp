@@ -52,7 +52,7 @@ namespace {
 
 bool checkFunctionNameMatchesIndexMetric(
     std::string_view const functionName,
-    FullVectorIndexDefinition const& definition) {
+    UserVectorIndexDefinition const& definition) {
   switch (definition.metric) {
     case SimilarityMetric::kL1: {
       return functionName == "APPROX_NEAR_L1";
@@ -68,7 +68,7 @@ bool checkFunctionNameMatchesIndexMetric(
 
 AstNode* isSortNodeValid(auto const* sortNode,
                          std::unique_ptr<ExecutionPlan>& plan,
-                         FullVectorIndexDefinition const& definition,
+                         UserVectorIndexDefinition const& definition,
                          Variable const* enumerateNodeOutVar) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
@@ -166,22 +166,22 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
 
     if (currentNode == nullptr || currentNode->getType() != EN::SORT) {
+      LOG_RULE << "DID NOT FIND SORT NODE, but instead "
+               << (currentNode ? currentNode->getTypeString() : "nullptr");
       continue;
     }
-    auto const* sortNode = ExecutionNode::castTo<SortNode const*>(currentNode);
+    auto sortNode = ExecutionNode::castTo<SortNode*>(currentNode);
 
     auto const* maybeLimitNode = sortNode->getFirstParent();
     if (!maybeLimitNode || maybeLimitNode->getType() != EN::LIMIT) {
+      LOG_RULE << "DID NOT FIND LIMIT NODE, but instead "
+               << (maybeLimitNode ? maybeLimitNode->getTypeString()
+                                  : "nullptr");
       continue;
     }
 
-    auto const* vectorIndex =
-        dynamic_cast<RocksDBVectorIndex const*>(index.get());
-    if (vectorIndex == nullptr) {
-      continue;
-    }
     auto queryExpression =
-        isSortNodeValid(sortNode, plan, vectorIndex->getDefinition(),
+        isSortNodeValid(sortNode, plan, index->getVectorIndexDefinition(),
                         enumerateCollectionNode->outVariable());
     if (queryExpression == nullptr) {
       LOG_RULE << "Query expression not valid";
@@ -222,10 +222,12 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     auto materializer = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
         *documentIdVariable, *documentVariable, *documentVariable);
+    plan->excludeFromScatterGather(enumerateNear);
 
     plan->replaceNode(enumerateCollectionNode, enumerateNear);
     plan->insertBefore(enumerateNear, queryPointCalculationNode);
     plan->insertAfter(enumerateNear, materializer);
+    plan->unlinkNode(sortNode);
 
     auto distanceCalculationNode = plan->getVarSetBy(distanceVariable->id);
     plan->unlinkNode(distanceCalculationNode);

@@ -510,4 +510,9 @@ aql::AstNode* RocksDBVectorIndex::specializeCondition(
   return condition;
 }
 
+UserVectorIndexDefinition const&
+RocksDBVectorIndex::getVectorIndexDefinition() {
+  return getDefinition();
+}
+
 }  // namespace arangodb

@@ -46,6 +46,8 @@ struct ResourceMonitor;
 struct AqlIndexStreamIterator;
 struct IndexStreamOptions;
 
+struct UserVectorIndexDefinition;
+
 namespace velocypack {
 class Builder;
 class Slice;
@@ -405,6 +407,8 @@ class Index {
 
   virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
       transaction::Methods* trx, IndexStreamOptions const&);
+
+  virtual UserVectorIndexDefinition const& getVectorIndexDefinition();
 
   virtual bool canWarmup() const noexcept;
   virtual Result warmup();

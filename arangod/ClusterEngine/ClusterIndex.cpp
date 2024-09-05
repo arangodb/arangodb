@@ -31,12 +31,14 @@
 #include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
+#include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -99,6 +101,10 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           _prefixFields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
+    } else if (_indexType == TRI_IDX_TYPE_VECTOR_INDEX) {
+      LOG_DEVEL << "CREATING VECTOR CLUSTER INDEX";
+      velocypack::deserialize(info.get("params"), _vectorIndexDefinition);
+      TRI_ASSERT(_vectorIndexDefinition != nullptr);
     }
 
     // check for "estimates" attribute
@@ -506,4 +512,14 @@ bool ClusterIndex::supportsStreamInterface(
       break;
   }
   return false;
+}
+
+UserVectorIndexDefinition const& ClusterIndex::getVectorIndexDefinition() {
+  TRI_ASSERT(_vectorIndexDefinition != nullptr);
+  if (!_vectorIndexDefinition) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "Requesting vector index definition on a non-vector index");
+  }
+  return *_vectorIndexDefinition;
 }
