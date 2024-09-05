@@ -207,6 +207,10 @@ class WeightedTwoSidedEnumerator {
 
     auto getDiameter() const noexcept -> double { return _diameter; }
 
+    auto haveSeenOtherSide() const noexcept -> bool {
+      return _haveSeenOtherSide;
+    }
+
     auto setForbiddenVertices(std::unique_ptr<VertexSet> forbidden)
         -> void requires HasForbidden<PathValidatorType> {
       _validator.setForbiddenVertices(std::move(forbidden));
@@ -217,7 +221,9 @@ class WeightedTwoSidedEnumerator {
       _validator.setForbiddenEdges(std::move(forbidden));
     };
 
-   private : auto clearProvider() -> void;
+   private:
+    auto clearProvider() -> void;
+
    private:
     // TODO: Double check if we really need the monitor here. Currently unused.
     arangodb::ResourceMonitor& _resourceMonitor;
@@ -236,6 +242,7 @@ class WeightedTwoSidedEnumerator {
     Direction _direction;
     GraphOptions _graphOptions;
     double _diameter = -std::numeric_limits<double>::infinity();
+    bool _haveSeenOtherSide;
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
@@ -352,7 +359,8 @@ class WeightedTwoSidedEnumerator {
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
- private : [[nodiscard]] auto searchDone() const -> bool;
+ private:
+  [[nodiscard]] auto searchDone() const -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
   // we will not be able to generate the resulting path
   auto fetchResults() -> void;

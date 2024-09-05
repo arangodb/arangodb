@@ -81,7 +81,8 @@ WeightedTwoSidedEnumerator<
       _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
       _graphOptions(options),
-      _diameter(-std::numeric_limits<double>::infinity()) {}
+      _diameter(-std::numeric_limits<double>::infinity()),
+      _haveSeenOtherSide(false) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -107,6 +108,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _queue.clear();
   _interior.reset();  // PathStore
   _diameter = -std::numeric_limits<double>::infinity();
+  _haveSeenOtherSide = false;
   _validator.reset();
 
   // Provider - Must be last one to be cleared(!)
@@ -289,7 +291,8 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         if (other.hasBeenVisited(n)) {
           // Need to validate this step, too:
           ValidationResult res = _validator.validatePath(n);
-          if (!(res.isFiltered() || res.isPruned())) {
+          if (!(res.isFiltered() || !res.isPruned())) {
+            _haveSeenOtherSide = true;
             other.matchResultsInShell(n, candidates, _validator);
           }
         } else {
@@ -300,6 +303,8 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         }
       });
     }
+  } else {
+    _haveSeenOtherSide = true;
   }
 }
 
@@ -896,7 +901,16 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::searchDone() const -> bool {
-  return (_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished();
+  if ((_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished()) {
+    return true;
+  }
+  if (_left.noPathLeft() && !_left.haveSeenOtherSide()) {
+    return true;
+  }
+  if (_right.noPathLeft() && !_right.haveSeenOtherSide()) {
+    return true;
+  }
+  return false;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
