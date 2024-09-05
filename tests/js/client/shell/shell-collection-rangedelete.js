@@ -31,6 +31,7 @@ const arangodb = require("@arangodb");
 const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
+let IM = global.instanceManager;
 
 function CollectionRangeDeleteSuite () {
   const cn = "UnitTestsRangeDelete";
@@ -38,13 +39,13 @@ function CollectionRangeDeleteSuite () {
 
   return {
     setUp : function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown : function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
     },
     
@@ -64,7 +65,7 @@ function CollectionRangeDeleteSuite () {
       
       assertEqual(100000, c.count());
 
-      internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
+      IM.debugSetFailAt("RocksDBRemoveLargeRangeOn");
       try {
         // should fire
         c.truncate();
@@ -90,7 +91,7 @@ function CollectionRangeDeleteSuite () {
       
       assertEqual(100000, c.count());
 
-      internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
+      IM.debugSetFailAt("RocksDBRemoveLargeRangeOn");
       // should fire!
       try {
         c.truncate({ compact: false });
@@ -100,7 +101,7 @@ function CollectionRangeDeleteSuite () {
       }
       
       assertEqual(100000, c.count());
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       
       c.truncate({ compact: false });
       assertEqual(0, c.count());
@@ -113,7 +114,7 @@ function CollectionRangeDeleteSuite () {
       }
 
       assertEqual(100, c.count());
-      internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
+      IM.debugSetFailAt("RocksDBRemoveLargeRangeOn");
       // should not fire
       c.truncate({ compact: false });
       assertEqual(0, c.count());
@@ -122,8 +123,8 @@ function CollectionRangeDeleteSuite () {
         c.insert({});
       }
       
-      internal.debugClearFailAt();
-      internal.debugSetFailAt("RocksDBRemoveLargeRangeOff");
+      IM.debugClearFailAt();
+      IM.debugSetFailAt("RocksDBRemoveLargeRangeOff");
 
       try {
         // should fire
@@ -136,7 +137,7 @@ function CollectionRangeDeleteSuite () {
   };
 }
 
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(CollectionRangeDeleteSuite);
 }
 

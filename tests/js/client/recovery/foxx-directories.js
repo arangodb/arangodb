@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global fail, assertTrue, assertFalse, assertEqual, TRANSACTION, arango */
+/* global runSetup fail, assertTrue, assertFalse, assertEqual, TRANSACTION, arango */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -30,9 +30,18 @@ var FoxxServiceAppPath = arango.POST("/_admin/execute", `return require('@arango
 var jsunity = require('jsunity');
 var fs = require('fs');
 
-function runSetup () {
+function fileExists(path) {
+  try {
+    fs.readFileSync(path);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   let appPath = fs.join(FoxxServiceAppPath, '..');
 
@@ -54,15 +63,6 @@ function runSetup () {
   fs.write(path, 'test');
 
   // tries to force the operating system to refresh its inode cache
-  function fileExists(path) {
-    try {
-      fs.readFileSync(path);
-      return true;
-    } catch (err) {
-      return false;
-    }
-  }
-
   db._dropDatabase('UnitTestsRecovery2');
   // garbage-collect once
   require("internal").wait(0.5, true);
@@ -82,6 +82,7 @@ function runSetup () {
   if (!gone) {
     throw new Error(`"${path}" did not disappear in 120s!`);
   }
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -116,13 +117,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

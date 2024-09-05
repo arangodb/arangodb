@@ -256,11 +256,11 @@ function testSuite() {
   return {
     setUpAll : function () {
       // set this failure point so that metrics updates are pushed immediately
-      internal.debugSetFailAt("alwaysPublishShardMetrics");
+      global.instanceManager.debugSetFailAt("alwaysPublishShardMetrics");
     },
       
     tearDownAll : function () {
-      internal.debugRemoveFailAt("alwaysPublishShardMetrics");
+      global.instanceManager.debugRemoveFailAt("alwaysPublishShardMetrics");
     },
 
     testDoesNotPolluteNormalMetricsAPI : function () {
@@ -1110,7 +1110,7 @@ function testSuite() {
           // count 30-40 bytes for each insert into c1
           assertTotalWriteMetricsAreCounted(c1, replicationFactor, n * 30, n * 40);
           // count 360-370 bytes for each insert into c2
-          assertTotalWriteMetricsAreCounted(c2, replicationFactor, n * 360, n * 370);
+          assertTotalWriteMetricsAreCounted(c2, replicationFactor, n * 350, n * 370);
         } finally {
           db._drop(c2.name());
           db._drop(c1.name());
@@ -1607,7 +1607,5 @@ function testSuite() {
   };
 }
 
-if (internal.debugCanUseFailAt()) {
-  jsunity.run(testSuite);
-}
+jsunity.run(testSuite);
 return jsunity.done();

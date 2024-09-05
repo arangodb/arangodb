@@ -27,7 +27,9 @@
 
 const jsunity = require("jsunity");
 const internal = require("internal");
+const db = internal.db;
 const versionHas = require("@arangodb/test-helper").versionHas;
+let IM = global.instanceManager;
 
 function IndexInBackgroundFailuresSuite () {
   'use strict';
@@ -35,8 +37,7 @@ function IndexInBackgroundFailuresSuite () {
   let collection = null;
   
   let run = function(insertData, getRanges) {
-    let time = require("internal").time;
-    const start = time();
+    const start = internal.time();
 
     let maxArchivedLogNumber = null;
     let ranges = getRanges();
@@ -68,21 +69,21 @@ function IndexInBackgroundFailuresSuite () {
         break;
       }
 
-      assertFalse(time() - start > timeout, "time's up for this test!");
+      assertFalse(internal.time() - start > timeout, "time's up for this test!");
     }
   };
 
   return {
 
     setUp : function () {
-      internal.debugClearFailAt();
-      internal.db._drop(cn);
-      collection = internal.db._create(cn);
+      IM.debugClearFailAt();
+      db._drop(cn);
+      collection = db._create(cn);
     },
 
     tearDown : function () {
-      internal.debugClearFailAt();
-      internal.db._drop(cn);
+      IM.debugClearFailAt();
+      db._drop(cn);
     },
 
     // this test sets a failure point to delay background index creation.
@@ -109,7 +110,7 @@ function IndexInBackgroundFailuresSuite () {
 
       internal.wal.flush(true, true);
 
-      internal.debugSetFailAt("BuilderIndex::purgeWal");
+      IM.debugSetFailAt("BuilderIndex::purgeWal");
 
       // create an index in background. note that due to the failure point,
       // index creation will block until we remove the failure point
@@ -135,7 +136,7 @@ function IndexInBackgroundFailuresSuite () {
       run(insertData, getRanges);
 
       // resume index creation
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
 
       // wait until index is there...
       let tries = 0;
@@ -144,7 +145,7 @@ function IndexInBackgroundFailuresSuite () {
         if (res.code === 201 || res.code >= 400) {
           break;
         }
-        require("internal").sleep(0.5);
+        internal.sleep(0.5);
       }
 
       assertEqual(201, res.code);
@@ -158,7 +159,7 @@ function IndexInBackgroundFailuresSuite () {
   };
 }
 
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(IndexInBackgroundFailuresSuite);
 }
 

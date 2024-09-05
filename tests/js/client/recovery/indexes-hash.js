@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue */
+/* global runSetup assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -36,9 +36,9 @@ const est1 = 1; // The index is de-facto unique so estimate 1
 const est2 = 1; // This index is unique. Estimate 1
 const est3 = 4 / 1000; // This index has 4 different values and stores 1000 documents
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   db._drop(colName1);
   let c = db._create(colName1);
@@ -74,7 +74,7 @@ function runSetup () {
   db._drop('test');
   c = db._create('test');
   c.save({ _key: 'crashme' }, true);
-
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -177,13 +177,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

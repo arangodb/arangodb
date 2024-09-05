@@ -54,29 +54,19 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
 let db = arangodb.db;
-let { debugCanUseFailAt, debugRemoveFailAt, debugSetFailAt, debugClearFailAt } = require('@arangodb/test-helper');
-
-function getEndpointAndIdMap() {
-  const health = arango.GET("/_admin/cluster/health").Health;
-  const endpointMap = {};
-  const idMap = {};
-  for (let sid in health) {
-    endpointMap[health[sid].ShortName] = health[sid].Endpoint;
-    idMap[health[sid].ShortName] = sid;
-  }
-  return {endpointMap, idMap};
-}
+let IM = global.instanceManager;
 
 function createCollectionWithKnownLeaderAndFollower(cn) {
   db._create(cn, {numberOfShards:1, replicationFactor:2});
   // Get dbserver names first:
-  let { endpointMap, idMap } = getEndpointAndIdMap();
   let plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
   let shard = Object.keys(plan)[0];
-  let coordinator = "Coordinator0001";
-  let leader = plan[shard].leader;
-  let follower = plan[shard].followers[0];
-  return { endpointMap, idMap, coordinator, leader, follower, shard };
+  return {
+    coordinator: "Coordinator0001",
+    leader: plan[shard].leader,
+    follower: plan[shard].followers[0],
+    shard: shard
+  };
 }
 
 function detachSchedulerThreadsSuite2() {
@@ -97,7 +87,7 @@ function detachSchedulerThreadsSuite2() {
       let collInfo = createCollectionWithKnownLeaderAndFollower(cn);
       // We have a shard whose leader and follower is known to us.
       
-      let followerEndpoint = collInfo.endpointMap[collInfo.follower];
+
 
       // Let's insert some documents:
       let c = db._collection(cn);
@@ -110,7 +100,7 @@ function detachSchedulerThreadsSuite2() {
       try {
         // Block replication in the follower, such that it can be released
         // later on (nested failure points).
-        debugSetFailAt(followerEndpoint, "synchronousReplication::blockReplication");
+        IM.debugSetFailAt("synchronousReplication::blockReplication", '', collInfo.follower);
 
         // Create a transaction T writing to the replicated collection
         let trx = arango.POST_RAW("/_api/transaction/begin", {collections:{write:[cn]}});
@@ -139,7 +129,7 @@ function detachSchedulerThreadsSuite2() {
         c.document("K1");
 
         // Unblock everything:
-        debugSetFailAt(followerEndpoint, "synchronousReplication::unblockReplication");
+        IM.debugSetFailAt("synchronousReplication::unblockReplication", '', collInfo.follower);
 
         // And now expect that all ops terminate:
         let waitForJob = function(id) {
@@ -164,14 +154,14 @@ function detachSchedulerThreadsSuite2() {
         let res = arango.DELETE_RAW(`/_api/transaction/${trx}`);
         assertEqual(200, res.code);
       } finally {
-        debugClearFailAt(followerEndpoint);
+        IM.debugClearFailAt('', '', collInfo.follower);
       }
     }
   };
 }
 
 if (db._properties().replicationVersion !== "2" &&
-    internal.debugCanUseFailAt()) {
+    IM.debugCanUseFailAt()) {
   jsunity.run(detachSchedulerThreadsSuite2);
 }
 return jsunity.done();

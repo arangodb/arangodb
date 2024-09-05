@@ -65,7 +65,7 @@ class V8ShellFeature final : public ArangoshFeature {
   ErrorCode runShell(std::vector<std::string> const& positionals);
   bool runScript(std::vector<std::string> const& files,
                  std::vector<std::string> const&, bool,
-                 std::vector<std::string> const& mainArgs, bool);
+                 std::vector<std::string> const& mainArgs);
   bool runString(std::vector<std::string> const& files,
                  std::vector<std::string> const&);
   bool runUnitTests(std::vector<std::string> const& files,

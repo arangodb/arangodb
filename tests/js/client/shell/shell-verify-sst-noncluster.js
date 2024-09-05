@@ -43,7 +43,7 @@ const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 
 function verifySstSuite() {
   'use strict';
-  const dirs = JSON.parse(internal.env.INSTANCEINFO).arangods.filter((s) => s.instanceRole === 'single').map((s) => s.rootDir);
+  const dirs = global.instanceManager.arangods.filter((s) => s.instanceRole === 'single').map((s) => s.rootDir);
   assertEqual(1, dirs.length);
 
   const cn = 'UnitTests';

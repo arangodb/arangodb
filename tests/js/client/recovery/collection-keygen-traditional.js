@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertTrue, assertFalse, assertEqual */
+/* global runSetup assertTrue, assertFalse, assertEqual */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -29,9 +29,9 @@ var jsunity = require('jsunity');
 
 const bigNumber = 99999999999999;
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
   var c, i;
 
   // write a documents with a large numeric key
@@ -47,7 +47,7 @@ function runSetup () {
   c = db._create('UnitTestsRecovery2');
   c.save({ value: 0 });
   c.save({ value: 1 }, { waitForSync: true });
-
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -89,13 +89,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();
