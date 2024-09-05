@@ -270,6 +270,9 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         -> void {
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
+  LOG_TOPIC("17171", TRACE, Logger::GRAPHS)
+      << "Working on vertex " << tmp.getVertex().getID() << " direction "
+      << _direction;
 
   // if the other side has explored this vertex, don't add it again
   if (!other.hasBeenVisited(tmp)) {
@@ -279,6 +282,8 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     TRI_ASSERT(step.getWeight() >= _diameter);
     _diameter = step.getWeight();
     ValidationResult res = _validator.validatePath(step);
+    LOG_TOPIC("17173", TRACE, Logger::GRAPHS)
+        << "Validation result: " << res.isFiltered() << res.isPruned();
 
     if (!res.isFiltered()) {
       _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
@@ -291,20 +296,28 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         if (other.hasBeenVisited(n)) {
           // Need to validate this step, too:
           ValidationResult res = _validator.validatePath(n);
-          if (!(res.isFiltered() || !res.isPruned())) {
+          LOG_TOPIC("17175", TRACE, Logger::GRAPHS)
+              << "Validation of expanded step: " << res.isFiltered()
+              << res.isPruned();
+          if (!(res.isFiltered() || res.isPruned())) {
             _haveSeenOtherSide = true;
+            LOG_TOPIC("17176", TRACE, Logger::GRAPHS) << "Matching results...";
             other.matchResultsInShell(n, candidates, _validator);
           }
         } else {
           // If the other side has already visited the vertex, we do not
           // have to put it on our queue. But if not, we must look at it
           // later:
+          LOG_TOPIC("17176", TRACE, Logger::GRAPHS)
+              << "Not visited yet on other side.";
           _queue.append(std::move(n));
         }
       });
     }
   } else {
     _haveSeenOtherSide = true;
+    LOG_TOPIC("17172", TRACE, Logger::GRAPHS)
+        << "Has been visited by the other side.";
   }
 }
 
@@ -326,6 +339,8 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
 
     double nextFullPathWeight = ourStep.getWeight() + otherStep.getWeight();
+    LOG_TOPIC("17177", TRACE, Logger::GRAPHS)
+        << "Suggesting new candidate path of weight " << nextFullPathWeight;
     if (_direction == FORWARD) {
       candidates.append(
           std::make_tuple(nextFullPathWeight, ourStep, otherStep));
