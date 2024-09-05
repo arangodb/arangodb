@@ -34,6 +34,7 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
+#include "AsyncRegistryServer/RestHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -754,6 +755,10 @@ void GeneralServerFeature::defineRemainingHandlers(
         RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
   }
 #endif
+
+  f.addPrefixHandler(
+      "/_api/async_registry",
+      RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_api/dump",

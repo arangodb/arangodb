@@ -2,6 +2,7 @@
 
 #include "Assertions/ProdAssert.h"
 #include "Async/Registry/Metrics.h"
+#include "Basics/Thread.h"
 #include "Inspection/Format.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -16,7 +17,9 @@ auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics)
 }
 
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
-    : running_threads{metrics->running_threads.get(), 1}, metrics{metrics} {
+    : thread_name{ThreadNameFetcher{}.get()},
+      running_threads{metrics->running_threads.get(), 1},
+      metrics{metrics} {
   if (metrics->total_threads != nullptr) {
     metrics->total_threads->count();
   }
@@ -36,6 +39,8 @@ auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
   auto current_head = promise_head.load(std::memory_order_relaxed);
   promise->next = current_head;
   promise->registry = shared_from_this();
+  promise->thread_name = thread_name;
+  promise->thread_id = owning_thread;
   if (current_head != nullptr) {
     current_head->previous = promise;
   }
