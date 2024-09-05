@@ -187,7 +187,7 @@ function enumerateObjectTestSuite() {
       // Check fullCount value
       assertEqual(actual.getExtra()["stats"]["fullCount"], db[edgeColl].count() * 6);
 
-      actual = actual.toArray()
+      actual = actual.toArray();
       // Check that system fields are present
       let systemFields = actual.filter((e) => ["_key", "_rev", "_id", "_from", "_to"].includes(e[0]));
       assertEqual(systemFields.length, 5 * 3); // 5 system fields * 9 documents in collection
