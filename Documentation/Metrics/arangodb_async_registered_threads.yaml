@@ -1,0 +1,12 @@
+name: arangodb_async_registered_threads
+introducedIn: "3.12.3"
+help: |
+  Number of registered threads that execute asynchronous functions.
+unit: number
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of registered threads that execute asynchronous functions.
