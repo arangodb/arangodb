@@ -269,64 +269,37 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
 
-  LOG_DEVEL << "Visiting " << tmp.getVertex().getID()
-            << ", direction: " << _direction;
-
   // if the other side has explored this vertex, don't add it again
   if (!other.hasBeenVisited(tmp)) {
-    LOG_DEVEL << "Has not been visited on the other side!";
     auto posPrevious = _interior.append(std::move(tmp));
     auto& step = _interior.getStepReference(posPrevious);
 
     TRI_ASSERT(step.getWeight() >= _diameter);
     _diameter = step.getWeight();
-    _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
+    ValidationResult res = _validator.validatePath(step);
 
-    _provider.expand(step, posPrevious, [&](Step n) -> void {
-      // TODO: maybe the pathStore could be asked whether a vertex has been
-      // visited?
-      LOG_DEVEL << "Expanding to " << n.getVertex().getID();
-      ValidationResult res = _validator.validatePath(n);
+    if (!res.isFiltered()) {
+      _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
+    }
 
-      LOG_DEVEL << "Path validation says: " << res.isFiltered()
-                << res.isPruned();
-
-      // For two sided enumeration we will never see a discrepancy between
-      // isPruned and isFiltered. This is for the following reason:
-      // TwoSidedEnumeration is used in the following cases:
-      //  - ShortestPath
-      //  - k-Shortest-Paths
-      //  - All-Shortest-Paths
-      //  - k-Paths
-      // In all cases, there is no PRUNE statement and any FILTER statement
-      // is a statement on the complete path found. The execution only ever
-      // returns full paths from the start to the target, provided they are
-      // not filtered out by the FILTER statement. Furthermore, all paths
-      // are loopless by definition.
-      // This means that all conditions we get on vertices and edges have
-      // the following property:
-      //   If a prefix or suffix of a path is rejected by the condition,
-      //   then the whole path is also rejected.
-      // Therefore, we might as well prune any search immediately, if the
-      // validator throws out a prefix (or suffix).
-      // Typically, we get the implicit condition on vertices
-      // `VertexUniquenessLevel::PATH` or
-      // `VertexUniquenessLevel::GLOBAL`, and we get conditions on all
-      // vertices or on all edges. In the `YenEnumerator` case we might
-      // get forbidden vertices and edges, which are also conditions of
-      // this type.
-      TRI_ASSERT(res.isPruned() == res.isFiltered());
-
-      if (!res.isPruned()) {
+    if (!res.isPruned()) {
+      _provider.expand(step, posPrevious, [&](Step n) -> void {
+        // TODO: maybe the pathStore could be asked whether a vertex has been
+        // visited?
         if (other.hasBeenVisited(n)) {
-          other.matchResultsInShell(n, candidates, _validator);
+          // Need to validate this step, too:
+          ValidationResult res = _validator.validatePath(n);
+          if (!(res.isFiltered() || res.isPruned())) {
+            other.matchResultsInShell(n, candidates, _validator);
+          }
+        } else {
+          // If the other side has already visited the vertex, we do not
+          // have to put it on our queue. But if not, we must look at it
+          // later:
+          _queue.append(std::move(n));
         }
-        _queue.append(std::move(n));
-      }
-    });
-    LOG_DEVEL << "Expansion done.";
-  } else {
-    LOG_DEVEL << "Has been visited by the other side!";
+      });
+    }
   }
 }
 
