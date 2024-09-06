@@ -308,7 +308,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
           // If the other side has already visited the vertex, we do not
           // have to put it on our queue. But if not, we must look at it
           // later:
-          LOG_TOPIC("17176", TRACE, Logger::GRAPHS)
+          LOG_TOPIC("17177", TRACE, Logger::GRAPHS)
               << "Not visited yet on other side.";
           _queue.append(std::move(n));
         }
@@ -339,7 +339,7 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     }
 
     double nextFullPathWeight = ourStep.getWeight() + otherStep.getWeight();
-    LOG_TOPIC("17177", TRACE, Logger::GRAPHS)
+    LOG_TOPIC("17178", TRACE, Logger::GRAPHS)
         << "Suggesting new candidate path of weight " << nextFullPathWeight;
     if (_direction == FORWARD) {
       candidates.append(
