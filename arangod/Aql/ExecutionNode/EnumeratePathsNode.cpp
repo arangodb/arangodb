@@ -509,7 +509,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
-            if (opts->getAlgorithm() == "yen") {
+            if (opts->getAlgorithm() == "" /* "yen" */) {
               return _makeExecutionBlockImpl<
                   YenEnumeratorWithProvider<Provider>, Provider,
                   SingleServerBaseProviderOptions>(
@@ -556,7 +556,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
-            if (opts->getAlgorithm() == "yen") {
+            if (opts->getAlgorithm() == "" /* "yen" */) {
               return _makeExecutionBlockImpl<
                   WeightedYenEnumeratorWithProvider<Provider>, Provider,
                   SingleServerBaseProviderOptions>(
@@ -605,7 +605,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
-            if (opts->getAlgorithm() == "yen") {
+            if (opts->getAlgorithm() == "" /* "yen" */) {
               return _makeExecutionBlockImpl<
                   TracedYenEnumeratorWithProvider<Provider>,
                   ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
@@ -652,7 +652,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
-            if (opts->getAlgorithm() == "yen") {
+            if (opts->getAlgorithm() == "" /* "yen" */) {
               return _makeExecutionBlockImpl<
                   TracedWeightedYenEnumeratorWithProvider<Provider>,
                   ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
@@ -711,7 +711,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
-            if (opts->getAlgorithm() == "yen") {
+            if (opts->getAlgorithm() == "" /* "yen" */) {
               return _makeExecutionBlockImpl<
                   YenEnumeratorWithProvider<ClusterProvider>, ClusterProvider,
                   ClusterBaseProviderOptions>(
@@ -758,7 +758,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
-            if (opts->getAlgorithm() == "yen") {
+            if (opts->getAlgorithm() == "" /* "yen" */) {
               return _makeExecutionBlockImpl<
                   WeightedYenEnumeratorWithProvider<ClusterProvider>,
                   ClusterProvider, ClusterBaseProviderOptions>(
@@ -806,7 +806,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
-            if (opts->getAlgorithm() == "yen") {
+            if (opts->getAlgorithm() == "" /* "yen" */) {
               return _makeExecutionBlockImpl<
                   TracedYenEnumeratorWithProvider<ClusterProvider>,
                   ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
@@ -853,7 +853,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
-            if (opts->getAlgorithm() == "yen") {
+            if (opts->getAlgorithm() == "" /* "yen" */) {
               return _makeExecutionBlockImpl<
                   TracedWeightedYenEnumeratorWithProvider<ClusterProvider>,
                   ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
