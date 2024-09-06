@@ -295,7 +295,13 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         // visited?
         if (other.hasBeenVisited(n)) {
           // Need to validate this step, too:
-          ValidationResult res = _validator.validatePath(n);
+          ValidationResult res =
+              _validator.validatePathWithoutGlobalVertexUniqueness(n);
+          // Note that we must not fully enforce uniqueness here for the
+          // following reason: If vertex uniqueness is set to global,
+          // then we would burn that vertex (which belongs to the
+          // other side!), so that we can no longer reach it with a
+          // different path, which might have a smaller weight.
           LOG_TOPIC("17175", TRACE, Logger::GRAPHS)
               << "Validation of expanded step: " << res.isFiltered()
               << res.isPruned();
@@ -513,16 +519,17 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   _left.reset(source, 0);
 
-  // TODO: this is not ideal; here's the issue: If source == target there is no
-  // search to be done as there is only *at most* one shortest path between a
-  // vertex and itself: the path of length and weight 0. If the vertex does not
-  // fulfill the global vertex condition, there is none. So the global vertex
-  // condition has to be evaluated! This is why the _left ball is used here.
+  // TODO: this is not ideal; here's the issue: If source == target there is
+  // no search to be done as there is only *at most* one shortest path between
+  // a vertex and itself: the path of length and weight 0. If the vertex does
+  // not fulfill the global vertex condition, there is none. So the global
+  // vertex condition has to be evaluated! This is why the _left ball is used
+  // here.
   //
   // Admittedly, this choice is arbitrary: in our context a path is a sequence
   // of edges that does not repeat vertices. Otherwise this path search would
-  // have to return all cycles based at the source == target vertex. This can be
-  // implemented using a OneSidedEnumerator if ever requested.
+  // have to return all cycles based at the source == target vertex. This can
+  // be implemented using a OneSidedEnumerator if ever requested.
   if (source == target) {
     _singleton = true;
     _right.clear();

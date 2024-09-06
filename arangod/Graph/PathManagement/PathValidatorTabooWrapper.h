@@ -69,6 +69,8 @@ class PathValidatorTabooWrapper {
       typename PathStoreImpl::Step const& step,
       PathValidatorTabooWrapper<PathValidatorImplementation> const&
           otherValidator) -> ValidationResult;
+  auto validatePathWithoutGlobalVertexUniqueness(
+      typename PathStoreImpl::Step& step) -> ValidationResult;
 
   void reset();
 

@@ -205,6 +205,20 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
 template<class ProviderType, class PathStore,
          VertexUniquenessLevel vertexUniqueness,
          EdgeUniquenessLevel edgeUniqueness>
+auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
+    validatePathWithoutGlobalVertexUniqueness(typename PathStore::Step& step)
+        -> ValidationResult {
+  if constexpr (vertexUniqueness == VertexUniquenessLevel::GLOBAL) {
+    auto res = evaluateVertexCondition(step);
+    return handleValidationResult(res, step);
+  }
+  // Delegate to the normal method:
+  return validatePath(step);
+}
+
+template<class ProviderType, class PathStore,
+         VertexUniquenessLevel vertexUniqueness,
+         EdgeUniquenessLevel edgeUniqueness>
 auto PathValidator<ProviderType, PathStore, vertexUniqueness,
                    edgeUniqueness>::exposeUniqueVertices() const
     -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,

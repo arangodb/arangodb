@@ -66,6 +66,8 @@ class PathValidatorTracer {
       typename PathStore::Step const& step,
       PathValidatorTracer<PathValidatorImplementation> const& otherValidator)
       -> ValidationResult;
+  auto validatePathWithoutGlobalVertexUniqueness(typename PathStore::Step& step)
+      -> ValidationResult;
 
   void reset();
 

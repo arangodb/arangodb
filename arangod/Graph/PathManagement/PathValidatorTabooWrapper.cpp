@@ -86,6 +86,22 @@ auto PathValidatorTabooWrapper<PathValidatorImplementation>::validatePath(
 }
 
 template<class PathValidatorImplementation>
+auto PathValidatorTabooWrapper<PathValidatorImplementation>::
+    validatePathWithoutGlobalVertexUniqueness(
+        typename PathStoreImpl::Step& step) -> ValidationResult {
+  auto v = step.getVertex().getID();
+  if (_forbiddenVertices != nullptr &&
+      _forbiddenVertices->contains(step.getVertex().getID())) {
+    return ValidationResult(ValidationResult::Type::FILTER_AND_PRUNE);
+  }
+  if (_forbiddenEdges != nullptr &&
+      _forbiddenEdges->contains(step.getEdge().getID())) {
+    return ValidationResult(ValidationResult::Type::FILTER_AND_PRUNE);
+  }
+  return _impl.validatePathWithoutGlobalVertexUniqueness(step);
+}
+
+template<class PathValidatorImplementation>
 void PathValidatorTabooWrapper<PathValidatorImplementation>::reset() {
   return _impl.reset();
 }

@@ -83,6 +83,17 @@ auto PathValidatorTracer<PathValidatorImplementation>::validatePath(
 }
 
 template<class PathValidatorImplementation>
+auto PathValidatorTracer<PathValidatorImplementation>::
+    validatePathWithoutGlobalVertexUniqueness(typename PathStore::Step& step)
+        -> ValidationResult {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["validatePath"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.validatePathWithoutGlobalVertexUniqueness(step);
+}
+
+template<class PathValidatorImplementation>
 void PathValidatorTracer<PathValidatorImplementation>::reset() {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard(
