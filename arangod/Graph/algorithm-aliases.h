@@ -176,24 +176,28 @@ using TracedKShortestPathsEnumerator =
 // Yen's algorithm implementation:
 template<class Provider>
 using YenEnumeratorWithProvider =
-    YenEnumerator<Provider, ShortestPathEnumeratorForYen<Provider>>;
+    YenEnumerator<Provider, ShortestPathEnumeratorForYen<Provider>,
+                  false /* IsWeighted */>;
 
 // Yen's algorithm implementation using tracing:
 template<class Provider>
 using TracedYenEnumeratorWithProvider =
     YenEnumerator<ProviderTracer<Provider>,
-                  TracedShortestPathEnumeratorForYen<Provider>>;
+                  TracedShortestPathEnumeratorForYen<Provider>,
+                  false /* IsWeighted */>;
 
 // Yen's algorithm implementation with weights:
 template<class Provider>
 using WeightedYenEnumeratorWithProvider =
-    YenEnumerator<Provider, WeightedShortestPathEnumeratorForYen<Provider>>;
+    YenEnumerator<Provider, WeightedShortestPathEnumeratorForYen<Provider>,
+                  true /* IsWeighted */>;
 
 // Yen's algorithm implementation with weights using tracing:
 template<class Provider>
 using TracedWeightedYenEnumeratorWithProvider =
     YenEnumerator<ProviderTracer<Provider>,
-                  TracedWeightedShortestPathEnumeratorForYen<Provider>>;
+                  TracedWeightedShortestPathEnumeratorForYen<Provider>,
+                  true /* IsWeighted */>;
 
 // WEIGHTED_K_SHORTEST_PATHS implementation
 template<class Provider>

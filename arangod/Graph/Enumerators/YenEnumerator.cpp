@@ -48,8 +48,8 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-template<class ProviderType, class EnumeratorType>
-YenEnumerator<ProviderType, EnumeratorType>::YenEnumerator(
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
+YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::YenEnumerator(
     ProviderType&& forwardProvider, ProviderType&& backwardProvider,
     TwoSidedEnumeratorOptions&& options, PathValidatorOptions validatorOptions,
     arangodb::ResourceMonitor& resourceMonitor)
@@ -64,18 +64,22 @@ YenEnumerator<ProviderType, EnumeratorType>::YenEnumerator(
   _shortestPathEnumerator = std::make_unique<EnumeratorType>(
       std::move(forwardProvider), std::move(backwardProvider),
       std::move(options), std::move(validatorOptions), resourceMonitor);
+  if constexpr (IsWeighted) {
+    _shortestPathEnumerator->setEmitWeight(true);
+  }
 }
 
-template<class ProviderType, class EnumeratorType>
-YenEnumerator<ProviderType, EnumeratorType>::~YenEnumerator() {}
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
+YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::~YenEnumerator() {}
 
-template<class ProviderType, class EnumeratorType>
-auto YenEnumerator<ProviderType, EnumeratorType>::destroyEngines() -> void {
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
+auto YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::destroyEngines()
+    -> void {
   _shortestPathEnumerator->destroyEngines();
 }
 
-template<class ProviderType, class EnumeratorType>
-void YenEnumerator<ProviderType, EnumeratorType>::clear() {
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
+void YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::clear() {
   _shortestPathEnumerator->clear();
   _shortestPaths.clear();
   _candidatePaths.clear();
@@ -90,8 +94,8 @@ void YenEnumerator<ProviderType, EnumeratorType>::clear() {
  * @return true There will be no further path.
  * @return false There is a chance that there is more data available.
  */
-template<class ProviderType, class EnumeratorType>
-bool YenEnumerator<ProviderType, EnumeratorType>::isDone() const {
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
+bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::isDone() const {
   // This is more subtle than first meets the eye: If we are not yet
   // initialized, we must return `true`.
   // This is necessary such that the EnumeratePathsExecutor works. Once
@@ -111,10 +115,9 @@ bool YenEnumerator<ProviderType, EnumeratorType>::isDone() const {
  * @param source The source vertex to start the paths
  * @param target The target vertex to end the paths
  */
-template<class ProviderType, class EnumeratorType>
-void YenEnumerator<ProviderType, EnumeratorType>::reset(VertexRef source,
-                                                        VertexRef target,
-                                                        size_t depth) {
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
+void YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::reset(
+    VertexRef source, VertexRef target, size_t depth) {
   _source = source;
   _target = target;
   clear();
@@ -122,9 +125,9 @@ void YenEnumerator<ProviderType, EnumeratorType>::reset(VertexRef source,
   _isInitialized = true;
 }
 
-template<class ProviderType, class EnumeratorType>
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
 PathResult<ProviderType, typename ProviderType::Step>
-YenEnumerator<ProviderType, EnumeratorType>::toOwned(
+YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::toOwned(
     PathResult<ProviderType, typename ProviderType::Step> const& path) {
   PathResult<ProviderType, typename ProviderType::Step> copy{
       path.getSourceProvider(), path.getTargetProvider()};  // empty path
@@ -157,8 +160,8 @@ YenEnumerator<ProviderType, EnumeratorType>::toOwned(
  * @return true Found and written a path, result is modified.
  * @return false No path found, result has not been changed.
  */
-template<class ProviderType, class EnumeratorType>
-bool YenEnumerator<ProviderType, EnumeratorType>::getNextPath(
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
+bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     VPackBuilder& result) {
   if (!_isInitialized) {
     return false;
@@ -273,7 +276,14 @@ bool YenEnumerator<ProviderType, EnumeratorType>::getNextPath(
     }
   }
   _shortestPaths.emplace_back(std::move(*_candidatePaths[posBest]));
-  _shortestPaths.back().toVelocyPack(result);
+  if constexpr (IsWeighted) {
+    _shortestPaths.back().toVelocyPack(
+        result,
+        PathResult<ProviderType,
+                   typename ProviderType::Step>::WeightType::ACTUAL_WEIGHT);
+  } else {
+    _shortestPaths.back().toVelocyPack(result);
+  }
   _candidatePaths.erase(_candidatePaths.begin() + posBest);
 
   return true;
@@ -286,15 +296,14 @@ bool YenEnumerator<ProviderType, EnumeratorType>::getNextPath(
  * @return false No path found.
  */
 
-template<class ProviderType, class EnumeratorType>
-bool YenEnumerator<ProviderType, EnumeratorType>::skipPath() {
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
+bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::skipPath() {
   VPackBuilder builder;
-  // TODO, we might be able to improve this by not producing the result:
   return getNextPath(builder);
 }
 
-template<class ProviderType, class EnumeratorType>
-auto YenEnumerator<ProviderType, EnumeratorType>::stealStats()
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
+auto YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::stealStats()
     -> aql::TraversalStats {
   return _shortestPathEnumerator->stealStats();
 }
@@ -306,33 +315,33 @@ auto YenEnumerator<ProviderType, EnumeratorType>::stealStats()
 using SingleProvider = SingleServerProvider<SingleServerProviderStep>;
 
 template class ::arangodb::graph::YenEnumerator<
-    SingleProvider, ShortestPathEnumeratorForYen<SingleProvider>>;
+    SingleProvider, ShortestPathEnumeratorForYen<SingleProvider>, false>;
 
 template class ::arangodb::graph::YenEnumerator<
     ProviderTracer<SingleProvider>,
-    TracedShortestPathEnumeratorForYen<SingleProvider>>;
+    TracedShortestPathEnumeratorForYen<SingleProvider>, false>;
 
 template class ::arangodb::graph::YenEnumerator<
-    SingleProvider, WeightedShortestPathEnumeratorForYen<SingleProvider>>;
+    SingleProvider, WeightedShortestPathEnumeratorForYen<SingleProvider>, true>;
 
 template class ::arangodb::graph::YenEnumerator<
     ProviderTracer<SingleProvider>,
-    TracedWeightedShortestPathEnumeratorForYen<SingleProvider>>;
+    TracedWeightedShortestPathEnumeratorForYen<SingleProvider>, true>;
 
 // ClusterProvider Section:
 
 using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
 template class ::arangodb::graph::YenEnumerator<
-    ClustProvider, ShortestPathEnumeratorForYen<ClustProvider>>;
+    ClustProvider, ShortestPathEnumeratorForYen<ClustProvider>, false>;
 
 template class ::arangodb::graph::YenEnumerator<
     ProviderTracer<ClustProvider>,
-    TracedShortestPathEnumeratorForYen<ClustProvider>>;
+    TracedShortestPathEnumeratorForYen<ClustProvider>, false>;
 
 template class ::arangodb::graph::YenEnumerator<
-    ClustProvider, WeightedShortestPathEnumeratorForYen<ClustProvider>>;
+    ClustProvider, WeightedShortestPathEnumeratorForYen<ClustProvider>, true>;
 
 template class ::arangodb::graph::YenEnumerator<
     ProviderTracer<ClustProvider>,
-    TracedWeightedShortestPathEnumeratorForYen<ClustProvider>>;
+    TracedWeightedShortestPathEnumeratorForYen<ClustProvider>, true>;

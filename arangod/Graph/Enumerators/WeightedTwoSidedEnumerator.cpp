@@ -569,7 +569,8 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _right.buildPath(rightVertex, _resultPath);
       TRI_ASSERT(!_resultPath.isEmpty());
 
-      if (_options.getPathType() == PathType::Type::KShortestPaths) {
+      if (_options.getPathType() == PathType::Type::KShortestPaths ||
+          _emitWeight) {
         // Add weight attribute to edges
         _resultPath.toVelocyPack(
             result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
@@ -593,7 +594,8 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     _right.buildPath(rightVertex, _resultPath);
     TRI_ASSERT(!_resultPath.isEmpty());
 
-    if (_options.getPathType() == PathType::Type::KShortestPaths) {
+    if (_options.getPathType() == PathType::Type::KShortestPaths ||
+        _emitWeight) {
       // Add weight attribute to edges
       _resultPath.toVelocyPack(
           result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);

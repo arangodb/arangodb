@@ -133,7 +133,7 @@ struct TwoSidedEnumeratorOptions;
 template<class ProviderType, class Step>
 class PathResult;
 
-template<class ProviderType, class EnumeratorType>
+template<class ProviderType, class EnumeratorType, bool IsWeighted>
 class YenEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
