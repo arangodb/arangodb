@@ -221,9 +221,7 @@ class WeightedTwoSidedEnumerator {
       _validator.setForbiddenEdges(std::move(forbidden));
     };
 
-   private:
-    auto clearProvider() -> void;
-
+   private : auto clearProvider() -> void;
    private:
     // TODO: Double check if we really need the monitor here. Currently unused.
     arangodb::ResourceMonitor& _resourceMonitor;
@@ -359,8 +357,7 @@ class WeightedTwoSidedEnumerator {
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
- private:
-  [[nodiscard]] auto searchDone() const -> bool;
+ private : [[nodiscard]] auto searchDone() const -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
   // we will not be able to generate the resulting path
   auto fetchResults() -> void;

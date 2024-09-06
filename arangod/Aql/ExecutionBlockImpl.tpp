@@ -158,28 +158,27 @@ using YenPathsTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
 using YenPathsCluster = arangodb::graph::YenEnumeratorWithProvider<
-    arangodb::graph::ClusterProvider<
-        arangodb::graph::ClusterProviderStep>>;
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using YenPathsClusterTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
-    arangodb::graph::ClusterProvider<
-        arangodb::graph::ClusterProviderStep>>;
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedYenPaths = arangodb::graph::WeightedYenEnumeratorWithProvider<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using WeightedYenPathsTracer = arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
+using WeightedYenPathsTracer =
+    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
 
-using WeightedYenPathsCluster = arangodb::graph::WeightedYenEnumeratorWithProvider<
-    arangodb::graph::ClusterProvider<
-        arangodb::graph::ClusterProviderStep>>;
+using WeightedYenPathsCluster =
+    arangodb::graph::WeightedYenEnumeratorWithProvider<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
-using WeightedYenPathsClusterTracer = arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
-    arangodb::graph::ClusterProvider<
-        arangodb::graph::ClusterProviderStep>>;
+using WeightedYenPathsClusterTracer =
+    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedKShortestPaths =
     arangodb::graph::WeightedKShortestPathsEnumerator<
