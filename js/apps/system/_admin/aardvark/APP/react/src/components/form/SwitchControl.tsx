@@ -1,7 +1,7 @@
+import { InfoTooltip } from "@arangodb/ui";
 import { Box, Flex, Switch, SwitchProps } from "@chakra-ui/react";
 import { useField, useFormikContext } from "formik";
 import React from "react";
-import { InfoTooltip } from "../tooltip/InfoTooltip";
 import { BaseFormControlProps, FormikFormControl } from "./FormikFormControl";
 
 export type InputControlProps = BaseFormControlProps & {

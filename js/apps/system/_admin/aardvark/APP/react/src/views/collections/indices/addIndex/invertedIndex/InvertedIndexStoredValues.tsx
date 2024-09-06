@@ -1,9 +1,8 @@
+import { CreatableMultiSelectControl, SingleSelectControl } from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../../../components/form/CreatableMultiSelectControl";
-import { SelectControl } from "../../../../../components/form/SelectControl";
 import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
@@ -68,7 +67,7 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                     <FormLabel htmlFor={`storedValues.${index}.compression`}>
                       Compression
                     </FormLabel>
-                    <SelectControl
+                    <SingleSelectControl
                       isDisabled={field.isDisabled}
                       name={`storedValues.${index}.compression`}
                       selectProps={{

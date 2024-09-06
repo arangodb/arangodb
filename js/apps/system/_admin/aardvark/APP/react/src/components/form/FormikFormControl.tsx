@@ -1,15 +1,14 @@
+import { InfoTooltip } from "@arangodb/ui";
 import {
-  Grid,
   FormControl,
   FormControlProps,
   FormErrorMessage,
   FormErrorMessageProps,
   FormLabel,
-  FormLabelProps
+  FormLabelProps, Grid
 } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
-import { InfoTooltip } from "../tooltip/InfoTooltip";
 
 export type BaseFormControlProps = FormControlProps & {
   name: string;

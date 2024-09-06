@@ -1,3 +1,4 @@
+import { InputControl, SingleSelectControl } from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import {
   AccordionButton,
@@ -11,8 +12,6 @@ import {
 } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { InputControl } from "../../../../components/form/InputControl";
-import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
 
 export const PrimarySortAccordionItem = () => {
@@ -67,7 +66,7 @@ const PrimarySortFields = () => {
                     <FormLabel htmlFor={`primarySort.${index}.direction`}>
                       Direction
                     </FormLabel>
-                    <SelectControl
+                    <SingleSelectControl
                       name={`primarySort.${index}.direction`}
                       selectProps={{
                         options: directionOptions
