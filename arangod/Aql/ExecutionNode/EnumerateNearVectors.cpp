@@ -68,7 +68,7 @@ ExecutionNode* EnumerateNearVectors::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateNearVectors>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
       _distanceOutVariable, _limit, collection(), _index);
-
+  CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
 
