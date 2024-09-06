@@ -148,12 +148,12 @@ function enumerateObjectTestSuite() {
     },
 
     testOutputDocumentCollection: function () {
-      let actual = queryDocumentsNoLimit(docCollection, false, ["+replace-entries-with-object-iteration"]).toArray();
+      const actual = queryDocumentsNoLimit(docCollection, false, ["+replace-entries-with-object-iteration"]).toArray();
 
       // Check that system fields are present
       let systemFields = actual.filter((e) => ["_key", "_rev", "_id"].includes(e[0]));
       assertEqual(systemFields.length, 3 * 8); // 3 system fields * 8 documents in collection
-      actual = actual.filter((e) => !["_key", "_rev", "_id"].includes(e[0])).flat();
+      let actualArr = actual.filter((e) => !["_key", "_rev", "_id"].includes(e[0])).flat();
       let expected = [
         "key1",
         "a",
@@ -176,22 +176,22 @@ function enumerateObjectTestSuite() {
         "key8",
         { "subkey": { "a": 1 } }
       ];
-      assertEqual(actual, expected);
+      assertEqual(actualArr, expected);
     },
 
     testOutputEdgeCollection: function () {
       // skip 6 documents: 6 * 6 == 36
       // return 3 documents: 3 * 6 = 18
-      let actual = queryDocumentsWithLimit(edgeColl, 36, 18, true, ["+replace-entries-with-object-iteration"]);
+      const actual = queryDocumentsWithLimit(edgeColl, 36, 18, true, ["+replace-entries-with-object-iteration"]);
 
       // Check fullCount value
       assertEqual(actual.getExtra()["stats"]["fullCount"], db[edgeColl].count() * 6);
 
-      actual = actual.toArray();
+      let actualArr = actual.toArray();
       // Check that system fields are present
-      let systemFields = actual.filter((e) => ["_key", "_rev", "_id", "_from", "_to"].includes(e[0]));
+      let systemFields = actualArr.filter((e) => ["_key", "_rev", "_id", "_from", "_to"].includes(e[0]));
       assertEqual(systemFields.length, 5 * 3); // 5 system fields * 9 documents in collection
-      actual = actual.filter((e) => !["_key", "_rev", "_id", "_from", "_to"].includes(e[0])).flat();
+      actualArr = actualArr.filter((e) => !["_key", "_rev", "_id", "_from", "_to"].includes(e[0])).flat();
 
       let expected = [
         "field",
@@ -201,23 +201,23 @@ function enumerateObjectTestSuite() {
         "field",
         { "eh": 58 }
       ];
-      assertEqual(actual, expected);
+      assertEqual(actualArr, expected);
     },
 
     testOutputDocumentCollectionWithLimit1: function () {
       // skip 12 first values (therefore 3 complete documents will be skipped), return 40.
       // In our case, the count will be more than left documents in a collection
-      let actual = queryDocumentsWithLimit(docCollection, 12, 40, true, ["+replace-entries-with-object-iteration"]);
+      const actual = queryDocumentsWithLimit(docCollection, 12, 40, true, ["+replace-entries-with-object-iteration"]);
 
       // Check fullCount value
       assertEqual(actual.getExtra()["stats"]["fullCount"], db[docCollection].count() * 4);
 
-      actual = actual.toArray();
+      let actualArr = actual.toArray();
       // Check that system fields are present
-      let systemFields = actual.filter((e) => ["_key", "_rev", "_id"].includes(e[0]));
+      let systemFields = actualArr.filter((e) => ["_key", "_rev", "_id"].includes(e[0]));
       // First 3 documents were skipped (offset == 12)
       assertEqual(systemFields.length, 3 * 5); // 3 system fields * 5 non-skipped documents in collection
-      actual = actual.filter((e) => !["_key", "_rev", "_id"].includes(e[0])).flat();
+      actualArr = actualArr.filter((e) => !["_key", "_rev", "_id"].includes(e[0])).flat();
       let expected = [
         "key4",
         "e",
@@ -234,58 +234,58 @@ function enumerateObjectTestSuite() {
         "key8",
         { "subkey": { "a": 1 } }
       ];
-      assertEqual(actual, expected);
+      assertEqual(actualArr, expected);
     },
 
     testOutputDocumentCollectionWithLimit2: function () {
       // skip 4 first values (therefore 1 complete document will be skipped), return 4.
-      let actual = queryDocumentsWithLimit(docCollection, 4, 4, true, ["+replace-entries-with-object-iteration"]);
+      const actual = queryDocumentsWithLimit(docCollection, 4, 4, true, ["+replace-entries-with-object-iteration"]);
 
       // Check fullCount value
       assertEqual(actual.getExtra()["stats"]["fullCount"], db[docCollection].count() * 4);
 
-      actual = actual.toArray();
+      let actualArr = actual.toArray();
       // Check that system fields are present
-      let systemFields = actual.filter((e) => ["_key", "_rev", "_id"].includes(e[0]));
+      let systemFields = actualArr.filter((e) => ["_key", "_rev", "_id"].includes(e[0]));
       // First 3 documents were skipped (offset == 12)
       assertEqual(systemFields.length, 3 * 1); // 3 system fields * 1 non-skipped documents in collection
-      actual = actual.filter((e) => !["_key", "_rev", "_id"].includes(e[0])).flat();
+      actualArr = actualArr.filter((e) => !["_key", "_rev", "_id"].includes(e[0])).flat();
       let expected = [
         "key2",
         "b"
       ];
-      assertEqual(actual, expected);
+      assertEqual(actualArr, expected);
     },
 
     testOutputDocumentCollectionWithLimit3: function () {
       // skip 5 (odd number) first values (therefore 1 complete document will be skipped. 
       // The first system field of the second document is also skipped), return 4.
-      let actual = queryDocumentsWithLimit(docCollection, 5, 4, true, ["+replace-entries-with-object-iteration"]);
+      const actual = queryDocumentsWithLimit(docCollection, 5, 4, true, ["+replace-entries-with-object-iteration"]);
 
       // Check fullCount value
       assertEqual(actual.getExtra()["stats"]["fullCount"], db[docCollection].count() * 4);
 
-      actual = actual.toArray();
+      let actualArr = actual.toArray();
       // Check that system fields are present
-      let systemFields = actual.filter((e) => ["_key", "_rev", "_id"].includes(e[0]));
+      let systemFields = actualArr.filter((e) => ["_key", "_rev", "_id"].includes(e[0]));
       assertEqual(systemFields.length, 3); // 3 system fields 
-      actual = actual.filter((e) => !["_key", "_rev", "_id"].includes(e[0])).flat();
+      actualArr = actualArr.filter((e) => !["_key", "_rev", "_id"].includes(e[0])).flat();
       let expected = [
         "key2",
         "b"
       ];
-      assertEqual(actual, expected);
+      assertEqual(actualArr, expected);
     },
 
     testOutputDocumentCollectionWithLimit4: function () {
       // skip 400 first values (therefore all documents will be skipped), return 4.
-      let actual = queryDocumentsWithLimit(docCollection, 400, 4, true, ["+replace-entries-with-object-iteration"]);
+      const actual = queryDocumentsWithLimit(docCollection, 400, 4, true, ["+replace-entries-with-object-iteration"]);
 
       // Check fullCount value
       assertEqual(actual.getExtra()["stats"]["fullCount"], db[docCollection].count() * 4);
 
-      actual = actual.toArray();
-      assertTrue(actual.length === 0);
+      let actualArr = actual.toArray();
+      assertTrue(actualArr.length === 0);
     },
 
     testOptimizationFilter: function () {
@@ -296,8 +296,8 @@ function enumerateObjectTestSuite() {
         return [key, value]
       `;
   
-      let actual_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["+replace-entries-with-object-iteration"]);
-      let actual_not_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["-replace-entries-with-object-iteration"]);
+      const actual_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["+replace-entries-with-object-iteration"]);
+      const actual_not_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["-replace-entries-with-object-iteration"]);
 
       assertEqual(actual_optimized.getExtra()["stats"]["fullCount"], actual_not_optimized.getExtra()["stats"]["fullCount"]);
       assertEqual(actual_optimized.toArray(), actual_not_optimized.toArray());
@@ -312,8 +312,8 @@ function enumerateObjectTestSuite() {
         return [key, value]
       `;
   
-      let actual_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["+replace-entries-with-object-iteration"]);
-      let actual_not_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["-replace-entries-with-object-iteration"]);
+      const actual_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["+replace-entries-with-object-iteration"]);
+      const actual_not_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["-replace-entries-with-object-iteration"]);
 
       assertEqual(actual_optimized.getExtra()["stats"]["fullCount"], actual_not_optimized.getExtra()["stats"]["fullCount"]);
       assertEqual(actual_optimized.toArray(), actual_not_optimized.toArray());
@@ -328,8 +328,8 @@ function enumerateObjectTestSuite() {
         return [key, value]
       `;
   
-      let actual_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["+replace-entries-with-object-iteration"]);
-      let actual_not_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["-replace-entries-with-object-iteration"]);
+      const actual_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["+replace-entries-with-object-iteration"]);
+      const actual_not_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["-replace-entries-with-object-iteration"]);
 
       assertEqual(actual_optimized.getExtra()["stats"]["fullCount"], actual_not_optimized.getExtra()["stats"]["fullCount"]);
       assertEqual(actual_optimized.toArray(), actual_not_optimized.toArray());
@@ -344,8 +344,8 @@ function enumerateObjectTestSuite() {
         return [key, value]
       `;
   
-      let actual_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["+replace-entries-with-object-iteration", "+move-filters-into-enumerate"]);
-      let actual_not_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["-replace-entries-with-object-iteration", "-move-filters-into-enumerate"]);
+      const actual_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["+replace-entries-with-object-iteration", "+move-filters-into-enumerate"]);
+      const actual_not_optimized = queryDocuments(docCollection, query, /*fullCount=*/true, ["-replace-entries-with-object-iteration", "-move-filters-into-enumerate"]);
 
       assertEqual(actual_optimized.getExtra()["stats"]["fullCount"], actual_not_optimized.getExtra()["stats"]["fullCount"]);
       assertEqual(actual_optimized.toArray(), actual_not_optimized.toArray());
