@@ -64,9 +64,7 @@ YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::YenEnumerator(
   _shortestPathEnumerator = std::make_unique<EnumeratorType>(
       std::move(forwardProvider), std::move(backwardProvider),
       std::move(options), std::move(validatorOptions), resourceMonitor);
-  if constexpr (IsWeighted) {
-    _shortestPathEnumerator->setEmitWeight(true);
-  }
+  _shortestPathEnumerator->setEmitWeight(true);
 }
 
 template<class ProviderType, class EnumeratorType, bool IsWeighted>
@@ -252,13 +250,41 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
         newPath.addWeight(weight);
       }
       newPath.appendVertex(path.getVertex(path.getLength()));
-      // Note that we must copy all vertex and edge data and make them
-      // our own. Otherwise, once the providers are cleared, the references
-      // might no longer be valid!
-      auto copy = std::make_unique<
-          PathResult<ProviderType, typename ProviderType::Step>>(
-          toOwned(newPath));
-      _candidatePaths.emplace_back(std::move(copy));
+
+      // Check that the path is not yet contained in the set of candidates:
+      bool found = false;
+      for (auto const& p : _candidatePaths) {
+        if (p->getLength() != newPath.getLength()) {
+          continue;
+        }
+        // This is to avoid rounding errors, since this is only a performance
+        // optimization, before we actually compare IDs of edges, this does not
+        // have an impact on correctness:
+        if (fabs(p->getWeight() - newPath.getWeight()) > 0.001) {
+          continue;
+        }
+        bool equal = true;
+        for (size_t j = 0; j < newPath.getLength(); ++j) {
+          if (!p->getEdge(j).getID().equals(newPath.getEdge(j).getID())) {
+            equal = false;
+            break;
+          }
+        }
+        if (equal) {
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        // Note that we must copy all vertex and edge data and make them
+        // our own. Otherwise, once the providers are cleared, the references
+        // might no longer be valid!
+        auto copy = std::make_unique<
+            PathResult<ProviderType, typename ProviderType::Step>>(
+            toOwned(newPath));
+        _candidatePaths.emplace_back(std::move(copy));
+      }
     }
   }
 
@@ -282,7 +308,10 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
         PathResult<ProviderType,
                    typename ProviderType::Step>::WeightType::ACTUAL_WEIGHT);
   } else {
-    _shortestPaths.back().toVelocyPack(result);
+    _shortestPaths.back().toVelocyPack(
+        result,
+        PathResult<ProviderType,
+                   typename ProviderType::Step>::WeightType::AMOUNT_EDGES);
   }
   _candidatePaths.erase(_candidatePaths.begin() + posBest);
 

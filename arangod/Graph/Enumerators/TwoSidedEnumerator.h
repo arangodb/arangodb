@@ -229,7 +229,10 @@ class TwoSidedEnumerator {
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
- private : [[nodiscard]] auto searchDone() const -> bool;
+  auto setEmitWeight(bool flag) { _emitWeight = flag; }
+
+ private:
+  [[nodiscard]] auto searchDone() const -> bool;
   auto startNextDepth() -> void;
 
   // Ensure that we have fetched all vertices
@@ -259,6 +262,7 @@ class TwoSidedEnumerator {
   bool _resultsFetched{false};
   size_t _baselineDepth;
   bool _algorithmFinished{false};
+  bool _emitWeight{false};
 
   PathResult<ProviderType, Step> _resultPath;
 };
