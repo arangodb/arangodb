@@ -1,8 +1,7 @@
-import { InfoTooltip, OptionType } from "@arangodb/ui";
+import { CreatableMultiSelect, InfoTooltip, OptionType } from "@arangodb/ui";
 import { Box, FormLabel, Stack } from "@chakra-ui/react";
 import React from "react";
 import { components, MultiValueGenericProps } from "react-select";
-import CreatableMultiSelect from "../../../../components/select/CreatableMultiSelect";
 import { useEditViewContext } from "../../editView/EditViewContext";
 import { useLinkModifiers } from "./useLinkModifiers";
 
