@@ -932,6 +932,14 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     return true;
   }
   if (_right.noPathLeft() && !_right.haveSeenOtherSide()) {
+    // Special case for singleton (source == target), in this case
+    // we should indicate that there is something still coming. If
+    // we have already delivered the singleton, then the algorithm
+    // will be marked as finished anyway and we return above with
+    // true anyway.
+    if (_singleton) {
+      return false;
+    }
     return true;
   }
   return false;
