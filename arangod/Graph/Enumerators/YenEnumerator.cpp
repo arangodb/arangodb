@@ -55,6 +55,7 @@ YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::YenEnumerator(
     arangodb::ResourceMonitor& resourceMonitor)
     : _arena(resourceMonitor),
       _resourceMonitor(resourceMonitor),
+      _totalMemoryUsageHere(0),
       _isDone(true),
       _isInitialized(false) {
   // Yen's algorithm only ever uses the TwoSidedEnumerator here to find
@@ -68,7 +69,9 @@ YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::YenEnumerator(
 }
 
 template<class ProviderType, class EnumeratorType, bool IsWeighted>
-YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::~YenEnumerator() {}
+YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::~YenEnumerator() {
+  _resourceMonitor.decreaseMemoryUsage(_totalMemoryUsageHere);
+}
 
 template<class ProviderType, class EnumeratorType, bool IsWeighted>
 auto YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::destroyEngines()
@@ -283,6 +286,9 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
         auto copy = std::make_unique<
             PathResult<ProviderType, typename ProviderType::Step>>(
             toOwned(newPath));
+        size_t mem = copy->getMemoryUsage();
+        _resourceMonitor.increaseMemoryUsage(mem);
+        _totalMemoryUsageHere += mem;
         _candidatePaths.emplace_back(std::move(copy));
       }
     }

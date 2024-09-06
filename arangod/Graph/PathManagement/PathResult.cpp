@@ -169,6 +169,16 @@ auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
   return _vertices.empty();
 }
 
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::getMemoryUsage() const -> size_t {
+  size_t mem = 0;
+  mem += sizeof(PathResult<ProviderType, Step>);
+  mem += sizeof(typename Step::Vertex) * _vertices.size();
+  mem += sizeof(typename Step::Edge) * _edges.size();
+  mem += sizeof(double) * _weights.size();
+  return mem;
+}
+
 /* SingleServerProvider Section */
 
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;

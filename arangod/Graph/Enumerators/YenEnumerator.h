@@ -238,6 +238,7 @@ class YenEnumerator {
       std::unique_ptr<PathResult<ProviderType, typename ProviderType::Step>>>
       _candidatePaths;
   arangodb::ResourceMonitor& _resourceMonitor;
+  size_t _totalMemoryUsageHere;
   bool _isDone;  // shortcut to indicate all is done
   VertexRef _source;
   VertexRef _target;

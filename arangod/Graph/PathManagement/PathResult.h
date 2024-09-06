@@ -71,6 +71,11 @@ class PathResult {
   auto getSourceProvider() const -> ProviderType& { return _sourceProvider; }
   auto getTargetProvider() const -> ProviderType& { return _targetProvider; }
 
+  // The following is an approximation and takes the actual vectors below
+  // into account as well as the object itself. It intentionally does not
+  // count the referenced strings, since these are accounted for elsewhere!
+  auto getMemoryUsage() const -> size_t;
+
  private:
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
