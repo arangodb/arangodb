@@ -178,7 +178,7 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
       _isDone = true;
       return false;
     }
-    LOG_DEVEL << "Found one shortest path:" << result.slice().toJson();
+    // LOG_DEVEL << "Found one shortest path:" << result.slice().toJson();
     auto const& path =
         // PathResult<ProviderType, typename ProviderType::Step> const& path =
         _shortestPathEnumerator->getLastPathResult();
@@ -235,7 +235,7 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     _shortestPathEnumerator->reset(spurVertex.getID(), _target);
     VPackBuilder temp;
     if (_shortestPathEnumerator->getNextPath(temp)) {
-      LOG_DEVEL << "Found another shortest path:" << temp.slice().toJson();
+      // LOG_DEVEL << "Found another shortest path:" << temp.slice().toJson();
       PathResult<ProviderType, typename ProviderType::Step> const& path =
           _shortestPathEnumerator->getLastPathResult();
       PathResult<ProviderType, typename ProviderType::Step> newPath{
