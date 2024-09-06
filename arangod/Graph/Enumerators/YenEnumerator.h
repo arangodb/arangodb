@@ -107,8 +107,8 @@ class GraphArena {
 
  private:
   char* makeLocalCopy(char const* p, size_t s) {
-    auto& batch = _data.back();
-    if (s > batch.buffer.size() - batch.nextFree) {
+    auto* batch = &_data.back();
+    if (s > batch->buffer.size() - batch->nextFree) {
       if (s <= BATCH_SIZE) {
         _data.emplace_back();
         _totalSize += BATCH_SIZE;
@@ -118,10 +118,10 @@ class GraphArena {
         _totalSize += s;
         _resourceMonitor.increaseMemoryUsage(s);
       }
-      batch = _data.back();
+      batch = &_data.back();
     }
-    char* place = &batch.buffer[batch.nextFree];
-    batch.nextFree += s;
+    char* place = &batch->buffer[batch->nextFree];
+    batch->nextFree += s;
     memcpy(place, p, s);
     return place;
   }
