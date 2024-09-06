@@ -1,9 +1,8 @@
+import { MultiSelect, SingleSelect } from "@arangodb/ui";
 import { MinusIcon } from "@chakra-ui/icons";
 import { FormLabel, Grid, IconButton, Input, Stack } from "@chakra-ui/react";
 import { Column, ColumnDef, Table as TableType } from "@tanstack/react-table";
 import * as React from "react";
-import MultiSelect from "../select/MultiSelect";
-import SingleSelect from "../select/SingleSelect";
 
 export const FilterComponent = <Data extends object>({
   column,
