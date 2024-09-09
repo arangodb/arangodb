@@ -6640,7 +6640,11 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
         // we're only interested in FOR loops...
         auto listNode = ExecutionNode::castTo<EnumerateListNode*>(current);
-        TRI_ASSERT(listNode->getMode() == EnumerateListNode::kEnumerateArray);
+        if (listNode->getMode() == EnumerateListNode::kEnumerateObject) {
+          // exit the loop
+          current = nullptr;
+          break;
+        }
         // ...that use our subquery as its input
         if (subqueryVars.find(listNode->inVariable()) != subqueryVars.end()) {
           // bingo!
