@@ -164,6 +164,10 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
           compression: {
             type: "string",
             nullable: false
+          },
+          cache: {
+            type: "boolean",
+            nullable: true
           }
         },
         default: {
@@ -260,6 +264,10 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
       default: 33554432
     },
     primaryKeyCache: {
+      type: "boolean",
+      nullable: true
+    },
+    primarySortCache: {
       type: "boolean",
       nullable: true
     }

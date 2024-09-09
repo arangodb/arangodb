@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-446: add missing primaryKeyCache, primarySortCache and storedValues cache
+  options for arangosearch views and inverted indexes.
+
 3.12.2 (XXXX-XX-XX)
 -------------------
 

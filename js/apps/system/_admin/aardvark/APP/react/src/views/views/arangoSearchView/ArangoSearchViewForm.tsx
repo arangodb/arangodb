@@ -200,7 +200,7 @@ const StoredValuesAccordionItem = () => {
                       return <Tag key={field}>{field}</Tag>;
                     })}
                   </Stack>
-                  <Box>{item.compression}</Box>
+                  <Box>{item.compression}{item.cache && " (cached)"}</Box>
                   <Spacer />
                 </React.Fragment>
               );

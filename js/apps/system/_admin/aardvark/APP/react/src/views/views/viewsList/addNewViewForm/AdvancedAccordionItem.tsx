@@ -9,6 +9,7 @@ import {
 import React from "react";
 import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
 import { InputControl } from "../../../../components/form/InputControl";
+import { SwitchControl } from "../../../../components/form/SwitchControl";
 
 export const AdvancedAccordionItem = () => {
   return (
@@ -28,6 +29,20 @@ export const AdvancedAccordionItem = () => {
 const AdvancedFields = () => {
   return (
     <Box display={"grid"} gridTemplateColumns={"200px 1fr"} rowGap="5">
+      <FormLabel htmlFor="primaryKeyCache">Primary Key Cache</FormLabel>
+      <SwitchControl
+        name="primaryKeyCache"
+        switchProps={{
+          isDisabled: !window.frontendConfig.isEnterprise
+        }}
+      />
+      <FormLabel htmlFor="primarySortCache">Primary Sort Cache</FormLabel>
+      <SwitchControl
+        name="primarySortCache"
+        switchProps={{
+          isDisabled: !window.frontendConfig.isEnterprise
+        }}
+      />
       <FormLabel htmlFor="writebufferIdle">Write Buffer Idle</FormLabel>
       <InputControl inputProps={{
         type: 'number'

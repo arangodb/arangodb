@@ -58,6 +58,7 @@ export type InvertedIndexValuesType = {
   storedValues?: {
     fields: string[];
     compression: "lz4" | "none";
+    cache?: boolean;
   }[];
   cleanupIntervalStep?: number;
   commitIntervalMsec?: number;
@@ -68,6 +69,7 @@ export type InvertedIndexValuesType = {
   consolidationPolicy?: ConsolidationPolicy;
   fields?: InvertedIndexFieldType[];
   primaryKeyCache?: boolean;
+  primarySortCache?: boolean;
   cache?: boolean;
 };
 
@@ -164,6 +166,22 @@ export const invertedIndexFieldsMap = {
     name: "primarySort",
     type: "custom"
   },
+  primarySortCache: {
+    isDisabled: !window.frontendConfig.isEnterprise,
+    label: "Primary Sort Cache",
+    name: "primarySortCache",
+    type: "boolean",
+    group: "general",
+    tooltip: "Always cache primary sort columns in memory."
+  },
+  primaryKeyCache: {
+    isDisabled: !window.frontendConfig.isEnterprise,
+    label: "Primary Key Cache",
+    name: "primaryKeyCache",
+    type: "boolean",
+    group: "general",
+    tooltip: "Always cache primary key columns in memory."
+  },
   storedValues: {
     label: "Stored Values",
     name: "storedValues",
@@ -235,6 +253,8 @@ const invertedIndexFields = [
   invertedIndexFieldsMap.searchField,
   invertedIndexFieldsMap.primarySort,
   invertedIndexFieldsMap.storedValues,
+  invertedIndexFieldsMap.primaryKeyCache,
+  invertedIndexFieldsMap.primarySortCache,
   invertedIndexFieldsMap.writebufferIdle,
   invertedIndexFieldsMap.writebufferActive,
   invertedIndexFieldsMap.writebufferSizeMax,
