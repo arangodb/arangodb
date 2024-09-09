@@ -29,7 +29,7 @@ endpoints priority=250 single -- --skipEndpointsIpv6 true
 
 recovery priority=2000 buckets=8 parallelity=3 size=small single
 # cluster
-recovery_cluster priority=2000 size=small cluster buckets=8 --
+recovery_cluster priority=2000 size=medium cluster buckets=8 --
 
 recovery_server priority=2000 buckets=3 parallelity=3 size=small single
 
