@@ -2,7 +2,7 @@
 # LLVM Symbolizer client/server infrastructure
 When ran with TSAN/ALUBSAN etc. processes fork another process to resolve their symbols from addresses. These sub-processes are quite memory hungry depending on build model. ArangoDB cluster tests launch about half a dozen processes, and if each of those starts it's own symbolizer, then these add up to a larger amount effectively draining the host out of resources during CI-Runs or even local runs on bigger machines.
 However, these forked sub processes all work on similar if not the same binaries, hence could we only have *one* of these resource hoggers instead of many?
-Along comes the symbolizer server and client solution - *one* symbolizer is spawned by the server process, communicating via pipes. This server then runs a simple python HTTP server to processes POST requests from the clients:
+Along comes the symbolizer server and client solution - *one* symbolizer is spawned by the server process, communicating via pipes. This server then runs a simple Python HTTP server to process POST requests from the clients:
 
 ```
 ./utils/llvm-symbolizer-server.py
