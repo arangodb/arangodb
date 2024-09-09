@@ -70,8 +70,7 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
       : QueryExpressionContext(trx, context, cache),
         _varsToRegister(varsToRegister),
         _outputVariables(outputVariables),
-        _currentValueK{AqlValueHintNull{}},
-        _currentValueV{AqlValueHintNull{}} {}
+        _currentValues(2, AqlValue(AqlValueHintNull{})) {}
 
   ~EnumerateListExpressionContext() override = default;
 
@@ -85,16 +84,16 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
           auto const searchId = variable->id;
           if (searchId == _outputVariables[0]->id) {
             if (doCopy) {
-              return _currentValueK.clone();
+              return _currentValues[0].clone();
             }
-            return _currentValueK;
+            return _currentValues[0];
           }
           if (_outputVariables.size() > 1 &&
               searchId == _outputVariables[1]->id) {
             if (doCopy) {
-              return _currentValueV.clone();
+              return _currentValues[1].clone();
             }
-            return _currentValueV;
+            return _currentValues[1];
           }
 
           for (auto const& [varId, regId] : _varsToRegister) {
@@ -113,8 +112,9 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
         });
   }
 
-  void adjustCurrentValueK(AqlValue const& value) { _currentValueK = value; }
-  void adjustCurrentValueV(AqlValue const& value) { _currentValueV = value; }
+  void adjustCurrentValueIth(AqlValue const& value, size_t const i) {
+    _currentValues[i] = value;
+  }
 
   void adjustCurrentRow(InputAqlItemRow const& inputRow) {
     _inputRow = inputRow;
@@ -125,8 +125,7 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
   std::optional<std::reference_wrapper<InputAqlItemRow const>> _inputRow;
   std::vector<std::pair<VariableId, RegisterId>> const& _varsToRegister;
   std::vector<const Variable*> _outputVariables;
-  AqlValue _currentValueK;  // This could be a Key
-  AqlValue _currentValueV;  // This could be a Value
+  std::vector<AqlValue> _currentValues;
 };
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
@@ -374,7 +373,7 @@ bool EnumerateListExecutor::checkFilter(AqlValue const& currentValue) {
   TRI_ASSERT(_expressionContext != nullptr);
 
   _expressionContext->adjustCurrentRow(_currentRow);
-  _expressionContext->adjustCurrentValueK(currentValue);
+  _expressionContext->adjustCurrentValueIth(currentValue, 0);
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a =
@@ -604,8 +603,8 @@ bool EnumerateListObjectExecutor::checkFilter(AqlValue const& currentK,
   TRI_ASSERT(_expressionContext != nullptr);
 
   _expressionContext->adjustCurrentRow(_currentRow);
-  _expressionContext->adjustCurrentValueK(currentK);
-  _expressionContext->adjustCurrentValueV(currentV);
+  _expressionContext->adjustCurrentValueIth(currentK, 0);
+  _expressionContext->adjustCurrentValueIth(currentV, 1);
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a =
