@@ -82,18 +82,13 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
                bool& mustDestroy) -> AqlValue {
           mustDestroy = doCopy;
           auto const searchId = variable->id;
-          if (searchId == _outputVariables[0]->id) {
-            if (doCopy) {
-              return _currentValues[0].clone();
+          for (size_t i = 0; i < _outputVariables.size(); ++i) {
+            if (searchId == _outputVariables[i]->id) {
+              if (doCopy) {
+                return _currentValues[i].clone();
+              }
+              return _currentValues[i];
             }
-            return _currentValues[0];
-          }
-          if (_outputVariables.size() > 1 &&
-              searchId == _outputVariables[1]->id) {
-            if (doCopy) {
-              return _currentValues[1].clone();
-            }
-            return _currentValues[1];
           }
 
           for (auto const& [varId, regId] : _varsToRegister) {
