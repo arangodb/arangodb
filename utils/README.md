@@ -8,8 +8,7 @@ Along comes the symbolizer server and client solution - *one* symbolizer is spaw
 ./utils/llvm-symbolizer-server.py
 ```
 
-Now only all the other proccesses need to be told that they should only launch a tiny python client (`llvm-symbolizer-client.py`) instead of running their own symbolizer by the respective environment variables. These client processes implement the same stdin/stdout protocol as the llvm-symbolizer, but then forward the request via HTTP to the server process:
-```
+Now only all the other processes need to be told that they should only launch a tiny python client (`llvm-symbolizer-client.py`) instead of running their own symbolizer by the respective environment variables. These client processes implement the same stdin/stdout protocol as the llvm-symbolizer, but then forward the request via HTTP to the server process:
 export TSAN_OPTIONS="external_symbolizer_path=$(pwd)/utils/llvm-symbolizer-client.py"
 ```
 
