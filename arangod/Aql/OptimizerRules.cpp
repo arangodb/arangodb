@@ -6640,7 +6640,11 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
         // we're only interested in FOR loops...
         auto listNode = ExecutionNode::castTo<EnumerateListNode*>(current);
-
+        if (listNode->getMode() == EnumerateListNode::kEnumerateObject) {
+          // exit the loop
+          current = nullptr;
+          break;
+        }
         // ...that use our subquery as its input
         if (subqueryVars.find(listNode->inVariable()) != subqueryVars.end()) {
           // bingo!
@@ -6715,11 +6719,11 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           plan->unlinkNode(listNode, false);
 
           queryVariables->renameVariable(returnNode->inVariable()->id,
-                                         listNode->outVariable()->name);
+                                         listNode->outVariable()[0]->name);
 
           // finally replace the variables
           std::unordered_map<VariableId, Variable const*> replacements;
-          replacements.try_emplace(listNode->outVariable()->id,
+          replacements.try_emplace(listNode->outVariable()[0]->id,
                                    returnNode->inVariable());
           VariableReplacer finder(replacements);
           plan->root()->walk(finder);
@@ -7864,7 +7868,9 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
       continue;
     }
 
-    Variable const* outVariable = nullptr;
+    std::vector<Variable const*> outVariable;
+    outVariable.resize(1);
+
     if (n->getType() == EN::INDEX || n->getType() == EN::ENUMERATE_COLLECTION) {
       auto en = dynamic_cast<DocumentProducingNode*>(n);
       if (en == nullptr) {
@@ -7872,14 +7878,18 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
             TRI_ERROR_INTERNAL, "unable to cast node to DocumentProducingNode");
       }
 
-      outVariable = en->outVariable();
+      outVariable[0] = en->outVariable();
     } else {
       TRI_ASSERT(n->getType() == EN::ENUMERATE_LIST);
-      outVariable =
-          ExecutionNode::castTo<EnumerateListNode const*>(n)->outVariable();
+      outVariable = ExecutionNode::castTo<EnumerateListNode const*>(n)
+                        ->getVariablesSetHere();
     }
 
-    if (!n->isVarUsedLater(outVariable)) {
+    bool isUsedLater = n->isVarUsedLater(outVariable[0]);
+    if (outVariable.size() > 1) {
+      isUsedLater |= n->isVarUsedLater(outVariable[1]);
+    }
+    if (!isUsedLater) {
       // e.g. FOR doc IN collection RETURN 1
       continue;
     }
@@ -7962,7 +7972,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
         TRI_ASSERT(!expr->willUseV8());
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
-        if (found.contains(outVariable)) {
+
+        bool isFound = found.contains(outVariable[0]);
+        if (outVariable.size() > 1) {
+          isFound |= found.contains(outVariable[1]);
+        }
+        if (isFound) {
           // check if the introduced variable refers to another temporary
           // variable that is not valid yet in the EnumerateCollection/Index
           // node, which would prevent moving the calculation and filter

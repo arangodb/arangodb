@@ -118,7 +118,8 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
   for (auto p : enumAndCalc) {
     auto [eln, cn, exp] = p;
 
-    auto outVar = eln->outVariable();
+    TRI_ASSERT(eln->getMode() == EnumerateListNode::kEnumerateArray);
+    auto outVar = eln->outVariable()[0];
     bool optRequired;
     SmallVector<CalculationNode*, 2> keyValueNodes;
 
@@ -139,7 +140,6 @@ void aql::replaceEntriesWithObjectIteration(Optimizer* opt,
 
       auto letExpr =
           std::make_unique<Expression>(ast, args->getMemberUnchecked(0));
-      // Variable* outVariable = ast->variables()->createTemporaryVariable();
 
       [[maybe_unused]] auto newCalcNode = plan->createNode<CalculationNode>(
           plan.get(), plan->nextId(), std::move(letExpr), eln->inVariable());
