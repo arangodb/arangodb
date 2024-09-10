@@ -1,6 +1,9 @@
 devel
 -----
 
+* Adjust documentation and testing of --cluster.force-one-shard option to 
+  reality.
+
 * Rebuilt included rclone v1.62.2 with go1.22.6 and non-vulnerable dependencies.
 
 * Update ArangoDB Starter to v0.19.5.
