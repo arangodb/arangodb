@@ -247,6 +247,40 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
     return false;
   }
 
+  bool readBatch(std::vector<faiss::idx_t>& ids, std::vector<float>& distances,
+                 std::uint64_t limit) {
+    if (limit == 0) {
+      // No limit no data, or we are actually done. The last call should have
+      // returned false
+      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      return false;
+    }
+
+    if (!_initialized) {
+      std::vector<float> distances(_topK);
+      // TODO later on only on cosine
+      // faiss::fvec_renorm_L2(_flatIndex.d, 1, _input.data());
+      _flatIndex.search(1, _input.data(), _topK, distances.data(), _ids.data(),
+                        nullptr);
+      TRI_ASSERT(std::ranges::any_of(_ids, [](auto const& elem) {
+        return elem != -1;
+      })) << "Elements not found";
+      _initialized = true;
+    }
+
+    //auto const batchSize = std::min(limit, _topK);
+    
+    /*    for (std::size_t i{0}; i < limit && _producedElements < _topK;*/
+    /*++i, ++_producedElements) {*/
+    /*LocalDocumentId docId = LocalDocumentId(_ids[i]);*/
+    /*if (docId.isSet()) {*/
+    /*//callback(docId);*/
+    /*}*/
+    /*}*/
+
+    return false;
+  }
+
   void resetImpl() override {
     // TODO
   }

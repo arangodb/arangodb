@@ -23,6 +23,7 @@
 
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Collection.h"
+#include "Aql/Executor/EnumerateNearVectorsExecutor.h"
 #include "Aql/Query.h"
 #include "Indexes/Index.h"
 #include "Aql/Ast.h"
@@ -36,6 +37,7 @@ constexpr std::string_view kDistanceOutVariable = "distanceOutVariable";
 constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
 constexpr std::string_view kLimit = "limit";
 }  // namespace
+
 
 EnumerateNearVectors::EnumerateNearVectors(
     ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id,
@@ -60,7 +62,46 @@ size_t EnumerateNearVectors::getMemoryUsedBytes() const { return 0; }
 
 std::unique_ptr<ExecutionBlock> EnumerateNearVectors::createBlock(
     ExecutionEngine& engine) const {
-  abort();
+  auto writableOutputRegisters = RegIdSet{};
+  containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
+
+  RegisterId outDocumentRegId;
+  RegisterId outDistanceRegId;
+
+  {
+    auto itDocument = getRegisterPlan()->varInfo.find(_documentOutVariable->id);
+    TRI_ASSERT(itDocument != getRegisterPlan()->varInfo.end())
+        << "variable not found = " << _documentOutVariable->id;
+    outDocumentRegId = itDocument->second.registerId;
+    writableOutputRegisters.emplace(outDocumentRegId);
+  }
+
+  {
+    auto itDistance = getRegisterPlan()->varInfo.find(_distanceOutVariable->id);
+    TRI_ASSERT(itDistance != getRegisterPlan()->varInfo.end())
+        << "variable not found = " << _distanceOutVariable->id;
+    outDocumentRegId = itDistance->second.registerId;
+    writableOutputRegisters.emplace(outDistanceRegId);
+  }
+
+  RegisterId inNmDocIdRegId;
+  {
+    auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    inNmDocIdRegId = it->second.registerId;
+  }
+  RegIdSet readableInputRegisters;
+  if (inNmDocIdRegId.isValid()) {
+    readableInputRegisters.emplace(inNmDocIdRegId);
+  }
+
+  auto executorInfos = EnumerateNearVectorsExecutorInfos(
+      inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index);
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
+
+  return std::make_unique<ExecutionBlockImpl<EnumerateNearVectorsExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* EnumerateNearVectors::clone(ExecutionPlan* plan,

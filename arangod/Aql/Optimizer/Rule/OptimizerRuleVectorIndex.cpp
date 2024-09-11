@@ -227,12 +227,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
         documentIdVariable, distanceVariable, limit,
         enumerateCollectionNode->collection(), index);
 
-    // auto materializer =
-    // plan->createNode<materialize::MaterializeRocksDBNode>(
-    //     plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
-    //     *documentIdVariable, *documentVariable, *documentVariable);
-    // plan->excludeFromScatterGather(enumerateNear);
-
     plan->replaceNode(enumerateCollectionNode, enumerateNear);
     plan->insertBefore(enumerateNear, queryPointCalculationNode);
     // plan->insertAfter(enumerateNear, materializer);
