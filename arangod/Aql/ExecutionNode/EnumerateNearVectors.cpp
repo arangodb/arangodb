@@ -21,7 +21,12 @@
 
 #include "EnumerateNearVectors.h"
 
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/RegisterPlan.h"
+#include "Aql/Variable.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/Collection.h"
 #include "Aql/Executor/EnumerateNearVectorsExecutor.h"
 #include "Aql/Query.h"
@@ -37,7 +42,6 @@ constexpr std::string_view kDistanceOutVariable = "distanceOutVariable";
 constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
 constexpr std::string_view kLimit = "limit";
 }  // namespace
-
 
 EnumerateNearVectors::EnumerateNearVectors(
     ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id,
@@ -66,21 +70,18 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectors::createBlock(
   containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
 
   RegisterId outDocumentRegId;
-  RegisterId outDistanceRegId;
-
   {
     auto itDocument = getRegisterPlan()->varInfo.find(_documentOutVariable->id);
-    TRI_ASSERT(itDocument != getRegisterPlan()->varInfo.end())
-        << "variable not found = " << _documentOutVariable->id;
+    TRI_ASSERT(itDocument != getRegisterPlan()->varInfo.end());
     outDocumentRegId = itDocument->second.registerId;
     writableOutputRegisters.emplace(outDocumentRegId);
   }
 
+  RegisterId outDistanceRegId;
   {
     auto itDistance = getRegisterPlan()->varInfo.find(_distanceOutVariable->id);
-    TRI_ASSERT(itDistance != getRegisterPlan()->varInfo.end())
-        << "variable not found = " << _distanceOutVariable->id;
-    outDocumentRegId = itDistance->second.registerId;
+    TRI_ASSERT(itDistance != getRegisterPlan()->varInfo.end());
+    outDistanceRegId = itDistance->second.registerId;
     writableOutputRegisters.emplace(outDistanceRegId);
   }
 
@@ -91,12 +92,11 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectors::createBlock(
     inNmDocIdRegId = it->second.registerId;
   }
   RegIdSet readableInputRegisters;
-  if (inNmDocIdRegId.isValid()) {
-    readableInputRegisters.emplace(inNmDocIdRegId);
-  }
+  readableInputRegisters.emplace(inNmDocIdRegId);
 
   auto executorInfos = EnumerateNearVectorsExecutorInfos(
-      inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index);
+      inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
+      engine.getQuery(), _collectionAccess.collection(), _limit);
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
