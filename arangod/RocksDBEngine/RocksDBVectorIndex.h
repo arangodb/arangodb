@@ -69,25 +69,15 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
-
-  std::vector<std::vector<arangodb::basics::AttributeName>> const&
-  coveredFields() const override {
-    // index does not cover the vector index attribute!
-    return Index::emptyCoveredFields;
-  }
-
   FullVectorIndexDefinition const& getDefinition() const noexcept {
     return _definition;
   }
 
   std::pair<std::vector<LocalDocumentId::BaseType>, std::vector<float>>
   readBatch(std::vector<float>& inputs, RocksDBMethods* rocksDBMethods,
-            transaction::Methods* trx, std::shared_ptr<LogicalCollection> collection,
-            std::size_t count, std::size_t topK);
-
-  aql::AstNode* specializeCondition(
-      transaction::Methods& trx, aql::AstNode* condition,
-      aql::Variable const* reference) const override;
+            transaction::Methods* trx,
+            std::shared_ptr<LogicalCollection> collection, std::size_t count,
+            std::size_t topK);
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
@@ -99,12 +89,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& /*options*/) override;
-
-  std::unique_ptr<IndexIterator> iteratorForCondition(
-      ResourceMonitor& monitor, transaction::Methods* trx,
-      aql::AstNode const* node, aql::Variable const* reference,
-      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
-      int) override;
 
  private:
   void finishTraining();
