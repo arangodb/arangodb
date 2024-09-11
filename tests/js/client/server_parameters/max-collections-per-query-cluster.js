@@ -35,7 +35,8 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const errors = arangodb.errors;
-const { getCoordinators, getAgents, debugCanUseFailAt, debugSetFailAt, debugClearFailAt } = require('@arangodb/test-helper');
+const { getCoordinators, getAgents } = require('@arangodb/test-helper');
+let IM = global.instanceManager;
 
 // In replication2, the shard distribution is handled by the supervision.
 // In replication1, the shard distribution is handled by the coordinator.
@@ -48,9 +49,7 @@ function OptionsTestSuite () {
 
     setUp : function () {
       // make all shards end up on the same DB server
-      ep.forEach((ep) => {
-        debugSetFailAt(ep.endpoint, "allShardsOnSameServer");
-      });
+      IM.debugSetFailAt("allShardsOnSameServer");
 
       for (let i = 0; i < 5; ++i) {
         let options = { numberOfShards: 100, replicationFactor: 1 };
@@ -62,7 +61,7 @@ function OptionsTestSuite () {
     },
 
     tearDown : function () {
-      ep.forEach((ep) => debugClearFailAt(ep.endpoint));
+      IM.debugClearFailAt();
       // must delete in reverse order because of distributeShardsLike
       for (let i = 5; i > 0; --i) {
         db._drop(cn + (i - 1));
@@ -94,7 +93,7 @@ function OptionsTestSuite () {
   };
 }
 
-if (ep.length && debugCanUseFailAt(ep[0].endpoint)) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(OptionsTestSuite);
 }
 return jsunity.done();

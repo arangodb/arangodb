@@ -4,7 +4,47 @@ devel
 * FE-446: add missing primaryKeyCache, primarySortCache and storedValues cache
   options for arangosearch views and inverted indexes.
 
-3.12.2 (XXXX-XX-XX)
+* Adjust documentation and testing of --cluster.force-one-shard option to 
+  reality.
+
+* Rebuilt included rclone v1.62.2 with go1.22.6 and non-vulnerable dependencies.
+
+* Update ArangoDB Starter to v0.19.5.
+
+* Add native support for strict ranges for MDI.
+
+* FE-463: Query UI view crashes for empty collections.
+
+* FE-462: saved queries view scrollbar is not visible.
+
+* Remove restriction that disabled async prefetching for all query nodes that
+  (indirectly) depended on a RemoteNode. This allows more query parts to run
+  concurrently.
+
+* Extend COLLECT optimizer rule to consider existing SORT nodes that cover
+  all group variables. Previously the following query would use a hash collect
+  instead of a sorted collect:
+  ```
+  FOR d IN docs
+    SORT d.value DESC
+    COLLECT v = d.value
+    RETURN v
+  ```
+  The reason is that previously the rule unconditionally created a SORT node
+  with all group variables sorted in ascending order, but because that
+  resulted in a plan with two different SORT nodes which obviously is more
+  expensive than the hash collect, which was thus preferred.
+  The sorted collect doesn't need the values to be sorted in a particular
+  order, it just needs the values to be grouped correctly. So the new version
+  now checks if there are existing SORT nodes that already cover all the group
+  values, and in that case does not create an additional SORT node. That way
+  we can also utilize descending SORTs as in the example above, and perhaps
+  even utilize an index if we have one.
+
+* FE-422: Permissions of users managed by ArangoGraph are now shown as read-only.
+
+
+3.12.2 (2024-08-21)
 -------------------
 
 * Add API GET /_admin/cluster/vpackSortMigration/status to query the status of
@@ -379,7 +419,7 @@ devel
   certificate chain that counts as valid.
 
 
-3.12.1 (XXXX-XX-XX)
+3.12.1 (2024-07-21)
 -------------------
 
 * Fix an "invalid document type" exception when using the AQL ENTRIES function

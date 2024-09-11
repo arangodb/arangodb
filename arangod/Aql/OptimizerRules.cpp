@@ -2044,23 +2044,70 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     // finally, adjust the original plan and create a sorted version of COLLECT.
     collectNode->aggregationMethod(CollectOptions::CollectMethod::kSorted);
 
-    // insert a SortNode IN FRONT OF the CollectNode
+    // insert a SortNode IN FRONT OF the CollectNode, if we don't already have
+    // one that can be used instead
     if (!groupVariables.empty()) {
-      SortElementVector sortElements;
-      for (auto const& v : groupVariables) {
-        sortElements.push_back(SortElement::create(v.inVar, true));
+      // check if our input is already sorted
+      SortNode* sortNode = nullptr;
+      auto* d = n->getFirstDependency();
+      while (d) {
+        switch (d->getType()) {
+          case EN::SORT:
+            sortNode = ExecutionNode::castTo<SortNode*>(d);
+            d = nullptr;  // stop the loop
+            break;
+
+          case EN::FILTER:
+          case EN::LIMIT:
+          case EN::CALCULATION:
+          case EN::SUBQUERY:
+          case EN::INSERT:
+          case EN::REMOVE:
+          case EN::REPLACE:
+          case EN::UPDATE:
+          case EN::UPSERT:
+            // these nodes do not affect our sort order,
+            // so we can safely ignore them
+            d = d->getFirstDependency();  // continue search
+            break;
+
+          default:
+            d = nullptr;  // stop the loop
+            break;
+        }
       }
 
-      auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
-                                                 std::move(sortElements), true);
+      bool needNewSortNode = true;
+      if (sortNode != nullptr) {
+        needNewSortNode = false;
+        // we found a SORT node, now let's check if it covers all our group
+        // variables
+        auto& elems = sortNode->elements();
+        for (auto const& v : groupVariables) {
+          needNewSortNode |= std::find_if(elems.begin(), elems.end(),
+                                          [&v](SortElement const& e) {
+                                            return e.var == v.inVar;
+                                          }) == elems.end();
+        }
+      }
 
-      TRI_ASSERT(collectNode->hasDependency());
-      auto dep = collectNode->getFirstDependency();
-      TRI_ASSERT(dep != nullptr);
-      sortNode->addDependency(dep);
-      collectNode->replaceDependency(dep, sortNode);
+      if (needNewSortNode) {
+        SortElementVector sortElements;
+        for (auto const& v : groupVariables) {
+          sortElements.push_back(SortElement::create(v.inVar, true));
+        }
 
-      modified = true;
+        sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
+                                              std::move(sortElements), true);
+
+        TRI_ASSERT(collectNode->hasDependency());
+        auto* dep = collectNode->getFirstDependency();
+        TRI_ASSERT(dep != nullptr);
+        sortNode->addDependency(dep);
+        collectNode->replaceDependency(dep, sortNode);
+
+        modified = true;
+      }
     }
   }
 
@@ -6593,7 +6640,11 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
         // we're only interested in FOR loops...
         auto listNode = ExecutionNode::castTo<EnumerateListNode*>(current);
-
+        if (listNode->getMode() == EnumerateListNode::kEnumerateObject) {
+          // exit the loop
+          current = nullptr;
+          break;
+        }
         // ...that use our subquery as its input
         if (subqueryVars.find(listNode->inVariable()) != subqueryVars.end()) {
           // bingo!
@@ -6668,11 +6719,11 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           plan->unlinkNode(listNode, false);
 
           queryVariables->renameVariable(returnNode->inVariable()->id,
-                                         listNode->outVariable()->name);
+                                         listNode->outVariable()[0]->name);
 
           // finally replace the variables
           std::unordered_map<VariableId, Variable const*> replacements;
-          replacements.try_emplace(listNode->outVariable()->id,
+          replacements.try_emplace(listNode->outVariable()[0]->id,
                                    returnNode->inVariable());
           VariableReplacer finder(replacements);
           plan->root()->walk(finder);
@@ -7817,7 +7868,9 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
       continue;
     }
 
-    Variable const* outVariable = nullptr;
+    std::vector<Variable const*> outVariable;
+    outVariable.resize(1);
+
     if (n->getType() == EN::INDEX || n->getType() == EN::ENUMERATE_COLLECTION) {
       auto en = dynamic_cast<DocumentProducingNode*>(n);
       if (en == nullptr) {
@@ -7825,14 +7878,18 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
             TRI_ERROR_INTERNAL, "unable to cast node to DocumentProducingNode");
       }
 
-      outVariable = en->outVariable();
+      outVariable[0] = en->outVariable();
     } else {
       TRI_ASSERT(n->getType() == EN::ENUMERATE_LIST);
-      outVariable =
-          ExecutionNode::castTo<EnumerateListNode const*>(n)->outVariable();
+      outVariable = ExecutionNode::castTo<EnumerateListNode const*>(n)
+                        ->getVariablesSetHere();
     }
 
-    if (!n->isVarUsedLater(outVariable)) {
+    bool isUsedLater = n->isVarUsedLater(outVariable[0]);
+    if (outVariable.size() > 1) {
+      isUsedLater |= n->isVarUsedLater(outVariable[1]);
+    }
+    if (!isUsedLater) {
       // e.g. FOR doc IN collection RETURN 1
       continue;
     }
@@ -7915,7 +7972,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
         TRI_ASSERT(!expr->willUseV8());
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
-        if (found.contains(outVariable)) {
+
+        bool isFound = found.contains(outVariable[0]);
+        if (outVariable.size() > 1) {
+          isFound |= found.contains(outVariable[1]);
+        }
+        if (isFound) {
           // check if the introduced variable refers to another temporary
           // variable that is not valid yet in the EnumerateCollection/Index
           // node, which would prevent moving the calculation and filter
@@ -8366,9 +8428,6 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
 
     void after(ExecutionNode* n) override {
       TRI_ASSERT(!stack.empty());
-      if (n->getType() == EN::REMOTE) {
-        ++stack.back();
-      }
       auto eligibility = n->canUseAsyncPrefetching();
       if (stack.back() == 0 &&
           eligibility == AsyncPrefetchEligibility::kEnableForNode) {

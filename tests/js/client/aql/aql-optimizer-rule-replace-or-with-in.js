@@ -30,6 +30,8 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 const db = require('internal').db;
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -66,7 +68,7 @@ function NewAqlReplaceORWithINTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUpAll : function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       internal.db._drop("UnitTestsNewAqlReplaceORWithINTestSuite");
       replace = internal.db._create("UnitTestsNewAqlReplaceORWithINTestSuite");
 
@@ -84,7 +86,7 @@ function NewAqlReplaceORWithINTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll : function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       internal.db._drop("UnitTestsNewAqlReplaceORWithINTestSuite");
       replace = null;
     },
@@ -94,7 +96,7 @@ function NewAqlReplaceORWithINTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,7 +104,7 @@ function NewAqlReplaceORWithINTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,10 +112,10 @@ function NewAqlReplaceORWithINTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOom : function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugSetFailAt("OptimizerRules::replaceOrWithInRuleOom");
+      IM.debugSetFailAt("OptimizerRules::replaceOrWithInRuleOom");
       try {
         db._query("FOR i IN 1..10 FILTER i == 1 || i == 2 RETURN i");
         fail();

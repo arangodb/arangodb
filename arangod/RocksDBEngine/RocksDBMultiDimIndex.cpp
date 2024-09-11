@@ -24,6 +24,8 @@
 
 #include "RocksDBMultiDimIndex.h"
 
+#include <cfloat>
+
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Functions.h"
@@ -306,14 +308,6 @@ auto convertDouble(double x) -> zkd::byte_string {
   return std::move(bw).str();
 }
 
-auto nodeExtractDouble(aql::AstNode const* node)
-    -> std::optional<zkd::byte_string> {
-  if (node != nullptr) {
-    return convertDouble(node->getDoubleValue());
-  }
-  return std::nullopt;
-}
-
 auto accessDocumentPath(VPackSlice doc,
                         std::vector<basics::AttributeName> const& path)
     -> VPackSlice {
@@ -419,9 +413,8 @@ std::vector<std::vector<basics::AttributeName>> const& getSortedPrefixFields(
   return Index::emptyCoveredFields;
 }
 
-}  // namespace
-
 void useAsBound(size_t idx, aql::AstNode* bound_value, bool isLower,
+                bool isStrict,
                 std::unordered_map<size_t, arangodb::mdi::ExpressionBounds>&
                     extractedBounds) {
   const auto ensureBounds = [&](size_t idx) -> auto& {
@@ -432,10 +425,22 @@ void useAsBound(size_t idx, aql::AstNode* bound_value, bool isLower,
   };
 
   auto& bounds = ensureBounds(idx);
-  if (isLower) {
-    bounds.lower = nodeExtractDouble(bound_value);
+  if (bound_value) {
+    double value = bound_value->getDoubleValue();
+    if (isStrict) {
+      value = nexttoward(value, isLower ? DBL_MAX : -DBL_MAX);
+    }
+    if (isLower) {
+      bounds.lower = convertDouble(value);
+    } else {
+      bounds.upper = convertDouble(value);
+    }
   } else {
-    bounds.upper = nodeExtractDouble(bound_value);
+    if (isLower) {
+      bounds.lower.reset();
+    } else {
+      bounds.upper.reset();
+    }
   }
 }
 
@@ -444,7 +449,7 @@ bool checkIsBoundForAttributeForInRange(
     aql::AstNode* other,
     std::unordered_map<size_t, arangodb::mdi::ExpressionBounds>&
         extractedBounds,
-    bool isLower) {
+    bool isLower, bool isStrict) {
   std::pair<aql::Variable const*, std::vector<basics::AttributeName>>
       attributeData;
   if (!access->isAttributeAccessForVariable(attributeData) ||
@@ -458,7 +463,7 @@ bool checkIsBoundForAttributeForInRange(
       continue;
     }
 
-    useAsBound(idx, other, isLower, extractedBounds);
+    useAsBound(idx, other, isLower, isStrict, extractedBounds);
     return true;
   }
 
@@ -492,20 +497,20 @@ bool checkIsBoundForAttribute(
 
     switch (op->type) {
       case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-        useAsBound(idx, other, true, extractedBounds);
-        useAsBound(idx, other, false, extractedBounds);
+        useAsBound(idx, other, true, false, extractedBounds);
+        useAsBound(idx, other, false, false, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_LE:
-        useAsBound(idx, other, reverse, extractedBounds);
+        useAsBound(idx, other, reverse, false, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_GE:
-        useAsBound(idx, other, !reverse, extractedBounds);
+        useAsBound(idx, other, !reverse, false, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_LT:
-        useAsBound(idx, other, reverse, extractedBounds);
+        useAsBound(idx, other, reverse, true, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_GT:
-        useAsBound(idx, other, !reverse, extractedBounds);
+        useAsBound(idx, other, !reverse, true, extractedBounds);
         return true;
       default:
         break;
@@ -514,6 +519,8 @@ bool checkIsBoundForAttribute(
 
   return false;
 }
+
+}  // namespace
 
 void mdi::extractBoundsFromCondition(
     Index const* index, aql::AstNode const* condition,
@@ -587,19 +594,17 @@ void mdi::extractBoundsFromCondition(
           auto* nodeUpperBound = nodeFunctionCallMember->getMember(2);
 
           // TODO Can be expression as well
-          if (!nodeFunctionCallMember->getMember(3)->isValueType(
-                  aql::AstNodeValueType::VALUE_TYPE_BOOL) ||
-              !nodeFunctionCallMember->getMember(4)->isValueType(
-                  aql::AstNodeValueType::VALUE_TYPE_BOOL)) {
-            break;
-          }
+          bool lowerIsStrict =
+              !nodeFunctionCallMember->getMember(3)->getBoolValue();
+          bool upperIsStrict =
+              !nodeFunctionCallMember->getMember(4)->getBoolValue();
 
           ok |= checkIsBoundForAttributeForInRange(
               index, reference, nodeAttributeAccess, nodeLowerBound,
-              extractedBounds, true);
+              extractedBounds, true, lowerIsStrict);
           ok |= checkIsBoundForAttributeForInRange(
               index, reference, nodeAttributeAccess, nodeUpperBound,
-              extractedBounds, false);
+              extractedBounds, false, upperIsStrict);
 
           break;
         }
@@ -688,14 +693,8 @@ auto mdi::specializeCondition(Index const* index, aql::AstNode* condition,
         case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
         case aql::NODE_TYPE_OPERATOR_BINARY_LE:
         case aql::NODE_TYPE_OPERATOR_BINARY_GE:
-          children.emplace_back(op);
-          break;
         case aql::NODE_TYPE_OPERATOR_BINARY_LT:
-          op->type = aql::NODE_TYPE_OPERATOR_BINARY_LE;
-          children.emplace_back(op);
-          break;
         case aql::NODE_TYPE_OPERATOR_BINARY_GT:
-          op->type = aql::NODE_TYPE_OPERATOR_BINARY_GE;
           children.emplace_back(op);
           break;
         case aql::NODE_TYPE_FCALL: {
@@ -710,18 +709,6 @@ auto mdi::specializeCondition(Index const* index, aql::AstNode* condition,
               break;
             }
 
-            {
-              auto* nodeLeftStrict =
-                  nodeFunctionCallMember->getMemberUnchecked(3);
-              TEMPORARILY_UNLOCK_NODE(nodeLeftStrict);
-              nodeLeftStrict->setBoolValue(true);
-            }
-            {
-              auto* nodeRightStrict =
-                  nodeFunctionCallMember->getMemberUnchecked(4);
-              TEMPORARILY_UNLOCK_NODE(nodeRightStrict);
-              nodeRightStrict->setBoolValue(true);
-            }
             children.emplace_back(op);
           }
           break;

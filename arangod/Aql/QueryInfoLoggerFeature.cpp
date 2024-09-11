@@ -85,8 +85,25 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
   void beginShutdown() override {
     Thread::beginShutdown();
 
-    std::lock_guard guard{_mutex};
-    _condition.notify_one();
+    {
+      Scheduler::WorkHandle workItem;
+      {
+        std::lock_guard<std::mutex> guard(_workItemMutex);
+        workItem = std::move(_workItem);
+        TRI_ASSERT(_workItem == nullptr);
+      }
+      // we have to move the shared_ptr under the lock, but we must call cancel
+      // _outside_ the lock, because cancel executes the callback, which will
+      // itself acquire the lock.
+      if (workItem) {
+        workItem->cancel();
+      }
+    }
+
+    {
+      std::lock_guard guard{_mutex};
+      _condition.notify_one();
+    }
   }
 
   void log(std::shared_ptr<velocypack::String> query) {

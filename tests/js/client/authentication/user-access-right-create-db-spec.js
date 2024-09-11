@@ -33,14 +33,17 @@ const helper = require('@arangodb/testutils/user-helper');
 const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;
 const testDBName = `${namePrefix}DBNew`;
-
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
 
-const arango = require('internal').arango;
 const db = require('internal').db;
+const arango = require('internal').arango;
+let connectionHandle = arango.getConnectionHandle();
+
+db._useDatabase('_system');
+
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -174,3 +177,7 @@ describe('User Rights Management', () => {
   });
 });
 
+after(() => {
+  arango.connectHandle(connectionHandle);
+  db._useDatabase('_system');
+});

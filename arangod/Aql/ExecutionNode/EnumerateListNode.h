@@ -100,7 +100,7 @@ class EnumerateListNode : public ExecutionNode {
   Variable const* inVariable() const;
 
   /// @brief return out variable
-  Variable const* outVariable() const;
+  std::vector<Variable const*> outVariable() const;
 
   enum Mode {
     kEnumerateArray,   /// @brief yield entries of an array

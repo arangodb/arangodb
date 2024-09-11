@@ -30,6 +30,7 @@ const arangodb = require("@arangodb");
 const internal = require("internal");
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
+let IM = global.instanceManager;
 
 function MaxNumberOfConditionsSuite () {
   'use strict';
@@ -129,7 +130,7 @@ function MaxNumberOfConditionsSuite () {
     },
     
     testComplexConditionCheckException : function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
 
@@ -140,7 +141,7 @@ function MaxNumberOfConditionsSuite () {
       const condition = "(" + parts.join(" || ") + ")";
       const query = `FOR outer IN ${cn} FOR doc IN ${cn} FILTER !IS_NULL(doc) && !${condition} RETURN doc`;
 
-      internal.debugSetFailAt("Condition::failIfTooComplex");
+      IM.debugSetFailAt("Condition::failIfTooComplex");
 
       try {
         // always trigger the failure point we just set above
@@ -154,7 +155,7 @@ function MaxNumberOfConditionsSuite () {
           }
         });
       } finally {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
     },
     

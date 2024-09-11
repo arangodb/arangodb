@@ -1,4 +1,4 @@
-import { Stack } from "@chakra-ui/react";
+import { Alert, AlertDescription, AlertIcon, Stack } from "@chakra-ui/react";
 import React, { useEffect } from "react";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { TableControl } from "../../../components/table/TableControl";
@@ -29,6 +29,8 @@ const UserPermissionsTableInner = () => {
     window.arangoHelper.buildUserSubNav(username, "Permissions");
   }, [username]);
 
+  const { isManagedUser, isRootUser } = tableInstance.options.meta as any;
+
   return (
     <Stack padding="4">
       <SystemDatabaseWarningModal />
@@ -37,6 +39,15 @@ const UserPermissionsTableInner = () => {
         table={tableInstance}
         showColumnSelector={false}
       />
+      {isManagedUser ? (
+        <Alert status="error">
+          <AlertIcon />
+          <AlertDescription>
+            This user's permissions are managed by ArangoGraph and cannot be
+            modified in this deployment.
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <ReactTable<DatabaseTableType>
         tableWidth="auto"
         table={tableInstance}
@@ -51,7 +62,13 @@ const UserPermissionsTableInner = () => {
           }
         }}
         renderSubComponent={row => {
-          return <CollectionsPermissionsTable row={row} />;
+          return (
+            <CollectionsPermissionsTable
+              row={row}
+              isManagedUser={isManagedUser}
+              isRootUser={isRootUser}
+            />
+          );
         }}
       />
     </Stack>

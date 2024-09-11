@@ -112,7 +112,7 @@ function httpRequestsFuzzerTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 //the fuzzer is only compiled if failure points are enabled
-if (internal.debugCanUseFailAt()) {
+if (global.instanceManager.debugCanUseFailAt()) {
   jsunity.run(httpRequestsFuzzerTestSuite);
 }
 

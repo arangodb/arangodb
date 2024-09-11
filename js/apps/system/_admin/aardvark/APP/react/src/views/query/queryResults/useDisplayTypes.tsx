@@ -207,7 +207,7 @@ const isValidGeodesic = (item: GeoItemType) => {
 const detectGeo = ({
   result
 }: {
-  result: GeoItemType[];
+  result: GeoItemType[] | undefined;
 }): {
   isGeo: boolean;
   isTable: boolean;
@@ -219,7 +219,13 @@ const detectGeo = ({
   let attributeCountMap = {} as {
     [key: string]: number;
   };
-  result?.forEach(resultItem => {
+  if (!result?.length) {
+    return {
+      isGeo: false,
+      isTable: false
+    };
+  }
+  result.forEach(resultItem => {
     if (
       typeof resultItem !== "object" ||
       resultItem === null ||
@@ -274,7 +280,7 @@ const detectGeo = ({
     }
   });
 
-  if (result?.length === validGeojsonCount) {
+  if (result.length === validGeojsonCount) {
     isGeo = true;
   } else {
     isGeo = false;

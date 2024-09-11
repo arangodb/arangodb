@@ -222,7 +222,7 @@ function GenericQueryKillSuite() { // can be either default or stream
     suite[createTestName(testCase.failurePointName, testCase.stream)] = function (testCase) {
       const {failurePointName, stream, reportKilled} = testCase;
       try {
-        internal.debugSetFailAt(failurePointName);
+        global.instanceManager.debugSetFailAt(failurePointName);
       } catch (e) {
         // Let the Test fail
         throw `Failed to initialize failurepoint ${failurePointName}`;
@@ -239,7 +239,7 @@ function GenericQueryKillSuite() { // can be either default or stream
         }
       } finally {
         try {
-          internal.debugRemoveFailAt(failurePointName);
+          global.instanceManager.debugRemoveFailAt(failurePointName);
         } catch (e) {
           // We cannot throw in finally.
           console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable`);
@@ -272,7 +272,7 @@ function QueryKillSuite() {
   return GenericQueryKillSuite();
 }
 
-if (internal.debugCanUseFailAt()) {
+if (global.instanceManager.debugCanUseFailAt()) {
   jsunity.run(QueryKillSuite);
 }
 

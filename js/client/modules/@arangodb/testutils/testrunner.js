@@ -32,7 +32,6 @@ const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const time = require('internal').time;
 const sleep = require('internal').sleep;
-
 const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
@@ -297,6 +296,8 @@ class testRunner {
     let count = 0;
     let forceTerminate = false;
     let moreReason = "";
+    let shellTimeout = arango.timeout();
+    let checkTimeout = this.options.isInstrumented ? 120:60;
     for (let i = 0; i < this.testList.length; i++) {
       let te = this.testList[i];
       let filtered = {};
@@ -306,6 +307,7 @@ class testRunner {
         let loopCount = 0;
         count += 1;
         
+        arango.timeout(checkTimeout);
         for (let j = 0; j < this.cleanupChecks.length; j++) {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(te)) {
             this.continueTesting = false;
@@ -315,6 +317,7 @@ class testRunner {
             continue;
           }
         }
+        arango.timeout(shellTimeout);
         while (first || this.options.loopEternal) {
           if (!this.continueTesting) {
             this.abortTestOnError(te);
@@ -367,6 +370,7 @@ class testRunner {
             this.continueTesting = true;
             let j = 0;
             try {
+              arango.timeout(checkTimeout);
               for (; j < this.cleanupChecks.length; j++) {
                 if (!this.continueTesting || !this.cleanupChecks[j].runCheck(te)) {
                   print(RED + Date() + ' server posttest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
@@ -375,8 +379,10 @@ class testRunner {
                   j = this.cleanupChecks.length;
                   continue;
                 }
+                arango.timeout(shellTimeout);
               }
             } catch(ex) {
+              arango.timeout(shellTimeout);
               this.continueTesting = false;
               print(`${RED}${Date()} server posttest "${this.cleanupChecks[j].name}" failed by throwing: ${ex}\n${ex.stack}!${RESET}`);
               moreReason += `server posttest "${this.cleanupChecks[j].name}" failed by throwing: ${ex}`;

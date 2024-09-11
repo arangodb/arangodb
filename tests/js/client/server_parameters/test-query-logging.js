@@ -255,19 +255,25 @@ function QueryLoggerSuite() {
   const checkForQuery = (n, values) => {
     let tries = 0;
     let queries;
+    let length = 0;
     while (++tries < 40) {
       queries = getQueries();
       let filtered = queries.filter((q) => {
         return Object.keys(values).every((key) => {
-          return q[key] === values[key];
+          if (Array.isArray(values[key])) {
+            return values[key].find((elm) => elm === q[key]) !== undefined;
+          } else {
+            return q[key] === values[key];
+          }
         });
       });
-      if (filtered.length === n) {
+      length = filtered.length;
+      if (length === n) {
         return filtered;
       }
       internal.sleep(0.25);
     }
-    assertFalse(true, {n, values, queries});
+    assertEqual(length, n, {n, values, queries});
   };
 
   return {
@@ -296,7 +302,7 @@ function QueryLoggerSuite() {
       checkForQuery(n, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: true, 
         stream: false,
@@ -312,7 +318,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: true, 
         stream: false, 
@@ -328,7 +334,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root",
+        user: ["", "root"],
         state: "finished",
         modificationQuery: true, 
         stream: false, 
@@ -347,7 +353,7 @@ function QueryLoggerSuite() {
       checkForQuery(n, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: false, 
@@ -372,7 +378,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: false, 
@@ -397,7 +403,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: false, 
@@ -422,7 +428,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: false, 
@@ -448,7 +454,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: false, 
@@ -464,7 +470,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: false, 
@@ -485,7 +491,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: false, 
@@ -501,7 +507,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: false, 
@@ -517,7 +523,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: true, 
@@ -533,7 +539,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: false, 
@@ -550,7 +556,7 @@ function QueryLoggerSuite() {
       checkForQuery(1, {
         query, 
         database: "_system", 
-        user: "root", 
+        user: ["", "root"],
         state: "finished",
         modificationQuery: false, 
         stream: false, 
@@ -570,7 +576,7 @@ function QueryLoggerSuite() {
         checkForQuery(1, {
           query, 
           database: cn,
-          user: "root", 
+          user: ["", "root"],
           state: "finished",
           modificationQuery: false, 
           stream: false, 

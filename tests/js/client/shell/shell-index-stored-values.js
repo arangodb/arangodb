@@ -29,7 +29,8 @@ const db = require("@arangodb").db;
 const helper = require("@arangodb/test-helper");
 const internal = require("internal");
 const errors = internal.errors;
-  
+let IM = global.instanceManager;
+
 const cn = "UnitTestsCollectionIdx";
 
 const normalize = (p) => {
@@ -383,7 +384,7 @@ function indexStoredValuesPlanSuite() {
     
     testExecutionPlanUsedForMaterializeOneAttribute: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
-      internal.debugSetFailAt("batch-materialize-no-estimation");
+      IM.debugSetFailAt("batch-materialize-no-estimation");
       const query =" FOR doc IN " + cn + " FILTER doc.value1 <= 10 SORT doc.value2 LIMIT 3 RETURN doc";
       let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -391,12 +392,12 @@ function indexStoredValuesPlanSuite() {
       assertEqual(normalize(["value2"]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'MaterializeNode').length);
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
     
     testExecutionPlanUsedForMaterializeMultipleAttributes: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2", "value3"] });
-      internal.debugSetFailAt("batch-materialize-no-estimation");
+      IM.debugSetFailAt("batch-materialize-no-estimation");
       const query =" FOR doc IN " + cn + " FILTER doc.value1 <= 10 SORT doc.value3 LIMIT 3 RETURN doc"; 
       let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -404,7 +405,7 @@ function indexStoredValuesPlanSuite() {
       assertEqual(normalize(["value3"]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'MaterializeNode').length);
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
     testExecutionPlanUsedWhenMultipleCandidates: function () {
