@@ -103,6 +103,8 @@ auto PathValidatorTabooWrapper<PathValidatorImplementation>::
 
 template<class PathValidatorImplementation>
 void PathValidatorTabooWrapper<PathValidatorImplementation>::reset() {
+  _forbiddenVertices.reset();
+  _forbiddenEdges.reset();
   return _impl.reset();
 }
 

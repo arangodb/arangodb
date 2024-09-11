@@ -173,6 +173,7 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
   if (_shortestPaths.empty()) {
     // First find the shortest path using the _shortestPathEnumerator:
     _shortestPathEnumerator->reset(_source, _target);
+    // LOG_DEVEL << "Finding first shortest path...";
     bool found = _shortestPathEnumerator->getNextPath(result);
     if (!found) {
       _isDone = true;
@@ -227,13 +228,14 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     }
     // And run a shortest path computation from the spur vertex to the sink
     // with forbidden vertices and edges:
-    _shortestPathEnumerator->setForbiddenVertices(std::move(forbiddenVertices));
-    _shortestPathEnumerator->setForbiddenEdges(std::move(forbiddenEdges));
-
     _shortestPathEnumerator->clear();  // needed, otherwise algorithm
                                        // finished remains!
     _shortestPathEnumerator->reset(spurVertex.getID(), _target);
+    _shortestPathEnumerator->setForbiddenVertices(std::move(forbiddenVertices));
+    _shortestPathEnumerator->setForbiddenEdges(std::move(forbiddenEdges));
+
     VPackBuilder temp;
+    // LOG_DEVEL << "Finding another shortest path...";
     if (_shortestPathEnumerator->getNextPath(temp)) {
       // LOG_DEVEL << "Found another shortest path:" << temp.slice().toJson();
       PathResult<ProviderType, typename ProviderType::Step> const& path =
