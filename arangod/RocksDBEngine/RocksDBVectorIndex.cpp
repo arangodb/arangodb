@@ -54,8 +54,8 @@
 
 namespace arangodb {
 
-faiss::IndexIVFFlat createFaissIndex(auto& quantitizer,
-                                     auto& vectorDefinition) {
+faiss::IndexIVFFlat createFaissIndex(auto&& quantitizer,
+                                     auto&& vectorDefinition) {
   return std::visit(
       [&](auto&& quant) {
         return faiss::IndexIVFFlat(
@@ -262,7 +262,8 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
                               transaction::Methods* trx,
                               std::shared_ptr<LogicalCollection> collection,
                               std::size_t count, std::size_t topK) {
-  LOG_DEVEL << ARANGODB_PRETTY_FUNCTION;
+  TRI_ASSERT(topK * count == (inputs.size() / _definition.dimensions) * topK);
+
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, collection.get(), trx, rocksDBMethods, _cf,
                            _definition.nLists, flatIndex.code_size);
@@ -271,23 +272,20 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   std::vector<float> distances(topK * count);
   std::vector<faiss::idx_t> labels(topK * count);
 
-  TRI_ASSERT(topK * count == (inputs.size() / _definition.dimensions) * topK);
-  // TODO later on only on cosine
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimensions, count, inputs.data());
-    LOG_DEVEL << "NORMALIZATION";
   }
   flatIndex.search(count, inputs.data(), topK, distances.data(), labels.data(),
                    nullptr);
 
-  TRI_ASSERT(std::ranges::any_of(labels, [](auto const& elem) {
-    return elem != -1;
-  })) << "Elements not found";
+  TRI_ASSERT(
+      std::ranges::any_of(labels, [](auto const& elem) { return elem != -1; }));
 
   std::vector<LocalDocumentId::BaseType> convertedLabels;
   std::ranges::transform(
       labels, std::back_inserter(convertedLabels),
       [](auto const& elem) { return LocalDocumentId::BaseType(elem); });
+
   return {std::move(convertedLabels), std::move(distances)};
 }
 

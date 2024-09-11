@@ -40,8 +40,6 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
-class RocksDBVectorIndex;
-
 using Quantitizer =
     std::variant<faiss::IndexFlat, faiss::IndexFlatL2, faiss::IndexFlatIP>;
 
@@ -91,8 +89,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  void finishTraining();
-
   FullVectorIndexDefinition _definition;
   Quantitizer _quantizer;
   std::size_t _trainingDataSize;
