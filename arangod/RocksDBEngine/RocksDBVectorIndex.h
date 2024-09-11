@@ -80,7 +80,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _definition;
   }
 
-  bool readBatch(std::vector<faiss::idx_t>& ids, std::vector<float>& distances, std::size_t limit);
+  std::pair<std::vector<LocalDocumentId::BaseType>, std::vector<float>>
+  readBatch(std::vector<float>& inputs, RocksDBMethods* rocksDBMethods,
+            transaction::Methods* trx, std::shared_ptr<LogicalCollection> collection,
+            std::size_t count, std::size_t topK);
 
   aql::AstNode* specializeCondition(
       transaction::Methods& trx, aql::AstNode* condition,

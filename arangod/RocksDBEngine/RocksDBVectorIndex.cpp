@@ -21,6 +21,7 @@
 
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -247,40 +248,6 @@ class RocksDBVectorIndexIterator final : public IndexIterator {
     return false;
   }
 
-  bool readBatch(std::vector<faiss::idx_t>& ids, std::vector<float>& distances,
-                 std::uint64_t limit) {
-    if (limit == 0) {
-      // No limit no data, or we are actually done. The last call should have
-      // returned false
-      TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-      return false;
-    }
-
-    if (!_initialized) {
-      std::vector<float> distances(_topK);
-      // TODO later on only on cosine
-      // faiss::fvec_renorm_L2(_flatIndex.d, 1, _input.data());
-      _flatIndex.search(1, _input.data(), _topK, distances.data(), _ids.data(),
-                        nullptr);
-      TRI_ASSERT(std::ranges::any_of(_ids, [](auto const& elem) {
-        return elem != -1;
-      })) << "Elements not found";
-      _initialized = true;
-    }
-
-    //auto const batchSize = std::min(limit, _topK);
-    
-    /*    for (std::size_t i{0}; i < limit && _producedElements < _topK;*/
-    /*++i, ++_producedElements) {*/
-    /*LocalDocumentId docId = LocalDocumentId(_ids[i]);*/
-    /*if (docId.isSet()) {*/
-    /*//callback(docId);*/
-    /*}*/
-    /*}*/
-
-    return false;
-  }
-
   void resetImpl() override {
     // TODO
   }
@@ -368,6 +335,41 @@ void RocksDBVectorIndex::toVelocyPack(
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(VPackValue("params"));
   velocypack::serialize(builder, _definition);
+}
+
+std::pair<std::vector<LocalDocumentId::BaseType>, std::vector<float>>
+RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
+                              RocksDBMethods* rocksDBMethods,
+                              transaction::Methods* trx,
+                              std::shared_ptr<LogicalCollection> collection,
+                              std::size_t count, std::size_t topK) {
+  LOG_DEVEL << ARANGODB_PRETTY_FUNCTION;
+  auto flatIndex = createFaissIndex(_quantizer, _definition);
+  RocksDBInvertedLists ril(this, collection.get(), trx, rocksDBMethods, _cf,
+                           _definition.nLists, flatIndex.code_size);
+  flatIndex.replace_invlists(&ril, false);
+
+  std::vector<float> distances(topK * count);
+  std::vector<faiss::idx_t> labels(topK * count);
+
+  TRI_ASSERT(topK * count == (inputs.size() / _definition.dimensions) * topK);
+  // TODO later on only on cosine
+  if (_definition.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(_definition.dimensions, count, inputs.data());
+    LOG_DEVEL << "NORMALIZATION";
+  }
+  flatIndex.search(count, inputs.data(), topK, distances.data(), labels.data(),
+                   nullptr);
+
+  TRI_ASSERT(std::ranges::any_of(labels, [](auto const& elem) {
+    return elem != -1;
+  })) << "Elements not found";
+
+  std::vector<LocalDocumentId::BaseType> convertedLabels;
+  std::ranges::transform(
+      labels, std::back_inserter(convertedLabels),
+      [](auto const& elem) { return LocalDocumentId::BaseType(elem); });
+  return {std::move(convertedLabels), std::move(distances)};
 }
 
 // TODO Move away, also remove from MDIIndex.cpp
