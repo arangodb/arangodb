@@ -66,7 +66,8 @@
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
     "lint": "eslint",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "local-add-ui": "yalc add @arangodb/ui && yarn install"
   },
   "eslintConfig": {
     "extends": "react-app"
