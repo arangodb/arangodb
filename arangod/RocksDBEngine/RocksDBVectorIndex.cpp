@@ -29,13 +29,10 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
-#include "Aql/SortCondition.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/VPack.h"
-#include "Logger/LogMacros.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -221,19 +218,21 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
            _definition]() -> std::variant<faiss::IndexFlat, faiss::IndexFlatL2,
                                           faiss::IndexFlatIP> {
         switch (vectorDefinition.metric) {
-          case arangodb::SimilarityMetric::kCosine:
-            return {faiss::IndexFlatIP(vectorDefinition.dimensions)};
           case arangodb::SimilarityMetric::kL1:
             return {faiss::IndexFlat(vectorDefinition.dimensions,
                                      faiss::MetricType::METRIC_L1)};
           case arangodb::SimilarityMetric::kL2:
             return {faiss::IndexFlatL2(vectorDefinition.dimensions)};
+          case arangodb::SimilarityMetric::kCosine:
+            return {faiss::IndexFlatIP(vectorDefinition.dimensions)};
         }
       });
   if (_definition.trainedData) {
     std::visit(
-        [&trainedData = _definition.trainedData](auto&& quant) {
+        [&trainedData = _definition.trainedData,
+         metric = _definition.metric](auto&& quant) {
           quant.code_size = trainedData->codeSize;
+          quant.metric_type = metricToFaissMetric(metric);
           quant.ntotal = trainedData->numberOfCodes;
           quant.codes = trainedData->codeData;
           quant.is_trained = true;
