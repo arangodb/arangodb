@@ -26,44 +26,75 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
-const db = require('internal').db;
+const db = require("internal").db;
 
 const cn = "UnitTestsCollection";
-const idxName = "testIdx";
+const idxName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function VectorIndexTestSuite () {
+function VectorIndexL2TestSuite() {
   let collection;
+  let randomPoint;
+  const dimension = 500;
 
   return {
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
       collection = db._create(cn);
-    },
 
-    tearDown : function () {
-      internal.db._drop(cn);
-    },
-
-    testApproxNear : function () {
       let docs = [];
-      for (let i = 1; i <= 5; ++i) {
-        docs.push({ "vec" : [0.1 * i, 0.2, 0.3] });
+      for (let i = 0; i < 1000; ++i) {
+        const vector = Array.from({ length: dimension }, () => Math.random());
+        if (i == 500) {
+          randomPoint = vector;
+        }
+        docs.push({ vector: vector });
       }
       collection.insert(docs);
 
-      const query = "FOR d IN " + collection.name() + " FILTER APPROX_NEAR(d.vec, [0.21, 0.2, 0.3]) RETURN d.vec";
-     
-      const results = db._query(query).toArray();
-      print(results);
-      assertEqual([[0.2, 0.2, 0.3]], results);
+      collection.ensureIndex({
+        name: "vector_l2",
+        type: "vector",
+        fields: ["vector"],
+        params: { metric: "l2", dimensions: dimension, nLists: 10 },
+      });
+    },
+
+    tearDown: function () {
+      internal.db._drop(cn);
+    },
+
+    testApproxNearMultipleTopK: function () {
+      const query =
+        "FOR d IN " +
+        collection.name() +
+        " SORT APPROX_NEAR_L2(d.vec, @qp) LIMIT @topK RETURN d.vector";
+
+      const topKs = [1, 5, 10, 15, 50, 100];
+      for (let i = 0; i < topKs.length; ++i) {
+        const bindVars = { 'qp': randomPoint, 'topK': topKs[i] };
+        const plan = db
+          ._createStatement({
+            query: query,
+            bindVars: bindVars,
+          })
+          .explain().plan;
+        const indexNodes = plan.nodes.filter(function (n) {
+          return n.type === "EnumerateNearVectorNode";
+        });
+        assertEqual(1, indexNodes.length);
+
+        const results = db._query(query, bindVars).toArray();
+        print(results);
+        assertEqual(topKs[i], results.length);
+      }
     },
   };
 }
 
-jsunity.run(VectorIndexTestSuite);
+jsunity.run(VectorIndexL2TestSuite);
 
 return jsunity.done();
