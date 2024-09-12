@@ -38,7 +38,6 @@
 #include "Indexes/Index.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "Logger/LogMacros.h"
-#include "RocksDBEngine/RocksDBVectorIndex.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -141,18 +140,19 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     auto enumerateCollectionNode =
         ExecutionNode::castTo<EnumerateCollectionNode*>(node);
 
-    // check if there is a vector index on collection
-    auto const index = std::invoke(
-        [&enumerateCollectionNode]() -> std::shared_ptr<arangodb::Index> {
+    // check if there are vector indexes on collection
+    auto const vectorIndexes = std::invoke(
+        [&enumerateCollectionNode]() -> std::vector<std::shared_ptr<Index>> {
           auto indexes = enumerateCollectionNode->collection()->indexes();
-          for (auto const& index : indexes) {
-            if (index->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX) {
-              return index;
-            }
-          }
-          return nullptr;
+          std::vector<std::shared_ptr<Index>> vectorIndexes;
+          std::ranges::copy_if(
+              indexes, std::back_inserter(vectorIndexes), [](auto const& elem) {
+                return elem->type() ==
+                       Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX;
+              });
+          return vectorIndexes;
         });
-    if (!index) {
+    if (vectorIndexes.empty()) {
       continue;
     }
 
@@ -180,14 +180,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       continue;
     }
 
-    auto queryExpression =
-        isSortNodeValid(sortNode, plan, index->getVectorIndexDefinition(),
-                        enumerateCollectionNode->outVariable());
-    if (queryExpression == nullptr) {
-      LOG_RULE << "Query expression not valid";
-      continue;
-    }
-
     // check LIMIT NODE
     auto const* limitNode =
         ExecutionNode::castTo<LimitNode const*>(maybeLimitNode);
@@ -195,54 +187,59 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     if (limitNode->offset() != 0 || limitNode->limit() == 0) {
       continue;
     }
-    //  now we have a sequence of ENUMERATE_COLLECTION -> SORT -> LIMIT
 
-    // replace the collection enumeration with the enumerate near node
-    // furthermore, we have to remove the calculation node
-    auto documentVariable = enumerateCollectionNode->outVariable();
+    for (auto const& vectorIndex : vectorIndexes) {
+      auto queryExpression = isSortNodeValid(
+          sortNode, plan, vectorIndex->getVectorIndexDefinition(),
+          enumerateCollectionNode->outVariable());
+      if (queryExpression == nullptr) {
+        LOG_RULE << "Query expression not valid";
+        continue;
+      }
 
-    auto distanceVariable = sortNode->elements()[0].var;
-    auto oldDocumentVariable = enumerateCollectionNode->outVariable();
+      // replace the collection enumeration with the enumerate near node
+      // furthermore, we have to remove the calculation node
+      auto documentVariable = enumerateCollectionNode->outVariable();
 
-    // actually we want this to be late materialized.
-    // But this is too complicated for now. A later optimizer rule should
-    // but the late materialization into place.
-    auto documentIdVariable = oldDocumentVariable;
-    // plan->getAst()->variables()->createTemporaryVariable();
+      auto distanceVariable = sortNode->elements()[0].var;
+      auto oldDocumentVariable = enumerateCollectionNode->outVariable();
 
-    auto limit = limitNode->limit();
-    auto inVariable = plan->getAst()->variables()->createTemporaryVariable();
+      // actually we want this to be late materialized.
+      // But this is too complicated for now. A later optimizer rule should
+      // but the late materialization into place.
+      auto documentIdVariable = oldDocumentVariable;
 
-    auto queryPointCalculationNode = plan->createNode<CalculationNode>(
-        plan.get(), plan->nextId(),
-        std::make_unique<Expression>(plan->getAst(), queryExpression),
-        inVariable);
+      auto limit = limitNode->limit();
+      auto inVariable = plan->getAst()->variables()->createTemporaryVariable();
 
-    LOG_RULE << "Enumerate Near in " << inVariable->id
-             << " out = " << documentVariable->id
-             << " distance = " << distanceVariable->id << " limit = " << limit;
+      auto queryPointCalculationNode = plan->createNode<CalculationNode>(
+          plan.get(), plan->nextId(),
+          std::make_unique<Expression>(plan->getAst(), queryExpression),
+          inVariable);
 
-    auto enumerateNear = plan->createNode<EnumerateNearVectors>(
-        plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
-        documentIdVariable, distanceVariable, limit,
-        enumerateCollectionNode->collection(), index);
+      auto enumerateNear = plan->createNode<EnumerateNearVectors>(
+          plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
+          documentIdVariable, distanceVariable, limit,
+          enumerateCollectionNode->collection(), vectorIndex);
 
-    auto materializer = plan->createNode<materialize::MaterializeRocksDBNode>(
-        plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
-        *documentIdVariable, *documentVariable, *documentVariable);
-    plan->excludeFromScatterGather(enumerateNear);
+      auto materializer = plan->createNode<materialize::MaterializeRocksDBNode>(
+          plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
+          *documentIdVariable, *documentVariable, *documentVariable);
+      plan->excludeFromScatterGather(enumerateNear);
 
-    plan->replaceNode(enumerateCollectionNode, enumerateNear);
-    plan->insertBefore(enumerateNear, queryPointCalculationNode);
-    plan->insertAfter(enumerateNear, materializer);
+      plan->replaceNode(enumerateCollectionNode, enumerateNear);
+      plan->insertBefore(enumerateNear, queryPointCalculationNode);
+      plan->insertAfter(enumerateNear, materializer);
 
-    // we don't need this sort node at all, because we produce sorted output
-    plan->unlinkNode(sortNode);
+      // we don't need this sort node at all, because we produce sorted output
+      plan->unlinkNode(sortNode);
 
-    auto distanceCalculationNode = plan->getVarSetBy(distanceVariable->id);
-    plan->unlinkNode(distanceCalculationNode);
+      auto distanceCalculationNode = plan->getVarSetBy(distanceVariable->id);
+      plan->unlinkNode(distanceCalculationNode);
 
-    modified = true;
+      modified = true;
+      break;
+    }
   }
 
   opt->addPlan(std::move(plan), rule, modified);

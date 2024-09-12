@@ -45,7 +45,6 @@ EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher&,
 
 void EnumerateNearVectorsExecutor::fillInput(
     AqlItemBlockInputRange& inputRange, std::vector<float>& inputRowsJoined) {
-  LOG_DEVEL << __FUNCTION__;
   auto docRegId = _infos.inputReg;
 
   while (inputRange.hasDataRow()) {
@@ -71,7 +70,6 @@ void EnumerateNearVectorsExecutor::fillInput(
 
 void EnumerateNearVectorsExecutor::searchResults(
     std::vector<float>& inputRowsJoined) {
-  LOG_DEVEL << __FUNCTION__;
   // TODO do this before
   auto* vectorIndex = dynamic_cast<RocksDBVectorIndex*>(_infos.index.get());
   TRI_ASSERT(vectorIndex != nullptr);
@@ -88,19 +86,12 @@ void EnumerateNearVectorsExecutor::searchResults(
 }
 
 void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
-  LOG_DEVEL << __FUNCTION__;
   auto const docOutId = _infos.outDocumentIdReg;
   auto const distOutId = _infos.outDistancesReg;
 
   auto inputRowIterator = _inputRows.begin();
   while (!output.isFull() &&
          _currentProcessedResultCount < _inputRows.size() * _infos.topK) {
-    LOG_DEVEL << "Adding output, _currentProcessedResultCount: "
-              << _currentProcessedResultCount;
-    LOG_DEVEL << "labels: " << _labels;
-    LOG_DEVEL << "distances: " << _distances;
-    LOG_DEVEL << "document out reg " << docOutId.toUInt32();
-    LOG_DEVEL << "dist out reg " << distOutId.toUInt32();
     output.moveValueInto(
         docOutId, *inputRowIterator,
         AqlValueHintUInt(_labels[_currentProcessedResultCount]));
@@ -111,7 +102,6 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
 
     ++_currentProcessedResultCount;
     if (_currentProcessedResultCount % _infos.topK == 0) {
-      LOG_DEVEL << "Changing input iterator";
       ++inputRowIterator;
     }
   }
@@ -122,8 +112,6 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output) {
   NoStats stats;
 
-  LOG_DEVEL << __FUNCTION__ << " _currentProcessedResultCount: "
-            << _currentProcessedResultCount;
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
@@ -138,8 +126,6 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   }
 
   if (!_initialized && !_inputRows.empty()) {
-    LOG_DEVEL << "CALLING produceRows " << _inputRows.size() << " and "
-              << inputRowsJoined.size();
     searchResults(inputRowsJoined);
   }
 
