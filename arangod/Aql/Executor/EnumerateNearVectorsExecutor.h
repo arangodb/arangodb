@@ -89,10 +89,6 @@ class EnumerateNearVectorsExecutor {
   EnumerateNearVectorsExecutor(EnumerateNearVectorsExecutor&&) = default;
   ~EnumerateNearVectorsExecutor() = default;
 
-  void initializeCursor() {
-    /* do nothing here, just prevent the executor from being recreated */
-  }
-
   /**
    * @brief produce the next Row of Aql Values.
    *
