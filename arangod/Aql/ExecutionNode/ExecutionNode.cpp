@@ -125,7 +125,7 @@ frozen::unordered_map<int, std::string_view, 37> const kTypeNames{
      "OffsetMaterializeNode"},
     {static_cast<int>(ExecutionNode::JOIN), "JoinNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_NEAR_VECTORS),
-     "EnumerateNearVectors"},
+     "EnumerateNearVectorNode"},
 };
 
 }  // namespace

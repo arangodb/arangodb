@@ -23,7 +23,6 @@
 
 #include "ExecutionPlan.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -33,7 +32,7 @@
 #include "Aql/ExecutionNode/CollectNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateListNode.h"
-#include "Aql/ExecutionNode/EnumerateNearVectors.h"
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
@@ -3033,8 +3032,6 @@ IndexHint ExecutionPlan::firstUnsatisfiedForcedIndexHint() const {
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#include <iostream>
-
 /// @brief show an overview over the plan
 struct Shower final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
@@ -3112,7 +3109,7 @@ struct Shower final
       }
       case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
         auto* enumNode =
-            ExecutionNode::castTo<EnumerateNearVectors const*>(&node);
+            ExecutionNode::castTo<EnumerateNearVectorNode const*>(&node);
         absl::StrAppend(&result, " $", enumNode->documentOutVariable()->id,
                         " NEAR $", enumNode->inVariable()->id);
       } break;

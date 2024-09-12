@@ -24,11 +24,11 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/Functions.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
-#include "Aql/ExecutionNode/EnumerateNearVectors.h"
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
@@ -128,6 +128,18 @@ AstNode* isSortNodeValid(auto const* sortNode,
 
 }  // namespace
 
+std::vector<std::shared_ptr<Index>> getVectorIndexes(
+    auto& enumerateCollectionNode) {
+  std::vector<std::shared_ptr<Index>> vectorIndexes;
+  auto indexes = enumerateCollectionNode->collection()->indexes();
+  std::ranges::copy_if(
+      indexes, std::back_inserter(vectorIndexes), [](auto const& elem) {
+        return elem->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX;
+      });
+
+  return vectorIndexes;
+}
+
 void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
@@ -141,17 +153,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
         ExecutionNode::castTo<EnumerateCollectionNode*>(node);
 
     // check if there are vector indexes on collection
-    auto const vectorIndexes = std::invoke(
-        [&enumerateCollectionNode]() -> std::vector<std::shared_ptr<Index>> {
-          auto indexes = enumerateCollectionNode->collection()->indexes();
-          std::vector<std::shared_ptr<Index>> vectorIndexes;
-          std::ranges::copy_if(
-              indexes, std::back_inserter(vectorIndexes), [](auto const& elem) {
-                return elem->type() ==
-                       Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX;
-              });
-          return vectorIndexes;
-        });
+    auto const vectorIndexes = getVectorIndexes(enumerateCollectionNode);
     if (vectorIndexes.empty()) {
       continue;
     }
@@ -217,7 +219,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
           std::make_unique<Expression>(plan->getAst(), queryExpression),
           inVariable);
 
-      auto enumerateNear = plan->createNode<EnumerateNearVectors>(
+      auto enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit,
           enumerateCollectionNode->collection(), vectorIndex);

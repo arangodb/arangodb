@@ -40,6 +40,7 @@
 #include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
@@ -94,7 +95,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
-#include "Aql/ExecutionNode/EnumerateNearVectors.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -1623,7 +1623,7 @@ void arangodb::aql::removeCollectVariablesRule(
           modified = true;
         }
       }  // end - if doOptimize
-    }    // end - if collectNode has outVariable
+    }  // end - if collectNode has outVariable
 
     size_t numGroupVariables = collectNode->groupVariables().size();
     size_t numAggregateVariables = collectNode->aggregateVariables().size();
@@ -3793,10 +3793,9 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
 //
 // In an ideal world the node itself would know how to compute these parameters
 // for GatherNode (sortMode, parallelism, and elements), and we'd just ask it.
-auto insertGatherNode(
-    ExecutionPlan& plan, ExecutionNode* node,
-    SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries)
-    -> GatherNode* {
+auto insertGatherNode(ExecutionPlan& plan, ExecutionNode* node,
+                      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
+                          subqueries) -> GatherNode* {
   TRI_ASSERT(node);
 
   GatherNode* gatherNode{nullptr};
@@ -3857,7 +3856,8 @@ auto insertGatherNode(
     }
     case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
       auto elements = SortElementVector{};
-      auto envNode = ExecutionNode::castTo<EnumerateNearVectors const*>(node);
+      auto envNode =
+          ExecutionNode::castTo<EnumerateNearVectorNode const*>(node);
       auto collection = envNode->collection();
       TRI_ASSERT(collection != nullptr);
       auto numberOfShards = collection->numberOfShards();
@@ -4118,9 +4118,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
 // Create a new DistributeNode for the ExecutionNode passed in node, and
 // register it with the plan
-auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
-                                            ExecutionNode* node)
-    -> DistributeNode* {
+auto arangodb::aql::createDistributeNodeFor(
+    ExecutionPlan& plan, ExecutionNode* node) -> DistributeNode* {
   auto collection = static_cast<Collection const*>(nullptr);
   auto inputVariable = static_cast<Variable const*>(nullptr);
 
@@ -4251,10 +4250,9 @@ auto arangodb::aql::createGatherNodeFor(ExecutionPlan& plan,
 // and we handle this case in here as well by resetting the root to the
 // inserted GATHER node.
 //
-auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
-                                                  ExecutionNode* at,
-                                                  SubqueryNode* snode)
-    -> DistributeNode* {
+auto arangodb::aql::insertDistributeGatherSnippet(
+    ExecutionPlan& plan, ExecutionNode* at,
+    SubqueryNode* snode) -> DistributeNode* {
   auto const parents = at->getParents();
   auto const deps = at->getDependencies();
 
@@ -4479,7 +4477,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         node = node->getFirstDependency();
       }
     }  // for node in subquery
-  }    // for end subquery in plan
+  }  // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
@@ -6949,7 +6947,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
         return true;
       }
     }  // if isGeo 1 or 2
-  }    // for index in collection
+  }  // for index in collection
   return false;
 }
 

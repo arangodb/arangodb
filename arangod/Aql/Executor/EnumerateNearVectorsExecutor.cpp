@@ -23,6 +23,7 @@
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Assertions/Assert.h"
+#include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Aql/ExecutionBlockImpl.tpp"
@@ -54,7 +55,11 @@ void EnumerateNearVectorsExecutor::fillInput(
     AqlValue value = input.getValue(docRegId);
     std::vector<float> vectorInput;
     // input.reserve(_definition.dimensions);
-    TRI_ASSERT(value.isArray());
+    // TODO currently we do not accept anything else then array
+    if (!value.isArray()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
+
     // TODO optimize double allocation with vectorInput and inputRows2
     if (auto res =
             velocypack::deserializeWithStatus(value.slice(), vectorInput);

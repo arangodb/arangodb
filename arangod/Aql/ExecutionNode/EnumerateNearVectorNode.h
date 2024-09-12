@@ -36,19 +36,19 @@ class ExecutionNode;
 class ExecutionPlan;
 class Expression;
 
-/// @brief class EnumerateNearVectors
-class EnumerateNearVectors : public ExecutionNode,
-                             public CollectionAccessingNode {
+/// @brief class EnumerateNearVectorNode
+class EnumerateNearVectorNode : public ExecutionNode,
+                                public CollectionAccessingNode {
  public:
-  EnumerateNearVectors(ExecutionPlan* plan, ExecutionNodeId id,
-                       Variable const* inVariable,
-                       Variable const* oldDocumentVariable,
-                       Variable const* documentOutVariable,
-                       Variable const* distanceOutVariable, std::size_t limit,
-                       aql::Collection const* collection,
-                       transaction::Methods::IndexHandle indexHandle);
+  EnumerateNearVectorNode(ExecutionPlan* plan, ExecutionNodeId id,
+                          Variable const* inVariable,
+                          Variable const* oldDocumentVariable,
+                          Variable const* documentOutVariable,
+                          Variable const* distanceOutVariable,
+                          std::size_t limit, aql::Collection const* collection,
+                          transaction::Methods::IndexHandle indexHandle);
 
-  EnumerateNearVectors(ExecutionPlan*, arangodb::velocypack::Slice base);
+  EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   NodeType getType() const override;
 

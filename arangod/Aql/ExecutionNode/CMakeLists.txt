@@ -9,7 +9,7 @@ target_sources(arango_aql PRIVATE
   DocumentProducingNode.cpp  
   EnumerateCollectionNode.cpp
   EnumerateListNode.cpp
-  EnumerateNearVectors.cpp
+  EnumerateNearVectorNode.cpp
   EnumeratePathsNode.cpp
   ExecutionNode.cpp
   FilterNode.cpp

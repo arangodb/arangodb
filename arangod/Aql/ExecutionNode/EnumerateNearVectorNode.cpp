@@ -19,7 +19,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EnumerateNearVectors.h"
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
+#include "EnumerateNearVectorNode.h"
 
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
@@ -43,7 +44,7 @@ constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
 constexpr std::string_view kLimit = "limit";
 }  // namespace
 
-EnumerateNearVectors::EnumerateNearVectors(
+EnumerateNearVectorNode::EnumerateNearVectorNode(
     ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id,
     Variable const* inVariable, Variable const* oldDocumentVariable,
     Variable const* documentOutVariable, Variable const* distanceOutVariable,
@@ -58,13 +59,13 @@ EnumerateNearVectors::EnumerateNearVectors(
       _limit(limit),
       _index(std::move(indexHandle)) {}
 
-ExecutionNode::NodeType EnumerateNearVectors::getType() const {
+ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
   return ENUMERATE_NEAR_VECTORS;
 }
 
-size_t EnumerateNearVectors::getMemoryUsedBytes() const { return 0; }
+size_t EnumerateNearVectorNode::getMemoryUsedBytes() const { return 0; }
 
-std::unique_ptr<ExecutionBlock> EnumerateNearVectors::createBlock(
+std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     ExecutionEngine& engine) const {
   auto writableOutputRegisters = RegIdSet{};
   containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
@@ -104,32 +105,33 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectors::createBlock(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-ExecutionNode* EnumerateNearVectors::clone(ExecutionPlan* plan,
-                                           bool withDependencies) const {
-  auto c = std::make_unique<EnumerateNearVectors>(
+ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
+                                              bool withDependencies) const {
+  auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
       _distanceOutVariable, _limit, collection(), _index);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
 
-CostEstimate EnumerateNearVectors::estimateCost() const {
+CostEstimate EnumerateNearVectorNode::estimateCost() const {
   // TODO
   CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedNrItems *= _limit;
   return estimate;
 }
 
-void EnumerateNearVectors::getVariablesUsedHere(VarSet& vars) const {
+void EnumerateNearVectorNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_inVariable);
 }
 
-std::vector<const Variable*> EnumerateNearVectors::getVariablesSetHere() const {
+std::vector<const Variable*> EnumerateNearVectorNode::getVariablesSetHere()
+    const {
   return {_documentOutVariable, _distanceOutVariable};
 }
 
-void EnumerateNearVectors::doToVelocyPack(velocypack::Builder& builder,
-                                          unsigned int flags) const {
+void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
+                                             unsigned int flags) const {
   builder.add(VPackValue(kInVariableName));
   _inVariable->toVelocyPack(builder);
 
@@ -147,8 +149,8 @@ void EnumerateNearVectors::doToVelocyPack(velocypack::Builder& builder,
   _index->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Estimates));
 }
 
-EnumerateNearVectors::EnumerateNearVectors(ExecutionPlan* plan,
-                                           arangodb::velocypack::Slice base)
+EnumerateNearVectorNode::EnumerateNearVectorNode(
+    ExecutionPlan* plan, arangodb::velocypack::Slice base)
     : ExecutionNode(plan, base),
       CollectionAccessingNode(plan, base),
       _inVariable(
@@ -165,7 +167,7 @@ EnumerateNearVectors::EnumerateNearVectors(ExecutionPlan* plan,
   _index = collection()->indexByIdentifier(iid);
 }
 
-void EnumerateNearVectors::replaceVariables(
+void EnumerateNearVectorNode::replaceVariables(
     const std::unordered_map<VariableId, const Variable*>& replacements) {
   _inVariable = Variable::replace(_inVariable, replacements);
   _documentOutVariable = Variable::replace(_documentOutVariable, replacements);
