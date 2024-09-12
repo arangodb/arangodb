@@ -53,13 +53,9 @@
           dropdownVisible = true;
         }
       });
-      if (dropdownVisible) {
-        $('#docPureTable').height($('.centralRow').height() - 210 - 57);
-        $('#docPureTable .pure-table-body').css('max-height', $('#docPureTable').height() - 47);
-      } else {
-        $('#docPureTable').height($('.centralRow').height() - 210);
-        $('#docPureTable .pure-table-body').css('max-height', $('#docPureTable').height() - 47);
-      }
+      var licenseWarningVisible = $('#subNavLicenseInfo').length > 0;
+      $('#docPureTable').height($('.centralRow').height() - 210 - (dropdownVisible ? 57 : 0) - (licenseWarningVisible ? 52 : 0));
+      $('#docPureTable .pure-table-body').css('max-height', $('#docPureTable').height() - 47);
     },
 
     setCollectionId: function (colid, page) {
