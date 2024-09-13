@@ -146,6 +146,37 @@ function VectorIndexL2TestSuite() {
         assertEqual(topKExpected[i], results.length);
       }
     },
+
+    testApproxNearCommutation: function () {
+      const queryFirst =
+        "FOR d IN " +
+        collection.name() +
+        " SORT APPROX_NEAR_L2(@qp, d.vector) LIMIT 5 RETURN d";
+      const querySecond =
+        "FOR d IN " +
+        collection.name() +
+        " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d";
+
+      const bindVars = { qp: randomPoint };
+
+      const planFirst = db
+        ._createStatement({
+          query: queryFirst,
+          bindVars: bindVars,
+        })
+        .explain().plan;
+      const planSecond = db
+        ._createStatement({
+          query: querySecond,
+          bindVars: bindVars,
+        })
+        .explain().plan;
+      assertEqual(planFirst, planSecond);
+
+      const resultsFirst = db._query(queryFirst, bindVars).toArray();
+      const resultsSecond = db._query(querySecond, bindVars).toArray();
+      assertEqual(resultsFirst, resultsSecond);
+    },
   };
 }
 

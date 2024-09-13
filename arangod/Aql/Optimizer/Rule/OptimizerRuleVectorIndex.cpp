@@ -75,10 +75,28 @@ bool checkIfIndexedFieldIsSameAsSearched(
   return attributeName == indexedVectorField;
 }
 
-AstNode* isSortNodeValid(auto const* sortNode,
-                         std::unique_ptr<ExecutionPlan>& plan,
-                         RocksDBVectorIndex const* vectorIndex,
-                         Variable const* enumerateNodeOutVar) {
+bool checkApproxNearVariableInput(auto const* vectorIndex,
+                                  auto const* approxFunctionParamLeft) {
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
+      attributeAccessResult;
+  if (approxFunctionParamLeft == nullptr ||
+      !approxFunctionParamLeft->isAttributeAccessForVariable(
+          attributeAccessResult, false)) {
+    return false;
+  }
+  // check if APPROX function parameter is on indexed field
+  if (!checkIfIndexedFieldIsSameAsSearched(vectorIndex,
+                                           attributeAccessResult.second)) {
+    return false;
+  }
+
+  return true;
+}
+
+AstNode* getQueryPointsExpression(auto const* sortNode,
+                                  std::unique_ptr<ExecutionPlan>& plan,
+                                  RocksDBVectorIndex const* vectorIndex,
+                                  Variable const* enumerateNodeOutVar) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
   // simple
@@ -115,36 +133,33 @@ AstNode* isSortNodeValid(auto const* sortNode,
     return nullptr;
   }
 
-  // TODO this must be removed the document access can be either left or right
-  // param
+  // one of the params must be a documentField and the other a query point
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
   TRI_ASSERT(approxFunctionParameters->numMembers() == 2)
       << "There can be only two arguments to APPROX_NEAR"
       << ", currently there are "
       << calculationNodeExpressionNode->numMembers();
-  auto const* approxFunctionParamLeft = approxFunctionParameters->getMember(0);
-  // TODO check both parameters, because those functions are commutative
-  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-      attributeAccessResult;
-  if (approxFunctionParamLeft == nullptr ||
-      !approxFunctionParamLeft->isAttributeAccessForVariable(
-          attributeAccessResult, false)) {
-    return nullptr;
+
+  auto* approxFunctionParamLeft =
+      approxFunctionParameters->getMemberUnchecked(0);
+  auto* approxFunctionParamRight =
+      approxFunctionParameters->getMemberUnchecked(1);
+
+  if (approxFunctionParamLeft->type ==
+      arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (!checkApproxNearVariableInput(vectorIndex, approxFunctionParamLeft)) {
+      return nullptr;
+    }
+
+    return approxFunctionParamRight;
   }
-  // check if APPROX function parameter is on indexed field
-  if (!checkIfIndexedFieldIsSameAsSearched(vectorIndex,
-                                           attributeAccessResult.second)) {
+
+  if (!checkApproxNearVariableInput(vectorIndex, approxFunctionParamRight)) {
     return nullptr;
   }
 
-  // if variable whose attributes are being accessed is not the same as
-  // indexed, we cannot apply the rule
-  if (attributeAccessResult.first != enumerateNodeOutVar) {
-    return nullptr;
-  }
-
-  return approxFunctionParameters->getMember(1);
+  return approxFunctionParamLeft;
 }
 
 }  // namespace
@@ -216,7 +231,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       if (vectorIndex == nullptr) {
         continue;
       }
-      auto queryExpression = isSortNodeValid(
+      auto queryExpression = getQueryPointsExpression(
           sortNode, plan, vectorIndex, enumerateCollectionNode->outVariable());
       if (queryExpression == nullptr) {
         LOG_RULE << "Query expression not valid";
