@@ -610,14 +610,14 @@ class instance {
     let ret = statusExternal(this.pid, waitForExit);
     if (ret.status !== 'RUNNING') {
       this.processSanitizerReports();
+      this._disconnect();
     }
-    this._disconnect();
     return ret;
   }
 
   isRunning() {
     let check = () => (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
-    if (check()) {
+    if (this.exitStatus === null || check()) {
       this.exitStatus = this.status(false);
       return check();
     }
@@ -632,15 +632,14 @@ class instance {
     if (this.role === instanceRole.coordinator) {
       moreArgs['--server.rest-server'] = 'false';
     }
-
-    this._executeArangod(moreArgs);
-
-    print(this.exitStatus)
-    let check = () => (this.exitStatus === null) || (this.exitStatus.status === 'RUNNING');
-    if (check()) {
-      this.exitStatus = this.status(true);
+    this.exitStatus = null;
+    this.pid = this._executeArangod(moreArgs).pid;
+    sleep(1);
+    while (this.isRunning()) {
+      print(".");
+      sleep(1);
     }
-    print(`upgrade of ${this.name} finished.`);
+    print(`${Date()} upgrade of ${this.name} finished.`);
   }
 
   // //////////////////////////////////////////////////////////////////////////////

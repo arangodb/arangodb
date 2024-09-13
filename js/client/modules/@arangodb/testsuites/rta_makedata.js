@@ -106,7 +106,7 @@ function makeDataWrapper (options) {
           if (count === 2) {
             ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
           }
-          if (count === 1) {
+          if (count === 2) {
             this.instanceManager.upgradeCycleInstance();
           }
           if (count === 3) {
