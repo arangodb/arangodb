@@ -19,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <functional>
-
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -35,9 +33,11 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Assertions/Assert.h"
 #include "Indexes/Index.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "Logger/LogMacros.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -65,9 +65,19 @@ bool checkFunctionNameMatchesIndexMetric(
   }
 }
 
+bool checkIfIndexedFieldIsSameAsSearched(
+    RocksDBVectorIndex const* vectorIndex,
+    std::vector<basics::AttributeName>& attributeName) {
+  // vector index can be only on single field
+  TRI_ASSERT(vectorIndex->fields().size() == 1);
+  auto const& indexedVectorField = vectorIndex->fields()[0];
+
+  return attributeName == indexedVectorField;
+}
+
 AstNode* isSortNodeValid(auto const* sortNode,
                          std::unique_ptr<ExecutionPlan>& plan,
-                         UserVectorIndexDefinition const& definition,
+                         RocksDBVectorIndex const* vectorIndex,
                          Variable const* enumerateNodeOutVar) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
@@ -100,23 +110,34 @@ AstNode* isSortNodeValid(auto const* sortNode,
   }
   if (auto const functionName =
           aql::functions::getFunctionName(*calculationNodeExpressionNode);
-      !checkFunctionNameMatchesIndexMetric(functionName, definition)) {
+      !checkFunctionNameMatchesIndexMetric(functionName,
+                                           vectorIndex->getDefinition())) {
     return nullptr;
   }
 
-  // check if APPROX function parameter is on indexed field
-  TRI_ASSERT(calculationNodeExpressionNode->numMembers() > 0);
+  // TODO this must be removed the document access can be either left or right
+  // param
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
-  auto const* approxFunctionParam = approxFunctionParameters->getMember(0);
+  TRI_ASSERT(approxFunctionParameters->numMembers() == 2)
+      << "There can be only two arguments to APPROX_NEAR"
+      << ", currently there are "
+      << calculationNodeExpressionNode->numMembers();
+  auto const* approxFunctionParamLeft = approxFunctionParameters->getMember(0);
   // TODO check both parameters, because those functions are commutative
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       attributeAccessResult;
-  if (approxFunctionParam == nullptr ||
-      !approxFunctionParam->isAttributeAccessForVariable(attributeAccessResult,
-                                                         false)) {
+  if (approxFunctionParamLeft == nullptr ||
+      !approxFunctionParamLeft->isAttributeAccessForVariable(
+          attributeAccessResult, false)) {
     return nullptr;
   }
+  // check if APPROX function parameter is on indexed field
+  if (!checkIfIndexedFieldIsSameAsSearched(vectorIndex,
+                                           attributeAccessResult.second)) {
+    return nullptr;
+  }
+
   // if variable whose attributes are being accessed is not the same as
   // indexed, we cannot apply the rule
   if (attributeAccessResult.first != enumerateNodeOutVar) {
@@ -160,7 +181,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
     // check that enumerateColNode has both sort and limit
     auto* currentNode = enumerateCollectionNode->getFirstParent();
-
     // skip over some calculation nodes
     while (currentNode != nullptr &&
            currentNode->getType() == EN::CALCULATION) {
@@ -190,10 +210,14 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       continue;
     }
 
-    for (auto const& vectorIndex : vectorIndexes) {
+    for (auto const& index : vectorIndexes) {
+      auto const* vectorIndex =
+          dynamic_cast<RocksDBVectorIndex const*>(index.get());
+      if (vectorIndex == nullptr) {
+        continue;
+      }
       auto queryExpression = isSortNodeValid(
-          sortNode, plan, vectorIndex->getVectorIndexDefinition(),
-          enumerateCollectionNode->outVariable());
+          sortNode, plan, vectorIndex, enumerateCollectionNode->outVariable());
       if (queryExpression == nullptr) {
         LOG_RULE << "Query expression not valid";
         continue;
@@ -222,7 +246,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       auto enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit,
-          enumerateCollectionNode->collection(), vectorIndex);
+          enumerateCollectionNode->collection(), index);
 
       auto materializer = plan->createNode<materialize::MaterializeRocksDBNode>(
           plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
