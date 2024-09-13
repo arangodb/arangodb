@@ -675,13 +675,25 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           std::abort();
       }
     }
-  } else {
+  } else {  // Cluster case (on coordinator)
     auto cache = std::make_shared<RefactoredClusterTraverserCache>(
         opts->query().resourceMonitor());
     ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
                                                       opts->produceVertices());
+    forwardProviderOptions.setClearEdgeCacheOnClear(false);
     ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
                                                        opts->produceVertices());
+    backwardProviderOptions.setClearEdgeCacheOnClear(false);
+    // A comment is in order here: For all cases covered here
+    // (k-shortest-paths, all shortest paths, k-paths) we do not need to
+    // filter edges when we fetch them from dbservers. As a consequence,
+    // we can keep the local edge cache in the ClusterProvider across
+    // calls to its `clear` method. This is very beneficial when we do
+    // multiple such computations, for example, when we get multiple
+    // results from upstream, for which we must run a computation for each
+    // one. Or for k-shortest-path for the Yen algorithm, in which we have
+    // to compute multiple shortest paths. Therefore, we reset this
+    // flag here in the forward and backward providers.
 
     using ClusterProvider = ClusterProvider<ClusterProviderStep>;
     if (opts->query().queryOptions().getTraversalProfileLevel() ==

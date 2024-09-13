@@ -110,12 +110,14 @@ ClusterProvider<StepImpl>::~ClusterProvider() {
 
 template<class StepImpl>
 void ClusterProvider<StepImpl>::clear() {
-  for (auto const& entry : _vertexConnectedEdges) {
-    _resourceMonitor->decreaseMemoryUsage(
-        costPerVertexOrEdgeType +
-        (entry.second.size() * (costPerVertexOrEdgeType * 2)));
+  if (_opts.clearEdgeCacheOnClear()) {
+    for (auto const& entry : _vertexConnectedEdges) {
+      _resourceMonitor->decreaseMemoryUsage(
+          costPerVertexOrEdgeType +
+          (entry.second.size() * (costPerVertexOrEdgeType * 2)));
+    }
+    _vertexConnectedEdges.clear();
   }
-  _vertexConnectedEdges.clear();
 }
 
 template<class StepImpl>
@@ -312,13 +314,18 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   // [GraphRefactor] TODO: Differentiate between algorithms -> traversal vs.
   // ksp.
   /* Needed for TRAVERSALS only - Begin */
-  leased->add("depth", VPackValue(step->getDepth()));
-  if (_opts.expressionContext() != nullptr) {
-    leased->add(VPackValue("variables"));
-    leased->openArray();
-    _opts.expressionContext()->serializeAllVariables(trx()->vpackOptions(),
-                                                     *(leased.get()));
-    leased->close();
+  // This flag must only be set to `false` if this particular filtering
+  // provision is not needed. This is for example the case in K-Shortest-Path
+  // computations via the Yen algorithm and in shortest path computations:
+  if (_opts.clearEdgeCacheOnClear()) {
+    leased->add("depth", VPackValue(step->getDepth()));
+    if (_opts.expressionContext() != nullptr) {
+      leased->add(VPackValue("variables"));
+      leased->openArray();
+      _opts.expressionContext()->serializeAllVariables(trx()->vpackOptions(),
+                                                       *(leased.get()));
+      leased->close();
+    }
   }
   /* Needed for TRAVERSALS only - End */
 
