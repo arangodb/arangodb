@@ -99,12 +99,11 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
   auto inputRowIterator = _inputRows.begin();
   while (!output.isFull() &&
          _currentProcessedResultCount < _inputRows.size() * _infos.topK) {
-
     // there are no results anymore for this input, so we can skip to next input
     // row
     if (_labels[_currentProcessedResultCount] == -1) {
       _currentProcessedResultCount =
-          std::floor(_currentProcessedResultCount / _infos.topK) * _infos.topK;
+          (_currentProcessedResultCount / _infos.topK + 1) * _infos.topK;
       ++inputRowIterator;
       continue;
     }
