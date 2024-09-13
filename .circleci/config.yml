@@ -158,7 +158,9 @@ jobs:
           name: Determine enterprise branch
           command: |
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-            if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
+            ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
+            echo "Found setting for ENTERPRISE_BRANCH: $ENTERPRISE_BRANCH"
+            if test -z "$ENTERPRISE_BRANCH" ; then
               set +e
               git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
               if [ "$?" == "0" ] ; then
@@ -167,8 +169,7 @@ jobs:
                 ENTERPRISE_BRANCH=devel
               fi
               set -e
-            else
-              ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
+              echo "Actually using this for ENTERPRISE_BRANCH: $ENTERPRISE_BRANCH"
             fi
             ENTERPRISE_COMMIT=`git ls-remote --heads git@github.com:arangodb/enterprise.git $ENTERPRISE_BRANCH | cut -f1`
             echo "Using enterprise branch $ENTERPRISE_BRANCH (sha $ENTERPRISE_COMMIT)"
