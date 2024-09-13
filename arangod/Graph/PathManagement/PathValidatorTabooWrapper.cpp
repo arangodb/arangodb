@@ -33,7 +33,6 @@
 #include "Graph/Types/ValidationResult.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
@@ -143,11 +142,9 @@ void PathValidatorTabooWrapper<
   return _impl.unpreparePostFilterContext();
 }
 
-using SingleProvider = SingleServerProvider<SingleServerProviderStep>;
+// Explicit template instantiations:
 
-#ifdef USE_ENTERPRISE
-using SmartGraphStep = ::arangodb::graph::enterprise::SmartGraphStep;
-#endif
+using SingleProvider = SingleServerProvider<SingleServerProviderStep>;
 
 template class PathValidatorTabooWrapper<
     PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
@@ -158,23 +155,10 @@ template class PathValidatorTabooWrapper<
                   PathStoreTracer<PathStore<SingleServerProviderStep>>,
                   VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
-// Probably not needed, since Yen does not do smart:
-#if 0
-#ifdef USE_ENTERPRISE
-template class PathValidatorTabooWrapper<PathValidator<
-    SingleServerProvider<SmartGraphStep>, PathStore<SmartGraphStep>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-template class PathValidatorTabooWrapper<
-    PathValidator<ProviderTracer<SingleServerProvider<SmartGraphStep>>,
-                  PathStoreTracer<PathStore<SmartGraphStep>>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-#endif
-#endif
+/* ClusterProvider Section */
 
 using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
-/* ClusterProvider Section */
 template class PathValidatorTabooWrapper<
     PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
                   VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
@@ -183,21 +167,5 @@ template class PathValidatorTabooWrapper<
     PathValidator<ProviderTracer<ClustProvider>,
                   PathStoreTracer<PathStore<ClusterProviderStep>>,
                   VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-// Probably not needed, since Yen does not do smart:
-
-#if 0
-#ifdef USE_ENTERPRISE
-template class PathValidatorTabooWrapper<
-    PathValidator<enterprise::SmartGraphProvider<ClusterProviderStep>,
-                  PathStore<ClusterProviderStep>, VertexUniquenessLevel::GLOBAL,
-                  EdgeUniquenessLevel::PATH>>;
-
-template class PathValidatorTabooWrapper<PathValidator<
-    ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-#endif
-#endif
 
 }  // namespace arangodb::graph
