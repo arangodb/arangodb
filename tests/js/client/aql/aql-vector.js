@@ -29,11 +29,13 @@ const getQueryResults = helper.getQueryResults;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 const db = require("internal").db;
-const {randomNumberGeneratorFloat} = require("@arangodb/testutils/seededRandom");
+const {
+  randomNumberGeneratorFloat,
+} = require("@arangodb/testutils/seededRandom");
 
-const dbName = "VectorDb";
-const collName = "VectorColl";
-const indexName = "VectorIndex";
+const dbName = "vectorDb";
+const collName = "vectorColl";
+const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -59,7 +61,7 @@ function VectorIndexL2TestSuite() {
         if (i == 250) {
           randomPoint = vector;
         }
-        docs.push({ vector: vector, nonVector: i, unIndexedVector: vector });
+        docs.push({ vector, nonVector: i, unIndexedVector: vector });
       }
       collection.insert(docs);
 
@@ -72,7 +74,7 @@ function VectorIndexL2TestSuite() {
     },
 
     tearDownAll: function () {
-      db._useDatabase('_system');
+      db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
 
@@ -82,20 +84,20 @@ function VectorIndexL2TestSuite() {
         collection.name() +
         " SORT APPROX_NEAR_L2(d.unIndexedVector, @qp) LIMIT 5 RETURN d";
 
-        const bindVars = { 'qp': randomPoint };
-        const plan = db
-          ._createStatement({
-            query: query,
-            bindVars: bindVars,
-          })
-          .explain().plan;
-        const indexNodes = plan.nodes.filter(function (n) {
-          return n.type === "EnumerateNearVectorNode";
-        });
-        assertEqual(0, indexNodes.length);
-      
-        const results = db._query(query, bindVars).toArray();
-        assertEqual(5, results.length);
+      const bindVars = { qp: randomPoint };
+      const plan = db
+        ._createStatement({
+          query: query,
+          bindVars: bindVars,
+        })
+        .explain().plan;
+      const indexNodes = plan.nodes.filter(function (n) {
+        return n.type === "EnumerateNearVectorNode";
+      });
+      assertEqual(0, indexNodes.length);
+
+      const results = db._query(query, bindVars).toArray();
+      assertEqual(5, results.length);
     },
 
     testApproxNearOnNonVectorField: function () {
@@ -104,20 +106,20 @@ function VectorIndexL2TestSuite() {
         collection.name() +
         " SORT APPROX_NEAR_L2(d.nonVector, @qp) LIMIT 5 RETURN d";
 
-        const bindVars = { 'qp': randomPoint };
-        const plan = db
-          ._createStatement({
-            query: query,
-            bindVars: bindVars,
-          })
-          .explain().plan;
-        const indexNodes = plan.nodes.filter(function (n) {
-          return n.type === "EnumerateNearVectorNode";
-        });
-        assertEqual(0, indexNodes.length);
-      
-        const results = db._query(query, bindVars).toArray();
-        assertEqual(5, results.length);
+      const bindVars = { qp: randomPoint };
+      const plan = db
+        ._createStatement({
+          query: query,
+          bindVars: bindVars,
+        })
+        .explain().plan;
+      const indexNodes = plan.nodes.filter(function (n) {
+        return n.type === "EnumerateNearVectorNode";
+      });
+      assertEqual(0, indexNodes.length);
+
+      const results = db._query(query, bindVars).toArray();
+      assertEqual(5, results.length);
     },
 
     testApproxNearMultipleTopK: function () {
@@ -130,7 +132,7 @@ function VectorIndexL2TestSuite() {
       // Heavily dependent on seed value
       const topKExpected = [1, 5, 10, 15, 35, 35];
       for (let i = 0; i < topKs.length; ++i) {
-        const bindVars = { 'qp': randomPoint, 'topK': topKs[i] };
+        const bindVars = { qp: randomPoint, topK: topKs[i] };
         const plan = db
           ._createStatement({
             query: query,
@@ -176,6 +178,29 @@ function VectorIndexL2TestSuite() {
       const resultsFirst = db._query(queryFirst, bindVars).toArray();
       const resultsSecond = db._query(querySecond, bindVars).toArray();
       assertEqual(resultsFirst, resultsSecond);
+    },
+
+    testApproxNearDistance: function () {
+      const query =
+        "FOR d IN " +
+        collection.name() +
+        " LET dist = APPROX_NEAR_L2(@qp, d.vector)" +
+        " SORT dist LIMIT 5 RETURN dist";
+
+      const bindVars = { qp: randomPoint };
+      const plan = db
+        ._createStatement({
+          query: query,
+          bindVars: bindVars,
+        })
+        .explain().plan;
+      const indexNodes = plan.nodes.filter(function (n) {
+        return n.type === "EnumerateNearVectorNode";
+      });
+      assertEqual(1, indexNodes.length);
+
+      const results = db._query(query, bindVars).toArray();
+      assertEqual(5, results.length);
     },
   };
 }
