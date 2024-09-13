@@ -26,6 +26,8 @@ const internal = require("internal");
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
+const assertQueryError = helper.assertQueryError;
+const errors = internal.errors;
 const db = require("internal").db;
 const {randomNumberGeneratorFloat} = require("@arangodb/testutils/seededRandom");
 
@@ -74,53 +76,49 @@ function VectorIndexL2TestSuite() {
       db._dropDatabase(dbName);
     },
 
-/*    testApproxNearOnUnindexedField: function () {*/
-      /*const query =*/
-        /*"FOR d IN " +*/
-        /*collection.name() +*/
-        /*" SORT APPROX_NEAR_L2(d.unIndexedVector, @qp) LIMIT 5 RETURN d";*/
+    testApproxNearOnUnindexedField: function () {
+      const query =
+        "FOR d IN " +
+        collection.name() +
+        " SORT APPROX_NEAR_L2(d.unIndexedVector, @qp) LIMIT 5 RETURN d";
 
-        /*const bindVars = { 'qp': randomPoint, 'topK': topKs[i] };*/
-        /*const plan = db*/
-          /*._createStatement({*/
-            /*query: query,*/
-            /*bindVars: bindVars,*/
-          /*})*/
-          /*.explain().plan;*/
-        /*const indexNodes = plan.nodes.filter(function (n) {*/
-          /*return n.type === "EnumerateNearVectorNode";*/
-        /*});*/
-        /*assertEqual(0, indexNodes.length);*/
-
-        /*const results = db._query(query, bindVars).toArray();*/
-        /*print(results);*/
-        /*assertEqual(topKs[i], results.length);*/
-    /*},*/
-
-    // FIX
-    /*testApproxNearOnNonVectorField: function () {*/
-      /*const query =*/
-        /*"FOR d IN " +*/
-        /*collection.name() +*/
-        /*" SORT APPROX_NEAR_L2(d.nonVector, @qp) LIMIT 5 RETURN d";*/
-
-        /*const bindVars = { 'qp': randomPoint};*/
-        /*const plan = db*/
-          /*._createStatement({*/
-            /*query: query,*/
-            /*bindVars: bindVars,*/
-          /*})*/
-          /*.explain().plan;*/
-        /*const indexNodes = plan.nodes.filter(function (n) {*/
-          /*return n.type === "EnumerateNearVectorNode";*/
-        /*});*/
-        /*assertEqual(0, indexNodes.length);*/
+        const bindVars = { 'qp': randomPoint };
+        const plan = db
+          ._createStatement({
+            query: query,
+            bindVars: bindVars,
+          })
+          .explain().plan;
+        const indexNodes = plan.nodes.filter(function (n) {
+          return n.type === "EnumerateNearVectorNode";
+        });
+        assertEqual(0, indexNodes.length);
       
-        /*assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, query, bindVars);*/
-        /*const results = db._query(query, bindVars).toArray();*/
-        /*print(results);*/
-        /*assertEqual(0, results.length);*/
-    /*},*/
+        const results = db._query(query, bindVars).toArray();
+        assertEqual(5, results.length);
+    },
+
+    testApproxNearOnNonVectorField: function () {
+      const query =
+        "FOR d IN " +
+        collection.name() +
+        " SORT APPROX_NEAR_L2(d.nonVector, @qp) LIMIT 5 RETURN d";
+
+        const bindVars = { 'qp': randomPoint };
+        const plan = db
+          ._createStatement({
+            query: query,
+            bindVars: bindVars,
+          })
+          .explain().plan;
+        const indexNodes = plan.nodes.filter(function (n) {
+          return n.type === "EnumerateNearVectorNode";
+        });
+        assertEqual(0, indexNodes.length);
+      
+        const results = db._query(query, bindVars).toArray();
+        assertEqual(5, results.length);
+    },
 
     testApproxNearMultipleTopK: function () {
       const query =
