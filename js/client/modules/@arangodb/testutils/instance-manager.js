@@ -831,13 +831,13 @@ class instanceManager {
       this.arangods.forEach(arangod => {
         if (arangod.isRole(role)) {
           print(`${Date()} upgrading ${arangod.name}`);
-          print(`${Date()} stopping ${arangod.name}`)
+          print(`${Date()} stopping ${arangod.name}`);
           arangod.shutdownArangod(false);
           while (arangod.isRunning()) {
             print(".");
             sleep(1);
           }
-          print(`${Date()} upgrading ${arangod.name}`)
+          print(`${Date()} upgrading ${arangod.name}`);
           arangod.runUpgrade();
           print(`${Date()} relaunching ${arangod.name}`);
           arangod.restartOneInstance();
