@@ -110,14 +110,14 @@ ClusterProvider<StepImpl>::~ClusterProvider() {
 
 template<class StepImpl>
 void ClusterProvider<StepImpl>::clear(bool force) {
-  if (_opts.clearEdgeCacheOnClear() || force) {
-    for (auto const& entry : _vertexConnectedEdges) {
-      _resourceMonitor->decreaseMemoryUsage(
-          costPerVertexOrEdgeType +
-          (entry.second.size() * (costPerVertexOrEdgeType * 2)));
-    }
-    _vertexConnectedEdges.clear();
+  // if (_opts.clearEdgeCacheOnClear() || force) {
+  for (auto const& entry : _vertexConnectedEdges) {
+    _resourceMonitor->decreaseMemoryUsage(
+        costPerVertexOrEdgeType +
+        (entry.second.size() * (costPerVertexOrEdgeType * 2)));
   }
+  _vertexConnectedEdges.clear();
+  //}
 }
 
 template<class StepImpl>
