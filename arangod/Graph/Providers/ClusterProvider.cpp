@@ -105,12 +105,12 @@ ClusterProvider<StepImpl>::ClusterProvider(
 
 template<class StepImpl>
 ClusterProvider<StepImpl>::~ClusterProvider() {
-  clear();
+  clear(true);  // Make sure we actually free all memory in the edge cache!
 }
 
 template<class StepImpl>
-void ClusterProvider<StepImpl>::clear() {
-  if (_opts.clearEdgeCacheOnClear()) {
+void ClusterProvider<StepImpl>::clear(bool force) {
+  if (_opts.clearEdgeCacheOnClear() || force) {
     for (auto const& entry : _vertexConnectedEdges) {
       _resourceMonitor->decreaseMemoryUsage(
           costPerVertexOrEdgeType +
