@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateNearVectorsExecutor.h"
+#include <cmath>
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Assertions/Assert.h"
@@ -86,6 +87,7 @@ void EnumerateNearVectorsExecutor::searchResults(
   std::tie(_labels, _distances) = vectorIndex->readBatch(
       inputRowsJoined, mthds, &_trx, _collection->getCollection(),
       _inputRows.size(), _infos.topK);
+
   _initialized = true;
   _currentProcessedResultCount = 0;
 }
@@ -97,6 +99,15 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
   auto inputRowIterator = _inputRows.begin();
   while (!output.isFull() &&
          _currentProcessedResultCount < _inputRows.size() * _infos.topK) {
+
+    // there are no results anymore for this input, so we can skip to next input
+    // row
+    if (_labels[_currentProcessedResultCount] == -1) {
+      _currentProcessedResultCount =
+          std::floor(_currentProcessedResultCount / _infos.topK) * _infos.topK;
+      ++inputRowIterator;
+      continue;
+    }
     output.moveValueInto(
         docOutId, *inputRowIterator,
         AqlValueHintUInt(_labels[_currentProcessedResultCount]));
@@ -134,7 +145,9 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     searchResults(inputRowsJoined);
   }
 
-  fillOutput(output);
+  if (_inputRows.size()) {
+    fillOutput(output);
+  }
 
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }

@@ -21,7 +21,6 @@
 
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
-#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -61,10 +60,6 @@ faiss::IndexIVFFlat createFaissIndex(auto&& quantitizer,
       },
       quantitizer);
 }
-
-// This assertion must hold for faiss idx_t to be used
-static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
-              "Faiss id and LocalDocumentId must be of same size");
 
 struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
@@ -255,7 +250,7 @@ void RocksDBVectorIndex::toVelocyPack(
   velocypack::serialize(builder, _definition);
 }
 
-std::pair<std::vector<LocalDocumentId::BaseType>, std::vector<float>>
+std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
 RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
                               RocksDBMethods* rocksDBMethods,
                               transaction::Methods* trx,
@@ -277,15 +272,7 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   flatIndex.search(count, inputs.data(), topK, distances.data(), labels.data(),
                    nullptr);
 
-  TRI_ASSERT(
-      std::ranges::any_of(labels, [](auto const& elem) { return elem != -1; }));
-
-  std::vector<LocalDocumentId::BaseType> convertedLabels;
-  std::ranges::transform(
-      labels, std::back_inserter(convertedLabels),
-      [](auto const& elem) { return LocalDocumentId::BaseType(elem); });
-
-  return {std::move(convertedLabels), std::move(distances)};
+  return {std::move(labels), std::move(distances)};
 }
 
 // TODO Move away, also remove from MDIIndex.cpp

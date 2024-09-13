@@ -26,6 +26,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -114,7 +115,7 @@ class EnumerateNearVectorsExecutor {
   std::vector<InputAqlItemRow> _inputRows;
 
   std::vector<float> _distances;
-  std::vector<LocalDocumentId::BaseType> _labels;
+  std::vector<VectorIndexLabelId> _labels;
   bool _initialized{false};
   std::size_t _currentProcessedResultCount{0};
   Infos const& _infos;

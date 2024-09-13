@@ -23,6 +23,7 @@
 #include <faiss/invlists/InvertedLists.h>
 #include <faiss/IndexFlat.h>
 #include <faiss/IndexIVFFlat.h>
+#include <type_traits>
 
 #include "RocksDBIndex.h"
 #include "Indexes/VectorIndexDefinition.h"
@@ -30,6 +31,7 @@
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "faiss/MetricType.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -42,6 +44,16 @@ class Slice;
 
 using Quantitizer =
     std::variant<faiss::IndexFlat, faiss::IndexFlatL2, faiss::IndexFlatIP>;
+
+// This assertion must hold for faiss idx_t to be used
+static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
+              "Faiss id and LocalDocumentId must be of same size");
+
+// This assertion is that faiss::idx_t is the same type as std::int64_t
+static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
+              "Faiss idx_t base type is no longer int64_t");
+
+using VectorIndexLabelId = faiss::idx_t;
 
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
@@ -71,11 +83,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
     return _definition;
   }
 
-  std::pair<std::vector<LocalDocumentId::BaseType>, std::vector<float>>
-  readBatch(std::vector<float>& inputs, RocksDBMethods* rocksDBMethods,
-            transaction::Methods* trx,
-            std::shared_ptr<LogicalCollection> collection, std::size_t count,
-            std::size_t topK);
+  std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
+      std::vector<float>& inputs, RocksDBMethods* rocksDBMethods,
+      transaction::Methods* trx, std::shared_ptr<LogicalCollection> collection,
+      std::size_t count, std::size_t topK);
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
