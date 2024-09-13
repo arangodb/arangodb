@@ -6,6 +6,8 @@ devel
   multiple time. The corresponding flag was not resetted resulting in an
   endless loop.
 
+* Fix circleci setup w.r.t. enterprise branch.
+
 * Adjust documentation and testing of --cluster.force-one-shard option to 
   reality.
 
