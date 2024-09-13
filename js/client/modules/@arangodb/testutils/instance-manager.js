@@ -611,6 +611,30 @@ class instanceManager {
     return true;
   }
 
+  _setMaintenance(onOff) {
+    let shutdownSuccess = true;
+    try {
+      // send a maintenance request to any of the coordinators, so that
+      // no failed server/failed follower jobs will be started on shutdown
+      let coords = this.arangods.filter(arangod =>
+        arangod.isRole(instanceRole.coordinator) &&
+          (arangod.exitStatus !== null));
+      if (coords.length > 0) {
+        let requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
+        requestOptions.method = 'PUT';
+        let postBody = onOff ? "on" : "off";
+        if (!this.options.noStartStopLogs) {
+          print(`${coords[0].url}/_admin/cluster/maintenance => ${postBody}`);
+        }
+        download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify(postBody), requestOptions);
+      }
+    } catch (err) {
+      print(`${Date()} error while setting cluster maintenance mode:${err}\n${err.stack}`);
+      shutdownSuccess = false;
+    }
+    return shutdownSuccess;
+  }
+
   _shutdownInstance (moreReason="") {
     let forceTerminate = false;
     let crashed = false;
@@ -631,25 +655,7 @@ class instanceManager {
     }
 
     if (!forceTerminate) {
-      try {
-        // send a maintenance request to any of the coordinators, so that
-        // no failed server/failed follower jobs will be started on shutdown
-        let coords = this.arangods.filter(arangod =>
-          arangod.isRole(instanceRole.coordinator) &&
-            (arangod.exitStatus !== null));
-        if (coords.length > 0) {
-          let requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-          requestOptions.method = 'PUT';
-
-          if (!this.options.noStartStopLogs) {
-            print(coords[0].url + "/_admin/cluster/maintenance");
-          }
-          download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
-        }
-      } catch (err) {
-        print(`${Date()} error while setting cluster maintenance mode:${err}\n${err.stack}`);
-        shutdownSuccess = false;
-      }
+      shutdownSuccess &= this._setMaintenance(true);
     }
 
     this.stopClusterHealthMonitor();
@@ -817,6 +823,26 @@ class instanceManager {
     this.launchFinalize(startTime);
   }
 
+  upgradeCycleInstance(waitForShardsInSync) {
+    /// TODO:             self._check_for_shards_in_sync()
+    this._setMaintenance(true);
+
+    this.instanceRoles.forEach(role => {
+      this.arangods.forEach(arangod => {
+        if (arangod.isRole(role)) {
+          print(`${Date()}upgrading ${arangod.name}`);
+          print("${Date()}stopping ${arangod.name}")
+          arangod.shutdownArangod(false);
+          print("${Date()}upgrading ${arangod.name}")
+          arangod.runUpgrade();
+          print("${Date()}relaunching ${arangod.name}");
+          arangod.restartOneInstance();
+        }
+      });
+    });
+
+    this._setMaintenance(false);
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief check SUT health inbetween
   // //////////////////////////////////////////////////////////////////////////////

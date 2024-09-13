@@ -113,9 +113,9 @@ class agencyMgr {
     }
     let allArgs = [agent.args, agent.moreArgs];
     allArgs.forEach(args => {
-      if (args.hasOwnProperty('authOpts')) {
+      if (allArgs.hasOwnProperty('authOpts')) {
         opts['jwt'] = crypto.jwtEncode(agent.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-      } else if (args.hasOwnProperty('server.jwt-secret')) {
+      } else if (allArgs.hasOwnProperty('server.jwt-secret')) {
         opts['jwt'] = crypto.jwtEncode(args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
       } else if (agent.jwtFiles) {
         opts['jwt'] = crypto.jwtEncode(fs.read(agent.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');

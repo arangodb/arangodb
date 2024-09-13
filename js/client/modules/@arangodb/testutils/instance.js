@@ -624,6 +624,25 @@ class instance {
     return false;
   }
 
+  runUpgrade() {
+    let moreArgs = {
+      '--database.auto-upgrade': 'true',
+      '--log.foreground-tty': 'true'
+    };
+    if (this.role === instanceRole.coordinator) {
+      moreArgs['--server.rest-server'] = 'false';
+    }
+
+    this._executeArangod(moreArgs);
+
+    print(this.exitStatus)
+    let check = () => (this.exitStatus === null) || (this.exitStatus.status === 'RUNNING');
+    if (check()) {
+      this.exitStatus = this.status(true);
+    }
+    print(`upgrade of ${this.name} finished.`);
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief periodic checks whether spawned arangod processes are still alive
   // //////////////////////////////////////////////////////////////////////////////
