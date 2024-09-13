@@ -1,6 +1,11 @@
 devel
 -----
 
+* BTS-1950: geo index query stuck
+  The geo index iterator got stuck when multiple coverings were requested
+  multiple time. The corresponding flag was not resetted resulting in an
+  endless loop.
+
 * Adjust documentation and testing of --cluster.force-one-shard option to 
   reality.
 
