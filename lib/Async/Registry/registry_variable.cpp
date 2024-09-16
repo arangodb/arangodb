@@ -29,7 +29,11 @@ Registry registry;
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
     ThreadRegistryGuard() : _registry{registry.add_thread()} {}
-    ~ThreadRegistryGuard() { registry.remove_thread(std::move(_registry)); }
+
+    /**
+       Runs when the current thread is deleted
+     */
+    ~ThreadRegistryGuard() {}
 
     std::shared_ptr<ThreadRegistry> _registry;
   };

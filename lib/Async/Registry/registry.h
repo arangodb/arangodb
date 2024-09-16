@@ -52,7 +52,7 @@ struct Registry {
   /**
      Removes a coroutine thread registry from this registry.
    */
-  auto remove_thread(std::shared_ptr<ThreadRegistry> registry) -> void;
+  auto remove_thread(ThreadRegistry* registry) -> void;
 
   /**
      Executes a function on each coroutine in the registry.
@@ -83,7 +83,7 @@ struct Registry {
   }
 
  private:
-  std::vector<std::shared_ptr<ThreadRegistry>> registries;
+  std::vector<ThreadRegistry*> registries;
   std::mutex mutex;
   std::shared_ptr<const Metrics> _metrics;
 };

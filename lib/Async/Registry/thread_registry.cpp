@@ -24,23 +24,26 @@
 
 #include "Assertions/ProdAssert.h"
 #include "Async/Registry/Metrics.h"
+#include "Async/Registry/promise.h"
+#include "Async/Registry/registry.h"
 #include "Basics/Thread.h"
 #include "Inspection/Format.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 
 using namespace arangodb::async_registry;
 
-auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics)
+auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics,
+                          Registry* registry)
     -> std::shared_ptr<ThreadRegistry> {
-  return std::shared_ptr<ThreadRegistry>(new ThreadRegistry{metrics});
+  return std::shared_ptr<ThreadRegistry>(new ThreadRegistry{metrics, registry});
 }
 
-ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
-    : thread_name{ThreadNameFetcher{}.get()}, metrics{metrics} {
+ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics,
+                               Registry* registry)
+    : thread_name{ThreadNameFetcher{}.get()},
+      registry{registry},
+      metrics{metrics} {
   if (metrics->total_threads != nullptr) {
     metrics->total_threads->count();
   }
@@ -52,6 +55,9 @@ ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
 ThreadRegistry::~ThreadRegistry() noexcept {
   if (metrics->running_threads != nullptr) {
     metrics->running_threads->fetch_sub(1);
+  }
+  if (registry != nullptr) {
+    registry->remove_thread(this);
   }
   cleanup();
 }

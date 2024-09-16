@@ -67,7 +67,7 @@ TEST_F(CoroutineRegistryTest, registers_promise_on_same_thread) {
 
   thread_registry->mark_for_deletion(&promise);
   thread_registry->garbage_collect();
-  registry.remove_thread(thread_registry);
+  registry.remove_thread(thread_registry.get());
 }
 
 TEST_F(CoroutineRegistryTest, registers_promise_on_different_threads) {
@@ -83,7 +83,7 @@ TEST_F(CoroutineRegistryTest, registers_promise_on_different_threads) {
 
     thread_registry->mark_for_deletion(&promise);
     thread_registry->garbage_collect();
-    registry.remove_thread(thread_registry);
+    registry.remove_thread(thread_registry.get());
   }).join();
 }
 
@@ -101,7 +101,7 @@ TEST_F(CoroutineRegistryTest,
   thread_registry->mark_for_deletion(&first_promise);
   thread_registry->mark_for_deletion(&second_promise);
   thread_registry->garbage_collect();
-  registry.remove_thread(thread_registry);
+  registry.remove_thread(thread_registry.get());
 }
 
 TEST_F(CoroutineRegistryTest, iterates_over_promises_on_differen_threads) {
@@ -119,12 +119,12 @@ TEST_F(CoroutineRegistryTest, iterates_over_promises_on_differen_threads) {
 
     thread_registry->mark_for_deletion(&second_promise);
     thread_registry->garbage_collect();
-    registry.remove_thread(thread_registry);
+    registry.remove_thread(thread_registry.get());
   }).join();
 
   thread_registry->mark_for_deletion(&first_promise);
   thread_registry->garbage_collect();
-  registry.remove_thread(thread_registry);
+  registry.remove_thread(thread_registry.get());
 }
 
 TEST_F(CoroutineRegistryTest,
@@ -146,7 +146,7 @@ TEST_F(CoroutineRegistryTest,
   EXPECT_TRUE(promise.destroyed);
   EXPECT_EQ(all_ids(registry).size(), 0);
 
-  registry.remove_thread(thread_registry);
+  registry.remove_thread(thread_registry.get());
 }
 
 TEST_F(
@@ -159,7 +159,7 @@ TEST_F(
 
   EXPECT_EQ(all_ids(registry), (std::vector<uint64_t>{1}));
 
-  registry.remove_thread(thread_registry);
+  registry.remove_thread(thread_registry.get());
 
   EXPECT_FALSE(promise.destroyed);
   EXPECT_EQ(all_ids(registry), (std::vector<uint64_t>{}));
@@ -179,7 +179,7 @@ TEST_F(CoroutineRegistryTest,
     std::thread([&]() {
       thread_registry_on_different_thread = registry.add_thread();
       thread_registry_on_different_thread->add(&promise);
-      registry.remove_thread(thread_registry_on_different_thread);
+      registry.remove_thread(thread_registry_on_different_thread.get());
     }).join();
 
     EXPECT_EQ(all_ids(registry).size(), 0);
