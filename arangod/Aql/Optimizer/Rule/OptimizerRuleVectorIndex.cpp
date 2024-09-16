@@ -37,7 +37,6 @@
 #include "Indexes/Index.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "Logger/LogMacros.h"
-#include "RocksDBEngine/RocksDBVectorIndex.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -66,7 +65,7 @@ bool checkFunctionNameMatchesIndexMetric(
 }
 
 bool checkIfIndexedFieldIsSameAsSearched(
-    RocksDBVectorIndex const* vectorIndex,
+    auto const& vectorIndex,
     std::vector<basics::AttributeName>& attributeName) {
   // vector index can be only on single field
   TRI_ASSERT(vectorIndex->fields().size() == 1);
@@ -75,7 +74,7 @@ bool checkIfIndexedFieldIsSameAsSearched(
   return attributeName == indexedVectorField;
 }
 
-bool checkApproxNearVariableInput(auto const* vectorIndex,
+bool checkApproxNearVariableInput(auto const& vectorIndex,
                                   auto const* approxFunctionParamLeft) {
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       attributeAccessResult;
@@ -95,7 +94,7 @@ bool checkApproxNearVariableInput(auto const* vectorIndex,
 
 AstNode* getQueryPointsExpression(auto const* sortNode,
                                   std::unique_ptr<ExecutionPlan>& plan,
-                                  RocksDBVectorIndex const* vectorIndex,
+                                  std::shared_ptr<Index> const& vectorIndex,
                                   Variable const* enumerateNodeOutVar) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
@@ -128,8 +127,8 @@ AstNode* getQueryPointsExpression(auto const* sortNode,
   }
   if (auto const functionName =
           aql::functions::getFunctionName(*calculationNodeExpressionNode);
-      !checkFunctionNameMatchesIndexMetric(functionName,
-                                           vectorIndex->getDefinition())) {
+      !checkFunctionNameMatchesIndexMetric(
+          functionName, vectorIndex->getVectorIndexDefinition())) {
     return nullptr;
   }
 
@@ -222,17 +221,13 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
         ExecutionNode::castTo<LimitNode const*>(maybeLimitNode);
     // Offset cannot be handled, and there must be a limit which means topK
     if (limitNode->offset() != 0 || limitNode->limit() == 0) {
+      LOG_RULE << "Limit not set";
       continue;
     }
 
-    for (auto const& index : vectorIndexes) {
-      auto const* vectorIndex =
-          dynamic_cast<RocksDBVectorIndex const*>(index.get());
-      if (vectorIndex == nullptr) {
-        continue;
-      }
+    for (auto& index : vectorIndexes) {
       auto queryExpression = getQueryPointsExpression(
-          sortNode, plan, vectorIndex, enumerateCollectionNode->outVariable());
+          sortNode, plan, index, enumerateCollectionNode->outVariable());
       if (queryExpression == nullptr) {
         LOG_RULE << "Query expression not valid";
         continue;
