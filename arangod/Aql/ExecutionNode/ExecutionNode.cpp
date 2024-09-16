@@ -446,10 +446,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
     }
     case ENUMERATE_NEAR_VECTORS:
       return new EnumerateNearVectorNode(plan, slice);
-    default: {
-      // should not reach this point
+    // should never reach these
+    case MAX_NODE_TYPE_VALUE:
       TRI_ASSERT(false);
-    }
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(

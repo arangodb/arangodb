@@ -45,7 +45,7 @@ class Slice;
 using Quantitizer =
     std::variant<faiss::IndexFlat, faiss::IndexFlatL2, faiss::IndexFlatIP>;
 
-// This assertion must hold for faiss idx_t to be used
+// This assertion must hold for faiss::idx_t to be used
 static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
               "Faiss id and LocalDocumentId must be of same size");
 
@@ -66,7 +66,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   bool canBeDropped() const override { return true; }
 
-  // TODO
   bool hasSelectivityEstimate() const override { return false; }
 
   char const* typeName() const override { return "rocksdb-vector"; }
