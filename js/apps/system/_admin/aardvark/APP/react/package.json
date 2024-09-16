@@ -79,6 +79,7 @@
     "not op_mini all"
   ],
   "devDependencies": {
+    "@playwright/test": "^1.47.1",
     "@types/backbone": "^1.4.15",
     "@types/crypto-js": "^4.1.1",
     "@types/d3": "^3.5.17",
@@ -87,6 +88,7 @@
     "@types/leaflet": "^1.9.3",
     "@types/lodash": "^4.14.191",
     "@types/minimatch": "^5.1.2",
+    "@types/node": "^22.5.5",
     "@types/nvd3": "^1.8.42",
     "@types/papaparse": "^5.3.7",
     "@types/react": "^18.3.0",
