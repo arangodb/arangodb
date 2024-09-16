@@ -1,4 +1,5 @@
 add_library(arango_async_registry STATIC
+  promise.cpp
   registry.cpp
   registry_variable.cpp
   thread_registry.cpp)
