@@ -1429,7 +1429,7 @@ function processQuery(query, explain, planIndex) {
           return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
         }
         break;
-      case 'EnumerateNearVectors':
+      case 'EnumerateNearVectorNode':
         return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable);
       case 'EnumerateViewNode':
         var condition = '';

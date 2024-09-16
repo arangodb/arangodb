@@ -128,21 +128,22 @@ function VectorIndexL2TestSuite() {
         collection.name() +
         " SORT APPROX_NEAR_L2(d.vector, @qp) RETURN d";
 
-        const bindVars = { qp: randomPoint };
-        const plan = db
-          ._createStatement({
-            query: query,
-            bindVars: bindVars,
-          })
-          .explain().plan;
-        const indexNodes = plan.nodes.filter(function (n) {
-          return n.type === "EnumerateNearVectorNode";
-        });
-        assertEqual(0, indexNodes.length);
+      const bindVars = { qp: randomPoint };
+      const plan = db
+        ._createStatement({
+          query: query,
+          bindVars: bindVars,
+        })
+        .explain().plan;
+      const indexNodes = plan.nodes.filter(function (n) {
+        return n.type === "EnumerateNearVectorNode";
+      });
+      assertEqual(0, indexNodes.length);
 
-        const results = db._query(query, bindVars).toArray();
-        assertEqual(500, results.length);
+      const results = db._query(query, bindVars).toArray();
+      assertEqual(500, results.length);
     },
+
     testApproxNearMultipleTopK: function () {
       const query =
         "FOR d IN " +
@@ -222,6 +223,35 @@ function VectorIndexL2TestSuite() {
 
       const results = db._query(query, bindVars).toArray();
       assertEqual(5, results.length);
+    },
+
+    testApproxNearSubquery: function () {
+      const query =
+        " FOR docOuter IN " +
+        collection.name() +
+        " FILTER docOuter.nonVector < 10 " +
+        " LET neighbours = ( " +
+        " FOR docInner IN " +
+        collection.name() +
+        " LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector) " +
+        " SORT dist " +
+        " LIMIT 5 " +
+        " RETURN {dist, doc: docInner} " +
+        " ) " +
+        " RETURN {docOuter, neighbours}";
+
+      const plan = db._createStatement(query).explain().plan;
+      const indexNodes = plan.nodes.filter(function (n) {
+        return n.type === "EnumerateNearVectorNode";
+      });
+      assertEqual(1, indexNodes.length);
+
+      const results = db._query(query).toArray();
+      assertEqual(10, results.length);
+
+      results.forEach((element) => {
+        assertEqual(5, element.neighbours.length);
+      });
     },
   };
 }
