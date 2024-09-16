@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
 
 using namespace arangodb::async_registry;
 
@@ -39,12 +40,20 @@ auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics)
 }
 
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
-    : thread_name{ThreadNameFetcher{}.get()},
-      running_threads{metrics->running_threads.get(), 1},
-      metrics{metrics} {
+    : thread_name{ThreadNameFetcher{}.get()}, metrics{metrics} {
   if (metrics->total_threads != nullptr) {
     metrics->total_threads->count();
   }
+  if (metrics->running_threads != nullptr) {
+    metrics->running_threads->fetch_add(1);
+  }
+}
+
+ThreadRegistry::~ThreadRegistry() noexcept {
+  if (metrics->running_threads != nullptr) {
+    metrics->running_threads->fetch_sub(1);
+  }
+  cleanup();
 }
 
 auto ThreadRegistry::add(Promise* promise) noexcept -> void {

@@ -23,7 +23,6 @@
 #pragma once
 
 #include "Async/Registry/promise.h"
-#include "Metrics/GaugeCounterGuard.h"
 
 #include <atomic>
 #include <cstdint>
@@ -57,7 +56,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   static auto make(std::shared_ptr<const Metrics> metrics)
       -> std::shared_ptr<ThreadRegistry>;
 
-  ~ThreadRegistry() noexcept { cleanup(); }
+  ~ThreadRegistry() noexcept;
 
   /**
      Adds a promise on the registry's thread to the registry.
@@ -107,7 +106,6 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   std::atomic<Promise*> free_head = nullptr;
   std::atomic<Promise*> promise_head = nullptr;
   std::mutex mutex;
-  metrics::GaugeCounterGuard<uint64_t> running_threads;
   std::shared_ptr<const Metrics> metrics;
 
   ThreadRegistry(std::shared_ptr<const Metrics> metrics);
