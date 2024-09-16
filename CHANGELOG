@@ -1,3 +1,10 @@
+3.12.2.1 (2024-09-16)
+---------------------
+
+* Fix bug in upstream rocksdb to not leak file descriptors when iouring 
+  is used for RocksDB.
+
+
 3.12.2 (2024-08-21)
 -------------------
 
