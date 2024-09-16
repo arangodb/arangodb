@@ -43,7 +43,7 @@ class Feature final : public application_features::ApplicationFeature {
                                                  name()},
         metrics{create_metrics(
             server.template getFeature<arangodb::metrics::MetricsFeature>())} {
-    coroutine_registry.set_metrics(metrics);
+    registry.set_metrics(metrics);
     // startsAfter<Bla, Server>();
   }
 
