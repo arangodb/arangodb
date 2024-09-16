@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix bug in upstream rocksdb to not leak file descriptors when iouring
+  is used for RocksDB.
+
 * Fix circleci setup w.r.t. enterprise branch.
 
 * Adjust documentation and testing of --cluster.force-one-shard option to 
