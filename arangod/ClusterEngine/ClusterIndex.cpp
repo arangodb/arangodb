@@ -329,22 +329,17 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-    case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX:
+    case TRI_IDX_TYPE_VECTOR_INDEX: {
       // should not be called for these indexes
       return Index::supportsFilterCondition(trx, allIndexes, node, reference,
                                             itemsInIndex);
     }
-
     case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::supportsFilterCondition(this, allIndexes, node, reference,
                                           itemsInIndex);
-
-    case TRI_IDX_TYPE_VECTOR_INDEX: {
-      // vector index is only triggered by rule
-      break;
-    }
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }

@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/GatherNode.h"
@@ -443,6 +444,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new WindowNode(plan, slice, std::move(bounds), rangeVar,
                             aggregateVariables);
     }
+    case ENUMERATE_NEAR_VECTORS:
+      return new EnumerateNearVectorNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
