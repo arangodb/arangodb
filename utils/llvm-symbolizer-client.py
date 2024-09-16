@@ -2,10 +2,13 @@
 
 import urllib.request
 import sys
-
+import os
 
 def run():
-    url = "http://localhost:43210"
+    if 'HOST_SYMBOLIZER_URL' in os.environ:
+        url = os.environ['HOST_SYMBOLIZER_URL']
+    else:
+        url = "http://localhost:43210"
     for line in sys.stdin:
         data = line.encode("utf8")
         headers = {"content-type": "text/plain"}
