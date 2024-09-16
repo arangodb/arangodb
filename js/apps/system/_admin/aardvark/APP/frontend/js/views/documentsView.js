@@ -53,8 +53,14 @@
           dropdownVisible = true;
         }
       });
-      var licenseWarningVisible = $('#subNavLicenseInfo').length > 0;
-      $('#docPureTable').height($('.centralRow').height() - 210 - (dropdownVisible ? 57 : 0) - (licenseWarningVisible ? 52 : 0));
+      let offsetHeight = $('.centralRow').height() - 200;
+      if (dropdownVisible) {
+        offsetHeight -= 65;
+      }
+      if ($('#subNavLicenseInfo').length > 0) {
+        offsetHeight -= $('#licenseInfoArea').height();
+      }
+      $('#docPureTable').height(offsetHeight);
       $('#docPureTable .pure-table-body').css('max-height', $('#docPureTable').height() - 47);
     },
 
