@@ -117,6 +117,7 @@ function makeDataWrapper (options) {
             });
             print('stopping dbserver ' + stoppedDbServerInstance.name +
                   ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
+            this.instanceManager.resignLeaderShip(stoppedDbServerInstance);
             stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
             stoppedDbServerInstance.waitForExit();
             moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];

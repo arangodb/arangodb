@@ -557,6 +557,24 @@ class instanceManager {
     }
   }
 
+  resignLeaderShip(dbServer) {
+    let frontend = this.arangods.filter(arangod => {return arangod.isFrontend();})[0];
+    print(`${Date()} resigning leaderships from ${dbServer.name} via ${frontend.name}`)
+    // make sure the connection is propper:
+    frontend._disconnect();
+    frontend.connect();
+
+    let result = arango.POST_RAW('/_admin/cluster/resignLeadership',
+                                 { "server": dbServer.shortName, "undoMoves": true });
+    print(result);
+    let jobStatus;
+    do {
+      sleep(1);
+      jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + result.parsedBody.id);
+      print(jobStatus.parsedBody.status);
+    } while (jobStatus.parsedBody.status !== 'Finished');
+    print(`${Date()} DONE resigning leaderships from ${dbServer.name} via ${frontend.name}`)
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief shuts down an instance
   // //////////////////////////////////////////////////////////////////////////////
@@ -832,6 +850,9 @@ class instanceManager {
         if (arangod.isRole(role)) {
           print(`${Date()} upgrading ${arangod.name}`);
           print(`${Date()} stopping ${arangod.name}`);
+          if (arangod.isRole(instanceRole.dbServer)) {
+            this.resignLeaderShip(arangod);
+          }
           arangod.shutdownArangod(false);
           while (arangod.isRunning()) {
             print(".");
