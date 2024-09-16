@@ -567,6 +567,9 @@ class instanceManager {
     let result = arango.POST_RAW('/_admin/cluster/resignLeadership',
                                  { "server": dbServer.shortName, "undoMoves": true });
     print(result);
+    if (result.code != 200) {
+      throw new Error(`failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(result)}`)
+    }
     let jobStatus;
     do {
       sleep(1);
