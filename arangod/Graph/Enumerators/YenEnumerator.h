@@ -133,6 +133,33 @@ struct TwoSidedEnumeratorOptions;
 template<class ProviderType, class Step>
 class PathResult;
 
+// This is a relatively straightforward implementation of Yen's algorithm
+// as described here: https://en.wikipedia.org/wiki/Yen%27s_algorithm
+// It uses single shortest path algorithms by means of a subobject of
+// type `TwoSidedEnumerator` (in the unweighted case) and
+// `WeightedTwoSidedEnumerator` (in the weighted case).
+// The subtlety lies in the template magic going on all around this.
+// The `ProviderType` is used to get actual graph data like neighbours
+// out of the system. Essentially, there can be a `SingleServerProvider`
+// or a `ClusterProvider`, and it can be wrapped with a tracer wrapper or
+// not. This provider is just handed on to the `EnumeratorType`, which is
+// essentially an instance of the `TwoSidedEnumerator` or the
+// `WeightedTwoSidedEnumerator`. However, we have to be able to forbid
+// some vertices and edges. This is handled by putting a wrapper type
+// around the PathValidator, we use the `PathValidatorTabooWrapper` for
+// this. Therefore, the implementation can be rather compact here and
+// uses lots of other functionality to do the heavy lifting.
+// Note that some effort is necessary for memory management. Since we
+// repeatedly call ShortestPath we must constantly reset our subobject,
+// which means that we run into the problem that old references to vertex
+// and edge IDs used in previous path results become invalid. Therefore,
+// we have to copy all these IDs to our own managed memory area.
+// This emplate is instantiated in 8 different ways across the following
+// dimensions:
+//   SingleServerProvider/ClusterProvider
+//   Unweighted/weighted
+//   non-tracing/tracing
+
 template<class ProviderType, class EnumeratorType, bool IsWeighted>
 class YenEnumerator {
   enum Direction { FORWARD, BACKWARD };
