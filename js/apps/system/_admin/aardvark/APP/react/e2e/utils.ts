@@ -1,14 +1,19 @@
-import fs from "fs";
+import { Page } from "@playwright/test";
+import { expect } from "./fixtures";
 
-const setupSessionStorage = () => {
-  // Set session storage in a new context
-  const sessionStorage = JSON.parse(
-    fs.readFileSync("playwright/.auth/session.json", "utf-8")
+export const createCollection = async ({
+  collectionName,
+  page
+}: {
+  collectionName: string;
+  page: Page;
+}) => {
+  await page.getByRole("button", { name: "Add collection" }).click();
+  await page.locator("#name").fill(collectionName);
+  await page.getByRole("button", { name: "Create" }).click();
+  const newCollectionNotification = page.locator(".noty_body");
+  await expect(newCollectionNotification).toHaveText(
+    `The collection: ${collectionName} was successfully created`
   );
-  await context.addInitScript(storage => {
-    if (window.location.hostname === "example.com") {
-      for (const [key, value] of Object.entries(storage))
-        window.sessionStorage.setItem(key, value);
-    }
-  }, sessionStorage);
+  await newCollectionNotification.click();
 };
