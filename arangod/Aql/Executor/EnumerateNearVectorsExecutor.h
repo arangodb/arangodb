@@ -96,13 +96,11 @@ class EnumerateNearVectorsExecutor {
    * @return ExecutorState, the stats, and a new Call that needs to be send to
    * upstream
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& inputRange,
-                                 OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
 
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange,
-                                   AqlCall& call)
-      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  private:
   void fillInput(AqlItemBlockInputRange& inputRange,

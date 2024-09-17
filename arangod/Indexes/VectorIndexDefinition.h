@@ -51,15 +51,13 @@ struct VectorHashFunction {
 };
 
 enum class SimilarityMetric : std::uint8_t {
-  kL1,
   kL2,
   kCosine,
 };
 
 template<class Inspector>
 inline auto inspect(Inspector& f, SimilarityMetric& x) {
-  return f.enumeration(x).values(SimilarityMetric::kL1, "l1",
-                                 SimilarityMetric::kL2, "l2",
+  return f.enumeration(x).values(SimilarityMetric::kL2, "l2",
                                  SimilarityMetric::kCosine, "cosine");
 }
 
@@ -77,7 +75,7 @@ struct TrainedData {
 };
 
 struct UserVectorIndexDefinition {
-  std::int64_t dimensions;
+  std::uint64_t dimensions;
   SimilarityMetric metric;
   std::int64_t nLists;
 

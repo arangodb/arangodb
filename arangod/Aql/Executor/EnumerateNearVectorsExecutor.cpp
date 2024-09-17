@@ -162,9 +162,9 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
-[[nodiscard]] auto EnumerateNearVectorsExecutor::skipRowsRange(
-    AqlItemBlockInputRange& inputRange,
-    AqlCall& call) -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+[[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall>
+EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                            AqlCall& call) {
   return {};
 }
 

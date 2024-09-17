@@ -185,12 +185,9 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
 
 faiss::MetricType metricToFaissMetric(const SimilarityMetric metric) {
   switch (metric) {
-    case SimilarityMetric::kL1:
-      return faiss::MetricType::METRIC_L1;
     case SimilarityMetric::kL2:
       return faiss::MetricType::METRIC_L2;
     case SimilarityMetric::kCosine:
-      // This case has to be handled later on as well
       return faiss::MetricType::METRIC_INNER_PRODUCT;
   }
 }
@@ -208,28 +205,24 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   velocypack::deserialize(info.get("params"), _definition);
   _trainingDataSize = _definition.nLists * 1000;
 
-  _quantizer = std::invoke(
-      [&vectorDefinition =
-           _definition]() -> std::variant<faiss::IndexFlat, faiss::IndexFlatL2,
-                                          faiss::IndexFlatIP> {
-        switch (vectorDefinition.metric) {
-          case arangodb::SimilarityMetric::kL1:
-            return {faiss::IndexFlat(vectorDefinition.dimensions,
-                                     faiss::MetricType::METRIC_L1)};
+  _quantizer =
+      std::invoke([this]() -> std::variant<faiss::IndexFlat, faiss::IndexFlatL2,
+                                           faiss::IndexFlatIP> {
+        switch (_definition.metric) {
           case arangodb::SimilarityMetric::kL2:
-            return {faiss::IndexFlatL2(vectorDefinition.dimensions)};
+            return {faiss::IndexFlatL2(_definition.dimensions)};
           case arangodb::SimilarityMetric::kCosine:
-            return {faiss::IndexFlatIP(vectorDefinition.dimensions)};
+            return {faiss::IndexFlatIP(_definition.dimensions)};
         }
       });
   if (_definition.trainedData) {
     std::visit(
-        [&trainedData = _definition.trainedData,
-         metric = _definition.metric](auto&& quant) {
-          quant.code_size = trainedData->codeSize;
-          quant.metric_type = metricToFaissMetric(metric);
-          quant.ntotal = trainedData->numberOfCodes;
-          quant.codes = trainedData->codeData;
+        [this](auto&& quant) {
+          quant.ntotal = _definition.trainedData->numberOfCodes;
+          quant.codes = _definition.trainedData->codeData;
+          quant.code_size = _definition.trainedData->codeSize;
+          quant.d = _definition.dimensions;
+          quant.metric_type = metricToFaissMetric(_definition.metric);
           quant.is_trained = true;
         },
         _quantizer);

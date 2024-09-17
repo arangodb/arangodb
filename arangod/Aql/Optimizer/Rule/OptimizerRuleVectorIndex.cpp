@@ -42,7 +42,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_RULE_ENABLED true
+#define LOG_RULE_ENABLED false
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
@@ -52,10 +52,7 @@ bool checkFunctionNameMatchesIndexMetric(
     std::string_view const functionName,
     UserVectorIndexDefinition const& definition) {
   switch (definition.metric) {
-    case SimilarityMetric::kL1: {
-      return functionName == "APPROX_NEAR_L1";
-    }
-    case SimilarityMetric::kL2: {
+      case SimilarityMetric::kL2: {
       return functionName == "APPROX_NEAR_L2";
     }
     case SimilarityMetric::kCosine: {
