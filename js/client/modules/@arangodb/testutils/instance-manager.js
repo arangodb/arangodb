@@ -559,15 +559,15 @@ class instanceManager {
 
   resignLeaderShip(dbServer) {
     let frontend = this.arangods.filter(arangod => {return arangod.isFrontend();})[0];
-    print(`${Date()} resigning leaderships from ${dbServer.name} via ${frontend.name}`)
+    print(`${Date()} resigning leaderships from ${dbServer.name} via ${frontend.name}`);
     // make sure the connection is propper:
     frontend._disconnect();
     frontend.connect();
 
     let result = arango.POST_RAW('/_admin/cluster/resignLeadership',
                                  { "server": dbServer.shortName, "undoMoves": false });
-    if (result.code != 202) {
-      throw new Error(`failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(result)}`)
+    if (result.code !== 202) {
+      throw new Error(`failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(result)}`);
     }
     let jobStatus;
     do {
@@ -575,7 +575,7 @@ class instanceManager {
       jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + result.parsedBody.id);
       print(jobStatus.parsedBody.status);
     } while (jobStatus.parsedBody.status !== 'Finished');
-    print(`${Date()} DONE resigning leaderships from ${dbServer.name} via ${frontend.name}`)
+    print(`${Date()} DONE resigning leaderships from ${dbServer.name} via ${frontend.name}`);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief shuts down an instance
