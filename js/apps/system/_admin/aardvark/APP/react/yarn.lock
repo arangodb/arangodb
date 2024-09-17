@@ -19,10 +19,10 @@
     jsonpointer "^5.0.0"
     leven "^3.1.0"
 
-"@arangodb/ui@^0.0.12":
-  version "0.0.12"
-  resolved "https://registry.yarnpkg.com/@arangodb/ui/-/ui-0.0.12.tgz#5e3fc0a32052c7bc8ece08db6e021ea3c0219507"
-  integrity sha512-qf7TaV0sreQtIOYMiPsvluTJynQV+THoQ0vG/BGM1KZsw2aLvoCIjs06PK/QEySCYsmk1CsnOtG8OR1DSJ7VnA==
+"@arangodb/ui@^0.0.14":
+  version "0.0.14"
+  resolved "https://registry.yarnpkg.com/@arangodb/ui/-/ui-0.0.14.tgz#f146cb68a4c408830adcff51f0cfcac67f5c29b1"
+  integrity sha512-70nfXFx3oIXkhlAPtVm7pY2c6CekaP4bIWHgFeB3NZ1Zl8kuyRCdslwbLbzNHFFj7nBvYWDd9NKx3qyeevOQSA==
 
 "@babel/code-frame@^7.0.0", "@babel/code-frame@^7.12.13":
   version "7.12.13"
