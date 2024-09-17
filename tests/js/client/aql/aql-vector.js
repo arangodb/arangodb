@@ -122,6 +122,29 @@ function VectorIndexL2TestSuite() {
       assertEqual(5, results.length);
     },
 
+    testApproxNearWrongInputDimension: function () {
+      const query =
+        "FOR d IN " +
+        collection.name() +
+        " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d";
+
+      let changedRandomPoints = randomPoint;
+      changedRandomPoints.pop();
+      const bindVars = { qp: changedRandomPoints };
+      const plan = db
+        ._createStatement({
+          query,
+          bindVars,
+        })
+        .explain().plan;
+      const indexNodes = plan.nodes.filter(function (n) {
+        return n.type === "EnumerateNearVectorNode";
+      });
+      assertEqual(1, indexNodes.length);
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, query, bindVars);
+    },
+
     testApproxNearWithoutLimit: function () {
       const query =
         "FOR d IN " +
