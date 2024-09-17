@@ -6236,7 +6236,8 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(
   }
 
   auto fAacResult =
-      AsyncAgencyComm().sendReadTransaction(timeout, std::move(trx));
+      AsyncAgencyComm().withSkipScheduler(true).sendReadTransaction(
+          timeout, std::move(trx));
 
   auto fResult =
       std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
