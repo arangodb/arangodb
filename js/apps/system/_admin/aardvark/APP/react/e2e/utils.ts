@@ -8,14 +8,19 @@ export const createCollection = async ({
   collectionName: string;
   page: Page;
 }) => {
-  await page.getByRole("button", { name: "Add collection" }).click();
+  // using dispatch to avoid flakiness (https://github.com/microsoft/playwright/issues/13576)
+  await page
+    .getByRole("button", { name: "Add collection" })
+    .dispatchEvent("click");
   await page.locator("#name").fill(collectionName);
   await page.getByRole("button", { name: "Create" }).click();
   const newCollectionNotification = page.locator(".noty_body");
   await expect(newCollectionNotification).toHaveText(
     `The collection: ${collectionName} was successfully created`
   );
-  await newCollectionNotification.click();
+
+  // using force click to avoid flakiness
+  await newCollectionNotification.click({ force: true });
 };
 
 export const COMPUTED_VALUES = [
