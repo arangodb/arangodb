@@ -23,9 +23,7 @@ namespace arangodb::async_registry {
    This registry destroys itself when its ref counter is decremented to 0.
  */
 struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
-  static auto make() -> std::shared_ptr<ThreadRegistry> {
-    return std::shared_ptr<ThreadRegistry>(new ThreadRegistry{});
-  }
+  static auto make() -> std::shared_ptr<ThreadRegistry> { return {}; }
 
   ~ThreadRegistry() noexcept { garbage_collect(); }
 
