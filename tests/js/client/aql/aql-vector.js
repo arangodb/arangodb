@@ -78,7 +78,7 @@ function VectorIndexL2TestSuite() {
       db._dropDatabase(dbName);
     },
 
-    testApproxNearOnUnindexedField: function () {
+    testApproxL2OnUnindexedField: function () {
       const query =
         "FOR d IN " +
         collection.name() +
@@ -100,7 +100,7 @@ function VectorIndexL2TestSuite() {
       assertEqual(5, results.length);
     },
 
-    testApproxNearOnNonVectorField: function () {
+    testApproxL2OnNonVectorField: function () {
       const query =
         "FOR d IN " +
         collection.name() +
@@ -122,7 +122,7 @@ function VectorIndexL2TestSuite() {
       assertEqual(5, results.length);
     },
 
-    testApproxNearWrongInputDimension: function () {
+    testApproxL2WrongInputDimension: function () {
       const query =
         "FOR d IN " +
         collection.name() +
@@ -142,10 +142,14 @@ function VectorIndexL2TestSuite() {
       });
       assertEqual(1, indexNodes.length);
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, query, bindVars);
+      assertQueryError(
+        errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
+        query,
+        bindVars,
+      );
     },
 
-    testApproxNearWrongInput: function () {
+    testApproxL2WrongInput: function () {
       const query =
         "FOR d IN " +
         collection.name() +
@@ -163,10 +167,14 @@ function VectorIndexL2TestSuite() {
       });
       assertEqual(1, indexNodes.length);
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, query, bindVars);
+      assertQueryError(
+        errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
+        query,
+        bindVars,
+      );
     },
 
-    testApproxNearWithoutLimit: function () {
+    testApproxL2WithoutLimit: function () {
       const query =
         "FOR d IN " +
         collection.name() +
@@ -188,7 +196,7 @@ function VectorIndexL2TestSuite() {
       assertEqual(500, results.length);
     },
 
-    testApproxNearMultipleTopK: function () {
+    testApproxL2MultipleTopK: function () {
       const query =
         "FOR d IN " +
         collection.name() +
@@ -215,7 +223,7 @@ function VectorIndexL2TestSuite() {
       }
     },
 
-    testApproxNearCommutation: function () {
+    testApproxL2Commutation: function () {
       const queryFirst =
         "FOR d IN " +
         collection.name() +
@@ -246,7 +254,7 @@ function VectorIndexL2TestSuite() {
       assertEqual(resultsFirst, resultsSecond);
     },
 
-    testApproxNearDistance: function () {
+    testApproxL2Distance: function () {
       const query =
         "FOR d IN " +
         collection.name() +
@@ -269,7 +277,7 @@ function VectorIndexL2TestSuite() {
       assertEqual(5, results.length);
     },
 
-    testApproxNearSubquery: function () {
+    testApproxL2Subquery: function () {
       const query =
         " FOR docOuter IN " +
         collection.name() +
@@ -300,6 +308,95 @@ function VectorIndexL2TestSuite() {
   };
 }
 
+function VectorIndexCosineTestSuite() {
+  let collection;
+  let randomPoint;
+  const dimension = 500;
+  const seed = 769406749034;
+
+  return {
+    setUpAll: function () {
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      collection = db._create(collName);
+
+      let docs = [];
+      let gen = randomNumberGeneratorFloat(seed);
+      for (let i = 0; i < 1000; ++i) {
+        const vector = Array.from({ length: dimension }, () => gen());
+        if (i == 500) {
+          randomPoint = vector;
+        }
+        docs.push({ vector, nonVector: i, unIndexedVector: vector });
+      }
+      collection.insert(docs);
+
+      collection.ensureIndex({
+        name: "vector_cosine",
+        type: "vector",
+        fields: ["vector"],
+        params: { metric: "cosine", dimensions: dimension, nLists: 10 },
+      });
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+
+    testApproxCosineOnUnindexedField: function () {
+      const query =
+        "FOR d IN " +
+        collection.name() +
+        " SORT APPROX_NEAR_COSINE(d.unIndexedVector, @qp) LIMIT 5 RETURN d";
+
+      const bindVars = { qp: randomPoint };
+      const plan = db
+        ._createStatement({
+          query: query,
+          bindVars: bindVars,
+        })
+        .explain().plan;
+      const indexNodes = plan.nodes.filter(function (n) {
+        return n.type === "EnumerateNearVectorNode";
+      });
+      assertEqual(0, indexNodes.length);
+
+      const results = db._query(query, bindVars).toArray();
+      assertEqual(5, results.length);
+    },
+
+    testApproxCosineMultipleTopK: function () {
+      const query =
+        "FOR d IN " +
+        collection.name() +
+        " SORT APPROX_NEAR_COSINE(d.vector, @qp) LIMIT @topK RETURN d";
+
+      const topKs = [1, 5, 10, 15, 50, 100];
+      // Heavily dependent on seed value
+      const topKExpected = [1, 5, 10, 15, 50, 100];
+      for (let i = 0; i < topKs.length; ++i) {
+        const bindVars = { qp: randomPoint, topK: topKs[i] };
+        const plan = db
+          ._createStatement({
+            query: query,
+            bindVars: bindVars,
+          })
+          .explain().plan;
+        const indexNodes = plan.nodes.filter(function (n) {
+          return n.type === "EnumerateNearVectorNode";
+        });
+        assertEqual(1, indexNodes.length);
+
+        const results = db._query(query, bindVars).toArray();
+        assertEqual(topKExpected[i], results.length);
+      }
+    },
+  };
+}
+
 jsunity.run(VectorIndexL2TestSuite);
+jsunity.run(VectorIndexCosineTestSuite);
 
 return jsunity.done();
