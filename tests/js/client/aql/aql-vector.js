@@ -87,8 +87,8 @@ function VectorIndexL2TestSuite() {
       const bindVars = { qp: randomPoint };
       const plan = db
         ._createStatement({
-          query: query,
-          bindVars: bindVars,
+          query,
+          bindVars,
         })
         .explain().plan;
       const indexNodes = plan.nodes.filter(function (n) {
@@ -109,8 +109,8 @@ function VectorIndexL2TestSuite() {
       const bindVars = { qp: randomPoint };
       const plan = db
         ._createStatement({
-          query: query,
-          bindVars: bindVars,
+          query,
+          bindVars,
         })
         .explain().plan;
       const indexNodes = plan.nodes.filter(function (n) {
@@ -128,7 +128,7 @@ function VectorIndexL2TestSuite() {
         collection.name() +
         " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d";
 
-      let changedRandomPoints = randomPoint;
+      let changedRandomPoints = randomPoint.slice();
       changedRandomPoints.pop();
       const bindVars = { qp: changedRandomPoints };
       const plan = db
@@ -183,8 +183,8 @@ function VectorIndexL2TestSuite() {
       const bindVars = { qp: randomPoint };
       const plan = db
         ._createStatement({
-          query: query,
-          bindVars: bindVars,
+          query,
+          bindVars,
         })
         .explain().plan;
       const indexNodes = plan.nodes.filter(function (n) {
@@ -209,8 +209,8 @@ function VectorIndexL2TestSuite() {
         const bindVars = { qp: randomPoint, topK: topKs[i] };
         const plan = db
           ._createStatement({
-            query: query,
-            bindVars: bindVars,
+             query,
+             bindVars,
           })
           .explain().plan;
         const indexNodes = plan.nodes.filter(function (n) {
@@ -238,13 +238,13 @@ function VectorIndexL2TestSuite() {
       const planFirst = db
         ._createStatement({
           query: queryFirst,
-          bindVars: bindVars,
+          bindVars,
         })
         .explain().plan;
       const planSecond = db
         ._createStatement({
           query: querySecond,
-          bindVars: bindVars,
+          bindVars,
         })
         .explain().plan;
       assertEqual(planFirst, planSecond);
@@ -264,8 +264,8 @@ function VectorIndexL2TestSuite() {
       const bindVars = { qp: randomPoint };
       const plan = db
         ._createStatement({
-          query: query,
-          bindVars: bindVars,
+          query,
+          bindVars,
         })
         .explain().plan;
       const indexNodes = plan.nodes.filter(function (n) {
@@ -354,8 +354,8 @@ function VectorIndexCosineTestSuite() {
       const bindVars = { qp: randomPoint };
       const plan = db
         ._createStatement({
-          query: query,
-          bindVars: bindVars,
+          query,
+          bindVars,
         })
         .explain().plan;
       const indexNodes = plan.nodes.filter(function (n) {
@@ -380,8 +380,8 @@ function VectorIndexCosineTestSuite() {
         const bindVars = { qp: randomPoint, topK: topKs[i] };
         const plan = db
           ._createStatement({
-            query: query,
-            bindVars: bindVars,
+            query,
+            bindVars,
           })
           .explain().plan;
         const indexNodes = plan.nodes.filter(function (n) {
