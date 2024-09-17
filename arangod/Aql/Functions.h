@@ -574,8 +574,6 @@ AqlValue SelectSmartDistributeGraphInput(arangodb::aql::ExpressionContext*,
 
 AqlValue ApproxNearCosine(arangodb::aql::ExpressionContext*, AstNode const&,
                           VPackFunctionParametersView);
-AqlValue ApproxNearL1(arangodb::aql::ExpressionContext*, AstNode const&,
-                      VPackFunctionParametersView);
 AqlValue ApproxNearL2(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParametersView);
 

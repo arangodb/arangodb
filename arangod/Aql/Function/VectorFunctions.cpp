@@ -32,11 +32,6 @@ AqlValue ApproxNearCosine(ExpressionContext* expressionContext,
   return CosineSimilarity(expressionContext, node, parameters);
 }
 
-AqlValue ApproxNearL1(ExpressionContext* expressionContext, AstNode const& node,
-                      VPackFunctionParametersView parameters) {
-  return L1Distance(expressionContext, node, parameters);
-}
-
 AqlValue ApproxNearL2(ExpressionContext* expressionContext, AstNode const& node,
                       VPackFunctionParametersView parameters) {
   return L2Distance(expressionContext, node, parameters);

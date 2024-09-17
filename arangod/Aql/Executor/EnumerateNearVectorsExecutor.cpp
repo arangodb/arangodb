@@ -87,7 +87,6 @@ void EnumerateNearVectorsExecutor::fillInput(
 
 void EnumerateNearVectorsExecutor::searchResults(
     std::vector<float>& inputRowsJoined) {
-  // TODO do this before
   auto* vectorIndex = dynamic_cast<RocksDBVectorIndex*>(_infos.index.get());
   TRI_ASSERT(vectorIndex != nullptr);
 

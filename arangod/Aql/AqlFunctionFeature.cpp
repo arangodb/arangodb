@@ -600,10 +600,6 @@ void AqlFunctionFeature::addMiscFunctions() {
        Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::ApproxNearCosine});
-  add({"APPROX_NEAR_L1", ".,.",
-       Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
-                           FF::CanRunOnDBServerOneShard),
-       &functions::ApproxNearL1});
   add({"APPROX_NEAR_L2", ".,.",
        Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
