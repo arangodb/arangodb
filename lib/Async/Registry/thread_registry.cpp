@@ -23,6 +23,7 @@ ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
 }
 
 auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
+  ADB_PROD_ASSERT(promise != nullptr);
   // promise needs to live on the same thread as this registry
   ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread)
       << "ThreadRegistry::add was called from thread "
@@ -89,8 +90,8 @@ auto ThreadRegistry::cleanup() noexcept -> void {
 }
 
 auto ThreadRegistry::remove(PromiseInList* promise) -> void {
-  auto next = promise->next;
-  auto previous = promise->previous;
+  auto* next = promise->next;
+  auto* previous = promise->previous;
   if (previous == nullptr) {  // promise is current head
     // (3) - this store synchronizes with the load in (2)
     promise_head.store(next, std::memory_order_release);
