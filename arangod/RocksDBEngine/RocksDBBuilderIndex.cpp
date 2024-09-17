@@ -396,7 +396,7 @@ void RocksDBBuilderIndex::beforeCreate() {
   LogicalCollection const& coll = internal->collection();
   transaction::Options trxOpts;
   trxOpts.requiresReplication = false;
-  auto const origin = transaction::OperationOriginREST{"building index"};
+  auto const origin = transaction::OperationOriginREST{"preparing index"};
   trx::BuilderTrx trx(
       transaction::StandaloneContext::create(coll.vocbase(), origin), coll,
       mode, trxOpts);
@@ -405,8 +405,8 @@ void RocksDBBuilderIndex::beforeCreate() {
   }
   trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
 
-  RocksDBCollection const* rcoll =
-      static_cast<RocksDBCollection*>(internal->collection().getPhysical());
+  auto const* rcoll = static_cast<RocksDBCollection const*>(
+      internal->collection().getPhysical());
   auto const bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
   rocksdb::Slice upper(bounds.end());
 
