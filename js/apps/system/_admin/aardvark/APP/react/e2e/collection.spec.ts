@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { createCollection } from "./utils";
+import { COMPUTED_VALUES, createCollection, DOCUMENT } from "./utils";
 
 test.describe("Collection Page", () => {
   test("can create a collection", async ({ page }) => {
@@ -24,7 +24,7 @@ test.describe("Collection Page", () => {
     );
   });
 
-  test("computed values", async ({ page }) => {
+  test("setting computed values", async ({ page }) => {
     await createCollection({
       collectionName: "computedValuesCollection",
       page
@@ -34,7 +34,40 @@ test.describe("Collection Page", () => {
     await page.locator("#computedValuesEditor").click();
     await page.keyboard.press("Control+A");
     await page.keyboard.press("Backspace");
-    await page.fill("#computedValuesEditor textarea", "return 1");
+    await page.fill(
+      "#computedValuesEditor textarea",
+      JSON.stringify(COMPUTED_VALUES)
+    );
+    await page.getByRole("button", { name: "Save" }).click();
     expect(page.locator("#computedValuesEditor")).toBeVisible();
+
+    await page.locator(".subMenuEntry", { hasText: "Content" }).click();
+    await page.locator("#addDocumentButton").click();
+
+    await page.locator("#jsoneditor").click();
+    await page.fill("#jsoneditor textarea", JSON.stringify(DOCUMENT));
+    await page.getByRole("button", { name: "Create" }).click();
+    expect(
+      page.locator(".jsoneditor-field").filter({
+        hasText: "dateCreatedForIndexing"
+      })
+    ).toBeVisible();
+  });
+
+  test("adding a document to a collection", async ({ page }) => {
+    await createCollection({ collectionName: "myCollection4", page });
+    await page.getByRole("link", { name: "myCollection4" }).click();
+    await page.locator(".subMenuEntry", { hasText: "Content" }).click();
+    await page.locator("#addDocumentButton").click();
+
+    await page.locator("#jsoneditor").click();
+    await page.fill("#jsoneditor textarea", JSON.stringify(DOCUMENT));
+    await page.getByRole("button", { name: "Create" }).click();
+
+    expect(
+      page.locator(".jsoneditor-field").filter({
+        hasText: "name"
+      })
+    ).toBeVisible();
   });
 });
