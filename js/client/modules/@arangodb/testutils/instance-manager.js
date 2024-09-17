@@ -565,8 +565,7 @@ class instanceManager {
     frontend.connect();
 
     let result = arango.POST_RAW('/_admin/cluster/resignLeadership',
-                                 { "server": dbServer.shortName, "undoMoves": true });
-    print(result);
+                                 { "server": dbServer.shortName, "undoMoves": false });
     if (result.code != 202) {
       throw new Error(`failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(result)}`)
     }
@@ -855,6 +854,7 @@ class instanceManager {
           print(`${Date()} stopping ${arangod.name}`);
           if (arangod.isRole(instanceRole.dbServer)) {
             this.resignLeaderShip(arangod);
+            sleep(30); // BTS-1965
           }
           arangod.shutdownArangod(false);
           while (arangod.isRunning()) {
