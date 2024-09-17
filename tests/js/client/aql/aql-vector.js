@@ -145,6 +145,27 @@ function VectorIndexL2TestSuite() {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, query, bindVars);
     },
 
+    testApproxNearWrongInput: function () {
+      const query =
+        "FOR d IN " +
+        collection.name() +
+        " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN d";
+
+      const bindVars = { qp: "random" };
+      const plan = db
+        ._createStatement({
+          query,
+          bindVars,
+        })
+        .explain().plan;
+      const indexNodes = plan.nodes.filter(function (n) {
+        return n.type === "EnumerateNearVectorNode";
+      });
+      assertEqual(1, indexNodes.length);
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, query, bindVars);
+    },
+
     testApproxNearWithoutLimit: function () {
       const query =
         "FOR d IN " +

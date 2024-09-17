@@ -25,7 +25,6 @@
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
-#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 
@@ -59,7 +58,9 @@ void EnumerateNearVectorsExecutor::fillInput(
 
     // TODO currently we do not accept anything else then array
     if (!value.isArray()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+          "query point must be a vector");
     }
 
     // TODO optimize double allocation with vectorInput and inputRows2
