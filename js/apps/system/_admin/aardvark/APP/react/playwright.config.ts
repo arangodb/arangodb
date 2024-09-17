@@ -30,30 +30,45 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "on-first-retry"
   },
-  globalSetup: require.resolve("./e2e/globalSetup.ts"),
-  globalTeardown: require.resolve("./e2e/globalTeardown.ts"),
+  // globalSetup: require.resolve("./e2e/globalSetup.ts"),
+  // globalTeardown: require.resolve("./e2e/globalTeardown.ts"),
   /* Configure projects for major browsers */
   projects: [
     {
+      name: "setup",
+      testMatch: /.*\.setup\.ts/,
+      teardown: "teardown"
+    },
+    {
+      name: "teardown",
+      testMatch: /.*\.teardown\.ts/
+    },
+    {
       name: "chromium",
       use: {
-        ...devices["Desktop Chrome"]
-      }
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json"
+      },
+      dependencies: ["setup"]
     },
 
-    {
-      name: "firefox",
-      use: {
-        ...devices["Desktop Firefox"]
-      }
-    },
+    // {
+    //   name: "firefox",
+    //   use: {
+    //     ...devices["Desktop Firefox"],
+    //     storageState: "playwright/.auth/user.json"
+    //   },
+    //   dependencies: ["setup"]
+    // },
 
-    {
-      name: "webkit",
-      use: {
-        ...devices["Desktop Safari"]
-      }
-    }
+    // {
+    //   name: "webkit",
+    //   use: {
+    //     ...devices["Desktop Safari"],
+    //     storageState: "playwright/.auth/user.json"
+    //   },
+    //   dependencies: ["setup"]
+    // }
 
     /* Test against mobile viewports. */
     // {

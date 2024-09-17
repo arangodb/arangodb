@@ -1,33 +1,35 @@
 import { expect, test } from "./fixtures";
 
-test("has title", async ({ page }) => {
-  await page.goto("http://localhost:3001/");
+test.describe("Collection Page", () => {
+  test("can create a collection", async ({ page }) => {
+    // create collection
+    await page.getByRole("button", { name: "Add collection" }).click();
+    await page.locator("#name").fill("myCollection");
+    await page.getByRole("button", { name: "Create" }).click();
+    const newCollectionNotification = page.locator(".noty_body");
+    await expect(newCollectionNotification).toHaveText(
+      "The collection: myCollection was successfully created"
+    );
+  });
 
-  // Expect a title "to contain" a substring.
-  await expect(page).toHaveTitle(/ArangoDB/);
-});
+  test("can delete a collection", async ({ page }) => {
+    // create collection
+    await page.getByRole("button", { name: "Add collection" }).click();
+    await page.locator("#name").fill("myCollection2");
+    await page.getByRole("button", { name: "Create" }).click();
+    const newCollectionNotification = page.locator(".noty_body");
+    await expect(newCollectionNotification).toHaveText(
+      "The collection: myCollection2 was successfully created"
+    );
 
-test("starts on Collections tab", async ({ page }) => {
-  await page.goto("http://localhost:3001/");
-  await expect(
-    page.getByRole("heading", { name: "Collections" })
-  ).toBeVisible();
-});
-
-// test("cannot create a collection without name", async ({ page }) => {
-//   await page.goto("http://localhost:3001/");
-//   await page.getByRole("button", { name: "Add collection" }).click();
-//   await page.getByRole("button", { name: "Create" }).click();
-//   const text = await page.getByText("Collection name is required.");
-//   expect(text).toBeVisible();
-// });
-
-test("can create a collection", async ({ page }) => {
-  await page.goto("http://localhost:3001/");
-  await page.getByRole("button", { name: "Add collection" }).click();
-  await page.locator("#name").fill("myCollection");
-  await page.getByRole("button", { name: "Create" }).click();
-  await page.waitForSelector("text=myCollection");
-  const text = await page.getByText("myCollection");
-  expect(text).toBeVisible();
+    // delete collection
+    await page.getByRole("link", { name: "myCollection2" }).click();
+    await page.locator(".subMenuEntry", { hasText: "Settings" }).click();
+    await page.locator("button", { hasText: "Delete" }).click();
+    await page.locator("button", { hasText: "Yes" }).click();
+    const deleteCollectionNotification = page.locator(".noty_body");
+    await expect(deleteCollectionNotification).toHaveText(
+      "Collection successfully dropped"
+    );
+  });
 });

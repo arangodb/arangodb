@@ -1,10 +1,26 @@
 import { test as setup } from "@playwright/test";
+import { Database } from "arangojs";
 import fs from "fs";
 import path from "path";
 
 const sessionFile = path.join(__dirname, "../playwright/.auth/session.json");
 
 setup("authenticate", async ({ page }) => {
+  console.log("Setting up authentication");
+  const db = new Database({
+    url: "http://localhost:3001",
+    auth: { username: "root", password: "" }
+  });
+  try {
+    await db.createDatabase("test");
+    console.log("Database test created");
+  } catch (e) {
+    await db.dropDatabase("test");
+    console.log("Database test removed");
+    await db.createDatabase("test");
+    console.log("Database test created");
+  }
+
   // Perform authentication steps. Replace these actions with your own.
   await page.goto("http://localhost:3001/");
   await page.getByPlaceholder("Username").fill("root");
