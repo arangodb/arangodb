@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix blockage in SynchronizeShard: We do some agency communication there,
+  this should use skipScheduler to avoid being blocked by all scheduler
+  threads being busy. This solves a problem found in RTA on upgrade
+  with resignLeadership.
+
 * Fix bug in upstream rocksdb to not leak file descriptors when iouring
   is used for RocksDB.
 
