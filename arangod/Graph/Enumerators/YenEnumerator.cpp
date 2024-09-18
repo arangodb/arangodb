@@ -45,6 +45,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
@@ -63,8 +65,9 @@ YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::YenEnumerator(
   options.setOnlyProduceOnePath(true);
   options.setPathType(PathType::Type::ShortestPath);
   _shortestPathEnumerator = std::make_unique<EnumeratorType>(
-      std::move(forwardProvider), std::move(backwardProvider),
-      std::move(options), std::move(validatorOptions), resourceMonitor);
+      std::forward<ProviderType>(forwardProvider),
+      std::forward<ProviderType>(backwardProvider), std::move(options),
+      std::move(validatorOptions), resourceMonitor);
   _shortestPathEnumerator->setEmitWeight(true);
 }
 
