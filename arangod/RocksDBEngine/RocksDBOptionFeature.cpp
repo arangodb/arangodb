@@ -1541,17 +1541,17 @@ limited number of edge collections/shards/indexes.)");
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now
   //////////////////////////////////////////////////////////////////////////////
-  std::initializer_list<RocksDBColumnFamilyManager::Family> families = {
-      RocksDBColumnFamilyManager::Family::Definitions,
-      RocksDBColumnFamilyManager::Family::Documents,
-      RocksDBColumnFamilyManager::Family::PrimaryIndex,
-      RocksDBColumnFamilyManager::Family::EdgeIndex,
-      RocksDBColumnFamilyManager::Family::VPackIndex,
-      RocksDBColumnFamilyManager::Family::GeoIndex,
-      RocksDBColumnFamilyManager::Family::FulltextIndex,
-      RocksDBColumnFamilyManager::Family::ReplicatedLogs,
-      RocksDBColumnFamilyManager::Family::MdiIndex,
-      RocksDBColumnFamilyManager::Family::MdiVPackIndex};
+  static constexpr std::initializer_list<RocksDBColumnFamilyManager::Family>
+      families{RocksDBColumnFamilyManager::Family::Definitions,
+               RocksDBColumnFamilyManager::Family::Documents,
+               RocksDBColumnFamilyManager::Family::PrimaryIndex,
+               RocksDBColumnFamilyManager::Family::EdgeIndex,
+               RocksDBColumnFamilyManager::Family::VPackIndex,
+               RocksDBColumnFamilyManager::Family::GeoIndex,
+               RocksDBColumnFamilyManager::Family::FulltextIndex,
+               RocksDBColumnFamilyManager::Family::ReplicatedLogs,
+               RocksDBColumnFamilyManager::Family::MdiIndex,
+               RocksDBColumnFamilyManager::Family::MdiVPackIndex};
 
   auto addMaxWriteBufferNumberCf =
       [this, &options](RocksDBColumnFamilyManager::Family family) {
@@ -1748,8 +1748,7 @@ void RocksDBOptionFeature::start() {
   }
 
   LOG_TOPIC("f66e4", TRACE, Logger::ENGINES)
-      << "using RocksDB options:"
-      << " wal_dir: '" << _walDirectory << "'"
+      << "using RocksDB options:" << " wal_dir: '" << _walDirectory << "'"
       << ", compression type: " << _compressionType
       << ", write_buffer_size: " << _writeBufferSize
       << ", total_write_buffer_size: " << _totalWriteBufferSize

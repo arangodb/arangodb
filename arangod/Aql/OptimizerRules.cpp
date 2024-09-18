@@ -624,15 +624,15 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
 // static node types used by some optimizer rules
 // having them statically available avoids having to build the lists over
 // and over for each AQL query
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     removeUnnecessaryCalculationsNodeTypes{
         arangodb::aql::ExecutionNode::CALCULATION,
         arangodb::aql::ExecutionNode::SUBQUERY};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     interchangeAdjacentEnumerationsNodeTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
         arangodb::aql::ExecutionNode::ENUMERATE_LIST};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     scatterInClusterNodeTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
         arangodb::aql::ExecutionNode::INDEX,
@@ -642,19 +642,19 @@ std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
         arangodb::aql::ExecutionNode::REPLACE,
         arangodb::aql::ExecutionNode::REMOVE,
         arangodb::aql::ExecutionNode::UPSERT};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     removeDataModificationOutVariablesNodeTypes{
         arangodb::aql::ExecutionNode::REMOVE,
         arangodb::aql::ExecutionNode::INSERT,
         arangodb::aql::ExecutionNode::UPDATE,
         arangodb::aql::ExecutionNode::REPLACE,
         arangodb::aql::ExecutionNode::UPSERT};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
-    moveFilterIntoEnumerateTypes{
-        arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-        arangodb::aql::ExecutionNode::INDEX,
-        arangodb::aql::ExecutionNode::ENUMERATE_LIST};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<
+    arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
+    arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+    arangodb::aql::ExecutionNode::INDEX,
+    arangodb::aql::ExecutionNode::ENUMERATE_LIST};
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     undistributeNodeTypes{arangodb::aql::ExecutionNode::UPDATE,
                           arangodb::aql::ExecutionNode::REPLACE,
                           arangodb::aql::ExecutionNode::REMOVE};
@@ -1620,7 +1620,7 @@ void arangodb::aql::removeCollectVariablesRule(
           modified = true;
         }
       }  // end - if doOptimize
-    }    // end - if collectNode has outVariable
+    }  // end - if collectNode has outVariable
 
     size_t numGroupVariables = collectNode->groupVariables().size();
     size_t numAggregateVariables = collectNode->aggregateVariables().size();
@@ -3787,10 +3787,9 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
 //
 // In an ideal world the node itself would know how to compute these parameters
 // for GatherNode (sortMode, parallelism, and elements), and we'd just ask it.
-auto insertGatherNode(
-    ExecutionPlan& plan, ExecutionNode* node,
-    SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries)
-    -> GatherNode* {
+auto insertGatherNode(ExecutionPlan& plan, ExecutionNode* node,
+                      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
+                          subqueries) -> GatherNode* {
   TRI_ASSERT(node);
 
   GatherNode* gatherNode{nullptr};
@@ -4089,9 +4088,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
 // Create a new DistributeNode for the ExecutionNode passed in node, and
 // register it with the plan
-auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
-                                            ExecutionNode* node)
-    -> DistributeNode* {
+auto arangodb::aql::createDistributeNodeFor(
+    ExecutionPlan& plan, ExecutionNode* node) -> DistributeNode* {
   auto collection = static_cast<Collection const*>(nullptr);
   auto inputVariable = static_cast<Variable const*>(nullptr);
 
@@ -4222,10 +4220,9 @@ auto arangodb::aql::createGatherNodeFor(ExecutionPlan& plan,
 // and we handle this case in here as well by resetting the root to the
 // inserted GATHER node.
 //
-auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
-                                                  ExecutionNode* at,
-                                                  SubqueryNode* snode)
-    -> DistributeNode* {
+auto arangodb::aql::insertDistributeGatherSnippet(
+    ExecutionPlan& plan, ExecutionNode* at,
+    SubqueryNode* snode) -> DistributeNode* {
   auto const parents = at->getParents();
   auto const deps = at->getDependencies();
 
@@ -4450,7 +4447,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         node = node->getFirstDependency();
       }
     }  // for node in subquery
-  }    // for end subquery in plan
+  }  // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
@@ -6922,7 +6919,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
         return true;
       }
     }  // if isGeo 1 or 2
-  }    // for index in collection
+  }  // for index in collection
   return false;
 }
 
