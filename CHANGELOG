@@ -1,3 +1,12 @@
+v3.11.12 (XXXX-XX-XX)
+---------------------
+
+* Fix blockage in SynchronizeShard: We do some agency communication there,
+  this should use skipScheduler to avoid being blocked by all scheduler
+  threads being busy. This solves a problem found in RTA on upgrade
+  with resignLeadership.
+
+
 v3.11.11 (2024-09-04)
 ---------------------
 

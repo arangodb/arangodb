@@ -1215,9 +1215,10 @@ namespace cluster {
 
 // Note that while a network error will just return a failed `ResultT`, there
 // are still possible exceptions.
-futures::Future<ResultT<uint64_t>> fetchPlanVersion(network::Timeout timeout);
-futures::Future<ResultT<uint64_t>> fetchCurrentVersion(
-    network::Timeout timeout);
+futures::Future<ResultT<uint64_t>> fetchPlanVersion(network::Timeout timeout,
+                                                    bool skipScheduler);
+futures::Future<ResultT<uint64_t>> fetchCurrentVersion(network::Timeout timeout,
+                                                       bool skipScheduler);
 
 }  // namespace cluster
 
