@@ -54,11 +54,11 @@ namespace graph {
 class GraphArena {
   // This is an object which tracks allocations which are needed to store
   // vertex and edge data for references we keep to stay valid.
-  static constexpr size_t const BATCH_SIZE = 16384;
+  static constexpr size_t const kBatchSize = 16384;
   struct Batch {
     std::vector<char> buffer;
     size_t nextFree;
-    Batch(size_t capacity = BATCH_SIZE) : buffer(capacity, 0), nextFree(0) {}
+    Batch(size_t capacity = kBatchSize) : buffer(capacity, 0), nextFree(0) {}
   };
   std::vector<Batch> _data;
   size_t _totalSize;
@@ -69,8 +69,8 @@ class GraphArena {
       : _totalSize(0), _resourceMonitor(resourceMonitor) {
     // Start with at least one buffer and make `_data` never empty!
     _data.emplace_back();
-    _totalSize += BATCH_SIZE;
-    _resourceMonitor.increaseMemoryUsage(BATCH_SIZE);
+    _totalSize += kBatchSize;
+    _resourceMonitor.increaseMemoryUsage(kBatchSize);
   }
 
   ~GraphArena() { _resourceMonitor.decreaseMemoryUsage(_totalSize); }
@@ -85,8 +85,8 @@ class GraphArena {
     _resourceMonitor.decreaseMemoryUsage(_totalSize);
     _data.clear();
     _data.emplace_back();
-    _totalSize = BATCH_SIZE;
-    _resourceMonitor.increaseMemoryUsage(BATCH_SIZE);
+    _totalSize = kBatchSize;
+    _resourceMonitor.increaseMemoryUsage(kBatchSize);
   }
 
   EdgeDocumentToken toOwned(EdgeDocumentToken const& item) {
@@ -109,10 +109,10 @@ class GraphArena {
   char* makeLocalCopy(char const* p, size_t s) {
     auto* batch = &_data.back();
     if (s > batch->buffer.size() - batch->nextFree) {
-      if (s <= BATCH_SIZE) {
+      if (s <= kBatchSize) {
         _data.emplace_back();
-        _totalSize += BATCH_SIZE;
-        _resourceMonitor.increaseMemoryUsage(BATCH_SIZE);
+        _totalSize += kBatchSize;
+        _resourceMonitor.increaseMemoryUsage(kBatchSize);
       } else {
         _data.emplace_back(s);
         _totalSize += s;
