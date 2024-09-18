@@ -8,10 +8,9 @@ export const createCollection = async ({
   collectionName: string;
   page: Page;
 }) => {
-  // using dispatch to avoid flakiness (https://github.com/microsoft/playwright/issues/13576)
-  await page
-    .getByRole("button", { name: "Add collection" })
-    .dispatchEvent("click");
+  await expect(page.locator(".subnavmenu")).toBeVisible();
+  await expect(page.locator("#arangoCollectionUl")).toBeAttached();
+  await page.getByRole("button", { name: "Add collection" }).click();
   await page.locator("#name").fill(collectionName);
   await page.getByRole("button", { name: "Create" }).click();
   const newCollectionNotification = page.locator(".noty_body");
@@ -19,7 +18,7 @@ export const createCollection = async ({
     `The collection: ${collectionName} was successfully created`
   );
 
-  // using force click to avoid flakiness
+  // using force click to avoid flakiness (https://github.com/microsoft/playwright/issues/13576)
   await newCollectionNotification.click({ force: true });
 };
 
