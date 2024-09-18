@@ -29,6 +29,7 @@ test.describe("Collection Page", () => {
       collectionName: "computedValuesCollection",
       page
     });
+    // set computed values
     await page.getByRole("link", { name: "computedValuesCollection" }).click();
     await page.locator(".subMenuEntry", { hasText: "Computed Values" }).click();
     await page.locator("#computedValuesEditor").click();
@@ -41,9 +42,9 @@ test.describe("Collection Page", () => {
     await page.getByRole("button", { name: "Save" }).click();
     expect(page.locator("#computedValuesEditor")).toBeVisible();
 
+    // check if computed values are set when adding a document
     await page.locator(".subMenuEntry", { hasText: "Content" }).click();
     await page.locator("#addDocumentButton").click();
-
     await page.locator("#jsoneditor .ace_content").click();
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
