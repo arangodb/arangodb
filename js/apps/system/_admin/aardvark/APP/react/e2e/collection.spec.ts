@@ -44,7 +44,9 @@ test.describe("Collection Page", () => {
     await page.locator(".subMenuEntry", { hasText: "Content" }).click();
     await page.locator("#addDocumentButton").click();
 
-    await page.locator("#jsoneditor").click();
+    await page.locator("#jsoneditor .ace_content").click();
+    await page.keyboard.press("Control+A");
+    await page.keyboard.press("Backspace");
     await page.fill("#jsoneditor textarea", JSON.stringify(DOCUMENT));
     await page.getByRole("button", { name: "Create" }).click();
     expect(
