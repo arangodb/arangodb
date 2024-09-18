@@ -4660,6 +4660,38 @@ ClusterInfo::getResponsibleServer(ShardID shardID) {
   return std::make_shared<ManagedVector<pmr::ServerID>>(_resourceMonitor);
 }
 
+// The "NoDelay" variant is guaranteed to not produce a noticeable delay,    ///
+// however, it may return an empty result, if currently there is no known
+// responsible server. This is often good enough. Note that this can happen
+// during the transition of leadership from one server to another.
+//
+std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
+ClusterInfo::getResponsibleServerNoDelay(ShardID shardID) {
+  // This can only produce a delay right at server start, which is OK,
+  // despite the name of the function.
+  if (!_currentProt.isValid) {
+    Result r = waitForCurrent(1).waitAndGet();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
+  }
+
+  READ_LOCKER(readLocker, _currentProt.lock);
+  // _shardsToCurrentServers is a map-type <ShardId,
+  // std::shared_ptr<std::vector<ServerId>>>
+  if (auto it = _shardsToCurrentServers.find(shardID);
+      it != _shardsToCurrentServers.end()) {
+    auto serverList = it->second;
+    if (serverList == nullptr || serverList->empty() ||
+        !(*serverList)[0].starts_with('_')) {
+      return serverList;
+    }
+  }
+
+  // If we get here, we simply do not know:
+  return std::make_shared<ManagedVector<pmr::ServerID>>(_resourceMonitor);
+}
+
 futures::Future<ResultT<ServerID>> ClusterInfo::getLeaderForShard(
     ShardID shardID) {
   ServerID resultBuffer;
