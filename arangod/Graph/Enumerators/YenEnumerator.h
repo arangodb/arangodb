@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Containers/HashSet.h"
+#include "Containers/HashSetFwd.h"
 
 #include "Basics/ResourceUsage.h"
 
@@ -32,11 +32,8 @@
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathValidator.h"
-#include "Graph/Queues/FifoQueue.h"
-#include "Graph/Types/UniquenessLevel.h"
 
-#include <set>
+#include <vector>
 
 namespace arangodb {
 
@@ -154,7 +151,7 @@ class PathResult;
 // which means that we run into the problem that old references to vertex
 // and edge IDs used in previous path results become invalid. Therefore,
 // we have to copy all these IDs to our own managed memory area.
-// This emplate is instantiated in 8 different ways across the following
+// This template is instantiated in 8 different ways across the following
 // dimensions:
 //   SingleServerProvider/ClusterProvider
 //   Unweighted/weighted
