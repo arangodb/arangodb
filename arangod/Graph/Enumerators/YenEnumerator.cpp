@@ -193,8 +193,8 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
   // edges. This then adds to the candidates and in the end we either
   // take the best candidate or have proven that no more shortest paths
   // exist.
-  auto& prevPath = _shortestPaths.back();
-  auto len = prevPath.getLength();
+  auto const& prevPath = _shortestPaths.back();
+  auto const len = prevPath.getLength();
   for (size_t prefixLen = 0; prefixLen < len; ++prefixLen) {
     auto spurVertex = prevPath.getVertex(prefixLen);
     // To avoid cycles, forbid all vertices before the spurVertex in the
