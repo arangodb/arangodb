@@ -1748,7 +1748,8 @@ void RocksDBOptionFeature::start() {
   }
 
   LOG_TOPIC("f66e4", TRACE, Logger::ENGINES)
-      << "using RocksDB options:" << " wal_dir: '" << _walDirectory << "'"
+      << "using RocksDB options:"
+      << " wal_dir: '" << _walDirectory << "'"
       << ", compression type: " << _compressionType
       << ", write_buffer_size: " << _writeBufferSize
       << ", total_write_buffer_size: " << _totalWriteBufferSize
