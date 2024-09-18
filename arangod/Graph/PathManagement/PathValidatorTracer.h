@@ -86,16 +86,14 @@ class PathValidatorTracer {
   void unpreparePruneContext();
   void unpreparePostFilterContext();
 
-  auto setForbiddenVertices(std::unique_ptr<VertexSet> forbidden)
+  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
       -> void requires HasForbidden<PathValidatorImplementation> {
-    auto copy = std::make_unique<VertexSet>(*forbidden);
-    _impl.setForbiddenVertices(std::move(copy));
+    _impl.setForbiddenVertices(std::move(forbidden));
   };
 
-  auto setForbiddenEdges(std::unique_ptr<EdgeSet> forbidden)
+  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
       -> void requires HasForbidden<PathValidatorImplementation> {
-    auto copy = std::make_unique<EdgeSet>(*forbidden);
-    _impl.setForbiddenEdges(std::move(copy));
+    _impl.setForbiddenEdges(std::move(forbidden));
   };
 
  private : PathValidatorImplementation _impl;

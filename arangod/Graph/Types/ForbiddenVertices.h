@@ -33,7 +33,7 @@ using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
 template<typename T>
 concept HasForbidden = requires(T t) {
   {
-    t.setForbiddenVertices(std::make_unique<VertexSet>())
+    t.setForbiddenVertices(std::make_shared<VertexSet>())
     } -> std::same_as<void>;
 };
 

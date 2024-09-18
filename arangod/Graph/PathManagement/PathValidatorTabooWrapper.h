@@ -89,11 +89,11 @@ class PathValidatorTabooWrapper {
   void unpreparePruneContext();
   void unpreparePostFilterContext();
 
-  void setForbiddenVertices(std::unique_ptr<VertexSet> forbidden) {
+  void setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) {
     _forbiddenVertices = std::move(forbidden);
   }
 
-  void setForbiddenEdges(std::unique_ptr<EdgeSet> forbidden) {
+  void setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) {
     _forbiddenEdges = std::move(forbidden);
   }
 
@@ -103,8 +103,8 @@ class PathValidatorTabooWrapper {
   // We make this mutable to not violate the captured API
   mutable containers::FlatHashMap<std::string, TraceEntry> _stats;
 
-  std::unique_ptr<VertexSet> _forbiddenVertices;
-  std::unique_ptr<EdgeSet> _forbiddenEdges;
+  std::shared_ptr<VertexSet> _forbiddenVertices;
+  std::shared_ptr<EdgeSet> _forbiddenEdges;
 };
 }  // namespace graph
 }  // namespace arangodb

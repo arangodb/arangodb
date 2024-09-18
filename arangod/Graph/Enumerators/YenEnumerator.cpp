@@ -201,14 +201,14 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     auto spurVertex = prevPath.getVertex(prefixLen);
     // To avoid cycles, forbid all vertices before the spurVertex in the
     // previous path:
-    auto forbiddenVertices = std::make_unique<VertexSet>();
+    auto forbiddenVertices = std::make_shared<VertexSet>();
     for (size_t i = 0; i < prefixLen; ++i) {
       forbiddenVertices->insert(prevPath.getVertex(i).getID());
     }
     // To avoid finding old shortest paths again, we must forbid every edge,
     // which is a continuation of a previous shortest path which has the
     // same prefix:
-    auto forbiddenEdges = std::make_unique<EdgeSet>();
+    auto forbiddenEdges = std::make_shared<EdgeSet>();
     forbiddenEdges->insert(prevPath.getEdge(prefixLen).getID());
     // This handles the previous one, now do the ones before:
     for (size_t i = 0; i + 1 < _shortestPaths.size(); ++i) {

@@ -154,12 +154,12 @@ class TwoSidedEnumerator {
 
     auto provider() -> ProviderType&;
 
-    auto setForbiddenVertices(std::unique_ptr<VertexSet> forbidden)
+    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
         -> void requires HasForbidden<PathValidatorType> {
       _validator.setForbiddenVertices(std::move(forbidden));
     };
 
-    auto setForbiddenEdges(std::unique_ptr<EdgeSet> forbidden)
+    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
         -> void requires HasForbidden<PathValidatorType> {
       _validator.setForbiddenEdges(std::move(forbidden));
     };
@@ -263,17 +263,15 @@ class TwoSidedEnumerator {
    */
   auto stealStats() -> aql::TraversalStats;
 
-  auto setForbiddenVertices(std::unique_ptr<VertexSet> forbidden)
+  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
       -> void requires HasForbidden<PathValidatorType> {
-    auto copy = std::make_unique<VertexSet>(*forbidden);
-    _left.setForbiddenVertices(std::move(copy));
+    _left.setForbiddenVertices(forbidden);
     _right.setForbiddenVertices(std::move(forbidden));
   };
 
-  auto setForbiddenEdges(std::unique_ptr<EdgeSet> forbidden)
+  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
       -> void requires HasForbidden<PathValidatorType> {
-    auto copy = std::make_unique<EdgeSet>(*forbidden);
-    _left.setForbiddenEdges(std::move(copy));
+    _left.setForbiddenEdges(forbidden);
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
