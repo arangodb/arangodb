@@ -32,7 +32,7 @@ test.describe("Collection Page", () => {
     await page.getByRole("link", { name: "computedValuesCollection" }).click();
     await page.locator(".subMenuEntry", { hasText: "Computed Values" }).click();
     await page.locator("#computedValuesEditor").click();
-    await page.keyboard.press("Control+A");
+    await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
     await page.fill(
       "#computedValuesEditor textarea",
@@ -45,7 +45,7 @@ test.describe("Collection Page", () => {
     await page.locator("#addDocumentButton").click();
 
     await page.locator("#jsoneditor .ace_content").click();
-    await page.keyboard.press("Control+A");
+    await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("Backspace");
     await page.fill("#jsoneditor textarea", JSON.stringify(DOCUMENT));
     await page.getByRole("button", { name: "Create" }).click();
