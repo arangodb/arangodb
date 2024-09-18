@@ -165,7 +165,6 @@ class TwoSidedEnumerator {
     };
 
    private : auto clearProvider() -> void;
-   private:
     // Fast path, to test if we find a connecting vertex between left and right.
     Shell _shell{};
 

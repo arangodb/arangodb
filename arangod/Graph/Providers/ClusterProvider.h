@@ -79,7 +79,8 @@ class ClusterProvider {
 
   ClusterProvider& operator=(ClusterProvider const&) = delete;
 
-  void clear(bool force = false);
+  void clear();
+  void clearWithForce();
 
   auto startVertex(const VertexType& vertex, size_t depth = 0,
                    double weight = 0.0) -> Step;

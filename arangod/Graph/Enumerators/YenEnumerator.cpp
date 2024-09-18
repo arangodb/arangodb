@@ -181,9 +181,7 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
       _isDone = true;
       return false;
     }
-    auto const& path =
-        // PathResult<ProviderType, typename ProviderType::Step> const& path =
-        _shortestPathEnumerator->getLastPathResult();
+    auto const& path = _shortestPathEnumerator->getLastPathResult();
     _shortestPaths.emplace_back(toOwned(path));  // Copy the path with all
                                                  // its referenced data!
     // When we are called next, we will continue below!
@@ -255,7 +253,14 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
       }
       newPath.appendVertex(path.getVertex(path.getLength()));
 
-      // Check that the path is not yet contained in the set of candidates:
+      // We are about to add the new path to the set of candidates,
+      // but we only want to add it if the same path is not already
+      // part of the set of candidates (because it was added in an
+      // earlier iteration). If the candidates would include twice the
+      // same path, the user would possibly get this path twice if they
+      // requested enough paths. This can happen because we only forbid
+      // edges from already found shortest paths but not from candidates.
+
       bool found = false;
       for (auto const& p : _candidatePaths) {
         if (p->getLength() != newPath.getLength()) {
@@ -295,12 +300,12 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     }
   }
 
-  // Finally get the best candidate:
   if (_candidatePaths.empty()) {
     _isDone = true;
     return false;
   }
 
+  // Finally get the best candidate:
   size_t posBest = 0;
   for (size_t i = 1; i < _candidatePaths.size(); ++i) {
     if (_candidatePaths[i]->getWeight() <

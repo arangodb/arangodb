@@ -105,19 +105,24 @@ ClusterProvider<StepImpl>::ClusterProvider(
 
 template<class StepImpl>
 ClusterProvider<StepImpl>::~ClusterProvider() {
-  clear(true);  // Make sure we actually free all memory in the edge cache!
+  clearWithForce();  // Make sure we actually free all memory in the edge cache!
 }
 
 template<class StepImpl>
-void ClusterProvider<StepImpl>::clear(bool force) {
-  if (_opts.clearEdgeCacheOnClear() || force) {
-    for (auto const& entry : _vertexConnectedEdges) {
-      _resourceMonitor->decreaseMemoryUsage(
-          costPerVertexOrEdgeType +
-          (entry.second.size() * (costPerVertexOrEdgeType * 2)));
-    }
-    _vertexConnectedEdges.clear();
+void ClusterProvider<StepImpl>::clear() {
+  if (_opts.clearEdgeCacheOnClear()) {
+    clearWithForce();
   }
+}
+
+template<class StepImpl>
+void ClusterProvider<StepImpl>::clearWithForce() {
+  for (auto const& entry : _vertexConnectedEdges) {
+    _resourceMonitor->decreaseMemoryUsage(
+        costPerVertexOrEdgeType +
+        (entry.second.size() * (costPerVertexOrEdgeType * 2)));
+  }
+  _vertexConnectedEdges.clear();
 }
 
 template<class StepImpl>
