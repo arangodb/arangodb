@@ -237,21 +237,22 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     if (_shortestPathEnumerator->getNextPath(temp)) {
       PathResult<ProviderType, typename ProviderType::Step> const& path =
           _shortestPathEnumerator->getLastPathResult();
-      PathResult<ProviderType, typename ProviderType::Step> newPath{
-          path.getSourceProvider(), path.getTargetProvider()};  // empty path
+      auto newPath = std::make_unique<
+          PathResult<ProviderType, typename ProviderType::Step>>(
+          path.getSourceProvider(), path.getTargetProvider());  // empty path
       for (size_t i = 0; i < prefixLen; ++i) {
-        newPath.appendVertex(prevPath.getVertex(i));
+        newPath->appendVertex(prevPath.getVertex(i));
         auto weight = prevPath.getWeight(i);
-        newPath.appendEdge(prevPath.getEdge(i), weight);
-        newPath.addWeight(weight);
+        newPath->appendEdge(prevPath.getEdge(i), weight);
+        newPath->addWeight(weight);
       }
       for (size_t i = 0; i < path.getLength(); ++i) {
-        newPath.appendVertex(path.getVertex(i));
+        newPath->appendVertex(path.getVertex(i));
         auto weight = path.getWeight(i);
-        newPath.appendEdge(path.getEdge(i), weight);
-        newPath.addWeight(weight);
+        newPath->appendEdge(path.getEdge(i), weight);
+        newPath->addWeight(weight);
       }
-      newPath.appendVertex(path.getVertex(path.getLength()));
+      newPath->appendVertex(path.getVertex(path.getLength()));
 
       // We are about to add the new path to the set of candidates,
       // but we only want to add it if the same path is not already
@@ -261,41 +262,19 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
       // requested enough paths. This can happen because we only forbid
       // edges from already found shortest paths but not from candidates.
 
-      bool found = false;
-      for (auto const& p : _candidatePaths) {
-        if (p->getLength() != newPath.getLength()) {
-          continue;
-        }
-        // This is to avoid rounding errors, since this is only a performance
-        // optimization, before we actually compare IDs of edges, this does not
-        // have an impact on correctness:
-        if (fabs(p->getWeight() - newPath.getWeight()) > 0.001) {
-          continue;
-        }
-        bool equal = true;
-        for (size_t j = 0; j < newPath.getLength(); ++j) {
-          if (!p->getEdge(j).getID().equals(newPath.getEdge(j).getID())) {
-            equal = false;
-            break;
-          }
-        }
-        if (equal) {
-          found = true;
-          break;
-        }
-      }
-
-      if (!found) {
+      auto lb = std::lower_bound(_candidatePaths.begin(), _candidatePaths.end(),
+                                 newPath, pathComparator);
+      if (lb == _candidatePaths.end() || !pathEquals(*lb, newPath)) {
         // Note that we must copy all vertex and edge data and make them
         // our own. Otherwise, once the providers are cleared, the references
         // might no longer be valid!
         auto copy = std::make_unique<
             PathResult<ProviderType, typename ProviderType::Step>>(
-            toOwned(newPath));
+            toOwned(*newPath));
         size_t mem = copy->getMemoryUsage();
         _resourceMonitor.increaseMemoryUsage(mem);
         _totalMemoryUsageHere += mem;
-        _candidatePaths.emplace_back(std::move(copy));
+        _candidatePaths.insert(lb, std::move(copy));
       }
     }
   }
@@ -305,15 +284,9 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     return false;
   }
 
-  // Finally get the best candidate:
-  size_t posBest = 0;
-  for (size_t i = 1; i < _candidatePaths.size(); ++i) {
-    if (_candidatePaths[i]->getWeight() <
-        _candidatePaths[posBest]->getWeight()) {
-      posBest = i;
-    }
-  }
-  _shortestPaths.emplace_back(std::move(*_candidatePaths[posBest]));
+  // Finally get the best candidate, this will always be the last:
+  _shortestPaths.emplace_back(std::move(*(_candidatePaths.back())));
+  _candidatePaths.pop_back();
   if constexpr (IsWeighted) {
     _shortestPaths.back().toVelocyPack(
         result,
@@ -325,7 +298,6 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
         PathResult<ProviderType,
                    typename ProviderType::Step>::WeightType::AMOUNT_EDGES);
   }
-  _candidatePaths.erase(_candidatePaths.begin() + posBest);
 
   return true;
 }

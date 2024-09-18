@@ -76,6 +76,13 @@ class PathResult {
   // count the referenced strings, since these are accounted for elsewhere!
   auto getMemoryUsage() const -> size_t;
 
+  // The following implements a total order on the set of path results,
+  // which has the property that paths of larger weight are considered
+  // to be less than paths of smaller weight. This can be used to make
+  // PathResults unique and sort them in a descending fashion by weight.
+  auto compare(PathResult<ProviderType, Step> const& other)
+      -> std::strong_ordering;
+
  private:
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;

@@ -179,6 +179,35 @@ auto PathResult<ProviderType, Step>::getMemoryUsage() const -> size_t {
   return mem;
 }
 
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::compare(
+    PathResult<ProviderType, Step> const& other) -> std::strong_ordering {
+  if (_pathWeight > other._pathWeight) {
+    // The ">" here is intentional! We want descending weight!
+    return std::strong_ordering::less;
+  }
+  if (_pathWeight < other._pathWeight) {
+    return std::strong_ordering::greater;
+  }
+  // Now let's take the len-lexicographic ordering of the edges. We do not
+  // have to consider the vertices, since if the edges are equal, then
+  // their end vertices are equal:
+  if (_edges.size() < other._edges.size()) {
+    return std::strong_ordering::less;
+  }
+  if (_edges.size() > other._edges.size()) {
+    return std::strong_ordering::greater;
+  }
+  for (size_t i = 0; i < _edges.size(); ++i) {
+    auto c = _edges[i].getID().compare(other._edges[i].getID());
+    if (c != 0) {
+      return c < 0 ? std::strong_ordering::less : std::strong_ordering::greater;
+    }
+  }
+  // Equality:
+  return std::strong_ordering::equal;
+}
+
 /* SingleServerProvider Section */
 
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;

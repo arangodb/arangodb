@@ -258,6 +258,11 @@ class YenEnumerator {
   GraphArena _arena;
   std::vector<PathResult<ProviderType, typename ProviderType::Step>>
       _shortestPaths;
+  // We keep the following vector sorted by the sorting method implemented
+  // by PathResult, which makes higher weight paths less than lower weight
+  // paths. Thus, the cheapest path is always last and we can easily
+  // deduplicate. See below for a static comparator function we use for
+  // std::lower_bound:
   std::vector<
       std::unique_ptr<PathResult<ProviderType, typename ProviderType::Step>>>
       _candidatePaths;
@@ -267,6 +272,15 @@ class YenEnumerator {
   VertexRef _source;
   VertexRef _target;
   bool _isInitialized;
+
+  using PathPtr =
+      std::unique_ptr<PathResult<ProviderType, typename ProviderType::Step>>;
+  static bool pathComparator(PathPtr const& a, PathPtr const& b) {
+    return a->compare(*b) == std::strong_ordering::less;
+  }
+  static bool pathEquals(PathPtr const& a, PathPtr const& b) {
+    return a->compare(*b) == std::strong_ordering::equal;
+  }
 };
 }  // namespace graph
 }  // namespace arangodb
