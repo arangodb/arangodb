@@ -868,7 +868,7 @@ class instanceManager {
         }
       });
       if (role === instanceRole.agent) {
-        this.agency.detectAgencyAlive(this.httpAuthOptions);
+        this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       }
     });
 
