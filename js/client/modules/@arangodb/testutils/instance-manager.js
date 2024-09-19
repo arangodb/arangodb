@@ -909,6 +909,9 @@ class instanceManager {
     do {
       sleep(1);
       jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + result.parsedBody.id);
+      if (jobStatus.parsedBody.status === 'failed') {
+        throw new Error(`failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(jobStatus)}`);
+      }
       print(jobStatus.parsedBody.status);
     } while (jobStatus.parsedBody.status !== 'Finished');
     print(`${Date()} DONE resigning leaderships from ${dbServer.name} via ${frontend.name}`);
