@@ -104,10 +104,20 @@ function makeDataWrapper (options) {
         count += 1;
         if (this.options.cluster) {
           if (count === 2) {
-            ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
+            try {
+              this.instanceManager.upgradeCycleInstance();
+            } catch(e) {
+              return {
+                'forceTerminate': true,
+                'message': `upgradeCycle failed by: ${e.message}\n${e.stack}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+            }
           }
           if (count === 2) {
-            this.instanceManager.upgradeCycleInstance();
+            ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
           }
           if (count === 3) {
             this.instanceManager.arangods.forEach(function (oneInstance, i) {
@@ -117,7 +127,17 @@ function makeDataWrapper (options) {
             });
             print('stopping dbserver ' + stoppedDbServerInstance.name +
                   ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
-            this.instanceManager.resignLeaderShip(stoppedDbServerInstance);
+            try {
+              this.instanceManager.resignLeaderShip(stoppedDbServerInstance);
+            } catch(e) {
+              return {
+                'forceTerminate': true,
+                'message': `resigning leadership failed by: ${e.message}\n${e.stack}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+            }
             stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
             stoppedDbServerInstance.waitForExit();
             moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
