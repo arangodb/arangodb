@@ -4660,6 +4660,38 @@ ClusterInfo::getResponsibleServer(ShardID shardID) {
   return std::make_shared<ManagedVector<pmr::ServerID>>(_resourceMonitor);
 }
 
+// The "NoDelay" variant is guaranteed to not produce a noticeable delay,    ///
+// however, it may return an empty result, if currently there is no known
+// responsible server. This is often good enough. Note that this can happen
+// during the transition of leadership from one server to another.
+//
+std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
+ClusterInfo::getResponsibleServerNoDelay(ShardID shardID) {
+  // This can only produce a delay right at server start, which is OK,
+  // despite the name of the function.
+  if (!_currentProt.isValid) {
+    Result r = waitForCurrent(1).waitAndGet();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
+  }
+
+  READ_LOCKER(readLocker, _currentProt.lock);
+  // _shardsToCurrentServers is a map-type <ShardId,
+  // std::shared_ptr<std::vector<ServerId>>>
+  if (auto it = _shardsToCurrentServers.find(shardID);
+      it != _shardsToCurrentServers.end()) {
+    auto serverList = it->second;
+    if (serverList == nullptr || serverList->empty() ||
+        !(*serverList)[0].starts_with('_')) {
+      return serverList;
+    }
+  }
+
+  // If we get here, we simply do not know:
+  return std::make_shared<ManagedVector<pmr::ServerID>>(_resourceMonitor);
+}
+
 futures::Future<ResultT<ServerID>> ClusterInfo::getLeaderForShard(
     ShardID shardID) {
   ServerID resultBuffer;
@@ -5927,8 +5959,8 @@ futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
 futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
     network::Timeout timeout) const {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
-  return cluster::fetchPlanVersion(timeout).thenValue(
-      [&clusterFeature = _clusterFeature](auto maybePlanVersion) {
+  return cluster::fetchPlanVersion(timeout, false)
+      .thenValue([&clusterFeature = _clusterFeature](auto maybePlanVersion) {
         if (maybePlanVersion.ok()) {
           auto planVersion = maybePlanVersion.get();
           auto& clusterInfo = clusterFeature.clusterInfo();
@@ -5942,8 +5974,9 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
 futures::Future<Result> ClusterInfo::fetchAndWaitForCurrentVersion(
     network::Timeout timeout) const {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
-  return cluster::fetchCurrentVersion(timeout).thenValue(
-      [&clusterInfo = _clusterFeature.clusterInfo()](auto maybeCurrentVersion) {
+  return cluster::fetchCurrentVersion(timeout, false)
+      .thenValue([&clusterInfo =
+                      _clusterFeature.clusterInfo()](auto maybeCurrentVersion) {
         if (maybeCurrentVersion.ok()) {
           auto currentVersion = maybeCurrentVersion.get();
           return clusterInfo.waitForCurrentVersion(currentVersion);
@@ -6223,8 +6256,8 @@ void AnalyzerModificationTransaction::revertCounter() {
 namespace {
 template<typename T>
 futures::Future<ResultT<T>> fetchNumberFromAgency(
-    std::shared_ptr<cluster::paths::Path const> path,
-    network::Timeout timeout) {
+    std::shared_ptr<cluster::paths::Path const> path, network::Timeout timeout,
+    bool skipScheduler) {
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
@@ -6235,8 +6268,9 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(
         .done();
   }
 
-  auto fAacResult =
-      AsyncAgencyComm().sendReadTransaction(timeout, std::move(trx));
+  auto fAacResult = AsyncAgencyComm()
+                        .withSkipScheduler(skipScheduler)
+                        .sendReadTransaction(timeout, std::move(trx));
 
   auto fResult =
       std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
@@ -6253,18 +6287,18 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(
 }  // namespace
 
 futures::Future<ResultT<uint64_t>> cluster::fetchPlanVersion(
-    network::Timeout timeout) {
+    network::Timeout timeout, bool skipScheduler) {
   using namespace std::chrono_literals;
 
   auto planVersionPath = cluster::paths::root()->arango()->plan()->version();
 
   return fetchNumberFromAgency<uint64_t>(
       std::static_pointer_cast<paths::Path const>(std::move(planVersionPath)),
-      timeout);
+      timeout, skipScheduler);
 }
 
 futures::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(
-    network::Timeout timeout) {
+    network::Timeout timeout, bool skipScheduler) {
   using namespace std::chrono_literals;
 
   auto currentVersionPath =
@@ -6273,5 +6307,5 @@ futures::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(
   return fetchNumberFromAgency<uint64_t>(
       std::static_pointer_cast<paths::Path const>(
           std::move(currentVersionPath)),
-      timeout);
+      timeout, skipScheduler);
 }
