@@ -286,7 +286,8 @@ class agencyMgr {
   detectAgencyAlive(httpAuthOptions) {
     if (!this.options.agency ||
         !this.shouldBeCompleted() ||
-        this.moreIsAlreadyRunning()) {
+        !this.moreIsAlreadyRunning()) {
+      print("no agency check this time.");
       return;
     }
     let count = (isArm || this.options.isInstrumented) ? 75 : 25;
