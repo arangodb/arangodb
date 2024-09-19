@@ -780,10 +780,17 @@ class ClusterInfo final {
   /// If it is not found in the cache, the cache is reloaded once, if
   /// it is still not there a pointer to an empty vector is returned as
   /// an error.
+  /// The "NoDelay" variant is guaranteed to not produce a noticeable delay,
+  /// however, it may return an empty result, if currently there is no
+  /// known responsible server. This is often good enough.
+  /// Note that this can happen during the transition of leadership from
+  /// one server to another.
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<ManagedVector<pmr::ServerID> const> getResponsibleServer(
       ShardID shardID);
+  std::shared_ptr<ManagedVector<pmr::ServerID> const>
+  getResponsibleServerNoDelay(ShardID shardID);
 
   futures::Future<ResultT<ServerID>> getLeaderForShard(ShardID shard);
 

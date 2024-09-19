@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix blockage in RestMetricsHandlers if there are resigned leaders. We use 
+  getResponsibleServerNoDelay there to decide if metrics should be exposed.
+
 * Fix blockage in SynchronizeShard: We do some agency communication there,
   this should use skipScheduler to avoid being blocked by all scheduler
   threads being busy. This solves a problem found in RTA on upgrade
