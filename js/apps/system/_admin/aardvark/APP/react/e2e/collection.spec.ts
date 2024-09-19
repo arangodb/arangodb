@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures";
+import { clearAceEditor, fillAceEditor } from "./helpers/ace";
 import { COMPUTED_VALUES, createCollection, DOCUMENT } from "./utils";
 
 test.describe("Collection Page", () => {
@@ -32,29 +33,34 @@ test.describe("Collection Page", () => {
     // set computed values
     await page.getByRole("link", { name: "computedValuesCollection" }).click();
     await page.locator(".subMenuEntry", { hasText: "Computed Values" }).click();
-    await page.locator("#computedValuesEditor").click();
-    await page.keyboard.press("ControlOrMeta+A");
-    await page.keyboard.press("Backspace");
-    await page.fill(
-      "#computedValuesEditor textarea",
-      JSON.stringify(COMPUTED_VALUES)
-    );
+    await clearAceEditor({ page, containerId: "computedValuesEditor" });
+    await fillAceEditor({
+      page,
+      containerId: "computedValuesEditor",
+      value: COMPUTED_VALUES
+    });
     await page.getByRole("button", { name: "Save" }).click();
     expect(page.locator("#computedValuesEditor")).toBeVisible();
 
-    // check if computed values are set when adding a document
+    // add a document & check if computed values are set
     await page.locator(".subMenuEntry", { hasText: "Content" }).click();
     await page.locator("#addDocumentButton").click();
-    await page.locator("#jsoneditor .ace_content").click();
-    await page.keyboard.press("ControlOrMeta+A");
-    await page.keyboard.press("Backspace");
-    await page.fill("#jsoneditor textarea", JSON.stringify(DOCUMENT));
+
+    await clearAceEditor({ page, containerId: "jsoneditor" });
+    await fillAceEditor({ page, containerId: "jsoneditor", value: DOCUMENT });
+
     await page.getByRole("button", { name: "Create" }).click();
     expect(
       page.locator(".jsoneditor-field").filter({
         hasText: "dateCreatedForIndexing"
       })
     ).toBeVisible();
+    await page
+      .locator(".jsoneditor-field")
+      .filter({
+        hasText: "dateCreatedForIndexing"
+      })
+      .click();
   });
 
   test("adding a document to a collection", async ({ page }) => {
@@ -63,8 +69,9 @@ test.describe("Collection Page", () => {
     await page.locator(".subMenuEntry", { hasText: "Content" }).click();
     await page.locator("#addDocumentButton").click();
 
-    await page.locator("#jsoneditor").click();
-    await page.fill("#jsoneditor textarea", JSON.stringify(DOCUMENT));
+    await clearAceEditor({ page, containerId: "jsoneditor" });
+    await fillAceEditor({ page, containerId: "jsoneditor", value: DOCUMENT });
+
     await page.getByRole("button", { name: "Create" }).click();
 
     expect(
