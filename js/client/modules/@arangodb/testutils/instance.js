@@ -815,6 +815,25 @@ class instance {
     }
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
+
+    runUpgrade() {
+    let moreArgs = {
+      '--database.auto-upgrade': 'true',
+      '--log.foreground-tty': 'true'
+    };
+    if (this.role === instanceRole.coordinator) {
+      moreArgs['--server.rest-server'] = 'false';
+    }
+    this.exitStatus = null;
+    this.pid = this._executeArangod(moreArgs).pid;
+    sleep(1);
+    while (this.isRunning()) {
+      print(".");
+      sleep(1);
+    }
+    print(`${Date()} upgrade of ${this.name} finished.`);
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief periodic checks whether spawned arangod processes are still alive
   // //////////////////////////////////////////////////////////////////////////////
@@ -871,7 +890,7 @@ class instance {
 
   isRunning() {
     let check = () => (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
-    if (check()) {
+    if (this.exitStatus === null || check()) {
       this.exitStatus = this.status(false);
       return check();
     }

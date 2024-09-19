@@ -84,6 +84,7 @@ class instanceManager {
     this.dumpedAgency = false;
     this.leader = null;
     this.urls = [];
+    this.instanceRoles = [];
     this.endpoints = [];
     this.arangods = [];
     this.restKeyFile = '';
@@ -249,6 +250,7 @@ class instanceManager {
                                              this.agencyConfig,
                                              this.tmpDir,
                                              this.memlayout[instanceRole.agent]));
+        this.instanceRoles.push(instanceRole.agent);
       }
       
       for (let count = 0;
@@ -264,6 +266,7 @@ class instanceManager {
                                              this.agencyConfig,
                                              this.tmpDir,
                                              this.memlayout[instanceRole.dbServer]));
+        this.instanceRoles.push(instanceRole.dbServer);
       }
       
       for (let count = 0;
@@ -280,6 +283,9 @@ class instanceManager {
                                              this.tmpDir,
                                              this.memlayout[instanceRole.coordinator] ));
         frontendCount ++;
+      }
+      if (this.options.cluster) {
+        this.instanceRoles.push(instanceRole.coordinator);
       }
       
       for (let count = 0;
@@ -298,6 +304,9 @@ class instanceManager {
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
         frontendCount ++;
+      }
+      if (this.options.activefailover) {
+        this.instanceRoles.push(instanceRole.failover);
       }
 
       for (let count = 0;
@@ -318,6 +327,10 @@ class instanceManager {
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
         frontendCount ++;
       }
+      if (!this.options.agency && this.options.singles > 0) {
+        this.instanceRoles.push(instanceRole.single);
+      }
+
       if (frontendCount > 0) {
         this.url = this.urls[0];
         this.endpoint = this.endpoints[0];
@@ -880,6 +893,27 @@ class instanceManager {
     }
   }
 
+  resignLeaderShip(dbServer) {
+    let frontend = this.arangods.filter(arangod => {return arangod.isFrontend();})[0];
+    print(`${Date()} resigning leaderships from ${dbServer.name} via ${frontend.name}`);
+    // make sure the connection is propper:
+    // frontend._disconnect();
+    frontend.connect();
+
+    let result = arango.POST_RAW('/_admin/cluster/resignLeadership',
+                                 { "server": dbServer.shortName, "undoMoves": false });
+    if (result.code !== 202) {
+      throw new Error(`failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(result)}`);
+    }
+    let jobStatus;
+    do {
+      sleep(1);
+      jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + result.parsedBody.id);
+      print(jobStatus.parsedBody.status);
+    } while (jobStatus.parsedBody.status !== 'Finished');
+    print(`${Date()} DONE resigning leaderships from ${dbServer.name} via ${frontend.name}`);
+  }
+
   detectShouldBeRunning() {
     let ret = true;
     this.arangods.forEach(arangod => { ret = ret && arangod.pid !== null; } );
@@ -951,7 +985,30 @@ class instanceManager {
     });
     return true;
   }
+  _setMaintenance(onOff) {
+    let shutdownSuccess = true;
+    try {
+      // send a maintenance request to any of the coordinators, so that
+      // no failed server/failed follower jobs will be started on shutdown
+      let coords = this.arangods.filter(arangod =>
+        arangod.isRole(instanceRole.coordinator) &&
+          (arangod.exitStatus !== null));
+      if (coords.length > 0) {
+        let requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
+        requestOptions.method = 'PUT';
+        let postBody = onOff ? "on" : "off";
 
+        if (!this.options.noStartStopLogs) {
+          print(`${coords[0].url}/_admin/cluster/maintenance => ${postBody}`);
+        }
+        download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify(postBody), requestOptions);
+      }
+    } catch (err) {
+      print(Date() + " error while setting cluster maintenance mode:", err);
+      shutdownSuccess = false;
+    }
+    return shutdownSuccess;
+  }
   _shutdownInstance (moreReason="") {
     let forceTerminate = false;  
     let crashed = false;
@@ -982,25 +1039,7 @@ class instanceManager {
     }
 
     if (!forceTerminate) {
-      try {
-        // send a maintenance request to any of the coordinators, so that
-        // no failed server/failed follower jobs will be started on shutdown
-        let coords = this.arangods.filter(arangod =>
-          arangod.isRole(instanceRole.coordinator) &&
-            (arangod.exitStatus !== null));
-        if (coords.length > 0) {
-          let requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-          requestOptions.method = 'PUT';
-
-          if (!this.options.noStartStopLogs) {
-            print(coords[0].url + "/_admin/cluster/maintenance");
-          }
-          download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
-        }
-      } catch (err) {
-        print(Date() + " error while setting cluster maintenance mode:", err);
-        shutdownSuccess = false;
-      }
+      shutdownSuccess &= this._setMaintenance(true);
     }
 
     if ((this.options.cluster || this.options.agency) && this.hasOwnProperty('clusterHealthMonitor')) {
@@ -1646,6 +1685,38 @@ class instanceManager {
                        JWT);
     }
     this.launchFinalize(startTime);
+  }
+  upgradeCycleInstance(waitForShardsInSync) {
+    /// TODO:             self._check_for_shards_in_sync()
+    this._setMaintenance(true);
+
+    this.instanceRoles.forEach(role => {
+      this.arangods.forEach(arangod => {
+        if (arangod.isRole(role)) {
+          print(`${Date()} upgrading ${arangod.name}`);
+          print(`${Date()} stopping ${arangod.name}`);
+          if (arangod.isRole(instanceRole.dbServer)) {
+            this.resignLeaderShip(arangod);
+            sleep(30); // BTS-1965
+          }
+          arangod.shutdownArangod(false);
+          while (arangod.isRunning()) {
+            print(".");
+            sleep(1);
+          }
+          print(`${Date()} upgrading ${arangod.name}`);
+          arangod.runUpgrade();
+          print(`${Date()} relaunching ${arangod.name}`);
+          arangod.restartOneInstance();
+        }
+      });
+      if (role === instanceRole.agent) {
+        print("running agency health check");
+        this.detectAgencyAlive();
+      }
+    });
+
+    this._setMaintenance(false);
   }
 }
 
