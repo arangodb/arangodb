@@ -1,4 +1,4 @@
-import { test as base } from "@playwright/test";
+import { expect, test as base } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 
@@ -19,9 +19,15 @@ export const test = base.extend({
     }, sessionStorageData);
     await page.goto("http://localhost:3001/");
     // switch db
-    await page.locator("#dbStatus > a.state").click();
+    await expect(page.locator("#dbStatus .state")).toBeVisible();
+    await page.locator("#dbStatus .state").click();
+    // expect option 'test' to be available
+    await expect(
+      page.locator("#loginDatabase option", { hasText: "test" })
+    ).toBeAttached();
     await page.locator("#loginDatabase").selectOption({ value: "test" });
     await page.getByRole("button", { name: /Select DB: test/i }).click();
+    await expect(page.locator("#dbStatus .state")).toHaveText("test");
     use(page);
   }
 });
