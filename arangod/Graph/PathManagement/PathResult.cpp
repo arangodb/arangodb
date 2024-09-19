@@ -192,11 +192,8 @@ auto PathResult<ProviderType, Step>::compare(
   // Now let's take the len-lexicographic ordering of the edges. We do not
   // have to consider the vertices, since if the edges are equal, then
   // their end vertices are equal:
-  if (_edges.size() < other._edges.size()) {
-    return std::strong_ordering::less;
-  }
-  if (_edges.size() > other._edges.size()) {
-    return std::strong_ordering::greater;
+  if (_edges.size() != other._edges.size()) {
+    return _edges.size() <=> other._edges.size();
   }
   for (size_t i = 0; i < _edges.size(); ++i) {
     auto c = _edges[i].getID().compare(other._edges[i].getID());
