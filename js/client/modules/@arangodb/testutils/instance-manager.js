@@ -867,6 +867,9 @@ class instanceManager {
           arangod.restartOneInstance();
         }
       });
+      if (role === instanceRole.agent) {
+        this.agency.detectAgencyAlive(this.httpAuthOptions);
+      }
     });
 
     this._setMaintenance(false);
