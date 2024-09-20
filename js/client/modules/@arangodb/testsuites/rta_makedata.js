@@ -143,6 +143,13 @@ function makeDataWrapper (options) {
             stoppedDbServerInstance.waitForExit();
             moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
           }
+        } else if (this.options.activefailover &&  (count === 2)) {
+          let oldLeader = this.instanceManager.leader;
+          print(`halting old leader ${oldLeader.name}`);
+          oldLeader.suspend();
+          require('internal').sleep(300);
+          this.instanceManager.detectCurrentLeader();
+          oldLeader.resume();
         }
         let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
