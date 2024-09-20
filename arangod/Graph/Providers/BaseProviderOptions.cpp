@@ -196,7 +196,8 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
       _filterConditionVariables(filterConditionVariables),
       _weightCallback(std::nullopt),
       _availableDepthsSpecificConditions(
-          std::move(availableDepthsSpecificConditions)) {
+          std::move(availableDepthsSpecificConditions)),
+      _clearEdgeCacheOnClear(true) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
