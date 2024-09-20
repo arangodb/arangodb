@@ -7529,8 +7529,8 @@ futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
 futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
     network::Timeout timeout) const {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
-  return cluster::fetchPlanVersion(timeout).thenValue(
-      [&applicationServer = server()](auto maybePlanVersion) {
+  return cluster::fetchPlanVersion(timeout, false)
+      .thenValue([&applicationServer = server()](auto maybePlanVersion) {
         if (maybePlanVersion.ok()) {
           auto planVersion = maybePlanVersion.get();
 
@@ -7547,8 +7547,8 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
 futures::Future<Result> ClusterInfo::fetchAndWaitForCurrentVersion(
     network::Timeout timeout) const {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
-  return cluster::fetchCurrentVersion(timeout).thenValue(
-      [&applicationServer = server()](auto maybeCurrentVersion) {
+  return cluster::fetchCurrentVersion(timeout, false)
+      .thenValue([&applicationServer = server()](auto maybeCurrentVersion) {
         if (maybeCurrentVersion.ok()) {
           auto currentVersion = maybeCurrentVersion.get();
 
@@ -7837,8 +7837,8 @@ std::atomic<int32_t>
 namespace {
 template<typename T>
 futures::Future<ResultT<T>> fetchNumberFromAgency(
-    std::shared_ptr<cluster::paths::Path const> path,
-    network::Timeout timeout) {
+    std::shared_ptr<cluster::paths::Path const> path, network::Timeout timeout,
+    bool skipScheduler) {
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
@@ -7849,8 +7849,9 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(
         .done();
   }
 
-  auto fAacResult =
-      AsyncAgencyComm().sendReadTransaction(timeout, std::move(trx));
+  auto fAacResult = AsyncAgencyComm()
+                        .withSkipScheduler(skipScheduler)
+                        .sendReadTransaction(timeout, std::move(trx));
 
   auto fResult =
       std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
@@ -7867,18 +7868,18 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(
 }  // namespace
 
 futures::Future<ResultT<uint64_t>> cluster::fetchPlanVersion(
-    network::Timeout timeout) {
+    network::Timeout timeout, bool skipScheduler) {
   using namespace std::chrono_literals;
 
   auto planVersionPath = cluster::paths::root()->arango()->plan()->version();
 
   return fetchNumberFromAgency<uint64_t>(
       std::static_pointer_cast<paths::Path const>(std::move(planVersionPath)),
-      timeout);
+      timeout, skipScheduler);
 }
 
 futures::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(
-    network::Timeout timeout) {
+    network::Timeout timeout, bool skipScheduler) {
   using namespace std::chrono_literals;
 
   auto currentVersionPath =
@@ -7887,7 +7888,7 @@ futures::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(
   return fetchNumberFromAgency<uint64_t>(
       std::static_pointer_cast<paths::Path const>(
           std::move(currentVersionPath)),
-      timeout);
+      timeout, skipScheduler);
 }
 
 // -----------------------------------------------------------------------------
