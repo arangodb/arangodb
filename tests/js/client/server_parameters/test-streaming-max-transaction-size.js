@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, fail, arango */
+/* global getOptions, assertEqual, assertTrue, fail, arango, aql */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -148,7 +148,23 @@ function testSuite() {
         trx.abort();
       }
     },
-    
+    testUpdateWithDocumentStatement: function () {
+      // ConcurrentStreamTransactionsTest.java
+      let docs = [];
+      let c = db[cn];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ _key: `${i}`, value2: "testmann " + i });
+      }
+      c.insert(docs);
+      let docid = `${cn}/500`;
+      let trx = db._createTransaction({ collections: { write: [c] } });
+      trx.query(aql`LET d = DOCUMENT(${docid})
+                        UPDATE d WITH { "aaa": "aaa" } IN ${c}
+                        RETURN true`);
+      trx.commit();
+      let doc = c.byExample({_key: '500'}).toArray()[0];
+      assertTrue(doc.hasOwnProperty('aaa'), JSON.stringify(doc));
+    }
   };
 }
 
