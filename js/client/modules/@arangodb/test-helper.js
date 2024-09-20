@@ -902,7 +902,7 @@ exports.insertManyDocumentsIntoCollection
     if (!done) {
       while (l.length < batchSize) {
         let d = maker(counter); 
-        if (d === null || d === false) {
+        if (d === null || d === false || d === undefined) {
           done = true;
           break;
         }
