@@ -266,10 +266,6 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
     primaryKeyCache: {
       type: "boolean",
       nullable: true
-    },
-    primarySortCache: {
-      type: "boolean",
-      nullable: true
     }
   },
   required: ["type"],
