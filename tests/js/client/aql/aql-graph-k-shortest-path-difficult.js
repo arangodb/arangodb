@@ -37,6 +37,15 @@ const eName = "UnitTestEdges";
 const theDepth = 10;   // intentionally small for PR tests to be quick
 const theSize = 8;
 
+// Some general information about the tests here:
+// The tests are downsized to be quick for PR tests. They print some
+// performance information, but this is not used for testing. Due to the
+// small size of the tests, the performance information is not very
+// meaningful. The tests are just here to make sure that the k-shortest-paths
+// algorithm works in principle in these examples. We can use these tests
+// to run them manually with a larger size and we can copy them over to
+// the simple-performance-tests repository.
+
 function tearDownAll() {
   try {
     gm._drop(graphName, true);
