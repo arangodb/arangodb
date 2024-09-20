@@ -104,6 +104,8 @@ shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError 
 
 rta_makedata cluster 
 rta_makedata enterprise cluster name=rta_makedata_force_oneshard --  --forceOneShard true
+rta_makedata name=rta_makedata_afo --  --activefailover true --extremeVerbosity true --singles 3 
+
 # Common Tests
 
 importing,export name=import_export parallelity=5 size=small cluster -- --dumpAgencyOnError true
