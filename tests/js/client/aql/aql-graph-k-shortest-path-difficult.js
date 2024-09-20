@@ -34,7 +34,7 @@ const insertManyDocumentsIntoCollection = require("@arangodb/test-helper").inser
 const graphName = "UnitTestGraph";
 const vName = "UnitTestVertices";
 const eName = "UnitTestEdges";
-const theDepth = 15;
+const theDepth = 10;   // intentionally small for PR tests to be quick
 const theSize = 8;
 
 function tearDownAll() {
@@ -402,6 +402,41 @@ function kShortestPathsCompleteGraphsLeftRightSuite() {
       } finally {
         E.remove(edgeKey);
       }
+    },
+
+    testCompleteGraphLeftRightNoBridge: function () {
+      let startTime = new Date();
+      let res = db._query(`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
+          GRAPH '${graphName}'
+          LIMIT 3
+          RETURN p`).toArray();
+      print("Runtime legacy:", new Date() - startTime);
+      assertEqual(0, res.length);
+      startTime = new Date();
+      res = db._query(`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
+          GRAPH '${graphName}' OPTIONS { algorithm: 'yen' }
+          LIMIT 3
+          RETURN p`).toArray();
+      print("Runtime yen:", new Date() - startTime);
+      assertEqual(0, res.length);
+      startTime = new Date();
+      res = db._query(`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
+          GRAPH '${graphName}' OPTIONS { weightAttribute: 'weight' }
+          LIMIT 3
+          RETURN p`).toArray();
+      print("Runtime legacy weighted:", new Date() - startTime);
+      assertEqual(0, res.length);
+      startTime = new Date();
+      res = db._query(`
+        FOR p IN OUTBOUND K_SHORTEST_PATHS '${vName}/S0' TO '${vName}/T0'
+          GRAPH '${graphName}' OPTIONS { algorithm: 'yen', weightAttribute: 'weight' }
+          LIMIT 3
+          RETURN p`).toArray();
+      print("Runtime yen weighted:", new Date() - startTime);
+      assertEqual(0, res.length);
     },
 
   };
