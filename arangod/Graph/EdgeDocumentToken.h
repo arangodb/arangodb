@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -138,6 +139,43 @@ struct EdgeDocumentToken {
       return equalsCoordinator(other);
     }
     return equalsLocal(other);
+  }
+
+  int compareCoordinator(EdgeDocumentToken const& other) const {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_type == TokenType::COORDINATOR);
+#endif
+    VPackSlice s = velocypack::Slice(_data.vpack);
+    VPackSlice o = velocypack::Slice(other._data.vpack);
+    return arangodb::basics::VelocyPackHelper::compare(s, o, false);
+  }
+
+  int compareLocal(EdgeDocumentToken const& other) const {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // For local the cid and localDocumentId have illegal values on NONE
+    // and can be compared with real values
+    TRI_ASSERT(_type == TokenType::LOCAL || _type == TokenType::NONE);
+#endif
+    if (_data.document.cid < other.cid()) {
+      return -1;
+    }
+    if (_data.document.cid > other.cid()) {
+      return 1;
+    }
+    if (_data.document.localDocumentId < other.localDocumentId()) {
+      return -1;
+    }
+    if (_data.document.localDocumentId > other.localDocumentId()) {
+      return 1;
+    }
+    return 0;
+  }
+
+  int compare(EdgeDocumentToken const& other) const {
+    if (ServerState::instance()->isCoordinator()) {
+      return compareCoordinator(other);
+    }
+    return compareLocal(other);
   }
 
   bool isValid() const {

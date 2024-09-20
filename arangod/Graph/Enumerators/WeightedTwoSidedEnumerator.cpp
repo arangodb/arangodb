@@ -45,9 +45,6 @@
 #include <velocypack/HashedStringRef.h>
 #include <limits>
 
-using namespace arangodb;
-using namespace arangodb::graph;
-
 namespace {
 
 bool almostEqual(double x, double y) {
@@ -62,6 +59,8 @@ bool almostEqual(double x, double y) {
                          std::numeric_limits<double>::epsilon() * norm);
 }
 }  // namespace
+
+namespace arangodb::graph {
 
 /*
  * Class: Ball (internally used in WeightedTwoSidedEnumerator)
@@ -82,7 +81,8 @@ WeightedTwoSidedEnumerator<
       _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
       _graphOptions(options),
-      _diameter(-std::numeric_limits<double>::infinity()) {}
+      _diameter(-std::numeric_limits<double>::infinity()),
+      _haveSeenOtherSide(false) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -108,6 +108,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _queue.clear();
   _interior.reset();  // PathStore
   _diameter = -std::numeric_limits<double>::infinity();
+  _haveSeenOtherSide = false;
   _validator.reset();
 
   // Provider - Must be last one to be cleared(!)
@@ -288,11 +289,28 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         // TODO: maybe the pathStore could be asked whether a vertex has been
         // visited?
         if (other.hasBeenVisited(n)) {
-          other.matchResultsInShell(n, candidates, _validator);
+          // Need to validate this step, too:
+          ValidationResult res =
+              _validator.validatePathWithoutGlobalVertexUniqueness(n);
+          // Note that we must not fully enforce uniqueness here for the
+          // following reason: If vertex uniqueness is set to global,
+          // then we would burn that vertex (which belongs to the
+          // other side!), so that we can no longer reach it with a
+          // different path, which might have a smaller weight.
+          if (!(res.isFiltered() || res.isPruned())) {
+            _haveSeenOtherSide = true;
+            other.matchResultsInShell(n, candidates, _validator);
+          }
+        } else {
+          // If the other side has already visited the vertex, we do not
+          // have to put it on our queue. But if not, we must look at it
+          // later:
+          _queue.append(std::move(n));
         }
-        _queue.append(std::move(n));
       });
     }
+  } else {
+    _haveSeenOtherSide = true;
   }
 }
 
@@ -486,16 +504,17 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   _left.reset(source, 0);
 
-  // TODO: this is not ideal; here's the issue: If source == target there is no
-  // search to be done as there is only *at most* one shortest path between a
-  // vertex and itself: the path of length and weight 0. If the vertex does not
-  // fulfill the global vertex condition, there is none. So the global vertex
-  // condition has to be evaluated! This is why the _left ball is used here.
+  // TODO: this is not ideal; here's the issue: If source == target there is
+  // no search to be done as there is only *at most* one shortest path between
+  // a vertex and itself: the path of length and weight 0. If the vertex does
+  // not fulfill the global vertex condition, there is none. So the global
+  // vertex condition has to be evaluated! This is why the _left ball is used
+  // here.
   //
   // Admittedly, this choice is arbitrary: in our context a path is a sequence
   // of edges that does not repeat vertices. Otherwise this path search would
-  // have to return all cycles based at the source == target vertex. This can be
-  // implemented using a OneSidedEnumerator if ever requested.
+  // have to return all cycles based at the source == target vertex. This can
+  // be implemented using a OneSidedEnumerator if ever requested.
   if (source == target) {
     _singleton = true;
     _right.clear();
@@ -542,7 +561,8 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _right.buildPath(rightVertex, _resultPath);
       TRI_ASSERT(!_resultPath.isEmpty());
 
-      if (_options.getPathType() == PathType::Type::KShortestPaths) {
+      if (_options.getPathType() == PathType::Type::KShortestPaths ||
+          _emitWeight) {
         // Add weight attribute to edges
         _resultPath.toVelocyPack(
             result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
@@ -566,7 +586,8 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     _right.buildPath(rightVertex, _resultPath);
     TRI_ASSERT(!_resultPath.isEmpty());
 
-    if (_options.getPathType() == PathType::Type::KShortestPaths) {
+    if (_options.getPathType() == PathType::Type::KShortestPaths ||
+        _emitWeight) {
       // Add weight attribute to edges
       _resultPath.toVelocyPack(
           result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
@@ -889,7 +910,24 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::searchDone() const -> bool {
-  return (_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished();
+  if ((_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished()) {
+    return true;
+  }
+  if (_left.noPathLeft() && !_left.haveSeenOtherSide()) {
+    return true;
+  }
+  if (_right.noPathLeft() && !_right.haveSeenOtherSide()) {
+    // Special case for singleton (source == target), in this case
+    // we should indicate that there is something still coming. If
+    // we have already delivered the singleton, then the algorithm
+    // will be marked as finished anyway and we return above with
+    // true anyway.
+    if (_singleton) {
+      return false;
+    }
+    return true;
+  }
+  return false;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -924,93 +962,148 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   return stats;
 }
 
+//
+// The following template parameter instantiations happen:
+//
+//
+// Name                            Queue   Store   Prov    Valid
+//
+// # Weighted ShortestPath:
+// WShortestPath (single)          We      No      Si      Va<Gl,Pa>
+// WShortestPath (cluster)         We      No      Cl      Va<Gl,Pa>
+// TracedWShortestPath (single)    Tr<We>  Tr      Tr<Si>  Va<Tr,Gl,Pa>
+// TracedWShortestPath (cluster)   Tr<We>  Tr      Tr<Cl>  Va<Tr,Gl,Pa>
+//
+// # Weighted ShortestPath for Yen:
+// WShortestPath (yen, single)     We      No      Si      Ta<Va,Gl,Pa>
+// WShortestPath (yen, cluster)    We      No      Cl      Ta<Va,Gl,Pa>
+// TracedWShortestPath (yen, sin)  Tr<We>  Tr      Tr<Si>  Ta<Va<Tr,Gl,Pa>>
+// TracedWShortestPath (yen, clu)  Tr<We>  Tr      Tr<Cl>  Ta<Va<Tr,Gl,Pa>>
+//
+// # Weighted K-Shortest-Paths (legacy):
+// >WKShortestPath (single)        We      No      Si      Va<Pa,Pa>
+// >WKShortestPath (cluster)       We      No      Cl      Va<Pa,Pa>
+// >TracedWKShortestPath (single)  Tr<Fi>  Tr      Tr<Si>  Va<Tr,Pa,Pa>
+// >TracedWKShortestPath (cluster) Tr<Fi>  Tr      Tr<Cl>  Va<Tr,Pa,Pa>
+//
+// Where:
+//   Si/Cl    Single or Cluster provider
+//   No/Tr    Non-traced or traced
+//   Fi/We    Fifo-Queue or WeightedQueue (prio)
+//   Va/Ta    Path validator or Taboo validator (wrapping normal)
+//   No/Pa/Gl For validator: no uniqueness vs. path uniq. vs. global uniq.
+//
+
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+using SingleProvider = SingleServerProvider<SingleServerProviderStep>;
 
-template class ::arangodb::graph::WeightedTwoSidedEnumerator<
-    ::arangodb::graph::WeightedQueue<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>,
-    SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathValidator<
-        SingleServerProvider<SingleServerProviderStep>,
-        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-        EdgeUniquenessLevel::PATH>>;
+// WeightedTwoSidedEnumeratorWithProvider<SingleProvider>:
+template class WeightedTwoSidedEnumerator<
+    WeightedQueue<SingleServerProviderStep>,
+    PathStore<SingleServerProviderStep>, SingleProvider,
+    PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-template class ::arangodb::graph::WeightedTwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::WeightedQueue<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<
-            SingleServerProvider<SingleServerProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+// WeightedShortestPathEnumerator<SingleProvider>:
+template class WeightedTwoSidedEnumerator<
+    WeightedQueue<SingleServerProviderStep>,
+    PathStore<SingleServerProviderStep>, SingleProvider,
+    PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
-template class ::arangodb::graph::WeightedTwoSidedEnumerator<
-    ::arangodb::graph::WeightedQueue<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>,
-    SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathValidator<
-        SingleServerProvider<SingleServerProviderStep>,
-        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::GLOBAL,
-        EdgeUniquenessLevel::PATH>>;
+// WeightedShortestPathEnumeratorForYen<SingleProvider>:
+template class WeightedTwoSidedEnumerator<
+    WeightedQueue<SingleServerProviderStep>,
+    PathStore<SingleServerProviderStep>, SingleProvider,
+    PathValidatorTabooWrapper<PathValidator<
+        SingleProvider, PathStore<SingleServerProviderStep>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
-template class ::arangodb::graph::WeightedTwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::WeightedQueue<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<
-            SingleServerProvider<SingleServerProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+// TracedWeightedTwoSidedEnumeratorWithProvider<SingleProvider>:
+template class WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
+    PathStoreTracer<PathStore<SingleServerProviderStep>>,
+    ProviderTracer<SingleProvider>,
+    PathValidatorTracer<
+        PathValidator<ProviderTracer<SingleProvider>,
+                      PathStoreTracer<PathStore<SingleServerProviderStep>>,
+                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+
+// TracedWeightedShortestPathEnumerator<SingleProvider>:
+template class WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
+    PathStoreTracer<PathStore<SingleServerProviderStep>>,
+    ProviderTracer<SingleProvider>,
+    PathValidatorTracer<PathValidator<
+        ProviderTracer<SingleProvider>,
+        PathStoreTracer<PathStore<SingleServerProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+
+// TracedWeightedShortestPathEnumeratorForYen<SingleProvider>:
+template class WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
+    PathStoreTracer<PathStore<SingleServerProviderStep>>,
+    ProviderTracer<SingleProvider>,
+    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
+        ProviderTracer<SingleProvider>,
+        PathStoreTracer<PathStore<SingleServerProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
 
 /* ClusterProvider Section */
 
-template class ::arangodb::graph::WeightedTwoSidedEnumerator<
-    ::arangodb::graph::WeightedQueue<::arangodb::graph::ClusterProviderStep>,
-    ::arangodb::graph::PathStore<ClusterProviderStep>,
-    ClusterProvider<ClusterProviderStep>,
-    ::arangodb::graph::PathValidator<
-        ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
-template class ::arangodb::graph::WeightedTwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<::arangodb::graph::WeightedQueue<
-        ::arangodb::graph::ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProviderStep>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+// WeightedTwoSidedEnumeratorWithProvider<ClustProvider>:
+template class WeightedTwoSidedEnumerator<
+    WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    ClustProvider,
+    PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-template class ::arangodb::graph::WeightedTwoSidedEnumerator<
-    ::arangodb::graph::WeightedQueue<::arangodb::graph::ClusterProviderStep>,
-    ::arangodb::graph::PathStore<ClusterProviderStep>,
-    ClusterProvider<ClusterProviderStep>,
-    ::arangodb::graph::PathValidator<
-        ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+// WeightedShortestPathEnumerator<ClustProvider>:
+template class WeightedTwoSidedEnumerator<
+    WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    ClustProvider,
+    PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
-template class ::arangodb::graph::WeightedTwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<::arangodb::graph::WeightedQueue<
-        ::arangodb::graph::ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProviderStep>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+// WeightedShortestPathEnumeratorForYen<ClustProvider>:
+template class WeightedTwoSidedEnumerator<
+    WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    ClustProvider,
+    PathValidatorTabooWrapper<PathValidator<
+        ClustProvider, PathStore<ClusterProviderStep>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+
+// TracedWeightedTwoSidedEnumeratorWithProvider<ClustProvider>:
+template class WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ClusterProviderStep>>,
+    ProviderTracer<ClustProvider>,
+    PathValidatorTracer<
+        PathValidator<ProviderTracer<ClustProvider>,
+                      PathStoreTracer<PathStore<ClusterProviderStep>>,
+                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+
+// TracedWeightedShortestPathEnumerator<ClustProvider>:
+template class WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ClusterProviderStep>>,
+    ProviderTracer<ClustProvider>,
+    PathValidatorTracer<PathValidator<
+        ProviderTracer<ClustProvider>,
+        PathStoreTracer<PathStore<ClusterProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+
+// TracedWeightedShortestPathEnumeratorForYen<ClustProvider>:
+template class WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ClusterProviderStep>>,
+    ProviderTracer<ClustProvider>,
+    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
+        ProviderTracer<ClustProvider>,
+        PathStoreTracer<PathStore<ClusterProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
+
+}  // namespace arangodb::graph
