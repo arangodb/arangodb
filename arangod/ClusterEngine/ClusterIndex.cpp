@@ -102,7 +102,6 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
     } else if (_indexType == TRI_IDX_TYPE_VECTOR_INDEX) {
-      LOG_DEVEL << "CREATING VECTOR CLUSTER INDEX";
       velocypack::deserialize(info.get("params"), _vectorIndexDefinition);
       TRI_ASSERT(_vectorIndexDefinition != nullptr);
     }

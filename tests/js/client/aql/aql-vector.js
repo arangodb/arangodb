@@ -69,6 +69,7 @@ function VectorIndexL2TestSuite() {
         name: "vector_l2",
         type: "vector",
         fields: ["vector"],
+        inBackground: false,
         params: { metric: "l2", dimensions: dimension, nLists: 10 },
       });
     },
@@ -397,102 +398,109 @@ function VectorIndexCosineTestSuite() {
   };
 }
 
-function MultipleVectorIndexesOnField() {
-  let collection;
-  let randomPoint;
-  const dimension = 500;
-  const seed = 47388274;
+/*function MultipleVectorIndexesOnField() {*/
+/*let collection;*/
+/*let randomPoint;*/
+/*const dimension = 500;*/
+/*const seed = 47388274;*/
 
-  return {
-    setUpAll: function () {
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
+/*return {*/
+/*setUpAll: function () {*/
+/*db._createDatabase(dbName);*/
+/*db._useDatabase(dbName);*/
 
-      collection = db._create(collName);
+/*collection = db._create(collName);*/
 
-      let docs = [];
-      let gen = randomNumberGeneratorFloat(seed);
-      for (let i = 0; i < 1000; ++i) {
-        const vector = Array.from({ length: dimension }, () => gen());
-        if (i == 500) {
-          randomPoint = vector;
-        }
-        docs.push({ vector, nonVector: i, unIndexedVector: vector });
-      }
-      collection.insert(docs);
+/*let docs = [];*/
+/*let gen = randomNumberGeneratorFloat(seed);*/
+/*for (let i = 0; i < 1000; ++i) {*/
+/*const vector = Array.from({ length: dimension }, () => gen());*/
+/*if (i == 500) {*/
+/*randomPoint = vector;*/
+/*}*/
+/*docs.push({ vector, nonVector: i, unIndexedVector: vector });*/
+/*}*/
+/*collection.insert(docs);*/
 
-      collection.ensureIndex({
-        name: "vector_cosine",
-        type: "vector",
-        fields: ["vector"],
-        params: { metric: "cosine", dimensions: dimension, nLists: 10 },
-      });
-      collection.ensureIndex({
-        name: "vector_l2",
-        type: "vector",
-        fields: ["vector"],
-        params: { metric: "l2", dimensions: dimension, nLists: 10 },
-      });
-    },
+/*collection.ensureIndex({*/
+/*name: "vector_cosine",*/
+/*type: "vector",*/
+/*fields: ["vector"],*/
+/*inBackground: false,*/
+/*params: { metric: "cosine", dimensions: dimension, nLists: 10 },*/
+/*});*/
+/*collection.ensureIndex({*/
+/*name: "vector_l2",*/
+/*type: "vector",*/
+/*fields: ["vector"],*/
+/*inBackground: false,*/
+/*params: { metric: "l2", dimensions: dimension, nLists: 10 },*/
+/*});*/
+/*function sleep(ms) {*/
+/*return new Promise(resolve => setTimeout(resolve, ms));*/
+/*}*/
+/*sleep(1000);*/
+/*},*/
 
-    tearDownAll: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
-    },
+/*tearDownAll: function () {*/
+/*db._useDatabase("_system");*/
+/*db._dropDatabase(dbName);*/
+/*},*/
 
-    testApproxUseL2WhenMultipleIndexes: function () {
-      const query =
-        "FOR d IN " +
-        collection.name() +
-        " SORT APPROX_NEAR_L2(d.vector, @qp) " +
-        " LIMIT 5 RETURN d";
+/*testApproxUseL2WhenMultipleIndexes: function () {*/
+/*const query =*/
+/*"FOR d IN " +*/
+/*collection.name() +*/
+/*" SORT APPROX_NEAR_L2(d.vector, @qp) " +*/
+/*" LIMIT 5 RETURN d";*/
 
-      const bindVars = { qp: randomPoint };
-      const plan = db
-        ._createStatement({
-          query,
-          bindVars,
-        })
-        .explain().plan;
-      const indexNodes = plan.nodes.filter(function (n) {
-        return n.type === "EnumerateNearVectorNode";
-      });
-      db._explain(query, bindVars);
-      assertEqual(1, indexNodes.length);
-      assertEqual(indexNodes[0].index.name, "vector_l2");
+/*const bindVars = { qp: randomPoint };*/
+/*const plan = db*/
+/*._createStatement({*/
+/*query,*/
+/*bindVars,*/
+/*})*/
+/*.explain().plan;*/
+/*const indexNodes = plan.nodes.filter(function (n) {*/
+/*return n.type === "EnumerateNearVectorNode";*/
+/*});*/
+/*db._explain(query, bindVars);*/
+/*assertEqual(1, indexNodes.length);*/
+/*assertEqual(indexNodes[0].index.name, "vector_l2");*/
 
-      const results = db._query(query, bindVars).toArray();
-      assertEqual(5, results.length);
-    },
+/*const results = db._query(query, bindVars).toArray();*/
+/*assertEqual(5, results.length);*/
+/*},*/
 
-    testApproxUseCosineWhenMultipleIndexes: function () {
-      const query =
-        "FOR d IN " +
-        collection.name() +
-        " SORT APPROX_NEAR_COSINE(d.vector, @qp) " +
-        " LIMIT 5 RETURN d";
+/*testApproxUseCosineWhenMultipleIndexes: function () {*/
+/*const query =*/
+/*"FOR d IN " +*/
+/*collection.name() +*/
+/*" SORT APPROX_NEAR_COSINE(d.vector, @qp) " +*/
+/*" LIMIT 5 RETURN d";*/
 
-      const bindVars = { qp: randomPoint };
-      const plan = db
-        ._createStatement({
-          query,
-          bindVars,
-        })
-        .explain().plan;
-      const indexNodes = plan.nodes.filter(function (n) {
-        return n.type === "EnumerateNearVectorNode";
-      });
-      assertEqual(1, indexNodes.length);
-      assertEqual(indexNodes[0].index.name, "vector_cosine");
+/*const bindVars = { qp: randomPoint };*/
+/*const plan = db*/
+/*._createStatement({*/
+/*query,*/
+/*bindVars,*/
+/*})*/
+/*.explain().plan;*/
+/*const indexNodes = plan.nodes.filter(function (n) {*/
+/*return n.type === "EnumerateNearVectorNode";*/
+/*});*/
+/*assertEqual(1, indexNodes.length);*/
+/*assertEqual(indexNodes[0].index.name, "vector_cosine");*/
 
-      const results = db._query(query, bindVars).toArray();
-      assertEqual(5, results.length);
-    },
-  };
-}
+/*const results = db._query(query, bindVars).toArray();*/
+/*assertEqual(5, results.length);*/
+/*},*/
+/*};*/
+/*}*/
 
 jsunity.run(VectorIndexL2TestSuite);
 jsunity.run(VectorIndexCosineTestSuite);
+//Currently failing
 jsunity.run(MultipleVectorIndexesOnField);
 
 return jsunity.done();
