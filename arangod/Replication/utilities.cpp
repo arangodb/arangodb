@@ -598,6 +598,8 @@ Result parseResponse(velocypack::Builder& builder,
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
     }
     // We need to copy:
+    builder.clear();  // Note that velocypack::Parser by default also
+                      // clears the builder!
     builder.add(VPackSlice{reinterpret_cast<uint8_t const*>(data.begin())});
     return Result();
   }
