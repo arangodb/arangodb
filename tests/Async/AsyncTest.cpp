@@ -72,7 +72,7 @@ struct ConcurrentNoWait {
             }
             handle.resume();
           }
-          arangodb::coroutine::get_thread_registry().garbage_collect();
+          arangodb::async_registry::get_thread_registry().garbage_collect();
         }) {}
 
   auto stop() -> void {
@@ -136,7 +136,7 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
   void SetUp() override { InstanceCounterValue::instanceCounter = 0; }
 
   void TearDown() override {
-    arangodb::coroutine::get_thread_registry().garbage_collect();
+    arangodb::async_registry::get_thread_registry().garbage_collect();
     wait.stop();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
   }
