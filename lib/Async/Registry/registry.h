@@ -21,7 +21,7 @@ struct Registry {
    */
   auto add_thread() -> std::shared_ptr<ThreadRegistry> {
     auto guard = std::lock_guard(mutex);
-    registries.push_back(std::make_shared<ThreadRegistry>());
+    registries.push_back(ThreadRegistry::make());
     return registries.back();
   }
 
