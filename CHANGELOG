@@ -1,6 +1,9 @@
 devel
 -----
 
+* In replication use vpack as transport format throughout, so that even
+  large and strangely encoded numbers are transported faithfully.
+
 * Fix blockage in RestMetricsHandlers if there are resigned leaders. We use 
   getResponsibleServerNoDelay there to decide if metrics should be exposed.
 
