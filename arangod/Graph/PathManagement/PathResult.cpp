@@ -56,6 +56,7 @@ auto PathResult<ProviderType, Step>::clear() -> void {
   _numEdgesFromSourceProvider = 0;
   _vertices.clear();
   _edges.clear();
+  _weights.clear();
   _pathWeight = 0.0;
 }
 
@@ -73,15 +74,18 @@ auto PathResult<ProviderType, Step>::prependVertex(typename Step::Vertex v)
 }
 
 template<class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::appendEdge(typename Step::Edge e) -> void {
+auto PathResult<ProviderType, Step>::appendEdge(typename Step::Edge e,
+                                                double weight) -> void {
   _edges.push_back(std::move(e));
+  _weights.push_back(weight);
 }
 
 template<class ProviderType, class Step>
-auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e)
-    -> void {
+auto PathResult<ProviderType, Step>::prependEdge(typename Step::Edge e,
+                                                 double weight) -> void {
   _numEdgesFromSourceProvider++;
   _edges.insert(_edges.begin(), std::move(e));
+  _weights.insert(_weights.begin(), weight);
 }
 
 template<class ProviderType, class Step>
@@ -163,6 +167,42 @@ auto PathResult<ProviderType, Step>::lastEdgeToVelocyPack(
 template<class ProviderType, class Step>
 auto PathResult<ProviderType, Step>::isEmpty() const -> bool {
   return _vertices.empty();
+}
+
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::getMemoryUsage() const -> size_t {
+  size_t mem = 0;
+  mem += sizeof(PathResult<ProviderType, Step>);
+  mem += sizeof(typename Step::Vertex) * _vertices.size();
+  mem += sizeof(typename Step::Edge) * _edges.size();
+  mem += sizeof(double) * _weights.size();
+  return mem;
+}
+
+template<class ProviderType, class Step>
+auto PathResult<ProviderType, Step>::compare(
+    PathResult<ProviderType, Step> const& other) -> std::strong_ordering {
+  if (_pathWeight > other._pathWeight) {
+    // The ">" here is intentional! We want descending weight!
+    return std::strong_ordering::less;
+  }
+  if (_pathWeight < other._pathWeight) {
+    return std::strong_ordering::greater;
+  }
+  // Now let's take the len-lexicographic ordering of the edges. We do not
+  // have to consider the vertices, since if the edges are equal, then
+  // their end vertices are equal:
+  if (_edges.size() != other._edges.size()) {
+    return _edges.size() <=> other._edges.size();
+  }
+  for (size_t i = 0; i < _edges.size(); ++i) {
+    auto c = _edges[i].getID().compare(other._edges[i].getID());
+    if (c != 0) {
+      return c < 0 ? std::strong_ordering::less : std::strong_ordering::greater;
+    }
+  }
+  // Equality:
+  return std::strong_ordering::equal;
 }
 
 /* SingleServerProvider Section */
