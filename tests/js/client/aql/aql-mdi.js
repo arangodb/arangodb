@@ -554,7 +554,6 @@ function optimizerRuleMdi2dIndexTestSuite() {
       for (let i = 0; i < queries.length; ++i) {
         const query = queries[i];
 
-        db._explain({ query: query.query, bindVars: query.bindVars });
         const explainRes = db
           ._createStatement({ query: query.query, bindVars: query.bindVars })
           .explain();
@@ -591,7 +590,6 @@ function optimizerRuleMdi2dIndexTestSuite() {
       for (let i = 0; i < queries.length; ++i) {
         const query = queries[i];
 
-        db._explain({ query: query.query, bindVars: query.bindVars });
         const explainRes = db
           ._createStatement({ query: query.query, bindVars: query.bindVars })
           .explain();
