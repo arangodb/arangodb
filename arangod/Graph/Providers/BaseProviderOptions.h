@@ -263,7 +263,7 @@ struct ClusterBaseProviderOptions {
   // For ShortestPath computations and consequently Yen computations, this is
   // not true and hurts performance. Therefore, for these cases it is possible
   // to set this flag to `false` to retain cached data across calls to `clear`.
-  bool _clearEdgeCacheOnClear;
+  bool _clearEdgeCacheOnClear = true;
 };
 
 }  // namespace graph

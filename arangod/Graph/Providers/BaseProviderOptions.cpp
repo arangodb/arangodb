@@ -175,8 +175,7 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
       _backward(backward),
       _produceVertices(produceVertices),
       _expressionContext(nullptr),
-      _weightCallback(std::nullopt),
-      _clearEdgeCacheOnClear(true) {
+      _weightCallback(std::nullopt) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
