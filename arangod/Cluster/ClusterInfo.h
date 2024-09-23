@@ -780,10 +780,17 @@ class ClusterInfo final {
   /// If it is not found in the cache, the cache is reloaded once, if
   /// it is still not there a pointer to an empty vector is returned as
   /// an error.
+  /// The "NoDelay" variant is guaranteed to not produce a noticeable delay,
+  /// however, it may return an empty result, if currently there is no
+  /// known responsible server. This is often good enough.
+  /// Note that this can happen during the transition of leadership from
+  /// one server to another.
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<ManagedVector<pmr::ServerID> const> getResponsibleServer(
       ShardID shardID);
+  std::shared_ptr<ManagedVector<pmr::ServerID> const>
+  getResponsibleServerNoDelay(ShardID shardID);
 
   futures::Future<ResultT<ServerID>> getLeaderForShard(ShardID shard);
 
@@ -1305,9 +1312,10 @@ namespace cluster {
 
 // Note that while a network error will just return a failed `ResultT`, there
 // are still possible exceptions.
-futures::Future<ResultT<uint64_t>> fetchPlanVersion(network::Timeout timeout);
-futures::Future<ResultT<uint64_t>> fetchCurrentVersion(
-    network::Timeout timeout);
+futures::Future<ResultT<uint64_t>> fetchPlanVersion(network::Timeout timeout,
+                                                    bool skipScheduler);
+futures::Future<ResultT<uint64_t>> fetchCurrentVersion(network::Timeout timeout,
+                                                       bool skipScheduler);
 
 }  // namespace cluster
 }  // namespace arangodb

@@ -18,45 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Heiko Kernbach
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Graph/PathType.h"
-
-#include <numeric>
-#include <cstddef>
-
 namespace arangodb {
 namespace graph {
 
-struct TwoSidedEnumeratorOptions {
- public:
-  TwoSidedEnumeratorOptions(size_t minDepth, size_t maxDepth,
-                            PathType::Type pathType);
+using VertexRef = arangodb::velocypack::HashedStringRef;
+using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                                std::equal_to<VertexRef>>;
 
-  ~TwoSidedEnumeratorOptions();
-
-  void setMinDepth(size_t min);
-  void setMaxDepth(size_t max);
-  [[nodiscard]] size_t getMinDepth() const;
-  [[nodiscard]] size_t getMaxDepth() const;
-  [[nodiscard]] PathType::Type getPathType() const;
-  [[nodiscard]] bool getStopAtFirstDepth() const;
-  [[nodiscard]] bool onlyProduceOnePath() const;
-
-  void setStopAtFirstDepth(bool stopAtFirstDepth);
-  void setOnlyProduceOnePath(bool onlyProduceOnePath);
-  void setPathType(PathType::Type pathType) { _pathType = pathType; }
-
- private:
-  size_t _minDepth;
-  size_t _maxDepth;
-  bool _stopAtFirstDepth{false};
-  bool _onlyProduceOnePath{false};
-  PathType::Type _pathType;
+template<typename T>
+concept HasForbidden = requires(T t) {
+  {
+    t.setForbiddenVertices(std::make_shared<VertexSet>())
+    } -> std::same_as<void>;
 };
+
 }  // namespace graph
 }  // namespace arangodb
