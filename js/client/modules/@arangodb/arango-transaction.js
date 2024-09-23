@@ -208,7 +208,6 @@ ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, opt
   }
   else {
     if (typeof query !== 'string' || query === undefined || query === '') {
-    print(query)
     throw 'need a valid query string';
     }
     if (options === undefined && cursorOptions !== undefined) {
