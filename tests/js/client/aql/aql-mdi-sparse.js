@@ -203,6 +203,29 @@ function multiDimSparseTestSuite() {
         assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
     },
+
+    testQuerySparseIndex: function () {
+      const c = db._create(collectionName);
+      const idx = c.ensureIndex({
+        type: 'mdi',
+        name: indexName,
+        fields: ["x", "y"],
+        storedValues: ["foo"],
+        sparse: true,
+        fieldValueTypes: 'double',
+      });
+      assertTrue(idx.sparse);
+
+      const query = `
+        FOR doc IN ${collectionName}
+          FILTER doc.x < 10 AND doc.y > 30
+          RETURN doc.foo
+      `;
+
+      const res = db._createStatement({ query }).explain().plan.nodes.filter(n => n.type === "IndexNode");
+      const [indexNode] = res;
+      assertTrue(indexNode.indexCoversOutProjections);
+    }
   };
 }
 

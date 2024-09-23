@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix a bug when matching the condition for MDI in sparse mode that caused
+  the optimizer to be overly restrictive.
+
 * Fix blockage in RestMetricsHandlers if there are resigned leaders. We use 
   getResponsibleServerNoDelay there to decide if metrics should be exposed.
 

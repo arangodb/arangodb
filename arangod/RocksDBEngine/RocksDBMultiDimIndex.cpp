@@ -475,13 +475,6 @@ bool checkIsBoundForAttribute(
     aql::AstNode* access, aql::AstNode* other, bool reverse,
     std::unordered_map<size_t, arangodb::mdi::ExpressionBounds>&
         extractedBounds) {
-  // TODO only used in sparse case
-  containers::FlatHashSet<std::string> nonNullAttributes;
-  if (!index->canUseConditionPart(access, other, op, reference,
-                                  nonNullAttributes, false)) {
-    return false;
-  }
-
   std::pair<aql::Variable const*, std::vector<basics::AttributeName>>
       attributeData;
   if (!access->isAttributeAccessForVariable(attributeData) ||
