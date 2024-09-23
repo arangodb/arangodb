@@ -174,6 +174,8 @@ std::string const StaticStrings::Parallelism("parallelism");
 std::string const StaticStrings::ForceOneShardAttributeValue(
     "forceOneShardAttributeValue");
 std::string const StaticStrings::JoinStrategyType("joinStrategyType");
+std::string const StaticStrings::Algorithm("algorithm");
+std::string const StaticStrings::Yen("yen");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");

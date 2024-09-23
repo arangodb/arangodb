@@ -1670,7 +1670,7 @@ void SynchronizeShard::setState(ActionState state) {
     auto snooze = std::chrono::milliseconds(100);
     while (!_feature.server().isStopping() &&
            std::chrono::steady_clock::now() < stoppage) {
-      cluster::fetchCurrentVersion(0.1 * timeout)
+      cluster::fetchCurrentVersion(0.1 * timeout, true /* skipScheduler */)
           .thenValue([&v](auto&& res) {
             // we need to check if res is ok() in order to not trigger a
             // bad_optional_access exception here
