@@ -175,8 +175,7 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
       _backward(backward),
       _produceVertices(produceVertices),
       _expressionContext(nullptr),
-      _weightCallback(std::nullopt),
-      _clearEdgeCacheOnClear(true) {
+      _weightCallback(std::nullopt) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
@@ -196,8 +195,7 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
       _filterConditionVariables(filterConditionVariables),
       _weightCallback(std::nullopt),
       _availableDepthsSpecificConditions(
-          std::move(availableDepthsSpecificConditions)),
-      _clearEdgeCacheOnClear(true) {
+          std::move(availableDepthsSpecificConditions)) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
