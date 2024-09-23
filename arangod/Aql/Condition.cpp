@@ -1005,7 +1005,6 @@ bool canInRangeBeRemoved(auto const* inRangeNode, auto const* otherAndNode,
                          Index const* index) {
   for (std::size_t i{0}; i < otherAndNode->numMembers(); ++i) {
     auto const* operand = otherAndNode->getMemberUnchecked(i);
-    LOG_DEVEL << "CHECKING " << operand->toString();
     if (operand->type != NODE_TYPE_FCALL ||
         aql::functions::getFunctionName(*operand) != "IN_RANGE") {
       continue;
@@ -1015,18 +1014,25 @@ bool canInRangeBeRemoved(auto const* inRangeNode, auto const* otherAndNode,
     TRI_ASSERT(operandArrayNode->numMembers() == 5);
 
     auto const* firstElemInRangeFunction = operandArrayNode->getMember(0);
+
+    bool isFieldCoveredByIndex{false};
     std::pair<Variable const*, std::vector<basics::AttributeName>> result;
-    if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
-        !firstElemInRangeFunction->isAttributeAccessForVariable(
-            result, isFromTraverser) ||
-        result.first != variable ||
-        !basics::AttributeName::isIdentical(result.second, index->fields()[0],
-                                            false)) {
+    for (auto const& elem : index->fields()) {
+      if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
+          !firstElemInRangeFunction->isAttributeAccessForVariable(
+              result, isFromTraverser) ||
+          result.first != variable ||
+          !basics::AttributeName::isIdentical(result.second, elem, false)) {
+        ::clearAttributeAccess(result);
+        isFieldCoveredByIndex = true;
+        break;
+      }
       ::clearAttributeAccess(result);
-      LOG_DEVEL << __FUNCTION__ << ": " << __LINE__;
-      continue;
     }
-    ::clearAttributeAccess(result);
+
+    if (!isFieldCoveredByIndex) {
+      return false;
+    }
 
     auto const* inRangeArrayNode = inRangeNode->getMember(0);
     if (areInRangeCallsIdentical(inRangeArrayNode, operandArrayNode,
@@ -1034,6 +1040,7 @@ bool canInRangeBeRemoved(auto const* inRangeNode, auto const* otherAndNode,
       return true;
     }
   }
+
   return false;
 }
 
@@ -1125,11 +1132,6 @@ void Condition::collectOverlappingMembers(
 
     if (operand->type == NODE_TYPE_FCALL &&
         functions::getFunctionName(*operand) == "IN_RANGE") {
-      LOG_DEVEL << "Calling canInRangeBeRemoved for " << operand->toString()
-                << " where andNode is: " << andNode->toString()
-                << " and otherAndNode is: " << otherAndNode->toString() << " "
-                << canInRangeBeRemoved(andNode, otherAndNode, isFromTraverser,
-                                       variable, index);
       if (canInRangeBeRemoved(operand, otherAndNode, isFromTraverser, variable,
                               index)) {
         toRemove.emplace(i);
