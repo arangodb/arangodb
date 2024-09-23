@@ -106,7 +106,9 @@ function makeDataWrapper (options) {
           if (count === 2) {
             ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
           }
-
+          if (count === 2) {
+            this.instanceManager.upgradeCycleInstance();
+          }
           if (count === 3) {
             this.instanceManager.arangods.forEach(function (oneInstance, i) {
               if (oneInstance.isRole(inst.instanceRole.dbServer)) {
@@ -115,6 +117,7 @@ function makeDataWrapper (options) {
             });
             print('stopping dbserver ' + stoppedDbServerInstance.name +
                   ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
+            this.instanceManager.resignLeaderShip(stoppedDbServerInstance);
             stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
             stoppedDbServerInstance.waitForExit();
             moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
