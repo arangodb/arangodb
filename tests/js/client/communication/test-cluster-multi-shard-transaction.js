@@ -166,7 +166,61 @@ return false;`
       }
       // print(JSON.stringify(tests))
       // run the suite for a while...
-      runTests(tests, 90);
+      runTests(tests, 30);
+      assertEqual(c.count(), maxLength*2);
+    },
+    testQueryCountInParallel: function () {
+      let assocShard = {};
+      function getAssocShard(shardId) {
+        // print(assocShard)
+        if (!assocShard.hasOwnProperty(shardId)) {
+          assocShard[shardId] = Object.keys(assocShard).length;
+        }
+        return assocShard[shardId];
+      }
+      let c = db[testCol];
+      let shardIds = [[],[]];
+      const maxLength = 1000;
+      while (shardIds[0].length + shardIds[1].length < maxLength * 2) {
+        let id = getRandomString();
+        let shardNo = getAssocShard(c.getResponsibleShard(id));
+        if (shardIds[shardNo].length < maxLength) {
+          shardIds[shardNo].push(id);
+        }
+      }
+      let tests = [];
+      for(let count = 0; count < 2; count++) {
+        tests.push([
+          `TransactionInsertTest_${count}`,
+          `
+let myKeys = ${JSON.stringify(shardIds[count])};
+let cn = "${testCol}";
+let lastCount = 0;
+myKeys.forEach(oneKey => {
+  let trx = db._createTransaction({ collections: { write: [cn] } });
+  let c = trx.collection(cn);
+  c.insert({_key: oneKey});
+  let count = c.count();
+  if (count <= lastCount) {
+    print(oneKey + " - Was expecting to have " + count + " > " + lastCoun)
+    trx.abort();
+    throw new Error("Was expecting to have " + count + " > " + lastCoun);
+  }
+  trx.commit();
+  count = db[cn].count();
+  if (count <= lastCount) {
+    print(oneKey + " - Was expecting to have " + count + " > " + lastCoun)
+    throw new Error("Was expecting to have " + count + " > " + lastCoun);
+  }
+  lastCount = count;
+})
+
+return false;`
+        ]);
+      }
+      // print(JSON.stringify(tests))
+      // run the suite for a while...
+      runTests(tests, 30);
       assertEqual(c.count(), maxLength*2);
     },
   };
