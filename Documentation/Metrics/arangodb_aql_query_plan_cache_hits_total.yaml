@@ -1,5 +1,5 @@
 name: arangodb_aql_query_plan_cache_hits_total
-introducedIn: "3.12.2"
+introducedIn: "3.12.3"
 help: |
   Total number of lookup hits in the AQL query plan cache.
 unit: number
