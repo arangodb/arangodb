@@ -33,10 +33,10 @@ using namespace arangodb::async_registry;
 
 namespace {
 
-struct MyTestPromise : PromiseInList {
+struct MyTestPromise : Promise {
   MyTestPromise(uint64_t id,
                 std::source_location loc = std::source_location::current())
-      : PromiseInList(loc), id{id} {}
+      : Promise(loc), id{id} {}
   auto destroy() noexcept -> void override { destroyed = true; }
   bool destroyed = false;
   uint64_t id;
@@ -45,7 +45,7 @@ struct MyTestPromise : PromiseInList {
 auto all_ids(std::shared_ptr<ThreadRegistry> registry)
     -> std::vector<uint64_t> {
   std::vector<uint64_t> ids;
-  registry->for_promise([&](PromiseInList* promise) {
+  registry->for_promise([&](Promise* promise) {
     ids.push_back(dynamic_cast<MyTestPromise*>(promise)->id);
   });
   return ids;
@@ -88,7 +88,7 @@ TEST_F(CoroutineThreadRegistryTest, iterates_over_all_promises) {
   registry->add(&second_promise);
   registry->add(&third_promise);
   std::vector<uint64_t> promise_ids;
-  registry->for_promise([&](PromiseInList* promise) {
+  registry->for_promise([&](Promise* promise) {
     promise_ids.push_back(dynamic_cast<MyTestPromise*>(promise)->id);
   });
   EXPECT_EQ(promise_ids,
@@ -114,7 +114,7 @@ TEST_F(CoroutineThreadRegistryTest,
 
   std::thread([&]() {
     std::vector<uint64_t> promise_ids;
-    registry->for_promise([&](PromiseInList* promise) {
+    registry->for_promise([&](Promise* promise) {
       promise_ids.push_back(dynamic_cast<MyTestPromise*>(promise)->id);
     });
     EXPECT_EQ(promise_ids,

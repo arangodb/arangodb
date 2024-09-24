@@ -31,10 +31,10 @@ using namespace arangodb::async_registry;
 
 namespace {
 
-struct MyTestPromise : PromiseInList {
+struct MyTestPromise : Promise {
   MyTestPromise(uint64_t id,
                 std::source_location loc = std::source_location::current())
-      : PromiseInList(loc), id{id} {}
+      : Promise(loc), id{id} {}
   auto destroy() noexcept -> void override { destroyed = true; }
   bool destroyed = false;
   uint64_t id;
@@ -42,7 +42,7 @@ struct MyTestPromise : PromiseInList {
 
 auto all_ids(Registry& registry) -> std::vector<uint64_t> {
   std::vector<uint64_t> ids;
-  registry.for_promise([&](PromiseInList* promise) {
+  registry.for_promise([&](Promise* promise) {
     ids.push_back(dynamic_cast<MyTestPromise*>(promise)->id);
   });
   return ids;
