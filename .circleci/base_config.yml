@@ -603,15 +603,6 @@ jobs:
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
             #git checkout circleci
-      - when:
-          condition:
-            not:
-              equal: [ << pipeline.parameters.sanitizer >>, ""]
-          steps:
-            - run:
-                name: Symbolizer server
-                command: cd /home/circleci/project/work/ArangoDB; ./utils/llvm-symbolizer-server.py
-                background: true
       - run:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
