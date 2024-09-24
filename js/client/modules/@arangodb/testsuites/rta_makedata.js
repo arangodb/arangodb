@@ -104,6 +104,9 @@ function makeDataWrapper (options) {
         count += 1;
         if (this.options.cluster) {
           if (count === 2) {
+            ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
+          }
+          if (count === 2) {
             try {
               this.instanceManager.upgradeCycleInstance();
             } catch(e) {
@@ -115,9 +118,6 @@ function makeDataWrapper (options) {
                 'duration': 0.0
               };
             }
-          }
-          if (count === 2) {
-            ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
           }
           if (count === 3) {
             this.instanceManager.arangods.forEach(function (oneInstance, i) {
