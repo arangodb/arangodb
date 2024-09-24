@@ -29,6 +29,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
+#include <velocypack/Validator.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
@@ -533,7 +534,8 @@ Result LeaderInfo::getState(replutils::Connection& connection,
 }
 
 std::unordered_map<std::string, std::string> createHeaders() {
-  return {{StaticStrings::ClusterCommSource, ServerState::instance()->getId()}};
+  return {{StaticStrings::ClusterCommSource, ServerState::instance()->getId()},
+          {StaticStrings::Accept, StaticStrings::MimeTypeVPack}};
 }
 
 bool hasFailed(httpclient::SimpleHttpResult* response) {
@@ -572,9 +574,36 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
                     response->getBody().toString());
 }
 
+bool isVelocyPack(httpclient::SimpleHttpResult const& response) {
+  bool found = false;
+  std::string const& cType =
+      response.getHeaderField(StaticStrings::ContentTypeHeader, found);
+  return found && cType == StaticStrings::MimeTypeVPack;
+}
+
 /// @brief parse a velocypack response
 Result parseResponse(velocypack::Builder& builder,
                      httpclient::SimpleHttpResult const* response) {
+  if (isVelocyPack(*response)) {
+    basics::StringBuffer const& data = response->getBody();
+    VPackOptions validationOptions =
+        basics::VelocyPackHelper::strictRequestValidationOptions;
+    validationOptions.disallowCustom = false;
+    VPackValidator validator(&validationOptions);
+    try {
+      validator.validate(data.begin(), data.length());
+    } catch (VPackException const& e) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, e.what());
+    } catch (...) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
+    }
+    // We need to copy:
+    builder.clear();  // Note that velocypack::Parser by default also
+                      // clears the builder!
+    builder.add(VPackSlice{reinterpret_cast<uint8_t const*>(data.begin())});
+    return Result();
+  }
+  // Otherwise we assume it is JSON:
   try {
     velocypack::Parser parser(builder);
     parser.parse(response->getBody().begin(), response->getBody().length());

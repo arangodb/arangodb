@@ -365,7 +365,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
       ++_stats.numTailingRequests;
-      response.reset(client->request(rest::RequestType::GET, url, nullptr, 0));
+      auto headers = replutils::createHeaders();
+      response.reset(
+          client->request(rest::RequestType::GET, url, nullptr, 0, headers));
     });
 
     _stats.waitedForTailing += TRI_microtime() - start;
