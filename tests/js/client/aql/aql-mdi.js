@@ -549,6 +549,8 @@ function optimizerRuleMdi2dIndexTestSuite() {
       const queries = [
         aql`FOR d IN ${col} FILTER IN_RANGE(d.x, 0, 1, false, true) AND 0 <= d.y AND d.y <= 5 RETURN d.x`,
         aql`FOR d IN ${col} FILTER 0 <= d.y AND d.y <= 5 AND IN_RANGE(d.x, 0, 1, false, true) RETURN d.x`,
+        aql`FOR d IN ${col} FILTER IN_RANGE(d.y, 0, 5, true, true) AND 0 < d.x AND d.x <= 1 RETURN d.x`,
+        aql`FOR d IN ${col} FILTER 0 < d.x AND d.x <= 1 AND IN_RANGE(d.y, 0, 5, true, true) RETURN d.x`,
       ];
 
       for (let i = 0; i < queries.length; ++i) {
