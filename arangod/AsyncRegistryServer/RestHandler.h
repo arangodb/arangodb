@@ -20,28 +20,23 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "registry.h"
+#pragma once
 
-#include "Assertions/ProdAssert.h"
-#include "Async/Registry/Metrics.h"
+#include "AsyncRegistryServer/Feature.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-using namespace arangodb::async_registry;
+namespace arangodb::async_registry {
 
-Registry::Registry() : _metrics{std::make_shared<Metrics>()} {}
+class RestHandler : public arangodb::RestVocbaseBaseHandler {
+ public:
+  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-auto Registry::add_thread() -> std::shared_ptr<ThreadRegistry> {
-  auto guard = std::lock_guard(mutex);
-  auto registry = registries.emplace_back(ThreadRegistry::make(_metrics));
-  if (_metrics->registered_threads != nullptr) {
-    _metrics->registered_threads->fetch_add(1);
-  }
-  return registry;
-}
+ public:
+  char const* name() const override final { return "AsyncRegistryRestHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override;
 
-auto Registry::remove_thread(std::shared_ptr<ThreadRegistry> registry) -> void {
-  auto guard = std::lock_guard(mutex);
-  if (_metrics->registered_threads != nullptr) {
-    _metrics->registered_threads->fetch_sub(1);
-  }
-  std::erase(registries, registry);
-}
+  Feature& _feature;
+};
+
+}  // namespace arangodb::async_registry

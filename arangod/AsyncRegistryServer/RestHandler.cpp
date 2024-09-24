@@ -20,28 +20,34 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "registry.h"
+#include "RestHandler.h"
 
-#include "Assertions/ProdAssert.h"
-#include "Async/Registry/Metrics.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Async/Registry/registry_variable.h"
+#include "Inspection/VPack.h"
+#include "Rest/CommonDefines.h"
 
 using namespace arangodb::async_registry;
 
-Registry::Registry() : _metrics{std::make_shared<Metrics>()} {}
+RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
+                         GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
+      _feature(server.getFeature<Feature>()) {}
 
-auto Registry::add_thread() -> std::shared_ptr<ThreadRegistry> {
-  auto guard = std::lock_guard(mutex);
-  auto registry = registries.emplace_back(ThreadRegistry::make(_metrics));
-  if (_metrics->registered_threads != nullptr) {
-    _metrics->registered_threads->fetch_add(1);
+auto RestHandler::execute() -> RestStatus {
+  if (_request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
   }
-  return registry;
-}
 
-auto Registry::remove_thread(std::shared_ptr<ThreadRegistry> registry) -> void {
-  auto guard = std::lock_guard(mutex);
-  if (_metrics->registered_threads != nullptr) {
-    _metrics->registered_threads->fetch_sub(1);
-  }
-  std::erase(registries, registry);
+  VPackBuilder builder;
+  builder.openArray();
+  coroutine_registry.for_promise([&](PromiseInList* promise) {
+    velocypack::serialize(builder, *promise);
+  });
+  builder.close();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
+  return RestStatus::DONE;
 }
