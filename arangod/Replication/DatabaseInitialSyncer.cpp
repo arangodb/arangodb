@@ -997,7 +997,7 @@ void DatabaseInitialSyncer::fetchDumpChunk(
 
     _config.progress.set(absl::StrCat(
         "fetching leader collection dump for collection '", coll->name(),
-        "', type: ", typeString, ", format: ", "vpack", ", id: ", leaderColl,
+        "', type: ", typeString, ", format: vpack, id: ", leaderColl,
         ", batch ", batch, ", url: ", url));
 
     double t = TRI_microtime();
@@ -1616,8 +1616,8 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
 
     _config.progress.set(absl::StrCat(
         "fetching leader collection revision ranges for collection '",
-        coll->name(), "', type: ", typeString, ", format: ", "vpack",
-        ", id: ", leaderColl, ", url: ", url));
+        coll->name(), "', type: ", typeString,
+        ", format: vpack, id: ", leaderColl, ", url: ", url));
 
     double t = TRI_microtime();
 
