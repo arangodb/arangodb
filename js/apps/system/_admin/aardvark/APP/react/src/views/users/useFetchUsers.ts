@@ -1,12 +1,11 @@
 import useSWR from "swr";
-import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
+import { getCurrentDB } from "../../utils/arangoClient";
 import { DatabaseUserValues } from "./addUser/CreateUser.types";
 
 export const useFetchUsers = () => {
   const { data } = useSWR("/users", async () => {
-    const route = getApiRouteForCurrentDB();
-    const res = await route.get("user");
-    return res.body.result as DatabaseUserValues[];
+    const users = await getCurrentDB().listUsers();
+    return users as DatabaseUserValues[];
   });
   return { users: data };
 };

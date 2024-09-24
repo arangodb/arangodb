@@ -1,3 +1,4 @@
+/* global arango */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -32,17 +33,17 @@ const {getCtrlDBServers} = require('@arangodb/test-helper');
 const {sleep, time} = require('internal');
 
 const disableMaintenanceMode = function () {
-  const response = db._connection.PUT('/_admin/cluster/maintenance', '"off"');
-  assertIdentical(false, response.error);
-  assertIdentical(200, response.code);
+  const response = arango.PUT('/_admin/cluster/maintenance', '"off"');
+  assertIdentical(false, response.error, JSON.stringify(response));
+  assertIdentical(200, response.code, JSON.stringify(response));
   if (response.hasOwnProperty('warning')) {
     console.warn(response.warning);
   }
 };
 const enableMaintenanceMode = function () {
-  const response = db._connection.PUT('/_admin/cluster/maintenance', '"on"');
-  assertIdentical(false, response.error);
-  assertIdentical(200, response.code);
+  const response = arango.PUT('/_admin/cluster/maintenance', '"on"');
+  assertIdentical(false, response.error, JSON.stringify(response));
+  assertIdentical(200, response.code, JSON.stringify(response));
   if (response.hasOwnProperty('warning')) {
     console.warn(response.warning);
   }
@@ -91,7 +92,7 @@ function testSuite() {
         return;
       }
       db._createDatabase(databaseNameR1, {'replicationVersion': '1'});
-
+      let conn = arango.getConnectionHandle();
       enableMaintenanceMode();
       dbServer.exitStatus = null;
       dbServer.shutdownArangod(false);
@@ -106,7 +107,7 @@ function testSuite() {
       });
       let aliveStatus = waitForAlive(30, dbServer.url, {});
       assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
-
+      arango.connectHandle(conn);
       // We should not be able to create a replication2 database if the syncer thread is off
       try {
         db._createDatabase(databaseNameR2, {'replicationVersion': '2'});
@@ -127,6 +128,7 @@ function testSuite() {
       });
       aliveStatus = waitForAlive(30, dbServer.url, {});
       assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
+      arango.connectHandle(conn);
 
       disableMaintenanceMode();
 
@@ -146,6 +148,7 @@ function testSuite() {
     },
 
     testRestartDisabled: function () {
+      let conn = arango.getConnectionHandle();
       db._createDatabase(databaseNameR2, {'replicationVersion': '2'});
 
       // It should not be possible to start a cluster with the syncer thread off, if there are replication2 databases
@@ -179,6 +182,7 @@ function testSuite() {
         assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
       }
 
+      arango.connectHandle(conn);
       disableMaintenanceMode();
     }
   };

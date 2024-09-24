@@ -12,6 +12,9 @@ parameters:
     # contains a branch with the same name as the arangodb repo. If this is the case
     # we use it, otherwise we fall back to "devel".
     default: ""
+  use-minimal-debug-info:
+    type: boolean
+    default: true
   create-docker-images:
     type: boolean
     default: false
@@ -41,7 +44,7 @@ parameters:
     default: "" # should be empty, "tsan" or "alubsan"
   ui:
     type: string
-    default: "off"
+    default: "on"
   ui-deployment:
     type: string
     default: ""
@@ -155,7 +158,9 @@ jobs:
           name: Determine enterprise branch
           command: |
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-            if ["" == ""]; then
+            ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
+            echo "Found setting for ENTERPRISE_BRANCH: $ENTERPRISE_BRANCH"
+            if test -z "$ENTERPRISE_BRANCH" ; then
               set +e
               git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
               if [ "$?" == "0" ] ; then
@@ -164,8 +169,7 @@ jobs:
                 ENTERPRISE_BRANCH=devel
               fi
               set -e
-            else
-              ENTERPRISE_BRANCH=
+              echo "Actually using this for ENTERPRISE_BRANCH: $ENTERPRISE_BRANCH"
             fi
             ENTERPRISE_COMMIT=`git ls-remote --heads git@github.com:arangodb/enterprise.git $ENTERPRISE_BRANCH | cut -f1`
             echo "Using enterprise branch $ENTERPRISE_BRANCH (sha $ENTERPRISE_COMMIT)"

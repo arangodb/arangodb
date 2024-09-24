@@ -27,12 +27,12 @@
 const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const internal = require('internal');
-
+let IM = global.instanceManager;
 
 function ArangoSearchDanglingLinkSuite () {
   return {
     setUpAll : function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase('_system');
       db._createDatabase('UnitTestsDangling');
       db._useDatabase('UnitTestsDangling');
@@ -41,17 +41,17 @@ function ArangoSearchDanglingLinkSuite () {
     },
     
     setUp : function() {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
     
     tearDownAll : function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase('_system');
       db._dropDatabase('UnitTestsDangling');
     },
 
     testDanglingLink : function () {
-      internal.debugSetFailAt("IResearchLink::alwaysDangling");
+      IM.debugSetFailAt("IResearchLink::alwaysDangling");
       db._createView("dangle", "arangosearch", {links:{foo:{includeAllFields:true}}});
       db._dropView("dangle");
       let nCount = 0;
@@ -64,8 +64,8 @@ function ArangoSearchDanglingLinkSuite () {
     },
     
     testDanglingLinkRetryDrop : function () {
-      internal.debugSetFailAt("IResearchLink::alwaysDangling");
-      internal.debugSetFailAt("IResearchLink::failDropDangling");
+      IM.debugSetFailAt("IResearchLink::alwaysDangling");
+      IM.debugSetFailAt("IResearchLink::failDropDangling");
       db._createView("dangle", "arangosearch", {links:{foo:{includeAllFields:true}}});
       db._dropView("dangle");
       let nCount = 0;
@@ -74,7 +74,7 @@ function ArangoSearchDanglingLinkSuite () {
         nCount++;
       }
       assertEqual(10, nCount);
-      internal.debugClearFailAt("IResearchLink::failDropDangling");
+      IM.debugClearFailAt("IResearchLink::failDropDangling");
       while(db.foo.getIndexes(true, true).length > 1) {
         internal.sleep(1);
         nCount++;
@@ -86,7 +86,7 @@ function ArangoSearchDanglingLinkSuite () {
   };
 }
 
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(ArangoSearchDanglingLinkSuite);
 }
 

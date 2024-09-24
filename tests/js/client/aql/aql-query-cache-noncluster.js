@@ -30,7 +30,7 @@ const db = require("@arangodb").db;
 const internal = require("internal");
 const cache = require("@arangodb/aql/cache");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const isEnterprise = require("internal").isEnterprise();
+const isEnterprise = internal.isEnterprise();
 
 function ahuacatlQueryCacheTestSuite () {
   let cacheProperties;
@@ -1290,7 +1290,7 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
     },
     
     testViewInvalidationAfterAqlInsertNoSync : function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!global.instanceManager.debugCanUseFailAt()) {
         return;
       }
       let indexMeta = {};
@@ -1334,7 +1334,7 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       try {
-        internal.debugSetFailAt("RocksDBBackgroundThread::run");
+        global.instanceManager.debugSetFailAt("RocksDBBackgroundThread::run");
         internal.sleep(5); // give FlushThread some time
 
         // explicitly without waitForSync here
@@ -1350,7 +1350,7 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
         assertTrue(result._cached);
         assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
       } finally {
-        internal.debugClearFailAt();
+        global.instanceManager.debugClearFailAt();
       }
         
       internal.sleep(5); // give FlushThread some time

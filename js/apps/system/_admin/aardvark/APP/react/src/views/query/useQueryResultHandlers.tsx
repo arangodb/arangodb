@@ -1,5 +1,5 @@
 import React from "react";
-import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
+import { getCurrentDB } from "../../utils/arangoClient";
 import { QueryResultType } from "./ArangoQuery.types";
 
 export const useQueryResultHandlers = () => {
@@ -51,13 +51,10 @@ export const useQueryResultHandlers = () => {
         return queryResult.status === "loading" ? queryResult.asyncJobId : "";
       })
       .filter(id => id);
-    const route = getApiRouteForCurrentDB();
+    const db = getCurrentDB();
     const promises = queriesToCancel.map(async asyncJobId => {
       if (asyncJobId) {
-        return route.request({
-          method: "PUT",
-          path: `/job/${asyncJobId}/cancel`
-        });
+        return db.job(asyncJobId).cancel();
       }
     });
     await Promise.all(promises);

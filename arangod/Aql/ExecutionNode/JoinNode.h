@@ -62,6 +62,7 @@ class JoinNode : public ExecutionNode {
     bool usedAsSatellite{false};  // TODO maybe use CollectionAccess class
     bool producesOutput{true};
     bool isLateMaterialized{false};
+    bool isUniqueStream{false};
     Variable const* outDocIdVariable = nullptr;
     std::vector<std::unique_ptr<Expression>> expressions;
     std::vector<size_t> usedKeyFields;

@@ -238,23 +238,25 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
     },
     
     testKShortestPaths : function () {
-      const query = "WITH " + vn + " FOR p IN OUTBOUND K_SHORTEST_PATHS '" + vn + "/test0' TO '" + vn + "/test11' " + en + " RETURN p";
+      for (let o of ['', ' OPTIONS { algorithm: "yen" }']) {
+        const query = "WITH " + vn + " FOR p IN OUTBOUND K_SHORTEST_PATHS '" + vn + "/test0' TO '" + vn + "/test11' " + en + o + " RETURN p";
 
-      if (isCluster) {
-        let actual = db._query(query, null, {memoryLimit: 20 * 1000 * 1000}).toArray();
-        // no shortest path available
-        assertEqual(1024, actual.length);
-      } else {
-        let actual = db._query(query, null, {memoryLimit: 2 * 1000 * 1000 + 4 * 1000}).toArray();
-        // no shortest path available
-        assertEqual(1024, actual.length);
-      }
+        if (isCluster) {
+          let actual = db._query(query, null, {memoryLimit: 20 * 1000 * 1000}).toArray();
+          // no shortest path available
+          assertEqual(1024, actual.length);
+        } else {
+          let actual = db._query(query, null, {memoryLimit: 3 * 1000 * 1000 + 4 * 1000}).toArray();
+          // no shortest path available
+          assertEqual(1024, actual.length);
+        }
 
-      try {
-        db._query(query, null, {memoryLimit: 1000 * 1000});
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+        try {
+          db._query(query, null, {memoryLimit: 1000 * 1000});
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+        }
       }
     },
 

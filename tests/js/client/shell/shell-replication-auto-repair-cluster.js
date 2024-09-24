@@ -32,13 +32,14 @@ let request = require("@arangodb/request");
 let errors = arangodb.errors;
 let { getEndpointById,
       getEndpointsByType,
-      debugCanUseFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
       getChecksum,
-      getMetric
+      getMetric,
+      versionHas
     } = require('@arangodb/test-helper');
-  
+const isCov = versionHas('coverage');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
+
 const cn = 'UnitTestsReplication';
   
 let getBatch = (ep) => {
@@ -71,7 +72,8 @@ function assertInSync(leader, follower, shardId) {
   let leaderEqual = false;
   let followerEqual = false;
   let tries = 0;
-  while (++tries < 300) {
+  const maxTries = isCov ? 600 : 300;
+  while (++tries < maxTries) {
     let batchId = getBatch(leader);
     let result = getTree(leader, batchId, shardId);
     deleteBatch(leader, batchId);
@@ -110,9 +112,8 @@ function replicationAutoRepairSuite() {
 
   return {
     setUp: function () {
+      IM.debugClearFailAt('', instanceRole.dbServer);
       getEndpointsByType("dbserver").forEach((ep) => {
-        debugClearFailAt(ep);
-      
         // store original log levels
         let result = request({ method: "GET", url: ep + "/_admin/log/level" });
         logLevels[ep] = result.json;
@@ -122,8 +123,8 @@ function replicationAutoRepairSuite() {
     },
 
     tearDown: function () {
+      IM.debugClearFailAt('', instanceRole.dbServer);
       getEndpointsByType("dbserver").forEach((ep) => {
-        debugClearFailAt(ep);
         // restore original log level
         request({ method: "PUT", url: ep + "/_admin/log/level", body: logLevels[ep], json: true });
       });
@@ -149,7 +150,7 @@ function replicationAutoRepairSuite() {
         }
         if (count === n / 2) {
           // do not replicate from leader to follower after half of documents
-          debugSetFailAt(leader, "replicateOperations::skip");
+          IM.debugSetFailAt("replicateOperations::skip", instanceRole.dbServer, leader);
         }
         c.insert(docs);
       }
@@ -178,16 +179,16 @@ function replicationAutoRepairSuite() {
         assertEqual(200, result.status);
       }
       
-      debugClearFailAt(leader);
+      IM.debugClearFailAt('', instanceRole.dbServer, leader);
 
       // this will trigger a drop-follower operation on the next insert on the leader
-      debugSetFailAt(leader, "replicateOperationsDropFollower");
+      IM.debugSetFailAt("replicateOperationsDropFollower", instanceRole.dbServer, leader);
      
       // enable sending of revision-tree data from follower to leader for comparison
-      debugSetFailAt(follower, "synchronizeShardSendTreeData");
+      IM.debugSetFailAt("synchronizeShardSendTreeData", instanceRole.dbServer, follower);
 
       // disable intentional delays of subsequent replication attempts on follower
-      debugSetFailAt(follower, "SynchronizeShard::noSleepOnSyncError");
+      IM.debugSetFailAt("SynchronizeShard::noSleepOnSyncError", instanceRole.dbServer, follower);
 
       let leaderRebuildsBefore = getMetric(leader, "arangodb_sync_tree_rebuilds_total");
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
@@ -196,7 +197,7 @@ function replicationAutoRepairSuite() {
       // the follower will need to get in sync using the incremental sync protocol
       c.insert({});
       
-      debugClearFailAt(leader);
+      IM.debugClearFailAt('', instanceRole.dbServer, leader);
     
       // follower must have been dropped by the insert
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
@@ -229,7 +230,7 @@ function replicationAutoRepairSuite() {
         }
         if (count === n / 2) {
           // do not replicate from leader to follower after half of documents
-          debugSetFailAt(leader, "replicateOperations::skip");
+           IM.debugSetFailAt("replicateOperations::skip", instanceRole.dbServer, leader);
         }
         c.insert(docs);
       }
@@ -246,7 +247,7 @@ function replicationAutoRepairSuite() {
         assertEqual(n / 2, result.json.count);
       }
       
-      debugClearFailAt(leader);
+      IM.debugClearFailAt('', instanceRole.dbServer, leader);
     
       // corrupt the followers's revision tree
       {
@@ -261,13 +262,13 @@ function replicationAutoRepairSuite() {
       }
 
       // this will trigger a drop-follower operation on the next insert on the leader
-      debugSetFailAt(leader, "replicateOperationsDropFollower");
+      IM.debugSetFailAt("replicateOperationsDropFollower", instanceRole.dbServer, leader);
      
       // enable sending of revision-tree data from follower to leader for comparison
-      debugSetFailAt(follower, "synchronizeShardSendTreeData");
+      IM.debugSetFailAt("synchronizeShardSendTreeData", instanceRole.dbServer, follower);
 
       // disable intentional delays of subsequent replication attempts on follower
-      debugSetFailAt(follower, "SynchronizeShard::noSleepOnSyncError");
+      IM.debugSetFailAt("SynchronizeShard::noSleepOnSyncError", instanceRole.dbServer, follower);
 
       let followerRebuildsBefore = getMetric(follower, "arangodb_sync_tree_rebuilds_total");
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
@@ -276,7 +277,7 @@ function replicationAutoRepairSuite() {
       // the follower will need to get in sync using the incremental sync protocol
       c.insert({});
       
-      debugClearFailAt(leader);
+      IM.debugClearFailAt('', instanceRole.dbServer, leader);
     
       // follower must have been dropped by the insert
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
@@ -293,8 +294,7 @@ function replicationAutoRepairSuite() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
-if (ep.length && debugCanUseFailAt(ep[0]) && db._properties().replicationVersion !== "2") {
+if (IM.debugCanUseFailAt() && db._properties().replicationVersion !== "2") {
   // only execute if failure tests are available
   jsunity.run(replicationAutoRepairSuite);
 }

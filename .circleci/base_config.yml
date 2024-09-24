@@ -8,6 +8,9 @@ parameters:
   enterprise-commit:
     type: string
     default: ""
+  use-minimal-debug-info:
+    type: boolean
+    default: true
   build-docker-image:
     type: string
     default: "arangodb/ubuntubuildarangodb-devel:6"
@@ -35,7 +38,7 @@ parameters:
     default: ""
   ui:
     type: string
-    default: "off"
+    default: "on"
   ui-deployment:
     type: string
     default: ""
@@ -51,16 +54,15 @@ parameters:
   # these are basically global constants
   build-targets:
     type: string
-    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench frontend arangovpack"
+    default: "arangodb"
+    # The arangodb target consists of arangod and the list of client-tools which already
+    # conditionally contains arangobackup and arangosh, depending on whether we build in
+    # enterprise mode, and whether we build with V8 or not.
+    # This should also improve build times because this way the individual targets can be
+    # built in parallel (a list of individual targets is built serially).
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
-  enterprise-build-targets:
-    type: string
-    default: "arangobackup"
-  v8-build-targets:
-    type: string
-    default: "arangosh"
 
 commands:
   checkout-arangodb:
@@ -241,6 +243,25 @@ jobs:
               echo "Nothing to cancel"
             fi
 
+  build-frontend:
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: large
+    steps:
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/root/project"
+      - run:
+          name: Build frontend
+          command: |
+            cd js/apps/system/_admin/aardvark/APP/react
+            yarn install
+            yarn build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - js/apps/system/_admin/aardvark/APP/react/build
+
   compile-linux:
     parameters:
       preset:
@@ -288,6 +309,10 @@ jobs:
       - run:
           name: Configure
           command: |
+            MINIMAL_DEBUGINFO="OFF"
+            if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
+              MINIMAL_DEBUGINFO="ON"
+            fi
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
@@ -296,17 +321,12 @@ jobs:
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
+              -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
               -DCMAKE_INSTALL_PREFIX=/
       - run:
           name: Build
           command: |
             TARGETS="<< pipeline.parameters.build-targets >>"
-            if [ << parameters.build-v8 >> = true ]; then
-              TARGETS="$TARGETS << pipeline.parameters.v8-build-targets >>"
-            fi
-            if [ << parameters.enterprise >> = true ]; then
-              TARGETS="$TARGETS << pipeline.parameters.enterprise-build-targets >>"
-            fi
             if [ << parameters.build-tests >> = true ]; then
               TARGETS="$TARGETS << pipeline.parameters.test-build-targets >>"
             fi
@@ -363,6 +383,10 @@ jobs:
             find build/ -iname *.o -delete || true
             find build/ -iname *.o.d -delete || true
             rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
+      - run:
+          name: List build artifacts
+          command: |
+            ls -Ssha build/bin/
       - run:
           name: SCCache Statistics
           command: sccache -s
@@ -504,7 +528,7 @@ jobs:
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
-              --extraArgs " << parameters.extraArgs >>"
+              --extraArgs ' << parameters.extraArgs >>'
       - run:
           name: Copy test results
           when: always

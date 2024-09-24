@@ -100,7 +100,16 @@ class EnumerateListNode : public ExecutionNode {
   Variable const* inVariable() const;
 
   /// @brief return out variable
-  Variable const* outVariable() const;
+  std::vector<Variable const*> outVariable() const;
+
+  enum Mode {
+    kEnumerateArray,   /// @brief yield entries of an array
+    kEnumerateObject,  /// @brief yield key-value-pairs of an object
+  };
+
+  Mode getMode() const noexcept { return _mode; }
+
+  void setEnumerateObject(Variable const* key, Variable const* value) noexcept;
 
  protected:
   /// @brief export to VelocyPack
@@ -116,6 +125,12 @@ class EnumerateListNode : public ExecutionNode {
 
   /// @brief early filtering condition
   std::unique_ptr<Expression> _filter;
+
+  /// @brief enumeration mode
+  Mode _mode = kEnumerateArray;
+
+  /// @brief variables used for yielding key-value pairs
+  Variable const* _keyValuePairOutVars[2] = {nullptr, nullptr};
 };
 
 }  // namespace aql

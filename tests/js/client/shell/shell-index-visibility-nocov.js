@@ -28,18 +28,12 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const arango = internal.arango;
 const sleep = require('internal').sleep;
-const { getDBServerEndpoints, debugCanUseFailAt, debugRemoveFailAt, debugSetFailAt } = require("@arangodb/test-helper");
+const { getDBServerEndpoints } = require("@arangodb/test-helper");
 const isCluster = internal.isCluster();
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
-let ep = [];
-if (isCluster) {
-  // cluster
-  ep = getDBServerEndpoints();
-} else {
-  // single server
-  ep = [arango.getEndpoint()];
-}
-assertTrue(ep.length > 0, ep);
+const filter = isCluster ? instanceRole.dbServer: instanceRole.single;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: basics
@@ -66,10 +60,8 @@ function IndexSuite() {
     },
 
     tearDown: function() {
-      ep.forEach((ep) => {
-        debugRemoveFailAt(ep, "fillIndex::pause");
-        debugRemoveFailAt(ep, "fillIndex::unpause");
-      });
+      IM.debugRemoveFailAt("fillIndex::pause", filter);
+      IM.debugRemoveFailAt("fillIndex::unpause", filter);
       c.drop();
     },
 
@@ -78,9 +70,7 @@ function IndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexProgressIsReported : function () {
-      ep.forEach((ep) => {
-        debugSetFailAt(ep, "fillIndex::pause");
-      });
+      IM.debugSetFailAt("fillIndex::pause", filter);
       let idxdesc = { name: "progress", type: "persistent", fields: ["name"], inBackground: true};
 
       let job = arango.POST_RAW(`/_api/index?collection=${cn}`, idxdesc,
@@ -112,9 +102,7 @@ function IndexSuite() {
           if (progress > 0 && !seenProgress) {
             // Only release index building once we have seen at least
             // once an isBuilding state with non-zero progress
-            ep.forEach((ep) => {
-              debugSetFailAt(ep, "fillIndex::unpause");
-            });
+            IM.debugSetFailAt("fillIndex::unpause", filter);
             seenProgress = true;
           }
         } else if (seenProgress) {
@@ -133,9 +121,7 @@ function IndexSuite() {
     },
     
     testIndexProgressIsNotReported : function () {
-      ep.forEach((ep) => {
-        debugSetFailAt(ep, "fillIndex::pause");
-      });
+      IM.debugSetFailAt("fillIndex::pause", filter);
       let idxdesc = { name: "progress", type: "persistent", fields: ["name"], inBackground: true};
 
       let job = arango.POST_RAW(`/_api/index?collection=${cn}`, idxdesc,
@@ -156,9 +142,7 @@ function IndexSuite() {
         }
       }
             
-      ep.forEach((ep) => {
-        debugSetFailAt(ep, "fillIndex::unpause");
-      });
+      IM.debugSetFailAt("fillIndex::unpause", filter);
       
       count = 0;
       // wait until index appears, at most 30 seconds
@@ -176,7 +160,7 @@ function IndexSuite() {
   };
 }
 
-if (debugCanUseFailAt(ep[0])) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(IndexSuite);
 }
 

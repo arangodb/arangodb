@@ -44,6 +44,7 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query)
     : BaseOptions(query), _minDepth(1), _maxDepth(1) {
   setWeightAttribute("");
   setDefaultWeight(1);
+  setAlgorithm("");
 }
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
@@ -65,6 +66,8 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1));
   setProduceVertices(
       VPackHelper::getBooleanValue(info, "produceVertices", true));
+  setAlgorithm(VelocyPackHelper::getStringValue(
+      info, arangodb::StaticStrings::Algorithm, ""));
 }
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
@@ -86,6 +89,8 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1));
   setProduceVertices(
       VPackHelper::getBooleanValue(info, "produceVertices", true));
+  setAlgorithm(VelocyPackHelper::getStringValue(
+      info, arangodb::StaticStrings::Algorithm, ""));
 
   VPackSlice read = info.get("reverseLookupInfos");
   if (!read.isArray()) {
@@ -108,7 +113,8 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
       _maxDepth(other._maxDepth),
       _weightAttribute{other._weightAttribute},
       _defaultWeight{other._defaultWeight},
-      _reverseLookupInfos{other._reverseLookupInfos} {
+      _reverseLookupInfos{other._reverseLookupInfos},
+      _algorithm{other._algorithm} {
   TRI_ASSERT(other._defaultWeight >= 0.);
 }
 
@@ -124,6 +130,7 @@ void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
     it.buildEngineInfo(result);
   }
   result.close();
+  result.add(arangodb::StaticStrings::Algorithm, VPackValue(getAlgorithm()));
 
   result.close();
 }
@@ -141,6 +148,7 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("defaultWeight", VPackValue(getDefaultWeight()));
   builder.add("produceVertices", VPackValue(produceVertices()));
   builder.add("type", VPackValue("shortestPath"));
+  builder.add(arangodb::StaticStrings::Algorithm, VPackValue(getAlgorithm()));
 }
 
 void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
@@ -228,6 +236,14 @@ auto ShortestPathOptions::getDefaultWeight() const -> double {
 
 auto ShortestPathOptions::getWeightAttribute() const& -> std::string {
   return _weightAttribute;
+}
+
+auto ShortestPathOptions::setAlgorithm(std::string algorithm) -> void {
+  _algorithm = std::move(algorithm);
+}
+
+auto ShortestPathOptions::getAlgorithm() const& -> std::string {
+  return _algorithm;
 }
 
 auto ShortestPathOptions::setMinDepth(uint64_t minDepth) noexcept -> void {

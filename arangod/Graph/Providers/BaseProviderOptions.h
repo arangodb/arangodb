@@ -221,6 +221,12 @@ struct ClusterBaseProviderOptions {
 
   bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
+  bool clearEdgeCacheOnClear() const noexcept { return _clearEdgeCacheOnClear; }
+
+  void setClearEdgeCacheOnClear(bool flag) noexcept {
+    _clearEdgeCacheOnClear = flag;
+  }
+
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;
 
@@ -250,6 +256,14 @@ struct ClusterBaseProviderOptions {
 #endif
 
   std::unordered_set<uint64_t> _availableDepthsSpecificConditions;
+
+  // Traditionally, this was `true`, since the data stored in the edge cache
+  // on the coordinator is only valid for a single computation, since it might
+  // have filtered certain edges and the filter conditions might have changed.
+  // For ShortestPath computations and consequently Yen computations, this is
+  // not true and hurts performance. Therefore, for these cases it is possible
+  // to set this flag to `false` to retain cached data across calls to `clear`.
+  bool _clearEdgeCacheOnClear = true;
 };
 
 }  // namespace graph

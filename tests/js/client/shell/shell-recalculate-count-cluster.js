@@ -30,11 +30,10 @@ let internal = require("internal");
 let db = arangodb.db;
 let { getEndpointById,
       getEndpointsByType,
-      debugCanUseFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
       reconnectRetry
     } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function RecalculateCountSuite() {
   const cn = "UnitTestsCollection";
@@ -42,19 +41,19 @@ function RecalculateCountSuite() {
   return {
 
     setUp : function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
 
     tearDown : function () {
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
       db._drop(cn);
     },
     
     testFixBrokenCounts : function () {
       let c = db._create(cn, { numberOfShards: 5 });
 
-      getEndpointsByType("dbserver").forEach((ep) => debugSetFailAt(ep, "DisableCommitCounts"));
+      IM.debugSetFailAt("DisableCommitCounts", instanceRole.dbServer);
 
       for (let i = 0; i < 1000; ++i) {
         c.insert({});
@@ -63,7 +62,7 @@ function RecalculateCountSuite() {
       assertNotEqual(1000, c.count());
       assertEqual(1000, c.toArray().length);
 
-      getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+      IM.debugClearFailAt('', instanceRole.dbServer);
  
       c.recalculateCount();
       
@@ -74,8 +73,7 @@ function RecalculateCountSuite() {
   };
 }
 
-let ep = getEndpointsByType('dbserver');
-if (ep.length && debugCanUseFailAt(ep[0])) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(RecalculateCountSuite);
 }
 return jsunity.done();

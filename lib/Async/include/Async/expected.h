@@ -2,6 +2,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include "Assertions/Assert.h"
+#include <utility>
 
 namespace arangodb {
 template<typename T>

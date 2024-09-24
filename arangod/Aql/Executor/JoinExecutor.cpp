@@ -690,7 +690,7 @@ void JoinExecutor::constructStrategy() {
     options.constantFields = idx.constantFields;
 
     auto& desc = indexDescription.emplace_back();
-    desc.isUnique = idx.index->unique();
+    desc.isUniqueStream = idx.isUniqueStream;
     desc.numProjections = 0;
     desc.numConstants = idx.constantFields.size();
     desc.numKeyComponents = idx.usedKeyFields.size();

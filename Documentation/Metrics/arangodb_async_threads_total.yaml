@@ -1,0 +1,12 @@
+name: arangodb_async_threads_total
+introducedIn: "3.12.3"
+help: |
+  Number of all threads created so far that execute asynchronous functions.
+unit: number
+type: counter
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of all threads created so far that execute asynchronous functions.

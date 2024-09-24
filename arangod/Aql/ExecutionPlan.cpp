@@ -461,6 +461,10 @@ std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
           if (value->isBoolValue()) {
             options->setUseCache(value->getBoolValue());
           }
+        } else if (name == arangodb::StaticStrings::Algorithm) {
+          if (value->isStringValue()) {
+            options->setAlgorithm(value->getStringValue());
+          }
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown",

@@ -21,7 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Result.h"
-#include "Basics/async.h"
+#include "Async/async.h"
+#include "Network/Methods.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -29,11 +30,10 @@ namespace arangodb {
 // On dbservers, agents and single servers:
 Result analyzeVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
 Result migrateVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
+Result statusVPackIndexSorting(TRI_vocbase_t& vocbase, VPackBuilder& result);
 
 // On coordinators:
-async<Result> handleVPackSortMigrationTest(TRI_vocbase_t& vocbase,
-                                           VPackBuilder& result);
-async<Result> handleVPackSortMigrationAction(TRI_vocbase_t& vocbase,
-                                             VPackBuilder& result);
+async<Result> fanOutRequests(TRI_vocbase_t& vocbase, fuerte::RestVerb verb,
+                             std::string_view subCommand, VPackBuilder& result);
 
 }  // namespace arangodb
