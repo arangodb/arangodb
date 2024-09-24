@@ -203,6 +203,38 @@ function multiDimSparseTestSuite() {
         assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
     },
+
+    testMdiSparseQuery: function () {
+      const c = db._create(collectionName);
+      const idx = c.ensureIndex({
+        type: 'mdi',
+        name: indexName,
+        fields: ["x", "y"],
+        storedValues: ["z"],
+        sparse: true,
+        fieldValueTypes: 'double',
+      });
+
+      for (let k = 0; k < 10; k++) {
+        c.insert({x: k, y: k, z: k});
+      }
+
+      // For MDI with sparse, we can only use doc.x < something if the query also includes something like doc.x != NULL
+      const queries = [
+        [`FOR doc IN ${collectionName} FILTER doc.x < 0 && doc.y > 10 && doc.x != NULL RETURN doc.z`],
+        [`FOR doc IN ${collectionName} FILTER doc.x > 0 && doc.y > 10 && doc.x != NULL RETURN doc.z`],
+        [`FOR doc IN ${collectionName} FILTER doc.x > 0 && doc.y < 10 && doc.y != NULL RETURN doc.z`],
+        [`FOR doc IN ${collectionName} FILTER doc.x > 0 && doc.y > 10 && doc.y != NULL && doc.x != NULL RETURN doc.z`],
+        [`FOR doc IN ${collectionName} FILTER doc.x < 0 && doc.y < 10 && doc.y != NULL && doc.x != NULL RETURN doc.z`],
+      ];
+
+      for (const [query] of queries) {
+        const plan = db._createStatement({query}).explain().plan;
+
+        const [indexNode] = plan.nodes.filter(n => n.type === 'IndexNode');
+        assertTrue(indexNode.filter === undefined, query);
+      }
+    }
   };
 }
 
@@ -430,6 +462,40 @@ function multiDimPrefixedSparseTestSuite() {
         assertTrue(figures.engine.indexes.filter(x => x.type === 'mdi').every(x => x.count === 1));
       }
     },
+
+
+    testMdiPrefixedSparseQuery: function () {
+      const c = db._create(collectionName);
+      const idx = c.ensureIndex({
+        type: 'mdi-prefixed',
+        name: indexName,
+        fields: ["x", "y"],
+        storedValues: ["z"],
+        prefixFields: ["a"],
+        sparse: true,
+        fieldValueTypes: 'double',
+      });
+
+      for (let k = 0; k < 10; k++) {
+        c.insert({x: k, y: k, z: k});
+      }
+
+      // For MDI with sparse, we can only use doc.x < something if the query also includes something like doc.x != NULL
+      const queries = [
+        [`FOR doc IN ${collectionName} FILTER doc.a == 12 && doc.x < 0 && doc.y > 10 && doc.x != NULL RETURN doc.z`],
+        [`FOR doc IN ${collectionName} FILTER doc.a == 12 && doc.x > 0 && doc.y > 10 && doc.x != NULL RETURN doc.z`],
+        [`FOR doc IN ${collectionName} FILTER doc.a == 12 && doc.x > 0 && doc.y < 10 && doc.y != NULL RETURN doc.z`],
+        [`FOR doc IN ${collectionName} FILTER doc.a == 12 && doc.x > 0 && doc.y > 10 && doc.y != NULL && doc.x != NULL RETURN doc.z`],
+        [`FOR doc IN ${collectionName} FILTER doc.a == 12 && doc.x < 0 && doc.y < 10 && doc.y != NULL && doc.x != NULL RETURN doc.z`],
+      ];
+
+      for (const [query] of queries) {
+        const plan = db._createStatement({query}).explain().plan;
+
+        const [indexNode] = plan.nodes.filter(n => n.type === 'IndexNode');
+        assertTrue(indexNode.filter === undefined, query);
+      }
+    }
   };
 }
 

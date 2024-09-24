@@ -1073,16 +1073,30 @@ void Condition::collectOverlappingMembers(
 
       ::clearAttributeAccess(result);
 
-      // only remove the condition if the index is exactly on the same attribute
-      // as the condition
       if (rhs->isNullValue() &&
           lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
-          result.first == variable && index->fields().size() == 1 &&
-          basics::AttributeName::isIdentical(result.second, index->fields()[0],
-                                             false)) {
-        toRemove.emplace(i);
-        // removed, no need to go on below...
-        continue;
+          result.first == variable) {
+        auto const mayRemoveIndexNonNullAttribute = [&] {
+          if (auto ty = index->type();
+              ty == Index::TRI_IDX_TYPE_MDI_INDEX ||
+              ty == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+            // For an MDI all fields are equal, and we are allowed to drop
+            // conditions for non-null on every attribute in the sparse case.
+            return true;
+          }
+
+          // otherwise only remove the condition if the index is exactly on the
+          // same attribute as the condition
+          return index->fields().size() == 1 &&
+                 basics::AttributeName::isIdentical(result.second,
+                                                    index->fields()[0], false);
+        }();
+
+        if (mayRemoveIndexNonNullAttribute) {
+          toRemove.emplace(i);
+          // removed, no need to go on below...
+          continue;
+        }
       }
     }
 
