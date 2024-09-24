@@ -610,7 +610,7 @@ jobs:
           steps:
             - run:
                 name: Symbolizer server
-                command: ./utils/llvm-symbolizer-server.py
+                command: cd /home/circleci/project/work/ArangoDB; ./utils/llvm-symbolizer-server.py
                 background: true
       - run:
           name: Run << parameters.suiteName >> tests
