@@ -237,11 +237,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-needfp') !== -1) && (options.isCov)) {
-    whichFilter.filter = 'skip when built without failurepoint support';
-    return false;
-  }
-
   if (options.failed) {
     return options.failed.hasOwnProperty(testname);
   }
