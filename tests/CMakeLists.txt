@@ -413,5 +413,6 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
 endforeach()
 
 add_subdirectory(Actor)
+add_subdirectory(Async)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)

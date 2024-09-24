@@ -23,7 +23,9 @@ namespace arangodb::async_registry {
    This registry destroys itself when its ref counter is decremented to 0.
  */
 struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
-  ThreadRegistry() = default;
+  static auto make() -> std::shared_ptr<ThreadRegistry> {
+    return std::shared_ptr<ThreadRegistry>(new ThreadRegistry{});
+  }
 
   ~ThreadRegistry() noexcept { garbage_collect(); }
 
@@ -109,6 +111,8 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   std::atomic<PromiseInList*> free_head = nullptr;
   std::atomic<PromiseInList*> promise_head = nullptr;
   std::mutex mutex;
+
+  ThreadRegistry() = default;
 
   /**
      Removes the promise from the registry.
