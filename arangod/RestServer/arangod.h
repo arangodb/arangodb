@@ -57,6 +57,11 @@ class AqlFeature;
 class AgencyFeature;
 class ActionFeature;
 class AuthenticationFeature;
+namespace async_registry {
+
+class Feature;
+
+}
 class BootstrapFeature;
 class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
@@ -197,6 +202,7 @@ using ArangodFeaturesList = TypeList<
     ActionFeature,
     AgencyFeature,
     AqlFeature,
+    async_registry::Feature,
     AuthenticationFeature,
     BootstrapFeature,
 #ifdef TRI_HAVE_GETRLIMIT

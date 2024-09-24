@@ -22,19 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "registry.h"
+#include "AsyncRegistryServer/Feature.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb::async_registry {
 
-// TODO somehow get rid of this global variable
-/**
-   Global variable that holds all coroutines.
- */
-extern Registry coroutine_registry;
+class RestHandler : public arangodb::RestVocbaseBaseHandler {
+ public:
+  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-/**
-   Get registry of all active coroutine promises on this thread.
- */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
+ public:
+  char const* name() const override final { return "AsyncRegistryRestHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override;
+
+  Feature& _feature;
+};
 
 }  // namespace arangodb::async_registry

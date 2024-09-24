@@ -1,0 +1,12 @@
+name: arangodb_async_ready_for_deletion_functions
+introducedIn: "3.12.3"
+help: |
+  Number of asynchronous functions that are resolved and are waiting for their deletion in the next garbage collection run.
+unit: number
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of asynchronous functions that are resolved and are waiting for their deletion in the next garbage collection run. If this number does not go back to zero at some point, we missed calling the garbage collection in a thread.

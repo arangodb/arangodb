@@ -23,7 +23,6 @@
 #pragma once
 
 #include "RestServer/counter.h"
-#include "RestServer/arangod.h"
 
 #include <iosfwd>
 #include <string_view>

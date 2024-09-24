@@ -1,6 +1,9 @@
 devel
 -----
 
+* The optimizer was very pessimistic about sparse mdi indexes and did not
+  properly react to queries that excluded null values.
+
 * Fix blockage in RestMetricsHandlers if there are resigned leaders. We use 
   getResponsibleServerNoDelay there to decide if metrics should be exposed.
 

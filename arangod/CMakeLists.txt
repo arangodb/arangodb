@@ -97,6 +97,7 @@ get_target_property(IRESEARCH_INCLUDE
 include(arangoserver.cmake)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
+add_subdirectory(AsyncRegistryServer)
 add_subdirectory(Cache)
 add_subdirectory(Cluster)
 add_subdirectory(ClusterEngine)
