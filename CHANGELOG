@@ -1,6 +1,9 @@
 devel
 -----
 
+* In replication use vpack as transport format throughout, so that even
+  large and strangely encoded numbers are transported faithfully.
+
 * The optimizer was very pessimistic about sparse mdi indexes and did not
   properly react to queries that excluded null values.
 
