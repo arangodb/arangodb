@@ -85,6 +85,7 @@ function makeDataWrapper (options) {
       return true;
     }
     runOneTest(file) {
+      let oldLeader;
       let res = {'total':0, 'duration':0.0, 'status':true, message: '', 'failed': 0};
       let messages = [
         "initially create the test data",
@@ -144,11 +145,12 @@ function makeDataWrapper (options) {
             moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
           }
         } else if (this.options.activefailover &&  (count === 2)) {
-          let oldLeader = this.instanceManager.leader;
+          oldLeader = this.instanceManager.leader;
           print(`halting old leader ${oldLeader.name}`);
           oldLeader.suspend();
-          require('internal').sleep(300);
-          this.instanceManager.detectCurrentLeader();
+          require('internal').sleep(10);
+          let newLeader = this.instanceManager.detectCurrentLeader();
+          newLeader.connect();
           oldLeader.resume();
         }
         let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
