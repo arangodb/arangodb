@@ -848,8 +848,7 @@ class instanceManager {
 
   upgradeCycleInstance(waitForShardsInSync) {
     /// TODO:             self._check_for_shards_in_sync()
-    this._setMaintenance(true);
-
+    let haveMaintainance = false;
     this.instanceRoles.forEach(role => {
       this.arangods.forEach(arangod => {
         if (arangod.isRole(role)) {
@@ -858,6 +857,8 @@ class instanceManager {
           if (arangod.isRole(instanceRole.dbServer)) {
             this.resignLeaderShip(arangod);
             sleep(30); // BTS-1965
+            this._setMaintenance(true);
+            haveMaintainance = true;
           }
           arangod.shutdownArangod(false);
           while (arangod.isRunning()) {
@@ -868,6 +869,10 @@ class instanceManager {
           arangod.runUpgrade();
           print(`${Date()} relaunching ${arangod.name}`);
           arangod.restartOneInstance();
+          if (haveMaintainance) {
+            haveMaintainance = false;
+            this._setMaintenance(false);
+          }
         }
       });
       if (role === instanceRole.agent) {
@@ -875,8 +880,6 @@ class instanceManager {
         this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       }
     });
-
-    this._setMaintenance(false);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief check SUT health inbetween
