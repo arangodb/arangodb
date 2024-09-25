@@ -45,24 +45,24 @@ class Builder;
 namespace arangodb::aql {
 struct QueryOptions;
 
-// a very simple, not yet optimized query plan cache.
-// the cache can cache serialized query execution plans (in velocypack format)
+// A very simple, not yet optimized query plan cache.
+// The cache can cache serialized query execution plans (in velocypack format)
 // in a map, mapping from {query string, bind parameters, fullCount} to the
 // cached plan.
-// the cache keys consist of the full query string, the query's `fullcount`
+// The cache keys consist of the full query string, the query's `fullcount`
 // attribute value and the set of "relevant" bind parameters, which are the
-// collection name parameters only. attribute name bind parameters and value
+// collection name parameters only. Attribute name bind parameters and value
 // bind parameters are not part of the cache keys.
-// the collection name bind parameters are relevant during the query
+// The collection name bind parameters are relevant during the query
 // optimization phase, because they determine which collections and indexes
 // can be used by the query.
-// once an AQL query is started that has its "optimizePlanForCaching"
+// Once an AQL query is started that has its "optimizePlanForCaching"
 // flag set to true, the Query object will generate a cache key object for the
 // query plan cache.
-// it will then perform a lookup in the query plan cache and run the query using
-// the serialized cached plan if there is any in the cache. if there is no plan
+// It will then perform a lookup in the query plan cache and run the query using
+// the serialized cached plan if there is any in the cache. If there is no plan
 // in the cache, the Query object will memorize its cache key and invoke the
-// query parser and optimizer. after the optimization, the Query object will
+// query parser and optimizer. After the optimization, the Query object will
 // serialize the plan to velocypack and store the serialized plan in the plan
 // cache, using the already computed cache key.
 class QueryPlanCache {
