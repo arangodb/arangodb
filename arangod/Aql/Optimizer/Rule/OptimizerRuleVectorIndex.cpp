@@ -52,7 +52,7 @@ bool checkFunctionNameMatchesIndexMetric(
     std::string_view const functionName,
     UserVectorIndexDefinition const& definition) {
   switch (definition.metric) {
-      case SimilarityMetric::kL2: {
+    case SimilarityMetric::kL2: {
       return functionName == "APPROX_NEAR_L2";
     }
     case SimilarityMetric::kCosine: {

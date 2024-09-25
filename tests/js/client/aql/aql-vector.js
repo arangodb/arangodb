@@ -58,7 +58,7 @@ function VectorIndexL2TestSuite() {
       let gen = randomNumberGeneratorFloat(seed);
       for (let i = 0; i < 500; ++i) {
         const vector = Array.from({ length: dimension }, () => gen());
-        if (i == 250) {
+        if (i === 250) {
           randomPoint = vector;
         }
         docs.push({ vector, nonVector: i, unIndexedVector: vector });
@@ -326,7 +326,7 @@ function VectorIndexCosineTestSuite() {
       let gen = randomNumberGeneratorFloat(seed);
       for (let i = 0; i < 1000; ++i) {
         const vector = Array.from({ length: dimension }, () => gen());
-        if (i == 500) {
+        if (i === 500) {
           randomPoint = vector;
         }
         docs.push({ vector, nonVector: i, unIndexedVector: vector });
@@ -415,7 +415,7 @@ function MultipleVectorIndexesOnField() {
       let gen = randomNumberGeneratorFloat(seed);
       for (let i = 0; i < 1000; ++i) {
         const vector = Array.from({ length: dimension }, () => gen());
-        if (i == 500) {
+        if (i === 500) {
           randomPoint = vector;
         }
         docs.push({ vector, fieldInt: i, fieldVec: vector });

@@ -94,7 +94,6 @@ if (USE_ENTERPRISE)
     ${IRESEARCH_INCLUDE})
   target_link_libraries(arango_rocksdb
     arango_rclone 
-    arango_lsh
   )
 endif()
 
