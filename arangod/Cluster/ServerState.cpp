@@ -760,7 +760,19 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
                    "configured or persisted on database servers: "
                 << msg;
           }
-          return false;
+          break;  // Warning sent, now still move on with the start.
+          // A comment here is in order: It is not good if a part of the
+          // cluster is running with extended names and another part is not.
+          // However, preventing the server from starting creates more
+          // problems than it solves. This it in particular true in the
+          // following case: If we upgrade from 3.11 to 3.12, where the
+          // extended names feature is by default switched on, and some
+          // server (which is not yet upgraded) crashes during an upgrade,
+          // when already some server has been upgraded and has activated
+          // the extended names feature, then the crashed server cannot
+          // be restarted with its existing version, which breaks automated
+          // upgrades. Therefore, we decided to allow the server to start,
+          // even if the naming conventions are not the same on all servers.
         }
       }
       return true;
@@ -774,6 +786,7 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
     if (!checkSetting(servers, "database.extended-names", ::extendedNamesKey,
                       df.extendedNames())) {
       // settings mismatch
+      // Unreachable after the change explained in the comment above!
       return false;
     }
   }

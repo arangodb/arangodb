@@ -1,6 +1,11 @@
 v3.11.12 (XXXX-XX-XX)
 ---------------------
 
+* Allow an `arangod` server to startup, even if the option 
+  `--database.extended-names` is set to inconsistent values across the
+  cluster. It has been found that bailing out in this case creates more
+  harm than it helps.
+
 * Upgraded OpenSSL to 3.3.2.
 
 * Fix data race in cluster selectivity estimates.
