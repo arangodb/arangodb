@@ -3,6 +3,8 @@ v3.11.12 (XXXX-XX-XX)
 
 * Upgraded OpenSSL to 3.3.2.
 
+* Fix data race in cluster selectivity estimates.
+
 * Fix blockage in SynchronizeShard: We do some agency communication there,
   this should use skipScheduler to avoid being blocked by all scheduler
   threads being busy. This solves a problem found in RTA on upgrade
