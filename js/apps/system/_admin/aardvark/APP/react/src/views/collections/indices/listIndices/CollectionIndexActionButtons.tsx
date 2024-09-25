@@ -10,7 +10,7 @@ import { DeleteIndexModal } from "../DeleteIndexModal";
 export function CollectionIndexActionButtons({
   collectionIndex
 }: {
-  collectionIndex: HiddenIndex & { progress?: number };
+  collectionIndex: HiddenIndex;
 }) {
   const { readOnly } = useCollectionIndicesContext();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);

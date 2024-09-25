@@ -11,13 +11,9 @@ import { TYPE_TO_LABEL_MAP } from "../CollectionIndicesHelpers";
 import { useSyncIndexCreationJob } from "../useSyncIndexCreationJob";
 import { CollectionIndexActionButtons } from "./CollectionIndexActionButtons";
 
-const columnHelper = createColumnHelper<HiddenIndex & { progress?: number }>();
+const columnHelper = createColumnHelper<HiddenIndex>();
 
-const NameCell = ({
-  info
-}: {
-  info: CellContext<HiddenIndex & { progress?: number }, unknown>;
-}) => {
+const NameCell = ({ info }: { info: CellContext<HiddenIndex, unknown> }) => {
   const { id, progress } = info.row.original;
   const finalId = id.slice(id.lastIndexOf("/") + 1); // remove the collection name from the id
   const collectionName = window.location.hash.split("#cIndices/")[1]; // get the collection name from the url
@@ -153,11 +149,11 @@ export const CollectionIndicesTable = () => {
   });
   return (
     <Stack>
-      <TableControl<HiddenIndex & { progress?: number }>
+      <TableControl<HiddenIndex>
         table={tableInstance}
         columns={TABLE_COLUMNS}
       />
-      <ReactTable<HiddenIndex & { progress?: number }>
+      <ReactTable<HiddenIndex>
         table={tableInstance}
         emptyStateMessage="No indexes found"
         onRowSelect={row => {
