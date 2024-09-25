@@ -460,7 +460,6 @@ function MultipleVectorIndexesOnField() {
       const indexNodes = plan.nodes.filter(function (n) {
         return n.type === "EnumerateNearVectorNode";
       });
-      db._explain(query, bindVars);
       assertEqual(1, indexNodes.length);
       assertEqual(indexNodes[0].index.name, "vector_l2");
 
