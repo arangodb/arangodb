@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded OpenSSL to 3.3.2.
+
 * In replication use vpack as transport format throughout, so that even
   large and strangely encoded numbers are transported faithfully.
 
