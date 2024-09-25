@@ -23,7 +23,6 @@
 #pragma once
 
 #include "Async/Registry/promise.h"
-#include "Metrics/GaugeCounterGuard.h"
 
 #include <atomic>
 #include <cstdint>
@@ -40,6 +39,7 @@ class Gauge;
 namespace arangodb::async_registry {
 
 struct Metrics;
+struct Registry;
 
 /**
    This registry belongs to a specific thread (the owning thread) and owns a
@@ -54,10 +54,11 @@ struct Metrics;
    This registry destroys itself when its ref counter is decremented to 0.
  */
 struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
-  static auto make(std::shared_ptr<const Metrics> metrics)
+  static auto make(std::shared_ptr<const Metrics> metrics,
+                   Registry* registry = nullptr)
       -> std::shared_ptr<ThreadRegistry>;
 
-  ~ThreadRegistry() noexcept { cleanup(); }
+  ~ThreadRegistry() noexcept;
 
   /**
      Adds a promise on the registry's thread to the registry.
@@ -68,7 +69,8 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   auto add(Promise* promise) noexcept -> void;
 
   /**
-     Executes a function on each promise in the registry.
+     Executes a function on each promise in the registry that is not deleted yet
+     (includes promises that are marked for deletion).
 
      Can be called from any thread. It makes sure that all
      items stay valid during iteration (i.e. are not deleted in the meantime).
@@ -95,8 +97,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   /**
      Deletes all promises that are marked for deletion.
 
-     Can only be called on the owning thread or last thread working with this
-     registry, crashes otheriwse.
+     Can only be called on the owning thread, crashes otherwise.
    */
   auto garbage_collect() noexcept -> void;
 
@@ -104,13 +105,13 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   const std::string thread_name;
 
  private:
+  Registry* registry = nullptr;
   std::atomic<Promise*> free_head = nullptr;
   std::atomic<Promise*> promise_head = nullptr;
   std::mutex mutex;
-  metrics::GaugeCounterGuard<uint64_t> running_threads;
   std::shared_ptr<const Metrics> metrics;
 
-  ThreadRegistry(std::shared_ptr<const Metrics> metrics);
+  ThreadRegistry(std::shared_ptr<const Metrics> metrics, Registry* registry);
   auto cleanup() noexcept -> void;
 
   /**
