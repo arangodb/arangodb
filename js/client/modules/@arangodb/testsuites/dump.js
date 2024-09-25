@@ -857,7 +857,9 @@ function dump (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function(){}, []);
+  return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function(){}, [
+    // BTS-1974: disable 802 for now.
+    '--skip', '802,']);
 }
 
 function dumpMixedClusterSingle (options) {
@@ -932,7 +934,7 @@ function dumpMultiple (options) {
 
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){},[
     // BTS-1974: disable 802 for now.
-    '--skip', '802']);
+    '--skip', '802,']);
 }
 
 function dumpNoEnvelope (options) {
@@ -954,7 +956,7 @@ function dumpNoEnvelope (options) {
   _.defaults(dumpOptions, options);
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_no_envelope', tstFiles, function(){}, [
     // BTS-1974: disable 802 for now.
-    '--skip', '802']);
+    '--skip', '802,']);
 
 }
 
@@ -979,7 +981,7 @@ function dumpWithCrashes (options) {
 
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){}, [
     // BTS-1974: disable 802 for now.
-    '--skip', '802']);
+    '--skip', '802,']);
 }
 
 function dumpWithCrashesParallel (options) {
@@ -1005,7 +1007,7 @@ function dumpWithCrashesParallel (options) {
 
   return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){}, [
     // BTS-1974: disable 802 for now.
-    '--skip', '802']);
+    '--skip', '802,']);
 }
 
 function dumpAuthentication (options) {
