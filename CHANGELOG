@@ -117,6 +117,9 @@ devel
     up and not found in the query plan cache, across all database-specific plan
     caches on the instance.
 
+* In replication use vpack as transport format throughout, so that even
+  large and strangely encoded numbers are transported faithfully.
+
 * The optimizer was very pessimistic about sparse mdi indexes and did not
   properly react to queries that excluded null values.
 
@@ -174,7 +177,6 @@ devel
 
 
 3.12.2 (2024-08-21)
--------------------
 
 * Add API GET /_admin/cluster/vpackSortMigration/status to query the status of
   the vpack sorting migration on dbservers, single servers and coordinators.
