@@ -40,11 +40,11 @@ struct Observables {
   std::source_location _where;
 };
 
-struct PromiseInList : Observables {
-  PromiseInList(std::source_location loc) : Observables(std::move(loc)) {}
+struct Promise : Observables {
+  Promise(std::source_location loc) : Observables(std::move(loc)) {}
 
   virtual auto destroy() noexcept -> void = 0;
-  virtual ~PromiseInList() = default;
+  virtual ~Promise() = default;
 
   // identifies the promise list it belongs to
   std::shared_ptr<ThreadRegistry> registry = nullptr;
@@ -52,15 +52,15 @@ struct PromiseInList : Observables {
   std::string thread_name;
   std::thread::id thread_id;
 
-  PromiseInList* next = nullptr;
+  Promise* next = nullptr;
   // only needed to remove an item
-  PromiseInList* previous = nullptr;
+  Promise* previous = nullptr;
   // only needed to garbage collect promises
-  PromiseInList* next_to_free = nullptr;
+  Promise* next_to_free = nullptr;
 };
 
 template<typename Inspector>
-auto inspect(Inspector& f, PromiseInList& x) {
+auto inspect(Inspector& f, Promise& x) {
   // perhaps just use for saving
   return f.object(x).fields(
       f.field("source_location",

@@ -47,7 +47,7 @@ ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics)
   }
 }
 
-auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
+auto ThreadRegistry::add(Promise* promise) noexcept -> void {
   ADB_PROD_ASSERT(promise != nullptr);
   // promise needs to live on the same thread as this registry
   ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread)
@@ -73,8 +73,7 @@ auto ThreadRegistry::add(PromiseInList* promise) noexcept -> void {
   }
 }
 
-auto ThreadRegistry::mark_for_deletion(PromiseInList* promise) noexcept
-    -> void {
+auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
   // makes sure that promise is really in this list
   ADB_PROD_ASSERT(promise->registry.get() == this);
   auto current_head = free_head.load(std::memory_order_relaxed);
@@ -103,7 +102,7 @@ auto ThreadRegistry::garbage_collect() noexcept -> void {
 
 auto ThreadRegistry::cleanup() noexcept -> void {
   // (5) - this exchange synchronizes with compare_exchange_weak in (4)
-  PromiseInList *current,
+  Promise *current,
       *next = free_head.exchange(nullptr, std::memory_order_acquire);
   while (next != nullptr) {
     current = next;
@@ -116,7 +115,7 @@ auto ThreadRegistry::cleanup() noexcept -> void {
   }
 }
 
-auto ThreadRegistry::remove(PromiseInList* promise) -> void {
+auto ThreadRegistry::remove(Promise* promise) -> void {
   auto* next = promise->next;
   auto* previous = promise->previous;
   if (previous == nullptr) {  // promise is current head

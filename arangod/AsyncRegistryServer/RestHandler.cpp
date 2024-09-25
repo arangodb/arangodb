@@ -43,9 +43,8 @@ auto RestHandler::execute() -> RestStatus {
 
   VPackBuilder builder;
   builder.openArray();
-  coroutine_registry.for_promise([&](PromiseInList* promise) {
-    velocypack::serialize(builder, *promise);
-  });
+  registry.for_promise(
+      [&](Promise* promise) { velocypack::serialize(builder, *promise); });
   builder.close();
 
   generateResult(rest::ResponseCode::OK, builder.slice());

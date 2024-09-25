@@ -30,7 +30,7 @@ namespace arangodb::async_registry {
 /**
    Global variable that holds all coroutines.
  */
-extern Registry coroutine_registry;
+extern Registry registry;
 
 /**
    Get registry of all active coroutine promises on this thread.

@@ -65,7 +65,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
      Can only be called on the owning thread, crashes
      otherwise.
    */
-  auto add(PromiseInList* promise) noexcept -> void;
+  auto add(Promise* promise) noexcept -> void;
 
   /**
      Executes a function on each promise in the registry.
@@ -74,7 +74,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
      items stay valid during iteration (i.e. are not deleted in the meantime).
    */
   template<typename F>
-  requires std::invocable<F, PromiseInList*>
+  requires std::invocable<F, Promise*>
   auto for_promise(F&& function) noexcept -> void {
     auto guard = std::lock_guard(mutex);
     // (2) - this load synchronizes with store in (1) and (3)
@@ -90,7 +90,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
      Can be called from any thread. The promise needs to be included in
      the registry list, crashes otherwise.
    */
-  auto mark_for_deletion(PromiseInList* promise) noexcept -> void;
+  auto mark_for_deletion(Promise* promise) noexcept -> void;
 
   /**
      Deletes all promises that are marked for deletion.
@@ -104,8 +104,8 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   const std::string thread_name;
 
  private:
-  std::atomic<PromiseInList*> free_head = nullptr;
-  std::atomic<PromiseInList*> promise_head = nullptr;
+  std::atomic<Promise*> free_head = nullptr;
+  std::atomic<Promise*> promise_head = nullptr;
   std::mutex mutex;
   metrics::GaugeCounterGuard<uint64_t> running_threads;
   std::shared_ptr<const Metrics> metrics;
@@ -120,7 +120,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
      (which also means that this function should only be called on the owning
      thread.)
    */
-  auto remove(PromiseInList* promise) -> void;
+  auto remove(Promise* promise) -> void;
 };
 
 template<typename Inspector>
