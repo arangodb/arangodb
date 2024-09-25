@@ -41,7 +41,7 @@ function GeneralArrayCursor (documents, skip, limit, data) {
   this._cached = false;
   this._extra = { };
 
-  var self = this;
+  let self = this;
   if (data !== null && data !== undefined && typeof data === 'object') {
     [ 'stats', 'warnings', 'profile', 'plan' ].forEach(function (d) {
       if (data.hasOwnProperty(d)) {
@@ -49,6 +49,9 @@ function GeneralArrayCursor (documents, skip, limit, data) {
       }
     });
     this._cached = data.cached || false;
+    if (data.hasOwnProperty('planCacheKey')) {
+      this.planCacheKey = data.planCacheKey;
+    }
   }
 
   this.execute();
@@ -101,11 +104,15 @@ GeneralArrayCursor.prototype.execute = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief print an all query
+// / @brief print query information
 // //////////////////////////////////////////////////////////////////////////////
 
 GeneralArrayCursor.prototype._PRINT = function (context) {
   let text = '[object GeneralArrayCursor';
+  
+  if (this.planCacheKey !== undefined) {
+    text += ', plan cache key: "' + this.planCacheKey + '"';
+  }
   
   text += ', count: ' + this._documents.length;
   text += ', cached: ' + (this._cached ? 'true' : 'false');
@@ -113,8 +120,8 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
   if (this.hasOwnProperty('_extra') &&
     this._extra.hasOwnProperty('warnings') && this._extra.warnings.length > 0) {
     text += ', warning(s): ';
-    var last = null;
-    for (var j = 0; j < this._extra.warnings.length; j++) {
+    let last = null;
+    for (let j = 0; j < this._extra.warnings.length; j++) {
       if (this._extra.warnings[j].code !== last) {
         if (last !== null) {
           text += ', ';
@@ -127,14 +134,13 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
   text += ']';
   
   let rows = [], i = 0;
-//  this._pos = this._printPos || currentPos;
   while (++i <= 10 && this.hasNext()) {
     rows.push(this.next());
   }
  
   more = undefined;
   if (rows.length > 0) {
-    var old = internal.startCaptureMode();
+    let old = internal.startCaptureMode();
     internal.print(rows);
     text += '\n' + internal.stopCaptureMode(old);
   

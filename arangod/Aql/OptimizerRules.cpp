@@ -4955,7 +4955,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::TRAVERSAL:
         case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
-        case EN::REMOTESINGLE:
+        case EN::REMOTE_SINGLE:
         case EN::REMOTE_MULTIPLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
@@ -7543,7 +7543,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::RETURN:
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::SCATTER:
-    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_SINGLE:
     case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_START:

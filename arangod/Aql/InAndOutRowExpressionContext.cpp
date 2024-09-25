@@ -28,6 +28,7 @@
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -113,11 +114,10 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(
           }
         }
 
-        std::string msg("variable not found '");
-        msg.append(variable->name);
         // NOTE: PRUNE is the only feature using this context.
-        msg.append("' in PRUNE statement");
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+        auto msg = absl::StrCat("variable not found '", variable->name,
+                                "' in PRUNE statement");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
       });
 }
 

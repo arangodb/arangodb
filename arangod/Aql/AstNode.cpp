@@ -2379,10 +2379,10 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     return;
   }
 
-  std::string message("stringification not supported for node type ");
-  message.append(getTypeString());
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      absl::StrCat("stringification not supported for node type ",
+                   getTypeString()));
 }
 
 /// note that this may throw and that the caller is responsible for
@@ -2610,13 +2610,14 @@ void AstNode::changeMember(size_t i, AstNode* node) {
 }
 
 void AstNode::removeMemberUnchecked(size_t i) {
-  TRI_ASSERT(members.size() > 0);
+  TRI_ASSERT(members.size() > i);
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
   members.erase(members.begin() + i);
 }
 
 void AstNode::removeMemberUncheckedUnordered(size_t i) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(members.size() > i);
   std::swap(members[i], members.back());
   members.pop_back();
 }

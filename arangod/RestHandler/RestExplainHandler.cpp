@@ -134,6 +134,10 @@ void RestExplainHandler::explainQuery() {
   if (extras.hasKey("stats")) {
     result.add("stats", extras.get("stats"));
   }
+  if (queryResult.planCacheKey.has_value()) {
+    result.add("planCacheKey",
+               VPackValue(std::to_string(queryResult.planCacheKey.value())));
+  }
 
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code,

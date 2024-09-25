@@ -29,7 +29,6 @@
 
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Graph.h"
