@@ -222,6 +222,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-fp') !== -1) && (!options.haveFailAt)) {
+    whichFilter.filter = 'skip when built without failurepoints';
+    return false;
+  }
+
   if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
     whichFilter.filter = 'skip when built with asan or tsan';
     return false;
