@@ -1,6 +1,8 @@
 v3.11.12 (XXXX-XX-XX)
 ---------------------
 
+* Updated ArangoDB Starter to v0.18.10-preview-1.
+
 * Allow an `arangod` server to startup, even if the option 
   `--database.extended-names` is set to inconsistent values across the
   cluster. It has been found that bailing out in this case creates more
