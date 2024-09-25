@@ -381,8 +381,8 @@ TEST(AsyncTest, promises_are_registered) {
     auto coro_baz = baz();
 
     std::vector<std::string> names;
-    arangodb::async_registry::coroutine_registry.for_promise(
-        [&](arangodb::async_registry::PromiseInList* promise) {
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::Promise* promise) {
           names.push_back(promise->_where.function_name());
         });
     EXPECT_EQ(names.size(), 3);
