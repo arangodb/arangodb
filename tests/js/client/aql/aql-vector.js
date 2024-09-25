@@ -554,7 +554,7 @@ function MultipleVectorIndexesOnField() {
         const indexNodes = plan.nodes.filter(function (n) {
           return n.type === "EnumerateNearVectorNode";
         });
-        print("Not finding")
+
         assertEqual(1, indexNodes.length);
         assertEqual(indexNodes[0].index.name, indexName);
 

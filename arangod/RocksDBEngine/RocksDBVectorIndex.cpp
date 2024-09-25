@@ -203,6 +203,9 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                    coll.vocbase().engine<RocksDBEngine>()) {
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
+  if (auto data = info.get("trainedData"); !data.isNone()) {
+    velocypack::deserialize(data, _trainedData.emplace());
+  }
   _trainingDataSize = _definition.nLists * 1000;
 
   _quantizer =
@@ -215,12 +218,12 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
             return {faiss::IndexFlatIP(_definition.dimensions)};
         }
       });
-  if (_definition.trainedData) {
+  if (_trainedData) {
     std::visit(
         [this](auto&& quant) {
-          quant.ntotal = _definition.trainedData->numberOfCodes;
-          quant.codes = _definition.trainedData->codeData;
-          quant.code_size = _definition.trainedData->codeSize;
+          quant.ntotal = _trainedData->numberOfCodes;
+          quant.codes = _trainedData->codeData;
+          quant.code_size = _trainedData->codeSize;
           quant.d = _definition.dimensions;
           quant.metric_type = metricToFaissMetric(_definition.metric);
           quant.is_trained = true;
@@ -241,6 +244,10 @@ void RocksDBVectorIndex::toVelocyPack(
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(VPackValue("params"));
   velocypack::serialize(builder, _definition);
+  if (_trainedData) {
+    builder.add(VPackValue("trainedData"));
+    velocypack::serialize(builder, *_trainedData);
+  }
 }
 
 std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
@@ -361,7 +368,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
 
   flatIndex.train(counter, trainingData.data());
   // Update vector definition data with quantitizer data
-  _definition.trainedData = std::visit(
+  _trainedData = std::visit(
       [](auto&& quant) {
         return TrainedData{.codeData = quant.codes,
                            .numberOfCodes = static_cast<size_t>(quant.ntotal),

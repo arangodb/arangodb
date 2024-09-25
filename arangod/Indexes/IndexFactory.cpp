@@ -185,6 +185,12 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
             value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
       return false;
     }
+  } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
+    // check if the parameters are the same
+    if (!basics::VelocyPackHelper::equal(lhs.get("params"), rhs.get("params"),
+                                         false)) {
+      return false;
+    }
   }
 
   // other index types: fields must be identical if present

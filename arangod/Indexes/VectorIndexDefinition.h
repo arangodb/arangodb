@@ -94,16 +94,4 @@ struct UserVectorIndexDefinition {
   }
 };
 
-// TODO Extract Specific vector index params from general vector definition
-struct FullVectorIndexDefinition : UserVectorIndexDefinition {
-  std::optional<TrainedData> trainedData;
-
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, FullVectorIndexDefinition& x) {
-    return f.object(x).fields(
-        f.template embedFields<UserVectorIndexDefinition&>(x),
-        f.field("trainedData", x.trainedData));
-  }
-};
-
 }  // namespace arangodb

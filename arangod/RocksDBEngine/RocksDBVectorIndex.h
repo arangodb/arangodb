@@ -78,7 +78,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   void toVelocyPack(
       arangodb::velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type flags) const override;
-  FullVectorIndexDefinition const& getDefinition() const noexcept {
+  UserVectorIndexDefinition const& getDefinition() const noexcept {
     return _definition;
   }
 
@@ -99,9 +99,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
-  FullVectorIndexDefinition _definition;
+  UserVectorIndexDefinition _definition;
   Quantitizer _quantizer;
   std::size_t _trainingDataSize;
+  std::optional<TrainedData> _trainedData;
 };
 
 }  // namespace arangodb
