@@ -625,15 +625,15 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
 // static node types used by some optimizer rules
 // having them statically available avoids having to build the lists over
 // and over for each AQL query
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     removeUnnecessaryCalculationsNodeTypes{
         arangodb::aql::ExecutionNode::CALCULATION,
         arangodb::aql::ExecutionNode::SUBQUERY};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     interchangeAdjacentEnumerationsNodeTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
         arangodb::aql::ExecutionNode::ENUMERATE_LIST};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     scatterInClusterNodeTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
         arangodb::aql::ExecutionNode::ENUMERATE_NEAR_VECTORS,
@@ -645,19 +645,19 @@ std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
         arangodb::aql::ExecutionNode::REPLACE,
         arangodb::aql::ExecutionNode::REMOVE,
         arangodb::aql::ExecutionNode::UPSERT};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     removeDataModificationOutVariablesNodeTypes{
         arangodb::aql::ExecutionNode::REMOVE,
         arangodb::aql::ExecutionNode::INSERT,
         arangodb::aql::ExecutionNode::UPDATE,
         arangodb::aql::ExecutionNode::REPLACE,
         arangodb::aql::ExecutionNode::UPSERT};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
-    moveFilterIntoEnumerateTypes{
-        arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-        arangodb::aql::ExecutionNode::INDEX,
-        arangodb::aql::ExecutionNode::ENUMERATE_LIST};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<
+    arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
+    arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+    arangodb::aql::ExecutionNode::INDEX,
+    arangodb::aql::ExecutionNode::ENUMERATE_LIST};
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     undistributeNodeTypes{arangodb::aql::ExecutionNode::UPDATE,
                           arangodb::aql::ExecutionNode::REPLACE,
                           arangodb::aql::ExecutionNode::REMOVE};
@@ -1623,7 +1623,7 @@ void arangodb::aql::removeCollectVariablesRule(
           modified = true;
         }
       }  // end - if doOptimize
-    }  // end - if collectNode has outVariable
+    }    // end - if collectNode has outVariable
 
     size_t numGroupVariables = collectNode->groupVariables().size();
     size_t numAggregateVariables = collectNode->aggregateVariables().size();
@@ -3793,9 +3793,10 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
 //
 // In an ideal world the node itself would know how to compute these parameters
 // for GatherNode (sortMode, parallelism, and elements), and we'd just ask it.
-auto insertGatherNode(ExecutionPlan& plan, ExecutionNode* node,
-                      SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const&
-                          subqueries) -> GatherNode* {
+auto insertGatherNode(
+    ExecutionPlan& plan, ExecutionNode* node,
+    SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries)
+    -> GatherNode* {
   TRI_ASSERT(node);
 
   GatherNode* gatherNode{nullptr};
@@ -4118,8 +4119,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
 // Create a new DistributeNode for the ExecutionNode passed in node, and
 // register it with the plan
-auto arangodb::aql::createDistributeNodeFor(
-    ExecutionPlan& plan, ExecutionNode* node) -> DistributeNode* {
+auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
+                                            ExecutionNode* node)
+    -> DistributeNode* {
   auto collection = static_cast<Collection const*>(nullptr);
   auto inputVariable = static_cast<Variable const*>(nullptr);
 
@@ -4250,9 +4252,10 @@ auto arangodb::aql::createGatherNodeFor(ExecutionPlan& plan,
 // and we handle this case in here as well by resetting the root to the
 // inserted GATHER node.
 //
-auto arangodb::aql::insertDistributeGatherSnippet(
-    ExecutionPlan& plan, ExecutionNode* at,
-    SubqueryNode* snode) -> DistributeNode* {
+auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
+                                                  ExecutionNode* at,
+                                                  SubqueryNode* snode)
+    -> DistributeNode* {
   auto const parents = at->getParents();
   auto const deps = at->getDependencies();
 
@@ -4477,7 +4480,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         node = node->getFirstDependency();
       }
     }  // for node in subquery
-  }  // for end subquery in plan
+  }    // for end subquery in plan
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
@@ -6669,7 +6672,11 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
 
         // we're only interested in FOR loops...
         auto listNode = ExecutionNode::castTo<EnumerateListNode*>(current);
-
+        if (listNode->getMode() == EnumerateListNode::kEnumerateObject) {
+          // exit the loop
+          current = nullptr;
+          break;
+        }
         // ...that use our subquery as its input
         if (subqueryVars.find(listNode->inVariable()) != subqueryVars.end()) {
           // bingo!
@@ -6744,11 +6751,11 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           plan->unlinkNode(listNode, false);
 
           queryVariables->renameVariable(returnNode->inVariable()->id,
-                                         listNode->outVariable()->name);
+                                         listNode->outVariable()[0]->name);
 
           // finally replace the variables
           std::unordered_map<VariableId, Variable const*> replacements;
-          replacements.try_emplace(listNode->outVariable()->id,
+          replacements.try_emplace(listNode->outVariable()[0]->id,
                                    returnNode->inVariable());
           VariableReplacer finder(replacements);
           plan->root()->walk(finder);
@@ -6947,7 +6954,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
         return true;
       }
     }  // if isGeo 1 or 2
-  }  // for index in collection
+  }    // for index in collection
   return false;
 }
 
@@ -7894,7 +7901,9 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
       continue;
     }
 
-    Variable const* outVariable = nullptr;
+    std::vector<Variable const*> outVariable;
+    outVariable.resize(1);
+
     if (n->getType() == EN::INDEX || n->getType() == EN::ENUMERATE_COLLECTION) {
       auto en = dynamic_cast<DocumentProducingNode*>(n);
       if (en == nullptr) {
@@ -7902,14 +7911,18 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
             TRI_ERROR_INTERNAL, "unable to cast node to DocumentProducingNode");
       }
 
-      outVariable = en->outVariable();
+      outVariable[0] = en->outVariable();
     } else {
       TRI_ASSERT(n->getType() == EN::ENUMERATE_LIST);
-      outVariable =
-          ExecutionNode::castTo<EnumerateListNode const*>(n)->outVariable();
+      outVariable = ExecutionNode::castTo<EnumerateListNode const*>(n)
+                        ->getVariablesSetHere();
     }
 
-    if (!n->isVarUsedLater(outVariable)) {
+    bool isUsedLater = n->isVarUsedLater(outVariable[0]);
+    if (outVariable.size() > 1) {
+      isUsedLater |= n->isVarUsedLater(outVariable[1]);
+    }
+    if (!isUsedLater) {
       // e.g. FOR doc IN collection RETURN 1
       continue;
     }
@@ -7992,7 +8005,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(
         TRI_ASSERT(!expr->willUseV8());
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
-        if (found.contains(outVariable)) {
+
+        bool isFound = found.contains(outVariable[0]);
+        if (outVariable.size() > 1) {
+          isFound |= found.contains(outVariable[1]);
+        }
+        if (isFound) {
           // check if the introduced variable refers to another temporary
           // variable that is not valid yet in the EnumerateCollection/Index
           // node, which would prevent moving the calculation and filter

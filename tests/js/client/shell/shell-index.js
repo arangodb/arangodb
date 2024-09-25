@@ -1636,8 +1636,7 @@ function ParallelIndexSuite() {
       // here because otherwise the server may be overwhelmed by too many
       // concurrent index creations being in progress.
       const maxThreads = 7;
-      // Relax condition for macOS - TODO: fix this.
-      const noIndexes = (platform === 'darwin') ? 40 : 80;
+      const noIndexes = versionHas('coverage') ? 40 : 80;
 
       let time = require("internal").time;
       let start = time();

@@ -1,0 +1,12 @@
+name: arangodb_async_active_threads
+introducedIn: "3.12.3"
+help: |
+  Number of active threads that execute asynchronous functions.
+unit: number
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of active threads that execute asynchronous functions.

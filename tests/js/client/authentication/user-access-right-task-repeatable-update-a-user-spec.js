@@ -33,11 +33,13 @@ const tasks = require('@arangodb/tasks');
 const pu = require('@arangodb/testutils/process-utils');
 const users = require('@arangodb/users');
 const internal = require('internal');
+const db = internal.db;
 const helper = require('@arangodb/testutils/user-helper');
 const download = internal.download;
 const keySpaceId = 'task_update_user_keyspace';
 const taskId = 'task_update_user_periodic';
 const arango = internal.arango;
+let connectionHandle = arango.getConnectionHandle();
 const taskPeriod = 0.3;
 
 const createKeySpace = (keySpaceId) => {
@@ -149,4 +151,8 @@ describe('User Rights Management', () => {
     internal.print('Waiting for task to stop');
     waitForTaskStop();
   });
+});
+after(() => {
+  arango.connectHandle(connectionHandle);
+  db._useDatabase('_system');
 });

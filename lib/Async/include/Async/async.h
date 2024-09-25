@@ -21,11 +21,10 @@ template<typename T>
 struct async;
 
 template<typename T>
-struct async_promise_base : async_registry::PromiseInList {
+struct async_promise_base : async_registry::Promise {
   using promise_type = async_promise<T>;
 
-  async_promise_base(std::source_location loc)
-      : PromiseInList(std::move(loc)) {}
+  async_promise_base(std::source_location loc) : Promise(std::move(loc)) {}
 
   std::suspend_never initial_suspend() noexcept { return {}; }
   auto final_suspend() noexcept {

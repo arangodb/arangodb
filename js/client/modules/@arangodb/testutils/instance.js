@@ -36,9 +36,7 @@ const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
-const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
-const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
 const {
@@ -58,7 +56,7 @@ const {
 } = internal;
 
 /* Constants: */
-// const BLUE = internal.COLORS.COLOR_BLUE;
+const BLUE = internal.COLORS.COLOR_BLUE;
 const CYAN = internal.COLORS.COLOR_CYAN;
 const GREEN = internal.COLORS.COLOR_GREEN;
 const RED = internal.COLORS.COLOR_RED;
@@ -66,13 +64,14 @@ const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = internal.COLORS.COLOR_YELLOW;
 const IS_A_TTY = RED.length !== 0;
 
-
 const abortSignal = 6;
 const termSignal = 15;
 
 let tcpdump;
 
 let PORTMANAGER;
+
+const seconds = x => x * 1000;
 
 function getSockStatFile(pid) {
   try {
@@ -94,56 +93,20 @@ const instanceRole = {
   coordinator: 'coordinator',
 };
 
-class agencyConfig {
-  constructor(options, wholeCluster) {
-    this.wholeCluster = wholeCluster;
-    this.agencySize = options.agencySize;
-    this.supervision = String(options.agencySupervision);
-    this.waitForSync = false;
-    if (options.agencyWaitForSync !== undefined) {
-      this.waitForSync = options.agencyWaitForSync = false;
-    }
-    this.agencyInstances = [];
-    this.agencyEndpoint = "";
-    this.agentsLaunched = 0;
-    this.urls = [];
-    this.endpoints = [];
-  }
-  getStructure() {
-    return {
-      agencySize: this.agencySize,
-      agencyInstances: this.agencyInstances.length,
-      supervision: this.supervision,
-      waitForSync: this.waitForSync,
-      agencyEndpoint: this.agencyEndpoint,
-      agentsLaunched: this.agentsLaunched,
-      urls: this.urls,
-      endpoints: this.endpoints
-    };
-  }
-  setFromStructure(struct) {
-    this.agencySize = struct['agencySize'];
-    this.supervision = struct['supervision'];
-    this.waitForSync = struct['waitForSync'];
-    this.agencyEndpoint = struct['agencyEndpoint'];
-    this.agentsLaunched = struct['agentsLaunched'];
-    this.urls = struct['urls'];
-    this.endpoints = struct['endpoints'];
-  }
-}
-
 class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir, mem) {
+  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
     this.id = null;
+    this.shortName = null;
     this.pm = pm.getPortManager(options);
     this.options = options;
     this.instanceRole = instanceRole;
     this.rootDir = rootDir;
     this.protocol = protocol;
 
+    this.moreArgs = {};
     this.args = {};
     for (const [key, value] of Object.entries(addArgs)) {
       if (key.search('extraArgs') >= 0) {
@@ -161,7 +124,7 @@ class instance {
     }
     this.authHeaders = authHeaders;
     this.restKeyFile = restKeyFile;
-    this.agencyConfig = agencyConfig;
+    this.agencyMgr = agencyMgr;
 
     this.upAndRunning = false;
     this.suspended = false;
@@ -169,6 +132,7 @@ class instance {
     this.port = '';
     this.url = '';
     this.endpoint = '';
+    this.connectionHandle = undefined;
     this.assertLines = [];
     this.useableMemory = mem;
     this.memProfCounter = 0;
@@ -188,6 +152,7 @@ class instance {
     }
     this.JWT = null;
     this.jwtFiles = null;
+    this.jwtSecrets = [];
     this.sanHandler = new sanHandler('arangod', this.options);
 
     this._makeArgsArangod();
@@ -207,6 +172,15 @@ class instance {
 
   get pid() { return this.#pid; }
 
+  _flushPid() {
+      if (this.pid === null) {
+        return;
+      }
+      this.exitStatus = null;
+      this.pid = null;
+      this.upAndRunning = false;
+  }
+
   getStructure() {
     return {
       name: this.name,
@@ -216,7 +190,7 @@ class instance {
       protocol: this.protocol,
       authHeaders: this.authHeaders,
       restKeyFile: this.restKeyFile,
-      agencyConfig: this.agencyConfig.getStructure(),
+      agencyConfig: this.agencyMgr.getStructure(),
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
       port: this.port,
@@ -229,6 +203,7 @@ class instance {
       args: this.args,
       pid: this.pid,
       id: this.id,
+      shortName: this.shortName,
       JWT: this.JWT,
       jwtFiles: this.jwtFiles,
       exitStatus: this.exitStatus,
@@ -236,7 +211,7 @@ class instance {
     };
   }
 
-  setFromStructure(struct, agencyConfig) {
+  setFromStructure(struct, agencyMgr) {
     this.name = struct['name'];
     this.instanceRole = struct['instanceRole'];
     this.message = struct['message'];
@@ -256,12 +231,16 @@ class instance {
     this.args = struct['args'];
     this.pid = struct['pid'];
     this.id = struct['id'];
+    this.shortName = struct['shortName'];
     this.JWT = struct['JWT'];
     this.jwtFiles = struct['jwtFiles'];
     this.exitStatus = struct['exitStatus'];
     this.serverCrashedLocal = struct['serverCrashedLocal'];
   }
 
+  setThisConnectionHandle() {
+    this.connectionHandle = arango.getConnectionHandle();
+  }
   isRole(compareRole) {
     // print(this.instanceRole + ' ==? ' + compareRole);
     return this.instanceRole === compareRole;
@@ -276,28 +255,41 @@ class instance {
              (this.instanceRole === instanceRole.failover)      );
   }
 
-  checkNetstat(data) {
-    let which = null;
-    if (data.local.port === this.port) {
-      which = this.netstat['in'];
-    } else if (data.remote.port === this.port) {
-      which = this.netstat['out'];
+  matches(role, urlIDOrShortName) {
+    if (role !== undefined && role !== '' && !this.isRole(role)) {
+      return false;
     }
-    if (which !== null) {
-      if (!which.hasOwnProperty(data.state)) {
-        which[data.state] = 1;
-      } else {
-        which[data.state] += 1;
-      }
+
+    if (urlIDOrShortName !== undefined &&
+        this.url !== urlIDOrShortName &&
+        this.shortName !== urlIDOrShortName &&
+        this.endpoint !== urlIDOrShortName &&
+        this.id !== urlIDOrShortName) {
+      return false;
     }
+    return true;
   }
   
-  
+  _disconnect() {
+    if (this.connectionHandle !== undefined) {
+      arango.disconnectHandle(this.connectionHandle);
+    }
+    this.connectionHandle = undefined;
+  }
+
+  resetAuthHeaders(authHeaders, JWT) {
+    this.authHeaders = authHeaders;
+    this.JWT = JWT;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
   // //////////////////////////////////////////////////////////////////////////////
 
   _makeArgsArangod () {
+    if (this.options.hasOwnProperty('dummy')) {
+      return;
+    }
     console.assert(this.tmpDir !== undefined);
     let endpoint;
     let bindEndpoint;
@@ -356,9 +348,14 @@ class instance {
     }
     else if (this.options.hasOwnProperty('jwtFiles')) {
       this.jwtFiles = this.options['jwtFiles'];
-    // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
+      // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
+      this.jwtFiles.forEach(file => {
+        this.jwtSecrets.push(fs.read(file));
+      });
     }
-
+    if (this.jwtSecrets.length > 0) {
+      this.JWT = this.jwtSecrets[0];
+    }
 
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;
@@ -402,9 +399,9 @@ class instance {
     if (this.isAgent()) {
       this.args = Object.assign(this.args, {
         'agency.activate': 'true',
-        'agency.size': this.agencyConfig.agencySize,
-        'agency.wait-for-sync': this.agencyConfig.waitForSync,
-        'agency.supervision': this.agencyConfig.supervision,
+        'agency.size': this.agencyMgr.agencySize,
+        'agency.wait-for-sync': this.agencyMgr.waitForSync,
+        'agency.supervision': this.agencyMgr.supervision,
         'agency.my-address': this.protocol + '://127.0.0.1:' + this.port,
         // Sometimes for unknown reason the agency startup is too slow.
         // With this log level we might have a chance to see what is going on.
@@ -416,108 +413,58 @@ class instance {
       if (!this.args.hasOwnProperty("agency.supervision-frequency")) {
         this.args['agency.supervision-frequency'] = '1.0';
       }
-      this.agencyConfig.agencyInstances.push(this);
-      if (this.agencyConfig.agencyInstances.length === this.agencyConfig.agencySize) {
+      this.agencyMgr.agencyInstances.push(this);
+      if (this.agencyMgr.agencyInstances.length === this.agencyMgr.agencySize) {
         let l = [];
-        this.agencyConfig.agencyInstances.forEach(agentInstance => {
+        this.agencyMgr.agencyInstances.forEach(agentInstance => {
           l.push(agentInstance.endpoint);
-          this.agencyConfig.urls.push(agentInstance.url);
-          this.agencyConfig.endpoints.push(agentInstance.endpoint);
+          this.agencyMgr.urls.push(agentInstance.url);
+          this.agencyMgr.endpoints.push(agentInstance.endpoint);
         });
-        this.agencyConfig.agencyInstances.forEach(agentInstance => {
+        this.agencyMgr.agencyInstances.forEach(agentInstance => {
           agentInstance.args['agency.endpoint'] = _.clone(l);
         });
-        this.agencyConfig.agencyEndpoint = this.agencyConfig.agencyInstances[0].endpoint;
+        this.agencyMgr.agencyEndpoint = this.agencyMgr.agencyInstances[0].endpoint;
       }
     } else if (this.instanceRole === instanceRole.dbServer) {
       this.args = Object.assign(this.args, {
         'cluster.my-role':'PRIMARY',
         'cluster.my-address': this.args['server.endpoint'],
-        'cluster.agency-endpoint': this.agencyConfig.agencyEndpoint
+        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint
       });
     } else if (this.instanceRole === instanceRole.coordinator) {
       this.args = Object.assign(this.args, {
         'cluster.my-role': 'COORDINATOR',
         'cluster.my-address': this.args['server.endpoint'],
-        'cluster.agency-endpoint': this.agencyConfig.agencyEndpoint,
+        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint,
         'foxx.force-update-on-startup': true
       });
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
         this.args['cluster.default-replication-factor'] = '2';
       }
     }
+    if (this.options.isInstrumented && this.instanceRole in [
+      instanceRole.dbServer,
+      instanceRole.coordinator,
+      instanceRole.agent]) {
+      this.args = Object.assign(this.args, {
+        'replication.connect-timeout':  20,
+      });
+    }
+    if (this.options.forceNoCompress) {
+      this.args = Object.assign(this.args, {
+        'http.compress-response-threshold':  99999999999,
+      });
+    }
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
     }
     this.sanHandler.detectLogfiles(this.rootDir, this.topLevelTmpDir);
   }
-
+  
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief aggregates information from /proc about the SUT
+  // / @brief make this instance an issue of the past.
   // //////////////////////////////////////////////////////////////////////////////
-  _getProcessStats() {
-    let processStats = statisticsExternal(this.pid);
-    if (platform === 'linux') {
-      let pidStr = "" + this.pid;
-      let ioraw;
-      let fn = fs.join('/', 'proc', pidStr, 'io');
-      try {
-        ioraw = fs.readBuffer(fn);
-      } catch (x) {
-        print("Proc FN gone: " + fn);
-        print(x.stack);
-        throw x;
-      }
-      /*
-       * rchar: 1409391
-       * wchar: 681539
-       * syscr: 3303
-       * syscw: 2969
-       * read_bytes: 0
-       * write_bytes: 0
-       * cancelled_write_bytes: 0
-       */
-      let lineStart = 0;
-      let maxBuffer = ioraw.length;
-      for (let j = 0; j < maxBuffer; j++) {
-        if (ioraw[j] === 10) { // \n
-          const line = ioraw.utf8Slice(lineStart, j);
-          lineStart = j + 1;
-          let x = line.split(":");
-          processStats[x[0]] = parseInt(x[1]);
-        }
-      }
-      /* 
-       * sockets: used 1272
-       * TCP: inuse 27 orphan 0 tw 117 alloc 382 mem 25
-       * UDP: inuse 19 mem 17
-       * UDPLITE: inuse 0
-       * RAW: inuse 0
-       * FRAG: inuse 0 memory 0
-       */
-      ioraw = getSockStatFile(this.pid);
-      ioraw.split('\n').forEach(line => {
-        if (line.length > 0) {
-          let x = line.split(":");
-          let values = x[1].split(" ");
-          for (let k = 1; k < values.length; k+= 2) {
-            processStats['sockstat_' + x[0] + '_' + values[k]]
-              = parseInt(values[k + 1]);
-          }
-        }
-      });
-    }
-    return processStats;
-  }
-  getSockStat(preamble) {
-    if (this.options.getSockStat && (platform === 'linux')) {
-      let sockStat = preamble + this.pid + "\n";
-      sockStat += getSockStatFile(this.pid);
-      return sockStat;
-    }
-    return "";
-  }
-
   cleanup() {
     if ((this.pid !== null) && (this.exitStatus === null)) {
       print(RED + Date() + "killing instance (again?) to make sure we can delete its files!" + RESET);
@@ -531,54 +478,6 @@ class instance {
     }
   }
 
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief scans the log files for assert lines
-  // //////////////////////////////////////////////////////////////////////////////
-
-  readAssertLogLines (expectAsserts) {
-    if (!fs.exists(this.logFile)) {
-      if (fs.exists(this.rootDir)) {
-        print(`readAssertLogLines: Logfile ${this.logFile} already gone.`);
-      }
-      return;
-    }
-    let size = fs.size(this.logFile);
-    if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
-      // File bigger 500k? this needs to be a bug in the tests.
-      let err=`ERROR: ${this.logFile} is bigger than ${this.options.maxLogFileSize/1024}kB! - ${size/1024} kBytes!`;
-      this.assertLines.push(err);
-      print(RED + err + RESET);
-      return;
-    }
-    try {
-      const buf = fs.readBuffer(this.logFile);
-      let lineStart = 0;
-      let maxBuffer = buf.length;
-
-      for (let j = 0; j < maxBuffer; j++) {
-        if (buf[j] === 10) { // \n
-          const line = buf.utf8Slice(lineStart, j);
-          lineStart = j + 1;
-
-          // scan for asserts from the crash dumper
-          if (line.search('{crash}') !== -1) {
-            if (!IS_A_TTY) {
-              // else the server has already printed these:
-              print("ERROR: " + line);
-            }
-            this.assertLines.push(line);
-            if (!expectAsserts) {
-              crashUtils.GDB_OUTPUT += line + '\n';
-            }
-          }
-        }
-      }
-    } catch (ex) {
-      let err="failed to read " + this.logFile + " -> " + ex;
-      this.assertLines.push(err);
-      print(RED+err+RESET);
-    }
-  }
   terminateInstance() {
     internal.removePidFromMonitor(this.pid);
     if (!this.hasOwnProperty('exitStatus')) {
@@ -587,41 +486,6 @@ class instance {
     this.processSanitizerReports();
   }
 
-  readImportantLogLines (logPath) {
-    let fnLines = [];
-    const buf = fs.readBuffer(fs.join(this.logFile));
-    let lineStart = 0;
-    let maxBuffer = buf.length;
-    
-    for (let j = 0; j < maxBuffer; j++) {
-      if (buf[j] === 10) { // \n
-        const line = buf.utf8Slice(lineStart, j);
-        lineStart = j + 1;
-        
-        // filter out regular INFO lines, and test related messages
-        let warn = line.search('WARNING about to execute:') !== -1;
-        let info = line.search(' INFO ') !== -1;
-        
-        if (warn || info) {
-          continue;
-        }
-        fnLines.push(line);
-      }
-    }
-    return fnLines;
-  }
-  aggregateFatalErrors(currentTest) {
-    if (this.assertLines.length > 0) {
-      this.assertLines.forEach(line => {
-        rp.addFailRunsMessage(currentTest, line);
-      });
-      this.assertLines = [];
-    }
-    if (this.serverCrashedLocal) {
-      rp.addFailRunsMessage(currentTest, this.serverFailMessagesLocal);
-      this.serverFailMessagesLocal = "";
-    }
-  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief executes a command, possible with valgrind
   // //////////////////////////////////////////////////////////////////////////////
@@ -686,124 +550,98 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   startArango () {
+    this._disconnect();
     try {
       this.pid = this._executeArangod().pid;
       if (this.options.enableAliveMonitor) {
         internal.addPidToMonitor(this.pid);
       }
     } catch (x) {
-      print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
-
+      print(`${RED}${Date()} failed to run arangod - ${x.message}\n${x.stack}${RESET}`);
       throw x;
     }
-
-    sleep(0.5);
-    if (this.isAgent()) {
-      this.agencyConfig.agentsLaunched += 1;
-      if (this.agencyConfig.agentsLaunched === this.agencyConfig.agencySize) {
-        this.agencyConfig.wholeCluster.checkClusterAlive();
-      }
-    }
   }
+
   launchInstance(moreArgs) {
     if (this.pid !== null) {
-      print(RED + "can not re-launch when PID still there. " + this.name + " - " + this.pid);
+      print(`${RED}can not re-launch when PID still there. {this.name} - ${this.pid}${RESET}`);
       throw new Error("kill the instance before relaunching it!");
       return;
     }
+    this._disconnect();
     try {
       let args = {...this.args, ...moreArgs};
-      /// TODO Y? Where?
       this.pid = this._executeArangod(args).pid;
     } catch (x) {
-      print(Date() + ' failed to run arangod - ' + JSON.stringify(x) + " - " + JSON.stringify(this.getStructure()));
-
+      print(`${RED}${Date()} failed to run arangod - ${x.message} - ${JSON.stringify(this.getStructure())}`);
       throw x;
     }
     this.endpoint = this.args['server.endpoint'];
     this.url = pu.endpointToURL(this.endpoint);
-    if (this.options.enableAliveMonitor) {
-      internal.addPidToMonitor(this.pid);
-    }
   };
-
-  status(waitForExit) {
-    let ret = statusExternal(this.pid, waitForExit);
-    if (ret.status !== 'RUNNING') {
-      this.processSanitizerReports();
-    }
-    return ret;
-  }
-
-  waitForExitAfterDebugKill() {
-    if (this.pid === null) {
-      return;
-    }
-    // Crashutils debugger kills our instance, but we neet to get
-    // testing.js sapwned-PID-monitoring adjusted.
-    print(this.name + " waiting for exit - " + this.pid);
-    try {
-      let ret = statusExternal(this.pid, false);
-      // OK, something has gone wrong, process still alive. announce and force kill:
-      if (ret.status !== "ABORTED") {
-        print(RED + `was expecting the ${this.name} process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
-        this.processSanitizerReports();
-        killExternal(this.pid, abortSignal);
-        print(statusExternal(this.pid, true));
-      }
-    } catch(ex) {
-      print(ex);
-    }
-    this.pid = null;
-    print('done');
-  }
-
-  waitForExit() {
-    if (this.pid === null) {
-      this.exitStatus = null;
-      return;
-    }
-    this.exitStatus = statusExternal(this.pid, true);
-    if (this.exitStatus.status !== 'TERMINATED') {
-      this.processSanitizerReports();
-      throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
-    }
-    this.exitStatus = null;
-    this.pid = null;
-  }
-
   restartOneInstance(moreArgs, unAuthOK) {
     if (unAuthOK === undefined) {
       unAuthOK = false;
+    }
+    this.moreArgs = moreArgs;
+    if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
+      this.JWT = moreArgs['server.jwt-secret'];
     }
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
     this.upAndRunning = false;
-
+    this._disconnect();
+    
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs);
-    while(true) {
-      const reply = download(this.url + '/_api/version', '');
-
-      if (!reply.error && reply.code === 200) {
-        break;
-      }
-      if (unAuthOK && reply.code === 401) {
-        break;
-      }
-      if (this.options.extremeVerbosity) {
-        print(this.name + ' answered: ' + JSON.stringify(reply));
-      }
-      sleep(0.5);
-      if (!this.checkArangoAlive()) {
-        print("instance gone! " + this.name);
-        this.pid = null;
-        throw new Error("restart failed! " + this.name);
-      }
-    }
+    this.pingUntilReady(this.authHeaders, time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
+
+  restartIfType(instanceRoleFilter, moreArgs) {
+    if (this.pid || this.instanceRole !==  instanceRoleFilter) {
+      return true;
+    }
+    this.restartOneInstance(moreArgs);
+  }
+
+  status(waitForExit) {
+    let ret = statusExternal(this.pid, waitForExit);
+    if (ret.status !== 'RUNNING') {
+      this.processSanitizerReports();
+      this._disconnect();
+    }
+    return ret;
+  }
+
+  isRunning() {
+    let check = () => (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
+    if (this.exitStatus === null || check()) {
+      this.exitStatus = this.status(false);
+      return check();
+    }
+    return false;
+  }
+
+  runUpgrade() {
+    let moreArgs = {
+      '--database.auto-upgrade': 'true',
+      '--log.foreground-tty': 'true'
+    };
+    if (this.role === instanceRole.coordinator) {
+      moreArgs['--server.rest-server'] = 'false';
+    }
+    this.exitStatus = null;
+    this.pid = this._executeArangod(moreArgs).pid;
+    sleep(1);
+    while (this.isRunning()) {
+      print(".");
+      sleep(1);
+    }
+    print(`${Date()} upgrade of ${this.name} finished.`);
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief periodic checks whether spawned arangod processes are still alive
   // //////////////////////////////////////////////////////////////////////////////
@@ -821,7 +659,7 @@ class instance {
     if (!this.options.coreCheck && this.options.setInterruptable && !running) {
       print(`fatal exit of ${this.pid} arangod => ${JSON.stringify(res)}! Bye!`);
       pu.killRemainingProcesses({status: false});
-      process.exit();
+      throw new Error(`fatal exit of ${this.pid} arangod => ${JSON.stringify(res)}! Bye!`);
     }
 
     if (!running) {
@@ -834,7 +672,6 @@ class instance {
       if (!this.hasOwnProperty('exitStatus') || (this.exitStatus === null)) {
         this.exitStatus = res;
       }
-      print(this.getStructure());
 
       if (res.hasOwnProperty('signal') &&
           ((res.signal === 11) ||
@@ -853,73 +690,167 @@ class instance {
     return running;
   }
 
-  isRunning() {
-    let check = () => (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
-    if (check()) {
-      this.exitStatus = this.status(false);
-      return check();
+  checkServerGood(health) {
+    let name = '';
+    name = "on node " + this.name;
+    if (this.isAgent() || this.isRole(instanceRole.single)) {
+      return [name, true];
     }
-    return false;
+    if (health.hasOwnProperty(this.id)) {
+      this.shortName = health[this.id].ShortName;
+      if (health[this.id].Status === "GOOD") {
+        return [name, true];
+      } else {
+        print(`${RED}ClusterHealthCheck failed ${this.id} has status ${health[this.id].Status} (which is not equal to GOOD)${RESET}`);
+        return [name, false];
+      }
+    } else {
+      print(`${RED}ClusterHealthCheck failed ${this.id} does not have health property${RESET}`);
+      return [name, false];
+    }
+  }
+
+  pingUntilReady(httpAuthOptions, deadline) {
+    if (this.suspended) {
+      return;
+    }
+    let httpOptions = _.clone(httpAuthOptions);
+    httpOptions.method = 'POST';
+    httpOptions.returnBodyOnError = true;
+    while (true) {
+      wait(1, false);
+      try {
+        if (true) {//if (this.options.useReconnect && this.isFrontend()) {
+          if (this.JWT) {
+            print(`${Date()} reconnecting with JWT ${this.JWT} to ${this.url}`);
+            if (arango.reconnect(this.endpoint,
+                                 '_system',
+                                 `${this.options.username}`,
+                                 this.options.password,
+                                 true,
+                                 this.JWT)) {
+              this.connectionHandle = arango.getConnectionHandle();
+            }
+          } else {
+            print(`${Date()} ${this.name} reconnecting ${this.url}`);
+            if (arango.reconnect(this.endpoint,
+                                 '_system',
+                                 `${this.options.username}`,
+                                 this.options.password,
+                                 true)) {
+              this.connectionHandle = arango.getConnectionHandle();
+            }
+          }
+          return;
+        } else {
+          print(`${Date()} tickeling ${this.url}`);
+          const reply = download(this.url + '/_api/version', '', httpOptions);
+          if (!reply.error && reply.code === 200) {
+            return;
+          }
+        }
+      } catch (ex) {
+        if (time() < deadline) {
+          print('.');
+          sleep(1);
+        } else {
+          throw new Error(`server did not become availabe on time : ${deadline} - ${ex.message}`);
+        }
+      }
+
+      if (time() <= deadline) {
+        if (!this.checkArangoAlive()) {
+          throw new Error('startup failed! bailing out!');
+        }
+        print('.');
+      } else {
+        throw new Error(`server did not become availabe on time : ${deadline}`);
+      }
+    }
   }
 
   connect() {
+    if (this.connectionHandle !== undefined) {
+      if (this.connectionHandle === arango.getConnectionHandle()) {
+        return true;
+      }
+      try {
+        return arango.connectHandle(this.connectionHandle);
+      } catch (ex) {
+        print(`${this.name}: Connection ${this.connectionHandle} not found, continuing with regular connection: ${ex}\n${ex.stack}`);
+        this.connectionHandle = undefined;
+      }
+    }
     if (this.JWT) {
-      return arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
+      print(`${Date()} ${this.name}: re/connecting with JWT ${this.url}`);
+      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
+      this.connectionHandle = arango.getConnectionHandle();
+      return ret;
     } else {
-      return arango.reconnect(this.endpoint, '_system', 'root', '', true);
+      print(`${Date()} ${this.name} re/connecting ${this.url}`);
+      const ret = arango.reconnect(this.endpoint, '_system', 'root', '', true);
+      this.connectionHandle = arango.getConnectionHandle();
+      return ret;
     }
   }
-
   checkArangoConnection(count, overrideVerbosity=false) {
     this.endpoint = this.args['server.endpoint'];
     while (count > 0) {
       try {
         if (this.options.extremeVerbosity || overrideVerbosity) {
-          print('tickeling ' + this.endpoint);
+          print(`${Date()} ${this.name}: tickeling ${this.endpoint}`);
         }
         this.connect();
         return;
       } catch (e) {
         if (this.options.extremeVerbosity || overrideVerbosity) {
-          print(`no... ${e.message}`);
+          print(`${this.name}:  no... ${e.message}`);
         }
+        this._disconnect();
         sleep(0.5);
       }
       count --;
     }
-    throw new Error(`unable to connect in ${count}s`);
-  }
-  getAgent(path, method, body = null) {
-    let opts = {
-      method: method
-    };
-    if (body === null) {
-      body = (method === 'POST') ? '[["/"]]' : '';
-    }
-
-    if (this.args.hasOwnProperty('authOpts')) {
-      opts['jwt'] = crypto.jwtEncode(this.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-    } else if (this.args.hasOwnProperty('server.jwt-secret')) {
-      opts['jwt'] = crypto.jwtEncode(this.args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-    } else if (this.jwtFiles) {
-      opts['jwt'] = crypto.jwtEncode(fs.read(this.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-    }
-    return download(this.url + path, body, opts);
+    throw new Error(`${this.name}:  unable to connect in ${count}s`);
   }
 
-  dumpAgent(path, method, fn, dumpdir) {
-    print('--------------------------------- '+ fn + ' -----------------------------------------------');
-    let agencyReply = this.getAgent(path, method);
-    if (agencyReply.code === 200) {
-      if (fn === "agencyState") {
-        fs.write(fs.join(dumpdir, fn + '_' + this.pid + ".json"), agencyReply.body);
-      } else {
-        let agencyValue = JSON.parse(agencyReply.body);
-        fs.write(fs.join(dumpdir, fn + '_' + this.pid + ".json"), JSON.stringify(agencyValue, null, 2));
+  waitForExitAfterDebugKill() {
+    if (this.pid === null) {
+      return;
+    }
+    // Crashutils debugger kills our instance, but we neet to get
+    // testing.js spawned-PID-monitoring adjusted.
+    print(`${this.name}:  waiting for exit - ${this.pid}`);
+    try {
+      let ret = statusExternal(this.pid, false);
+      // OK, something has gone wrong, process still alive. announce and force kill:
+      if (ret.status !== "ABORTED") {
+        print(`${RED}was expecting the ${this.name} process ${this.pid} to be gone, but ${JSON.stringify(ret)}${RESET}`);
+        this.processSanitizerReports();
+        killExternal(this.pid, abortSignal);
+        print(statusExternal(this.pid, true));
       }
-    } else {
-      print(agencyReply);
+      this._disconnect();
+   } catch(ex) {
+      print(ex);
     }
+    this.pid = null;
+    print(`${this.name}: done`);
+  }
+
+  waitForExit() {
+    if (this.pid === null) {
+      this.exitStatus = null;
+      return;
+    }
+    this.exitStatus = statusExternal(this.pid, true);
+    this._disconnect();
+    if (this.exitStatus.status !== 'TERMINATED') {
+      this.processSanitizerReports();
+      throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
+    }
+    this.exitStatus = null;
+    this.pid = null;
   }
 
   killWithCoreDump (message) {
@@ -934,7 +865,7 @@ class instance {
     this.serverCrashedLocal = true;
     if (this.pid === null) {
       this.pid = pid;
-      print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
+      print(`${RED}${Date()} ${this.name}: instance already gone? ${JSON.stringify(this.exitStatus)}${RESET}`);
       this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
       this.pid = null;
     } else {
@@ -947,6 +878,16 @@ class instance {
     crashUtils.aggregateDebugger(this, this.options);
     print(CYAN + Date() + this.name + ', url: ' + this.url + "unlisting our instance" + RESET);
     this.waitForExitAfterDebugKill();
+  }
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief the bad has happened, tell it the user and try to gather more
+  // /        information about the incident. (arangod wrapper for the crash-utils)
+  // //////////////////////////////////////////////////////////////////////////////
+  analyzeServerCrash (checkStr) {
+    if (this.exitStatus === null) {
+      return 'Not yet launched!';
+    }
+    return crashUtils.analyzeCrash(pu.ARANGOD_BIN, this, this.options, checkStr);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief commands a server to shut down via webcall
@@ -962,7 +903,7 @@ class instance {
       forceTerminate = false;
     }
     if (this.options.hasOwnProperty('server')) {
-      print(Date() + ' running with external server');
+      print(`${Date()} ${this.name}: running with external server`);
       return;
     }
 
@@ -981,10 +922,12 @@ class instance {
       if (forceTerminate) {
         let sockStat = this.getSockStat(Date() + "Force killing - sockstat before: ");
         this.killWithCoreDump('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
+        this._disconnect();
         this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
+        this._disconnect();
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -1005,6 +948,7 @@ class instance {
           this.serverCrashedLocal = true;
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
+          this._disconnect();
         } else {
           this.processSanitizerReports();
           if (!this.options.noStartStopLogs) {
@@ -1055,6 +999,7 @@ class instance {
     while (timeout > 0) {
       this.exitStatus = statusExternal(this.pid, false);
       if (this.exitStatus.status === 'TERMINATED') {
+        this._disconnect();
         return true;
       }
       sleep(1);
@@ -1063,6 +1008,7 @@ class instance {
     this.shutDownOneInstance({nonAgenciesCount: 1}, true, 0);
     crashUtils.aggregateDebugger(this, this.options);
     this.waitForExitAfterDebugKill();
+    this._disconnect();
     this.pid = null;
     return false;
   }
@@ -1093,7 +1039,7 @@ class instance {
         localTimeout = localTimeout + 60;
       }
       if ((time() - shutdownTime) > localTimeout) {
-        this.agencyConfig.wholeCluster.dumpAgency();
+        this.agencyMgr.dumpAgency();
         print(Date() + ' forcefully terminating ' + yaml.safeDump(this.getStructure()) +
               ' after ' + timeout + 's grace period; marking crashy.');
         this.serverCrashedLocal = true;
@@ -1172,15 +1118,179 @@ class instance {
     return true;
   }
 
+  /////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////
+  /////////////                Utility functionality                             ////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////////////////////
+
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief the bad has happened, tell it the user and try to gather more
-  // /        information about the incident. (arangod wrapper for the crash-utils)
+  // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
-  analyzeServerCrash (checkStr) {
-    if (this.exitStatus === null) {
-      return 'Not yet launched!';
+  readImportantLogLines (logPath) {
+    let fnLines = [];
+    const buf = fs.readBuffer(fs.join(this.logFile));
+    let lineStart = 0;
+    let maxBuffer = buf.length;
+
+    for (let j = 0; j < maxBuffer; j++) {
+      if (buf[j] === 10) { // \n
+        const line = buf.utf8Slice(lineStart, j);
+        lineStart = j + 1;
+
+        // filter out regular INFO lines, and test related messages
+        let warn = line.search('WARNING about to execute:') !== -1;
+        let info = line.search(' INFO ') !== -1;
+
+        if (warn || info) {
+          continue;
+        }
+        fnLines.push(line);
+      }
     }
-    return crashUtils.analyzeCrash(pu.ARANGOD_BIN, this, this.options, checkStr);
+    return fnLines;
+  }
+  aggregateFatalErrors(currentTest) {
+    if (this.assertLines.length > 0) {
+      this.assertLines.forEach(line => {
+        rp.addFailRunsMessage(currentTest, line);
+      });
+      this.assertLines = [];
+    }
+    if (this.serverCrashedLocal) {
+      rp.addFailRunsMessage(currentTest, this.serverFailMessagesLocal);
+      this.serverFailMessagesLocal = "";
+    }
+  }
+
+  readAssertLogLines (expectAsserts) {
+    if (!fs.exists(this.logFile)) {
+      if (fs.exists(this.rootDir)) {
+        print(`readAssertLogLines: Logfile ${this.logFile} already gone.`);
+      }
+      return;
+    }
+    let size = fs.size(this.logFile);
+    if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
+      // File bigger 500k? this needs to be a bug in the tests.
+      let err=`ERROR: ${this.logFile} is bigger than ${this.options.maxLogFileSize/1024}kB! - ${size/1024} kBytes!`;
+      this.assertLines.push(err);
+      print(RED + err + RESET);
+      return;
+    }
+    try {
+      const buf = fs.readBuffer(this.logFile);
+      let lineStart = 0;
+      let maxBuffer = buf.length;
+
+      for (let j = 0; j < maxBuffer; j++) {
+        if (buf[j] === 10) { // \n
+          const line = buf.utf8Slice(lineStart, j);
+          lineStart = j + 1;
+
+          // scan for asserts from the crash dumper
+          if (line.search('{crash}') !== -1) {
+            if (!IS_A_TTY) {
+              // else the server has already printed these:
+              print("ERROR: " + line);
+            }
+            this.assertLines.push(line);
+            if (!expectAsserts) {
+              crashUtils.GDB_OUTPUT += line + '\n';
+            }
+          }
+        }
+      }
+    } catch (ex) {
+      let err="failed to read " + this.logFile + " -> " + ex;
+      this.assertLines.push(err);
+      print(RED+err+RESET);
+    }
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief aggregates information from /proc about the SUT
+  // //////////////////////////////////////////////////////////////////////////////
+  _getProcessStats() {
+    let processStats = statisticsExternal(this.pid);
+    if (platform === 'linux') {
+      let pidStr = "" + this.pid;
+      let ioraw;
+      let fn = fs.join('/', 'proc', pidStr, 'io');
+      try {
+        ioraw = fs.readBuffer(fn);
+      } catch (x) {
+        print("Proc FN gone: " + fn);
+        print(x.stack);
+        throw x;
+      }
+      /*
+       * rchar: 1409391
+       * wchar: 681539
+       * syscr: 3303
+       * syscw: 2969
+       * read_bytes: 0
+       * write_bytes: 0
+       * cancelled_write_bytes: 0
+       */
+      let lineStart = 0;
+      let maxBuffer = ioraw.length;
+      for (let j = 0; j < maxBuffer; j++) {
+        if (ioraw[j] === 10) { // \n
+          const line = ioraw.utf8Slice(lineStart, j);
+          lineStart = j + 1;
+          let x = line.split(":");
+          processStats[x[0]] = parseInt(x[1]);
+        }
+      }
+      /* 
+       * sockets: used 1272
+       * TCP: inuse 27 orphan 0 tw 117 alloc 382 mem 25
+       * UDP: inuse 19 mem 17
+       * UDPLITE: inuse 0
+       * RAW: inuse 0
+       * FRAG: inuse 0 memory 0
+       */
+      ioraw = getSockStatFile(this.pid);
+      ioraw.split('\n').forEach(line => {
+        if (line.length > 0) {
+          let x = line.split(":");
+          let values = x[1].split(" ");
+          for (let k = 1; k < values.length; k+= 2) {
+            processStats['sockstat_' + x[0] + '_' + values[k]]
+              = parseInt(values[k + 1]);
+          }
+        }
+      });
+    }
+    return processStats;
+  }
+  getProcessStats() {
+    this.stats = this._getProcessStats();
+  }
+  getDeltaProcessStats() {
+    let newStats = this._getProcessStats();
+    let deltaStats = {};
+    for (let key in this.stats) {
+      if (key.startsWith('sockstat_')) {
+        deltaStats[key] = newStats[key];
+      } else {
+        deltaStats[key] = newStats[key] - this.stats[key];
+      }
+    }
+    deltaStats[this.pid + '_' + this.instanceRole] = deltaStats;
+    this.stats = newStats;
+    return deltaStats;
+  }
+  getSockStat(preamble) {
+    if (this.options.getSockStat && (platform === 'linux')) {
+      let sockStat = preamble + this.pid + "\n";
+      sockStat += getSockStatFile(this.pid);
+      return sockStat;
+    }
+    return "";
   }
 
   getMemProfSnapshot(opts) {
@@ -1211,11 +1321,209 @@ class instance {
   processSanitizerReports() {
     this.serverCrashedLocal |= this.sanHandler.fetchSanFileAfterExit(this.pid);
   }
+
+  checkNetstat(data) {
+    let which = null;
+    if (data.local.port === this.port) {
+      which = this.netstat['in'];
+    } else if (data.remote.port === this.port) {
+      which = this.netstat['out'];
+    }
+    if (which !== null) {
+      if (!which.hasOwnProperty(data.state)) {
+        which[data.state] = 1;
+      } else {
+        which[data.state] += 1;
+      }
+    }
+  }
+
+  getProcessInfo(ports) {
+    var matchPort = /.*:.*:([0-9]*)/;
+    let res = matchPort.exec(this.endpoint);
+    if (!res) {
+      return "";
+    }
+    var port = res[1];
+    if (this.isAgent()) {
+      if (this.options.sniffAgency) {
+        ports.push('port ' + port);
+      }
+    } else if (this.isRole(instanceRole.dbServer)) {
+      if (this.options.sniffDBServers) {
+        ports.push('port ' + port);
+      }
+    } else {
+      ports.push('port ' + port);
+    }
+    return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
+  }
+  debugGetFailurePoints() {
+    this.connect();
+    let haveFailAt = arango.GET("/_admin/debug/failat") === true;
+    if (haveFailAt) {
+      let res = arango.GET_RAW('/_admin/debug/failat/all');
+      if (res.code !== 200) {
+        throw "Error checking failure points = " + JSON.stringify(res);
+      }
+      return res.parsedBody;
+    }
+    return [];
+  }
+  debugSetFailAt(failurePoint) {
+    if (!this.connect()) {
+      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
+    }
+    let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
+    if (reply.code !== 200) {
+      throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
+    }
+    return true;
+  }
+  debugShouldFailAt(failurePoint) {
+    throw new Error("not implemented!");
+    if (!this.connect()) {
+      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
+    }
+    let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
+    if (reply.code !== 200) {
+      throw new Error(`${this.name}: Failed to set ${failurePoint}: ${reply.parsedBody}`);
+    }
+    return true;
+  }
+  debugResetRaceControl() {
+    if (!this.connect()) {
+      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
+    }
+    let deleteUrl = '/_admin/debug/raceControl';
+    let reply;
+    let count = 0;
+    while (count < 10) {
+      try {
+        reply = arango.DELETE_RAW(deleteUrl);
+        break;
+      } catch (ex) {
+        count += 1;
+        print(`${RED} ${this.name}: failed to reset race control by ${ex}`);
+        this._disconnect();
+        this.connect();
+      }
+    }
+    if (reply.code !== 200) {
+      // we may no longer be able to work on a database as forced by fuerte
+      print(`${BLUE}${this.name}: fallback to internal.download to clear race control${RESET}`);
+      let httpOptions = _.clone(this.authHeaders);
+      httpOptions.method = 'DELETE';
+      httpOptions.returnBodyOnError = true;
+      const reply = download(deleteUrl, '', httpOptions);
+      if (reply.code !== 200) {
+        throw new Error(`${this.name}: Failed to remove race control: =>  ${JSON.stringify(reply.parsedBody)}`);
+      }
+    }
+    return true;
+  }
+  debugClearFailAt(failurePoint) {
+    if (!this.connect()) {
+      throw new Error(`${this.name}: failed to connect my instance {JSON.stringify(this.getStructure())}`);
+    }
+    if (failurePoint === "") {
+      failurePoint = undefined;
+    }
+    let deleteUrl = `/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`;
+    let reply;
+    let count = 0;
+    while (count < 10) {
+      try {
+        reply = arango.DELETE_RAW(deleteUrl);
+        break;
+      } catch (ex) {
+        count += 1;
+        print(`${RED} ${this.name}: failed to delete failurepoint by ${ex}`);
+        this._disconnect();
+        this.connect();
+      }
+    }
+    if (reply.code !== 200) {
+      // we may no longer be able to work on a database as forced by fuerte
+      print(`${BLUE}${this.name}: fallback to internal.download to clear failurepoint${RESET}`);
+      let httpOptions = _.clone(this.authHeaders);
+      httpOptions.method = 'DELETE';
+      httpOptions.returnBodyOnError = true;
+      const reply = download(deleteUrl, '', httpOptions);
+      if (reply.code !== 200) {
+        throw new Error(`${this.name}: Failed to remove FP: '${failurePoint}' =>  ${JSON.stringify(reply.parsedBody)}`);
+      }
+    }
+    return true;
+  }
+  debugCanUseFailAt() {
+    let reply = arango.GET_RAW('/_admin/debug/failat/');
+    if (reply.code !== 200) {
+      if (reply.code === 401) {
+        throw new Error(`${this.name}: Failed to ask for failurepoint: ${reply.parsedBody}`);
+      }
+      return false;
+    }
+    return reply.parsedBody === true;   
+  }
+
+  checkDebugTerminated(waitForExit) {
+    let res = statusExternal(this.pid, waitForExit);
+    if (res.status === 'NOT-FOUND') {
+      print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
+      sleep(0.2);
+      res = statusExternal(this.pid, false);
+    }
+    const running = res.status === 'RUNNING';
+    if (!running) {
+      // the test may have abortet by itself already, using SIG_ARBRT or SIG_KILL.
+      this.exitStatus = res;
+      this.pid = null;
+      if (res.hasOwnProperty('signal') &&
+          (res.signal !== 6)&&(res.signal !== 9)) {
+        throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
+      }
+      return true;
+    }
+    return false;
+  }
+  debugTerminate() {
+    if (this.pid === null) {
+      return;
+    }
+    if (!this.checkDebugTerminated(false)){
+      let reply;
+      try {
+        this.connect();
+        reply = arango.PUT_RAW('/_admin/debug/crash', '');
+      } catch(ex) {
+        if (ex instanceof ArangoError && (
+          (ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) ||
+            (ex.errorNum === internal.errors.ERROR_BAD_PARAMETER.code))) {
+          print(`Terminated instance ${this.name} - ${ex}`);
+          return this.checkDebugTerminated(true);
+        }
+        throw new Error(`Failed to crash ${this.name}: ${ex}`);
+      }
+      if (reply.code !== 200) {
+        throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
+      }
+    }
+    let count = 0;
+    while (count < 10) {
+      if (this.checkDebugTerminated(false)) {
+        return;
+      }
+      count += 1;
+      sleep(1);
+      print('T?');
+    }
+    throw new Error(`instance wouldn't crash ${this.name}`);
+  }
 }
 
 
 exports.instance = instance;
-exports.agencyConfig = agencyConfig;
 exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {

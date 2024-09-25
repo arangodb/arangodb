@@ -483,13 +483,13 @@ ClusterIndex::coveredFields() const {
   }
 }
 
-bool ClusterIndex::supportsStreamInterface(
+Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
     IndexStreamOptions const& opts) const noexcept {
   switch (_indexType) {
     case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return RocksDBVPackIndex::checkSupportsStreamInterface(_coveredFields,
-                                                               opts);
+        return RocksDBVPackIndex::checkSupportsStreamInterface(
+            _coveredFields, _fields, _unique, opts);
       }
       [[fallthrough]];
     }
@@ -505,7 +505,7 @@ bool ClusterIndex::supportsStreamInterface(
     default:
       break;
   }
-  return false;
+  return Index::StreamSupportResult::makeUnsupported();
 }
 
 UserVectorIndexDefinition const& ClusterIndex::getVectorIndexDefinition() {

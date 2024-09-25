@@ -108,7 +108,7 @@ class ClusterIndex : public Index {
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override;
 
-  bool supportsStreamInterface(
+  StreamSupportResult supportsStreamInterface(
       IndexStreamOptions const&) const noexcept override;
 
   std::vector<std::vector<basics::AttributeName>> const& prefixFields()

@@ -63,7 +63,7 @@ class MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
       return true;  // This is equivalent to the code below, if we could not
                     // parse shard id, we should skip this shard
     }
-    auto r = ci.getResponsibleServer(maybeShardID.get());
+    auto r = ci.getResponsibleServerNoDelay(maybeShardID.get());
     if (r->empty()) {
       return true;  // TODO(MBkkt) We should fix cluster info :(
     }

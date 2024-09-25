@@ -3,8 +3,10 @@ import {
   Box,
   Flex,
   Stack,
+  StackProps,
   Table,
   TableContainer,
+  TableContainerProps,
   Tbody,
   Td,
   Text,
@@ -21,7 +23,7 @@ import {
 } from "@tanstack/react-table";
 import * as React from "react";
 
-type ReactTableProps<Data extends object> = {
+interface ReactTableProps<Data extends object> extends StackProps {
   table: TableType<Data>;
   emptyStateMessage?: string;
   onCellClick?: (cell: Cell<Data, unknown>) => void;
@@ -32,7 +34,8 @@ type ReactTableProps<Data extends object> = {
   getCellProps?: (cell: Cell<Data, unknown>) => any;
   backgroundColor?: string;
   tableWidth?: string;
-};
+  tableContainerProps?: TableContainerProps;
+}
 
 export function ReactTable<Data extends object>({
   emptyStateMessage = "No data found.",
@@ -44,17 +47,20 @@ export function ReactTable<Data extends object>({
   onCellClick,
   getCellProps,
   tableWidth,
-  backgroundColor = "white"
+  backgroundColor = "white",
+  tableContainerProps,
+  ...rest
 }: ReactTableProps<Data>) {
   const rows = table.getRowModel().rows;
 
   return (
-    <Stack>
+    <Stack {...rest}>
       {children}
       <TableContainer
         borderY="1px solid"
         borderColor="gray.200"
         backgroundColor={backgroundColor}
+        {...tableContainerProps}
       >
         <Table
           whiteSpace="normal"

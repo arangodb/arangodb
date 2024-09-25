@@ -100,10 +100,39 @@ function kEarlyAbortRegressionTest() {
       );
     },
 
+    testPathsExistsYen: function () {
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${vName}/0" TO "${vName}/1" GRAPH "${graphName}"
+          OPTIONS {weightAttribute: "weight", algorithm: "yen"}
+          LIMIT 1
+          RETURN path`;
+      const result = db._query(query).toArray();
+      assertEqual(result.length, 1);
+      const path = result[0];
+      assertEqual(1000, path.weight);
+      assertEqual(
+        ["0", "1"],
+        path.vertices.map((v) => v._key)
+      );
+      assertEqual(
+        [[`${vName}/0`, `${vName}/1`]],
+        path.edges.map((e) => [e._from, e._to])
+      );
+    },
+
     testPaths: function () {
       const query = `
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${vName}/0" TO "${vName}/1" GRAPH "${graphName}"
           OPTIONS {weightAttribute: "weight"}
+          RETURN path.weight`;
+      const result = db._query(query).toArray();
+      assertEqual([1000,1100], result);
+    },
+
+    testPathsYen: function () {
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${vName}/0" TO "${vName}/1" GRAPH "${graphName}"
+          OPTIONS {weightAttribute: "weight", algorithm: "yen"}
           RETURN path.weight`;
       const result = db._query(query).toArray();
       assertEqual([1000,1100], result);

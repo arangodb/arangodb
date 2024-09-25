@@ -46,6 +46,7 @@ const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
 
 const arango = require('internal').arango;
+let connectionHandle = arango.getConnectionHandle();
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -267,4 +268,9 @@ describe('User Rights Management', () => {
 
     }
   });
+});
+after(() => {
+  arango.connectHandle(connectionHandle);
+  db._drop(testViewName);
+  db._useDatabase('_system');
 });

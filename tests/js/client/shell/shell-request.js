@@ -32,7 +32,6 @@ var url = require('url');
 var querystring = require('querystring');
 var qs = require('qs');
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const internal = require("internal");
 
 'use strict';
 
@@ -402,11 +401,11 @@ function RequestSuite () {
 function RequestSuiteWithSmallChunks () {
   let suite = {
     setUpAll: function() {
-      internal.debugSetFailAt("HttpCommTask<T>::readCallback_in_small_chunks");
+      global.instanceManager.debugSetFailAt("HttpCommTask<T>::readCallback_in_small_chunks");
     },
     
     tearDownAll: function() {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
     },
   };
 

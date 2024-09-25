@@ -1573,18 +1573,18 @@ limited number of edge collections/shards/indexes.)");
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now
   //////////////////////////////////////////////////////////////////////////////
-  std::initializer_list<RocksDBColumnFamilyManager::Family> families = {
-      RocksDBColumnFamilyManager::Family::Definitions,
-      RocksDBColumnFamilyManager::Family::Documents,
-      RocksDBColumnFamilyManager::Family::PrimaryIndex,
-      RocksDBColumnFamilyManager::Family::EdgeIndex,
-      RocksDBColumnFamilyManager::Family::VPackIndex,
-      RocksDBColumnFamilyManager::Family::GeoIndex,
-      RocksDBColumnFamilyManager::Family::FulltextIndex,
-      RocksDBColumnFamilyManager::Family::ReplicatedLogs,
-      RocksDBColumnFamilyManager::Family::MdiIndex,
-      RocksDBColumnFamilyManager::Family::MdiVPackIndex,
-      RocksDBColumnFamilyManager::Family::VectorIndex};
+  static constexpr std::initializer_list<RocksDBColumnFamilyManager::Family>
+      families{RocksDBColumnFamilyManager::Family::Definitions,
+               RocksDBColumnFamilyManager::Family::Documents,
+               RocksDBColumnFamilyManager::Family::PrimaryIndex,
+               RocksDBColumnFamilyManager::Family::EdgeIndex,
+               RocksDBColumnFamilyManager::Family::VPackIndex,
+               RocksDBColumnFamilyManager::Family::GeoIndex,
+               RocksDBColumnFamilyManager::Family::FulltextIndex,
+               RocksDBColumnFamilyManager::Family::ReplicatedLogs,
+               RocksDBColumnFamilyManager::Family::MdiIndex,
+               RocksDBColumnFamilyManager::Family::MdiVPackIndex,
+               RocksDBColumnFamilyManager::Family::VectorIndex};
 
   auto addMaxWriteBufferNumberCf =
       [this, &options](RocksDBColumnFamilyManager::Family family) {
