@@ -1010,6 +1010,7 @@ bool canInRangeBeRemoved(auto const* inRangeNode, auto const* otherAndNode,
       continue;
     }
 
+    // since we know that this is IN_RANGE node, it must contain 5 members
     auto const* operandArrayNode = operand->getMember(0);
     TRI_ASSERT(operandArrayNode->numMembers() == 5);
 

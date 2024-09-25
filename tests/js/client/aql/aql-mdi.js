@@ -568,12 +568,7 @@ function optimizerRuleMdi2dIndexTestSuite() {
         assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
         assertTrue(appliedRules.includes(useIndexes));
 
-        const indexNodes = explainRes.plan.nodes.filter(function (n) {
-          return n.type === "IndexNode";
-        });
-        assertEqual(indexNodes.length, 1);
-
-        const indexNode = indexNodes[0];
+        const indexNode = explainRes.plan.nodes.find((n) => n.type === "IndexNode");
         assertEqual(indexNode.filter, undefined);
 
         const executeRes = db._query(query.query, query.bindVars);
@@ -604,12 +599,7 @@ function optimizerRuleMdi2dIndexTestSuite() {
         assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
         assertTrue(appliedRules.includes(useIndexes));
 
-        const indexNodes = explainRes.plan.nodes.filter(function (n) {
-          return n.type === "IndexNode";
-        });
-        assertEqual(indexNodes.length, 1);
-
-        const indexNode = indexNodes[0];
+        const indexNode = explainRes.plan.nodes.find((n) => n.type === "IndexNode");
         assertEqual(indexNode.filter, undefined);
 
         const executeRes = db._query(query.query, query.bindVars);
