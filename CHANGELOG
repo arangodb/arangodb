@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.6-preview-3.
+
 * Upgraded OpenSSL to 3.3.2.
 
 * In replication use vpack as transport format throughout, so that even
