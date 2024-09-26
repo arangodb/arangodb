@@ -21,6 +21,8 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "thread_registry.h"
+#include <source_location>
+#include <thread>
 
 #include "Assertions/ProdAssert.h"
 #include "Async/Registry/Metrics.h"
@@ -41,7 +43,8 @@ auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics,
 
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics,
                                Registry* registry)
-    : thread_name{ThreadNameFetcher{}.get()},
+    : thread{Thread{.name = std::string{ThreadNameFetcher{}.get()},
+                    .id = std::this_thread::get_id()}},
       registry{registry},
       metrics{metrics} {
   if (metrics->total_threads != nullptr) {
@@ -62,22 +65,20 @@ ThreadRegistry::~ThreadRegistry() noexcept {
   cleanup();
 }
 
-auto ThreadRegistry::add(Promise* promise) noexcept -> void {
-  ADB_PROD_ASSERT(promise != nullptr);
+auto ThreadRegistry::add_promise(std::source_location location) noexcept
+    -> Promise* {
   // promise needs to live on the same thread as this registry
-  ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread)
+  ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id)
       << "ThreadRegistry::add was called from thread "
       << std::this_thread::get_id()
       << " but needs to be called from ThreadRegistry's owning thread "
-      << owning_thread << ".";
+      << thread.id << ".";
   if (metrics->total_functions != nullptr) {
     metrics->total_functions->count();
   }
   auto current_head = promise_head.load(std::memory_order_relaxed);
-  promise->next = current_head;
-  promise->registry = shared_from_this();
-  promise->thread_name = thread_name;
-  promise->thread_id = owning_thread;
+  auto promise =
+      new Promise{current_head, shared_from_this(), std::move(location)};
   if (current_head != nullptr) {
     current_head->previous = promise;
   }
@@ -86,6 +87,7 @@ auto ThreadRegistry::add(Promise* promise) noexcept -> void {
   if (metrics->active_functions != nullptr) {
     metrics->active_functions->fetch_add(1);
   }
+  return promise;
 }
 
 auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
@@ -110,7 +112,7 @@ auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
 }
 
 auto ThreadRegistry::garbage_collect() noexcept -> void {
-  ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
+  ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id);
   auto guard = std::lock_guard(mutex);
   cleanup();
 }
@@ -126,7 +128,7 @@ auto ThreadRegistry::cleanup() noexcept -> void {
       metrics->ready_for_deletion_functions->fetch_sub(1);
     }
     remove(current);
-    current->destroy();
+    delete current;
   }
 }
 
