@@ -273,8 +273,9 @@ void DatabaseTailingSyncer::fetchWalChunk(
     // send request
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     _state.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      response.reset(
-          client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+      auto headers = replutils::createHeaders();
+      response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr,
+                                          0, headers));
     });
 
     t = TRI_microtime() - t;

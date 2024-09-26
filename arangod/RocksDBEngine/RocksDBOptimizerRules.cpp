@@ -58,9 +58,9 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-std::initializer_list<ExecutionNode::NodeType> const
-    reduceExtractionToProjectionTypes = {ExecutionNode::ENUMERATE_COLLECTION,
-                                         ExecutionNode::INDEX};
+static constexpr std::initializer_list<ExecutionNode::NodeType>
+    reduceExtractionToProjectionTypes{ExecutionNode::ENUMERATE_COLLECTION,
+                                      ExecutionNode::INDEX};
 
 }  // namespace
 
