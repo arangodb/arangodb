@@ -30,6 +30,7 @@
 #include "Async/Registry/registry.h"
 #include "Basics/Thread.h"
 #include "Inspection/Format.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 
@@ -38,7 +39,12 @@ using namespace arangodb::async_registry;
 auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics,
                           Registry* registry)
     -> std::shared_ptr<ThreadRegistry> {
-  return std::shared_ptr<ThreadRegistry>(new ThreadRegistry{metrics, registry});
+  struct MakeSharedThreadRegistry : ThreadRegistry {
+    MakeSharedThreadRegistry(std::shared_ptr<const Metrics> metrics,
+                             Registry* registry)
+        : ThreadRegistry{metrics, registry} {}
+  };
+  return std::make_shared<MakeSharedThreadRegistry>(metrics, registry);
 }
 
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics,
@@ -47,6 +53,8 @@ ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics,
                     .id = std::this_thread::get_id()}},
       registry{registry},
       metrics{metrics} {
+  LOG_DEVEL << "con: " << this << " " << thread.id << " "
+            << std::this_thread::get_id();
   if (metrics->total_threads != nullptr) {
     metrics->total_threads->count();
   }
@@ -67,12 +75,14 @@ ThreadRegistry::~ThreadRegistry() noexcept {
 
 auto ThreadRegistry::add_promise(std::source_location location) noexcept
     -> Promise* {
+  // LOG_DEVEL << "add: " << this << " " << thread.id << " "
+  //           << std::this_thread::get_id();
   // promise needs to live on the same thread as this registry
   ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id)
       << "ThreadRegistry::add was called from thread "
       << std::this_thread::get_id()
       << " but needs to be called from ThreadRegistry's owning thread "
-      << thread.id << ".";
+      << thread.id << ". " << this;
   if (metrics->total_functions != nullptr) {
     metrics->total_functions->count();
   }
@@ -112,7 +122,11 @@ auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
 }
 
 auto ThreadRegistry::garbage_collect() noexcept -> void {
-  ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id);
+  ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id)
+      << "ThreadRegistry::garbage_collect was called from thread "
+      << std::this_thread::get_id()
+      << " but needs to be called from ThreadRegistry's owning thread "
+      << thread.id << ". " << this;
   auto guard = std::lock_guard(mutex);
   cleanup();
 }
