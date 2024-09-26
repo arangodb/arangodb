@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-465: handle HiddenIndex type & "fields" object in collection index page.
+
 * Updated ArangoDB Starter to v0.19.6-preview-3.
 
 * Upgraded OpenSSL to 3.3.2.
