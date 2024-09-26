@@ -146,7 +146,7 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
 
     // write-lock and wipe the entry from the cache
     std::unique_lock wguard(_mutex);
-    // need to lock up the most current version of the key, because
+    // Need to look up the most current version of the key, because
     // it may have changed between the original lookup and now.
     if (auto it = _entries.find(key); it != _entries.end()) {
       auto const& value = (*it).second;
