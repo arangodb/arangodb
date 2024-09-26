@@ -1191,6 +1191,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
       slice = VPackSlice{reinterpret_cast<uint8_t const*>(p)};
       lineLength = slice.byteSize();
       p += lineLength;
+      applyStats.processedMarkers++;
     }
 
     if (!slice.isObject()) {
