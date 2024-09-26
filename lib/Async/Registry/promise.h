@@ -75,6 +75,10 @@ auto inspect(Inspector& f, Promise& x) {
 struct AddToAsyncRegistry {
   AddToAsyncRegistry() = default;
   AddToAsyncRegistry(std::source_location loc);
+  AddToAsyncRegistry(AddToAsyncRegistry const&) = delete;
+  AddToAsyncRegistry& operator=(AddToAsyncRegistry const&) = delete;
+  AddToAsyncRegistry(AddToAsyncRegistry&&) = delete;
+  AddToAsyncRegistry& operator=(AddToAsyncRegistry&&) = delete;
   ~AddToAsyncRegistry();
 
  private:

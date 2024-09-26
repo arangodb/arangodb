@@ -242,10 +242,7 @@ class SharedState : async_registry::AddToAsyncRegistry {
 
   /// use to construct a ready future
   explicit SharedState(Try<T>&& t)
-      : async_registry::AddToAsyncRegistry(std::source_location::current()),
-        _result(std::move(t)),
-        _state(State::OnlyResult),
-        _attached(1) {
+      : _result(std::move(t)), _state(State::OnlyResult), _attached(1) {
     // is not added to async thread registry because it is immediately
     // resolved
   }
@@ -254,8 +251,7 @@ class SharedState : async_registry::AddToAsyncRegistry {
   template<typename... Args>
   explicit SharedState(std::in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<T, Args&&...>::value)
-      : async_registry::AddToAsyncRegistry(std::source_location::current()),
-        _result(std::in_place, std::forward<Args>(args)...),
+      : _result(std::in_place, std::forward<Args>(args)...),
         _state(State::OnlyResult),
         _attached(1) {
     // is not added to async thread registry because it is immediately

@@ -53,8 +53,6 @@ ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics,
                     .id = std::this_thread::get_id()}},
       registry{registry},
       metrics{metrics} {
-  LOG_DEVEL << "con: " << this << " " << thread.id << " "
-            << std::this_thread::get_id();
   if (metrics->total_threads != nullptr) {
     metrics->total_threads->count();
   }
@@ -75,8 +73,6 @@ ThreadRegistry::~ThreadRegistry() noexcept {
 
 auto ThreadRegistry::add_promise(std::source_location location) noexcept
     -> Promise* {
-  // LOG_DEVEL << "add: " << this << " " << thread.id << " "
-  //           << std::this_thread::get_id();
   // promise needs to live on the same thread as this registry
   ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id)
       << "ThreadRegistry::add was called from thread "
