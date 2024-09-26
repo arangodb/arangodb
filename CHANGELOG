@@ -4,6 +4,8 @@ v3.11.12 (XXXX-XX-XX)
 * In replication use vpack as transport format throughout, so that even
   large and strangely encoded numbers are transported faithfully.
 
+* Updated ArangoDB Starter to v0.18.10.
+
 * Allow an `arangod` server to startup, even if the option 
   `--database.extended-names` is set to inconsistent values across the
   cluster. It has been found that bailing out in this case creates more
