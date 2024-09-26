@@ -474,9 +474,8 @@ bool checkIsBoundForAttribute(
     Index const* index, aql::Variable const* reference, aql::AstNode* op,
     aql::AstNode* access, aql::AstNode* other, bool reverse,
     std::unordered_map<size_t, arangodb::mdi::ExpressionBounds>&
-        extractedBounds) {
-  // TODO only used in sparse case
-  containers::FlatHashSet<std::string> nonNullAttributes;
+        extractedBounds,
+    containers::FlatHashSet<std::string>& nonNullAttributes) {
   if (!index->canUseConditionPart(access, other, op, reference,
                                   nonNullAttributes, false)) {
     return false;
@@ -529,7 +528,7 @@ void mdi::extractBoundsFromCondition(
     std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
     std::unordered_set<aql::AstNode const*>& unusedExpressions) {
   TRI_ASSERT(condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
+  containers::FlatHashSet<std::string> nonNullAttributes;
   auto const checkIsPrefixValue = [&](aql::AstNode* op, aql::AstNode* access,
                                       aql::AstNode* other) -> bool {
     TRI_ASSERT(op->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ);
@@ -558,6 +557,22 @@ void mdi::extractBoundsFromCondition(
     return false;
   };
 
+  if (index->sparse()) {
+    // This is the worst. `canUseConditionPart` populates the nonNullAttributes
+    // and also modifies the AstNodes. After that `canUseConditionPart` might
+    // return a different result, because it has proven that a attribute can
+    // not be null.
+    for (size_t i = 0; i < condition->numMembers(); i++) {
+      auto op = condition->getMemberUnchecked(i);
+      auto other = op->getMember(0);
+      auto access = op->getMember(1);
+      index->canUseConditionPart(access, other, op, reference,
+                                 nonNullAttributes, false);
+      index->canUseConditionPart(other, access, op, reference,
+                                 nonNullAttributes, false);
+    }
+  }
+
   for (size_t i = 0; i < condition->numMembers(); ++i) {
     bool ok = false;
     auto op = condition->getMemberUnchecked(i);
@@ -573,11 +588,12 @@ void mdi::extractBoundsFromCondition(
       case aql::NODE_TYPE_OPERATOR_BINARY_GE:
       case aql::NODE_TYPE_OPERATOR_BINARY_LT:
       case aql::NODE_TYPE_OPERATOR_BINARY_GT:
-        ok |=
-            checkIsBoundForAttribute(index, reference, op, op->getMember(0),
-                                     op->getMember(1), false, extractedBounds);
+        ok |= checkIsBoundForAttribute(index, reference, op, op->getMember(0),
+                                       op->getMember(1), false, extractedBounds,
+                                       nonNullAttributes);
         ok |= checkIsBoundForAttribute(index, reference, op, op->getMember(1),
-                                       op->getMember(0), true, extractedBounds);
+                                       op->getMember(0), true, extractedBounds,
+                                       nonNullAttributes);
         break;
       case aql::NODE_TYPE_FCALL:
         if (aql::functions::getFunctionName(*op) == "IN_RANGE") {

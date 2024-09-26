@@ -495,7 +495,11 @@ bool substituteClusterMultipleDocumentInsertOperations(
   }
 
   auto* enumerateNode = ExecutionNode::castTo<EnumerateListNode const*>(dep);
-  if (enumerateNode->outVariable() != mod->inVariable()) {
+  if (enumerateNode->getMode() == EnumerateListNode::kEnumerateObject) {
+    // Cannot optimize object mode for EnumerateListNode
+    return false;
+  }
+  if (enumerateNode->outVariable()[0] != mod->inVariable()) {
     return false;
   }
 

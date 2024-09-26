@@ -176,11 +176,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf('-nonmac') !== -1 && platform.substr(0, 6) === 'darwin') {
-    whichFilter.filter = 'non-mac';
-    return false;
-  }
-
 // *.<ext>_DISABLED should be used instead
 //  if (testname.indexOf('-disabled') !== -1) {
 //    whichFilter.filter = 'disabled';
@@ -212,6 +207,16 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-fp') !== -1) && (!options.haveFailAt)) {
+    whichFilter.filter = 'skip when built without failurepoints';
+    return false;
+  }
+
+  if ((testname.indexOf('-r2') !== -1) && (options.replicationVersion !== 2)) {
+    whichFilter.filter = 'skip when running without replication 2';
+    return false;
+  }
+
   if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
     whichFilter.filter = 'skip when built with asan or tsan';
     return false;
@@ -219,11 +224,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
     whichFilter.filter = 'skip when built with coverage';
-    return false;
-  }
-
-  if ((testname.indexOf('-needfp') !== -1) && (options.isCov)) {
-    whichFilter.filter = 'skip when built without failurepoint support';
     return false;
   }
 

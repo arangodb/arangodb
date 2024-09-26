@@ -326,6 +326,7 @@ Coordinators.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::Enterprise))
       .setLongDescription(R"(If set to `true`, forces the cluster into creating
 all future collections with only a single shard and using the same DB-Server as
@@ -333,8 +334,7 @@ as these collections' shards leader. All collections created this way are
 eligible for specific AQL query optimizations that can improve query performance
 and provide advanced transactional guarantees.
 
-**Warning**: If you use multiple Coordinators, use the same value on all
-Coordinators.)");
+**Warning**: Use the same value on all Coordinators and all DBServers!)");
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",

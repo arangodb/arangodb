@@ -4,5 +4,6 @@ target_sources(arango_graph PRIVATE
   PathStore.cpp
   PathStoreTracer.cpp
   PathValidator.cpp
+  PathValidatorTabooWrapper.cpp
   PathValidatorTracer.cpp
   PathValidatorOptions.cpp)
