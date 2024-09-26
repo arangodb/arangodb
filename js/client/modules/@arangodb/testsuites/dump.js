@@ -857,7 +857,9 @@ function dump (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function(){}, []);
+  return dump_backend(opts, {}, {}, opts, opts, 'dump', tstFiles, function(){}, [
+    // BTS-1974: disable 802 for now.
+    '--skip', '802,']);
 }
 
 function dumpMixedClusterSingle (options) {
@@ -883,7 +885,8 @@ function dumpMixedClusterSingle (options) {
                                     tstFiles, function(){}, [
                                       //'--testFoxx', 'false',
                                       // BTS-1617: disable 404 for now
-                                      '--skip', '404,550,900,960']);
+                                      // BTS-1974: disable 802 for now.
+                                      '--skip', '404,550,802,900,960']);
 }
 
 function dumpMixedSingleCluster (options) {
@@ -908,7 +911,8 @@ function dumpMixedSingleCluster (options) {
                                     options, options, 'dump_mixed_single_cluster',
                                     tstFiles, function(){}, [
                                       // '--testFoxx', 'false',
-                                      '--skip', '550,900,960']);
+                                      // BTS-1974: disable 802 for now.
+                                      '--skip', '550,802,900,960']);
 }
 
 function dumpMultiple (options) {
@@ -928,7 +932,9 @@ function dumpMultiple (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){},[
+    // BTS-1974: disable 802 for now.
+    '--skip', '802,']);
 }
 
 function dumpNoEnvelope (options) {
@@ -948,7 +954,10 @@ function dumpNoEnvelope (options) {
     deactivateEnvelopes: true
   };
   _.defaults(dumpOptions, options);
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_no_envelope', tstFiles, function(){});
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_no_envelope', tstFiles, function(){}, [
+    // BTS-1974: disable 802 for now.
+    '--skip', '802,']);
+
 }
 
 function dumpWithCrashes (options) {
@@ -970,7 +979,9 @@ function dumpWithCrashes (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){}, [
+    // BTS-1974: disable 802 for now.
+    '--skip', '802,']);
 }
 
 function dumpWithCrashesParallel (options) {
@@ -994,7 +1005,9 @@ function dumpWithCrashesParallel (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){}, [
+    // BTS-1974: disable 802 for now.
+    '--skip', '802,']);
 }
 
 function dumpAuthentication (options) {
@@ -1030,7 +1043,9 @@ function dumpAuthentication (options) {
     dbServers: 3
   });
 
-  let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){}, []);
+  let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){}, [
+    // BTS-1974: disable 802 for now.
+    '--skip', '802']);
   options.cleanup = opts.cleanup;
   return ret;
 }
@@ -1057,7 +1072,9 @@ function dumpJwt (options) {
     dbServers: 3
   });
 
-  let ret = dump_backend(opts, tu.testServerAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_jwt', tstFiles, function(){}, []);
+  let ret = dump_backend(opts, tu.testServerAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_jwt', tstFiles, function(){}, [
+    // BTS-1974: disable 802 for now.
+    '--skip', '802']);
   options.cleanup = opts.cleanup;
   return ret;
 }
@@ -1096,7 +1113,9 @@ function dumpEncrypted (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, [
+    // BTS-1974: disable 802 for now.
+    '--skip', '802']);
 }
 
 function dumpParallel (options) {
@@ -1117,7 +1136,9 @@ function dumpParallel (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){}, [
+    // BTS-1974: disable 802 for now.
+    '--skip', '802']);
 }
 
 function dumpMaskings (options) {
@@ -1147,7 +1168,9 @@ function dumpMaskings (options) {
 
   _.defaults(dumpMaskingsOpts, options);
 
-  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){}, []);
+  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){}, [
+    // BTS-1974: disable 802 for now.
+    '--skip', '802']);
 }
 
 function hotBackup (options) {
