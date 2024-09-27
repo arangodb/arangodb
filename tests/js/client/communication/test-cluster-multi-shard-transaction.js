@@ -199,7 +199,7 @@ let lastCount = 0;
 let loopCount = 0;
 const stepWidth = 10;
 myKeys.forEach(oneKey => {
-  let trx = db._createTransaction({ collections: { write: [cn] } });
+  let trx = db._createTransaction({ collections: { write: [cn], exclusive: [cn] } });
   let c = trx.collection(cn);
   c.insert({_key: oneKey});
   let count = c.count();
