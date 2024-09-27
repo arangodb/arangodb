@@ -1,6 +1,13 @@
 devel
 -----
 
+* Change dumping of VPack to JSON for large double values with absolute
+  value between 2^53 and 2^64. This ensures that dumps to JSON followed
+  by parsing of the JSON back to VPack retain the right numerical values.
+  This fixes a problem in arangodump/arangorestore as well as in replication.
+  Furthermore, JSON output from the API now shows numbers in this area
+  with their correct numerical value.
+
 * FE-465: handle HiddenIndex type & "fields" object in collection index page.
 
 * Updated ArangoDB Starter to v0.19.6.
