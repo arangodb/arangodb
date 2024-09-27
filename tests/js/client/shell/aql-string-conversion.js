@@ -25,8 +25,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -48,25 +46,25 @@ function ahuacatlStringConversionTestSuite () {
     },
 
     testToStringLargeNumbers : function() {
-      let actual = getQueryResults("RETURN TO_STRING(1152921504606846976)");
+      let actual = db._query("RETURN TO_STRING(1152921504606846976)").toArray();
       assertEqual([ "1152921504606846976" ], actual);
-      actual = getQueryResults("RETURN TO_STRING(1152921504606846977)");
+      actual = db._query("RETURN TO_STRING(1152921504606846977)").toArray();
       assertEqual([ "1152921504606846977" ], actual);
-      actual = getQueryResults("RETURN TO_STRING(1152921504606846976.0)");
+      actual = db._query("RETURN TO_STRING(1152921504606846976.0)").toArray();
       assertEqual([ "1152921504606846976.0" ], actual);
-      actual = getQueryResults("RETURN TO_STRING(-1152921504606846976)");
+      actual = db._query("RETURN TO_STRING(-1152921504606846976)").toArray();
       assertEqual([ "-1152921504606846976" ], actual);
-      actual = getQueryResults("RETURN TO_STRING(-1152921504606846977)");
+      actual = db._query("RETURN TO_STRING(-1152921504606846977)").toArray();
       assertEqual([ "-1152921504606846977" ], actual);
-      actual = getQueryResults("RETURN TO_STRING(-1152921504606846976.0)");
+      actual = db._query("RETURN TO_STRING(-1152921504606846976.0)").toArray();
       assertEqual([ "-1152921504606846976.0" ], actual);
-      actual = getQueryResults("RETURN TO_STRING(4503599627370496.0)");
+      actual = db._query("RETURN TO_STRING(4503599627370496.0)").toArray();
       assertEqual([ "4503599627370496" ], actual);   // 2^52 too small for .0
-      actual = getQueryResults("RETURN TO_STRING(9007199254740992.0)");
+      actual = db._query("RETURN TO_STRING(9007199254740992.0)").toArray();
       assertEqual([ "9007199254740992.0" ], actual);   // 2^53 large enough
-      actual = getQueryResults("RETURN TO_STRING(9223372036854775808.0)");
+      actual = db._query("RETURN TO_STRING(9223372036854775808.0)").toArray();
       assertEqual([ "9223372036854775808.0" ], actual);   // 2^63
-      actual = getQueryResults("RETURN TO_STRING(18446744073709551616.0)");
+      actual = db._query("RETURN TO_STRING(18446744073709551616.0)").toArray();
       assertEqual([ "18446744073709552000" ], actual);   // 2^64 too large
       // Note that 2^64 cannot be represented in 64 bits, therefore, we 
       // fall back to the fast behaviour which produces a number, which is
