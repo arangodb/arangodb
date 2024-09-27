@@ -4465,10 +4465,10 @@ anymatch@~3.1.2:
     normalize-path "^3.0.0"
     picomatch "^2.0.4"
 
-arangojs@^9.0.0:
-  version "9.0.0"
-  resolved "https://registry.yarnpkg.com/arangojs/-/arangojs-9.0.0.tgz#e7577788769c8833c14de8865a61e42c499aa61f"
-  integrity sha512-nFpMTGsb7Vt76pfqR7M5cbKM+FfmTIc+MiMVZ0FDfPYM0tYfrVj9fqk3QDY7F1ZhURPp9SJeLqfx8/H2bsmOIg==
+arangojs@^9.1.0:
+  version "9.1.0"
+  resolved "https://registry.yarnpkg.com/arangojs/-/arangojs-9.1.0.tgz#44465387efa64b162df16ee567d33505097d7233"
+  integrity sha512-wOCYfZN3GoMS3+oL9P3rGXXd0X6Emve3Y16LwBD6HGy4GAvgfYTALWXQCYLxaqZiabVZ/WWFq08RpMpZboA6yQ==
   dependencies:
     "@types/node" "^20.11.26"
 
