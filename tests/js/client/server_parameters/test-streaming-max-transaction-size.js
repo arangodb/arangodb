@@ -170,7 +170,6 @@ function testSuite() {
     },
     testStreamTransactionCluster: function () {
       let IM = global.instanceManager;
-      print(IM.options)
       if (IM.options.cluster) {
         let coordinators = IM.arangods.filter(arangod => { return arangod.isFrontend();});
         let count = 0;
