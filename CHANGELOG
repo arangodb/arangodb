@@ -3,7 +3,7 @@ devel
 
 * FE-465: handle HiddenIndex type & "fields" object in collection index page.
 
-* Updated ArangoDB Starter to v0.19.6-preview-3.
+* Updated ArangoDB Starter to v0.19.6.
 
 * Upgraded OpenSSL to 3.3.2.
 
@@ -30,8 +30,6 @@ devel
   reality.
 
 * Rebuilt included rclone v1.62.2 with go1.22.6 and non-vulnerable dependencies.
-
-* Update ArangoDB Starter to v0.19.5.
 
 * Add native support for strict ranges for MDI.
 
