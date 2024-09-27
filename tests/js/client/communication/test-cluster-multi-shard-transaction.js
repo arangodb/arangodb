@@ -21,7 +21,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 const _ = require('lodash');
 let jsunity = require('jsunity');
@@ -196,6 +196,8 @@ return false;`
 let myKeys = ${JSON.stringify(shardIds[count])};
 let cn = "${testCol}";
 let lastCount = 0;
+let loopCount = 0;
+const stepWidth = 10;
 myKeys.forEach(oneKey => {
   let trx = db._createTransaction({ collections: { write: [cn] } });
   let c = trx.collection(cn);
@@ -207,10 +209,20 @@ myKeys.forEach(oneKey => {
     throw new Error("Was expecting to have " + count + " > " + lastCoun);
   }
   trx.commit();
+  loopCount += 1;
   count = db[cn].count();
   if (count <= lastCount) {
     print(oneKey + " - Was expecting to have " + count + " > " + lastCoun)
     throw new Error("Was expecting to have " + count + " > " + lastCoun);
+  }
+  let tries = 0;
+  while ((loopCount % stepWidth === 0) && (count % stepWidth !== 0)) {
+    tries ++;
+    if (tries > 10) {
+      throw new Error("failed to get to the next step in 5s");
+    }
+    require('internal').sleep(0.5);
+    count = db[cn].count();
   }
   lastCount = count;
 })
