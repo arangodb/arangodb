@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, db */
+/*global assertEqual, assertTrue, db, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
