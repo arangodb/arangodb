@@ -47,6 +47,41 @@ function replicationSuite() {
       db._drop(cn);
     },
     
+    // This test has the following purpose: When we do replication,
+    // things happen in multiple phases: When a new replica of a shard
+    // is deployed, we take a first stab at replication by taking a
+    // snapshot on the leader and replicating the data in there. Then
+    // we need to tail the Write Ahead Log(WAL) to catch up with the
+    // changes which have happened in the meantime. Then we can declare
+    // the shard to be "in sync". From then on, replication is done
+    // in a synchronous fashion and document inserts or updates are
+    // directly replicated to all in sync leaders when they happen.
+    // To test if all three phases work correctly, we first insert a
+    // number of documents and then increase the replication factor.
+    // However, we keep on writing documents to the collection, whilst
+    // the new replica is being deployed and beyond. Then we stop
+    // the writes and first verify the number format on the leader.
+    // Then we trigger a moveShard operation to change the leader and
+    // verify the number format on the new leader (which is the old
+    // follower with the replicated data). Since a conversion from VPack
+    // (internal) -> JSON (transport) -> VPack (internal) will change an
+    // integral number which is represented as a double into an integer
+    // representation, we can detect if all three phases copy VPack
+    // directly by checking the number format.
+    // Checking the number format is a bit involved: We cannot use the
+    // normal means in `arangosh`, since JavaScript only has one number
+    // type and that is a double. So we need to directly use our connection
+    // to the database `arango` object and tell it to directly fetch
+    // the data in VelocyPack format. This is possible with an `Accept`
+    // HTTP header specifiying `application/x-velocypack`. Additionally,
+    // we need to use the `forceJson` method to tell the connection not
+    // to force the data into JSON format.
+    // Since JavaScript does not understand VelocyPack, we need a crutch,
+    // we look for the ASCII byte sequence "value" in the VelocyPack and
+    // then to the following byte. If this is 0x1b, then the representation
+    // is in double. If it is any other byte, it is one of the integer
+    // types.
+
     testReplication: function() {
       // First insert 10000 documents using AQL to ensure that their
       // representation of the numbers is double:
