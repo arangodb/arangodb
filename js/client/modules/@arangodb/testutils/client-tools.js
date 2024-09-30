@@ -214,6 +214,11 @@ class ConfigBuilder {
       this.config['--compress-output'] = true;
     }
   }
+  activateVPack() {
+    if (this.type === 'dump') {
+      this.config['--dump-vpack'] = true;
+    }
+  }
   deactivateCompression() {
     if (this.type === 'dump') {
       this.config['--compress-output'] = false;

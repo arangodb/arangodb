@@ -14,7 +14,7 @@
     "ajv": "^8.12.0",
     "ajv-errors": "^3.0.0",
     "ansi-html-community": "0.0.8",
-    "arangojs": "^9.0.0",
+    "arangojs": "^9.1.0",
     "axios": "^0.21.2",
     "backbone": "^1.4.1",
     "crypto-js": "^3.3.0",
