@@ -1,6 +1,13 @@
 v3.11.12 (XXXX-XX-XX)
 ---------------------
 
+* Change dumping of VPack to JSON for large double values with absolute
+  value between 2^53 and 2^64. This ensures that dumps to JSON followed
+  by parsing of the JSON back to VPack retain the right numerical values.
+  This fixes a problem in arangodump/arangorestore as well as in replication.
+  Furthermore, JSON output from the API now shows numbers in this area
+  with their correct numerical value.
+
 * Updated ArangoDB Starter to v0.18.10.
 
 * Allow an `arangod` server to startup, even if the option 
