@@ -191,7 +191,5 @@ Result buildHttpError(httpclient::SimpleHttpResult* response,
 /// @brief parse a velocypack response
 Result parseResponse(velocypack::Builder&, httpclient::SimpleHttpResult const*);
 
-bool isVelocyPack(httpclient::SimpleHttpResult const& response);
-
 }  // namespace replutils
 }  // namespace arangodb
