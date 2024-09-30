@@ -137,6 +137,7 @@ const PrimarySortAccordionItem = () => {
   const [primarySortField] = useField<PrimarySortType[] | undefined>(
     "primarySort"
   );
+  const [primarySortCacheField] = useField("primarySortCache");
   const [primarySortCompressionField] = useField("primarySortCompression");
   const isPrimarySortEmpty =
     primarySortField.value?.length === 0 || !primarySortField.value;
@@ -145,7 +146,7 @@ const PrimarySortAccordionItem = () => {
     <AccordionItem>
       <AccordionButton>
         <Box flex="1" textAlign="left">
-          Primary Sort (compression: {primarySortCompressionField.value})
+          Primary Sort (compression: {primarySortCompressionField.value}{primarySortCacheField.value ? ", cached" : ""})
         </Box>
         <AccordionIcon />
       </AccordionButton>

@@ -36,13 +36,6 @@ const AdvancedFields = () => {
           isDisabled: !window.frontendConfig.isEnterprise
         }}
       />
-      <FormLabel htmlFor="primarySortCache">Primary Sort Cache</FormLabel>
-      <SwitchControl
-        name="primarySortCache"
-        switchProps={{
-          isDisabled: !window.frontendConfig.isEnterprise
-        }}
-      />
       <FormLabel htmlFor="writebufferIdle">Write Buffer Idle</FormLabel>
       <InputControl inputProps={{
         type: 'number'

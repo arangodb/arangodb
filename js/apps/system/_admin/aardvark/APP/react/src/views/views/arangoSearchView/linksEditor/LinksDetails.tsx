@@ -47,6 +47,12 @@ export const LinksDetails = () => {
             tooltip="For array values track the value position in arrays."
           />
           <StoreIDValuesCheckbox />
+          <CheckboxField
+            id="cache"
+            label="Cache"
+            isDisabled={!window.frontendConfig.isEnterprise}
+            tooltip="Always cache field normalization values in memory."
+          />
           {!isFieldView && (
             <CheckboxField
               id="inBackground"
@@ -86,11 +92,13 @@ const CheckboxField = ({
   id,
   label,
   tooltip,
+  isDisabled,
   onChange
 }: {
   id: string;
   label: string;
   tooltip: string;
+  isDisabled?: boolean;
   onChange?: (value: boolean) => void;
 }) => {
   const { setCurrentLinkValue, getCurrentLinkValue } = useLinkModifiers();
@@ -98,6 +106,7 @@ const CheckboxField = ({
   return (
     <HStack>
       <Checkbox
+        isDisabled={isDisabled}
         isChecked={isChecked}
         margin="0"
         borderColor="gray.400"

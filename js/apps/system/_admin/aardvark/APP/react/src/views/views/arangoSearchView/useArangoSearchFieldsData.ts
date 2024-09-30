@@ -69,14 +69,6 @@ const arangoSearchFieldsMap = {
     type: "custom",
     group: "primarySort"
   },
-  primarySortCache: {
-    isDisabled: true,
-    label: "Primary Sort Cache",
-    name: "primarySortCache",
-    type: "boolean",
-    group: "general",
-    tooltip: "Always cache primary sort columns in memory."
-  },
   primaryKeyCache: {
     isDisabled: true,
     label: "Primary Key Cache",
@@ -116,7 +108,6 @@ const arangoSearchFields = [
   arangoSearchFieldsMap.primarySort,
   arangoSearchFieldsMap.storedValues,
   arangoSearchFieldsMap.primaryKeyCache,
-  arangoSearchFieldsMap.primarySortCache,
   arangoSearchFieldsMap.writebufferIdle,
   arangoSearchFieldsMap.writebufferActive,
   arangoSearchFieldsMap.writebufferSizeMax,
