@@ -85,21 +85,22 @@ auto ThreadRegistry::add_promise(std::source_location location) noexcept
   auto current_head = promise_head.load(std::memory_order_relaxed);
   auto promise =
       new Promise{current_head, shared_from_this(), std::move(location)};
-  if (current_head != nullptr) {
-    current_head->previous = promise;
-  }
-  // (1) - this store synchronizes with load in (2)
-  promise_head.store(promise, std::memory_order_release);
-  if (metrics->active_functions != nullptr) {
-    metrics->active_functions->fetch_add(1);
-  }
+  // if (current_head != nullptr) {
+  //   current_head->previous = promise;
+  // }
+  // // (1) - this store synchronizes with load in (2)
+  // promise_head.store(promise, std::memory_order_release);
+  // if (metrics->active_functions != nullptr) {
+  //   metrics->active_functions->fetch_add(1);
+  // }
   return promise;
 }
 
 auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
   // makes sure that promise is really in this list
   ADB_PROD_ASSERT(promise->registry.get() == this);
-  auto current_head = free_head.load(std::memory_order_relaxed);
+  delete promise;
+  /*auto current_head = free_head.load(std::memory_order_relaxed);
   do {
     promise->next_to_free = current_head;
     // (4) - this compare_exchange_weak synchronizes with exchange in (5)
@@ -114,7 +115,7 @@ auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
     metrics->ready_for_deletion_functions->fetch_add(1);
   }
   // decrement the registries ref-count
-  promise->registry.reset();
+  promise->registry.reset();*/
 }
 
 auto ThreadRegistry::garbage_collect() noexcept -> void {
