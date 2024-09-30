@@ -1173,8 +1173,6 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
 
       TRI_ASSERT(q <= end);
 
-      applyStats.processedMarkers++;
-
       builder.clear();
       try {
         VPackParser parser(builder);
@@ -1191,8 +1189,8 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
       slice = VPackSlice{reinterpret_cast<uint8_t const*>(p)};
       lineLength = slice.byteSize();
       p += lineLength;
-      applyStats.processedMarkers++;
     }
+    applyStats.processedMarkers++;
 
     if (!slice.isObject()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
