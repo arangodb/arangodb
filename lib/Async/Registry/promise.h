@@ -82,7 +82,10 @@ struct AddToAsyncRegistry {
   ~AddToAsyncRegistry();
 
  private:
-  Promise* promise = nullptr;
+  struct noop {
+    void operator()(void*) {}
+  };
+  std::unique_ptr<Promise, noop> promise = nullptr;
 };
 
 }  // namespace arangodb::async_registry
