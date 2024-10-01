@@ -448,12 +448,12 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
   // Note: This disables the ScopeGuard
   futures.clear();
 
-  std::uint64_t memoryPerItem =
-      costPerVertexOrEdgeType +
-      (connectedEdges.size() * (costPerVertexOrEdgeType * 2));
-  ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
-
   for (auto const& pair : connectedEdges) {
+    std::uint64_t memoryPerItem =
+        costPerVertexOrEdgeType +
+        (pair.second.size() * (costPerVertexOrEdgeType * 2));
+    ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
+
     auto [it, inserted] =
         _vertexConnectedEdges.emplace(pair.first, pair.second);
     if (inserted) {
@@ -515,21 +515,22 @@ auto ClusterProvider<StepImpl>::fetchEdges(
       step->setEdgesFetched();
     }
   } else {
-    std::vector<Step*> batch(fetchedVertices.size());
+    std::vector<Step*> batch;
+    batch.reserve(fetchedVertices.size());
     for (auto const& step : fetchedVertices) {
       if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
         batch.push_back(step);
       }
-    }
-
-    auto res = fetchEdgesFromEngines(batch);
-    _stats.incrHttpRequests(_opts.engines()->size());
-
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    for (auto* step : batch) {
       step->setEdgesFetched();
+    }
+
+    if (!batch.empty()) {
+      auto res = fetchEdgesFromEngines(batch);
+      _stats.incrHttpRequests(_opts.engines()->size());
+
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
     }
   }
   return TRI_ERROR_NO_ERROR;
