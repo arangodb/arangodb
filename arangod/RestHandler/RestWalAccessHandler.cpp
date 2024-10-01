@@ -347,6 +347,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
   // note: we need the CustomTypeHandler here
   VPackDumper dumper(&adapter, &opts);
+  bool vPackResponse = _request->contentTypeResponse() == ContentType::VPACK;
   result = wal->tail(
       filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice marker) {
         length++;
@@ -355,8 +356,13 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
           prepOpts(*vocbase);
         }
 
-        dumper.dump(marker);
-        buffer.appendChar('\n');
+        if (vPackResponse) {
+          buffer.append(reinterpret_cast<char const*>(marker.start()),
+                        marker.byteSize());
+        } else {
+          dumper.dump(marker);
+          buffer.appendChar('\n');
+        }
         // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
         // marker.toJson(&opts);
       });
@@ -367,7 +373,11 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   // transfer ownership of the buffer contents
-  _response->setContentType(rest::ContentType::DUMP);
+  if (vPackResponse) {
+    _response->setContentType(rest::ContentType::VPACK);
+  } else {
+    _response->setContentType(rest::ContentType::DUMP);
+  }
 
   TRI_ASSERT(result.latestTick() >= result.lastIncludedTick());
   TRI_ASSERT(result.latestTick() >= result.lastScannedTick());
