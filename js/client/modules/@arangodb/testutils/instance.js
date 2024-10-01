@@ -610,18 +610,36 @@ class instance {
     let ret = statusExternal(this.pid, waitForExit);
     if (ret.status !== 'RUNNING') {
       this.processSanitizerReports();
+      this._disconnect();
     }
-    this._disconnect();
     return ret;
   }
 
   isRunning() {
     let check = () => (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
-    if (check()) {
+    if (this.exitStatus === null || check()) {
       this.exitStatus = this.status(false);
       return check();
     }
     return false;
+  }
+
+  runUpgrade() {
+    let moreArgs = {
+      '--database.auto-upgrade': 'true',
+      '--log.foreground-tty': 'true'
+    };
+    if (this.role === instanceRole.coordinator) {
+      moreArgs['--server.rest-server'] = 'false';
+    }
+    this.exitStatus = null;
+    this.pid = this._executeArangod(moreArgs).pid;
+    sleep(1);
+    while (this.isRunning()) {
+      print(".");
+      sleep(1);
+    }
+    print(`${Date()} upgrade of ${this.name} finished.`);
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -704,7 +722,7 @@ class instance {
       try {
         if (true) {//if (this.options.useReconnect && this.isFrontend()) {
           if (this.JWT) {
-            print(Date() + " reconnecting with JWT " + this.url);
+            print(`${Date()} reconnecting with JWT ${this.JWT} to ${this.url}`);
             if (arango.reconnect(this.endpoint,
                                  '_system',
                                  `${this.options.username}`,

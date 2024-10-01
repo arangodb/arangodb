@@ -6,14 +6,46 @@ devel
   multiple time. The corresponding flag was not resetted resulting in an
   endless loop.
 
+* Allow to use `/_api/wal/tail` with VelocyPack response and change cluster
+  internal replication to use it. This has advantages in performance and 
+  can replicate any VelocyPack value faithfully.
+
+* Change dumping of VPack to JSON for large double values with absolute
+  value between 2^53 and 2^64. This ensures that dumps to JSON followed
+  by parsing of the JSON back to VPack retain the right numerical values.
+  This fixes a problem in arangodump/arangorestore as well as in replication.
+  Furthermore, JSON output from the API now shows numbers in this area
+  with their correct numerical value.
+
+* FE-465: handle HiddenIndex type & "fields" object in collection index page.
+
+* Updated ArangoDB Starter to v0.19.6.
+
+* Upgraded OpenSSL to 3.3.2.
+
+* In replication use vpack as transport format throughout, so that even
+  large and strangely encoded numbers are transported faithfully.
+
+* The optimizer was very pessimistic about sparse mdi indexes and did not
+  properly react to queries that excluded null values.
+
+* Fix blockage in RestMetricsHandlers if there are resigned leaders. We use 
+  getResponsibleServerNoDelay there to decide if metrics should be exposed.
+
+* Fix blockage in SynchronizeShard: We do some agency communication there,
+  this should use skipScheduler to avoid being blocked by all scheduler
+  threads being busy. This solves a problem found in RTA on upgrade
+  with resignLeadership.
+
+* Fix bug in upstream rocksdb to not leak file descriptors when iouring
+  is used for RocksDB.
+
 * Fix circleci setup w.r.t. enterprise branch.
 
 * Adjust documentation and testing of --cluster.force-one-shard option to 
   reality.
 
 * Rebuilt included rclone v1.62.2 with go1.22.6 and non-vulnerable dependencies.
-
-* Update ArangoDB Starter to v0.19.5.
 
 * Add native support for strict ranges for MDI.
 

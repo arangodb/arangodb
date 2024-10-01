@@ -1,14 +1,46 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Julia Volmer
+////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Assertions/ProdAssert.h"
-#include "promise.h"
+#include "Async/Registry/promise.h"
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
+#include <source_location>
 #include <thread>
+#include "fmt/format.h"
+#include "fmt/std.h"
 
+namespace arangodb::metrics {
+template<typename T>
+class Gauge;
+}
 namespace arangodb::async_registry {
+
+struct Metrics;
+struct Registry;
 
 /**
    This registry belongs to a specific thread (the owning thread) and owns a
@@ -23,9 +55,11 @@ namespace arangodb::async_registry {
    This registry destroys itself when its ref counter is decremented to 0.
  */
 struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
-  ThreadRegistry() = default;
+  static auto make(std::shared_ptr<const Metrics> metrics,
+                   Registry* registry = nullptr)
+      -> std::shared_ptr<ThreadRegistry>;
 
-  ~ThreadRegistry() noexcept { garbage_collect(); }
+  ~ThreadRegistry() noexcept;
 
   /**
      Adds a promise on the registry's thread to the registry.
@@ -33,27 +67,18 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
      Can only be called on the owning thread, crashes
      otherwise.
    */
-  auto add(PromiseInList* promise) noexcept -> void {
-    // promise needs to live on the same thread as this registry
-    ADB_PROD_ASSERT(std::this_thread::get_id() == owning_thread);
-    auto current_head = promise_head.load(std::memory_order_relaxed);
-    promise->next = current_head;
-    promise->registry = shared_from_this();
-    if (current_head != nullptr) {
-      current_head->previous = promise;
-    }
-    // (1) - this store synchronizes with load in (2)
-    promise_head.store(promise, std::memory_order_release);
-  }
+  auto add_promise(std::source_location location =
+                       std::source_location::current()) noexcept -> Promise*;
 
   /**
-     Executes a function on each promise in the registry.
+     Executes a function on each promise in the registry that is not deleted yet
+     (includes promises that are marked for deletion).
 
      Can be called from any thread. It makes sure that all
      items stay valid during iteration (i.e. are not deleted in the meantime).
    */
   template<typename F>
-  requires std::invocable<F, PromiseInList*>
+  requires std::invocable<F, Promise*>
   auto for_promise(F&& function) noexcept -> void {
     auto guard = std::lock_guard(mutex);
     // (2) - this load synchronizes with store in (1) and (3)
@@ -69,46 +94,26 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
      Can be called from any thread. The promise needs to be included in
      the registry list, crashes otherwise.
    */
-  auto mark_for_deletion(PromiseInList* promise) noexcept -> void {
-    // makes sure that promise is really in this list
-    ADB_PROD_ASSERT(promise->registry.get() == this);
-    auto current_head = free_head.load(std::memory_order_relaxed);
-    do {
-      promise->next_to_free = current_head;
-      // (4) - this compare_exchange_weak synchronizes with exchange in (5)
-    } while (not free_head.compare_exchange_weak(current_head, promise,
-                                                 std::memory_order_release,
-                                                 std::memory_order_acquire));
-    // decrement the registries ref-count
-    promise->registry.reset();
-  }
+  auto mark_for_deletion(Promise* promise) noexcept -> void;
 
   /**
      Deletes all promises that are marked for deletion.
 
-     Can only be called on the owning thread or last thread working with this
-     registry, crashes otheriwse.
+     Can only be called on the owning thread, crashes otherwise.
    */
-  auto garbage_collect() noexcept -> void {
-    ADB_PROD_ASSERT(weak_from_this().expired() ||
-                    std::this_thread::get_id() == owning_thread);
-    // (5) - this exchange synchronizes with compare_exchange_weak in (4)
-    PromiseInList *current,
-        *next = free_head.exchange(nullptr, std::memory_order_acquire);
-    auto guard = std::lock_guard(mutex);
-    while (next != nullptr) {
-      current = next;
-      next = next->next_to_free;
-      remove(current);
-      current->destroy();
-    }
-  }
+  auto garbage_collect() noexcept -> void;
+
+  Thread thread;
 
  private:
-  const std::thread::id owning_thread = std::this_thread::get_id();
-  std::atomic<PromiseInList*> free_head = nullptr;
-  std::atomic<PromiseInList*> promise_head = nullptr;
+  Registry* registry = nullptr;
+  std::atomic<Promise*> free_head = nullptr;
+  std::atomic<Promise*> promise_head = nullptr;
   std::mutex mutex;
+  std::shared_ptr<const Metrics> metrics;
+
+  ThreadRegistry(std::shared_ptr<const Metrics> metrics, Registry* registry);
+  auto cleanup() noexcept -> void;
 
   /**
      Removes the promise from the registry.
@@ -117,19 +122,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
      (which also means that this function should only be called on the owning
      thread.)
    */
-  auto remove(PromiseInList* promise) -> void {
-    auto next = promise->next;
-    auto previous = promise->previous;
-    if (previous == nullptr) {  // promise is current head
-      // (3) - this store synchronizes with the load in (2)
-      promise_head.store(next, std::memory_order_release);
-    } else {
-      previous->next = next;
-    }
-    if (next != nullptr) {
-      next->previous = previous;
-    }
-  }
+  auto remove(Promise* promise) -> void;
 };
 
 }  // namespace arangodb::async_registry

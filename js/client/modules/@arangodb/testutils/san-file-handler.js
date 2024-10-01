@@ -141,6 +141,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
   const isCoverage = versionHas('coverage');
   const isSan = versionHas('asan') || versionHas('tsan');
   const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
+  const haveFailAt = versionHas('failure-tests');
   tu.CopyIntoObject(optionsDefaults, {
     'isCov': isCoverage,
     'covOptions': {},
@@ -148,6 +149,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'isSan': isSan,
     'sanOptions': {},
     'isInstrumented': isInstrumented,
+    'haveFailAt': haveFailAt, // silent option - automatically set only.
     'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   });
 

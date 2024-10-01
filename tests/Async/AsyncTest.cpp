@@ -1,4 +1,6 @@
 #include "Async/async.h"
+#include "Async/Registry/promise.h"
+#include "Async/Registry/registry_variable.h"
 #include "Async/Registry/registry.h"
 #include "Async/Registry/thread_registry.h"
 
@@ -7,6 +9,13 @@
 #include <deque>
 
 namespace {
+
+auto promise_count(arangodb::async_registry::ThreadRegistry& registry) -> uint {
+  uint promise_count = 0;
+  registry.for_promise(
+      [&](arangodb::async_registry::Promise* promise) { promise_count++; });
+  return promise_count;
+}
 
 struct WaitSlot {
   void resume() {
@@ -72,7 +81,7 @@ struct ConcurrentNoWait {
             }
             handle.resume();
           }
-          arangodb::coroutine::get_thread_registry().garbage_collect();
+          arangodb::async_registry::get_thread_registry().garbage_collect();
         }) {}
 
   auto stop() -> void {
@@ -136,9 +145,11 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
   void SetUp() override { InstanceCounterValue::instanceCounter = 0; }
 
   void TearDown() override {
-    arangodb::coroutine::get_thread_registry().garbage_collect();
+    arangodb::async_registry::get_thread_registry().garbage_collect();
     wait.stop();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              0);
   }
 
   WaitType wait;
@@ -342,59 +353,51 @@ TYPED_TEST(AsyncTest, multiple_suspension_points) {
   EXPECT_EQ(awaitable.await_resume(), 0);
 }
 
-TYPED_TEST(AsyncTest, promises_are_only_removed_after_garbage_collection) {
+TYPED_TEST(AsyncTest, coroutine_is_removed_before_registry_entry) {
   using ValueType = TypeParam::second_type;
 
   auto coro = []() -> async<ValueType> { co_return 12; };
 
   {
     coro().reset();
-
-    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              1);
   }
   {
     std::move(coro()).operator co_await().await_resume();
-
-    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              2);
   }
   {
     { coro(); }
 
-    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              3);
   }
 }
 
 auto foo() -> async<CopyOnlyValue> { co_return 1; }
 auto bar() -> async<CopyOnlyValue> { co_return 4; }
 auto baz() -> async<CopyOnlyValue> { co_return 2; }
-TEST(AsyncTest, promises_are_registered) {
+TEST(AsyncTest, promises_are_registered_in_global_registry) {
   auto coro_foo = foo();
+  EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()), 1);
 
   std::jthread([&]() {
     auto coro_bar = bar();
     auto coro_baz = baz();
 
     std::vector<std::string> names;
-    arangodb::async_registry::coroutine_registry.for_promise(
-        [&](arangodb::async_registry::PromiseInList* promise) {
-          names.push_back(promise->_where.function_name());
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::Promise* promise) {
+          names.push_back(promise->entry_point.function_name());
         });
     EXPECT_EQ(names.size(), 3);
     EXPECT_TRUE(names[0].find("foo") != std::string::npos);
     EXPECT_TRUE(names[1].find("baz") != std::string::npos);
     EXPECT_TRUE(names[2].find("bar") != std::string::npos);
-
-    coro_bar.reset();
-    coro_baz.reset();
-    arangodb::async_registry::get_thread_registry().garbage_collect();
-  });
-
-  coro_foo.reset();
-  arangodb::async_registry::get_thread_registry().garbage_collect();
+  }).join();
 }

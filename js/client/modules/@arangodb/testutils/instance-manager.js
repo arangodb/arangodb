@@ -557,6 +557,29 @@ class instanceManager {
     }
   }
 
+  resignLeaderShip(dbServer) {
+    let frontend = this.arangods.filter(arangod => {return arangod.isFrontend();})[0];
+    print(`${Date()} resigning leaderships from ${dbServer.name} via ${frontend.name}`);
+    // make sure the connection is propper:
+    frontend._disconnect();
+    frontend.connect();
+
+    let result = arango.POST_RAW('/_admin/cluster/resignLeadership',
+                                 { "server": dbServer.shortName, "undoMoves": false });
+    if (result.code !== 202) {
+      throw new Error(`failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(result)}`);
+    }
+    let jobStatus;
+    do {
+      sleep(1);
+      jobStatus = arango.GET_RAW('/_admin/cluster/queryAgencyJob?id=' + result.parsedBody.id);
+      if (jobStatus.parsedBody.status === 'Failed') {
+        throw new Error(`failed to resign ${dbServer.name} from leadership via ${frontend.name}: ${JSON.stringify(jobStatus)}`);
+      }
+      print(jobStatus.parsedBody.status);
+    } while (jobStatus.parsedBody.status !== 'Finished');
+    print(`${Date()} DONE resigning leaderships from ${dbServer.name} via ${frontend.name}`);
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief shuts down an instance
   // //////////////////////////////////////////////////////////////////////////////
@@ -611,6 +634,30 @@ class instanceManager {
     return true;
   }
 
+  _setMaintenance(onOff) {
+    let shutdownSuccess = true;
+    try {
+      // send a maintenance request to any of the coordinators, so that
+      // no failed server/failed follower jobs will be started on shutdown
+      let coords = this.arangods.filter(arangod =>
+        arangod.isRole(instanceRole.coordinator) &&
+          (arangod.exitStatus !== null));
+      if (coords.length > 0) {
+        let requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
+        requestOptions.method = 'PUT';
+        let postBody = onOff ? "on" : "off";
+        if (!this.options.noStartStopLogs) {
+          print(`${coords[0].url}/_admin/cluster/maintenance => ${postBody}`);
+        }
+        download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify(postBody), requestOptions);
+      }
+    } catch (err) {
+      print(`${Date()} error while setting cluster maintenance mode:${err}\n${err.stack}`);
+      shutdownSuccess = false;
+    }
+    return shutdownSuccess;
+  }
+
   _shutdownInstance (moreReason="") {
     let forceTerminate = false;
     let crashed = false;
@@ -631,25 +678,7 @@ class instanceManager {
     }
 
     if (!forceTerminate) {
-      try {
-        // send a maintenance request to any of the coordinators, so that
-        // no failed server/failed follower jobs will be started on shutdown
-        let coords = this.arangods.filter(arangod =>
-          arangod.isRole(instanceRole.coordinator) &&
-            (arangod.exitStatus !== null));
-        if (coords.length > 0) {
-          let requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-          requestOptions.method = 'PUT';
-
-          if (!this.options.noStartStopLogs) {
-            print(coords[0].url + "/_admin/cluster/maintenance");
-          }
-          download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
-        }
-      } catch (err) {
-        print(`${Date()} error while setting cluster maintenance mode:${err}\n${err.stack}`);
-        shutdownSuccess = false;
-      }
+      shutdownSuccess &= this._setMaintenance(true);
     }
 
     this.stopClusterHealthMonitor();
@@ -817,6 +846,41 @@ class instanceManager {
     this.launchFinalize(startTime);
   }
 
+  upgradeCycleInstance(waitForShardsInSync) {
+    /// TODO:             self._check_for_shards_in_sync()
+    let haveMaintainance = false;
+    this.instanceRoles.forEach(role => {
+      this.arangods.forEach(arangod => {
+        if (arangod.isRole(role)) {
+          print(`${Date()} upgrading ${arangod.name}`);
+          print(`${Date()} stopping ${arangod.name}`);
+          if (arangod.isRole(instanceRole.dbServer)) {
+            this.resignLeaderShip(arangod);
+            sleep(30); // BTS-1965
+            this._setMaintenance(true);
+            haveMaintainance = true;
+          }
+          arangod.shutdownArangod(false);
+          while (arangod.isRunning()) {
+            print(".");
+            sleep(1);
+          }
+          print(`${Date()} upgrading ${arangod.name}`);
+          arangod.runUpgrade();
+          print(`${Date()} relaunching ${arangod.name}`);
+          arangod.restartOneInstance();
+          if (haveMaintainance) {
+            haveMaintainance = false;
+            this._setMaintenance(false);
+          }
+        }
+      });
+      if (role === instanceRole.agent) {
+        print("running agency health check");
+        this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
+      }
+    });
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief check SUT health inbetween
   // //////////////////////////////////////////////////////////////////////////////
