@@ -47,10 +47,16 @@ class Feature final : public application_features::ApplicationFeature {
     // startsAfter<Bla, Server>();
   }
 
-  ~Feature() { registry.set_metrics(std::make_shared<Metrics>()); }
+  ~Feature();
+
+  void start() override;
+  void stop() override;
 
  private:
   std::shared_ptr<const Metrics> metrics;
+
+  struct PromiseCleanupThread;
+  std::shared_ptr<PromiseCleanupThread> _cleanupThread;
 };
 
 }  // namespace arangodb::async_registry

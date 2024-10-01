@@ -29,22 +29,22 @@
 using namespace arangodb::async_registry;
 
 DECLARE_GAUGE(arangodb_async_active_functions, std::uint64_t,
-              "Number of currently active asyncronous functions");
+              "Number of currently active asynchronous functions");
 DECLARE_GAUGE(
     arangodb_async_ready_for_deletion_functions, std::uint64_t,
-    "Number of finished asyncronous functions that wait for their garbage "
+    "Number of finished asynchronous functions that wait for their garbage "
     "collection");
 DECLARE_COUNTER(arangodb_async_functions_total,
-                "Total number of created asyncronous functions");
+                "Total number of created asynchronous functions");
 
 DECLARE_GAUGE(arangodb_async_active_threads, std::uint64_t,
-              "Number of active threads that execute asyncronous functions");
+              "Number of active threads that execute asynchronous functions");
 DECLARE_GAUGE(
     arangodb_async_registered_threads, std::uint64_t,
-    "Number of registered threads that execute asyncronous functions");
+    "Number of registered threads that execute asynchronous functions");
 DECLARE_COUNTER(
     arangodb_async_threads_total,
-    "Total number of created threads that execute asyncronous functions");
+    "Total number of created threads that execute asynchronous functions");
 
 auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<const Metrics> {
@@ -56,3 +56,32 @@ auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       metrics_feature.addShared(arangodb_async_threads_total{}),
       metrics_feature.addShared(arangodb_async_functions_total{}));
 }
+
+struct Feature::PromiseCleanupThread {
+  PromiseCleanupThread()
+      : _thread([this](std::stop_token stoken) {
+          while (not stoken.stop_requested()) {
+            std::unique_lock guard(_mutex);
+            auto status = _cv.wait_for(guard, std::chrono::seconds{1});
+            if (status == std::cv_status::timeout) {
+              async_registry::registry.run_external_cleanup();
+            }
+          }
+        }) {}
+
+  ~PromiseCleanupThread() {
+    _thread.request_stop();
+    _cv.notify_one();
+  }
+
+  std::jthread _thread;
+  std::mutex _mutex;
+  std::condition_variable _cv;
+};
+
+void Feature::start() {
+  _cleanupThread = std::make_shared<PromiseCleanupThread>();
+}
+void Feature::stop() { _cleanupThread.reset(); }
+
+Feature::~Feature() { registry.set_metrics(std::make_shared<Metrics>()); }

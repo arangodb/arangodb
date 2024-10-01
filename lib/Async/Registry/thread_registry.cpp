@@ -148,6 +148,46 @@ auto ThreadRegistry::cleanup() noexcept -> void {
   }
 }
 
+auto ThreadRegistry::garbage_collect_external() noexcept -> void {
+  // acquire the lock. This prevents the owning thread and the observer
+  // from accessing promises. Note that the owing thread only adds new
+  // promises to the head of the list.
+  auto guard = std::lock_guard(mutex);
+  // we can make the following observation. Once a promise is enqueued in the
+  // list, it previous and next pointer is never updated, except for the current
+  // head element. Also, Promises are only removed, after the mutex has been
+  // acquired. This implies that we can clean up all promises, that are not
+  // in head position right now.
+  Promise* maybe_head_ptr = nullptr;
+  Promise *current,
+      *next = free_head.exchange(nullptr, std::memory_order_acquire);
+  while (next != nullptr) {
+    current = next;
+    next = next->next_to_free;
+    if (metrics->ready_for_deletion_functions != nullptr) {
+      metrics->ready_for_deletion_functions->fetch_sub(1);
+    }
+    if (current->previous != nullptr) {
+      remove(current);
+      delete current;
+    } else {
+      ADB_PROD_ASSERT(maybe_head_ptr == nullptr);
+      maybe_head_ptr = current;
+    }
+  }
+  // After the clean up we have to add the potential head back into the free
+  // list.
+  if (maybe_head_ptr) {
+    auto current_head = free_head.load(std::memory_order_relaxed);
+    do {
+      maybe_head_ptr->next_to_free = current_head;
+      // (4) - this compare_exchange_weak synchronizes with exchange in (5)
+    } while (not free_head.compare_exchange_weak(current_head, maybe_head_ptr,
+                                                 std::memory_order_release,
+                                                 std::memory_order_acquire));
+  }
+}
+
 auto ThreadRegistry::remove(Promise* promise) -> void {
   auto* next = promise->next;
   auto* previous = promise->previous;

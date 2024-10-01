@@ -103,7 +103,13 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
    */
   auto garbage_collect() noexcept -> void;
 
-  Thread thread;
+  /**
+     Runs external garbage collection.
+     This can be called from a different thread.
+   */
+  auto garbage_collect_external() noexcept -> void;
+
+  Thread const thread;
 
  private:
   Registry* registry = nullptr;
