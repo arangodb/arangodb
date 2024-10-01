@@ -75,10 +75,17 @@ auto inspect(Inspector& f, Promise& x) {
 struct AddToAsyncRegistry {
   AddToAsyncRegistry() = default;
   AddToAsyncRegistry(std::source_location loc);
+  AddToAsyncRegistry(AddToAsyncRegistry const&) = delete;
+  AddToAsyncRegistry& operator=(AddToAsyncRegistry const&) = delete;
+  AddToAsyncRegistry(AddToAsyncRegistry&&) = delete;
+  AddToAsyncRegistry& operator=(AddToAsyncRegistry&&) = delete;
   ~AddToAsyncRegistry();
 
  private:
-  Promise* promise = nullptr;
+  struct noop {
+    void operator()(void*) {}
+  };
+  std::unique_ptr<Promise, noop> promise = nullptr;
 };
 
 }  // namespace arangodb::async_registry

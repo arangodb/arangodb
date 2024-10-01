@@ -46,7 +46,9 @@ class Promise {
 
   /// @brief Constructs a Promise with no shared state.
   /// After construction, valid() == true.
-  Promise() : _state(detail::SharedState<T>::make()), _retrieved(false) {}
+  Promise(std::source_location loc = std::source_location::current())
+      : _state(detail::SharedState<T>::make(std::move(loc))),
+        _retrieved(false) {}
 
   Promise(Promise const& o) = delete;
   Promise(Promise<T>&& o) noexcept
