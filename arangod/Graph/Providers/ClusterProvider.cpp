@@ -306,22 +306,20 @@ void ClusterProvider<StepImpl>::destroyEngines() {
 }
 
 template<class StepImpl>
-Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
-  TRI_ASSERT(step != nullptr);
-  LOG_TOPIC("fa7dc", TRACE, Logger::GRAPHS)
-      << "<ClusterProvider> Expanding " << step->getVertex().getID();
+Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
+    std::vector<Step*> const& batch) {
+  if (_opts.depthSpecificLookup()) {
+    TRI_ASSERT(batch.size() == 1);
+  }
   auto const* engines = _opts.engines();
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
   leased->add("backward",
               VPackValue(_opts.isBackward()));  // [GraphRefactor] ksp only?
 
-  // [GraphRefactor] TODO: Differentiate between algorithms -> traversal vs.
-  // ksp.
-  /* Needed for TRAVERSALS only - Begin */
-  // But note that the field "depth" must be set to an integer in any case!
-  if (_opts.clearEdgeCacheOnClear()) {
-    leased->add("depth", VPackValue(step->getDepth()));
+  if (_opts.depthSpecificLookup()) {
+    /* Needed for TRAVERSALS only - Begin */
+    leased->add("depth", VPackValue(batch[0]->getDepth()));
     if (_opts.expressionContext() != nullptr) {
       leased->add(VPackValue("variables"));
       leased->openArray();
@@ -329,10 +327,18 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
                                                        *(leased.get()));
       leased->close();
     }
+    /* Needed for TRAVERSALS only - End */
   }
-  /* Needed for TRAVERSALS only - End */
 
-  leased->add("keys", VPackValue(step->getVertex().getID().toString()));
+  leased->add(VPackValue("keys"));  // only key
+  {
+    VPackArrayBuilder guard(leased.get());
+    for (auto* step : batch) {
+      leased->add(VPackValue(step->getVertex().getID().toString()));
+      LOG_TOPIC("fa7dc", TRACE, Logger::GRAPHS)
+          << "<ClusterProvider> Expanding " << step->getVertex().getID();
+    }
+  }
   leased->close();
 
   auto* pool =
@@ -363,7 +369,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
         reqOpts));
   }
 
-  std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
+  std::unordered_map<VertexType, std::vector<std::pair<EdgeType, VertexType>>>
+      connectedEdges;
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.waitAndGet();
 
@@ -404,9 +411,16 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
             << "got invalid edge id type: " << id.typeName();
         continue;
       }
+
+      VertexType vertex;
+      if (_opts.isBackward()) {
+        vertex = VertexType{e.get(StaticStrings::ToString)};
+      } else {
+        vertex = VertexType{e.get(StaticStrings::FromString)};
+      }
       LOG_TOPIC("f4b3b", TRACE, Logger::GRAPHS)
-          << "<ClusterProvider> Neighbor of " << step->getVertex().getID()
-          << " -> " << id.toJson();
+          << "<ClusterProvider> Neighbor of " << vertex.toString() << " -> "
+          << id.toJson();
 
       auto [edge, needToCache] = _opts.getCache()->persistEdgeData(e);
       if (needToCache) {
@@ -417,10 +431,14 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
           edge.get(StaticStrings::IdString));
 
       auto edgeToEmplace = std::make_pair(
-          edgeIdRef,
-          VertexType{getEdgeDestination(edge, step->getVertex().getID())});
+          edgeIdRef, VertexType{getEdgeDestination(edge, vertex)});
 
-      connectedEdges.emplace_back(edgeToEmplace);
+      auto it = connectedEdges.find(vertex);
+      if (it == connectedEdges.end()) {
+        connectedEdges.emplace(vertex, std::vector{edgeToEmplace});
+      } else {
+        it->second.emplace_back(edgeToEmplace);
+      }
     }
 
     if (!allCached) {
@@ -435,12 +453,13 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
       (connectedEdges.size() * (costPerVertexOrEdgeType * 2));
   ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
 
-  auto [it, inserted] = _vertexConnectedEdges.emplace(
-      step->getVertex().getID(), std::move(connectedEdges));
-  if (inserted) {
-    guard.steal();
+  for (auto const& pair : connectedEdges) {
+    auto [it, inserted] =
+        _vertexConnectedEdges.emplace(pair.first, pair.second);
+    if (inserted) {
+      guard.steal();
+    }
   }
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -473,19 +492,45 @@ auto ClusterProvider<StepImpl>::fetchVertices(
 template<class StepImpl>
 auto ClusterProvider<StepImpl>::fetchEdges(
     std::vector<Step*> const& fetchedVertices) -> Result {
-  for (auto const& step : fetchedVertices) {
-    if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
-      auto res = fetchEdgesFromEngines(step);
-      _stats.incrHttpRequests(_opts.engines()->size());
+  // If we do depth specific lookups, we need to work on all edges one
+  // after another. This could potentially be fixed, but this seems
+  // difficult. This is what is used in one-sided-traversals.
+  // Therefore we distinguish here between this case and the other case
+  // (for two-sided-traversals), in which we can fetch edges in batches:
+  if (_opts.depthSpecificLookup()) {
+    for (auto const& step : fetchedVertices) {
+      if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
+        std::vector<Step*> single{step};
+        auto res = fetchEdgesFromEngines(single);
+        _stats.incrHttpRequests(_opts.engines()->size());
 
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+      }
+      // else: We already fetched this vertex.
+
+      // mark a looseEnd as fetched as vertex fetch + edges fetch was a
+      // success
+      step->setEdgesFetched();
+    }
+  } else {
+    std::vector<Step*> batch(fetchedVertices.size());
+    for (auto const& step : fetchedVertices) {
+      if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
+        batch.push_back(step);
       }
     }
-    // else: We already fetched this vertex.
 
-    // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
-    step->setEdgesFetched();
+    auto res = fetchEdgesFromEngines(batch);
+    _stats.incrHttpRequests(_opts.engines()->size());
+
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    for (auto* step : batch) {
+      step->setEdgesFetched();
+    }
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -516,8 +561,8 @@ auto ClusterProvider<StepImpl>::expand(
       bool edgesCached = _vertexConnectedEdges.contains(relation.second);
       typename Step::FetchedType fetchedType =
           ::getFetchedType(vertexCached, edgesCached);
-      // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight. We
-      // need a mechanism here as well to distinguish between (non)required
+      // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight.
+      // We need a mechanism here as well to distinguish between (non)required
       // parameters.
       callback(
           Step{relation.second, relation.first, previous, fetchedType,
