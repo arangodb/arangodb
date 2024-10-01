@@ -32,7 +32,7 @@ Registry::Registry() : _metrics{std::make_shared<Metrics>()} {}
 auto Registry::add_thread() -> std::shared_ptr<ThreadRegistry> {
   auto guard = std::lock_guard(mutex);
   auto thread_registry = ThreadRegistry::make(_metrics, this);
-  registries.emplace_back(thread_registry.get());
+  registries.emplace_back(thread_registry);
   if (_metrics->registered_threads != nullptr) {
     _metrics->registered_threads->fetch_add(1);
   }
@@ -45,5 +45,5 @@ auto Registry::remove_thread(ThreadRegistry* registry) -> void {
     _metrics->registered_threads->fetch_sub(1);
   }
   // delete last reference to registry
-  std::erase(registries, registry);
+  std::erase_if(registries, [&](auto const& weak) { return weak.expired(); });
 }

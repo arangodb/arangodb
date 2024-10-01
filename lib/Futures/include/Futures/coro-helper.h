@@ -171,7 +171,8 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
   struct promise_type {
     // For some reason, non-maintainer compilation fails with a linker error
     // if these are missing or defaulted.
-    promise_type() {}
+    promise_type(std::source_location loc = std::source_location::current())
+        : promise{std::move(loc)} {}
     ~promise_type() {}
 
     arangodb::futures::Promise<T> promise;
