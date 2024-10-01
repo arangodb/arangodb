@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allow to use `/_api/wal/tail` with VelocyPack response and change cluster
+  internal replication to use it. This has advantages in performance and 
+  can replicate any VelocyPack value faithfully.
+
 * Change dumping of VPack to JSON for large double values with absolute
   value between 2^53 and 2^64. This ensures that dumps to JSON followed
   by parsing of the JSON back to VPack retain the right numerical values.
