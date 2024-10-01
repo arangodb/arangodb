@@ -1,6 +1,11 @@
 devel
 -----
 
+* BTS-1950: geo index query stuck
+  The geo index iterator got stuck when multiple coverings were requested
+  multiple time. The corresponding flag was not resetted resulting in an
+  endless loop.
+
 * Allow to use `/_api/wal/tail` with VelocyPack response and change cluster
   internal replication to use it. This has advantages in performance and 
   can replicate any VelocyPack value faithfully.
