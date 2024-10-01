@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -54,7 +54,6 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
-  static std::string const TimeString;
 
   // URL parameter names
   static std::string const IgnoreRevsString;
@@ -68,6 +67,8 @@ class StaticStrings {
   static std::string const SkipDocumentValidation;
   static std::string const OverwriteCollectionPrefix;
   static std::string const IsSynchronousReplicationString;
+  static std::string const RefillIndexCachesString;
+  static std::string const VersionAttributeString;
   static std::string const Group;
   static std::string const Namespace;
   static std::string const Prefix;
@@ -75,6 +76,13 @@ class StaticStrings {
   static std::string const OverwriteMode;
   static std::string const Compact;
   static std::string const DontWaitForCommit;
+  static std::string const UserString;
+
+  // dump headers
+  static std::string const DumpAuthUser;
+  static std::string const DumpBlockCounts;
+  static std::string const DumpId;
+  static std::string const DumpShardId;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -97,9 +105,8 @@ class StaticStrings {
   static std::string const JobsCollection;
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
-  static std::string const ModulesCollection;
-  static std::string const FishbowlCollection;
   static std::string const FrontendCollection;
+  static std::string const QueriesCollection;
   static std::string const StatisticsCollection;
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
@@ -112,7 +119,6 @@ class StaticStrings {
   // database definition fields
   static std::string const DatabaseId;
   static std::string const DatabaseName;
-  static std::string const DatabaseOptions;
   static std::string const Properties;
 
   // LogicalDataSource definition fields
@@ -133,23 +139,24 @@ class StaticStrings {
   static std::string const IndexFields;        // index fields
   static std::string const IndexId;            // index id
   static std::string const IndexInBackground;  // index in background
-  static std::string_view constexpr IndexParallelism = "parallelism";
+  static std::string_view constexpr IndexParallelism{"parallelism"};
   static std::string const IndexIsBuilding;      // index build in-process
   static std::string const IndexName;            // index name
   static std::string const IndexSparse;          // index sparsity marker
   static std::string const IndexStoredValues;    // index stored values
+  static std::string const IndexPrefixFields;    // index prefix fields (zkd)
   static std::string const IndexType;            // index type
   static std::string const IndexUnique;          // index uniqueness marker
   static std::string const IndexEstimates;       // index estimates flag
   static std::string const IndexLegacyPolygons;  // index legacyPolygons flag
+  static std::string_view constexpr IndexLookahead{"lookahead"};
+  static std::string const IndexCreationError;  // index failed to create
 
   // static index names
   static std::string const IndexNameEdge;
   static std::string const IndexNameEdgeFrom;
   static std::string const IndexNameEdgeTo;
-  static std::string const IndexNameInaccessible;
   static std::string const IndexNamePrimary;
-  static std::string const IndexNameTime;
 
   // index hint strings
   static std::string const IndexHintDisableIndex;
@@ -163,6 +170,10 @@ class StaticStrings {
   static std::string const ReadOwnWrites;
   static std::string const UseCache;
   static std::string const Parallelism;
+  static std::string const ForceOneShardAttributeValue;
+  static std::string const JoinStrategyType;
+  static std::string const Algorithm;
+  static std::string const Yen;
 
   // HTTP headers
   static std::string const Accept;
@@ -180,6 +191,7 @@ class StaticStrings {
   static std::string const AsyncId;
   static std::string const Authorization;
   static std::string const CacheControl;
+  static std::string const Chunked;
   static std::string const Close;
   static std::string const ClusterCommSource;
   static std::string const Code;
@@ -187,6 +199,8 @@ class StaticStrings {
   static std::string const ContentEncoding;
   static std::string const ContentLength;
   static std::string const ContentTypeHeader;
+  static std::string const Cookie;
+  ;
   static std::string const CorsMethods;
   static std::string const Error;
   static std::string const ErrorCode;
@@ -198,7 +212,6 @@ class StaticStrings {
   static std::string const Expect;
   static std::string const ExposedCorsHeaders;
   static std::string const HLCHeader;
-  static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
   static std::string const LockLocation;
@@ -211,23 +224,33 @@ class StaticStrings {
   static std::string const TransactionBody;
   static std::string const TransactionId;
   static std::string const Unlimited;
+  static std::string const UserAgent;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;
   static std::string const XArangoQueueTimeSeconds;
+  static std::string const ContentSecurityPolicy;
+  static std::string const Pragma;
+  static std::string const Expires;
+  static std::string const HSTS;
 
   // mime types
   static std::string const MimeTypeDump;
+  static std::string const MimeTypeDumpNoEncoding;
   static std::string const MimeTypeHtml;
+  static std::string const MimeTypeHtmlNoEncoding;
   static std::string const MimeTypeJson;
   static std::string const MimeTypeJsonNoEncoding;
   static std::string const MimeTypeText;
+  static std::string const MimeTypeTextNoEncoding;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
 
   // encodings
-  static std::string const EncodingIdentity;
+  static std::string const EncodingArangoLz4;
   static std::string const EncodingDeflate;
+  static std::string const EncodingGzip;
+  static std::string const EncodingLz4;
 
   // arangosh result body
   static std::string const Body;
@@ -244,6 +267,7 @@ class StaticStrings {
   static std::string const KeyOptions;
   static std::string const MinReplicationFactor;
   static std::string const NumberOfShards;
+  static std::string const GroupId;
   static std::string const ObjectId;
   static std::string const ReplicationFactor;
   static std::string const Satellite;
@@ -260,11 +284,8 @@ class StaticStrings {
   static std::string const ShardingSingle;
   static std::string const ReplicationVersion;
   static std::string const ReplicatedLogs;
-  static std::string_view const SoftWriteConcern;
-  static std::string_view const EffectiveWriteConcern;
 
   // graph attribute names
-  static std::string const GraphCollection;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;
@@ -273,14 +294,12 @@ class StaticStrings {
   static std::string const GraphDropCollection;
   static std::string const GraphCreateCollection;
   static std::string const GraphEdgeDefinitions;
-  static std::string const GraphEdgeDefinitionType;
   static std::string const GraphOrphans;
   static std::string const GraphName;
   static std::string const GraphTraversalProfileLevel;
 
   // smart graph relevant attributes
   static std::string const IsDisjoint;
-  static std::string const IsHybrid;
   static std::string const GraphIsSatellite;
   static std::string const GraphSatellites;
   static std::string const GraphIsSmart;
@@ -296,27 +315,6 @@ class StaticStrings {
   static std::string const GraphDirectionInbound;
   static std::string const GraphDirectionOutbound;
 
-  // Pregel Section Start
-
-  // Pregel Accumulator Attributes
-  static std::string const AccumulatorHot;
-  static std::string const AccumulatorCold;
-  static std::string const AccumulatorValue;
-  static std::string const AccumulatorSender;
-  static std::string const AccumulatorName;
-
-  // Pregel VertexComputation Attributes
-  static std::string const VertexComputationPregelId;
-  static std::string const VertexComputationVertexId;
-  static std::string const VertexComputationPhase;
-  static std::string const VertexComputationGlobalSuperstep;
-  static std::string const VertexComputationPhaseStep;
-  static std::string const VertexComputationMessage;
-  static std::string const VertexComputationVoteActive;
-  static std::string const VertexComputationVoteHalt;
-
-  // Pregel Section End
-
   // Query Strings
   static std::string const QuerySortASC;
   static std::string const QuerySortDESC;
@@ -327,6 +325,7 @@ class StaticStrings {
   static std::string const GraphQueryPath;
   static std::string const GraphQueryGlobal;
   static std::string const GraphQueryNone;
+  static std::string const GraphQueryWeight;
   static std::string const GraphQueryWeights;
   static std::string const GraphQueryOrder;
   static std::string const GraphQueryOrderBFS;
@@ -345,7 +344,10 @@ class StaticStrings {
   static std::string const RevisionTreeRangeMin;
   static std::string const RevisionTreeInitialRangeMin;
   static std::string const RevisionTreeRanges;
+  // deprecated
   static std::string const RevisionTreeResume;
+
+  static std::string const RevisionTreeResumeHLC;
   static std::string const RevisionTreeVersion;
   static std::string const FollowingTermId;
 
@@ -360,13 +362,25 @@ class StaticStrings {
   static std::string const Participants;
   static std::string const ServerId;
   static std::string const Spearhead;
-  static std::string const TargetConfig;
   static std::string const Term;
   static std::string const CommitIndex;
   static std::string const FirstIndex;
   static std::string const ReleaseIndex;
-  static std::string const LowestIndexToKeep;
-  static std::string const Outcome;
+  static std::string const SyncIndex;
+  constexpr static std::string_view AppliedIndex = "appliedIndex";
+  constexpr static std::string_view MessageId = "messageId";
+  constexpr static std::string_view LogIndex = "logIndex";
+  constexpr static std::string_view LogTerm = "logTerm";
+  constexpr static std::string_view Payload = "payload";
+  constexpr static std::string_view Meta = "meta";
+
+  // Replication 2.0 API Strings
+  constexpr static std::string_view ApiLogInternal = "/_api/log-internal";
+  constexpr static std::string_view ApiLogExternal = "/_api/log";
+  constexpr static std::string_view ApiDocumentStateExternal =
+      "/_api/document-state";
+  constexpr static std::string_view ApiUpdateSnapshotStatus =
+      "update-snapshot-status";
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -385,8 +399,8 @@ class StaticStrings {
   static std::string const BackupSearchToDeleteName;
 
   // aql api strings
-  static std::string const SerializationFormat;
   static std::string const AqlDocumentCall;
+  static std::string const AqlFastPath;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;
@@ -421,13 +435,5 @@ class StaticStrings {
   static std::string const ValidationParameterLevel;
   static std::string const ValidationParameterRule;
   static std::string const ValidationParameterType;
-
-  // API Strings
-  static std::string_view const ApiLogInternal;
-  static std::string_view const ApiLogExternal;
-  static std::string_view const ApiReplicatedStateExternal;
-
-  // TODO: remove me after refactor is done
-  static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb

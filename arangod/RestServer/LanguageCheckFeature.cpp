@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
@@ -155,10 +156,11 @@ std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
     arangodb::ArangodServer& server, std::string_view collatorLang,
     LanguageType currLangType) {
   std::string prevLanguage;
-  LanguageType prevType;
+  LanguageType prevType = LanguageType::INVALID;
   arangodb::Result res = ::readLanguage(server, prevLanguage, prevType);
 
   if (res.ok()) {
+    TRI_ASSERT(prevType != LanguageType::INVALID);
     return {prevLanguage, prevType};
   }
 
@@ -167,6 +169,20 @@ std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
 
   return {std::string{collatorLang}, currLangType};
 }
+
+bool compareLangWithPrev(std::string const& lang, std::string const& prevLang) {
+  if (lang == prevLang) {
+    return true;
+  }
+  // Earlier ICU versions (for example in ArangoDB <= 3.11) derived different
+  // values for the "C" locale. For upgrades to work, we have to accept these
+  // old settings, too:
+  if (lang == "en_US_POSIX" && (prevLang == "en_US" || prevLang == "")) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -202,7 +218,8 @@ void LanguageCheckFeature::start() {
     return;
   }
 
-  if (collatorLang != prevLang || prevLangType != currLangType) {
+  if (!::compareLangWithPrev(collatorLang, prevLang) ||
+      prevLangType != currLangType) {
     if (feature.forceLanguageCheck()) {
       // current not empty and not the same as previous, get out!
       LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)

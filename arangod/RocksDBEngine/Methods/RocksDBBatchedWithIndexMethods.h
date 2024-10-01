@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 
@@ -34,10 +34,11 @@ class WriteBatchWithIndex;
 namespace arangodb {
 
 /// wraps a writebatch with index - non transactional
-class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
+class RocksDBBatchedWithIndexMethods final : public RocksDBBatchedBaseMethods {
  public:
   RocksDBBatchedWithIndexMethods(rocksdb::TransactionDB* db,
-                                 rocksdb::WriteBatchWithIndex*);
+                                 rocksdb::WriteBatchWithIndex*,
+                                 RocksDBMethodsMemoryTracker& memoryTracker);
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
@@ -55,7 +56,13 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
                                RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
 
+  void MultiGet(rocksdb::ColumnFamilyHandle& family, size_t count,
+                rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+                rocksdb::Status* statuses, ReadOwnWrites) override;
+
  private:
+  size_t currentWriteBatchSize() const noexcept override;
+
   rocksdb::TransactionDB* _db;
   rocksdb::WriteBatchWithIndex* _wb;
 };

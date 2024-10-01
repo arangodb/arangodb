@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, assertTrue, getOptions, fail, assertFalse, assertMatch */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the deadlock detection
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Christoph Uhde
 /// @author Copyright 2019, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
@@ -135,8 +132,8 @@ function OptionsTestSuite () {
         if (db.UnitTestsExclusiveCollection2.exists(k)) {
           let doc = db.UnitTestsExclusiveCollection2.document(k);
           assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, doc.errorNum);
-          assertMatch( // it is possible to get two different errors messages here (two different internal states can appear)
-            /(precondition failed|timeout waiting to lock key.*Operation timed out)/, doc.errorMessage);
+          assertMatch( // it is possible to get different errors messages here (different internal states can appear)
+            /(write-write conflict|precondition failed|timeout waiting to lock key.*Operation timed out)/, doc.errorMessage);
           assertMatch(/XXX/, doc.errorMessage);
           ++found;
           db.UnitTestsExclusiveCollection2.remove(k);
@@ -147,8 +144,108 @@ function OptionsTestSuite () {
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-    }
+    },
 
+    testExclusiveExpectNoConflicts : function () {
+      c1.insert({ "_key" : "XXX" , "name" : "initial" });
+      let task = tasks.register({
+        command: function() {
+          const arangodb = require("@arangodb");
+          const ERRORS = arangodb.errors;
+          let db = require("internal").db;
+          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
+
+          while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
+            require("internal").sleep(0.02);
+          }
+
+          try {
+            for (let i = 0; i < 50; ++i) {
+              let db = require("internal").db;
+              for (let i = 0; i < 200; ++i) {
+                // this is made because this test can fail unpredictably when it reaches the timeout to aquire a key
+                // lock. In this loop and the loop below, there's acquisition of a lock to access the documents and
+                // update them, and there can be a conflict due to starvation in the attempt to acquire the lock because
+                // it's already being used by one of these update operations in both loops, so we retry if the error is
+                // this one, and throw if it's another error
+                try {
+                  db.UnitTestsExclusiveCollection1.update("XXX", {name: "runner1"});
+                } catch (e) {
+                  if (e.errorNum !== ERRORS.ERROR_ARANGO_CONFLICT.code) {
+                    throw e;
+                  }
+                  i--;
+                }
+              }
+
+              if (db.UnitTestsExclusiveCollection2.document("runner2").value) {
+                break;
+              }
+            }
+          } catch (err) {
+            db.UnitTestsExclusiveCollection2.insert({ _key: "other-failed", errorNum: err.errorNum, errorMessage: err.errorMessage, code: err.code });
+          }
+          db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
+        }
+      });
+
+      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
+      while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
+        require("internal").sleep(0.02);
+      }
+
+      try {
+        for (let i = 0; i < 50; ++i) {
+          let db = require("internal").db;
+          for (let i = 0; i < 200; ++i) {
+            // this is made because this test can fail unpredictably when it reaches the timeout to aquire a key
+            // lock. In this loop and the loop above, there's acquisition of a lock to access the documents and
+            // update them, and there can be a conflict due to starvation in the attempt to acquire the lock because
+            // it's already being used by one of these update operations in both loops, so we retry if the error is
+            // this one, but throw if it's another error
+            try {
+              db.UnitTestsExclusiveCollection1.update("XXX", {name: "runner2"});
+            } catch (e) {
+              if (e.errorNum !== ERRORS.ERROR_ARANGO_CONFLICT.code) {
+                throw e;
+              }
+              i--;
+            }
+          }
+          if (db.UnitTestsExclusiveCollection2.document("runner1").value) {
+            break;
+          }
+        }
+      } catch (err) {
+        db.UnitTestsExclusiveCollection2.insert({ _key: "we-failed", errorNum: err.errorNum, errorMessage: err.errorMessage, code: err.code });
+      }
+      db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
+
+      while (true) {
+        try {
+          tasks.get(task);
+          require("internal").wait(0.25, false);
+        } catch (err) {
+          // "task not found" means the task is finished
+          break;
+        }
+      }
+      
+      let keys = ["other-failed", "we-failed"];
+      let errors = [];
+      keys.forEach((k) => {
+        if (db.UnitTestsExclusiveCollection2.exists(k)) {
+          let doc = db.UnitTestsExclusiveCollection2.document(k);
+          errors.push(doc);
+          db.UnitTestsExclusiveCollection2.remove(k);
+        }
+      });
+
+      assertEqual(0, errors.length, "Found errors: " + JSON.stringify(errors));
+
+      // only one transaction should have succeeded
+      assertEqual(2, c2.count());
+    }
   };
 }
 

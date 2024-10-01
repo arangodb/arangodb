@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,20 +31,22 @@
 #include <system_error>
 #include <type_traits>
 
+#include <absl/strings/str_cat.h>
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/ValueType.h>
 
-#include "Basics/system-compiler.h"
-
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
+#include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
+#include "Inspection/VPack.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
@@ -87,25 +89,48 @@ struct VPackHashedSlice {
   ~VPackHashedSlice() = default;
 };
 
+// Note that the following class has some code duplication, which is
+// intentional. Unfortunately, we had a bug in the sorting functionality
+// for VelocyPack regarding numbers in their different representations.
+// Since we need to retain the old, buggy behaviour, we have the compare
+// method in a "correct" and a "legacy" version. We did not want to
+// expose internal template magic to the user of this class, therefore
+// we have methods
+//   compare       (correctly)
+//   compareLegacy (legacy)
+// We need the legacy methods only for the RocksDB comparator. There is
+// a global switch, such that at server start, we can choose about this
+// switch so that in new database directories can directly use the new
+// sorting method, whereas after an upgrade, we can at first use the old
+// sorting method for backwards compatibility (and to avoid that RocksDB
+// is corrupt).
+
 class VelocyPackHelper {
  private:
   VelocyPackHelper() = delete;
   ~VelocyPackHelper() = delete;
 
  public:
+  // For templating:
+  enum SortingMethod { Legacy = 0, Correct = 1 };
+
   /// @brief static initializer for all VPack values
   static void initialize();
-  static void disableAssemblerFunctions();
 
   static arangodb::velocypack::AttributeTranslator* getTranslator();
 
   struct VPackHash {
-    size_t operator()(arangodb::velocypack::Slice const&) const;
+    size_t operator()(arangodb::velocypack::Slice slice) const;
   };
 
   struct VPackStringHash {
-    size_t operator()(arangodb::velocypack::Slice const&) const noexcept;
+    size_t operator()(arangodb::velocypack::Slice slice) const noexcept;
   };
+
+  /// For better readability of the traditional int comparison result:
+  static constexpr int cmp_less = -1;
+  static constexpr int cmp_equal = 0;
+  static constexpr int cmp_greater = 1;
 
   /// @brief equality comparator for VelocyPack values
   struct VPackEqual {
@@ -117,13 +142,13 @@ class VelocyPackHelper {
     explicit VPackEqual(arangodb::velocypack::Options const* opts)
         : _options(opts) {}
 
-    bool operator()(arangodb::velocypack::Slice const&,
-                    arangodb::velocypack::Slice const&) const;
+    bool operator()(arangodb::velocypack::Slice lhs,
+                    arangodb::velocypack::Slice rhs) const;
   };
 
   struct VPackStringEqual {
-    bool operator()(arangodb::velocypack::Slice const&,
-                    arangodb::velocypack::Slice const&) const noexcept;
+    bool operator()(arangodb::velocypack::Slice lhs,
+                    arangodb::velocypack::Slice rhs) const noexcept;
   };
 
   /// @brief less comparator for VelocyPack values
@@ -135,40 +160,12 @@ class VelocyPackHelper {
               arangodb::velocypack::Slice const* rhsBase = nullptr)
         : options(options), lhsBase(lhsBase), rhsBase(rhsBase) {}
 
-    inline bool operator()(arangodb::velocypack::Slice const& lhs,
-                           arangodb::velocypack::Slice const& rhs) const {
+    bool operator()(arangodb::velocypack::Slice lhs,
+                    arangodb::velocypack::Slice rhs) const {
       return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase,
                                        rhsBase) < 0;
     }
 
-    arangodb::velocypack::Options const* options;
-    arangodb::velocypack::Slice const* lhsBase;
-    arangodb::velocypack::Slice const* rhsBase;
-  };
-
-  template<bool useUtf8>
-  struct VPackSorted {
-    explicit VPackSorted(bool reverse,
-                         arangodb::velocypack::Options const* options =
-                             &arangodb::velocypack::Options::Defaults,
-                         arangodb::velocypack::Slice const* lhsBase = nullptr,
-                         arangodb::velocypack::Slice const* rhsBase = nullptr)
-        : _reverse(reverse),
-          options(options),
-          lhsBase(lhsBase),
-          rhsBase(rhsBase) {}
-
-    inline bool operator()(arangodb::velocypack::Slice const& lhs,
-                           arangodb::velocypack::Slice const& rhs) const {
-      if (_reverse) {
-        return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase,
-                                         rhsBase) > 0;
-      }
-      return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase,
-                                       rhsBase) < 0;
-    }
-
-    bool _reverse;
     arangodb::velocypack::Options const* options;
     arangodb::velocypack::Slice const* lhsBase;
     arangodb::velocypack::Slice const* rhsBase;
@@ -197,41 +194,57 @@ class VelocyPackHelper {
   /// @brief returns a numeric value
   template<typename T>
   static typename std::enable_if<std::is_signed<T>::value, T>::type
-  getNumericValue(VPackSlice const& slice, T defaultValue) {
+  getNumericValue(VPackSlice slice, T defaultValue) {
     if (slice.isNumber()) {
-      return slice.getNumber<T>();
+      try {
+        return slice.getNumber<T>();
+      } catch (VPackException const& ex) {
+        if (ex.errorCode() == VPackException::ExceptionType::NumberOutOfRange) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "invalid value for signed integer");
+        }
+        throw;
+      }
     }
     return defaultValue;
   }
 
   template<typename T>
   static typename std::enable_if<std::is_unsigned<T>::value, T>::type
-  getNumericValue(VPackSlice const& slice, T defaultValue) {
+  getNumericValue(VPackSlice slice, T defaultValue) {
     if (slice.isNumber()) {
       if (slice.isInt() && slice.getInt() < 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
+            TRI_ERROR_BAD_PARAMETER,
             "cannot assign negative value to unsigned type");
       }
       if (slice.isDouble() && slice.getDouble() < 0.0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
+            TRI_ERROR_BAD_PARAMETER,
             "cannot assign negative value to unsigned type");
       }
-      return slice.getNumber<T>();
+      try {
+        return slice.getNumber<T>();
+      } catch (VPackException const& ex) {
+        if (ex.errorCode() == VPackException::ExceptionType::NumberOutOfRange) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "invalid value for unsigned number");
+        }
+        throw;
+      }
     }
     return defaultValue;
   }
 
   /// @brief returns a numeric sub-element, or a default if it does not exist
   template<typename T, typename NumberType = T, typename NameType>
-  static T getNumericValue(VPackSlice const& slice, NameType const& name,
+  static T getNumericValue(VPackSlice slice, NameType const& name,
                            T defaultValue);
 
   /// @brief returns a boolean sub-element, or a default if it does not exist or
   /// is not boolean
   template<typename NameType>
-  static bool getBooleanValue(VPackSlice const& slice, NameType const& name,
+  static bool getBooleanValue(VPackSlice slice, NameType const& name,
                               bool defaultValue) {
     if (slice.isObject()) {
       VPackSlice sub = slice.get(name);
@@ -244,31 +257,37 @@ class VelocyPackHelper {
 
   /// @brief returns a string sub-element, or throws if <name> does not exist
   /// or it is not a string
-  static std::string checkAndGetStringValue(VPackSlice const&, char const*);
+  static std::string checkAndGetStringValue(VPackSlice slice,
+                                            std::string_view name);
 
-  /// @brief ensures a sub-element is of type string
-  static std::string checkAndGetStringValue(VPackSlice const&,
-                                            std::string const&);
-
-  static void ensureStringValue(VPackSlice const&, std::string const&);
+  static void ensureStringValue(VPackSlice slice, std::string_view name);
 
   /// @brief returns a Numeric sub-element, or throws if <name> does not exist
   /// or it is not a Number
   template<typename T>
-  static T checkAndGetNumericValue(VPackSlice const& slice, char const* name) {
+  static T checkAndGetNumericValue(VPackSlice slice, std::string_view name) {
     TRI_ASSERT(slice.isObject());
-    VPackSlice const sub = slice.get(name);
+    VPackSlice sub = slice.get(name);
     if (sub.isNone()) {
-      std::string msg =
-          "The attribute '" + std::string(name) + "' was not found.";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("attribute '", name, "' was not found"));
     }
     if (!sub.isNumber()) {
-      std::string msg =
-          "The attribute '" + std::string(name) + "' is not a number.";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("attribute '", name, "' is not a number"));
     }
-    return sub.getNumericValue<T>();
+    try {
+      return sub.getNumericValue<T>();
+    } catch (VPackException const& ex) {
+      if (ex.errorCode() == VPackException::ExceptionType::NumberOutOfRange) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            absl::StrCat("invalid value for numeric attribute '", name, "'"));
+      }
+      throw;
+    }
   }
 
   /// @return string view, or the defaultValue if slice is not a string
@@ -339,26 +358,96 @@ class VelocyPackHelper {
   static bool velocyPackToFile(std::string const& filename, VPackSlice slice,
                                bool syncFile);
 
-  /// @brief compares two VelocyPack number values
-  static int compareNumberValues(arangodb::velocypack::ValueType,
-                                 arangodb::velocypack::Slice lhs,
-                                 arangodb::velocypack::Slice rhs);
+  /// @brief compares two VelocyPack number values (legacy version, this
+  /// should no longer be used, since it can lead to non-transitive
+  /// behaviour, in particular around NaN, but also for integers larger
+  /// than 2^53, which are compared with doubles or integers in a different
+  /// representation (signed/unsigned)). Use `compareNumberValuesCorrect`
+  /// instead. We keep thisi function to implement the legacy sorting
+  /// behaviour for old vpack indexes.
+  static int compareNumberValuesLegacy(arangodb::velocypack::ValueType,
+                                       arangodb::velocypack::Slice lhs,
+                                       arangodb::velocypack::Slice rhs);
+
+  /// @brief the following few static methods are needed to perform numerical
+  /// sorting with uints, ints and doubles numerically correctly. They are
+  /// exposed here, since they are also used for the sorting of AQLValues.
+  static int compareInt64UInt64(int64_t i, uint64_t u);
+  static int compareUInt64Double(uint64_t u, double d);
+  static int compareInt64Double(int64_t i, double d);
+
+  /// @brief compares two VelocyPack number values, this must only be called
+  /// if the types on either side are either SmallInt, Int, UInt, UTCDate
+  /// or Double. Otherwise the behaviour is undefined.
+  /// For such values, the function implements the numerical total order
+  /// for all possible values, including Double's -Inf, +Inf, +0, -0 and Nan.
+  /// This is to be understood in the following way: First of all,
+  /// NaN is considered to be larger than any number (including +Inf),
+  /// and all NaN values are considered equal. Integers are considered
+  /// equal if they have different representations (for example many
+  /// positive numbers have an unsigned and a signed representation,
+  /// and the SmallInt values also have representations as signed or
+  /// unsigned integers). An integer of whatever representation is
+  /// considered equal to an integer in its representation as Double (if
+  /// it exists). Other than these representation issues, numbers are
+  /// compared numerically as rational numbers would be compared.
+  /// +Inf is larger than any other number of whatever representation (except
+  /// NaN), and -Inf is smaller than any number.
+  static int compareNumberValuesCorrectly(arangodb::velocypack::ValueType,
+                                          arangodb::velocypack::Slice lhs,
+                                          arangodb::velocypack::Slice rhs);
 
   /// @brief compares two VelocyPack string values
   static int compareStringValues(char const* left, VPackValueLength nl,
                                  char const* right, VPackValueLength nr,
                                  bool useUTF8);
 
+ private:
+  template<bool useUtf8, typename Comparator, SortingMethod sortingMethod>
+  static int compareObjects(VPackSlice lhs, VPackSlice rhs,
+                            VPackOptions const* options);
+
+  template<SortingMethod sortingMethod>
+  static int compareInternal(
+      arangodb::velocypack::Slice lhs, arangodb::velocypack::Slice rhs,
+      bool useUTF8,
+      arangodb::velocypack::Options const* options =
+          &arangodb::velocypack::Options::Defaults,
+      arangodb::velocypack::Slice const* lhsBase = nullptr,
+      arangodb::velocypack::Slice const* rhsBase = nullptr)
+      ADB_WARN_UNUSED_RESULT;
+
+ public:
   /// @brief Compares two VelocyPack slices
-  /// returns 0 if the two slices are equal, < 0 if lhs < rhs, and > 0 if rhs >
-  /// lhs
+  /// returns 0 if the two slices are equal, < 0 if lhs < rhs, and > 0
+  /// if rhs > lhs, there is a correct, modern method and a wrong legacy
+  /// method. The legacy method is wrong w.r.t. numeric comparisons and
+  /// NaN and in the case that numbers of different types (unsigned,
+  /// signed or double) are compared and the integers are too large to
+  /// fit in the precision of double.
+  /// This is the "correct" method!
   static int compare(arangodb::velocypack::Slice lhs,
                      arangodb::velocypack::Slice rhs, bool useUTF8,
                      arangodb::velocypack::Options const* options =
                          &arangodb::velocypack::Options::Defaults,
                      arangodb::velocypack::Slice const* lhsBase = nullptr,
                      arangodb::velocypack::Slice const* rhsBase = nullptr)
-      ADB_WARN_UNUSED_RESULT;
+      ADB_WARN_UNUSED_RESULT {
+    return compareInternal<SortingMethod::Correct>(lhs, rhs, useUTF8, options,
+                                                   lhsBase, rhsBase);
+  }
+
+  /// This is the "legacy" method!
+  static int compareLegacy(arangodb::velocypack::Slice lhs,
+                           arangodb::velocypack::Slice rhs, bool useUTF8,
+                           arangodb::velocypack::Options const* options =
+                               &arangodb::velocypack::Options::Defaults,
+                           arangodb::velocypack::Slice const* lhsBase = nullptr,
+                           arangodb::velocypack::Slice const* rhsBase = nullptr)
+      ADB_WARN_UNUSED_RESULT {
+    return compareInternal<SortingMethod::Legacy>(lhs, rhs, useUTF8, options,
+                                                  lhsBase, rhsBase);
+  }
 
   /// @brief Compares two VelocyPack slices for equality
   /// returns true if the slices are equal, false otherwise
@@ -368,19 +457,17 @@ class VelocyPackHelper {
                         &arangodb::velocypack::Options::Defaults,
                     arangodb::velocypack::Slice const* lhsBase = nullptr,
                     arangodb::velocypack::Slice const* rhsBase = nullptr) {
-    return compare(lhs, rhs, useUTF8, options, lhsBase, rhsBase) == 0;
+    return compareInternal<SortingMethod::Correct>(lhs, rhs, useUTF8, options,
+                                                   lhsBase, rhsBase) == 0;
   }
 
-  static bool hasNonClientTypes(arangodb::velocypack::Slice,
-                                bool checkExternals, bool checkCustom);
+  static bool hasNonClientTypes(arangodb::velocypack::Slice input);
 
-  static void sanitizeNonClientTypes(arangodb::velocypack::Slice input,
-                                     arangodb::velocypack::Slice base,
-                                     arangodb::velocypack::Builder& output,
-                                     arangodb::velocypack::Options const*,
-                                     bool sanitizeExternals,
-                                     bool sanitizeCustom,
-                                     bool allowUnindexed = false);
+  static void sanitizeNonClientTypes(
+      arangodb::velocypack::Slice input, arangodb::velocypack::Slice base,
+      arangodb::velocypack::Builder& output,
+      arangodb::velocypack::Options const& options,
+      bool allowUnindexed = false);
 
   static uint64_t extractIdValue(VPackSlice const& slice);
 
@@ -404,12 +491,21 @@ class VelocyPackHelper {
 };
 
 template<typename T, typename NumberType, typename NameType>
-T VelocyPackHelper::getNumericValue(VPackSlice const& slice,
-                                    NameType const& name, T defaultValue) {
+T VelocyPackHelper::getNumericValue(VPackSlice slice, NameType const& name,
+                                    T defaultValue) {
   if (slice.isObject()) {
     VPackSlice sub = slice.get(name);
     if (sub.isNumber()) {
-      return static_cast<T>(sub.getNumber<NumberType>());
+      try {
+        return static_cast<T>(sub.getNumber<NumberType>());
+      } catch (VPackException const& ex) {
+        if (ex.errorCode() == VPackException::ExceptionType::NumberOutOfRange) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_BAD_PARAMETER,
+              absl::StrCat("invalid value for numeric attribute '", name, "'"));
+        }
+        throw;
+      }
     }
   }
   return defaultValue;
@@ -420,15 +516,7 @@ T VelocyPackHelper::getNumericValue(VPackSlice const& slice,
 template<>
 inline ErrorCode
 VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string_view>(
-    VPackSlice const& slice, std::string_view const& name,
-    ErrorCode defaultValue) {
-  return ErrorCode{
-      getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
-}
-template<>
-inline ErrorCode
-VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string>(
-    VPackSlice const& slice, std::string const& name, ErrorCode defaultValue) {
+    VPackSlice slice, std::string_view const& name, ErrorCode defaultValue) {
   return ErrorCode{
       getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
 }
@@ -454,11 +542,21 @@ constexpr bool HasToVelocyPack_v = HasToVelocyPack<T>::value;
 ///   }
 /// constraint (or HasToVelocyPack an equivalent concept), but AppleClang
 /// doesn't like C++20.
-template<typename T, std::enable_if_t<HasToVelocyPack_v<T>, bool> = true>
-auto toJson(T thing) -> std::string {
-  auto builder = velocypack::Builder();
-  thing.toVelocyPack(builder);
-  return builder.toJson();
+template<typename T>
+std::string toJson(T const& thing) {
+  if constexpr (HasToVelocyPack_v<T>) {
+    auto builder = velocypack::Builder();
+    thing.toVelocyPack(builder);
+    return builder.toJson();
+  } else {
+    static_assert(
+        inspection::detail::IsInspectable<T,
+                                          inspection::VPackSaveInspector<>>(),
+        "No toVelocyPack or inspectable");
+    velocypack::Builder builder;
+    velocypack::serialize(builder, thing);
+    return builder.toJson();
+  }
 }
 }  // namespace velocypackhelper
 

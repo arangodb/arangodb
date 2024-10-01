@@ -1,27 +1,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// The Programs (which include both the software and documentation) contain
-/// proprietary information of ArangoDB GmbH; they are provided under a license
-/// agreement containing restrictions on use and disclosure and are also
-/// protected by copyright, patent and other intellectual and industrial
-/// property laws. Reverse engineering, disassembly or decompilation of the
-/// Programs, except to the extent required to obtain interoperability with
-/// other independently created software or as specified by law, is prohibited.
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
 ///
-/// It shall be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of
-/// applications if the Programs are used for purposes such as nuclear,
-/// aviation, mass transit, medical, or other inherently dangerous applications,
-/// and ArangoDB GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
-/// This software is the confidential and proprietary information of ArangoDB
-/// GmbH. You shall not disclose such confidential and proprietary information
-/// and shall use it only in accordance with the terms of the license agreement
-/// you entered into with ArangoDB GmbH.
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
@@ -39,6 +32,7 @@
 #include "Aql/Function.h"
 #include "IResearch/common.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/ExpressionContextMock.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
@@ -48,15 +42,15 @@ using namespace std::string_view_literals;
 auto makeByTerms(std::string_view name,
                  std::span<const std::string_view> values, size_t match_count,
                  irs::score_t boost,
-                 irs::sort::MergeType type = irs::sort::MergeType::kSum) {
+                 irs::ScoreMergeType type = irs::ScoreMergeType::kSum) {
   irs::by_terms filter;
   *filter.mutable_field() = name;
   filter.boost(boost);
   auto& [terms, min_match, merge_type] = *filter.mutable_options();
   min_match = match_count;
   merge_type = type;
-  for (irs::string_ref value : values) {
-    terms.emplace(irs::ref_cast<irs::byte_type>(value), irs::kNoBoost);
+  for (std::string_view value : values) {
+    terms.emplace(irs::ViewCast<irs::byte_type>(value), irs::kNoBoost);
   }
   return filter;
 }
@@ -86,7 +80,7 @@ class IResearchFilterMinHashMatchTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -102,7 +96,7 @@ class IResearchFilterMinHashMatchTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -125,8 +119,9 @@ class IResearchFilterMinHashMatchTest
           "analyzer" : { "type": "delimiter", "properties": { "delimiter": " " } },
           "numHashes": 10
         })");
-    auto res = analyzers.emplace(result, "testVocbase::test_analyzer",
-                                 "minhash", props->slice());
+    auto res = analyzers.emplace(
+        result, "testVocbase::test_analyzer", "minhash", props->slice(),
+        arangodb::transaction::OperationOriginTestCase{});
 #ifdef USE_ENTERPRISE
     EXPECT_TRUE(res.ok());
 #else
@@ -138,7 +133,7 @@ class IResearchFilterMinHashMatchTest
 };
 
 #if USE_ENTERPRISE
-#include "tests/IResearch/IResearchFilterMinHashMatchTestEE.hpp"
+#include "tests/IResearch/IResearchFilterMinHashMatchTestEE.h"
 #else
 TEST_F(IResearchFilterMinHashMatchTest, MinHashMatchCE) {
   assertFilterFail(vocbase(),

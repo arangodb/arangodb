@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,11 +34,17 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 /// @brief create the manager
 AqlItemBlockManager::AqlItemBlockManager(
-    arangodb::ResourceMonitor& resourceMonitor, SerializationFormat format)
-    : _resourceMonitor(resourceMonitor), _format(format) {}
+    arangodb::ResourceMonitor& resourceMonitor)
+    : _resourceMonitor(resourceMonitor) {}
 
 /// @brief destroy the manager
-AqlItemBlockManager::~AqlItemBlockManager() { delete _constValueBlock; }
+AqlItemBlockManager::~AqlItemBlockManager() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_leasedBlocks == 0) << "leased blocks left: " << _leasedBlocks;
+#endif
+
+  delete _constValueBlock;
+}
 
 void AqlItemBlockManager::initializeConstValueBlock(RegisterCount nrRegs) {
   TRI_ASSERT(_constValueBlock == nullptr);
@@ -89,6 +95,10 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(
   TRI_ASSERT(block->getRefCount() == 0);
   TRI_ASSERT(block->hasShadowRows() == false);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  ++_leasedBlocks;
+#endif
+
   return SharedAqlItemBlockPtr{block};
 }
 
@@ -96,6 +106,13 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(
 void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->getRefCount() == 0);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto leasedBlocks = _leasedBlocks.load();
+  do {
+    TRI_ASSERT(leasedBlocks > 0);
+  } while (
+      !_leasedBlocks.compare_exchange_weak(leasedBlocks, leasedBlocks - 1));
+#endif
 
   size_t const targetSize = block->capacity();
   uint32_t const i = Bucket::getId(targetSize);

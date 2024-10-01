@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,19 +20,21 @@
 ///
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "AutoRebalance.h"
+#include "Basics/debugging.h"
+
 #include <algorithm>
 #include <queue>
 #include <random>
-#include <string>
 #include <string_view>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-common.h>
 
-#include "AutoRebalance.h"
-
 using namespace arangodb::cluster::rebalance;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 namespace {
 
 std::string_view const charset{
@@ -50,7 +52,9 @@ std::string randomReadableString(uint32_t len) {
 }
 
 }  // namespace
+#endif
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 void AutoRebalanceProblem::createCluster(uint32_t nrDBServer, bool withZones) {
   // Create zones:
   zones.clear();
@@ -69,7 +73,11 @@ void AutoRebalanceProblem::createCluster(uint32_t nrDBServer, bool withZones) {
         .zone = withZones ? i : 0,
     });
   }
+  for (auto const& db : dbServers) {
+    serversHealthInfo.insert(db.id);
+  }
 }
+#endif
 
 uint64_t AutoRebalanceProblem::createDatabase(std::string const& name,
                                               double weight) {
@@ -102,14 +110,17 @@ uint64_t AutoRebalanceProblem::createCollection(std::string const& name,
   std::vector<uint32_t> positionsNewShards;
   for (uint32_t i = 0; i < numberOfShards; ++i) {
     uint32_t newId = static_cast<uint32_t>(shards.size());
-    shards.emplace_back(Shard{.id = newId,
-                              .leader = 0,
-                              .replicationFactor = replicationFactor,
-                              .size = 1024 * 1024,
-                              .collectionId = collId,
-                              .weight = weight,
-                              .blocked = false,
-                              .ignored = false});
+    shards.emplace_back(Shard{
+        .id = newId,
+        .leader = 0,
+        .replicationFactor = replicationFactor,
+        .size = 1024 * 1024,
+        .collectionId = collId,
+        .weight = weight,
+        .blocked = false,
+        .ignored = false,
+        .isSystem = false,
+    });
     for (uint32_t j = 1; j < replicationFactor; ++j) {
       shards[newId].followers.push_back(j);
     }
@@ -132,6 +143,7 @@ uint64_t AutoRebalanceProblem::createCollection(std::string const& name,
   return collId;
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 void AutoRebalanceProblem::createRandomDatabasesAndCollections(
     uint32_t nrDBs, uint32_t nrColls, uint32_t minReplFactor,
     uint32_t maxReplFactor) {
@@ -156,13 +168,14 @@ void AutoRebalanceProblem::createRandomDatabasesAndCollections(
     }
   }
 }
+#endif
 
 void AutoRebalanceProblem::distributeShardsRandomly(
     std::vector<double> const& probabilities) {
   std::default_random_engine rng(std::random_device{}());
   std::uniform_real_distribution<double> random;
   auto nrDBservers = static_cast<std::uint32_t>(dbServers.size());
-  assert(nrDBservers == probabilities.size());
+  TRI_ASSERT(nrDBservers == probabilities.size());
   for (auto& s : shards) {
     // First the leader:
     uint64_t used = 0;
@@ -174,8 +187,8 @@ void AutoRebalanceProblem::distributeShardsRandomly(
     used |= 1ull << i;
     // Now the followers, we need to exclude already used ones:
     s.followers.clear();
-    assert(s.replicationFactor <=
-           nrDBservers);  // otherwise this will never terminate
+    TRI_ASSERT(s.replicationFactor <=
+               nrDBservers);  // otherwise this will never terminate
     for (uint32_t j = 1; j < s.replicationFactor; ++j) {
       do {
         r = random(rng);
@@ -192,6 +205,9 @@ ShardImbalance AutoRebalanceProblem::computeShardImbalance() const {
   ShardImbalance res(dbServers.size());
 
   for (auto const& s : shards) {
+    if (s.isSystem) {
+      res.totalShardsFromSystemCollections += 1;
+    }
     res.numberShards[s.leader] += 1;
     res.sizeUsed[s.leader] += s.size;
     for (uint32_t i = 0; i < s.followers.size(); ++i) {
@@ -205,40 +221,52 @@ ShardImbalance AutoRebalanceProblem::computeShardImbalance() const {
     res.totalShards += res.numberShards[i];
     totalVolumes += dbServers[i].volumeSize;
   }
-  for (size_t i = 0; i < dbServers.size(); ++i) {
-    res.targetSize[i] = dbServers[i].volumeSize / totalVolumes * res.totalUsed;
+  if (totalVolumes > 0.0) {
+    for (size_t i = 0; i < dbServers.size(); ++i) {
+      res.targetSize[i] =
+          dbServers[i].volumeSize / totalVolumes * res.totalUsed;
+    }
   }
   for (size_t i = 0; i < dbServers.size(); ++i) {
     res.imbalance += pow(res.sizeUsed[i] - res.targetSize[i], 2.0);
   }
+
   return res;
 }
 
 std::vector<double> AutoRebalanceProblem::piCoefficients(
     Collection const& c) const {
-  std::vector<double> tmp;
-  tmp.resize(dbServers.size(), 0);
+  std::vector<double> leaders;
+  leaders.resize(dbServers.size(), 0);
+  std::vector<bool> haveShards;
   if (c.shards.size() == 1) {
-    return tmp;  // No contribution for 1 shard collections
+    return leaders;  // No contribution for 1 shard collections
   }
+  haveShards.resize(dbServers.size(), false);
+  uint32_t dbServersAffected = 0;
   double sum = 0;
   for (auto const sindex : c.shards) {
-    tmp[shards[sindex].leader] += 1.0;
+    leaders[shards[sindex].leader] += 1.0;
     sum += 1.0;
-  }
-  uint32_t dbServersAffected = 0;
-  for (auto& t : tmp) {
-    if (t > 0.1) {
+    if (!haveShards[shards[sindex].leader]) {
+      haveShards[shards[sindex].leader] = true;
       ++dbServersAffected;
     }
-  }
-  double avg = sum / dbServersAffected;
-  for (size_t i = 0; i < dbServers.size(); ++i) {
-    if (tmp[i] > 0.1) {  // only if affected
-      tmp[i] = pow(tmp[i] - avg, 2.0) * _piFactor;
+    for (auto const f : shards[sindex].followers) {
+      if (!haveShards[f]) {
+        haveShards[f] = true;
+        ++dbServersAffected;
+      }
     }
   }
-  return tmp;
+  TRI_ASSERT(dbServersAffected > 0);
+  double avg = sum / dbServersAffected;
+  for (size_t i = 0; i < dbServers.size(); ++i) {
+    if (haveShards[i]) {  // only if affected
+      leaders[i] = pow(leaders[i] - avg, 2.0) * _piFactor;
+    }
+  }
+  return leaders;
 }
 
 LeaderImbalance AutoRebalanceProblem::computeLeaderImbalance() const {
@@ -255,9 +283,11 @@ LeaderImbalance AutoRebalanceProblem::computeLeaderImbalance() const {
     res.totalShards += res.numberShards[i];
     totalCapacity += dbServers[i].CPUcapacity;
   }
-  for (size_t i = 0; i < dbServers.size(); ++i) {
-    res.targetWeight[i] =
-        res.totalWeight / totalCapacity * dbServers[i].CPUcapacity;
+  if (totalCapacity != 0.0) {
+    for (size_t i = 0; i < dbServers.size(); ++i) {
+      res.targetWeight[i] =
+          res.totalWeight / totalCapacity * dbServers[i].CPUcapacity;
+    }
   }
   for (auto const& c : collections) {
     std::vector<double> pis = piCoefficients(c);
@@ -446,22 +476,28 @@ AutoRebalanceProblem::findAllMoveShardJobs(bool considerLeaderChanges,
     scratch[shard.leader] = 1;
     if (considerLeaderChanges) {
       for (auto const toserver : shard.followers) {
-        res.emplace_back(shard.id, shard.leader, toserver, true, false, nr);
-        scratch[toserver] = 1;
+        if (serversHealthInfo.contains(dbServers[toserver].id)) {
+          res.emplace_back(shard.id, shard.leader, toserver, true, false, nr);
+          scratch[toserver] = 1;
+        }
       }
     }
     if (considerLeaderMoves) {
       for (uint32_t i = 0; i < nr; ++i) {
-        if (scratch[i] == 0) {
-          res.emplace_back(shard.id, shard.leader, i, true, true, nr);
+        if (serversHealthInfo.contains(dbServers[i].id)) {
+          if (scratch[i] == 0) {
+            res.emplace_back(shard.id, shard.leader, i, true, true, nr);
+          }
         }
       }
     }
     if (considerFollowerMoves) {
       for (auto const fromserver : shard.followers) {
         for (uint32_t i = 0; i < nr; ++i) {
-          if (scratch[i] == 0) {
-            res.emplace_back(shard.id, fromserver, i, false, true, nr);
+          if (serversHealthInfo.contains(dbServers[i].id)) {
+            if (scratch[i] == 0) {
+              res.emplace_back(shard.id, fromserver, i, false, true, nr);
+            }
           }
         }
       }
@@ -493,10 +529,7 @@ int AutoRebalanceProblem::optimize(bool considerLeaderChanges,
 
   ShardImbalance shardImb = computeShardImbalance();
   LeaderImbalance leaderImb = computeLeaderImbalance();
-  size_t count = 0;
   for (auto& moves : moveGroups) {
-    ++count;
-
     for (auto& job : moves) {
       job.shardImbAfter = shardImb;    // copy
       job.leaderImbAfter = leaderImb;  // copy
@@ -612,7 +645,7 @@ int AutoRebalanceProblem::optimize(bool considerLeaderChanges,
   // Load queue:
   for (size_t i = 0; i < moveGroups.size(); ++i) {
     if (moveGroups[i].size() != 0) {
-      assert(moveGroups[i].size() != 0);
+      TRI_ASSERT(moveGroups[i].size() != 0);
       sum += moveGroups[i].size();
       prio.emplace(Pair{.group = i, .index = 0});
     }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,11 +26,8 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
-#include "Logger/LogMacros.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-
-#include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -119,7 +116,7 @@ void MultiDependencySingleRowFetcher::initDependencies() {
   }
 }
 
-size_t MultiDependencySingleRowFetcher::numberDependencies() {
+size_t MultiDependencySingleRowFetcher::numberDependencies() const noexcept {
   return _dependencyInfos.size();
 }
 
@@ -131,18 +128,18 @@ void MultiDependencySingleRowFetcher::init() {
 }
 
 bool MultiDependencySingleRowFetcher::indexIsValid(
-    const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
+    MultiDependencySingleRowFetcher::DependencyInfo const& info) const {
   return info._currentBlock != nullptr &&
          info._rowIndex < info._currentBlock->numRows();
 }
 
 bool MultiDependencySingleRowFetcher::isDone(
-    const MultiDependencySingleRowFetcher::DependencyInfo& info) const {
+    MultiDependencySingleRowFetcher::DependencyInfo const& info) const {
   return info._upstreamState == ExecutionState::DONE;
 }
 
 auto MultiDependencySingleRowFetcher::executeForDependency(
-    size_t const dependency, AqlCallStack& stack)
+    size_t dependency, AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
   auto [state, skipped, block] =
       _dependencyProxy->executeForDependency(dependency, stack);
@@ -315,13 +312,14 @@ auto MultiDependencySingleRowFetcher::initialize(size_t subqueryDepth) -> void {
 #endif
 
 AqlCallStack MultiDependencySingleRowFetcher::adjustStackWithSkipReport(
-    AqlCallStack const& callStack, const size_t dependency) {
-  // Copy the original
-  AqlCallStack stack = callStack;
+    AqlCallStack const& callStack, size_t dependency) {
   TRI_ASSERT(dependency < _dependencySkipReports.size());
 
-  auto const localReport = _dependencySkipReports[dependency];
-  for (size_t i = 0; i < stack.subqueryLevel(); ++i) {
+  // Copy the original
+  AqlCallStack stack = callStack;
+
+  auto const& localReport = _dependencySkipReports[dependency];
+  for (size_t i = 0; i < callStack.subqueryLevel(); ++i) {
     /*
      * Here we need to adjust the inbound call.
      * We have the following situation:
@@ -364,7 +362,7 @@ AqlCallStack MultiDependencySingleRowFetcher::adjustStackWithSkipReport(
 
 void MultiDependencySingleRowFetcher::reportSkipForDependency(
     AqlCallStack const& originalStack, SkipResult const& skipRes,
-    const size_t dependency) {
+    size_t dependency) {
   if (skipRes.nothingSkipped()) {
     // Nothing to report
     return;

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,13 +33,10 @@
 #include <string_view>
 #include <type_traits>
 #include <typeindex>
-#include <unordered_map>
 #include <utility>
 #include <vector>
-#include <boost/type_index/ctti_type_index.hpp>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
 #include <velocypack/Builder.h>
@@ -114,7 +111,6 @@ class ApplicationServer {
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
  public:
-  // handled i.e. in WindowsServiceFeature.cpp
   enum class State : int {
     UNINITIALIZED,
     IN_COLLECT_OPTIONS,
@@ -340,38 +336,41 @@ class ApplicationServer {
   // whether or not to dump configuration options
   bool _dumpOptions = false;
 };
-
+/**
 // ApplicationServerT is intended to provide statically checked access to
 // application features. Whenever you need to create an application server
 // consider the following usage pattern:
 //
 // Declare a list of all features in header file:
-//
-// namespace arangodb {
-// class Feature1;
-// class Feature2;
-// using namespace arangodb::application_features;
-// using ServerFeatures = basics::TypeList<Feature1, Feature2>;
-// using Server = ApplicationServerT<ServerFeatures>;
-// using ServerFeature = ApplicationFeatureT<ServerFeatures>;
-// }
-//
+
+namespace arangodb {
+class Feature1;
+class Feature2;
+using namespace arangodb::application_features;
+using ServerFeaturesList = basics::TypeList<Feature1, Feature2>;
+// struct ServerFeatures is needed to make stacktrace, compile error messages,
+// etc more readable.
+struct ServerFeatures : ServerFeaturesList {};
+using Server = ApplicationServerT<ServerFeatures>;
+using ServerFeature = ApplicationFeatureT<ServerFeatures>;
+}
+
 // Note that the order of features in basics::TypeList<Feature1, Feature2> is
 // significant and defines creation order, i.e. Feature1 is constructed before
 // Feature2.
 //
 // To instantiate server and its features consider the following snippet:
-//
-// Server server;
-// server.addFeatures(Visitor{
-//   []<typename T>(Server& server, TypeTag<T>) {
-//     return std::make_unique<T>(server);
-//   },
-//   [](Server& server, TypeTag<Feature2>) {
-//     // Feature constructor requires extra argument
-//     return std::make_unique<Feature2>(server, "arg");
-//   }});
 
+Server server;
+server.addFeatures(Visitor{
+  []<typename T>(Server& server, TypeTag<T>) {
+    return std::make_unique<T>(server);
+  },
+  [](Server& server, TypeTag<Feature2>) {
+    // Feature constructor requires extra argument
+    return std::make_unique<Feature2>(server, "arg");
+  }});
+*/
 template<typename Features>
 class ApplicationServerT : public ApplicationServer {
  public:
@@ -471,7 +470,8 @@ class ApplicationServerT : public ApplicationServer {
                   std::is_base_of_v<Impl, Type>);
     constexpr auto featureId = Features::template id<Type>();
 
-    TRI_ASSERT(hasFeature<Type>());
+    TRI_ASSERT(hasFeature<Type>())
+        << "Feature missing: " << typeid(Type).name();
     auto& feature = *_features[featureId];
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto obj = dynamic_cast<Impl*>(&feature);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,20 +60,20 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
   // special override method that extracts a timestamp value from the index
   // attribute
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc,
+                LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& options, bool performChecks) override;
 
   // special override method that extracts a timestamp value from the index
   // attribute
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
  private:
   /// @brief extract a timestamp value from the index attribute value
   /// returns a negative timestamp if the index attribute value is not
   /// convertible properly into a timestamp
-  double getTimestamp(arangodb::velocypack::Slice const& doc) const;
+  double getTimestamp(velocypack::Slice doc) const;
 
  private:
   double const _expireAfter;

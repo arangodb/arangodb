@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,22 +20,24 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "common.h"
 #include "gtest/gtest.h"
-#include "IResearch/common.h"
 
 #include "Aql/Ast.h"
+#include "Aql/AttributeNamePath.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/Query.h"
 #include "Aql/Projections.h"
-#include "Aql/SortNode.h"
+#include "Aql/Query.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/StaticStrings.h"
 #include "IResearch/AqlHelper.h"
-#include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/ExpressionContextMock.h"
-#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchInvertedIndex.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -43,10 +45,17 @@
 #include "RestServer/FlushFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "Basics/StaticStrings.h"
 
 using namespace arangodb::aql;
+
+namespace {
+auto createAttributeNamePath = [](std::vector<std::string>&& vec,
+                                  arangodb::ResourceMonitor& resMonitor) {
+  return AttributeNamePath(std::move(vec), resMonitor);
+};
+}
 
 class IResearchInvertedIndexConditionTest
     : public ::testing::Test,
@@ -73,7 +82,7 @@ class IResearchInvertedIndexConditionTest
         _collection);
   }
 
-  ~IResearchInvertedIndexConditionTest() { _collection.reset(); }
+  ~IResearchInvertedIndexConditionTest() override { _collection.reset(); }
 
   void assertProjectionsCoverageSuccess(
       std::vector<std::vector<std::string>> const& storedFields,
@@ -82,16 +91,19 @@ class IResearchInvertedIndexConditionTest
     Projections projections(attributes);
     arangodb::IndexId id(1);
     std::vector<std::string> fields = {"a"};
-    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
-    bool tmp;
-    ASSERT_TRUE(
-        Index
-            .init(getInvertedIndexPropertiesSlice(id, fields, &storedFields)
-                      .slice(),
-                  tmp)
-            .ok());
+    auto builder = getInvertedIndexPropertiesSlice(id, fields, &storedFields,
+                                                   nullptr, "unique_name2");
+    bool created = false;
+    auto inverted =
+        _collection->createIndex(builder.slice(), created).waitAndGet();
+    ASSERT_TRUE(created);
+    ASSERT_TRUE(inverted);
+    auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
+        inverted.get());
+    ASSERT_TRUE(index);
+    irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
 
-    ASSERT_TRUE(Index.covers(projections));
+    ASSERT_TRUE(index->covers(projections));
     ASSERT_EQ(expected.size(), projections.size());
     for (size_t i = 0; i < expected.size(); ++i) {
       ASSERT_EQ(expected[i].path, projections[i].path);
@@ -113,15 +125,22 @@ class IResearchInvertedIndexConditionTest
                  << queryString
                  << "> Expected support:" << expectedCosts.supportsCondition);
     arangodb::IndexId id(1);
-    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
-    bool tmp;
-    ASSERT_TRUE(
-        Index.init(getInvertedIndexPropertiesSlice(id, fields).slice(), tmp)
-            .ok());
+    auto builder = getInvertedIndexPropertiesSlice(id, fields, nullptr, nullptr,
+                                                   "unique_name3");
+    bool created = false;
+    auto inverted =
+        _collection->createIndex(builder.slice(), created).waitAndGet();
+    ASSERT_TRUE(created);
+    ASSERT_TRUE(inverted);
+    auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
+        inverted.get());
+    ASSERT_TRUE(index);
+    irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
+
     auto indexFields =
-        arangodb::iresearch::IResearchInvertedIndex::fields(Index.meta());
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
+        arangodb::iresearch::IResearchInvertedIndex::fields(index->meta());
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase(), arangodb::transaction::OperationOriginTestCase{});
     auto query = Query::create(ctx, QueryString(queryString), bindVars);
 
     ASSERT_NE(query.get(), nullptr);
@@ -161,8 +180,12 @@ class IResearchInvertedIndexConditionTest
 
     // optimization time
     {
-      auto costs = Index.supportsFilterCondition(id, indexFields, {},
-                                                 filterNode, ref, 0);
+      // We use this noop transaction because query transaction is empty
+      // TODO(MBkkt) Needs ability to create empty transaction
+      //  with failed begin but correct in other
+      arangodb::transaction::Methods trx{ctx};
+      auto costs = index->supportsFilterCondition(trx, id, indexFields, {},
+                                                  filterNode, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
     // runtime is not intended - we must decide during optimize time!
@@ -183,18 +206,24 @@ class IResearchInvertedIndexConditionTest
     for (auto const& f : fields) {
       indexFields.push_back(f.first);
     }
-    arangodb::iresearch::IResearchInvertedIndex Index(id, *_collection);
-    bool tmp;
-    Index.init(
-        getInvertedIndexPropertiesSlice(id, indexFields, nullptr, &fields)
-            .slice(),
-        tmp);
-    auto ctx =
-        std::make_shared<arangodb::transaction::StandaloneContext>(vocbase());
+    auto builder = getInvertedIndexPropertiesSlice(id, indexFields, nullptr,
+                                                   &fields, "unique_name3");
+    bool created = false;
+    auto inverted =
+        _collection->createIndex(builder.slice(), created).waitAndGet();
+    ASSERT_TRUE(created);
+    ASSERT_TRUE(inverted);
+    auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
+        inverted.get());
+    ASSERT_TRUE(index);
+    irs::Finally scope = [&]() noexcept { ASSERT_TRUE(inverted->drop().ok()); };
+
+    auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+        vocbase(), arangodb::transaction::OperationOriginTestCase{});
     auto query = Query::create(ctx, QueryString(queryString), bindVars);
 
     ASSERT_NE(query.get(), nullptr);
-    query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+    query->prepareQuery();
     auto* ast = query->ast();
     ASSERT_TRUE(ast);
     auto* root = ast->root();
@@ -244,7 +273,7 @@ class IResearchInvertedIndexConditionTest
     {
       SortCondition sortCondition(query->plan(), sorts, constAttributes,
                                   nonNullAttributes, variableDefinitions);
-      auto costs = Index.supportsSortCondition(&sortCondition, ref, 0);
+      auto costs = index->supportsSortCondition(&sortCondition, ref, 0);
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
       ASSERT_EQ(expectedCosts.coveredAttributes, costs.coveredAttributes);
       ASSERT_EQ(expectedCosts.estimatedCosts, costs.estimatedCosts);
@@ -533,6 +562,7 @@ TEST_F(IResearchInvertedIndexConditionTest, test_exists) {
       "FOR d IN test FILTER EXISTS(d.a, 'string') RETURN d ";
   std::vector<std::string> fields = {"a", "b", "c", "d"};
   auto expected = arangodb::Index::FilterCosts::defaultCosts(0);
+  expected.supportsCondition = true;
   estimateFilterCondition(queryString, fields, expected);
 }
 
@@ -710,9 +740,11 @@ TEST_F(IResearchInvertedIndexConditionTest,
 
 TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_one) {
   // simple
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    attributes.emplace_back("a");
+    attributes.emplace_back(createAttributeNamePath({"a"}, resMonitor));
     std::vector<std::vector<std::string>> fields = {{"a"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 1;
@@ -722,8 +754,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_one) {
   // sub-attribute
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path{"a", "b", "c"};
-    attributes.emplace_back(path);
+    attributes.emplace_back(
+        createAttributeNamePath({"a", "b", "c"}, resMonitor));
     std::vector<std::vector<std::string>> fields = {{"a.b.c"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 3;
@@ -734,8 +766,8 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_one) {
   // sub-attribute partial
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path{"a", "b", "c"};
-    attributes.emplace_back(path);
+    attributes.emplace_back(
+        createAttributeNamePath({"a", "b", "c"}, resMonitor));
     std::vector<std::vector<std::string>> fields = {{"a.b"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 2;
@@ -745,10 +777,12 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_one) {
 }
 
 TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    attributes.emplace_back("a");
-    attributes.emplace_back("c");
+    attributes.emplace_back(createAttributeNamePath({"a"}, resMonitor));
+    attributes.emplace_back("c", resMonitor);
     std::vector<std::vector<std::string>> fields = {{"a"}, {"b"}, {"c"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 1;
@@ -761,9 +795,9 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
   // sub-attribute
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path{"a", "b", "c"};
-    attributes.emplace_back(path);
-    attributes.emplace_back("d");
+    attributes.emplace_back(
+        createAttributeNamePath({"a", "b", "c"}, resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"d"}, resMonitor));
     std::vector<std::vector<std::string>> fields = {{"a.b.c"}, {"d"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 3;
@@ -776,9 +810,9 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
   // sub-attribute partial
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path{"a", "b", "c"};
-    attributes.emplace_back(path);
-    attributes.emplace_back("d");
+    attributes.emplace_back(
+        createAttributeNamePath({"a", "b", "c"}, resMonitor));
+    attributes.emplace_back("d", resMonitor);
     std::vector<std::vector<std::string>> fields = {{"a.b"}, {"d"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 2;
@@ -791,11 +825,9 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
   // sub-attribute partial more complex
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path1{"a", "b"};
-    attributes.emplace_back(path1);
-    std::vector<std::string> path2{"b", "d"};
-    attributes.emplace_back(path2);
-    attributes.emplace_back("d");
+    attributes.emplace_back(createAttributeNamePath({"a", "b"}, resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"b", "d"}, resMonitor));
+    attributes.emplace_back("d", resMonitor);
     std::vector<std::vector<std::string>> fields = {{"a.b"}, {"b.d"}, {"d"}};
     arangodb::aql::Projections expected(attributes);
     expected[0].coveringIndexCutoff = 2;
@@ -810,11 +842,9 @@ TEST_F(IResearchInvertedIndexConditionTest, test_attribute_covering_multiple) {
   // sub-attribute partial - check if the best is selected
   {
     std::vector<arangodb::aql::AttributeNamePath> attributes;
-    std::vector<std::string> path1{"a", "b"};
-    attributes.emplace_back(path1);
-    std::vector<std::string> path2{"b", "d"};
-    attributes.emplace_back(path2);
-    attributes.emplace_back("d");
+    attributes.emplace_back(createAttributeNamePath({"a", "b"}, resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"b", "d"}, resMonitor));
+    attributes.emplace_back(createAttributeNamePath({"d"}, resMonitor));
     std::vector<std::vector<std::string>> fields = {
         {"a.b"}, {"b.d"}, {"a.b", "b.d", "a.c"}, {"d"}};
     arangodb::aql::Projections expected(attributes);
@@ -1011,5 +1041,5 @@ TEST_F(IResearchInvertedIndexConditionTest,
 }
 
 #if USE_ENTERPRISE
-#include "tests/IResearch/IResearchInvertedIndexConditionTestEE.hpp"
+#include "tests/IResearch/IResearchInvertedIndexConditionTestEE.h"
 #endif

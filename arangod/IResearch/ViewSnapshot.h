@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 
 #include "index/index_reader.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/proxy_filter.hpp"
 
 #include <vector>
 #include <string_view>
@@ -43,28 +44,39 @@ class Methods;
 }  // namespace transaction
 namespace iresearch {
 
+struct ViewSegment {
+  explicit ViewSegment(LogicalCollection const& collection,
+                       StorageSnapshot const& snapshot,
+                       irs::SubReader const& segment) noexcept
+      : collection{&collection}, snapshot{&snapshot}, segment{&segment} {}
+
+  LogicalCollection const* collection;
+  StorageSnapshot const* snapshot;
+  irs::SubReader const* segment;
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief a snapshot representation of the view with ability to query for cid
 //////////////////////////////////////////////////////////////////////////////
-class ViewSnapshot : public irs::index_reader {
+class ViewSnapshot : public irs::IndexReader {
  public:
   using Links = std::vector<LinkLock>;
+  using Segments = std::vector<ViewSegment>;
+  using ImmutablePartCache =
+      std::map<aql::AstNode const*, irs::proxy_filter::cache_ptr>;
 
-  /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
-  [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
-};
+  uint64_t CountMappedMemory() const final { return 0; }
 
-using ViewSnapshotPtr = std::shared_ptr<ViewSnapshot const>;
+  [[nodiscard]] virtual LogicalCollection const& collection(
+      std::size_t i) const noexcept = 0;
 
-class ViewSnapshotImpl : public ViewSnapshot {
- protected:
-  using Segments = std::vector<std::pair<DataSourceId, irs::sub_reader const*>>;
+  [[nodiscard]] virtual StorageSnapshot const& snapshot(
+      std::size_t i) const noexcept = 0;
 
-  std::uint64_t _live_docs_count = 0;
-  std::uint64_t _docs_count = 0;
-  Segments _segments;
+  [[nodiscard]] bool hasNestedFields() const noexcept {
+    return _hasNestedFields;
+  }
 
- private:
   [[nodiscard]] std::uint64_t live_docs_count() const noexcept final {
     return _live_docs_count;
   }
@@ -73,36 +85,66 @@ class ViewSnapshotImpl : public ViewSnapshot {
     return _docs_count;
   }
 
-  [[nodiscard]] irs::sub_reader const& operator[](
-      std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return *(_segments[i].second);
-  }
+  [[nodiscard]] virtual ViewSegment const& segment(
+      std::size_t i) const noexcept = 0;
 
-  [[nodiscard]] std::size_t size() const noexcept final {
-    return _segments.size();
-  }
-
-  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
-    TRI_ASSERT(i < _segments.size());
-    return _segments[i].first;
-  }
+ protected:
+  std::uint64_t _live_docs_count = 0;
+  std::uint64_t _docs_count = 0;
+  bool _hasNestedFields{false};
 };
 
+using ViewSnapshotPtr = std::shared_ptr<ViewSnapshot const>;
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple irs::index_reader
+/// @brief index reader implementation over multiple irs::IndexReader
 /// @note it is assumed that ViewState resides in the same
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held
 ////////////////////////////////////////////////////////////////////////////////
-class ViewSnapshotView final : public ViewSnapshotImpl {
- public:
-  /// @brief constructs snapshot from a given snapshot
-  ///        according to specified set of collections
-  ViewSnapshotView(
-      const ViewSnapshot& rhs,
-      containers::FlatHashSet<DataSourceId> const& collections) noexcept;
-};
+/// FIXME: Currently this class is not used as there is an issue if one view
+///        is used several times in the query and waitForSync is enabled.
+///        In such case ViewSnapshotCookie is refilled several times. So
+///        dangling ViewSnapshotView is possible. We could adress this
+///        by doing viewSnapshotSync once per view. So this class is not
+///        deleted in hope it would be needed again.
+// class ViewSnapshotView final : public ViewSnapshot {
+// public:
+//  /// @brief constructs snapshot from a given snapshot
+//  ///        according to specified set of collections
+//  ViewSnapshotView(
+//      const ViewSnapshot& rhs,
+//      containers::FlatHashSet<DataSourceId> const& collections) noexcept;
+//
+//  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
+//    TRI_ASSERT(i < _segments.size());
+//    return std::get<0>(_segments[i]);
+//  }
+//
+//  [[nodiscard]] irs::SubReader const& operator[](
+//      std::size_t i) const noexcept final {
+//    TRI_ASSERT(i < _segments.size());
+//    return *(std::get<1>(_segments[i]));
+//  }
+//
+//  [[nodiscard]] StorageSnapshot const& snapshot(
+//      std::size_t i) const noexcept final {
+//    TRI_ASSERT(i < _segments.size());
+//    return (std::get<2>(_segments[i]));
+//  }
+//
+//  [[nodiscard]] std::size_t size() const noexcept final {
+//    return _segments.size();
+//  }
+//
+//  ViewSegment const& segment(std::size_t i) const noexcept final {
+//    TRI_ASSERT(i < _segments.size());
+//    return _segments[i];
+//  }
+//
+// private:
+//  Segments _segments;
+//};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Get view snapshot from transaction state
@@ -139,14 +181,13 @@ void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name);
 ////////////////////////////////////////////////////////////////////////////////
 ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
                                bool sync, std::string_view name,
-                               ViewSnapshot::Links&& links) noexcept;
+                               ViewSnapshot::Links&& links);
 
 struct FilterCookie : TransactionState::Cookie {
   irs::filter::prepared const* filter{};
 };
 
-FilterCookie* getFilterCookie(transaction::Methods& trx,
-                              void const* key) noexcept;
+FilterCookie& ensureFilterCookie(transaction::Methods& trx, void const* key);
 
 }  // namespace iresearch
 }  // namespace arangodb

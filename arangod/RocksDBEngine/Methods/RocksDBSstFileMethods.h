@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,35 +23,35 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBMethods.h"
-
-#include "ApplicationFeatures/TempFeature.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 #include <rocksdb/sst_file_writer.h>
 #include <rocksdb/status.h>
 
 namespace arangodb {
+class RocksDBMemoryUsageTracker;
 class StorageUsageTracker;
 
 /// wraps an sst file writer - non transactional
-class RocksDBSstFileMethods final : public RocksDBMethods {
+class RocksDBSstFileMethods final : public RocksDBBatchedBaseMethods {
  public:
   explicit RocksDBSstFileMethods(bool isForeground, rocksdb::DB* rootDB,
                                  RocksDBTransactionCollection* trxColl,
                                  RocksDBIndex& ridx,
                                  rocksdb::Options const& dbOptions,
                                  std::string const& idxPath,
-                                 StorageUsageTracker& usageTracker);
+                                 StorageUsageTracker& usageTracker,
+                                 RocksDBMethodsMemoryTracker& memoryTracker);
 
   explicit RocksDBSstFileMethods(rocksdb::DB* rootDB,
                                  rocksdb::ColumnFamilyHandle* cf,
                                  rocksdb::Options const& dbOptions,
                                  std::string const& idxPath,
-                                 StorageUsageTracker& usageTracker);
+                                 StorageUsageTracker& usageTracker,
+                                 RocksDBMethodsMemoryTracker& memoryTracker);
 
   ~RocksDBSstFileMethods();
 
@@ -78,6 +78,8 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   static void cleanUpFiles(std::vector<std::string> const& fileNames);
 
  private:
+  size_t currentWriteBatchSize() const noexcept override;
+
   void cleanUpFiles();
 
   rocksdb::Status writeToFile();

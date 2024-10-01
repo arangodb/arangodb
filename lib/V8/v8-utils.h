@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,17 +23,31 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <cstdint>
-#include <string>
-
-#include <v8.h>
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
 #include "Basics/ErrorCode.h"
+
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <tuple>
+
+#include <v8.h>
 
 namespace arangodb {
 class Result;
 }
+
+/// @brief splits url into an endpoint, and a relative URL. the third return
+/// value contains an error message in case the first two returned parts are
+/// empty strings
+std::tuple<std::string, std::string, std::string> getEndpoint(
+    std::vector<std::string> const& endpoints, std::string& url,
+    std::string const& lastEndpoint);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,12 +105,12 @@ static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
     return nullptr;
   }
-  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE);
+  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE).As<v8::Value>();
   if (slot->Int32Value(context).ToChecked() != type) {
     return nullptr;
   }
 
-  auto slotc = obj->GetInternalField(SLOT_CLASS);
+  auto slotc = obj->GetInternalField(SLOT_CLASS).As<v8::Value>();
   auto slotp = v8::Handle<v8::External>::Cast(slotc);
   auto val = slotp->Value();
   auto ret = static_cast<T*>(val);
@@ -119,32 +133,28 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const*);
+bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate,
+                                     char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const*);
+bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
-    v8::Isolate* isolate, v8::Handle<v8::Context> context,
-    v8::Handle<v8::String> const source, v8::Handle<v8::String> const name,
-    bool printResult);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an error in a javascript object, based on error number only
-////////////////////////////////////////////////////////////////////////////////
-
-// void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber);
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
+                                                  std::string_view source,
+                                                  std::string_view name,
+                                                  bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::Result
 ////////////////////////////////////////////////////////////////////////////////
+///
 void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const&);
 
 ////////////////////////////////////////////////////////////////////////////////

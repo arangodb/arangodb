@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,17 +24,11 @@
 
 #pragma once
 
-#include "Containers/HashSet.h"
-
-#include "Basics/ResourceUsage.h"
-
 #include "Aql/TraversalStats.h"
+#include "Basics/ResourceUsage.h"
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
-#include "Transaction/Methods.h"
-
-#include <set>
 
 namespace arangodb {
 
@@ -62,7 +56,7 @@ struct OneSidedEnumeratorOptions;
 class PathValidatorOptions;
 
 template<class Configuration>
-class OneSidedEnumerator : public TraversalEnumerator {
+class OneSidedEnumerator final : public TraversalEnumerator {
  public:
   using Step = typename Configuration::Step;  // public due to tracer access
   using Provider = typename Configuration::Provider;
@@ -71,17 +65,17 @@ class OneSidedEnumerator : public TraversalEnumerator {
   using ResultPathType = SingleProviderPathResult<Provider, Store, Step>;
 
  private:
-  using VertexRef = arangodb::velocypack::HashedStringRef;
+  using VertexRef = velocypack::HashedStringRef;
 
   using ResultList = typename std::conditional_t<
       std::is_same_v<Step, enterprise::SmartGraphStep>,
       enterprise::SmartGraphResponse<Provider>, std::vector<Step>>;
-  using GraphOptions = arangodb::graph::OneSidedEnumeratorOptions;
+  using GraphOptions = graph::OneSidedEnumeratorOptions;
 
  public:
   OneSidedEnumerator(Provider&& provider, OneSidedEnumeratorOptions&& options,
                      PathValidatorOptions pathValidatorOptions,
-                     arangodb::ResourceMonitor& resourceMonitor);
+                     ResourceMonitor& resourceMonitor);
   OneSidedEnumerator(OneSidedEnumerator const& other) = delete;
   OneSidedEnumerator(OneSidedEnumerator&& other) noexcept = default;
 
@@ -133,7 +127,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   auto getNextPath() -> std::unique_ptr<PathResultInterface> override;
 
 #ifdef USE_ENTERPRISE
-  auto smartSearch(size_t amountOfExpansions, arangodb::velocypack::Builder&)
+  auto smartSearch(size_t amountOfExpansions, velocypack::Builder&)
       -> void override;
 #endif
 

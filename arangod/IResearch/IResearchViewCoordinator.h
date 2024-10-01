@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "VocBase/LogicalView.h"
+#include "Containers/FlatHashMap.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -39,7 +40,7 @@ struct ViewFactory;
 
 namespace arangodb::iresearch {
 
-class IResearchLink;
+class IResearchLinkCoordinator;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewCoordinator
@@ -49,7 +50,7 @@ class IResearchLink;
 class IResearchViewCoordinator final : public LogicalView {
  public:
   static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
-    return {ViewType::kView, StaticStrings::ViewType};
+    return {ViewType::kArangoSearch, StaticStrings::ViewArangoSearchType};
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -64,7 +65,7 @@ class IResearchViewCoordinator final : public LogicalView {
   /// @note definitions are not persisted
   /// @return the 'link' was newly added to the IResearch View
   //////////////////////////////////////////////////////////////////////////////
-  Result link(IResearchLink const& link);
+  Result link(IResearchLinkCoordinator const& link);
 
   void open() final {}
 
@@ -80,6 +81,8 @@ class IResearchViewCoordinator final : public LogicalView {
   Result unlink(DataSourceId cid) noexcept;
 
   bool visitCollections(CollectionVisitor const& visitor) const final;
+
+  IResearchViewMeta const& meta() const noexcept { return _meta; }
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sorting order of a view, empty -> use system order
@@ -102,6 +105,22 @@ class IResearchViewCoordinator final : public LogicalView {
     return _meta._storedValues;
   }
 
+  bool pkCache() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _meta._pkCache;
+#else
+    return false;
+#endif
+  }
+
+  bool sortCache() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _meta._sortCache;
+#else
+    return false;
+#endif
+  }
+
  private:
   Result appendVPackImpl(VPackBuilder& build, Serialization ctx,
                          bool safe) const final;
@@ -110,13 +129,25 @@ class IResearchViewCoordinator final : public LogicalView {
 
   Result renameImpl(std::string const& oldName) final;
 
+  bool isBuilding() const final;
+
   struct ViewFactory;
 
-  IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);
+  IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info,
+                           bool isUserRequest);
 
   // transient member, not persisted
-  std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>>
-      _collections;
+  struct Data {
+    Data(std::string name, VPackBuilder&& definition, bool building)
+        : collectionName{std::move(name)},
+          linkDefinition{std::move(definition)},
+          isBuilding{building} {}
+
+    std::string collectionName;
+    VPackBuilder linkDefinition;
+    bool isBuilding{false};
+  };
+  containers::FlatHashMap<DataSourceId, std::unique_ptr<Data>> _collections;
   mutable std::shared_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
 };

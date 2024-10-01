@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global arangoHelper, frontendConfig, Backbone, templateEngine, $, window, _ */
+/* global frontendConfig, templateEngine */
 (function () {
   'use strict';
 
@@ -231,10 +229,6 @@
       this.name = options.name;
       this.userConfig = options.userConfig;
       this.saveCallback = options.saveCallback;
-
-      if (options.noDefinedGraph) {
-        this.noDefinedGraph = options.noDefinedGraph;
-      }
     },
 
     events: {
@@ -271,13 +265,30 @@
       }
     },
 
+    checkAndSetGraphConfig: function (data) {
+      // This method check whether we do have stored visual properties already available
+      // in our database.
+
+      // combinedName: Variable which uses a database and graph-name bound unique id to store its properties.
+      const combinedName = frontendConfig.db + '_' + this.name;
+
+      const dataAsJson = data.toJSON();
+      if (dataAsJson.result && dataAsJson.result.graphs) {
+        if (data.toJSON().result.graphs[combinedName]) {
+          this.graphConfig = data.toJSON().result.graphs[combinedName];
+        }
+      } else {
+        this.graphConfig = null;
+      }
+    },
+
     getGraphSettings: function (render) {
       var self = this;
       var combinedName = frontendConfig.db + '_' + this.name;
 
       this.userConfig.fetch({
         success: function (data) {
-          self.graphConfig = data.toJSON().graphs[combinedName];
+          self.checkAndSetGraphConfig(data);
           if (render) {
             self.continueRender();
           }
@@ -310,128 +321,98 @@
         );
       };
 
-      if (!this.noDefinedGraph) {
-        // usual graph view mode
-        // communication is needed
-        self.lastSaved = new Date();
-        var combinedName = frontendConfig.db + '_' + this.name;
+      // usual graph view mode
+      // communication is needed
+      self.lastSaved = new Date();
+      var combinedName = frontendConfig.db + '_' + this.name;
 
-        var config = {};
+      var config = {};
 
-        if (overwrite) {
-          config[combinedName] = overwrite;
-        } else {
-          var object = {};
-
-          var id;
-          $('#graphSettingsView select').each(function (key, elem) {
-            id = elem.id;
-            object[id.substr(2, elem.id.length)] = $(elem).val();
-          });
-          $('#graphSettingsView input').each(function (key, elem) {
-            id = elem.id;
-            object[id.substr(2, elem.id.length)] = $(elem).val();
-          });
-
-          config[combinedName] = object;
-        }
-
-        if (nodeStart) {
-          config[combinedName].nodeStart = nodeStart;
-        }
-        // enable edge editing by default (as this was an option in the past)
-        config[combinedName].edgeEditable = 'true';
-
-        var callback = function () {
-          self.lastConfigChange = new Date();
-          if (window.App.graphViewer) {
-            // no complete rerender needed
-            // LAYOUT
-            var value;
-
-            if (event) {
-              if (event.currentTarget.id === 'g_layout') {
-                window.App.graphViewer.switchLayout($('#g_layout').val());
-                return;
-                // NODES COLORING
-              } else if (event.currentTarget.id === 'g_nodeColorByCollection') {
-                value = $('#g_nodeColorByCollection').val();
-                if (value === 'true') {
-                  window.App.graphViewer.switchNodeColorByCollection(true);
-                } else {
-                  if ($('#g_nodeColorAttribute').is(':disabled')) {
-                    window.App.graphViewer.switchNodeColorByCollection(false);
-                  } else {
-                    window.App.graphViewer.switchNodeColorByCollection(false, true);
-                  }
-                }
-                return;
-                // EDGES COLORING
-              } else if (event.currentTarget.id === 'g_edgeColorByCollection') {
-                value = $('#g_edgeColorByCollection').val();
-                if (value === 'true') {
-                  window.App.graphViewer.switchEdgeColorByCollection(true);
-                } else {
-                  if ($('#g_nodeColorAttribute').is(':disabled')) {
-                    window.App.graphViewer.switchEdgeColorByCollection(false);
-                  } else {
-                    window.App.graphViewer.switchEdgeColorByCollection(false, true);
-                  }
-                }
-                return;
-              }
-            }
-
-            if (color !== '' && color !== undefined) {
-              updateCols();
-            } else {
-              // complete render necessary - e.g. data needed
-              window.App.graphViewer.render(self.lastFocussed);
-            }
-          } else {
-            if (!silent) {
-              arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
-            }
-          }
-          if (userCallback) {
-            userCallback();
-          }
-        }.bind(this);
-
-        this.userConfig.setItem('graphs', config, callback);
+      if (overwrite) {
+        config[combinedName] = overwrite;
       } else {
-        // aql mode - only visual
+        var object = {};
 
-        var value;
-        if (color) {
-          updateCols();
-        } else if (event.currentTarget.id === 'g_layout') {
-          window.App.graphViewer.rerenderAQL($('#g_layout').val(), null);
-        } else if (event.currentTarget.id === 'g_nodeColorByCollection') {
-          value = $('#g_nodeColorByCollection').val();
-          if (value === 'true') {
-            window.App.graphViewer.switchNodeColorByCollection(true);
-          } else {
-            window.App.graphViewer.switchNodeColorByCollection(false);
-          }
-        } else if (event.currentTarget.id === 'g_edgeColorByCollection') {
-          value = $('#g_edgeColorByCollection').val();
-          if (value === 'true') {
-            window.App.graphViewer.switchEdgeColorByCollection(true);
-          } else {
-            window.App.graphViewer.switchEdgeColorByCollection(false);
-          }
-        } else if (event.currentTarget.id === 'g_nodeSizeByEdges') {
-          value = $('#g_nodeSizeByEdges').val();
-          if (value === 'true') {
-            window.App.graphViewer.switchNodeSizeByCollection(true);
-          } else {
-            window.App.graphViewer.switchNodeSizeByCollection(false);
-          }
-        } else if (event.currentTarget.id === 'g_edgeType') {
-          window.App.graphViewer.switchEdgeType($('#g_edgeType').val());
-        }
+        var id;
+        $('#graphSettingsView select').each(function (key, elem) {
+          id = elem.id;
+          object[id.substr(2, elem.id.length)] = $(elem).val();
+        });
+        $('#graphSettingsView input').each(function (key, elem) {
+          id = elem.id;
+          object[id.substr(2, elem.id.length)] = $(elem).val();
+        });
+
+        config[combinedName] = object;
       }
+
+      if (nodeStart) {
+        config[combinedName].nodeStart = nodeStart;
+      }
+      // enable edge editing by default (as this was an option in the past)
+      config[combinedName].edgeEditable = 'true';
+
+      let callbackAfterStore = function (storedData) {
+        if (storedData && storedData[combinedName]) {
+          self.graphConfig = storedData[combinedName];
+        }
+        self.lastConfigChange = new Date();
+        if (window.App.graphViewer) {
+          // no complete rerender needed
+          // LAYOUT
+          var value;
+
+          if (event) {
+            if (event.currentTarget.id === 'g_layout') {
+              window.App.graphViewer.switchLayout($('#g_layout').val());
+              return;
+              // NODES COLORING
+            } else if (event.currentTarget.id === 'g_nodeColorByCollection') {
+              value = $('#g_nodeColorByCollection').val();
+              if (value === 'true') {
+                window.App.graphViewer.switchNodeColorByCollection(true);
+              } else {
+                if ($('#g_nodeColorAttribute').is(':disabled')) {
+                  window.App.graphViewer.switchNodeColorByCollection(false);
+                } else {
+                  window.App.graphViewer.switchNodeColorByCollection(false, true);
+                }
+              }
+              return;
+              // EDGES COLORING
+            } else if (event.currentTarget.id === 'g_edgeColorByCollection') {
+              value = $('#g_edgeColorByCollection').val();
+              if (value === 'true') {
+                window.App.graphViewer.switchEdgeColorByCollection(true);
+              } else {
+                if ($('#g_nodeColorAttribute').is(':disabled')) {
+                  window.App.graphViewer.switchEdgeColorByCollection(false);
+                } else {
+                  window.App.graphViewer.switchEdgeColorByCollection(false, true);
+                }
+              }
+              return;
+            }
+          }
+
+          if (color !== '' && color !== undefined) {
+            updateCols();
+          } else {
+            // complete render necessary - e.g. data needed
+            window.App.graphViewer.render(self.lastFocussed);
+          }
+        } else {
+          if (!silent) {
+            arangoHelper.arangoNotification('Graph ' + this.name, 'Configuration saved.');
+          }
+        }
+        if (userCallback) {
+          userCallback();
+        }
+      }.bind(this);
+
+      this.userConfig.setItem('graphs', config, callbackAfterStore);
+
       this.handleDependencies();
     },
 
@@ -489,14 +470,9 @@
     },
 
     render: function () {
-      if (this.noDefinedGraph) {
-        // aql render mode
-        this.continueRender();
-      } else {
-        // standard gv mode
-        this.getGraphSettings(true);
-        this.lastSaved = new Date();
-      }
+      // standard gv mode
+      this.getGraphSettings(true);
+      this.lastSaved = new Date();
     },
 
     handleDependencies: function () {
@@ -516,10 +492,8 @@
         $('#g_nodeColor').removeAttr('disabled');
       }
 
-      if (!this.noDefinedGraph) {
-        if ($('#g_nodeColorAttribute').val() !== '') {
-          $('#g_nodeColor').prop('disabled', true);
-        }
+      if ($('#g_nodeColorAttribute').val() !== '') {
+        $('#g_nodeColor').prop('disabled', true);
       }
 
       // edge color
@@ -531,10 +505,8 @@
         $('#g_edgeColor').removeAttr('disabled');
       }
 
-      if (!this.noDefinedGraph) {
-        if ($('#g_edgeColorAttribute').val() !== '') {
-          $('#g_edgeColor').prop('disabled', true);
-        }
+      if ($('#g_edgeColorAttribute').val() !== '') {
+        $('#g_edgeColor').prop('disabled', true);
       }
     },
 
@@ -551,38 +523,11 @@
           $('#g_' + key).val(val);
         });
       } else {
-        if (!this.noDefinedGraph) {
-          this.setDefaults(true);
-        } else {
-          this.fitSettingsAQLMode();
-        }
+        this.setDefaults(true);
       }
 
       this.handleDependencies();
     },
-
-    fitSettingsAQLMode: function () {
-      var toDisable = [
-        'g_nodeStart', 'g_depth', 'g_limit', 'g_renderer',
-        'g_nodeLabel', 'g_nodeLabelByCollection', 'g_nodeColorAttribute',
-        'g_nodeSize', 'g_edgeLabel', 'g_edgeColorAttribute', 'g_edgeLabelByCollection'
-      ];
-
-      _.each(toDisable, function (elem) {
-        $('#' + elem).parent().prev().remove();
-        $('#' + elem).parent().remove();
-      });
-
-      $('#saveGraphSettings').remove();
-      $('#restoreGraphSettings').remove();
-
-      // overwrite usual defaults
-      $('#g_nodeColorByCollection').val('false');
-      $('#g_edgeColorByCollection').val('false');
-      $('#g_nodeSizeByEdges').val('false');
-      $('#g_edgeType').val('arrow');
-      $('#g_layout').val('force');
-    }
 
   });
 }());

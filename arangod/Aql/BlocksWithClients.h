@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
 #include "Basics/Result.h"
@@ -68,16 +68,6 @@ class ClientsExecutorInfos {
 class BlocksWithClients {
  public:
   virtual ~BlocksWithClients() = default;
-
-  /// @brief getSomeForShard
-  /// @deprecated
-  virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(
-      size_t atMost, std::string const& shardId) = 0;
-
-  /// @brief skipSomeForShard
-  /// @deprecated
-  virtual std::pair<ExecutionState, size_t> skipSomeForShard(
-      size_t atMost, std::string const& shardId) = 0;
 
   /**
    * @brief Execute for client.
@@ -156,16 +146,6 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
    */
   auto fetchMore(AqlCallStack stack) -> ExecutionState;
 
-  /// @brief getSomeForShard
-  /// @deprecated
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(
-      size_t atMost, std::string const& shardId) override;
-
-  /// @brief skipSomeForShard
-  /// @deprecated
-  std::pair<ExecutionState, size_t> skipSomeForShard(
-      size_t atMost, std::string const& shardId) override;
-
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
   /// corresponding to <shardId>
@@ -174,9 +154,6 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   /// @brief _shardIdMap: map from shardIds to clientNrs
   /// @deprecated
   std::unordered_map<std::string, size_t> _shardIdMap;
-
-  /// @brief _nrClients: total number of clients
-  size_t _nrClients;
 
   /// @brief type of distribution that this nodes follows.
   ScatterNode::ScatterType _type;

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,13 +23,17 @@
 
 #pragma once
 
+#include "Aql/ProfileLevel.h"
+#include "Aql/types.h"
+#include "Cluster/Utils/ShardID.h"
+#include "Transaction/Options.h"
+
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <unordered_set>
 #include <vector>
-
-#include "Aql/types.h"
-#include "Basics/Common.h"
-#include "Transaction/Options.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -39,33 +43,17 @@ class Slice;
 
 namespace aql {
 
-enum class ProfileLevel : uint8_t {
-  /// no profiling information
-  None = 0,
-  /// Output timing for query stages
-  Basic = 1,
-  /// Enable instrumentation for execute calls
-  Blocks = 2,
-  /// Log tracing info for execute calls
-  TraceOne = 3,
-  /// Log tracing information including execute results
-  TraceTwo = 4
-};
-
-enum class TraversalProfileLevel : uint8_t {
-  /// no profiling information
-  None = 0,
-  /// include traversal tracing
-  Basic = 1
-};
-
 struct QueryOptions {
   QueryOptions();
-  explicit QueryOptions(arangodb::velocypack::Slice);
+  explicit QueryOptions(velocypack::Slice);
+  QueryOptions(QueryOptions&&) noexcept = default;
+  QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  void fromVelocyPack(arangodb::velocypack::Slice slice);
-  void toVelocyPack(arangodb::velocypack::Builder& builder,
+  enum JoinStrategyType : uint8_t { kDefault, kGeneric };
+
+  void fromVelocyPack(velocypack::Slice slice);
+  void toVelocyPack(velocypack::Builder& builder,
                     bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
   TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const {
@@ -78,9 +66,14 @@ struct QueryOptions {
   size_t maxNodesPerCallstack;
   size_t spillOverThresholdNumRows;
   size_t spillOverThresholdMemoryUsage;
-  double maxRuntime;  // query has to execute within the given time or will be
-                      // killed
-  double satelliteSyncWait;
+  size_t maxDNFConditionMembers;
+  // query has to execute within the given time or will be killed
+  double maxRuntime;
+
+#ifdef USE_ENTERPRISE
+  std::chrono::duration<double> satelliteSyncWait;
+#endif
+
   double ttl;  // time until query cursor expires - avoids coursors to
                // stick around for ever if client does not collect the data
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
@@ -93,6 +86,7 @@ struct QueryOptions {
   // add even more detail (internals) to query execution plans
   bool explainInternals;
   bool stream;
+  bool retriable;
   // do not return query results
   bool silent;
   // make the query fail if a warning is produced
@@ -105,7 +99,13 @@ struct QueryOptions {
   bool count;
   // skips audit logging - used only internally
   bool skipAudit;
+  // whether or not the optimizer result should be cached
+  bool optimizePlanForCaching;
+
   ExplainRegisterPlan explainRegisters;
+
+  /// @brief desired join strategy used by the JoinNode (if available)
+  JoinStrategyType desiredJoinStrategy;
 
   /// @brief shard key attribute value used to push a query down
   /// to a single server
@@ -115,7 +115,7 @@ struct QueryOptions {
   std::vector<std::string> optimizerRules;
 
   /// @brief manual restriction to certain shards
-  std::unordered_set<std::string> restrictToShards;
+  std::unordered_set<ShardID> restrictToShards;
 
 #ifdef USE_ENTERPRISE
   // TODO: remove as soon as we have cluster wide transactions
@@ -129,6 +129,7 @@ struct QueryOptions {
   static size_t defaultMaxNodesPerCallstack;
   static size_t defaultSpillOverThresholdNumRows;
   static size_t defaultSpillOverThresholdMemoryUsage;
+  static size_t defaultMaxDNFConditionMembers;
   static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;

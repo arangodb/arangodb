@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,6 @@
 
 #include "AgencyCallbackRegistry.h"
 
-#include <velocypack/Slice.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
@@ -33,15 +31,19 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Random/RandomGenerator.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "Random/RandomGenerator.h"
+#include "RestServer/DatabaseFeature.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -52,19 +54,23 @@ DECLARE_GAUGE(arangodb_agency_callback_number, uint64_t,
               "Current number of agency callbacks registered");
 
 AgencyCallbackRegistry::AgencyCallbackRegistry(
-    ArangodServer& server, std::string const& callbackBasePath)
-    : _agency(server),
+    ApplicationServer& server, ClusterFeature& clusterFeature,
+    EngineSelectorFeature& engineSelectorFeature,
+    DatabaseFeature& databaseFeature, metrics::MetricsFeature& metrics,
+    std::string const& callbackBasePath)
+    : _server(server),
+      _clusterFeature(clusterFeature),
+      _agencyComm(server, clusterFeature, engineSelectorFeature,
+                  databaseFeature),
       _callbackBasePath(callbackBasePath),
       _totalCallbacksRegistered(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_callback_registered_total{})),
-      _callbacksCount(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_agency_callback_number{})) {}
+          metrics.add(arangodb_agency_callback_registered_total{})),
+      _callbacksCount(metrics.add(arangodb_agency_callback_number{})) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
 Result AgencyCallbackRegistry::registerCallback(
-    std::shared_ptr<AgencyCallback> cb, bool local) {
+    std::shared_ptr<AgencyCallback> cb) {
   uint64_t id;
   while (true) {
     id = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
@@ -77,13 +83,7 @@ Result AgencyCallbackRegistry::registerCallback(
 
   Result res;
   try {
-    if (local) {
-      auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
-      res = cache.registerCallback(cb->key, id);
-    } else {
-      res = _agency.registerCallback(cb->key, getEndpointUrl(id)).asResult();
-      cb->local(false);
-    }
+    res = _clusterFeature.agencyCache().registerCallback(cb->key, id);
     if (res.ok()) {
       _callbacksCount += 1;
       ++_totalCallbacksRegistered;
@@ -101,8 +101,8 @@ Result AgencyCallbackRegistry::registerCallback(
 
   TRI_ASSERT(res.fail());
   res.reset(res.errorNumber(),
-            StringUtils::concatT("registering ", (local ? "local " : ""),
-                                 "callback failed: ", res.errorMessage()));
+            StringUtils::concatT("registering local callback failed: ",
+                                 res.errorMessage()));
   LOG_TOPIC("b88f4", WARN, Logger::CLUSTER) << res.errorMessage();
 
   {
@@ -159,13 +159,8 @@ bool AgencyCallbackRegistry::unregisterCallback(
     // don't want to be vulnerable to priority inversion.
 
     if (found) {
-      if (cb->local()) {
-        auto& cache =
-            _agency.server().getFeature<ClusterFeature>().agencyCache();
-        cache.unregisterCallback(cb->key, id);
-      } else {
-        _agency.unregisterCallback(cb->key, getEndpointUrl(id));
-      }
+      _clusterFeature.agencyCache().unregisterCallback(cb->key, id);
+
       _callbacksCount -= 1;
     }
   }
@@ -173,9 +168,6 @@ bool AgencyCallbackRegistry::unregisterCallback(
 }
 
 std::string AgencyCallbackRegistry::getEndpointUrl(uint64_t id) const {
-  std::stringstream url;
-  url << Endpoint::uriForm(ServerState::instance()->getEndpoint())
-      << _callbackBasePath << "/" << id;
-
-  return url.str();
+  return absl::StrCat(Endpoint::uriForm(ServerState::instance()->getEndpoint()),
+                      _callbackBasePath, "/", id);
 }

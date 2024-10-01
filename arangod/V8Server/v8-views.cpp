@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,18 +21,25 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "v8-views.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
+#include "Utilities/NameValidator.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -44,9 +51,12 @@
 
 #include <velocypack/Collection.h>
 
-namespace {
+#include <string_view>
 
+namespace {
 using namespace arangodb;
+
+constexpr std::string_view moduleName("views management");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @return the specified vocbase is granted 'level' access
@@ -181,6 +191,16 @@ static void JS_CreateViewVocbase(
     throw;
   }
 
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = ViewNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, name);
+      res.fail()) {
+    events::CreateView(vocbase.name(), name, res.errorNumber());
+    TRI_V8_THROW_EXCEPTION(res);
+    return;
+  }
+
   // ...........................................................................
   // end of parameter parsing
   // ...........................................................................
@@ -206,26 +226,29 @@ static void JS_CreateViewVocbase(
   try {
     // First refresh our analyzers cache to see all latest changes in analyzers
     TRI_GET_SERVER_GLOBALS(ArangodServer);
-    auto res = v8g->server()
-                   .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                   .loadAvailableAnalyzers(vocbase.name());
+    auto res =
+        v8g->server()
+            .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+            .loadAvailableAnalyzers(
+                vocbase.name(),
+                arangodb::transaction::OperationOriginREST{::moduleName});
 
     if (res.fail()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
     LogicalView::ptr view;
     res = LogicalView::create(view, vocbase, builder.slice(), true);
 
-    if (!res.ok()) {
-      // events::CreateView(vocbase.name(), name, res.errorNumber());
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    if (res.ok() && !view) {
+      res.reset(TRI_ERROR_INTERNAL, "problem creating view");
     }
 
-    if (!view) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "problem creating view");
+    if (!res.ok()) {
+      TRI_V8_THROW_EXCEPTION(res);
     }
+
+    TRI_ASSERT(view);
 
     v8::Handle<v8::Value> result = WrapView(isolate, view);
 
@@ -288,6 +311,16 @@ static void JS_DropViewVocbase(
 
   // extract the name
   std::string const name = TRI_ObjectToString(isolate, args[0]);
+
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = ViewNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, name);
+      res.fail()) {
+    events::DropView(vocbase.name(), name, res.errorNumber());
+    TRI_V8_THROW_EXCEPTION(res);
+    return;
+  }
 
   // ...........................................................................
   // end of parameter parsing
@@ -619,18 +652,21 @@ static void JS_PropertiesViewVocbase(
 
     auto& vocbase = GetContextVocBase(isolate);
     TRI_GET_SERVER_GLOBALS(ArangodServer);
-    auto res = v8g->server()
-                   .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
-                   .loadAvailableAnalyzers(vocbase.name());
+    auto res =
+        v8g->server()
+            .getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()
+            .loadAvailableAnalyzers(
+                vocbase.name(),
+                arangodb::transaction::OperationOriginREST{::moduleName});
 
     if (res.fail()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
     res = view->properties(builder.slice(), true, partialUpdate);
 
     if (!res.ok()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      TRI_V8_THROW_EXCEPTION(res);
     }
   }
 

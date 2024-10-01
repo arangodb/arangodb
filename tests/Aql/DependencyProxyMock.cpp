@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -49,7 +49,7 @@ DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(
       _itemsToReturn(),
       _numFetchBlockCalls(0),
       _monitor(monitor),
-      _itemBlockManager(_monitor, SerializationFormat::SHADOWROWS) {}
+      _itemBlockManager(_monitor) {}
 
 /* * * * * * * * * * * * *
  * Test helper functions
@@ -124,10 +124,9 @@ DependencyProxyMock<passBlocksThrough>::andThenReturn(
 
 template<BlockPassthrough passBlocksThrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-DependencyProxyMock<passBlocksThrough>::execute(AqlCallStack& stack) {
+DependencyProxyMock<passBlocksThrough>::execute(AqlCallStack const& /*stack*/) {
   TRI_ASSERT(_block != nullptr);
-  SkipResult res{};
-  return {arangodb::aql::ExecutionState::DONE, res, _block};
+  return {arangodb::aql::ExecutionState::DONE, SkipResult{}, _block};
 }
 
 template<BlockPassthrough passBlocksThrough>
@@ -145,7 +144,7 @@ MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
     arangodb::ResourceMonitor& monitor, RegIdSet const& inputRegisters,
     ::arangodb::aql::RegisterCount nrRegisters, size_t nrDeps)
     : DependencyProxy<passBlocksThrough>({}, nrRegisters),
-      _itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {
+      _itemBlockManager(monitor) {
   _dependencyMocks.reserve(nrDeps);
   for (size_t i = 0; i < nrDeps; ++i) {
     _dependencyMocks.emplace_back(

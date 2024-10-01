@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,9 @@
 #pragma once
 
 #include "Auth/TokenCache.h"
+#include "Basics/Result.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
@@ -34,6 +36,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 
 namespace arangodb {
@@ -93,6 +96,8 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   virtual void start() = 0;
   virtual void stop() = 0;
 
+  void setStatistics(uint64_t id, RequestStatistics::Item&& stat);
+
  protected:
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
@@ -117,9 +122,11 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                       std::unique_ptr<GeneralResponse> response,
                       ServerState::Mode mode);
 
-  RequestStatistics::Item const& acquireStatistics(uint64_t);
-  RequestStatistics::Item const& statistics(uint64_t);
-  RequestStatistics::Item stealStatistics(uint64_t);
+  [[nodiscard]] ConnectionStatistics::Item acquireConnectionStatistics();
+  [[nodiscard]] RequestStatistics::Item const& acquireRequestStatistics(
+      uint64_t id);
+  [[nodiscard]] RequestStatistics::Item const& requestStatistics(uint64_t id);
+  [[nodiscard]] RequestStatistics::Item stealRequestStatistics(uint64_t id);
 
   /// @brief send response including error response body
   void sendErrorResponse(rest::ResponseCode, rest::ContentType,
@@ -147,7 +154,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                                           ServerState::Mode mode);
 
   /// decompress content
-  bool handleContentEncoding(GeneralRequest&);
+  Result handleContentEncoding(GeneralRequest&);
 
  private:
   void handleRequestStartup(std::shared_ptr<RestHandler>);
@@ -155,16 +162,26 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   bool handleRequestAsync(std::shared_ptr<RestHandler>,
                           uint64_t* jobId = nullptr);
 
+  mutable std::mutex _statisticsMutex;
+  containers::FlatHashMap<uint64_t, RequestStatistics::Item> _statisticsMap;
+
  protected:
   GeneralServer& _server;
+  GeneralServerFeature& _generalServerFeature;
   ConnectionInfo _connectionInfo;
 
   ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
 
-  mutable std::mutex _statisticsMutex;
-  std::unordered_map<uint64_t, RequestStatistics::Item> _statisticsMap;
+  // contains value of "x-arango-source"
+  std::string _requestSource;
+  // whether or not the request was originated by a user (true)
+  // or if it is a cluster-internal request (false).
+  // we use this flag to save some reduce verbosity of responses
+  // (verbose user-facing HTTP response headers) in
+  // cluster-internal-only traffic.
+  bool _isUserRequest;
 };
 }  // namespace rest
 }  // namespace arangodb

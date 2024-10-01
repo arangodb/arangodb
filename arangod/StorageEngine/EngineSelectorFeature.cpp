@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -77,12 +77,21 @@ EngineSelectorFeature::EngineSelectorFeature(Server& server)
 
 void EngineSelectorFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--server.storage-engine",
-                     "storage engine type "
-                     "(note that the mmfiles engine is unavailable since "
-                     "v3.7.0 and cannot be used anymore)",
-                     new DiscreteValuesParameter<StringParameter>(
-                         &_engineName, availableEngineNames()));
+  options
+      ->addOption("--server.storage-engine",
+                  "The storage engine type "
+                  "(note that the MMFiles engine is unavailable since "
+                  "v3.7.0 and cannot be used anymore).",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_engineName, availableEngineNames()))
+      .setLongDescription(R"(ArangoDB's storage engine is based on RocksDB, see
+http://rocksdb.org. It is the only available engine from ArangoDB v3.7 onwards.
+
+The storage engine type needs to be the same for an entire deployment.
+Live switching of storage engines on already installed systems isn't supported.
+Configuring the wrong engine (not matching the previously used one) results
+in the server refusing to start. You may use `auto` to let ArangoDB choose the
+previously used one.)");
 }
 
 void EngineSelectorFeature::prepare() {
@@ -282,12 +291,13 @@ StorageEngine& EngineSelectorFeature::engine() {
 template<typename As, typename std::enable_if<
                           std::is_base_of<StorageEngine, As>::value, int>::type>
 As& EngineSelectorFeature::engine() {
+  TRI_ASSERT(dynamic_cast<As*>(_engine) != nullptr);
   return *static_cast<As*>(_engine);
 }
 template ClusterEngine& EngineSelectorFeature::engine<ClusterEngine>();
 template RocksDBEngine& EngineSelectorFeature::engine<RocksDBEngine>();
 
-std::string_view EngineSelectorFeature::engineName() {
+std::string_view EngineSelectorFeature::engineName() const {
   return _engine->typeName();
 }
 

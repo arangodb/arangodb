@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,7 +60,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     arangodb::OperationOptions options(arangodb::ExecContext::current());
     {
-      TRI_vocbase_t* vocbase =
+      auto vocbase =
           dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
       std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::methods::Collections::createSystem(
@@ -104,10 +104,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{}");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test view id same type (validate only meta)
@@ -116,10 +116,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": 123 }");
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), lhs->slice(), rhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), rhs->slice(), lhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
   }
 
   // test view id not same type (at least one non-string)
@@ -128,10 +128,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"abc\" }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test view id prefix (up to /) not equal (at least one empty)
@@ -140,10 +140,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"abc\" }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test view id prefix (up to /) not equal (shorter does not end with '/')
@@ -152,10 +152,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"abc\" }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test view id prefix (up to /) not equal (shorter ends with '/' but not a
@@ -165,10 +165,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"ab/c\" }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test view id prefix (up to /) equal
@@ -177,10 +177,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
     auto rhs = arangodb::velocypack::Parser::fromJson("{ \"view\": \"a/bc\" }");
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), lhs->slice(), rhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), rhs->slice(), lhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
   }
 
   // test meta init fail
@@ -190,10 +190,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
         "{ \"view\": \"a/bc\", \"includeAllFields\": 42 }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test meta not equal
@@ -204,10 +204,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
         "{ \"view\": \"a/bc\", \"includeAllFields\": true }");
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), lhs->slice(), rhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
     EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::equal(
                               server.server(), rhs->slice(), lhs->slice(),
-                              irs::string_ref::NIL)));
+                              std::string_view{})));
   }
 
   // test equal
@@ -218,10 +218,10 @@ TEST_F(IResearchLinkHelperTestSingle, test_equals) {
         "{ \"view\": \"a/bc\", \"includeAllFields\": false }");
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), lhs->slice(), rhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
     EXPECT_TRUE((true == arangodb::iresearch::IResearchLinkHelper::equal(
                              server.server(), rhs->slice(), lhs->slice(),
-                             irs::string_ref::NIL)));
+                             std::string_view{})));
   }
 
   // test analyzers with definitions
@@ -318,7 +318,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_validate_cross_db_analyzer) {
     ASSERT_TRUE(analyzers
                     .emplace(emplaceResult,
                              "testVocbaseWithAnalyzer::myIdentity", "identity",
-                             VPackParser::fromJson("{ }")->slice())
+                             VPackParser::fromJson("{ }")->slice(),
+                             arangodb::transaction::OperationOriginTestCase{})
                     .ok());
   }
 
@@ -363,7 +364,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -379,8 +381,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
           { "name": "testAnalyzer0", "type": "identity", "properties":{}, "features":[]}
         ],
         "analyzers": ["testAnalyzer0" ],
-        "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"lz4"}]
-    })");
+        "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"lz4"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
@@ -401,7 +406,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -431,7 +437,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
   }
 
   // analyzer single-server, for creation, missing "testAanalyzer0"
@@ -450,7 +457,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
   }
 
   // analyzer single-server (inRecovery), for creation
@@ -464,9 +472,9 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::velocypack::Builder builder;
     builder.openObject();
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
@@ -477,7 +485,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -493,8 +502,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[] }
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"lz4"}]
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"lz4"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
@@ -508,9 +520,9 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::velocypack::Builder builder;
     builder.openObject();
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
@@ -521,7 +533,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -547,9 +560,9 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::velocypack::Builder builder;
     builder.openObject();
     EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
@@ -560,9 +573,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
-    auto expected_json = arangodb::velocypack::Parser::fromJson(R"({
+    auto expected_json =
+        arangodb::velocypack::Parser::fromJson(R"({
       "type":"arangosearch",
       "version":0,
       "primarySort":[],
@@ -575,8 +590,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}]
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+                                               ",\"optimizeTopK\": []"
+#endif
+                                               "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
   // with primary sort
@@ -591,9 +609,9 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::velocypack::Builder builder;
     builder.openObject();
     arangodb::iresearch::IResearchViewSort sort;
@@ -607,7 +625,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -623,8 +642,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}]
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
   // with primary sort and custom primary compression
@@ -639,9 +661,9 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::velocypack::Builder builder;
     builder.openObject();
     arangodb::iresearch::IResearchViewSort sort;
@@ -656,7 +678,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -672,8 +695,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}]
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
@@ -690,9 +716,9 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::velocypack::Builder builder;
     builder.openObject();
     arangodb::iresearch::IResearchViewSort sort;
@@ -707,7 +733,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -723,8 +750,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}]
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
@@ -740,9 +770,9 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::velocypack::Builder builder;
     builder.openObject();
     arangodb::iresearch::IResearchViewSort sort;
@@ -757,7 +787,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -773,8 +804,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}]
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
@@ -791,9 +825,9 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::velocypack::Builder builder;
     builder.openObject();
     arangodb::iresearch::IResearchViewSort sort;
@@ -820,9 +854,9 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restore = irs::make_finally([&before]() noexcept -> void {
+    irs::Finally restore = [&before]() noexcept {
       StorageEngineMock::recoveryStateResult = before;
-    });
+    };
     arangodb::velocypack::Builder builder;
     builder.openObject();
     arangodb::iresearch::IResearchViewSort sort;
@@ -837,7 +871,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -855,8 +890,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}]
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 }

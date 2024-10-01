@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -77,7 +77,7 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
       // so it cannot match
       continue;
     }
-    if (path.compare(0, pSize, p) == 0) {
+    if (path.starts_with(p)) {
       prefix = &p;
       break;  // first match is longest match
     }
@@ -103,12 +103,12 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
   // present
   TRI_ASSERT(it != _constructors.end());
 
-  size_t n = path.find_first_of('/', l);
+  size_t n = path.find('/', l);
 
   while (n != std::string::npos) {
     req->addSuffix(path.substr(l, n - l));
     l = n + 1;
-    n = path.find_first_of('/', l);
+    n = path.find('/', l);
   }
 
   if (l < path.size()) {

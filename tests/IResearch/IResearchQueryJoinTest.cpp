@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,11 +22,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
-
-#include "Aql/OptimizerRule.h"
+#include <absl/strings/str_replace.h>
 
 #include <regex>
+
+#include "Aql/OptimizerRule.h"
+#include "IResearchQueryCommon.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 namespace arangodb::tests {
 namespace {
@@ -81,9 +84,10 @@ class QueryJoin : public QueryTest {
     {
       OperationOptions opt;
 
-      transaction::Methods trx(transaction::StandaloneContext::Create(_vocbase),
-                               collections, collections, collections,
-                               transaction::Options());
+      transaction::Methods trx(
+          transaction::StandaloneContext::create(
+              _vocbase, transaction::OperationOriginTestCase{}),
+          collections, collections, collections, transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into entities collection
@@ -226,7 +230,9 @@ class QueryJoin : public QueryTest {
       OperationOptions opt;
 
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(_vocbase), EMPTY,
+          transaction::StandaloneContext::create(
+              _vocbase, transaction::OperationOriginTestCase{}),
+          EMPTY,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
           EMPTY, transaction::Options());
@@ -234,7 +240,7 @@ class QueryJoin : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -257,7 +263,7 @@ class QueryJoin : public QueryTest {
 
       // insert into testCollection2
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential_order.json");
 
@@ -325,7 +331,9 @@ class QueryJoin : public QueryTest {
       OperationOptions opt;
 
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(_vocbase), EMPTY,
+          transaction::StandaloneContext::create(
+              _vocbase, transaction::OperationOriginTestCase{}),
+          EMPTY,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
           EMPTY, transaction::Options());
@@ -333,7 +341,7 @@ class QueryJoin : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -360,7 +368,7 @@ class QueryJoin : public QueryTest {
 
       // insert into testCollection2
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential_order.json");
 
@@ -452,7 +460,7 @@ class QueryJoin : public QueryTest {
       EXPECT_TRUE(result.isArray());
 
       velocypack::ArrayIterator resultIt(result);
-      ASSERT_EQ(10000, resultIt.size());
+      ASSERT_EQ(10000U, resultIt.size());
 
       // Check documents
       for (; resultIt.valid(); resultIt.next()) {
@@ -1434,7 +1442,8 @@ class QueryJoin : public QueryTest {
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
       ASSERT_TRUE(std::regex_search(
           std::string(queryResult.errorMessage()),
-          std::regex("variable 'x' is used in search function.*CUSTOMSCORER")));
+          std::regex(
+              "variable '.+' is used in search function.*CUSTOMSCORER")));
 
       queryResult = executeQuery(_vocbase, query);
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1653,7 +1662,8 @@ class QueryJoin : public QueryTest {
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
       ASSERT_TRUE(std::regex_search(
           std::string(queryResult.errorMessage()),
-          std::regex("variable 'x' is used in search function.*CUSTOMSCORER")));
+          std::regex(
+              "variable '.+' is used in search function.*CUSTOMSCORER")));
 
       queryResult = executeQuery(_vocbase, query);
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1672,7 +1682,8 @@ class QueryJoin : public QueryTest {
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
       ASSERT_TRUE(std::regex_search(
           std::string(queryResult.errorMessage()),
-          std::regex("variable 'x' is used in search function.*CUSTOMSCORER")));
+          std::regex(
+              "variable '.+' is used in search function.*CUSTOMSCORER")));
 
       queryResult = executeQuery(_vocbase, query);
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1682,7 +1693,7 @@ class QueryJoin : public QueryTest {
 
 class QueryJoinView : public QueryJoin {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 
   void createView1() {
     {
@@ -1750,7 +1761,7 @@ class QueryJoinView : public QueryJoin {
 
 class QueryJoinSearch : public QueryJoin {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 
   void createSearch1() {
     auto createIndexName = [&](std::string_view name) {
@@ -1763,13 +1774,13 @@ class QueryJoinSearch : public QueryJoin {
           version(), name));
       auto collection = _vocbase.lookupCollection(name);
       EXPECT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     };
     auto createSearchName = [&](std::string_view name) {
-      auto createJson = velocypack::Parser::fromJson(
-          absl::Substitute(R"({ "name": "$0_view", "type": "search" })", name));
-      auto logicalView = _vocbase.createView(createJson->slice());
+      auto createJson = velocypack::Parser::fromJson(absl::Substitute(
+          R"({ "name": "$0_view", "type": "search-alias" })", name));
+      auto logicalView = _vocbase.createView(createJson->slice(), false);
       ASSERT_FALSE(!logicalView);
       auto& implView = basics::downCast<iresearch::Search>(*logicalView);
       auto updateJson = velocypack::Parser::fromJson(absl::Substitute(

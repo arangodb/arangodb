@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashMap.h"
@@ -33,8 +32,8 @@
 namespace arangodb {
 
 namespace replication2 {
-namespace replicated_log {
-struct QuickLogStatus;
+namespace maintenance {
+struct LogStatus;
 }
 namespace replicated_state {
 struct StateStatus;
@@ -43,6 +42,7 @@ class LogId;
 }  // namespace replication2
 
 class HeartbeatThread;
+struct ShardID;
 
 struct DBServerAgencySyncResult {
   bool success;
@@ -68,28 +68,29 @@ class DBServerAgencySync {
   explicit DBServerAgencySync(ArangodServer& server,
                               HeartbeatThread* heartbeat);
 
- public:
   void work();
 
+  // equivalent of ReplicatedLogStatusMapByDatabase
   using LocalLogsMap = std::unordered_map<
-      std::string, std::unordered_map<
-                       arangodb::replication2::LogId,
-                       arangodb::replication2::replicated_log::QuickLogStatus>>;
-  using LocalStatesMap = std::unordered_map<
       std::string,
       std::unordered_map<arangodb::replication2::LogId,
-                         std::optional<arangodb::replication2::
-                                           replicated_state::StateStatus>>>;
+                         arangodb::replication2::maintenance::LogStatus>>;
+
+  // equivalent of ShardIdToLogIdMapByDatabase
+  using LocalShardsToLogsMap = std::unordered_map<
+      std::string, std::unordered_map<ShardID, arangodb::replication2::LogId>>;
 
   /**
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
    */
-  arangodb::Result getLocalCollections(
+  Result getLocalCollections(
       containers::FlatHashSet<std::string> const& dirty,
       containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>&
           collections,
-      LocalLogsMap& replLogs, LocalStatesMap& replStates);
+      LocalLogsMap& replLogs, LocalShardsToLogsMap& localShardIdToLogId);
+
+  double requestTimeout() const noexcept;
 
  private:
   DBServerAgencySyncResult execute();
@@ -97,5 +98,6 @@ class DBServerAgencySync {
  private:
   ArangodServer& _server;
   HeartbeatThread* _heartbeat;
+  double _requestTimeout;
 };
 }  // namespace arangodb

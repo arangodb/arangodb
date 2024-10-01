@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,11 +28,15 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/DatabaseGuard.h"
@@ -85,6 +89,9 @@ bool UpdateCollection::first() {
   auto const& props = properties();
   Result res;
 
+  std::string from;
+  _description.get("from", from);
+
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
@@ -95,7 +102,7 @@ bool UpdateCollection::first() {
     if (found.ok()) {
       TRI_ASSERT(coll);
       LOG_TOPIC("60543", DEBUG, Logger::MAINTENANCE)
-          << "Updating local collection " + shard;
+          << "Updating local collection " << shard;
 
       // If someone (the Supervision most likely) has thrown
       // out a follower from the plan, then the leader
@@ -117,8 +124,18 @@ bool UpdateCollection::first() {
           followers->remove(s);
         }
       }
-      OperationOptions options(ExecContext::current());
-      res.reset(Collections::updateProperties(*coll, props, options));
+
+      res.reset(std::invoke([&, coll = std::move(coll)]() mutable -> Result {
+        if (vocbase.replicationVersion() == replication::Version::TWO) {
+          return updateCollectionReplication2(
+              shard, collection, _description.properties()->sharedSlice(),
+              std::move(coll));
+        }
+
+        OperationOptions options(ExecContext::current());
+        return Collections::updateProperties(*coll, props, options)
+            .waitAndGet();
+      }));
       result(res);
 
       if (!res.ok()) {
@@ -130,8 +147,8 @@ bool UpdateCollection::first() {
 
     } else {
       std::stringstream error;
-      error << "failed to lookup local collection " << shard
-            << "in database " + database;
+      error << "failed to lookup local collection " << shard << "in database "
+            << database;
       LOG_TOPIC("620fb", ERR, Logger::MAINTENANCE) << error.str();
       res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       result(res);
@@ -147,8 +164,16 @@ bool UpdateCollection::first() {
   }
 
   if (res.fail()) {
-    _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), res);
+    if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+        res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+      // Temporary unavailability of the replication2 leader should not stop
+      // this server from updating the shard eventually.
+      // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+      std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    } else {
+      _feature.storeShardError(database, collection, shard,
+                               _description.get(SERVER_ID), res);
+    }
   }
 
   return false;
@@ -158,4 +183,17 @@ void UpdateCollection::setState(ActionState state) {
     _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
+}
+
+auto UpdateCollection::updateCollectionReplication2(
+    ShardID const& shard, CollectionID const& collection,
+    velocypack::SharedSlice props,
+    std::shared_ptr<LogicalCollection> coll) noexcept -> Result {
+  return basics::catchToResult([coll = std::move(coll),
+                                props = std::move(props), &collection,
+                                &shard]() mutable {
+    return coll->getDocumentStateLeader()
+        ->modifyShard(shard, collection, std::move(props))
+        .waitAndGet();
+  });
 }

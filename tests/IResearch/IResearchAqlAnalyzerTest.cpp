@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,7 +38,7 @@
 class IResearchAqlAnalyzerTest : public IResearchQueryTest {};
 
 namespace {
-constexpr irs::string_ref AQL_ANALYZER_NAME{"aql"};
+constexpr std::string_view AQL_ANALYZER_NAME{"aql"};
 
 struct analyzer_token {
   std::string value;
@@ -70,9 +71,10 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
     ASSERT_NE(expected_token, expected_tokens.end());
     SCOPED_TRACE(testing::Message("Expected Term:") << expected_token->value);
     if (value_type->value == arangodb::iresearch::AnalyzerValueType::String) {
-      auto term_value = std::string(irs::ref_cast<char>(term->value).c_str(),
+      auto term_value = std::string(irs::ViewCast<char>(term->value).data(),
                                     term->value.size());
-      ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value),
+      ASSERT_EQ(irs::ViewCast<irs::byte_type>(
+                    std::string_view{expected_token->value}),
                 term->value);
     } else {
       ASSERT_EQ(0, arangodb::basics::VelocyPackHelper::compare(

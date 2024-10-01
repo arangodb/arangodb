@@ -6,56 +6,17 @@
 **Do not forget to update `../LICENSES-OTHER-COMPONENTS.md`!**
 
 ---
-## abseil
+## abseil-cpp
 
-Just update code and directory name (commit hash) and apply patch
+13708db87b1ab69f4f2b3214f3f51e986546f282
+abseil-cpp is pulled in as a submodule - the exact commit can be found there.
 
-```
-diff --git a/3rdParty/abseil-cpp/7f850b3167fb38e6b4a9ce1824e6fabd733b5d62/absl/flags/commandlineflag.h b/3rdParty/abseil-cpp/7f850b3167fb38e6b4a9ce1824e6fabd733b5d62/absl/flags/commandlineflag.h
-index f2fa08977fd..8e97fdb0ca4 100644
---- a/3rdParty/abseil-cpp/7f850b3167fb38e6b4a9ce1824e6fabd733b5d62/absl/flags/commandlineflag.h
-+++ b/3rdParty/abseil-cpp/7f850b3167fb38e6b4a9ce1824e6fabd733b5d62/absl/flags/commandlineflag.h
-@@ -153,7 +153,7 @@ class CommandLineFlag {
-   bool ParseFrom(absl::string_view value, std::string* error);
- 
-  protected:
--  ~CommandLineFlag() = default;
-+  virtual ~CommandLineFlag() = default;
- 
-  private:
-   friend class flags_internal::PrivateHandleAccessor;
-diff --git a/3rdParty/abseil-cpp/7f850b3167fb38e6b4a9ce1824e6fabd733b5d62/absl/strings/numbers.h b/3rdParty/abseil-cpp/7f850b3167fb38e6b4a9ce1824e6fabd733b5d62/absl/strings/numbers.h
-index 3ed24669280..ca0f37aa8d1 100644
---- a/3rdParty/abseil-cpp/7f850b3167fb38e6b4a9ce1824e6fabd733b5d62/absl/strings/numbers.h
-+++ b/3rdParty/abseil-cpp/7f850b3167fb38e6b4a9ce1824e6fabd733b5d62/absl/strings/numbers.h
-@@ -24,7 +24,26 @@
- #define ABSL_STRINGS_NUMBERS_H_
- 
- #ifdef __SSE4_2__
-+#if defined(_MSC_VER)
-+/* Microsoft C/C++-compatible compiler */
-+#include <intrin.h>
-+#elif defined(__GNUC__) && (defined(__x86_64__) || defined(__i386__))
-+/* GCC-compatible compiler, targeting x86/x86-64 */
- #include <x86intrin.h>
-+#elif defined(__GNUC__) && defined(__ARM_NEON__)
-+/* GCC-compatible compiler, targeting ARM with NEON */
-+#include <arm_neon.h>
-+#elif defined(__GNUC__) && defined(__IWMMXT__)
-+/* GCC-compatible compiler, targeting ARM with WMMX */
-+#include <mmintrin.h>
-+#elif (defined(__GNUC__) || defined(__xlC__)) && \
-+    (defined(__VEC__) || defined(__ALTIVEC__))
-+/* XLC or GCC-compatible compiler, targeting PowerPC with VMX/VSX */
-+#include <altivec.h>
-+#elif defined(__GNUC__) && defined(__SPE__)
-+/* GCC-compatible compiler, targeting PowerPC with SPE */
-+#include <spe.h>
-+#endif
- #endif
- 
- #include <cstddef>
-```
+The submodule repository is located at https://github.com/arangodb/abseil-cpp
+
+We have some changes for usage in arangodb and iresearch, so we maintain our own branch with
+these changes called "master".
+To update to a new version pull from upstream (https://github.com/google/abseil-cpp)
+and rebase onto the new version the our "master" branch.
 
 ## boost
 
@@ -74,7 +35,9 @@ Custom boost locator
 
 ## date
 
-Forward port of C++20 date/time class
+Forward port of C++20 date/time class. We have patched this slightly to
+avoid a totally unnecessary user database lookup which poses problems
+with static glibc builds and nsswitch.
 
 ## fakeit
 
@@ -103,7 +66,44 @@ Then copy `temp_modules.h` to `modules.h`, and fix the paths.
 
 ## jemalloc
 
-Only used on Linux/Mac, still uses autofoo.
+The following change has been made to jemalloc compared to upstream commit
+e4817c8d89a2a413e835c4adeab5c5c4412f9235:
+
+```diff
+diff --git a/3rdParty/jemalloc/jemalloc/src/pages.c b/3rdParty/jemalloc/jemalloc/src/pages.c
+index 8cf2fd9f876..11489b3f03d 100644
+--- a/3rdParty/jemalloc/jemalloc/src/pages.c
++++ b/3rdParty/jemalloc/jemalloc/src/pages.c
+@@ -37,7 +37,7 @@ size_t        os_page;
+ 
+ #ifndef _WIN32
+ #  define PAGES_PROT_COMMIT (PROT_READ | PROT_WRITE)
+-#  define PAGES_PROT_DECOMMIT (PROT_NONE)
++#  define PAGES_PROT_DECOMMIT (PROT_READ | PROT_WRITE)
+ static int     mmap_flags;
+ #endif
+ static bool    os_overcommits;
+```
+
+This change is necessary to keep, otherwise jemalloc will use different memory protection
+flags when allocating memory than when decommitting it. 
+
+For example, when allocating the memory segment 0x1000 to 0x3fff with protections 
+PROT_READ | PROT_WRITE, the kernel creates a single memory mapping entry with the segment's
+lower and upper bound and the memory protection flags.
+When later decommitting only a part of the segment, e.g. (0x2000 to 0x2fff) with the
+protection flags PROT_NONE, the kernel would split the original memory mapping entry
+into the following 3 entries because of the changed protection flags:
+- 0x1000 to 0x1fff with PROT_READ | PROT_WRITE
+- 0x2000 to 0x2fff with PROT_NONE
+- 0x3000 to 0x3fff with PROT_READ | PROT_WRITE
+That way the kernel's memory mapping table will grow quickly and can easily exceed the 
+amount of memory mappings allowed by vm.max_map_count.
+
+The patch above helps to prevent this, because we are using the same protection flags
+when allocating memory and when decommitting it.
+
+More info can be found in https://github.com/jemalloc/jemalloc/issues/1328.
 
 ## libunwind
 
@@ -141,287 +141,65 @@ RocksDB is pulled in as a submodule - the exact commit can be found there.
 The submodule repository is located at https://github.com/arangodb/rocksdb
 
 We have some changes for usage in arangodb, so we maintain our own branch with
-these changes called "arango-dev".
+these changes called "arango-dev". 
 To update to a new version pull from upstream (https://github.com/facebook/rocksdb)
 and merge the new version into the "arango-dev" branch.
+
+There is also a yet-unmerged branch "feature/rocksdb-latest" in that repo that
+includes the latest version of RocksDB for a future potential upgrade.
+It is based on RocksDB 9.5 as of the time of this writing (July 2024).
+
+Here is a bug fix, which we did first in our RocksDB fork:
+  https://github.com/arangodb/rocksdb/pull/7
+
+There is a corresponding PR in the main repository:
+  https://github.com/facebook/rocksdb/pull/12983
 
 ## s2geometry
 
 Just update code and directory name (commit hash) and apply patch
 
 ```
-diff --git a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/CMakeLists.txt b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/CMakeLists.txt
-index 67d81cd394f..7d67c8a7c17 100644
---- a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/CMakeLists.txt
-+++ b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/CMakeLists.txt
-@@ -19,7 +19,7 @@ endif()
- # undefined symbol errors since ABSL_HAVE_STD_STRING_VIEW etc will
- # end up defined differently.  There is probably a better way to achieve
- # this than assuming what absl used.
--set(CMAKE_CXX_STANDARD 11)
-+set(CMAKE_CXX_STANDARD 17)
- set(CMAKE_CXX_STANDARD_REQUIRED ON)
- # No compiler-specific extensions, i.e. -std=c++11, not -std=gnu++11.
- set(CMAKE_CXX_EXTENSIONS OFF)
-@@ -67,7 +67,6 @@ if (WITH_GFLAGS)
-     add_definitions(-DS2_USE_GFLAGS)
- endif()
- 
--find_package(absl REQUIRED)
- find_package(OpenSSL REQUIRED)
- # pthreads isn't used directly, but this is still required for std::thread.
- find_package(Threads REQUIRED)
-@@ -208,11 +207,15 @@ add_library(s2
-             src/s2/util/math/exactfloat/exactfloat.cc
-             src/s2/util/math/mathutil.cc
-             src/s2/util/units/length-units.cc)
--add_library(s2testing STATIC
--            src/s2/s2builderutil_testing.cc
--            src/s2/s2shapeutil_testing.cc
--            src/s2/s2testing.cc
--            src/s2/thread_testing.cc)
-+
-+if (GTEST_ROOT)
-+  add_library(s2testing STATIC
-+              src/s2/s2builderutil_testing.cc
-+              src/s2/s2shapeutil_testing.cc
-+              src/s2/s2testing.cc
-+              src/s2/thread_testing.cc)
-+endif()
-+
- target_link_libraries(
-     s2
-     ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES} ${OPENSSL_LIBRARIES}
-@@ -236,11 +239,14 @@ target_link_libraries(
-     absl::type_traits
-     absl::utility
-     ${CMAKE_THREAD_LIBS_INIT})
--target_link_libraries(
--    s2testing
--    ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES}
--    absl::memory
--    absl::strings)
-+
-+if (GTEST_ROOT)
-+    target_link_libraries(
-+      s2testing
-+      ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES}
-+      absl::memory
-+      absl::strings)
-+endif()
- 
- # Allow other CMake projects to use this one with:
+diff --git a/3rdParty/s2geometry/master/CMakeLists.txt b/3rdParty/s2geometry/master/CMakeLists.txt
+index 4044cd90a00..f22895951e7 100644
+--- a/3rdParty/s2geometry/master/CMakeLists.txt
++++ b/3rdParty/s2geometry/master/CMakeLists.txt
+@@ -260,13 +260,14 @@ endif()
  # list(APPEND CMAKE_MODULE_PATH "<path_to_s2geometry_dir>/third_party/cmake")
-@@ -409,7 +415,14 @@ install(FILES src/s2/util/math/exactfloat/exactfloat.h
- install(FILES src/s2/util/units/length-units.h
-               src/s2/util/units/physical-units.h
-         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/s2/util/units")
--install(TARGETS s2 s2testing
-+
-+if (GTEST_ROOT)
-+    set(S2_TARGETS s2 s2testing)
-+else()
-+    set(S2_TARGETS s2)
-+endif()
-+
-+install(TARGETS ${S2_TARGETS}
+ # add_subdirectory(<path_to_s2geometry_dir> s2geometry)
+ # target_link_libraries(<target_name> s2)
+-target_include_directories(s2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
++target_include_directories(s2 SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+ 
+ # Add version information to the target
+ set_target_properties(s2 PROPERTIES
+     SOVERSION ${PROJECT_VERSION_MAJOR}
+     VERSION ${PROJECT_VERSION})
+ 
++#[[
+ # We don't need to install all headers, only those
+ # transitively included by s2 headers we are exporting.
+ install(FILES src/s2/_fp_contract_off.h
+@@ -438,6 +439,7 @@ install(TARGETS ${S2_TARGETS}
          RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
          ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
          LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
-@@ -548,7 +561,7 @@ if (GTEST_ROOT)
-   endforeach()
- endif()
++]]
  
--if (BUILD_EXAMPLES)
-+if (BUILD_EXAMPLES AND TARGET s2testing)
-   add_subdirectory("doc/examples" examples)
- endif()
+ message("GTEST_ROOT: ${GTEST_ROOT}")
+ if (GTEST_ROOT)
+diff --git a/3rdParty/s2geometry/master/src/s2/s2polygon.h b/3rdParty/s2geometry/master/src/s2/s2polygon.h
+index 9981ae0ff89..eb8ca50e8fd 100644
+--- a/3rdParty/s2geometry/master/src/s2/s2polygon.h
++++ b/3rdParty/s2geometry/master/src/s2/s2polygon.h
+@@ -701,6 +701,7 @@ class S2Polygon final : public S2Region {
+   S2Polygon* Clone() const override;
+   S2Cap GetCapBound() const override;  // Cap surrounding rect bound.
+   S2LatLngRect GetRectBound() const override { return bound_; }
++  S2LatLngRect GetSubRegionBound() const { return subregion_bound_; }
+   void GetCellUnionBound(std::vector<S2CellId> *cell_ids) const override;
  
-diff --git a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/base/logging.h b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/base/logging.h
-index b5a26715441..5136b297c43 100644
---- a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/base/logging.h
-+++ b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/base/logging.h
-@@ -62,7 +62,7 @@ class S2LogMessage {
-     : severity_(severity), stream_(stream) {
-     if (enabled()) {
-       stream_ << file << ":" << line << " "
--              << absl::LogSeverityName(severity) << " ";
-+              << absl::LogSeverityName(severity_) << " ";
-     }
-   }
-   ~S2LogMessage() { if (enabled()) stream_ << std::endl; }
-diff --git a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/base/port.h b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/base/port.h
-index 0efaba84248..328393d2ffd 100644
---- a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/base/port.h
-+++ b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/base/port.h
-@@ -59,6 +59,15 @@
- #undef ERROR
- #undef DELETE
- #undef DIFFERENCE
-+#undef S_IRUSR
-+#undef S_IWUSR
-+#undef S_IXUSR
-+#undef S_IRGRP
-+#undef S_IWGRP
-+#undef S_IXGRP
-+#undef S_IROTH
-+#undef S_IWOTH
-+#undef S_IXOTH
- #define STDIN_FILENO 0
- #define STDOUT_FILENO 1
- #define STDERR_FILENO 2
-diff --git a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2edge_crossings_internal.h b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2edge_crossings_internal.h
-index 24877542d54..2d7584389f2 100644
---- a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2edge_crossings_internal.h
-+++ b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2edge_crossings_internal.h
-@@ -104,18 +104,17 @@ class S2Point_PointerRep {
-   const S2Point* p_;
- };
- 
--class S2Point_ValueRep {
-+class S2Point_ValueRep : public S2Point {
-  public:
-   using T = const S2Point &;
--  S2Point_ValueRep() : p_() {}
--  explicit S2Point_ValueRep(const S2Point& p) : p_(p) {}
--  S2Point_ValueRep& operator=(const S2Point& p) { p_ = p; return *this; }
--  operator const S2Point&() const { return p_; }  // Conversion operator.
--  const S2Point& operator*() const { return p_; }
--  const S2Point* operator->() const { return &p_; }
--
-- private:
--  S2Point p_;
-+  S2Point_ValueRep() : S2Point{} {}
-+  explicit S2Point_ValueRep(const S2Point& p) : S2Point{p} {}
-+  S2Point_ValueRep& operator=(const S2Point& p) {
-+    static_cast<S2Point&>(*this) = p;
-+    return *this;
-+  }
-+  const S2Point& operator*() const { return *this; }
-+  const S2Point* operator->() const { return this; }
- };
- 
- }  // namespace internal
-diff --git a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2loop_measures.h b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2loop_measures.h
-index cdc8e87cd8d..fb1df468a10 100644
---- a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2loop_measures.h
-+++ b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2loop_measures.h
-@@ -226,7 +226,7 @@ T GetSurfaceIntegral(S2PointLoopSpan loop,
-   if (loop.size() < 3) return sum;
- 
-   S2Point origin = loop[0];
--  for (int i = 1; i + 1 < loop.size(); ++i) {
-+  for (int i = 1; i + 1 < static_cast<int>(loop.size()); ++i) {
-     // Let V_i be loop[i], let O be the current origin, and let length(A, B)
-     // be the length of edge (A, B).  At the start of each loop iteration, the
-     // "leading edge" of the triangle fan is (O, V_i), and we want to extend
-diff --git a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2polygon.h b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2polygon.h
-index 6ce2ebf8c39..61935099d27 100644
---- a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2polygon.h
-+++ b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2polygon.h
-@@ -1028,10 +1028,10 @@ inline S2Shape::ChainPosition S2Polygon::Shape::chain_position(int e) const {
-     }
-   } else {
-     i = prev_loop_.load(std::memory_order_relaxed);
--    if (e >= start[i] && e < start[i + 1]) {
-+    if (e >= static_cast<int>(start[i]) && e < static_cast<int>(start[i + 1])) {
-       // This edge belongs to the same loop as the previous call.
-     } else {
--      if (e == start[i + 1]) {
-+      if (e == static_cast<int>(start[i + 1])) {
-         // This edge immediately follows the loop from the previous call.
-         // Note that S2Polygon does not allow empty loops.
-         ++i;
-diff --git a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2region_coverer.h b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2region_coverer.h
-index 575f74c3ad4..1969b320cb7 100644
---- a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2region_coverer.h
-+++ b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/s2region_coverer.h
-@@ -269,7 +269,14 @@ class S2RegionCoverer {
-     S2Cell cell;
-     bool is_terminal;        // Cell should not be expanded further.
-     int num_children = 0;    // Number of children that intersect the region.
-+#ifdef _MSC_VER
-+#pragma warning(push)
-+#pragma warning(disable:4200)
-+#endif
-     Candidate* children[0];  // Actual size may be 0, 4, 16, or 64 elements.
-+#ifdef _MSC_VER
-+#pragma warning(pop)
-+#endif
-   };
- 
-   // If the cell intersects the given region, return a new candidate with no
-diff --git a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/util/coding/coder.h b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/util/coding/coder.h
-index f6556774c11..9b0d959d2f9 100644
---- a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/util/coding/coder.h
-+++ b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/util/coding/coder.h
-@@ -134,7 +134,7 @@ class Encoder {
- 
-   // REQUIRES: length() >= N
-   // Removes the last N bytes out of the encoded buffer
--  void RemoveLast(size_t N) { writer().skip(-N); }
-+  void RemoveLast(size_t N) { writer().skip(-static_cast<ptrdiff_t>(N)); }
- 
-   // REQUIRES: length() >= N
-   // Removes the last length()-N bytes to make the encoded buffer have length N
-@@ -495,7 +495,7 @@ inline void DecoderExtensions::FillArray(Decoder* array, int num_decoders) {
-                 "Decoder must be trivially copy-assignable");
-   static_assert(absl::is_trivially_destructible<Decoder>::value,
-                 "Decoder must be trivially destructible");
--  std::memset(array, 0, num_decoders * sizeof(Decoder));
-+  std::memset(reinterpret_cast<char*>(array), 0, num_decoders * sizeof(Decoder));
- }
- 
- inline unsigned char Decoder::get8() {
-diff --git a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/util/math/vector.h b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/util/math/vector.h
-index d9b7043a39c..2718c16e5a4 100644
---- a/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/util/math/vector.h
-+++ b/3rdParty/s2geometry/0e7b146184fbf119e60ceaf176c2b580c9d2cef4/src/s2/util/math/vector.h
-@@ -50,6 +50,7 @@ namespace internal_vector {
- // CRTP base class for all Vector templates.
- template <template <typename> class VecTemplate, typename T, std::size_t N>
- class BasicVector {
-+ public:
-   using D = VecTemplate<T>;
- 
-  protected:
-@@ -97,12 +98,6 @@ class BasicVector {
-     return static_cast<const D&>(*this).Data()[b];
-   }
- 
--  // TODO(user): Relationals should be nonmembers.
--  bool operator==(const D& b) const {
--    const T* ap = static_cast<const D&>(*this).Data();
--    return std::equal(ap, ap + this->Size(), b.Data());
--  }
--  bool operator!=(const D& b) const { return !(AsD() == b); }
-   bool operator<(const D& b) const {
-     const T* ap = static_cast<const D&>(*this).Data();
-     const T* bp = b.Data();
-@@ -334,6 +329,23 @@ class BasicVector {
-   }
- };
- 
-+template<typename T, template<typename> class VecTemplate, std::size_t N>
-+bool operator==(const BasicVector<VecTemplate, T, N>& lhs,
-+                const BasicVector<VecTemplate, T, N>& rhs) {
-+  auto& vector1 =
-+      static_cast<const typename BasicVector<VecTemplate, T, N>::D&>(lhs);
-+  auto& vector2 =
-+      static_cast<const typename BasicVector<VecTemplate, T, N>::D&>(rhs);
-+  return std::equal(vector1.Data(), vector1.Data() + vector1.Size(),
-+                    vector2.Data(), vector2.Data() + vector2.Size());
-+}
-+
-+template<typename T, template<typename> class VecTemplate, std::size_t N>
-+bool operator!=(const BasicVector<VecTemplate, T, N>& lhs,
-+                const BasicVector<VecTemplate, T, N>& rhs) {
-+  return !(lhs == rhs);
-+}
-+
- // These templates must be defined outside of BasicVector so that the
- // template specialization match algorithm must deduce 'a'. See the review
- // of cl/119944115.
+   bool Contains(const S2Cell& cell) const override;
 ```
 
 ## snappy
@@ -455,86 +233,74 @@ index 672561e62fc..d6341fd1d7a 100644
  check_symbol_exists("mmap" "sys/mman.h" HAVE_FUNC_MMAP)
  ```
 
+and the following patch to enable building with RTTI, because mixing RTTI and non-RTTI code
+leads to unpredictable problems.
+
+``` 
+diff --git a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
+index 55c7bc88a10..5c3cf68f879 100644
+--- a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
++++ b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
+@@ -53,8 +53,8 @@ if(MSVC)
+   add_definitions(-D_HAS_EXCEPTIONS=0)
+ 
+   # Disable RTTI.
+-  string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
++  #string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
++  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
+ else(MSVC)
+   # Use -Wall for clang and gcc.
+   if(NOT CMAKE_CXX_FLAGS MATCHES "-Wall")
+@@ -78,8 +78,8 @@ else(MSVC)
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
+ 
+   # Disable RTTI.
+-  string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
++  #string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
++  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+ endif(MSVC)
+ 
+ # BUILD_SHARED_LIBS is a standard CMake variable, but we declare it here to make
+```
+
 ## snowball
 
 Don't forget to update `iresearch.build/modules.h`, see [iresearch.build](#iresearchbuild)!
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.
 
-To fix a memleak in the snowball compiler that made our LSan-enabled builds
-fail, we applied the following patch for snowball:
-
-```
-diff --git a/3rdParty/snowball/compiler/driver.c b/3rdParty/snowball/compiler/driver.c
-index d887b1f23ca6..f6c764310d10 100644
---- a/3rdParty/snowball/compiler/driver.c
-+++ b/3rdParty/snowball/compiler/driver.c
-@@ -146,8 +146,17 @@ static int read_options(struct options * o, int argc, char * argv[]) {
-                 continue;
-             }
-             if (eq(s, "-n") || eq(s, "-name")) {
-+                char * new_name;
-+                size_t len;
-+
-                 check_lim(i, argc);
--                o->name = argv[i++];
-+                /* Take a copy of the argument here, because
-+                 * later we will free o->name */
-+                len = strlen(argv[i]);
-+                new_name = malloc(len + 1);
-+                memcpy(new_name, argv[i++], len);
-+                new_name[len] = '\0';
-+                o->name = new_name;
-                 continue;
-             }
- #ifndef DISABLE_JS
-@@ -599,6 +608,7 @@ extern int main(int argc, char * argv[]) {
-             lose_b(p->b); FREE(p); p = q;
-         }
-     }
-+    FREE(o->name);
-     FREE(o);
-     if (space_count) fprintf(stderr, "%d blocks unfreed\n", space_count);
-     return 0;
-diff --git a/3rdParty/snowball/compiler/header.h b/3rdParty/snowball/compiler/header.h
-index 4da74a6f5529..986cc617cb21 100644
---- a/3rdParty/snowball/compiler/header.h
-+++ b/3rdParty/snowball/compiler/header.h
-@@ -338,7 +338,7 @@ struct options {
-     /* for the command line: */
-
-     const char * output_file;
--    const char * name;
-+    char * name;
-     FILE * output_src;
-     FILE * output_h;
-     byte syntax_tree;
-```
-
-The memleak has been reported to the upstream snowball repository via PR
-https://github.com/snowballstem/snowball/pull/166 and may or may not be fixed
-there.
-
 ## swagger-ui
 
 https://github.com/swagger-api/swagger-ui/releases
 
-Our copy of swagger-ui resides at `js/assets/swagger`. The `index.html`
-contains a few tweaks to make swagger-ui work with the web interface.
+Our copy of swagger-ui resides at `js/server/assets/swagger`. The `index.css`
+and `swagger-initializer.js` files contain a few tweaks to make swagger-ui look
+a little nicer and make it work with the web interface.
 
 To upgrade to a newer version:
 
-1. Copy the file `js/assets/swagger/index.html` to a safe location and open it in an editor
-2. Delete all existing files inside `js/assets/swagger` including `index.html`
+1. Copy the files `js/server/assets/swagger/index.css` and
+   `js/server/assets/swagger/swagger-initializer.js`
+   to a safe location and open them in an editor
+2. Delete all existing files inside `js/server/assets/swagger`
 3. Download the release bundle of swagger-ui you want to upgrade to
-4. Copy all files from the bundle's `dist` folder into `js/assets/swagger`
-5. Open the new `js/assets/swagger/index.html` in an editor
-6. Add an HTML comment to the start of the file indicating the release version number,
-   e.g.  `<!-- swagger-ui 1.2.3 -->`
-7. Apply all changes from the old copy to the new file,
-   these are indicated by code comments in the following format:
+4. Copy all files from the bundle's `dist` folder into `js/server/assets/swagger`,
+   but delete the unnecessary `*es-bundle*` and non-bundle files (`swagger-ui.*`)
+5. Open the new `js/server/assets/swagger/index.css` file in an editor
+6. Apply the style adjustments from the old copy to the new file, indicated by
+   code comments in the following format:
+   `/* #region ArangoDB-specific changes */` and `/* #endregion */`
+7. Open the new `js/server/assets/swagger/swagger-initializer.js` file in an editor
+8. Add a comment to the start of the file indicating the release version number,
+   e.g.  `// Version: swagger-ui 5.6.7`
+9. Apply all code changes from the old copy to the new file,
+   indicated by code comments in the following format:
    `#region ArangoDB-specific changes` and `#endregion`
-8. Verify the changes were applied correctly and discard the old copy of `index.html`
+10. Verify the changes were applied correctly and discard the old copies of
+    `index.css` and `swagger-initializer.js`
+11. Update the information in `LICENSES-OTHER-COMPONENTS.md` for swagger-ui
 
 To verify the changes were applied correctly, start the ArangoDB server and
 open the _Rest API_ documentation (_Support_ tab) in the ArangoDB web interface.
@@ -559,12 +325,34 @@ the _Execute_ button.
   user is authorized to execute, the response should not indicate an
   ArangoDB authentication error.
 
-  This confirms the `requestInterceptor`-related changes were applied correctly.
+  This confirms the `requestInterceptor`-related changes for authentication
+  were applied correctly.
+
+* When using the `POST /_api/index#persistent` endpoint with any collection name,
+  the response URL should contain `?collection=<collection-name>` but not contain
+  `#persistent` anywhere.
+
+  This confirms the `requestInterceptor`-related changes for removing
+  fragment identifiers used for disambiguation in OpenAPI were applied correctly.
 
 * All text in the API documentation should use readable color combinations.
   The API documentation should NOT look obviously "broken" or "ugly".
 
-  This indicates the stylistic CSS changes were applied correctly.
+  Text should NOT partially have a font size of 12px or smaller but 14px.
+
+  Inline code should be black, NOT purple, and the background should only have
+  little padding that only slightly overlaps with other inline code in the
+  above or below line.
+
+  Code blocks should have a background, but NOT the individual lines of it.
+  The font weight should be normal, NOT bold.
+
+  Models should NOT have a background, expandible nested models should only have
+  a slightly larger font size than the properties. Property descriptions should
+  NOT use a monospace but a sans-serif font.
+
+  This indicates the stylistic CSS changes were applied correctly and that the
+  HTML IDs and classes are unchanged.
 
 * Scroll to the very end of the page and check the bottom right corner.
   There should be NO badge reading _INVALID_.

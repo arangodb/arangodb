@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,21 +27,22 @@
 #include <rocksdb/env.h>
 #include <rocksdb/status.h>
 
-#include "Basics/Common.h"
-#include "Basics/Mutex.h"
-
-#undef DeleteFile
+#include <mutex>
+#include <string>
+#include <string_view>
 
 namespace arangodb::checksum {
 
 class ChecksumCalculator {
  public:
   ChecksumCalculator();
-  void computeFinalChecksum();
-  void updateIncrementalChecksum(char const* buffer, size_t n);
-  void updateEVPWithContent(char const* buffer, size_t n);
-  [[nodiscard]] std::string getChecksum() const { return _checksum; }
   ~ChecksumCalculator();
+
+  void computeFinalChecksum();
+  void updateIncrementalChecksum(char const* buffer, size_t n) noexcept;
+  void updateEVPWithContent(char const* buffer, size_t n) noexcept;
+
+  [[nodiscard]] std::string getChecksum() const { return _checksum; }
 
  private:
   EVP_MD_CTX* _context;
@@ -51,19 +52,26 @@ class ChecksumCalculator {
 class ChecksumHelper {
  public:
   explicit ChecksumHelper(std::string const& rootPath) : _rootPath{rootPath} {}
-  [[nodiscard]] static bool isFileNameSst(std::string const& fileName);
+
+  [[nodiscard]] static bool isSstFile(std::string_view fileName) noexcept;
+  [[nodiscard]] static bool isBlobFile(std::string_view fileName) noexcept;
+  [[nodiscard]] static bool isHashFile(std::string_view fileName) noexcept;
+
+  void checkMissingShaFiles();
+
   // writeShaFile() also inserts the .sst file name and the checksum in the
   // _fileNamesToHashes table
   bool writeShaFile(std::string const& fileName, std::string const& checksum);
-  [[nodiscard]] static std::string buildShaFileNameFromSst(
-      std::string const& fileName, std::string const& checksum);
+
   [[nodiscard]] std::string removeFromTable(std::string const& fileName);
-  void checkMissingShaFiles();
+
+  [[nodiscard]] static std::string buildShaFileNameFromSstOrBlob(
+      std::string const& fileName, std::string const& checksum);
 
  private:
-  std::string _rootPath;
+  std::string const _rootPath;
 
-  Mutex _calculatedHashesMutex;
+  std::mutex _calculatedHashesMutex;
   std::unordered_map<std::string, std::string> _fileNamesToHashes;
 };
 
@@ -92,11 +100,11 @@ class ChecksumEnv : public rocksdb::EnvWrapper {
       : EnvWrapper(t), _helper{std::make_shared<ChecksumHelper>(path)} {}
 
   rocksdb::Status NewWritableFile(
-      const std::string& fileName,
+      std::string const& fileName,
       std::unique_ptr<rocksdb::WritableFile>* result,
-      const rocksdb::EnvOptions& options) override;
+      rocksdb::EnvOptions const& options) override;
 
-  rocksdb::Status DeleteFile(const std::string& fileName) override;
+  rocksdb::Status DeleteFile(std::string const& fileName) override;
 
   std::shared_ptr<ChecksumHelper> getHelper() const { return _helper; }
 

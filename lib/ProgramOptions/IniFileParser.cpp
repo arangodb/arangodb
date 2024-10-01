@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,13 +24,9 @@
 #include <cstddef>
 #include <map>
 #include <sstream>
-#include <vector>
-
-#include <unicode/unistr.h>
 
 #include "IniFileParser.h"
 
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -39,6 +35,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb::options {
@@ -135,7 +132,7 @@ bool IniFileParser::parseContent(std::string const& filename,
       // found include
       std::string include(match[1].str());
 
-      if (!basics::StringUtils::isSuffix(include, ".conf")) {
+      if (!include.ends_with(".conf")) {
         include += ".conf";
       }
       if (_seen.find(include) != _seen.end()) {

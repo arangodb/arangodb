@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,8 @@
 
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
+#include "Basics/VelocyPackHelper.h"
+#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #include <rocksdb/slice_transform.h>
@@ -30,7 +32,9 @@
 namespace arangodb {
 
 RocksDBOptionsProvider::RocksDBOptionsProvider()
-    : _vpackCmp(std::make_unique<RocksDBVPackComparator>()) {}
+    : _vpackCmp(
+          std::make_unique<RocksDBVPackComparator<
+              arangodb::basics::VelocyPackHelper::SortingMethod::Correct>>()) {}
 
 rocksdb::Options const& RocksDBOptionsProvider::getOptions() const {
   if (!_options) {
@@ -66,11 +70,18 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
     case RocksDBColumnFamilyManager::Family::FulltextIndex:
-    case RocksDBColumnFamilyManager::Family::ZkdIndex:
+    case RocksDBColumnFamilyManager::Family::MdiIndex: {
+      // fixed 8 byte object id prefix
+      result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
+          rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+      break;
+    }
     case RocksDBColumnFamilyManager::Family::ReplicatedLogs: {
       // fixed 8 byte object id prefix
       result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
           rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+      result.enable_blob_files = true;
+      result.min_blob_size = 64;  // TODO just some random value
       break;
     }
 
@@ -84,6 +95,7 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
           rocksdb::NewBlockBasedTableFactory(tableOptions));
       break;
     }
+    case RocksDBColumnFamilyManager::Family::MdiVPackIndex:
     case RocksDBColumnFamilyManager::Family::VPackIndex: {
       // velocypack based index variants with custom comparator
       rocksdb::BlockBasedTableOptions tableOptions(getTableOptions());
@@ -94,6 +106,9 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
       break;
     }
   }
+
+  // set TTL for .sst file compaction
+  result.ttl = periodicCompactionTtl();
 
   return result;
 }

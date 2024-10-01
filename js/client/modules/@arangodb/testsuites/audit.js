@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,7 +37,9 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const fs = require('fs');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const base64Encode = require('internal').base64Encode;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -51,7 +53,7 @@ const testPaths = {
   audit_client: [tu.pathForTesting('common/audit'), tu.pathForTesting('client/audit')]
 };
 
-class runBasicOnArangod extends tu.runOnArangodRunner{
+class runBasicOnArangod extends trs.runOnArangodRunner{
   preRun() {
     // we force to use auth basic, since tests expect it!
     this.instanceManager.httpAuthOptions =  {
@@ -93,28 +95,19 @@ function auditLog(onServer) {
     if (onServer) {
       return new runBasicOnArangod(options, 'audit', serverOptions).run(testCases);
     } else {
-      return new tu.runInArangoshRunner(options, 'audit', serverOptions).run(testCases);
+      return new trs.runInArangoshRunner(options, 'audit', serverOptions).run(testCases);
     }
   };
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['audit_server'] = auditLog(true);
   testFns['audit_client'] = auditLog(false);
 
-  // turn off test by default.
-  opts['skipAudit'] = true;
-
   // only enable them in Enterprise Edition
-  let version = {};
-  if (global.ARANGODB_CLIENT_VERSION) {
-    version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version['enterprise-version']) {
-      opts['skipAudit'] = false;
-    }
-  }
+  opts['skipAudit'] = !isEnterprise();
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -68,8 +68,7 @@ void CheckVersionFeature::collectOptions(
   options->addOldOption("check-version", "database.check-version");
 
   options->addOption(
-      "--database.check-version",
-      "checks the versions of the database and exit",
+      "--database.check-version", "Check the version of the database and exit.",
       new BooleanParameter(&_checkVersion),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
@@ -143,20 +142,26 @@ void CheckVersionFeature::checkVersion() {
   bool ignoreDatafileErrors = databaseFeature.ignoreDatafileErrors();
 
   // iterate over all databases
-  for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
-    methods::VersionResult res = methods::Version::check(vocbase);
+  for (auto const& name : databaseFeature.getDatabaseNames()) {
+    auto vocbase = databaseFeature.useDatabase(name);
+    // during this phase, there should be no concurrent dropping of databases,
+    // so we can always assume that the database is still there
     TRI_ASSERT(vocbase != nullptr);
+    if (vocbase == nullptr) {
+      continue;
+    }
+
+    methods::VersionResult res = methods::Version::check(vocbase.get());
 
     if (res.status == methods::VersionResult::CANNOT_PARSE_VERSION_FILE ||
         res.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
       if (ignoreDatafileErrors) {
         // try to install a fresh new, empty VERSION file instead
-        if (methods::Version::write(vocbase, std::map<std::string, bool>(),
-                                    true)
+        if (methods::Version::write(vocbase.get(),
+                                    std::map<std::string, bool>(), true)
                 .ok()) {
           // give it another try
-          res = methods::Version::check(vocbase);
+          res = methods::Version::check(vocbase.get());
         }
       } else {
         LOG_TOPIC("ecd13", WARN, Logger::STARTUP)
@@ -166,10 +171,11 @@ void CheckVersionFeature::checkVersion() {
       }
     } else if (res.status == methods::VersionResult::NO_VERSION_FILE) {
       // try to install a fresh new, empty VERSION file instead
-      if (methods::Version::write(vocbase, std::map<std::string, bool>(), true)
+      if (methods::Version::write(vocbase.get(), std::map<std::string, bool>(),
+                                  true)
               .ok()) {
         // give it another try
-        res = methods::Version::check(vocbase);
+        res = methods::Version::check(vocbase.get());
       }
     }
 
@@ -220,7 +226,6 @@ void CheckVersionFeature::checkVersion() {
           << "Database version check failed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_VERSION_CHECK_FAILED);
     }
-    FATAL_ERROR_EXIT_CODE(*_result);
   }
 }
 

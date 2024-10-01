@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
+#include "Cluster/ClusterMethods.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/BatchOptions.h"
@@ -44,15 +45,25 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
+#include <string_view>
 
+namespace arangodb::transaction {
+namespace helpers {
 namespace {
 
 bool isSystemAttribute(std::string_view key) noexcept {
-  return key.size() >= 3 && key[0] == '_' &&
-         (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
-          key == StaticStrings::RevString || key == StaticStrings::FromString ||
-          key == StaticStrings::ToString);
+  switch (key.size()) {
+    case 3:
+      return key[0] == '_' &&
+             (key == StaticStrings::IdString || key == StaticStrings::ToString);
+    case 4:
+      return key[0] == '_' && (key == StaticStrings::KeyString ||
+                               key == StaticStrings::RevString);
+    case 5:
+      return key == StaticStrings::FromString;
+    default:
+      return false;
+  }
 }
 
 }  // namespace
@@ -60,7 +71,7 @@ bool isSystemAttribute(std::string_view key) noexcept {
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
 /// be the first one
-VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
+VPackSlice extractKeyFromDocument(VPackSlice slice) {
   slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
@@ -95,32 +106,35 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
  * returned.
  * @return The _key attribute
  */
-std::string_view transaction::helpers::extractKeyPart(VPackSlice slice) {
+std::string_view extractKeyPart(velocypack::Slice slice, bool& keyPresent) {
   slice = slice.resolveExternal();
+  keyPresent = false;
 
   // extract _key
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
+    keyPresent = !k.isNone();
     if (!k.isString()) {
       return std::string_view();  // fail
     }
     return k.stringView();
   }
   if (slice.isString()) {
-    std::string_view key = slice.stringView();
-    size_t pos = key.find('/');
-    if (pos == std::string::npos) {
-      return key;
-    }
-    return key.substr(pos + 1);
+    keyPresent = true;
+    return extractKeyPart(slice.stringView());
   }
   return std::string_view();
+}
+
+std::string_view extractKeyPart(velocypack::Slice slice) {
+  [[maybe_unused]] bool unused;
+  return extractKeyPart(slice, unused);
 }
 
 /** @brief Given a string, returns the substring after the first '/' or
  *          the whole string if it contains no '/'.
  */
-std::string_view transaction::helpers::extractKeyPart(std::string_view key) {
+std::string_view extractKeyPart(std::string_view key) {
   size_t pos = key.find('/');
   if (pos == std::string::npos) {
     return key;
@@ -130,8 +144,8 @@ std::string_view transaction::helpers::extractKeyPart(std::string_view key) {
 
 /// @brief extract the _id attribute from a slice, and convert it into a
 /// string, static method
-std::string transaction::helpers::extractIdString(
-    CollectionNameResolver const* resolver, VPackSlice slice, VPackSlice base) {
+std::string extractIdString(CollectionNameResolver const* resolver,
+                            VPackSlice slice, VPackSlice base) {
   VPackSlice id;
 
   slice = slice.resolveExternal();
@@ -200,7 +214,7 @@ std::string transaction::helpers::extractIdString(
 /// the document must have at least two attributes, and _id is supposed to
 /// be the second one
 /// note that this may return a Slice of type Custom!
-VPackSlice transaction::helpers::extractIdFromDocument(VPackSlice slice) {
+VPackSlice extractIdFromDocument(VPackSlice slice) {
   slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
@@ -231,7 +245,7 @@ VPackSlice transaction::helpers::extractIdFromDocument(VPackSlice slice) {
 /// @brief quick access to the _from attribute in a database document
 /// the document must have at least five attributes: _key, _id, _from, _to
 /// and _rev (in this order)
-VPackSlice transaction::helpers::extractFromFromDocument(VPackSlice slice) {
+VPackSlice extractFromFromDocument(VPackSlice slice) {
   slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
@@ -264,7 +278,7 @@ VPackSlice transaction::helpers::extractFromFromDocument(VPackSlice slice) {
 /// @brief quick access to the _to attribute in a database document
 /// the document must have at least five attributes: _key, _id, _from, _to
 /// and _rev (in this order)
-VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
+VPackSlice extractToFromDocument(VPackSlice slice) {
   slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
 
@@ -296,8 +310,8 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
 /// @brief extract _key and _rev from a document, in one go
 /// this is an optimized version used when loading collections, WAL
 /// collection and compaction
-void transaction::helpers::extractKeyAndRevFromDocument(
-    VPackSlice slice, VPackSlice& keySlice, RevisionId& revisionId) {
+void extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
+                                  RevisionId& revisionId) {
   slice = slice.resolveExternal();
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2);
@@ -331,14 +345,13 @@ void transaction::helpers::extractKeyAndRevFromDocument(
   // fall back to regular lookup
   {
     keySlice = slice.get(StaticStrings::KeyString);
-    VPackValueLength l;
-    char const* p = slice.get(StaticStrings::RevString).getString(l);
-    revisionId = RevisionId::fromString(p, l, false);
+    revisionId = RevisionId::fromString(
+        slice.get(StaticStrings::RevString).stringView());
   }
 }
 
 /// @brief extract _rev from a database document
-RevisionId transaction::helpers::extractRevFromDocument(VPackSlice slice) {
+RevisionId extractRevFromDocument(VPackSlice slice) {
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2);
 
@@ -360,7 +373,7 @@ RevisionId transaction::helpers::extractRevFromDocument(VPackSlice slice) {
   return RevisionId::fromSlice(slice);
 }
 
-VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
+VPackSlice extractRevSliceFromDocument(VPackSlice slice) {
   TRI_ASSERT(slice.isObject());
   TRI_ASSERT(slice.length() >= 2);
 
@@ -381,8 +394,7 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
   return slice.get(StaticStrings::RevString);
 }
 
-std::string_view transaction::helpers::extractCollectionFromId(
-    std::string_view id) {
+std::string_view extractCollectionFromId(std::string_view id) {
   std::size_t index = id.find('/');
   if (index == std::string::npos) {
     // can't find the '/' to split, bail out with only logical response
@@ -391,14 +403,14 @@ std::string_view transaction::helpers::extractCollectionFromId(
   return std::string_view(id.data(), index);
 }
 
-OperationResult transaction::helpers::buildCountResult(
+OperationResult buildCountResult(
     OperationOptions const& options,
-    std::vector<std::pair<std::string, uint64_t>> const& count,
-    transaction::CountType type, uint64_t& total) {
+    std::vector<std::pair<std::string, uint64_t>> const& count, CountType type,
+    uint64_t& total) {
   total = 0;
   VPackBuilder resultBuilder;
 
-  if (type == transaction::CountType::Detailed) {
+  if (type == CountType::kDetailed) {
     resultBuilder.openObject();
     for (auto const& it : count) {
       total += it.second;
@@ -417,8 +429,8 @@ OperationResult transaction::helpers::buildCountResult(
 }
 
 /// @brief creates an id string from a custom _id value and the _key string
-std::string transaction::helpers::makeIdFromCustom(
-    CollectionNameResolver const* resolver, VPackSlice id, VPackSlice key) {
+std::string makeIdFromCustom(CollectionNameResolver const* resolver,
+                             VPackSlice id, VPackSlice key) {
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
@@ -428,20 +440,13 @@ std::string transaction::helpers::makeIdFromCustom(
 }
 
 /// @brief creates an id string from a collection name and the _key string
-std::string transaction::helpers::makeIdFromParts(
-    CollectionNameResolver const* resolver, DataSourceId const& cid,
-    VPackSlice key) {
+std::string makeIdFromParts(CollectionNameResolver const* resolver,
+                            DataSourceId const& cid, VPackSlice key) {
   TRI_ASSERT(key.isString());
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
-  if (resolved.starts_with(StaticStrings::FullLocalPrefix)) {
-    resolved.erase(0, StaticStrings::FullLocalPrefix.size());
-  } else if (resolved.starts_with(StaticStrings::FullFromPrefix)) {
-    resolved.erase(0, StaticStrings::FullFromPrefix.size());
-  } else if (resolved.starts_with(StaticStrings::FullToPrefix)) {
-    resolved.erase(0, StaticStrings::FullToPrefix.size());
-  }
+  ClusterMethods::realNameFromSmartName(resolved);
 #endif
   VPackValueLength keyLength;
   char const* p = key.getString(keyLength);
@@ -456,13 +461,15 @@ std::string transaction::helpers::makeIdFromParts(
 
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
-Result transaction::helpers::mergeObjectsForUpdate(
-    transaction::Methods& trx, LogicalCollection& collection,
-    velocypack::Slice oldValue, velocypack::Slice newValue, bool isNoOpUpdate,
-    RevisionId previousRevisionId, RevisionId& revisionId,
-    velocypack::Builder& builder, OperationOptions const& options,
-    transaction::BatchOptions& batchOptions) {
-  transaction::BuilderLeaser b(&trx);
+Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
+                             velocypack::Slice oldValue,
+                             velocypack::Slice newValue, bool isNoOpUpdate,
+                             RevisionId previousRevisionId,
+                             RevisionId& revisionId,
+                             velocypack::Builder& builder,
+                             OperationOptions const& options,
+                             BatchOptions& batchOptions) {
+  BuilderLeaser b(&trx);
   b->openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -480,7 +487,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
     while (it.valid()) {
       auto current = *it;
       auto key = current.key.stringView();
-      if (::isSystemAttribute(key)) {
+      if (isSystemAttribute(key)) {
         // note _from and _to and ignore _id, _key and _rev
         if (collection.type() == TRI_COL_TYPE_EDGE) {
           if (key == StaticStrings::FromString) {
@@ -509,10 +516,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
 
   // _from, _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    auto& server = trx.vocbase().server();
-    bool extendedNames =
-        server.hasFeature<DatabaseFeature>() &&
-        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+    bool extendedNames = trx.vocbase().extendedNames();
 
     if (fromSlice.isNone()) {
       fromSlice = oldValue.get(StaticStrings::FromString);
@@ -535,7 +539,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
   bool handled = false;
   if (isNoOpUpdate) {
     // an update that doesn't update anything - reuse revision id
-    char ridBuffer[arangodb::basics::maxUInt64StringSize];
+    char ridBuffer[basics::maxUInt64StringSize];
     b->add(StaticStrings::RevString, previousRevisionId.toValuePair(ridBuffer));
     revisionId = previousRevisionId;
     handled = true;
@@ -544,15 +548,13 @@ Result transaction::helpers::mergeObjectsForUpdate(
     VPackSlice s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
       b->add(StaticStrings::RevString, s);
-      VPackValueLength l;
-      char const* p = s.getStringUnchecked(l);
-      revisionId = RevisionId::fromString(p, l, false);
+      revisionId = RevisionId::fromString(s.stringView());
       handled = true;
     }
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[arangodb::basics::maxUInt64StringSize];
+    char ridBuffer[basics::maxUInt64StringSize];
     revisionId = collection.newRevisionId();
     b->add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
@@ -566,7 +568,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
       auto current = (*it);
       auto key = current.key.stringView();
       // exclude system attributes in old value now
-      if (::isSystemAttribute(key)) {
+      if (isSystemAttribute(key)) {
         it.next();
         continue;
       }
@@ -648,12 +650,12 @@ Result transaction::helpers::mergeObjectsForUpdate(
 }
 
 /// @brief new object for insert, computes the hash of the key
-Result transaction::helpers::newObjectForInsert(
-    transaction::Methods& trx, LogicalCollection& collection,
-    velocypack::Slice value, RevisionId& revisionId,
-    velocypack::Builder& builder, OperationOptions const& options,
-    transaction::BatchOptions& batchOptions) {
-  transaction::BuilderLeaser b(&trx);
+Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
+                          std::string_view key, velocypack::Slice value,
+                          RevisionId& revisionId, velocypack::Builder& builder,
+                          OperationOptions const& options,
+                          BatchOptions& batchOptions) {
+  BuilderLeaser b(&trx);
 
   b->openObject();
 
@@ -661,31 +663,7 @@ Result transaction::helpers::newObjectForInsert(
   // _key, _id, _from, _to, _rev
 
   // _key
-  VPackSlice s = value.get(StaticStrings::KeyString);
-  if (s.isNone()) {
-    TRI_ASSERT(!options.isRestore);  // need key in case of restore
-    auto keyString = collection.keyGenerator().generate(value);
-
-    if (keyString.empty()) {
-      return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
-    }
-
-    b->add(StaticStrings::KeyString, VPackValue(keyString));
-  } else if (!s.isString()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
-  } else {
-    TRI_ASSERT(s.isString());
-
-    // validate and track the key just used
-    auto res = collection.keyGenerator().validate(s.stringView(), value,
-                                                  options.isRestore);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
-    }
-
-    b->add(StaticStrings::KeyString, s);
-  }
+  b->add(StaticStrings::KeyString, key);
 
   // _id
   uint8_t* p = b->add(StaticStrings::IdString,
@@ -707,10 +685,7 @@ Result transaction::helpers::newObjectForInsert(
 
   // _from and _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    auto& server = trx.vocbase().server();
-    bool extendedNames =
-        server.hasFeature<DatabaseFeature>() &&
-        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+    bool extendedNames = trx.vocbase().extendedNames();
 
     VPackSlice fromSlice = value.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
@@ -734,18 +709,16 @@ Result transaction::helpers::newObjectForInsert(
   TRI_IF_FAILURE("Insert::useRev") { isRestore = true; }
   if (isRestore) {
     // copy revision id verbatim
-    s = value.get(StaticStrings::RevString);
+    auto s = value.get(StaticStrings::RevString);
     if (s.isString()) {
       b->add(StaticStrings::RevString, s);
-      VPackValueLength l;
-      char const* str = s.getStringUnchecked(l);
-      revisionId = RevisionId::fromString(str, l, false);
+      revisionId = RevisionId::fromString(s.stringView());
       handled = true;
     }
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[arangodb::basics::maxUInt64StringSize];
+    char ridBuffer[basics::maxUInt64StringSize];
     revisionId = collection.newRevisionId();
     b->add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
@@ -790,12 +763,13 @@ Result transaction::helpers::newObjectForInsert(
 
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
-Result transaction::helpers::newObjectForReplace(
-    transaction::Methods& trx, LogicalCollection& collection,
-    VPackSlice oldValue, VPackSlice newValue, RevisionId& revisionId,
-    VPackBuilder& builder, OperationOptions const& options,
-    transaction::BatchOptions& batchOptions) {
-  transaction::BuilderLeaser b(&trx);
+Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
+                           VPackSlice oldValue, VPackSlice newValue,
+                           bool isNoOpReplace, RevisionId previousRevisionId,
+                           RevisionId& revisionId, VPackBuilder& builder,
+                           OperationOptions const& options,
+                           BatchOptions& batchOptions) {
+  BuilderLeaser b(&trx);
   b->openObject();
 
   // add system attributes first, in this order:
@@ -813,10 +787,7 @@ Result transaction::helpers::newObjectForReplace(
 
   // _from and _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    auto& server = trx.vocbase().server();
-    bool extendedNames =
-        server.hasFeature<DatabaseFeature>() &&
-        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+    bool extendedNames = trx.vocbase().extendedNames();
 
     VPackSlice fromSlice = newValue.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
@@ -836,20 +807,24 @@ Result transaction::helpers::newObjectForReplace(
 
   // _rev
   bool handled = false;
-  if (options.isRestore) {
+  if (isNoOpReplace) {
+    // an replace that doesn't update anything - reuse revision id
+    char ridBuffer[basics::maxUInt64StringSize];
+    b->add(StaticStrings::RevString, previousRevisionId.toValuePair(ridBuffer));
+    revisionId = previousRevisionId;
+    handled = true;
+  } else if (options.isRestore) {
     // copy revision id verbatim
     s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
       b->add(StaticStrings::RevString, s);
-      VPackValueLength l;
-      char const* p = s.getStringUnchecked(l);
-      revisionId = RevisionId::fromString(p, l, false);
+      revisionId = RevisionId::fromString(s.stringView());
       handled = true;
     }
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[arangodb::basics::maxUInt64StringSize];
+    char ridBuffer[basics::maxUInt64StringSize];
     revisionId = collection.newRevisionId();
     b->add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   }
@@ -893,8 +868,7 @@ Result transaction::helpers::newObjectForReplace(
   return {};
 }
 
-bool transaction::helpers::isValidEdgeAttribute(velocypack::Slice slice,
-                                                bool allowExtendedNames) {
+bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames) {
   if (!slice.isString()) {
     return false;
   }
@@ -907,40 +881,37 @@ bool transaction::helpers::isValidEdgeAttribute(velocypack::Slice slice,
                                         allowExtendedNames, split);
 }
 
-// ============== StringLeaser ==============
+}  // namespace helpers
 
-/// @brief constructor, leases an std::string
-transaction::StringLeaser::StringLeaser(transaction::Methods* trx)
-    : _transactionContext(trx->transactionContextPtr()),
-      _string(_transactionContext->leaseString()) {}
-
-/// @brief constructor, leases an std::string
-transaction::StringLeaser::StringLeaser(
-    transaction::Context* transactionContext)
+StringLeaser::StringLeaser(Context* transactionContext)
     : _transactionContext(transactionContext),
       _string(_transactionContext->leaseString()) {}
 
-/// @brief destructor
-transaction::StringLeaser::~StringLeaser() {
-  _transactionContext->returnString(_string);
+StringLeaser::StringLeaser(Methods* trx)
+    : StringLeaser{trx->transactionContextPtr()} {}
+
+StringLeaser::~StringLeaser() {
+  if (_string != nullptr) {
+    _transactionContext->returnString(_string);
+  }
 }
 
-// ============== BuilderLeaser ==============
-
-/// @brief constructor, leases a builder
-transaction::BuilderLeaser::BuilderLeaser(
-    transaction::Context* transactionContext)
-    : _transactionContext(transactionContext),
-      _builder(_transactionContext->leaseBuilder()) {
+BuilderLeaser::BuilderLeaser(Context* transactionContext)
+    : _transactionContext{transactionContext},
+      _builder{_transactionContext->leaseBuilder()} {
   TRI_ASSERT(_builder != nullptr);
 }
 
-transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)
-    : BuilderLeaser(trx->transactionContextPtr()) {}
+BuilderLeaser::BuilderLeaser(Methods* trx)
+    : BuilderLeaser{trx->transactionContextPtr()} {}
 
-/// @brief destructor
-transaction::BuilderLeaser::~BuilderLeaser() {
+BuilderLeaser::~BuilderLeaser() { clear(); }
+
+void BuilderLeaser::clear() {
   if (_builder != nullptr) {
     _transactionContext->returnBuilder(_builder);
+    _builder = nullptr;
   }
 }
+
+}  // namespace arangodb::transaction

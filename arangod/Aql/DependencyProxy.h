@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,7 +31,6 @@
 
 #include <memory>
 #include <queue>
-#include <unordered_set>
 #include <utility>
 
 namespace arangodb::aql {
@@ -71,10 +70,10 @@ class DependencyProxy {
 
   // TODO Implement and document properly!
   TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-  execute(AqlCallStack& stack);
+  execute(AqlCallStack const& stack);
 
   TEST_VIRTUAL std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-  executeForDependency(size_t dependency, AqlCallStack& stack);
+  executeForDependency(size_t dependency, AqlCallStack const& stack);
 
   [[nodiscard]] RegisterCount getNrInputRegisters() const;
 
@@ -85,14 +84,13 @@ class DependencyProxy {
   void setDistributeId(std::string const& distId) { _distributeId = distId; }
 
  protected:
-  [[nodiscard]] ExecutionBlock& upstreamBlock();
+  [[nodiscard]] ExecutionBlock& upstreamBlock() const;
 
-  [[nodiscard]] ExecutionBlock& upstreamBlockForDependency(size_t index);
-
- private:
-  [[nodiscard]] bool advanceDependency();
+  [[nodiscard]] ExecutionBlock& upstreamBlockForDependency(size_t index) const;
 
  private:
+  [[nodiscard]] bool advanceDependency() noexcept;
+
   std::vector<ExecutionBlock*> const& _dependencies;
   RegisterCount const _nrInputRegisters;
   std::string _distributeId;

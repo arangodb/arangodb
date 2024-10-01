@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,44 +27,56 @@
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Future.h"
 
-namespace arangodb {
-namespace aql {
+#include <memory>
 
-// additonally contains TraversalEngines
-class ClusterQuery : public arangodb::aql::Query {
+namespace arangodb::traverser {
+class BaseEngine;
+}
+
+namespace arangodb::aql {
+
+// additionally contains TraversalEngines
+class ClusterQuery : public Query {
  protected:
   /// Used to construct a cluster query. the constructor is protected to ensure
   /// that call sites only create ClusterQuery objects using the `create`
   /// factory method
-  ClusterQuery(QueryId id, std::shared_ptr<arangodb::transaction::Context> ctx,
-               QueryOptions options);
+  ClusterQuery(QueryId id, std::shared_ptr<velocypack::Builder> bindParameters,
+               std::shared_ptr<transaction::Context> ctx, QueryOptions options);
+
+  ~ClusterQuery() override;
 
  public:
-  ~ClusterQuery();
-
   /// @brief factory method for creating a cluster query. this must be used to
   /// ensure that ClusterQuery objects are always created using shared_ptrs.
   static std::shared_ptr<ClusterQuery> create(
-      QueryId id, std::shared_ptr<transaction::Context> ctx,
-      QueryOptions options);
+      QueryId id, std::shared_ptr<velocypack::Builder> bindParameters,
+      std::shared_ptr<transaction::Context> ctx, QueryOptions options);
 
-  traverser::GraphEngineList const& traversers() const { return _traversers; }
+  /// @brief prepare a query out of some velocypack data.
+  /// only to be used on a DB server.
+  /// never call this on a single server or coordinator!
+  void prepareFromVelocyPack(
+      velocypack::Slice querySlice, velocypack::Slice collections,
+      velocypack::Slice variables, velocypack::Slice snippets,
+      velocypack::Slice traverserSlice, std::string const& user,
+      velocypack::Builder& answerBuilder,
+      QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking);
 
-  void prepareClusterQuery(
-      arangodb::velocypack::Slice querySlice,
-      arangodb::velocypack::Slice collections,
-      arangodb::velocypack::Slice variables,
-      arangodb::velocypack::Slice snippets,
-      arangodb::velocypack::Slice traversals,
-      arangodb::velocypack::Builder& answer,
-      arangodb::QueryAnalyzerRevisions const& analyzersRevision);
+  auto const& traversers() const { return _traversers; }
 
-  arangodb::futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
+  futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
 
  private:
+  void buildTraverserEngines(velocypack::Slice traverserSlice,
+                             velocypack::Builder& answerBuilder);
+
+#ifdef USE_ENTERPRISE
+  void waitForSatellites();
+#endif
+
   /// @brief first one should be the local one
-  arangodb::traverser::GraphEngineList _traversers;
+  traverser::GraphEngineList _traversers;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

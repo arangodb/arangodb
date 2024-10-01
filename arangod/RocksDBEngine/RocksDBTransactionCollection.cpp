@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,18 +28,24 @@
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "Statistics/ServerStatistics.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 
@@ -57,7 +63,13 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
                            .getFeature<arangodb::RocksDBOptionFeature>()
                            .exclusiveWrites()) {}
 
-RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
+RocksDBTransactionCollection::~RocksDBTransactionCollection() {
+  try {
+    // cppcheck-suppress virtualCallInConstructor
+    releaseUsage();
+  } catch (...) {
+  }
+}
 
 /// @brief whether or not any write operations for the collection happened
 bool RocksDBTransactionCollection::hasOperations() const {
@@ -80,14 +92,14 @@ bool RocksDBTransactionCollection::canAccess(
   return true;
 }
 
-Result RocksDBTransactionCollection::lockUsage() {
+futures::Future<Result> RocksDBTransactionCollection::lockUsage() {
   Result res;
 
   bool doSetup = false;
   if (_collection == nullptr) {
     res = ensureCollection();
     if (res.fail()) {
-      return res;
+      co_return res;
     }
     doSetup = true;
   }
@@ -96,13 +108,13 @@ Result RocksDBTransactionCollection::lockUsage() {
 
   if (/*AccessMode::isWriteOrExclusive(_accessType) &&*/ !isLocked()) {
     // r/w lock the collection
-    res = doLock(_accessType);
+    res = co_await doLock(_accessType);
 
     // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
     // operation has actually acquired the lock (and that the lock has not
     // been held before)
     if (res.fail() && !res.is(TRI_ERROR_LOCKED)) {
-      return res;
+      co_return res;
     }
   }
 
@@ -113,14 +125,14 @@ Result RocksDBTransactionCollection::lockUsage() {
     _revision = rc->meta().revisionId();
   }
 
-  return {};
+  co_return {};
 }
 
 void RocksDBTransactionCollection::releaseUsage() {
   // questionable, but seems to work
-  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) ||
-      _transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+  if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     TRI_ASSERT(!_usageLocked);
+    TRI_ASSERT(!isLocked());
     _collection = nullptr;
     return;
   }
@@ -222,8 +234,12 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId,
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
   }
 
-  // update the revision tree
-  if (!_trackedOperations.empty()) {
+  bool const hasTrackedOps = !_trackedOperations.empty();
+  // update the revision tree. this is only relevant if the collection uses
+  // Merkle trees.
+  if (hasTrackedOps) {
+    TRI_ASSERT(hasOperations());
+    TRI_ASSERT(hasTrackedOps);
     rcoll->bufferUpdates(commitSeq, std::move(_trackedOperations.inserts),
                          std::move(_trackedOperations.removals));
   }
@@ -232,7 +248,8 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId,
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
     if (ADB_UNLIKELY(idx == nullptr)) {
-      TRI_ASSERT(false);  // Index reported estimates, but does not exist
+      // Index reported estimates, but does not exist
+      TRI_ASSERT(_collection->deleted());
       continue;
     }
     auto ridx = static_cast<RocksDBIndex*>(idx.get());
@@ -245,8 +262,7 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId,
     }
   }
 
-  if (hasOperations() || !_trackedOperations.empty() ||
-      !_trackedIndexOperations.empty()) {
+  if (hasOperations() || hasTrackedOps || !_trackedIndexOperations.empty()) {
     rcoll->removeRevisionTreeBlocker(trxId);
   }
 
@@ -290,11 +306,32 @@ void RocksDBTransactionCollection::trackIndexRemove(IndexId iid,
   _trackedIndexOperations[iid].removals.emplace_back(hash);
 }
 
+void RocksDBTransactionCollection::trackIndexCacheRefill(IndexId iid,
+                                                         std::string_view key) {
+  _trackedCacheRefills[iid].emplace_back(key.data(), key.size());
+}
+
+void RocksDBTransactionCollection::handleIndexCacheRefills() {
+  if (_trackedCacheRefills.empty()) {
+    return;
+  }
+
+  auto& refiller = _collection->vocbase()
+                       .server()
+                       .getFeature<RocksDBIndexCacheRefillFeature>();
+
+  for (auto const& it : _trackedCacheRefills) {
+    refiller.trackRefill(_collection, it.first, std::move(it.second));
+  }
+  _trackedCacheRefills.clear();
+}
+
 /// @brief lock a collection
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
 /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
 /// no other error occurred returns any other error code otherwise
-Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
+futures::Future<Result> RocksDBTransactionCollection::doLock(
+    AccessMode::Type type) {
   if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
     type = AccessMode::Type::EXCLUSIVE;
   }
@@ -302,12 +339,12 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   if (!AccessMode::isWriteOrExclusive(type)) {
     // read operations do not require any locks in RocksDB
     _lockType = type;
-    return {};
+    co_return {};
   }
 
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
-    return {};
+    co_return {};
   }
 
   TRI_ASSERT(_collection != nullptr);
@@ -325,11 +362,11 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
     // write mode
-    res = physical->lockWrite(timeout);
+    res = co_await physical->lockWrite(timeout);
   } else {
     // write locking means we'll be acquiring the collection's RW lock in read
     // mode
-    res = physical->lockRead(timeout);
+    res = co_await physical->lockRead(timeout);
   }
 
   if (res.ok()) {
@@ -338,15 +375,18 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
     // acquired the lock ourselves
     res.reset(TRI_ERROR_LOCKED);
   } else if (res.is(TRI_ERROR_LOCK_TIMEOUT) && timeout >= 0.1) {
-    char const* actor = _transaction->actorName();
-    TRI_ASSERT(actor != nullptr);
-    std::string message = "timed out after " + std::to_string(timeout) +
-                          " s waiting for " + AccessMode::typeString(type) +
-                          "-lock on collection " +
-                          _transaction->vocbase().name() + "/" +
-                          _collection->name() + " on " + actor;
-    LOG_TOPIC("4512c", WARN, Logger::QUERIES) << message;
-    res.reset(TRI_ERROR_LOCK_TIMEOUT, std::move(message));
+    res.reset(
+        TRI_ERROR_LOCK_TIMEOUT,
+        absl::StrCat("timed out after ", timeout, " s waiting for ",
+                     AccessMode::typeString(type), "-lock on collection ",
+                     _transaction->vocbase().name(), "/", _collection->name(),
+                     " on ", _transaction->actorName()));
+    if (timeout <= 5.0) {
+      // low timeout, does not justify a warning message
+      LOG_TOPIC("2111a", DEBUG, Logger::QUERIES) << res.errorMessage();
+    } else {
+      LOG_TOPIC("4512c", WARN, Logger::QUERIES) << res.errorMessage();
+    }
 
     // increase counter for lock timeouts
     auto& stats = _transaction->statistics();
@@ -357,7 +397,7 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
     }
   }
 
-  return res;
+  co_return res;
 }
 
 /// @brief unlock a collection
@@ -421,8 +461,7 @@ Result RocksDBTransactionCollection::doUnlock(AccessMode::Type type) {
 Result RocksDBTransactionCollection::ensureCollection() {
   if (_collection == nullptr) {
     // open the collection
-    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
-        !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
+    if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
       // use and usage-lock
       LOG_TRX("b72bb", TRACE, _transaction) << "using collection " << _cid.id();
 
@@ -447,6 +486,7 @@ Result RocksDBTransactionCollection::ensureCollection() {
       _usageLocked = true;
     } else {
       // use without usage-lock (lock already set externally)
+      TRI_ASSERT(!_usageLocked);
       _collection = _transaction->vocbase().lookupCollection(_cid);
 
       if (_collection == nullptr) {

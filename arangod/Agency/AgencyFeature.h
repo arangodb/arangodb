@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,8 +51,8 @@ class AgencyFeature : public ArangodFeature {
 
  private:
   bool _activated;
-  uint64_t _size;  // agency size (default: 5)
-  uint64_t _poolSize;
+  uint64_t _size;              // agency size (default: 5)
+  uint64_t _poolSize;          // deprecated, do not use!
   double _minElectionTimeout;  // min election timeout
   double _maxElectionTimeout;  // max election timeout
   bool _supervision;
@@ -64,6 +64,9 @@ class AgencyFeature : public ArangodFeature {
   uint64_t _maxAppendSize;
   double _supervisionGracePeriod;
   double _supervisionOkThreshold;
+  uint64_t _supervisionDelayAddFollower;
+  uint64_t _supervisionDelayFailedFollower;
+  bool _failedLeaderAddsFollower;
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
   std::string _recoveryId;

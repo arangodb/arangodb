@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,12 +25,14 @@
 
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 #include "Aql/AqlValue.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace velocypack {
 class Builder;
 class Slice;
@@ -41,6 +43,8 @@ class Ast;
 struct AstNode;
 
 struct Variable {
+  struct WithConstantValue {};
+
   /// @brief name of $OLD variable
   static constexpr std::string_view NAME_OLD = "$OLD";
 
@@ -56,13 +60,17 @@ struct Variable {
     /// query
     Regular,
     /// @brief a variable with a constant value
-    Const
+    Const,
+    /// @brief variable is a replacement for a bind parameter
+    BindParameter,
   };
 
   /// @brief create the variable
-  Variable(std::string name, VariableId id, bool isFullDocumentFromCollection);
+  Variable(std::string name, VariableId id, bool isFullDocumentFromCollection,
+           arangodb::ResourceMonitor& resourceMonitor);
 
-  explicit Variable(arangodb::velocypack::Slice const&);
+  explicit Variable(velocypack::Slice slice,
+                    arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief destroy the variable
   ~Variable();
@@ -70,25 +78,29 @@ struct Variable {
   Variable* clone() const;
 
   /// @brief whether or not the variable is user-defined
-  bool isUserDefined() const;
+  bool isUserDefined() const noexcept;
 
   /// @brief whether or not the variable needs a register assigned
-  bool needsRegister() const;
+  bool needsRegister() const noexcept;
 
-  /// @brief return a VelocyPack representation of the variable
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  /// @brief return a VelocyPack representation of the variable, not including
+  /// the variable's constant value (if set)
+  void toVelocyPack(velocypack::Builder& builder) const;
+
+  /// @brief return a VelocyPack representation of the variable, including
+  /// the variable's constant value (if set)
+  void toVelocyPack(velocypack::Builder& builder, WithConstantValue) const;
 
   /// @brief replace a variable by another
   static Variable const* replace(
       Variable const*, std::unordered_map<VariableId, Variable const*> const&);
 
   /// @brief factory for (optional) variables from VPack
-  static Variable* varFromVPack(Ast* ast,
-                                arangodb::velocypack::Slice const& base,
-                                char const* variableName,
+  static Variable* varFromVPack(Ast* ast, velocypack::Slice base,
+                                std::string_view variableName,
                                 bool optional = false);
 
-  bool isEqualTo(Variable const& other) const;
+  bool isEqualTo(Variable const& other) const noexcept;
 
   /// @brief returns the type of the variable. The type is determined based
   // on the constantValue. If constantValue.isNone, the type is Type::Regular,
@@ -100,7 +112,11 @@ struct Variable {
 
   /// @brief set the constant value of the variable.
   /// This implicitly changes the type -> see type()
-  void setConstantValue(AqlValue value) noexcept;
+  void setConstantValue(AqlValue value);
+
+  void setBindParameterReplacement(std::string name);
+
+  std::string_view bindParameterName() const noexcept;
 
   /// @brief variable id
   VariableId const id;
@@ -114,10 +130,17 @@ struct Variable {
   bool isFullDocumentFromCollection;
 
  private:
+  arangodb::ResourceMonitor& _resourceMonitor;
+
+  /// @brief serialize common parts
+  void toVelocyPackCommon(velocypack::Builder& builder) const;
+
   // for const variables, this stores the constant value determined
   // while initializing the plan. Note: the variable takes ownership of this
   // value and destroys it
   AqlValue _constantValue;
+
+  std::string _bindParameterName;
 };
 }  // namespace aql
 }  // namespace arangodb

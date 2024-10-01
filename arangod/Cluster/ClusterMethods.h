@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,11 +23,10 @@
 
 #pragma once
 
-#include "Agency/AgencyComm.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
-#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterTypes.h"
+#include "Indexes/IndexIterator.h"
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Parse.h"
@@ -35,14 +34,23 @@
 #include "Rest/GeneralResponse.h"
 #include "Transaction/MethodsApi.h"
 #include "Utils/OperationResult.h"
-#include "VocBase/LogicalCollection.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
 
 #include <map>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
+
+template<typename T>
+class ResultT;
 
 namespace graph {
 class ClusterTraverserCache;
@@ -54,13 +62,16 @@ class HashedStringRef;
 }  // namespace velocypack
 
 class ClusterFeature;
+struct CreateCollectionBody;
+class NetworkFeature;
 struct OperationOptions;
+class LogicalCollection;
 
 /// @brief aggregate the results of multiple figures responses (e.g. from
 /// multiple shards or for a smart edge collection)
 void aggregateClusterFigures(bool details, bool isSmartEdgeCollectionPart,
-                             arangodb::velocypack::Slice value,
-                             arangodb::velocypack::Builder& builder);
+                             velocypack::Slice value,
+                             velocypack::Builder& builder);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
@@ -131,7 +142,7 @@ Result selectivityEstimatesOnCoordinator(
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<OperationResult> createDocumentOnCoordinator(
+futures::Future<OperationResult> insertDocumentOnCoordinator(
     transaction::Methods const& trx, LogicalCollection& coll, VPackSlice slice,
     OperationOptions const& options, transaction::MethodsApi api);
 
@@ -221,16 +232,21 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     transaction::Methods& trx, std::string const& collname,
     OperationOptions const& options, transaction::MethodsApi api);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
-////////////////////////////////////////////////////////////////////////////////
+Result flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
+                              bool flushColumnFamilies);
 
-ErrorCode flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
-                                 bool waitForCollector);
+/// @brief recalculate collection count on all DBServers
+Result recalculateCountsOnAllDBServers(ClusterFeature&, std::string_view dbname,
+                                       std::string_view collname);
 
 /// @brief compact the database on all DB servers
 Result compactOnAllDBServers(ClusterFeature&, bool changeLevel,
                              bool compactBottomMostLevel);
+
+/// @brief compact the data of a single collection on all DB servers
+Result compactOnAllDBServers(ClusterFeature&, std::string const& dbname,
+                             std::string const& collname);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create hotbackup on a coordinator
@@ -327,25 +343,6 @@ class ClusterMethods {
   ClusterMethods() = delete;
   ~ClusterMethods() = delete;
 
-  /// @brief Create many new collections on coordinator from a Array of VPack
-  /// parameter Note that this returns a vector of newly allocated objects
-  /// @param vocbase the actual database
-  /// @param parametersOfCollections array of parameters of collections to be
-  /// created
-  /// @param ignoreDistributeShardsLikeErrors
-  /// @param waitForSyncReplication
-  /// @param enforceReplicationFactor
-  /// @param isNewDatabase
-  /// @param colToDistributeShardsLike
-
-  static std::vector<std::shared_ptr<LogicalCollection>>
-  createCollectionsOnCoordinator(
-      TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice parametersOfCollections,
-      bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor, bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Enterprise Relevant code to filter out hidden collections
   ///        that should not be triggered directly by operations.
@@ -363,18 +360,6 @@ class ClusterMethods {
   /// @param possiblySmartName  collection name with possible smart suffixes.
   /// Will be modified inplace
   static void realNameFromSmartName(std::string& possiblySmartName);
-
- private:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Persist collection in Agency and trigger shard creation process
-  ////////////////////////////////////////////////////////////////////////////////
-
-  static std::vector<std::shared_ptr<LogicalCollection>>
-  persistCollectionsInAgency(
-      ClusterFeature&, std::vector<std::shared_ptr<LogicalCollection>>& col,
-      bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor, bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colPtr);
 };
 
 }  // namespace arangodb

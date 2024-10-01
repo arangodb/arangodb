@@ -84,7 +84,8 @@
       <button id="confirmDocImport" class="button-success btn-old-padding" style="float:right" disabled>
         <span class="upload-indicator"><i id="uploadIndicator" class="fa fa-circle-o-notch fa-spin fa-fw"></i></span>Import JSON
       </button>
-      <div title='Example input data:<br /><br /> I. Line-wise: <br /> { "_key": "key1", ... } <br /> { "_key": "key2", ... } <br /><br /> or <br /><br /> II. JSON documents embedded into a list: <br /> [ <br /> &nbsp; { "_key": "key1", ... }, <br /> &nbsp; { "_key": "key2", ... }, <br /> &nbsp; ... <br /> ]' class="upload-info" style="float:left; margin-top:7px; margin-right: 10px;"><i style="font-size: 13pt;" class="fa fa-info-circle"></i></div>
+      <div title='Example input data:<br /><br /> I. Line-wise: <br /> { "_key": "key1", "_from": "vertices/a", "_to": "vertices/b", ... } <br /> { "_key": "key2", "_from": "vertices/a", "_to": "vertices/b", ... } <br /><br /> or <br /><br /> II. JSON documents embedded into a list: <br /> [ <br /> &nbsp; { "_key": "key1", "_from": "vertices/a", "_to": "vertices/b", ... }, <br /> &nbsp; { "_key": "key2", "_from": "vertices/a", "_to": "vertices/b", ... }, <br /> &nbsp; ... <br /> ]' class="upload-info edge" style="float:left; margin-top:7px; margin-right:10px; display:none"><i style="font-size: 13pt;" class="fa fa-info-circle"></i></div>
+      <div title='Example input data:<br /><br /> I. Line-wise: <br /> { "_key": "key1", ... } <br /> { "_key": "key2", ... } <br /><br /> or <br /><br /> II. JSON documents embedded into a list: <br /> [ <br /> &nbsp; { "_key": "key1", ... }, <br /> &nbsp; { "_key": "key2", ... }, <br /> &nbsp; ... <br /> ]' class="upload-info document" style="float:left; margin-top:7px; margin-right:10px; display:none"><i style="font-size: 13pt;" class="fa fa-info-circle"></i></div>
     </div>
   </div>
 
@@ -139,4 +140,3 @@
     <button id="confirmDeleteBtn" class="button-danger" style="float:right" disabled="true">Delete</button>
   </div>
 </div>
-

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,10 @@
 ///
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
 #include "v8-replication.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -40,6 +44,7 @@
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/V8Context.h"
 #include "Utils/DatabaseGuard.h"
 #include "V8/v8-conv.h"
@@ -160,7 +165,10 @@ static void JS_LastLoggerReplication(
     TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
   }
 
-  auto transactionContext = transaction::V8Context::Create(vocbase, true);
+  auto origin =
+      transaction::OperationOriginREST{"returning last documents from WAL"};
+  auto transactionContext =
+      transaction::V8Context::create(vocbase, origin, true);
   VPackBuilder builder(transactionContext->getVPackOptions());
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
@@ -553,7 +561,7 @@ static void StateApplierReplicationAll(
   VPackBuilder builder;
   builder.openObject();
   for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
+    auto vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase == nullptr) {
       continue;
@@ -627,11 +635,7 @@ static void JS_FailoverEnabledGlobalApplierReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  auto& replicationFeature = v8g->server().getFeature<ReplicationFeature>();
-  if (replicationFeature.isActiveFailoverEnabled()) {
-    TRI_V8_RETURN_TRUE();
-  }
+  // response is hard-coded to false since 3.12
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }

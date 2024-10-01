@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,6 @@
 #include "AqlItemBlockInputRange.h"
 #include "Aql/ShadowAqlItemRow.h"
 
-#include <velocypack/Builder.h>
 #include <algorithm>
 #include <numeric>
 
@@ -39,14 +38,7 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(MainQueryState state,
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(
     MainQueryState state, std::size_t skipped,
-    arangodb::aql::SharedAqlItemBlockPtr const& block, std::size_t index)
-    : _block{block}, _rowIndex{index}, _finalState(state), _skipped{skipped} {
-  TRI_ASSERT(index <= _block->numRows());
-}
-
-AqlItemBlockInputRange::AqlItemBlockInputRange(
-    MainQueryState state, std::size_t skipped,
-    arangodb::aql::SharedAqlItemBlockPtr&& block, std::size_t index) noexcept
+    arangodb::aql::SharedAqlItemBlockPtr block, std::size_t index) noexcept
     : _block{std::move(block)},
       _rowIndex{index},
       _finalState(state),
@@ -79,10 +71,18 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow()
                         InputAqlItemRow{CreateInvalidInputRowHint{}});
 }
 
+/// @brief: this is a performance-optimized version of peekDataRow() that must
+/// only be used if it is sure that there is another data row
+std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow(
+    HasDataRow /*tag unused*/) const {
+  return std::make_pair(nextState<LookAhead::NEXT, RowType::DATA>(),
+                        InputAqlItemRow{_block, _rowIndex});
+}
+
 std::pair<ExecutorState, InputAqlItemRow>
 AqlItemBlockInputRange::nextDataRow() {
-  // this is an optimized version that intentionally does not call peekDataRow()
-  // in order to save a few if conditions
+  // this is an optimized version that intentionally does not call
+  // peekDataRow() in order to save a few if conditions
   if (hasDataRow()) {
     TRI_ASSERT(_block != nullptr);
     auto state = nextState<LookAhead::NEXT, RowType::DATA>();
@@ -148,14 +148,14 @@ AqlItemBlockInputRange::nextShadowRow() {
                         ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
 }
 
-size_t AqlItemBlockInputRange::skipAllRemainingDataRows() {
+size_t AqlItemBlockInputRange::skipAllRemainingDataRows() noexcept {
   while (hasDataRow()) {
     ++_rowIndex;
   }
   return 0;
 }
 
-size_t AqlItemBlockInputRange::countAndSkipAllRemainingDataRows() {
+size_t AqlItemBlockInputRange::countAndSkipAllRemainingDataRows() noexcept {
   size_t skipped = 0;
   while (hasDataRow()) {
     ++_rowIndex;
@@ -164,22 +164,37 @@ size_t AqlItemBlockInputRange::countAndSkipAllRemainingDataRows() {
   return skipped;
 }
 
-size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
+size_t AqlItemBlockInputRange::numRowsLeft() const noexcept {
+  if (_block == nullptr) {
+    return 0;
+  }
+  TRI_ASSERT(_block->numRows() >= _rowIndex);
+  return _block->numRows() - _rowIndex;
+}
+
+template<int depthOffset>
+requires(depthOffset == 0 || depthOffset == -1) size_t
+    AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
+  // Note that depthOffset == -1 iff we're at an SQS node.
   size_t skipped = 0;
   while (hasValidRow()) {
     if (hasDataRow()) {
       _rowIndex++;
     } else {
       ShadowAqlItemRow row{_block, _rowIndex};
-      auto d = row.getDepth();
-      if (d > depth) {
+      auto rowDepth = row.getDepth();
+      // Subtracting depthOffset from rowDepth instead of adding it to depth
+      // here due to avoid underflows.
+      static_assert(depthOffset <= 0);
+      rowDepth -= depthOffset;
+      if (rowDepth > depth) {
         // We found a row, that we should not skip
         // Keep it and stay there;
         return skipped;
       }
       // We throw away this row
       _rowIndex++;
-      if (d == depth) {
+      if (rowDepth == depth) {
         // We skipped
         skipped++;
       }
@@ -187,6 +202,11 @@ size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth) {
   }
   return skipped;
 }
+
+template size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth<-1>(
+    size_t depth);
+template size_t AqlItemBlockInputRange::skipAllShadowRowsOfDepth<0>(
+    size_t depth);
 
 template<AqlItemBlockInputRange::LookAhead doPeek,
          AqlItemBlockInputRange::RowType type>

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,14 +24,18 @@
 #pragma once
 
 #include "Aql/ExecutionPlan.h"
-#include "Basics/Common.h"
-#include "Containers/RollingVector.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
+
+#include <cstdint>
+#include <deque>
+#include <memory>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 struct OptimizerRule;
 struct QueryOptions;
 
@@ -40,29 +44,21 @@ class Optimizer {
   /// @brief this stored the positions of rules in OptimizerRulesFeature::_rules
   using RuleDatabase = std::vector<int>;
 
-  /// @brief the following struct keeps a list (deque) of ExecutionPlan*
+  /// @brief the following struct keeps a container of ExecutionPlan objects
   /// and has some automatic convenience functions.
   struct PlanList {
     using Entry =
         std::pair<std::unique_ptr<ExecutionPlan>, RuleDatabase::iterator>;
 
-    ::arangodb::containers::RollingVector<Entry> list;
+    std::deque<Entry, ResourceUsageAllocator<Entry, ResourceMonitor>> list;
 
-    PlanList() { list.reserve(4); }
-
-    /// @brief constructor with a plan
-    PlanList(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator rule) {
-      push_back(std::move(p), rule);
-    }
-
-    /// @brief destructor, deleting contents
-    ~PlanList() = default;
+    explicit PlanList(ResourceMonitor& monitor) : list(monitor) {}
 
     /// @brief get number of plans contained
-    size_t size() const { return list.size(); }
+    size_t size() const noexcept { return list.size(); }
 
     /// @brief check if empty
-    bool empty() const { return list.empty(); }
+    bool empty() const noexcept { return list.empty(); }
 
     /// @brief pop the first one
     Entry pop_front() {
@@ -78,10 +74,10 @@ class Optimizer {
     }
 
     /// @brief swaps the two lists
-    void swap(PlanList& b) { list.swap(b.list); }
+    void swap(PlanList& b) noexcept { list.swap(b.list); }
 
     /// @brief clear, deletes all plans contained
-    void clear() { list.clear(); }
+    void clear() noexcept { list.clear(); }
   };
 
  public:
@@ -101,9 +97,7 @@ class Optimizer {
   /// @brief constructor, this will initialize the rules database
   /// the .cpp file includes Aql/OptimizerRules.h
   /// and add all methods there to the rules database
-  explicit Optimizer(size_t maxNumberOfPlans);
-
-  ~Optimizer() = default;
+  explicit Optimizer(ResourceMonitor& resourceMonitor, size_t maxNumberOfPlans);
 
   /// @brief disable rules in the given plan, using the predicate function
   void disableRules(ExecutionPlan* plan,
@@ -130,9 +124,7 @@ class Optimizer {
                        bool wasModified);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
-  ::arangodb::containers::RollingVector<PlanList::Entry>& getPlans() {
-    return _plans.list;
-  }
+  auto const& getPlans() noexcept { return _plans.list; }
 
   /// @brief stealBest, ownership of the plan is handed over to the caller,
   /// all other plans are deleted
@@ -145,12 +137,18 @@ class Optimizer {
     return std::move(res.first);
   }
 
-  bool runOnlyRequiredRules(size_t extraPlans) const;
+  bool runOnlyRequiredRules() const noexcept;
 
   /// @brief numberOfPlans, returns the current number of plans in the system
   /// this should be called from rules, it will consider those that the
   /// current rules has already added
-  size_t numberOfPlans() { return _plans.size() + _newPlans.size() + 1; }
+  size_t numberOfPlans() const noexcept {
+    return _plans.size() + _newPlans.size() + 1;
+  }
+
+  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
+
+  void toVelocyPack(velocypack::Builder& b) const;
 
  private:
   /// @brief disable a specific rule
@@ -170,14 +168,14 @@ class Optimizer {
                        OptimizerRule const& rule, bool wasModified,
                        RuleDatabase::iterator const& nextRule);
 
- public:
+  void finalizePlans();
+
+  void checkForcedIndexHints();
+
+  void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
+
   /// @brief optimizer statistics
   Stats _stats;
-
- private:
-  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
-  void finalizePlans();
-  void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
 
   /// @brief the current set of plans to be optimized
   PlanList _plans;
@@ -199,5 +197,4 @@ class Optimizer {
   bool _runOnlyRequiredRules;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

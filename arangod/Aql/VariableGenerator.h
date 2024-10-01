@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,6 @@
 
 #include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 
 #include <functional>
 #include <memory>
@@ -44,7 +43,7 @@ namespace aql {
 class VariableGenerator {
  public:
   /// @brief create the generator
-  VariableGenerator();
+  VariableGenerator(arangodb::ResourceMonitor& resourceMonitor);
 
   VariableGenerator(VariableGenerator const& other) = delete;
   VariableGenerator& operator=(VariableGenerator const& other) = delete;
@@ -52,7 +51,6 @@ class VariableGenerator {
   /// @brief destroy the generator
   ~VariableGenerator() = default;
 
- public:
   /// @brief visit all variables
   void visit(std::function<void(Variable*)> const&);
 
@@ -101,12 +99,13 @@ class VariableGenerator {
   /// @brief returns the next variable id
   VariableId nextId() noexcept;
 
- private:
   /// @brief all variables created
   std::unordered_map<VariableId, std::unique_ptr<Variable>> _variables;
 
   /// @brief the next assigned variable id
   VariableId _id;
+
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 }  // namespace aql
 }  // namespace arangodb

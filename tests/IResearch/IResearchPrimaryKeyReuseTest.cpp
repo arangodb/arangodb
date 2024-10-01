@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,8 +55,7 @@ class IResearchPrimaryKeyReuse : public IResearchQueryTest {};
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
   std::shared_ptr<arangodb::LogicalCollection> collection;
@@ -74,7 +73,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
   {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice());
+    auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
@@ -110,8 +109,9 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -129,7 +129,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
     {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -154,7 +155,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       options.returnNew = true;
       options.isRestore = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -182,8 +184,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
 }
 
 TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   std::vector<arangodb::velocypack::Builder> extraDocs;
   arangodb::LogicalView* view;
@@ -202,7 +203,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
   {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice());
+    auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
@@ -238,8 +239,9 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -257,7 +259,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
     {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -281,7 +284,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -298,7 +302,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
     {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -317,7 +322,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       options.returnNew = true;
       options.isRestore = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -345,8 +351,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
 }
 
 TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
   std::shared_ptr<arangodb::LogicalCollection> collection;
@@ -364,7 +369,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
   {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice());
+    auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
@@ -398,8 +403,9 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
         VPackParser::fromJson("{ \"value\": true }")};
 
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {

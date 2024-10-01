@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -150,6 +150,8 @@ class Result final {
   auto reset(Result const& other) -> Result&;
   auto reset(Result&& other) noexcept -> Result&;
 
+  auto error() && noexcept -> result::Error;
+
   /**
    * @brief  Get error message
    * @return Our error message
@@ -182,6 +184,11 @@ class Result final {
     return *this;
   }
 
+  bool operator==(const Result&) const;
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, Result& x);
+
  private:
   std::unique_ptr<arangodb::result::Error> _error = nullptr;
 };
@@ -192,5 +199,23 @@ class Result final {
  */
 auto operator<<(std::ostream& out, arangodb::Result const& result)
     -> std::ostream&;
+
+template<typename Inspector>
+auto inspect(Inspector& f, arangodb::Result& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = arangodb::result::Error{};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = arangodb::Result{v};
+    }
+    return res;
+  } else {
+    if (x._error == nullptr) {
+      auto v = arangodb::result::Error{};
+      return f.apply(v);
+    }
+    return f.apply(x._error);
+  }
+}
 
 }  // namespace arangodb

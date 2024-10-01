@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocBase/Identifiers/TransactionId.h"
+
+#include "Basics/debugging.h"
 #include "VocBase/ticks.h"
 
 namespace arangodb {
@@ -49,6 +51,24 @@ uint32_t TransactionId::serverId() const {
 }
 
 TransactionId TransactionId::child() { return TransactionId(id() + 1); }
+
+TransactionId TransactionId::asCoordinatorTransactionId() const noexcept {
+  auto result = TransactionId{(id() & ~3)};
+  TRI_ASSERT(result.isCoordinatorTransactionId());
+  return result;
+}
+
+TransactionId TransactionId::asLeaderTransactionId() const noexcept {
+  auto result = asCoordinatorTransactionId().child();
+  TRI_ASSERT(result.isLeaderTransactionId());
+  return result;
+}
+
+TransactionId TransactionId::asFollowerTransactionId() const noexcept {
+  auto result = asLeaderTransactionId().child();
+  TRI_ASSERT(result.isFollowerTransactionId());
+  return result;
+}
 
 TransactionId TransactionId::createSingleServer() {
   return TransactionId(TRI_NewTickServer());

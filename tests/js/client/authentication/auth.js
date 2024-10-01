@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertTrue, assertEqual */
+/*global fail, assertTrue, assertFalse, assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the authentication
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arango = require("@arangodb").arango;
@@ -36,10 +33,8 @@ const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
 const expect = require('chai').expect;
 const ERRORS = require('internal').errors;
-const { debugCanUseFailAt,
-    debugSetFailAt,
-    debugClearFailAt
-  } = require('@arangodb/test-helper');
+
+let IM = require('@arangodb/test-helper').getInstanceInfo();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -54,7 +49,7 @@ function AuthSuite() {
   // hardcoded in testsuite
   const jwtSecret = 'haxxmann';
   const user = 'hackers@arangodb.com';
-  
+
   return {
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -66,8 +61,7 @@ function AuthSuite() {
 
       try {
         users.remove(user);
-      }
-      catch (err) {
+      } catch (err) {
       }
     },
 
@@ -83,24 +77,13 @@ function AuthSuite() {
         "server_id": "arangosh",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
       }, 'HS256');
-      const res = request.delete({
-        url: baseUrl() + "/_admin/debug/failat",
-        auth: { bearer: jwt }
-      });
 
-      // in case of 404 we are running a release build
-      if (res.statusCode !== 200 && res.statusCode !== 404) {
-        throw "Error removing failure points";
-      }
-      
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
       try {
         users.remove(user);
-      }
-      catch (err) {
+      } catch (err) {
       }
     },
-    
+
     testApiUserRW: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system');
@@ -112,7 +95,7 @@ function AuthSuite() {
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
       assertEqual(user, result.user);
     },
-    
+
     testApiUserRO: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'ro');
@@ -123,7 +106,7 @@ function AuthSuite() {
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
       assertEqual(user, result.user);
     },
-    
+
     testApiUserWrongCredentials: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'ro');
@@ -131,11 +114,11 @@ function AuthSuite() {
 
       arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
       users.update(user, "foobar!!!!!");
-      
+
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
       assertEqual(401, result.code);
     },
-    
+
     testApiUserNone: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'rw');
@@ -151,7 +134,7 @@ function AuthSuite() {
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
       assertEqual(user, result.user);
     },
-    
+
     testApiUserDeleted: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'rw');
@@ -167,7 +150,7 @@ function AuthSuite() {
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
       assertEqual(401, result.code);
     },
-    
+
     testApiNonExistingUserRW: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system');
@@ -179,7 +162,7 @@ function AuthSuite() {
       let result = arango.GET('/_api/user/noone');
       assertEqual(404, result.code);
     },
-    
+
     testApiNonExistingUserRO: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'ro');
@@ -190,7 +173,7 @@ function AuthSuite() {
       let result = arango.GET('/_api/user/noone');
       assertEqual(403, result.code);
     },
-    
+
     testApiNonExistingUserNone: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'rw');
@@ -202,7 +185,7 @@ function AuthSuite() {
         arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
       } catch (err) {
       }
-      
+
       users.revokeDatabase(user, '_system');
       try {
         users.reload();
@@ -212,21 +195,25 @@ function AuthSuite() {
       let result = arango.GET('/_api/user/noone');
       assertEqual(403, result.code);
     },
-    
-    testAuthenticationErrorDuringStartup: function() {
-      if (!debugCanUseFailAt(arango.getEndpoint())) {
+
+    testAuthenticationErrorDuringStartup: function () {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      debugSetFailAt(arango.getEndpoint(), "QueryAllUsers");
-      debugSetFailAt(arango.getEndpoint(), "BootstrapFeature_not_ready");
-      
-      users.reload();
+      try {
+        IM.debugSetFailAt("QueryAllUsers");
+        IM.debugSetFailAt("BootstrapFeature_not_ready");
 
-      const result = arango.GET('/_api/version');
-      require('internal').print(result);
-      assertEqual(503, result.code);
+        users.reload();
+
+        const result = arango.GET('/_api/version');
+        require('internal').print(result);
+        assertEqual(503, result.code);
+      } finally {
+        IM.debugClearFailAt();
+      }
     },
-    
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test creating a new user
     ////////////////////////////////////////////////////////////////////////////////
@@ -248,16 +235,14 @@ function AuthSuite() {
       let isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "foobar2");
-      }
-      catch (err1) {
+      } catch (err1) {
         isBroken = false;
       }
 
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "");
-      }
-      catch (err2) {
+      } catch (err2) {
         isBroken = false;
       }
     },
@@ -282,8 +267,7 @@ function AuthSuite() {
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "foobar");
-      }
-      catch (err1) {
+      } catch (err1) {
         isBroken = false;
       }
     },
@@ -328,8 +312,7 @@ function AuthSuite() {
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "Foobar");
         assertTrue(db._collections().length > 0);
-      }
-      catch (err1) {
+      } catch (err1) {
         isBroken = false;
       }
       if (isBroken) {
@@ -339,8 +322,7 @@ function AuthSuite() {
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "foobar");
-      }
-      catch (err2) {
+      } catch (err2) {
         isBroken = false;
       }
       if (isBroken) {
@@ -350,8 +332,7 @@ function AuthSuite() {
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "FOOBAR");
-      }
-      catch (err3) {
+      } catch (err3) {
         isBroken = false;
       }
       if (isBroken) {
@@ -379,8 +360,7 @@ function AuthSuite() {
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "fuxx");
-      }
-      catch (err1) {
+      } catch (err1) {
         isBroken = false;
       }
       if (isBroken) {
@@ -390,8 +370,7 @@ function AuthSuite() {
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "bar");
-      }
-      catch (err2) {
+      } catch (err2) {
         isBroken = false;
       }
       if (isBroken) {
@@ -401,8 +380,7 @@ function AuthSuite() {
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "");
-      }
-      catch (err3) {
+      } catch (err3) {
         isBroken = false;
       }
       if (isBroken) {
@@ -430,8 +408,7 @@ function AuthSuite() {
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "foobar");
-      }
-      catch (err1) {
+      } catch (err1) {
         isBroken = false;
       }
       if (isBroken) {
@@ -441,8 +418,7 @@ function AuthSuite() {
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "\\abc'def: x-a");
-      }
-      catch (err2) {
+      } catch (err2) {
         isBroken = false;
       }
       if (isBroken) {
@@ -452,8 +428,7 @@ function AuthSuite() {
       isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "");
-      }
-      catch (err3) {
+      } catch (err3) {
         isBroken = false;
       }
       if (isBroken) {
@@ -471,7 +446,7 @@ function AuthSuite() {
     testAuth: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({ "username": "root", "password": "" })
+        body: JSON.stringify({"username": "root", "password": ""})
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
@@ -489,7 +464,7 @@ function AuthSuite() {
 
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({ "username": user, "password": "foobar" })
+        body: JSON.stringify({"username": user, "password": "foobar"})
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
@@ -506,7 +481,7 @@ function AuthSuite() {
 
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({ "username": user, "password": "foobar" })
+        body: JSON.stringify({"username": user, "password": "foobar"})
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
@@ -515,7 +490,7 @@ function AuthSuite() {
     testAuthNoPassword: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({ "username": user, "passwordaa": "foobar" }),
+        body: JSON.stringify({"username": user, "passwordaa": "foobar"}),
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 400);
@@ -524,7 +499,7 @@ function AuthSuite() {
     testAuthNoUsername: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({ "usern": user, "password": "foobar" }),
+        body: JSON.stringify({"usern": user, "password": "foobar"}),
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 400);
@@ -539,7 +514,7 @@ function AuthSuite() {
     testFullAuthWorkflow: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({ "username": "root", "password": "" }),
+        body: JSON.stringify({"username": "root", "password": ""}),
       });
 
       var jwt = JSON.parse(res.body).jwt;
@@ -571,7 +546,13 @@ function AuthSuite() {
     },
 
     testNoneAlgDisabled: function () {
-      var jwt = (new Buffer(JSON.stringify({ "typ": "JWT", "alg": "none" })).toString('base64')) + "." + (new Buffer(JSON.stringify({ "preferred_username": "root", "iss": "arangodb" })).toString('base64'));
+      var jwt = (new Buffer(JSON.stringify({
+        "typ": "JWT",
+        "alg": "none"
+      })).toString('base64')) + "." + (new Buffer(JSON.stringify({
+        "preferred_username": "root",
+        "iss": "arangodb"
+      })).toString('base64'));
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -584,7 +565,10 @@ function AuthSuite() {
     },
 
     testIssRequired: function () {
-      var jwt = crypto.jwtEncode(jwtSecret, { "preferred_username": "root", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
+      var jwt = crypto.jwtEncode(jwtSecret, {
+        "preferred_username": "root",
+        "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -597,7 +581,11 @@ function AuthSuite() {
     },
 
     testIssArangodb: function () {
-      var jwt = crypto.jwtEncode(jwtSecret, { "preferred_username": "root", "iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
+      var jwt = crypto.jwtEncode(jwtSecret, {
+        "preferred_username": "root",
+        "iss": "arangodbaaa",
+        "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -626,7 +614,11 @@ function AuthSuite() {
     },
 
     testExp: function () {
-      var jwt = crypto.jwtEncode(jwtSecret, { "preferred_username": "root", "iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) - 1000 }, 'HS256');
+      var jwt = crypto.jwtEncode(jwtSecret, {
+        "preferred_username": "root",
+        "iss": "arangodbaaa",
+        "exp": Math.floor(Date.now() / 1000) - 1000
+      }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -638,7 +630,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testDatabaseGuessing: function() {
+    testDatabaseGuessing: function () {
       let jwt = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -661,7 +653,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testDatabaseGuessingSuperUser: function() {
+    testDatabaseGuessingSuperUser: function () {
       let jwt = crypto.jwtEncode(jwtSecret, {
         "server_id": "foo",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -684,7 +676,7 @@ function AuthSuite() {
       expect(res).to.have.property('statusCode', 401);
     },
 
-    testDatabaseListNonSystem: function() {
+    testDatabaseListNonSystem: function () {
       let jwt = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -715,7 +707,7 @@ function AuthSuite() {
         });
         expect(res).to.be.an.instanceof(request.Response);
         expect(res).to.have.property('statusCode', ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code);
-      } catch(e) {
+      } catch (e) {
 
       } finally {
         db._dropDatabase("other");
@@ -725,11 +717,55 @@ function AuthSuite() {
 }
 
 
+function UnauthorizedAccesSuite() {
+
+  const user = "testUser";
+
+  return {
+
+    setUpAll: function () {
+      arango.reconnect(arango.getEndpoint(), "_system", "root", "");
+      users.save(user, "abc");
+      db._createDatabase("dbTest1");
+      db._createDatabase("dbTest2");
+      db._createDatabase("dbTest3");
+      //     users.grantDatabase(user, '_system', 'rw');
+      users.grantDatabase(user, 'dbTest1', 'rw');
+      users.grantDatabase(user, 'dbTest2', 'rw');
+
+    },
+
+    tearDownAll: function () {
+      arango.reconnect(arango.getEndpoint(), "_system", "root", "");
+      db._dropDatabase("dbTest1");
+      db._dropDatabase("dbTest2");
+      db._dropDatabase("dbTest3");
+      users.remove(user);
+    },
+
+    testUnauthorizedCurrent: function () {
+      arango.reconnect(arango.getEndpoint(), "dbTest1", user, "abc");
+      let res = arango.GET_RAW("/_db/dbTest2/_api/database/current");
+      assertEqual(200, res.code);
+      assertFalse(res.parsedBody.hasOwnProperty("errorMessage"));
+      assertEqual(res.parsedBody.result.name, "dbTest2");
+      res = arango.GET_RAW("/_db/dbTest3/_api/database/current");
+      assertEqual(401, res.code);
+      assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
+      res = arango.GET_RAW("/_db/dbTest4/_api/database/current");
+      assertEqual(401, res.code);
+      assertEqual(res.parsedBody.errorMessage, "not authorized to execute this request");
+    },
+  };
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(AuthSuite);
+jsunity.run(UnauthorizedAccesSuite);
 
 return jsunity.done();
 

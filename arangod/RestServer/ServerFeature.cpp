@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -39,7 +40,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -50,55 +53,41 @@ namespace arangodb {
 ServerFeature::ServerFeature(Server& server, int* res)
     : ArangodFeature{server, *this},
       _result(res),
-      _operationMode(OperationMode::MODE_SERVER)
-#if _WIN32
-      ,
-      _codePage(65001),  // default to UTF8
-      _originalCodePage(UINT16_MAX)
-#endif
-{
+      _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--console", "start a JavaScript emergency console",
-                     new BooleanParameter(&_console));
+  options
+      ->addOption("--console",
+                  "Start the server with a JavaScript emergency console.",
+                  new BooleanParameter(&_console))
+      .setLongDescription(R"(In this exclusive emergency mode, all networking
+and HTTP interfaces of the server are disabled. No requests can be made to the
+server in this mode, and the only way to work with the server in this mode is by
+using the emergency console.
+
+The server cannot be started in this mode if it is already running in this or
+another mode.)");
 
   options->addSection("server", "server features");
 
   options->addOption(
-      "--server.rest-server", "start a rest-server",
+      "--server.rest-server", "Start a REST server.",
       new BooleanParameter(&_restServer),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption(
-          "--server.validate-utf8-strings",
-          "perform UTF-8 string validation for incoming JSON and VelocyPack "
-          "data",
-          new BooleanParameter(&_validateUtf8Strings),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30700);
-
-  options->addOption("--javascript.script", "run scripts and exit",
-                     new VectorParameter<StringParameter>(&_scripts));
-
-#if _WIN32
   options->addOption(
-      "--console.code-page", "Windows code page to use; defaults to UTF8",
-      new UInt16Parameter(&_codePage),
+      "--server.validate-utf8-strings",
+      "Perform UTF-8 string validation for incoming JSON and VelocyPack "
+      "data.",
+      new BooleanParameter(&_validateUtf8Strings),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
-#endif
 
-  // add several obsoleted options here
-  options->addSection("vst", "VelocyStream protocol", "", true, true);
-  options->addObsoleteOption("--vst.maxsize",
-                             "maximal size (in bytes) "
-                             "for a VelocyPack chunk",
-                             true);
+  options->addOption("--javascript.script", "Run the script and exit.",
+                     new VectorParameter<StringParameter>(&_scripts));
 
   // add obsolete MMFiles WAL options (obsoleted in 3.7)
   options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
@@ -170,22 +159,28 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   DatabaseFeature& db = server().getFeature<DatabaseFeature>();
 
   if (_operationMode == OperationMode::MODE_SERVER && !_restServer &&
-      !db.upgrade()) {
+      !db.upgrade() &&
+      !options->processingResult().touched("rocksdb.verify-sst")) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "need at least '--console', '--javascript.unit-tests' or"
         << "'--javascript.script if rest-server is disabled";
     FATAL_ERROR_EXIT();
   }
 
+  bool supportsV8 = false;
+#ifdef USE_V8
   V8DealerFeature& v8dealer = server().getFeature<V8DealerFeature>();
 
   if (v8dealer.isEnabled()) {
     if (_operationMode == OperationMode::MODE_SCRIPT) {
-      v8dealer.setMinimumContexts(2);
+      v8dealer.setMinimumExecutors(2);
     } else {
-      v8dealer.setMinimumContexts(1);
+      v8dealer.setMinimumExecutors(1);
     }
-  } else if (_operationMode != OperationMode::MODE_SERVER) {
+    supportsV8 = true;
+  }
+#endif
+  if (!supportsV8 && _operationMode != OperationMode::MODE_SERVER) {
     LOG_TOPIC("a114b", FATAL, arangodb::Logger::FIXME)
         << "Options '--console', '--javascript.unit-tests'"
         << " or '--javascript.script' are not supported without V8";
@@ -220,10 +215,12 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
   }
 
+#ifdef USE_V8
   if (_operationMode == OperationMode::MODE_CONSOLE) {
     disableDeamonAndSupervisor();
-    v8dealer.setMinimumContexts(2);
+    v8dealer.setMinimumExecutors(2);
   }
+#endif
 
   if (_operationMode == OperationMode::MODE_SERVER ||
       _operationMode == OperationMode::MODE_CONSOLE) {
@@ -238,13 +235,6 @@ void ServerFeature::prepare() {
 }
 
 void ServerFeature::start() {
-#if _WIN32
-  _originalCodePage = GetConsoleOutputCP();
-  if (IsValidCodePage(_codePage)) {
-    SetConsoleOutputCP(_codePage);
-  }
-#endif
-
   waitForHeartbeat();
 
   *_result = EXIT_SUCCESS;
@@ -273,14 +263,6 @@ void ServerFeature::start() {
   }
 }
 
-void ServerFeature::stop() {
-#if _WIN32
-  if (IsValidCodePage(_originalCodePage)) {
-    SetConsoleOutputCP(_originalCodePage);
-  }
-#endif
-}
-
 void ServerFeature::beginShutdown() { _isStopping = true; }
 
 void ServerFeature::waitForHeartbeat() {
@@ -289,11 +271,19 @@ void ServerFeature::waitForHeartbeat() {
     return;
   }
 
+  if (!server().hasFeature<ClusterFeature>()) {
+    return;
+  }
+
+  auto& cf = server().getFeature<ClusterFeature>();
+
   while (true) {
-    if (HeartbeatThread::hasRunOnce()) {
+    auto heartbeatThread = cf.heartbeatThread();
+    TRI_ASSERT(heartbeatThread != nullptr);
+    if (heartbeatThread == nullptr || heartbeatThread->hasRunOnce()) {
       break;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 

@@ -1,5 +1,4 @@
 set(ARANGODB_IRESEARCH_TESTS_SOURCES
-  ${ARANGODB_TESTS_COMMON_SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/ContainersTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ExpressionFilterTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GeoAnalyzerTest.cpp
@@ -31,6 +30,7 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryAggregateTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryAndTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryBooleanTermTest.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryCommon.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryComplexBooleanTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryExistsTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryFilterTest.cpp
@@ -60,7 +60,6 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryTokensTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryValueTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryTraversalTest.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchRocksDBRecoveryHelperTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchPrimaryKeyReuseTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchTestCommon.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewTest.cpp
@@ -71,18 +70,15 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewSortTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewSortedTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewCountApproximateTest.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/VelocyPackHelperTest.cpp
-  ${ADDITIONAL_IRESEARCH_TEST_SOURCES}
-)
+  ${CMAKE_CURRENT_SOURCE_DIR}/VelocyPackHelperTest.cpp)
 
 set(ARANGODB_IRESEARCH_TESTS_SOURCES
-    ${ARANGODB_IRESEARCH_TESTS_SOURCES}
-    PARENT_SCOPE)
+  ${ARANGODB_IRESEARCH_TESTS_SOURCES}
+  PARENT_SCOPE)
 
 add_executable(
   arangodbtests-iresearch
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
-  ../main.cpp
 )
 
 set_target_properties(arangodbtests-iresearch PROPERTIES EXCLUDE_FROM_ALL TRUE)
@@ -93,14 +89,18 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests-iresearch
+  gtest
+  arango_tests_basics
   arango_agency
   arango_cluster_engine
   arango_rocksdb
-  arango_v8server
   arangoserver
-  gtest
   boost_boost
 )
+
+if (USE_V8)
+  target_link_libraries(arangodbtests-iresearch arango_v8server)
+endif ()
 
 target_include_directories(arangodbtests-iresearch PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
@@ -111,10 +111,15 @@ target_include_directories(arangodbtests-iresearch PRIVATE
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
-  ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
 )
+
+if (USE_V8) 
+  target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
+    ${V8_INTERNAL_INCLUDE_DIR})
+endif ()
+
+
 target_link_libraries(arangodbtests-iresearch v8_interface)
 
 if (USE_JEMALLOC)

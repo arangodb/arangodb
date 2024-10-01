@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,6 @@
 #include <s2/s2region_coverer.h>
 #include <s2/s2region_intersection.h>
 
-#include "Basics/Common.h"
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
 #include "Logger/Logger.h"
@@ -62,7 +61,7 @@ std::vector<geo::Interval> CoveringUtils::intervals() {
   TRI_ASSERT(!isDone());
 
   std::vector<geo::Interval> intervals;
-  std::vector<S2CellId> cover = _params.filterShape.covering(&_coverer);
+  auto cover = _params.filterShape.covering(_coverer);
   geo::utils::scanIntervals(_params, cover, intervals);
   _allIntervalsCovered = true;
   return intervals;

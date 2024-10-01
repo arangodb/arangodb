@@ -114,6 +114,7 @@ METRICSLIST.sort()
 # Check that every listed metric has a .yaml documentation file:
 MISSING = False
 YAMLS = []
+VERSION_REGEX = re.compile(r"^\d\.\d{1,2}\.\d{1,2}$")
 for i, metric in enumerate(METRICSLIST):
     bad = False
     if not metric + ".yaml" in YAMLFILES:
@@ -152,6 +153,12 @@ for i, metric in enumerate(METRICSLIST):
                         print(f"YAML file '{filename}' has an attribute "
                               f"'{attr}' whose value must be a string but isn't.")
                         bad = True
+                version = y["introducedIn"]
+                if not VERSION_REGEX.match(version):
+                    print(f"YAML file '{filename}' has an attribute 'introducedIn' "
+                          f"with the value '{version}' that does not match the "
+                          f"required pattern: MAJOR.MINOR.PATCH")
+                    bad = True
                 if y["help"].strip()[-1] != ".":
                     print(f"YAML file '{filename}' has a 'help' attribute that "
                           f"does not end with a period.")

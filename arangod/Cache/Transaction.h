@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,20 +24,21 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Structure to maintain information about an individual transaction.
 struct Transaction {
-  std::uint64_t term;
-  bool readOnly;
-  bool sensitive;
+  static constexpr auto kInvalidTerm =
+      std::numeric_limits<std::uint64_t>::max();
 
-  Transaction();
-  explicit Transaction(bool ro);
+  std::uint64_t term = kInvalidTerm;
+  bool readOnly = true;
+  bool sensitive = false;
+
+  Transaction() = default;
+  explicit Transaction(bool ro) : readOnly{ro}, sensitive{!ro} {}
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+}  // namespace arangodb::cache

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,17 +21,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rocksdb/db.h>
-#include <rocksdb/utilities/transaction.h>
-
-#include <velocypack/Iterator.h>
-
 #include "RocksDBMetadata.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -41,9 +38,14 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction.h>
+#include <velocypack/Iterator.h>
 
 #include <chrono>
 #include <thread>
@@ -152,12 +154,14 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId,
     if (_blockers.end() == previous ||
         _blockersBySeq.end() ==
             _blockersBySeq.find(std::make_pair(previous->second, trxId))) {
-      res.reset(TRI_ERROR_INTERNAL);
+      TRI_ASSERT(false);
+      return res.reset(TRI_ERROR_INTERNAL);
     }
 
     auto removed =
         _blockersBySeq.erase(std::make_pair(previous->second, trxId));
     if (!removed) {
+      TRI_ASSERT(false);
       return res.reset(TRI_ERROR_INTERNAL);
     }
 
@@ -165,6 +169,7 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId,
     _blockers[trxId] = seq;
     auto crosslist = _blockersBySeq.emplace(seq, trxId);
     if (!crosslist.second) {
+      TRI_ASSERT(false);
       return res.reset(TRI_ERROR_INTERNAL);
     }
 
@@ -311,7 +316,8 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
   TRI_ASSERT(seq != 0 && (adj || revId.isSet()));
 
   std::lock_guard guard{_bufferLock};
-  TRI_ASSERT(seq > _count._committedSeq);
+  TRI_ASSERT(seq > _count._committedSeq)
+      << "seq: " << seq << ", count seq: " << _count._committedSeq;
   _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
   LOG_TOPIC("1587e", TRACE, Logger::ENGINES)
       << "[" << this << "] buffered adjustment (" << seq << ", " << adj << ", "
@@ -388,17 +394,27 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   TRI_ASSERT(batch.Count() == 0);
 
   Result res;
-  if (coll.deleted()) {
+  if (coll.deleted() || coll.vocbase().isDropped()) {
     return res;
   }
 
-  auto& engine = coll.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  struct Stats {
+    rocksdb::SequenceNumber originalAppliedSeq = 0;
+    rocksdb::SequenceNumber maxCommitSeq = 0;
+    rocksdb::SequenceNumber appliedSeqAfterRevisionTree = 0;
+    bool didWork = false;
+  };
+
+  Stats stats;
+  // store original applied seq
+  stats.originalAppliedSeq = appliedSeq;
+
+  auto& engine = coll.vocbase().engine<RocksDBEngine>();
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
   rocksdb::SequenceNumber const maxCommitSeq = committableSeq(appliedSeq);
+  // store committable seq
+  stats.maxCommitSeq = maxCommitSeq;
   TRI_ASSERT(maxCommitSeq <= appliedSeq);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -419,6 +435,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   bool didWork = applyAdjustments(maxCommitSeq);
+  stats.didWork = didWork;
   appliedSeq = maxCommitSeq;
 
   RocksDBKey key;
@@ -479,7 +496,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 3. store the index estimates
-  auto indexes = coll.getIndexes();
+  auto indexes = coll.getPhysical()->getReadyIndexes();
   for (std::shared_ptr<arangodb::Index>& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     RocksDBCuckooIndexEstimatorType* est = idx->estimator();
@@ -521,21 +538,36 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     }
   }
 
-  if (!coll.useSyncByRevision()) {
-    return Result{};
+  TRI_ASSERT(res.ok());
+
+  if (coll.useSyncByRevision()) {
+    // Step 4. Take care of revision tree, either serialize or persist
+    // it, or at least check if we can move forward the seq number when
+    // it was last serialized (in case there have been no writes to the
+    // collection for some time). In either case, the resulting sequence
+    // number is incorporated into the minimum calculation for lastSync
+    // (via `appliedSeq`), such that recovery only has to look at the WAL
+    // from this sequence number on to be able to recover the tree from
+    // its last persisted state.
+    res = rcoll->takeCareOfRevisionTreePersistence(coll, engine, batch, cf,
+                                                   maxCommitSeq, force, context,
+                                                   output, appliedSeq);
+
+    stats.appliedSeqAfterRevisionTree = appliedSeq;
   }
 
-  // Step 4. Take care of revision tree, either serialize or persist
-  // it, or at least check if we can move forward the seq number when
-  // it was last serialized (in case there have been no writes to the
-  // collection for some time). In either case, the resulting sequence
-  // number is incorporated into the minimum calculation for lastSync
-  // (via `appliedSeq`), such that recovery only has to look at the WAL
-  // from this sequence number on to be able to recover the tree from
-  // its last persisted state.
-  return rcoll->takeCareOfRevisionTreePersistence(coll, engine, batch, cf,
-                                                  maxCommitSeq, force, context,
-                                                  output, appliedSeq);
+  if (stats.didWork || stats.originalAppliedSeq != appliedSeq) {
+    // only log if there is something noteworthy
+    LOG_TOPIC("ec667", DEBUG, Logger::ENGINES)
+        << "serializeMeta for '" << coll.vocbase().name() << "/" << coll.name()
+        << "': original applied seq: " << stats.originalAppliedSeq
+        << ", max commit seq: " << maxCommitSeq
+        << ", applied seq after revision trees: "
+        << stats.appliedSeqAfterRevisionTree
+        << ", didWork: " << (didWork ? "yes" : "no");
+  }
+
+  return res;
 }
 
 /// @brief deserialize collection metadata, only called on startup
@@ -547,10 +579,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   RocksDBCollection* rcoll =
       static_cast<RocksDBCollection*>(coll.getPhysical());
 
-  auto& engine = coll.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = coll.vocbase().engine<RocksDBEngine>();
   rocksdb::SequenceNumber globalSeq =
       engine.settingsManager()->earliestSeqNeeded();
 
@@ -600,23 +629,14 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
     if (s.ok()) {
       VPackSlice keyGenProps = RocksDBValue::data(value);
       TRI_ASSERT(keyGenProps.isObject());
-      // simon: wtf who decided this is a good deserialization routine ?!
-      VPackSlice val = keyGenProps.get(StaticStrings::LastValue);
-      if (val.isString()) {
-        keyGen.track(val.stringView());
-      } else if (val.isInteger()) {
-        uint64_t lastValue = val.getUInt();
-        std::string str = std::to_string(lastValue);
-        keyGen.track(str);
-      }
-
+      keyGen.initState(keyGenProps);
     } else if (!s.IsNotFound()) {
       return rocksutils::convertStatus(s);
     }
   }
 
   // Step 3. load the index estimates
-  auto indexes = coll.getIndexes();
+  auto indexes = coll.getPhysical()->getReadyIndexes();
   for (std::shared_ptr<arangodb::Index> const& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     if (idx->estimator() == nullptr) {
@@ -641,8 +661,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
       TRI_ASSERT(rocksutils::uint64FromPersistent(value.data()) <=
                  db->GetLatestSequenceNumber());
 
-      auto est =
-          std::make_unique<RocksDBCuckooIndexEstimatorType>(estimateInput);
+      auto est = std::make_unique<RocksDBCuckooIndexEstimatorType>(
+          &engine.indexEstimatorMemoryUsageMetric(), estimateInput);
       LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
           << context << ": found index estimator for objectId '"
           << idx->objectId() << "' committed seqNr '" << est->appliedSeq()

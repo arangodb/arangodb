@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,6 +32,7 @@
 #include "RocksDBEngine/Methods/RocksDBSstFileMethods.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 
 #include <velocypack/Slice.h>
 
@@ -40,13 +41,12 @@
 #include <rocksdb/iterator.h>
 #include <rocksdb/slice.h>
 
-#include "Logger/LogMacros.h"
-
 namespace arangodb {
 
 RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
     rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf, std::string const& path,
-    uint64_t keyPrefix, StorageUsageTracker& usageTracker)
+    uint64_t keyPrefix, StorageUsageTracker& usageTracker,
+    RocksDBMethodsMemoryTracker& memoryTracker)
     : _db(db),
       _cf(cf),
       _path(path),
@@ -66,8 +66,10 @@ RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
 
   // create SstFileMethods instance that we will use for file ingestion
   rocksdb::Options options = _db->GetOptions();
-  _methods = std::make_unique<RocksDBSstFileMethods>(_db, _cf, options, _path,
-                                                     usageTracker);
+  options.comparator = _cf->GetComparator();
+
+  _methods = std::make_unique<RocksDBSstFileMethods>(
+      _db, _cf, options, _path, usageTracker, memoryTracker);
 }
 
 RocksDBSortedRowsStorageContext::~RocksDBSortedRowsStorageContext() {

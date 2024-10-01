@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,7 +40,7 @@ namespace {
 using namespace arangodb::iresearch;
 
 irs::parametric_description readParametricDescription(
-    std::pair<irs::bytes_ref, size_t> args) {
+    std::pair<irs::bytes_view, size_t> args) {
   auto const rawSize = args.second;
   const auto& data = args.first;
 
@@ -51,7 +51,7 @@ irs::parametric_description readParametricDescription(
 
   irs::bstring dst(rawSize, 0);
   const auto lz4_size = ::LZ4_decompress_safe(
-      reinterpret_cast<char const*>(data.begin()),
+      reinterpret_cast<char const*>(data.data()),
       reinterpret_cast<char*>(&dst[0]), static_cast<int>(data.size()),
       static_cast<int>(rawSize));
 
@@ -59,7 +59,7 @@ irs::parametric_description readParametricDescription(
     return {};
   }
 
-  irs::bytes_ref_input in({dst.c_str(), rawSize});
+  irs::bytes_view_input in({dst.c_str(), rawSize});
   return irs::read(in);
 }
 

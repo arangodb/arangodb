@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -56,7 +56,7 @@ class QueryAggregate : public QueryTest {
         auto names = it.value().get("names");
         ASSERT_TRUE(names.isNumber<size_t>()) << names.toString();
         EXPECT_EQ(expectedIt->second, names.getNumber<size_t>());
-        EXPECT_EQ(expected.erase(key), 1);
+        EXPECT_EQ(expected.erase(key), 1U);
       }
       EXPECT_TRUE(expected.empty());
     }
@@ -98,7 +98,7 @@ class QueryAggregate : public QueryTest {
         auto& expectedNames = expectedIt->second;
         if (expectedNames.empty()) {
           // array must contain singe 'null' value
-          EXPECT_EQ(names.size(), 1);
+          EXPECT_EQ(names.size(), 1U);
           ASSERT_TRUE(names.valid());
           EXPECT_TRUE(names.value().isNull());
           names.next();
@@ -114,7 +114,7 @@ class QueryAggregate : public QueryTest {
         }
 
         EXPECT_TRUE(expectedNames.empty());
-        EXPECT_EQ(expected.erase(key), 1);
+        EXPECT_EQ(expected.erase(key), 1U);
       }
       EXPECT_TRUE(expected.empty());
     }
@@ -143,12 +143,12 @@ class QueryAggregate : public QueryTest {
 
 class QueryAggregateView : public QueryAggregate {
  protected:
-  ViewType type() const final { return arangodb::ViewType::kView; }
+  ViewType type() const final { return arangodb::ViewType::kArangoSearch; }
 };
 
 class QueryAggregateSearch : public QueryAggregate {
  protected:
-  ViewType type() const final { return arangodb::ViewType::kSearch; }
+  ViewType type() const final { return arangodb::ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryAggregateView, Test) {

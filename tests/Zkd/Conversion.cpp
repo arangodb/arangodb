@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -151,9 +151,9 @@ TEST(Zkd_byte_string_conversion, bit_reader_test) {
 
   BitReader r(s);
   auto v = r.read_big_endian_bits(4);
-  EXPECT_EQ(0b1110, v);
+  EXPECT_EQ(0b1110u, v);
   auto v2 = r.read_big_endian_bits(5);
-  EXPECT_EQ(0b10101, v2);
+  EXPECT_EQ(0b10101u, v2);
 }
 
 TEST(Zkd_byte_string_conversion, bit_reader_test_different_sizes) {
@@ -162,12 +162,12 @@ TEST(Zkd_byte_string_conversion, bit_reader_test_different_sizes) {
   {
     BitReader r(s);
     auto v = r.read_big_endian_bits(1);
-    EXPECT_EQ(1, v);
+    EXPECT_EQ(1u, v);
   }
   {
     BitReader r(s);
     auto v = r.read_big_endian_bits(8);
-    EXPECT_EQ(1 << 7, v);
+    EXPECT_EQ(1u << 7, v);
   }
   {
     BitReader r(s);

@@ -23,9 +23,10 @@ export type DispatchArgs<FormState> = {
   formState?: FormState;
 };
 
+export type FormDispatch<FormState> = Dispatch<DispatchArgs<FormState>>;
+
 export type FormProps<FormState> = {
   formState: FormState;
-  dispatch: Dispatch<DispatchArgs<FormState>>;
+  dispatch: FormDispatch<FormState>;
   disabled?: boolean;
 };
-

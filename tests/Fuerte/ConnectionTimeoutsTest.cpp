@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -61,15 +62,15 @@ void performRequests(fu::ProtocolType pt) {
   auto req = ::sleepRequest(10.0);
   req->timeout(std::chrono::seconds(1));
 
-  fu::WaitGroup wg;
-  wg.add();
+  auto wg = std::make_shared<fu::WaitGroup>();
+  wg->add();
   connection->sendRequest(std::move(req),
-                          [&](fu::Error e, std::unique_ptr<fu::Request> req,
-                              std::unique_ptr<fu::Response> res) {
-                            fu::WaitGroupDone done(wg);
+                          [wg](fu::Error e, std::unique_ptr<fu::Request> req,
+                               std::unique_ptr<fu::Response> res) {
+                            fu::WaitGroupDone done(*wg);
                             ASSERT_EQ(e, fu::Error::RequestTimeout);
                           });
-  ASSERT_TRUE(wg.wait_for(std::chrono::seconds(5)));
+  ASSERT_TRUE(wg->wait_for(std::chrono::seconds(5)));
 
   if (pt == fu::ProtocolType::Http) {
     ASSERT_EQ(connection->state(), fu::Connection::State::Closed);
@@ -79,11 +80,11 @@ void performRequests(fu::ProtocolType pt) {
   ASSERT_EQ(connection->state(), fu::Connection::State::Connected);
 
   req = fu::createRequest(fu::RestVerb::Post, "/_api/version");
-  wg.add();
+  wg->add();
   connection->sendRequest(std::move(req),
-                          [&](fu::Error e, std::unique_ptr<fu::Request> req,
-                              std::unique_ptr<fu::Response> res) {
-                            fu::WaitGroupDone done(wg);
+                          [wg](fu::Error e, std::unique_ptr<fu::Request> req,
+                               std::unique_ptr<fu::Response> res) {
+                            fu::WaitGroupDone done(*wg);
                             if (e != fu::Error::NoError) {
                               ASSERT_TRUE(false) << fu::to_string(e);
                             } else {
@@ -95,18 +96,18 @@ void performRequests(fu::ProtocolType pt) {
                               ASSERT_EQ(version[0], '3');  // major version
                             }
                           });
-  wg.wait();
+  wg->wait();
 
   for (int i = 0; i < 8; i++) {
     // should not fail
     req = ::sleepRequest(4.0);
     req->timeout(std::chrono::seconds(60));
 
-    wg.add();
+    wg->add();
     connection->sendRequest(std::move(req),
-                            [&](fu::Error e, std::unique_ptr<fu::Request> req,
-                                std::unique_ptr<fu::Response> res) {
-                              fu::WaitGroupDone done(wg);
+                            [wg](fu::Error e, std::unique_ptr<fu::Request> req,
+                                 std::unique_ptr<fu::Response> res) {
+                              fu::WaitGroupDone done(*wg);
                               ASSERT_EQ(e, fu::Error::NoError);
                               ASSERT_TRUE(res != nullptr);
                             });
@@ -115,22 +116,20 @@ void performRequests(fu::ProtocolType pt) {
     req = ::sleepRequest(4.0);
     req->timeout(std::chrono::milliseconds(100));
 
-    wg.add();
+    wg->add();
     connection->sendRequest(std::move(req),
-                            [&](fu::Error e, std::unique_ptr<fu::Request> req,
-                                std::unique_ptr<fu::Response> res) {
-                              fu::WaitGroupDone done(wg);
+                            [wg](fu::Error e, std::unique_ptr<fu::Request> req,
+                                 std::unique_ptr<fu::Response> res) {
+                              fu::WaitGroupDone done(*wg);
                               ASSERT_EQ(e, fu::Error::RequestTimeout);
                               ASSERT_EQ(res, nullptr);
                             });
   }
 
-  ASSERT_TRUE(wg.wait_for(std::chrono::seconds(120)));
+  ASSERT_TRUE(wg->wait_for(std::chrono::seconds(120)));
 }
 
 }  // namespace
-
-TEST(RequestTimeout, VelocyStream) { ::performRequests(fu::ProtocolType::Vst); }
 
 TEST(RequestTimeout, HTTP) { ::performRequests(fu::ProtocolType::Http); }
 

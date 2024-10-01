@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,6 +42,8 @@ class ConnectionPool;
 
 class DatabaseTailingSyncer;
 class LogicalCollection;
+class NetworkFeature;
+class ClusterFeature;
 struct SyncerId;
 
 namespace maintenance {
@@ -58,23 +60,25 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
 
   std::string const& clientInfoString() const;
 
+  std::string shardNameForLogging() const;
+
  private:
   arangodb::Result collectionCountOnLeader(std::string const& endpoint,
                                            uint64_t& c);
 
-  arangodb::Result getReadLock(network::ConnectionPool* pool,
-                               std::string const& endpoint,
-                               std::string const& collection,
-                               std::string const& clientId, uint64_t rlid,
-                               bool soft, double timeout);
+  arangodb::Result requestExclusiveLockOnLeader(network::ConnectionPool* pool,
+                                                std::string const& endpoint,
+                                                std::string const& collection,
+                                                std::string const& clientId,
+                                                uint64_t rlid, double timeout);
 
-  arangodb::Result startReadLockOnLeader(std::string const& endpoint,
-                                         std::string const& collection,
-                                         std::string const& clientId,
-                                         uint64_t& rlid, bool soft,
-                                         double timeout = 300.0);
+  arangodb::Result establishExclusiveLockOnLeader(std::string const& endpoint,
+                                                  std::string const& collection,
+                                                  std::string const& clientId,
+                                                  uint64_t& rlid,
+                                                  double timeout = 300.0);
 
-  arangodb::ResultT<TRI_voc_tick_t> catchupWithReadLock(
+  arangodb::ResultT<TRI_voc_tick_t> catchupWithoutLock(
       std::string const& ep, LogicalCollection const& collection,
       std::string const& clientId, std::string const& leader,
       TRI_voc_tick_t lastLogTick,
@@ -89,6 +93,9 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   std::shared_ptr<DatabaseTailingSyncer> buildTailingSyncer(
       TRI_vocbase_t& vocbase, std::string const& endpoint);
 
+  NetworkFeature& _networkFeature;
+  ClusterFeature& _clusterFeature;
+
   /// @brief Short, informative description of the replication client, passed to
   /// the server
   std::string _clientInfoString;
@@ -98,6 +105,14 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   /// @brief maximum tick until which we need to run WAL tailing for. 0 means
   /// "no restriction"
   uint64_t _tailingUpperBoundTick;
+
+  /// @brief initial number of documents on leader
+  uint64_t _initialDocCountOnLeader;
+  /// @brief initial number of documents on follower
+  uint64_t _initialDocCountOnFollower;
+  /// @brief number of documents on follower at end of (successful)
+  /// synchronization
+  uint64_t _docCountAtEnd;
 
   /// @brief end time (timestamp in seconds)
   std::chrono::time_point<std::chrono::steady_clock> _endTimeForAttempt;

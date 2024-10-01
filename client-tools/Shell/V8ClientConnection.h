@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Shell/arangosh.h"
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
@@ -51,7 +50,6 @@ class RequestFuzzer;
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
-class SimpleHttpResult;
 }  // namespace httpclient
 
 namespace fuerte {
@@ -79,6 +77,9 @@ class V8ClientConnection {
   void connect();
   void reconnect();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void reconnectWithNewPassword(std::string const& password);
+#endif
   double timeout() const;
 
   void timeout(double value);
@@ -139,6 +140,16 @@ class V8ClientConnection {
       std::unordered_map<std::string, std::string> const& headerFields,
       bool raw);
 
+  std::string getHandle();
+
+  void connectHandle(v8::Isolate* isolate,
+                     v8::FunctionCallbackInfo<v8::Value> const& args,
+                     std::string const& handle);
+
+  void disconnectHandle(v8::Isolate* isolate,
+                        v8::FunctionCallbackInfo<v8::Value> const& args,
+                        std::string const& handle);
+
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   uint32_t sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer);
 #endif
@@ -194,6 +205,8 @@ class V8ClientConnection {
 
   fuerte::EventLoopService _loop;
   fuerte::ConnectionBuilder _builder;
+  fuerte::ConnectionBuilder _connectedBuilder;
+  std::string _currentConnectionId;
   std::shared_ptr<fuerte::Connection> _connection;
   velocypack::Options _vpackOptions;
   bool _forceJson;
@@ -207,5 +220,7 @@ class V8ClientConnection {
   // -> "connect-to-leader" etc.
   std::unordered_map<std::string, std::shared_ptr<fuerte::Connection>>
       _connectionCache;
+  std::unordered_map<std::string, fuerte::ConnectionBuilder>
+      _connectionBuilderCache;
 };
 }  // namespace arangodb

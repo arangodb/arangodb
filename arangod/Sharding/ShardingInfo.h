@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
 #include "RestServer/arangod.h"
 
@@ -31,6 +32,7 @@
 #include <velocypack/Slice.h>
 
 #include <atomic>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -45,7 +47,6 @@ class ApplicationServer;
 }
 
 typedef std::string ServerID;  // ID of a server
-typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
 class ShardingInfo {
@@ -56,18 +57,15 @@ class ShardingInfo {
   ShardingInfo& operator=(ShardingInfo const& other) = delete;
   ~ShardingInfo();
 
-  bool usesSameShardingStrategy(ShardingInfo const* other) const;
   std::string shardingStrategyName() const;
 
   LogicalCollection* collection() const noexcept;
+
   void toVelocyPack(arangodb::velocypack::Builder& result,
-                    bool translateCids) const;
+                    bool ignoreCollectionGroupAttributes, bool translateCids,
+                    bool includeShardsEntry = true) const;
 
   std::string const& distributeShardsLike() const noexcept;
-  void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
-
-  std::vector<std::string> const& avoidServers() const noexcept;
-  void avoidServers(std::vector<std::string> const&);
 
   size_t replicationFactor() const noexcept;
   void replicationFactor(size_t);
@@ -101,19 +99,20 @@ class ShardingInfo {
   std::shared_ptr<ShardMap> shardIds() const;
 
   // return a sorted vector of ShardIDs
-  std::shared_ptr<std::vector<ShardID>> shardListAsShardID() const;
+  std::set<ShardID> shardListAsShardID() const;
 
   // return a filtered list of the collection's shards
   std::shared_ptr<ShardMap> shardIds(
       std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap> const& map);
 
-  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
-                                bool docComplete, ShardID& shardID,
-                                bool& usesDefaultShardKeys,
-                                std::string_view key);
+  ResultT<ShardID> getResponsibleShard(arangodb::velocypack::Slice slice,
+                                       bool docComplete,
+                                       bool& usesDefaultShardKeys,
+                                       std::string_view key);
 
-  static void sortShardNamesNumerically(std::vector<ShardID>& list);
+  template<typename T>
+  static void sortShardNamesNumerically(T& list);
 
   static Result extractReplicationFactor(velocypack::Slice info, bool isSmart,
                                          size_t& replicationFactor);
@@ -128,7 +127,7 @@ class ShardingInfo {
   // @brief the logical collection we are working for
   LogicalCollection* _collection;
 
-  // @brief number of shards
+  // @brief number of shards (0 for smart edge collections)
   size_t _numberOfShards;
 
   // _replicationFactor and _writeConcern are set in
@@ -138,7 +137,7 @@ class ShardingInfo {
   // different thread _replicationFactor and _writeConcern must both be atomic
   // to avoid data races.
 
-  // @brief replication factor (1 = no replication, 0 = smart edge collection)
+  // @brief replication factor (1 = no replication, 0 = satellite collection)
   std::atomic<size_t> _replicationFactor;
 
   // @brief write concern (_writeConcern <= _replicationFactor)

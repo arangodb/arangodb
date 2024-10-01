@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,7 +41,7 @@ template<SocketType T>
 class HttpCommTask final : public GeneralCommTask<T> {
  public:
   HttpCommTask(GeneralServer& server, ConnectionInfo,
-               std::unique_ptr<AsioSocket<T>> so);
+               std::shared_ptr<AsioSocket<T>> so);
   ~HttpCommTask() noexcept;
 
   void start() override;
@@ -66,8 +66,12 @@ class HttpCommTask final : public GeneralCommTask<T> {
   static int on_body(llhttp_t* p, const char* at, size_t len);
   static int on_message_complete(llhttp_t* p);
 
- private:
-  void checkVSTPrefix();
+  /// verify if the transfer-encoding in the header is chunked, which is not
+  /// implemented
+  static bool transferEncodingContainsChunked(HttpCommTask<T>& commTask,
+                                              std::string const& encoding);
+
+  void checkProtocolUpgrade();
 
   void processRequest();
   void doProcessRequest();
@@ -93,8 +97,6 @@ class HttpCommTask final : public GeneralCommTask<T> {
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
   bool _messageDone;
-
-  bool const _allowMethodOverride;  /// allow method override
 };
 }  // namespace rest
 }  // namespace arangodb

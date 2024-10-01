@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,26 +26,29 @@
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 
-#include <nghttp2/nghttp2.h>
 #include <boost/lockfree/queue.hpp>
+#include <nghttp2/nghttp2.h>
+#include <velocypack/Buffer.h>
+
+#include <atomic>
 #include <memory>
 #include <map>
 
 namespace arangodb {
 class HttpRequest;
+class HttpResponse;
 
 /// @brief maximum number of concurrent streams
 static constexpr uint32_t H2MaxConcurrentStreams = 32;
 
 namespace rest {
-
 struct H2Response;
 
 template<SocketType T>
 class H2CommTask final : public GeneralCommTask<T> {
  public:
   H2CommTask(GeneralServer& server, ConnectionInfo,
-             std::unique_ptr<AsioSocket<T>> so);
+             std::shared_ptr<AsioSocket<T>> so);
   ~H2CommTask() noexcept;
 
   void start() override;
@@ -83,7 +86,6 @@ class H2CommTask final : public GeneralCommTask<T> {
                                const nghttp2_frame* frame, int lib_error_code,
                                void* user_data);
 
- private:
   // ongoing Http2 stream
   struct Stream final {
     explicit Stream(std::unique_ptr<HttpRequest> req)
@@ -92,7 +94,8 @@ class H2CommTask final : public GeneralCommTask<T> {
     std::string origin;
 
     std::unique_ptr<HttpRequest> request;
-    std::unique_ptr<H2Response> response;  // hold response memory
+    std::unique_ptr<HttpResponse> response;  // hold response memory
+    bool mustSendAuthHeader = true;
 
     size_t headerBuffSize = 0;  // total header size
     size_t responseOffset = 0;  // current offset in response body
@@ -124,7 +127,7 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   velocypack::Buffer<uint8_t> _outbuffer;
 
-  boost::lockfree::queue<H2Response*,
+  boost::lockfree::queue<HttpResponse*,
                          boost::lockfree::capacity<H2MaxConcurrentStreams>>
       _responses;
 

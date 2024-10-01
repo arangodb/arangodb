@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,7 +33,9 @@
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 
 #include <velocypack/Builder.h>
 
@@ -49,8 +51,6 @@ std::string stats::fromGroupType(stats::GroupType gt) {
       return "clientUser";
     case stats::GroupType::Http:
       return "http";
-    case stats::GroupType::Vst:
-      return "vst";
     case stats::GroupType::Server:
       return "server";
   }
@@ -179,10 +179,7 @@ stats::Descriptions::Descriptions(ArangodServer& server)
   _figures.emplace_back(Figure{stats::GroupType::System,
                                "virtualSize",
                                "Virtual Memory Size",
-                               "On Windows, this figure contains the total "
-                               "amount of memory that the memory manager has "
-                               "committed for the arangod process. On other "
-                               "systems, this figure contains The size of the "
+                               "This figure contains The size of the "
                                "virtual memory the process is using.",
                                stats::FigureType::Current,
                                stats::Unit::Bytes,
@@ -193,8 +190,7 @@ stats::Descriptions::Descriptions(ArangodServer& server)
                                "Minor Page Faults",
                                "The number of minor faults the process has "
                                "made which have not required loading a memory "
-                               "page from disk. This figure is not reported on "
-                               "Windows.",
+                               "page from disk.",
                                stats::FigureType::Accumulated,
                                stats::Unit::Number,
                                {}});
@@ -203,8 +199,7 @@ stats::Descriptions::Descriptions(ArangodServer& server)
       stats::GroupType::System,
       "majorPageFaults",
       "Major Page Faults",
-      "On Windows, this figure contains the total number of page faults. On "
-      "other system, this figure contains the number of major faults the "
+      "This figure contains the number of major faults the "
       "process has made which have required loading a memory page from disk.",
       stats::FigureType::Accumulated,
       stats::Unit::Number,
@@ -434,7 +429,9 @@ stats::Descriptions::Descriptions(ArangodServer& server)
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
+#ifdef USE_V8
   auto& dealer = _server.getFeature<V8DealerFeature>();
+#endif
 
   ServerStatistics const& info =
       _server.getFeature<metrics::MetricsFeature>().serverStatistics();
@@ -456,10 +453,11 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
         VPackValue(info._transactionsStatistics._dirtyReadTransactions.load()));
   b.close();
 
+#ifdef USE_V8
   if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
-    auto v8Counters = dealer.getCurrentContextNumbers();
-    auto memoryStatistics = dealer.getCurrentContextDetails();
+    auto v8Counters = dealer.getCurrentExecutorStatistics();
+    auto memoryStatistics = dealer.getCurrentExecutorDetails();
     b.add("available", VPackValue(v8Counters.available));
     b.add("busy", VPackValue(v8Counters.busy));
     b.add("dirty", VPackValue(v8Counters.dirty));
@@ -482,6 +480,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
     }
     b.close();
   }
+#endif
 
   b.add("threads", VPackValue(VPackValueType::Object, true));
   SchedulerFeature::SCHEDULER->toVelocyPack(b);
@@ -560,16 +559,18 @@ void stats::Descriptions::processStatistics(VPackBuilder& b) const {
   double rss = (double)info._residentSize;
   double rssp = 0;
 
-  if (PhysicalMemory::getValue() != 0) {
-    rssp = rss / PhysicalMemory::getValue();
+  if (auto mem = PhysicalMemory::getValue(); mem != 0) {
+    rssp = rss / mem;
   }
 
   b.add("minorPageFaults", VPackValue(info._minorPageFaults));
   b.add("majorPageFaults", VPackValue(info._majorPageFaults));
-  b.add("userTime",
-        VPackValue((double)info._userTime / (double)info._scClkTck));
-  b.add("systemTime",
-        VPackValue((double)info._systemTime / (double)info._scClkTck));
+  if (info._scClkTck != 0) {
+    b.add("userTime",
+          VPackValue((double)info._userTime / (double)info._scClkTck));
+    b.add("systemTime",
+          VPackValue((double)info._systemTime / (double)info._scClkTck));
+  }
   b.add("numberOfThreads", VPackValue(info._numberThreads));
   b.add("residentSize", VPackValue(rss));
   b.add("residentSizePercent", VPackValue(rssp));

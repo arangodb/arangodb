@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -63,7 +63,8 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   }
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
-      transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      ResourceMonitor& monitor, transaction::Methods* trx,
+      arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       int) override;
@@ -74,6 +75,12 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   bool hasSelectivityEstimate() const override { return false; }
 
+  arangodb::Index::FilterCosts supportsFilterCondition(
+      transaction::Methods& trx,
+      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
+      size_t itemsInIndex) const override;
+
   void toVelocyPack(
       velocypack::Builder&,
       std::underlying_type<arangodb::Index::Serialize>::type) const override;
@@ -82,17 +89,16 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc,
+                LocalDocumentId documentId, velocypack::Slice doc,
                 arangodb::OperationOptions const& /*options*/,
                 bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
  private:
   std::string const _typeName;
-  bool _legacyPolygons;  // indicate if geoJson is parsed with legacy polygons
 };
 }  // namespace arangodb

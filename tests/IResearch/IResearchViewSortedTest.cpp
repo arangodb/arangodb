@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,7 @@
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 
 #include <velocypack/Iterator.h>
 
@@ -39,9 +39,9 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
@@ -68,15 +68,11 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#ifdef USE_V8
 #include "V8/v8-globals.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
-#include "utils/string_utils.hpp"
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -105,7 +101,7 @@ class IResearchViewSortedTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -121,7 +117,7 @@ class IResearchViewSortedTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -141,9 +137,9 @@ class IResearchViewSortedTest
 TEST_P(IResearchViewSortedTest, SingleField) {
   // ArangoDB specific string comparer
   struct StringComparer {
-    bool operator()(irs::string_ref lhs, irs::string_ref rhs) const {
+    bool operator()(std::string_view lhs, std::string_view rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
-                 lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+                 lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
     }
   };  // StringComparer
 
@@ -157,8 +153,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     \"primarySort\": [ { \"field\" : \"seq\", \"direction\": \"desc\" } ] \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -180,7 +175,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
   EXPECT_FALSE(view->primarySort().empty());
   EXPECT_EQ(1, view->primarySort().size());
@@ -213,7 +208,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::ViewType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -227,14 +222,15 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
     {
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
@@ -267,7 +263,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        view->getLinks(), view.get(), view->name());
+        view->getLinks(nullptr), view.get(), view->name());
     ASSERT_TRUE(snapshot);
     // ensure more than 1 segment in index snapshot
     EXPECT_TRUE(snapshot->size() > 1);
@@ -447,9 +443,9 @@ TEST_P(IResearchViewSortedTest, SingleField) {
 TEST_P(IResearchViewSortedTest, MultipleFields) {
   // ArangoDB specific string comparer
   struct StringComparer {
-    bool operator()(irs::string_ref lhs, irs::string_ref rhs) const {
+    bool operator()(std::string_view lhs, std::string_view rhs) const {
       return arangodb::basics::VelocyPackHelper::compareStringValues(
-                 lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true) < 0;
+                 lhs.data(), lhs.size(), rhs.data(), rhs.size(), true) < 0;
     }
   };  // StringComparer
 
@@ -463,8 +459,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     \"primarySort\": [ { \"field\": \"same\", \"asc\": true }, { \"field\": \"same\", \"asc\": false }, { \"field\" : \"seq\", \"direction\": \"desc\" }, { \"field\" : \"name\", \"direction\": \"asc\" } ] \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -486,7 +481,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-      vocbase.createView(createJson->slice()));
+      vocbase.createView(createJson->slice(), false));
   ASSERT_FALSE(!view);
   EXPECT_FALSE(view->primarySort().empty());
   EXPECT_EQ(4, view->primarySort().size());
@@ -519,7 +514,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::ViewType);
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -533,14 +528,15 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     arangodb::OperationOptions opt;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, {logicalCollection1->name(), logicalCollection2->name()}, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
 
     // insert into collections
     {
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view(arangodb::tests::testResourceDir);
       resource /= std::string_view("simple_sequential.json");
 
@@ -573,7 +569,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        view->getLinks(), view.get(), view->name());
+        view->getLinks(nullptr), view.get(), view->name());
     ASSERT_TRUE(snapshot);
     // ensure more than 1 segment in index snapshot
     EXPECT_TRUE(snapshot->size() > 1);

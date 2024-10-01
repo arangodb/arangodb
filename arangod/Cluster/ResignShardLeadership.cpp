@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -101,15 +101,16 @@ bool ResignShardLeadership::first() {
     if (col == nullptr) {
       std::stringstream error;
       error << "Failed to lookup local collection " << collection
-            << " in database " + database;
+            << " in database " << database;
       LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE)
           << "ResignLeadership: " << error.str();
       result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
 
-    // Get write transaction on collection
-    transaction::StandaloneContext ctx(*vocbase);
+    // Get exclusive lock on collection
+    auto origin = transaction::OperationOriginInternal{"resigning leadership"};
+    transaction::StandaloneContext ctx(*vocbase, origin);
     SingleCollectionTransaction trx{
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),

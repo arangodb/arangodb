@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,14 +30,14 @@
 #include <vector>
 
 namespace arangodb {
-
 /// transaction wrapper, uses the current rocksdb transaction
 class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
  public:
-  explicit RocksDBTrxMethods(RocksDBTransactionState*,
+  explicit RocksDBTrxMethods(RocksDBTransactionState* state,
+                             IRocksDBTransactionCallback& callback,
                              rocksdb::TransactionDB* db);
 
-  ~RocksDBTrxMethods();
+  ~RocksDBTrxMethods() override;
 
   Result beginTransaction() override;
 
@@ -49,19 +49,24 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief undo the effects of the previous prepareOperation call
   void rollbackOperation(TRI_voc_document_operation_e operationType) override;
 
-  /// @brief performs an intermediate commit if necessary
-  Result checkIntermediateCommit() override;
+  /// @brief checks if an intermediate commit is necessary
+  bool isIntermediateCommitNeeded() override;
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
+
+  void MultiGet(rocksdb::ColumnFamilyHandle& family, size_t count,
+                rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+                rocksdb::Status* statuses, ReadOwnWrites) final;
 
   std::unique_ptr<rocksdb::Iterator> NewIterator(rocksdb::ColumnFamilyHandle*,
                                                  ReadOptionsCallback) override;
 
   bool iteratorMustCheckBounds(ReadOwnWrites readOwnWrites) const override;
 
-  void beginQuery(bool isModificationQuery);
-  void endQuery(bool isModificationQuery) noexcept;
+  void beginQuery(std::shared_ptr<ResourceMonitor> resourceMonitor,
+                  bool isModificationQuery) override;
+  void endQuery(bool isModificationQuery) noexcept override;
 
  private:
   friend class RocksDBStreamingTrxMethods;
@@ -75,10 +80,10 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// @brief Trigger an intermediate commit.
   /// Handle with care if failing after this commit it will only
   /// be rolled back until this point of time.
-  Result triggerIntermediateCommit();
+  Result triggerIntermediateCommit() override;
 
-  /// @brief check sizes and call internalCommit if too big
-  Result checkIntermediateCommit(uint64_t newSize);
+  /// @brief check if an intermediate commit is necessary by looking at sizes
+  bool checkIntermediateCommit(uint64_t newSize);
 
   void initializeReadWriteBatch();
   void releaseReadWriteBatch() noexcept;
@@ -112,6 +117,9 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   /// regardless of any AQL queries.
   rocksdb::WriteBatchWithIndex* _readWriteBatch{nullptr};
   bool _ownsReadWriteBatch{false};
+
+  // only relevant if _ownsReadWriteBatch == true.
+  std::uint64_t _memoryUsedByReadWriteBatch{0};
 
   std::atomic<std::size_t> _numActiveReadOnlyQueries{0};
   std::atomic<bool> _hasActiveModificationQuery{false};

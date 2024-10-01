@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,11 +33,7 @@
 
 #pragma once
 
-#ifndef _WIN32
-
 #include <sys/resource.h>
-
-// Enabled on Linux and Mac
 
 inline void disableCoredump() {
   auto core_limit = rlimit{};
@@ -60,14 +56,3 @@ inline void disableCoredump() {
         func;                                   \
       }(),                                      \
       assertion)
-
-#else
-
-// Disabled on windows
-// If anyone knows how to disable core creation of a forked process
-// please feel free to fix it here.
-
-#define EXPECT_DEATH_CORE_FREE(func, assertion) EXPECT_TRUE(true)
-#define ASSERT_DEATH_CORE_FREE(func, assertion) ASSERT_TRUE(true)
-
-#endif

@@ -4,54 +4,30 @@ global.DEFINE_MODULE('fs', (function () {
   'use strict'
   /* eslint-enable */
 
-  // //////////////////////////////////////////////////////////////////////////////
-  // / DISCLAIMER
-  // /
-  // / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-  // / Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-  // /
-  // / Licensed under the Apache License, Version 2.0 (the "License")
-  // / you may not use this file except in compliance with the License.
-  // / You may obtain a copy of the License at
-  // /
-  // /     http://www.apache.org/licenses/LICENSE-2.0
-  // /
-  // / Unless required by applicable law or agreed to in writing, software
-  // / distributed under the License is distributed on an "AS IS" BASIS,
-  // / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  // / See the License for the specific language governing permissions and
-  // / limitations under the License.
-  // /
-  // / Copyright holder is triAGENS GmbH, Cologne, Germany
-  // /
-  // / @author Dr. Frank Celler
-  // /
-  // / Parts of the code are based on:
-  // /
-  // / Copyright Joyent, Inc. and other Node contributors.
-  // /
-  // / Permission is hereby granted, free of charge, to any person obtaining a
-  // / copy of this software and associated documentation files (the
-  // / "Software"), to deal in the Software without restriction, including
-  // / without limitation the rights to use, copy, modify, merge, publish,
-  // / distribute, sublicense, and/or sell copies of the Software, and to permit
-  // / persons to whom the Software is furnished to do so, subject to the
-  // / following conditions:
-  // /
-  // / The above copyright notice and this permission notice shall be included
-  // / in all copies or substantial portions of the Software.
-  // /
-  // / THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-  // / OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-  // / MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-  // / NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-  // / DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-  // / OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-  // / USE OR OTHER DEALINGS IN THE SOFTWARE.
-  // //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// //////////////////////////////////////////////////////////////////////////////
 
   var exports = {};
-  var isWindows = require('internal').platform.substr(0, 3) === 'win';
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief pathSeparator
@@ -105,48 +81,6 @@ global.DEFINE_MODULE('fs', (function () {
   // / @brief normalizes a path string
   // //////////////////////////////////////////////////////////////////////////////
 
-  const splitDeviceRe =
-  /^([a-zA-Z]:|[\\\/]{2}[^\\\/]+[\\\/]+[^\\\/]+)?([\\\/])?([\s\S]*?)$/;
-
-  function normalizeUNCRoot (device) {
-    return '\\\\' + device.replace(/^[\\\/]+/, '').replace(/[\\\/]+/g, '\\');
-  }
-
-  function normalizeWindows (path) {
-    var result = splitDeviceRe.exec(path);
-    var device = result[1] || '';
-    var isUnc = device && device.charAt(1) !== ':';
-    var isAbsolute = !!result[2] || isUnc; // UNC paths are always absolute
-    var tail = result[3];
-    var trailingSlash = /[\\\/]$/.test(tail);
-
-    // If device is a drive letter, we'll normalize to lower case.
-    if (device && device.charAt(1) === ':') {
-      device = device[0].toLowerCase() + device.substr(1);
-    }
-
-    // Normalize the tail path
-    tail = normalizeArray(tail.split(/[\\\/]+/).filter(function (p) {
-      return !!p;
-    }), !isAbsolute).join('\\');
-
-    if (!tail && !isAbsolute) {
-      tail = '.';
-    }
-    if (tail && trailingSlash) {
-      tail += '\\';
-    }
-
-    // Convert slashes to backslashes when `device` points to an UNC root.
-    // Also squash multiple slashes into a single one where appropriate.
-
-    if (isUnc) {
-      device = normalizeUNCRoot(device);
-    }
-
-    return device + (isAbsolute ? '\\' : '') + tail;
-  }
-
   function normalizePosix (path) {
     var isAbsolute = path.charAt(0) === '/';
     var trailingSlash = path.substr(-1) === '/';
@@ -166,7 +100,7 @@ global.DEFINE_MODULE('fs', (function () {
     return (isAbsolute ? '/' : '') + path;
   }
 
-  var normalize = isWindows ? normalizeWindows : normalizePosix;
+  var normalize = normalizePosix;
 
   exports.normalize = normalize;
 
@@ -252,73 +186,28 @@ global.DEFINE_MODULE('fs', (function () {
   // / @brief join
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (isWindows) {
-    exports.join = function () {
-      function f (p) {
-        if (typeof p !== 'string') {
-          throw new TypeError('Arguments to path.join must be strings');
-        }
-        return p;
+  exports.join = function () {
+    var paths = Array.prototype.slice.call(arguments, 0);
+
+    return normalize(paths.filter(function (p) {
+      if (typeof p !== 'string') {
+        throw new TypeError('Arguments to path.join must be strings - have ' + JSON.stringify(p));
       }
 
-      var paths = Array.prototype.filter.call(arguments, f);
-      var joined = paths.join('\\');
-
-      // Make sure that the joined path doesn't start with two slashes, because
-      // normalize() will mistake it for an UNC path then.
-      //
-      // This step is skipped when it is very clear that the user actually
-      // intended to point at an UNC path. This is assumed when the first
-      // non-empty string arguments starts with exactly two slashes followed by
-      // at least one more non-slash character.
-      //
-      // Note that for normalize() to treat a path as an UNC path it needs to
-      // have at least 2 components, so we don't filter for that here.
-      // This means that the user can use join to construct UNC paths from
-      // a server name and a share name; for example:
-      //   path.join('//server', 'share') -> '\\\\server\\share\')
-
-      if (!/^[\\\/]{2}[^\\\/]/.test(paths[0])) {
-        joined = joined.replace(/^[\\\/]{2,}/, '\\');
-      }
-
-      return normalize(joined);
-    };
-  } else {
-    exports.join = function () {
-      var paths = Array.prototype.slice.call(arguments, 0);
-
-      return normalize(paths.filter(function (p) {
-        if (typeof p !== 'string') {
-          throw new TypeError('Arguments to path.join must be strings - have ' + JSON.stringify(p));
-        }
-
-        return p;
-      }).join('/'));
-    };
-  }
+      return p;
+    }).join('/'));
+  };
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief safe-join
   // //////////////////////////////////////////////////////////////////////////////
 
-  var safeJoin;
+  var safeJoin = function (base, relative) {
+    base = normalize(base + '/');
+    var path = normalizeArray(relative.split('/'), false).join('/');
 
-  if (isWindows) {
-    safeJoin = function (base, relative) {
-      base = normalize(base + '/');
-      var path = normalizeArray(relative.split(/[\\\/]+/), false).join('/');
-
-      return base + path;
-    };
-  } else {
-    safeJoin = function (base, relative) {
-      base = normalize(base + '/');
-      var path = normalizeArray(relative.split('/'), false).join('/');
-
-      return base + path;
-    };
-  }
+    return base + path;
+  };
 
   exports.safeJoin = function () {
     var args = Array.prototype.slice.call(arguments);

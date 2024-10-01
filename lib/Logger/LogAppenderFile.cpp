@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,180 +21,44 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <fcntl.h>
-#include <stdio.h>
-#include <algorithm>
-#include <cstring>
-#include <iostream>
-#include <memory>
-
-#include "Basics/operating-system.h"
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
 #include "LogAppenderFile.h"
 
-#include "ApplicationFeatures/ShellColorsFeature.h"
+#include <fcntl.h>
+#include <cstring>
+
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/debugging.h"
 #include "Basics/files.h"
-#include "Basics/tri-strings.h"
-#include "Basics/voc-errors.h"
+#include "Basics/operating-system.h"
 #include "Logger/Logger.h"
 
-using namespace arangodb;
-using namespace arangodb::basics;
+namespace arangodb {
 
-std::mutex LogAppenderFile::_openAppendersMutex;
-std::vector<LogAppenderFile*> LogAppenderFile::_openAppenders;
+std::mutex LogAppenderFileFactory::_openAppendersMutex;
+std::vector<std::shared_ptr<LogAppenderFile>>
+    LogAppenderFileFactory::_openAppenders;
 
-int LogAppenderFile::_fileMode = S_IRUSR | S_IWUSR | S_IRGRP;
-int LogAppenderFile::_fileGroup = 0;
+int LogAppenderFileFactory::_fileMode = S_IRUSR | S_IWUSR | S_IRGRP;
+int LogAppenderFileFactory::_fileGroup = 0;
 
-LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
-    : LogAppender(),
-      _bufferSize(0),
-      _fd(fd),
-      _useColors(false),
-      _controlEscape(Logger::getUseControlEscaped()),
-      _unicodeEscape(Logger::getUseUnicodeEscaped()) {
-  if (_controlEscape) {
-    if (_unicodeEscape) {
-      _escaper =
-          std::make_unique<Escaper<ControlCharsEscaper, UnicodeCharsEscaper>>();
-    } else {
-      _escaper = std::make_unique<
-          Escaper<ControlCharsEscaper, UnicodeCharsRetainer>>();
-    }
-  } else {
-    if (_unicodeEscape) {
-      _escaper = std::make_unique<
-          Escaper<ControlCharsSuppressor, UnicodeCharsEscaper>>();
-    } else {
-      _escaper = std::make_unique<
-          Escaper<ControlCharsSuppressor, UnicodeCharsRetainer>>();
-    }
-  }
-}
-
-size_t LogAppenderStream::determineOutputBufferSize(
-    std::string const& message) const {
-  return _escaper->determineOutputBufferSize(message) +
-         2;  //+2 bytes because it needs to end with '\n' and '\0'
-}
-
-size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
-  char* output = _buffer.get();
-  _escaper->writeIntoOutputBuffer(message, output);
-  *output++ = '\n';
-  *output = '\0';
-  return (output - _buffer.get());
-}
-
-void LogAppenderStream::logMessage(LogMessage const& message) {
-  // check max. required output length
-  size_t const neededBufferSize = determineOutputBufferSize(message._message);
-
-  // check if we can re-use our already existing buffer
-  if (neededBufferSize > _bufferSize) {
-    _buffer.reset();
-    _bufferSize = 0;
-  }
-
-  if (_buffer == nullptr) {
-    // create a new buffer
-    try {
-      // grow buffer exponentially
-      _buffer.reset(new char[neededBufferSize * 2]);
-      _bufferSize = neededBufferSize * 2;
-    } catch (...) {
-      // if allocation fails, simply give up
-      return;
-    }
-  }
-
-  TRI_ASSERT(_buffer != nullptr);
-
-  size_t length = writeIntoOutputBuffer(message._message);
-  TRI_ASSERT(length <= neededBufferSize);
-
-  this->writeLogMessage(message._level, message._topicId, _buffer.get(),
-                        length);
-
-  if (_bufferSize > maxBufferSize) {
-    // free the buffer so the Logger is not hogging so much memory
-    _buffer.reset();
-    _bufferSize = 0;
-  }
-}
-
-LogAppenderFile::LogAppenderFile(std::string const& filename)
-    : LogAppenderStream(filename, -1), _filename(filename) {
-  if (_filename != "+" && _filename != "-") {
-    // logging to an actual file
-    std::unique_lock<std::mutex> guard(_openAppendersMutex);
-
-    for (auto const& it : _openAppenders) {
-      if (it->filename() == _filename) {
-        // already have an appender for the same file
-        _fd = it->fd();
-        break;
-      }
-    }
-
-    if (_fd == -1) {
-      // no existing appender found yet
-      int fd =
-          TRI_CREATE(_filename.c_str(),
-                     O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, _fileMode);
-
-      if (fd < 0) {
-        TRI_ERRORBUF;
-        TRI_SYSTEM_ERROR();
-        std::cerr << "cannot write to file '" << _filename
-                  << "': " << TRI_GET_ERRORBUF << std::endl;
-
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
-      }
-
-#ifdef ARANGODB_HAVE_SETGID
-      if (_fileGroup != 0) {
-        int result = fchown(fd, -1, _fileGroup);
-        if (result != 0) {
-          // we cannot log this error here, as we are the logging itself
-          // so just to please compilers, we pretend we are using the result
-          (void)result;
-        }
-      }
-#endif
-
-      _fd = fd;
-      try {
-        _openAppenders.emplace_back(this);
-      } catch (...) {
-        TRI_CLOSE(_fd);
-        throw;
-      }
-    }
-  }
-
+LogAppenderFile::LogAppenderFile(std::string const& filename, int fd)
+    : LogAppenderStream(filename, fd), _filename(filename) {
   _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
 
 LogAppenderFile::~LogAppenderFile() = default;
 
 void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/,
-                                      char const* buffer, size_t len) {
+                                      std::string const& message) {
   bool giveUp = false;
+  char const* buffer = message.c_str();
+  size_t len = message.size();
 
   while (len > 0) {
-    ssize_t n = TRI_WRITE(_fd, buffer, static_cast<TRI_write_t>(len));
+    auto n = TRI_WRITE(_fd, buffer, static_cast<TRI_write_t>(len));
 
     if (n < 0) {
-      if (allowStdLogging()) {
+      if (Logger::allowStdLogging()) {
         fprintf(stderr, "cannot log data: %s\n", TRI_LAST_ERROR_STR);
       }
       return;  // give up, but do not try to log the failure via the Logger
@@ -206,6 +70,7 @@ void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/,
       }
     }
 
+    TRI_ASSERT(len >= static_cast<size_t>(n));
     buffer += n;
     len -= n;
   }
@@ -228,7 +93,54 @@ std::string LogAppenderFile::details() const {
   return buffer;
 }
 
-void LogAppenderFile::reopenAll() {
+std::shared_ptr<LogAppenderFile> LogAppenderFileFactory::getFileAppender(
+    std::string const& filename) {
+  TRI_ASSERT(filename != "+");
+  TRI_ASSERT(filename != "-");
+  // logging to an actual file
+  std::unique_lock<std::mutex> guard(_openAppendersMutex);
+  for (auto const& it : _openAppenders) {
+    if (it->filename() == filename) {
+      // already have an appender for the same file
+      return it;
+    }
+  }
+  // Does not exist yet, create a new one.
+  // NOTE: We hold the lock here, to avoid someone creating
+  // an appender on this file.
+  int fd = TRI_CREATE(filename.c_str(),
+                      O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, _fileMode);
+  if (fd < 0) {
+    std::cerr << "cannot write to file '" << filename
+              << "': " << TRI_LAST_ERROR_STR << std::endl;
+
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
+  }
+
+#ifdef ARANGODB_HAVE_SETGID
+  if (_fileGroup != 0) {
+    int result = fchown(fd, -1, _fileGroup);
+    if (result != 0) {
+      // we cannot log this error here, as we are the logging itself
+      // so just to please compilers, we pretend we are using the result
+      (void)result;
+    }
+  }
+#endif
+
+  try {
+    auto appender = std::make_shared<LogAppenderFile>(filename, fd);
+    _openAppenders.emplace_back(appender);
+    return appender;
+  } catch (...) {
+    TRI_CLOSE(fd);
+    throw;
+  }
+}
+
+void LogAppenderFileFactory::reopenAll() {
+  // We must not log anything in this function or in anything it calls! This
+  // is because this is called under the `_appendersLock`.
   std::unique_lock<std::mutex> guard(_openAppendersMutex);
 
   for (auto& it : _openAppenders) {
@@ -247,7 +159,7 @@ void LogAppenderFile::reopenAll() {
     std::string backup(filename);
     backup.append(".old");
 
-    std::ignore = FileUtils::remove(backup);
+    std::ignore = basics::FileUtils::remove(backup);
     TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
@@ -272,7 +184,7 @@ void LogAppenderFile::reopenAll() {
 #endif
 
     if (!Logger::_keepLogRotate) {
-      std::ignore = FileUtils::remove(backup);
+      std::ignore = basics::FileUtils::remove(backup);
     }
 
     // and also tell the appender of the file descriptor change
@@ -284,7 +196,7 @@ void LogAppenderFile::reopenAll() {
   }
 }
 
-void LogAppenderFile::closeAll() {
+void LogAppenderFileFactory::closeAll() {
   std::unique_lock<std::mutex> guard(_openAppendersMutex);
 
   for (auto& it : _openAppenders) {
@@ -302,9 +214,10 @@ void LogAppenderFile::closeAll() {
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-std::vector<std::tuple<int, std::string, LogAppenderFile*>>
-LogAppenderFile::getAppenders() {
-  std::vector<std::tuple<int, std::string, LogAppenderFile*>> result;
+std::vector<std::tuple<int, std::string, std::shared_ptr<LogAppenderFile>>>
+LogAppenderFileFactory::getAppenders() {
+  std::vector<std::tuple<int, std::string, std::shared_ptr<LogAppenderFile>>>
+      result;
 
   std::unique_lock<std::mutex> guard(_openAppendersMutex);
   for (auto const& it : _openAppenders) {
@@ -314,8 +227,9 @@ LogAppenderFile::getAppenders() {
   return result;
 }
 
-void LogAppenderFile::setAppenders(
-    std::vector<std::tuple<int, std::string, LogAppenderFile*>> const&
+void LogAppenderFileFactory::setAppenders(
+    std::vector<
+        std::tuple<int, std::string, std::shared_ptr<LogAppenderFile>>> const&
         appenders) {
   std::unique_lock<std::mutex> guard(_openAppendersMutex);
 
@@ -326,70 +240,4 @@ void LogAppenderFile::setAppenders(
 }
 #endif
 
-LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, int fd)
-    : LogAppenderStream(filename, fd) {
-  _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
-}
-
-LogAppenderStdStream::~LogAppenderStdStream() {
-  // flush output stream on shutdown
-  if (allowStdLogging()) {
-    FILE* fp = (_fd == STDOUT_FILENO ? stdout : stderr);
-    fflush(fp);
-  }
-}
-
-void LogAppenderStdStream::writeLogMessage(LogLevel level, size_t topicId,
-                                           char const* buffer, size_t len) {
-  writeLogMessage(_fd, _useColors, level, topicId, buffer, len, false);
-}
-
-void LogAppenderStdStream::writeLogMessage(int fd, bool useColors,
-                                           LogLevel level, size_t /*topicId*/,
-                                           char const* buffer, size_t len,
-                                           bool appendNewline) {
-  if (!allowStdLogging()) {
-    return;
-  }
-
-  char const* nl = (appendNewline ? "\n" : "");
-  TRI_ASSERT(buffer != nullptr);
-  TRI_ASSERT(nl != nullptr);
-
-  if (*buffer != '\0' || *nl != '\0') {
-    // out stream
-    FILE* fp = (fd == STDOUT_FILENO ? stdout : stderr);
-
-    if (useColors) {
-      // joyful color output
-      if (level == LogLevel::FATAL || level == LogLevel::ERR) {
-        fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_RED, buffer,
-                ShellColorsFeature::SHELL_COLOR_RESET, nl);
-      } else if (level == LogLevel::WARN) {
-        fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_YELLOW, buffer,
-                ShellColorsFeature::SHELL_COLOR_RESET, nl);
-      } else {
-        fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_RESET, buffer,
-                ShellColorsFeature::SHELL_COLOR_RESET, nl);
-      }
-    } else {
-      // non-colored output
-      fprintf(fp, "%s%s", buffer, nl);
-    }
-
-    if (level == LogLevel::FATAL || level == LogLevel::ERR ||
-        level == LogLevel::WARN || level == LogLevel::INFO) {
-      // flush the output so it becomes visible immediately
-      // at least for log levels that are used seldomly
-      // it would probably be overkill to flush everytime we
-      // encounter a log message for level DEBUG or TRACE
-      fflush(fp);
-    }
-  }
-}
-
-LogAppenderStderr::LogAppenderStderr()
-    : LogAppenderStdStream("+", STDERR_FILENO) {}
-
-LogAppenderStdout::LogAppenderStdout()
-    : LogAppenderStdStream("-", STDOUT_FILENO) {}
+}  // namespace arangodb

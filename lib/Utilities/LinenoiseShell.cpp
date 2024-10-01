@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,16 +27,12 @@ extern "C" {
 #include <linenoise.h>
 }
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/operating-system.h"
-#include "Logger/Logger.h"
 #include "Utilities/Completer.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
-#endif
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
 #endif
 
 using namespace arangodb;
@@ -93,7 +89,9 @@ bool LinenoiseShell::close() {
 }
 
 void LinenoiseShell::addHistory(std::string const& str) {
-  if (str.empty()) {
+  // exclude certain commands from history, as they are not interesting
+  if (str.empty() || str == "exit" || str == "exit;" || str == "quit" ||
+      str == "quit;") {
     return;
   }
 
@@ -113,9 +111,9 @@ std::string LinenoiseShell::getLine(std::string const& prompt, EofType& eof) {
 
   if (line != nullptr) {
     eof = EOF_NONE;
-    std::string stringValue(line);
-    ::free(line);
-    return stringValue;
+    auto guard = scopeGuard([line]() noexcept { free(line); });
+
+    return std::string{line};
   }
 
   // no input from user (e.g. if CTRL-C was pressed)

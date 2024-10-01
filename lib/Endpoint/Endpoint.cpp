@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,15 +47,15 @@
 #include "Endpoint/EndpointUnixDomain.h"
 #endif
 
-using namespace arangodb;
+namespace arangodb {
+
 using namespace arangodb::basics;
 
 Endpoint::Endpoint(DomainType domainType, EndpointType type,
-                   TransportType transport, EncryptionType encryption,
-                   std::string const& specification, int listenBacklog)
+                   EncryptionType encryption, std::string const& specification,
+                   int listenBacklog)
     : _domainType(domainType),
       _type(type),
-      _transport(transport),
       _encryption(encryption),
       _specification(specification),
       _listenBacklog(listenBacklog),
@@ -64,17 +64,17 @@ Endpoint::Endpoint(DomainType domainType, EndpointType type,
 }
 
 std::string Endpoint::uriForm(std::string const& endpoint) {
-  if (StringUtils::isPrefix(endpoint, "http+tcp://")) {
+  if (endpoint.starts_with("http+tcp://")) {
     return "http://" + endpoint.substr(11);
-  } else if (StringUtils::isPrefix(endpoint, "http+ssl://")) {
+  } else if (endpoint.starts_with("http+ssl://")) {
     return "https://" + endpoint.substr(11);
-  } else if (StringUtils::isPrefix(endpoint, "tcp://")) {
+  } else if (endpoint.starts_with("tcp://")) {
     return "http://" + endpoint.substr(6);
-  } else if (StringUtils::isPrefix(endpoint, "ssl://")) {
+  } else if (endpoint.starts_with("ssl://")) {
     return "https://" + endpoint.substr(6);
-  } else if (StringUtils::isPrefix(endpoint, "unix://")) {
+  } else if (endpoint.starts_with("unix://")) {
     return endpoint;
-  } else if (StringUtils::isPrefix(endpoint, "http+unix://")) {
+  } else if (endpoint.starts_with("http+unix://")) {
     return "unix://" + endpoint.substr(12);
   } else {
     return StaticStrings::Empty;
@@ -86,16 +86,22 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     return StaticStrings::Empty;
   }
 
-  TransportType protocol = TransportType::HTTP;
-
   std::string prefix("http+");
   std::string const localName("localhost");
   std::string const localIP("127.0.0.1");
 
   std::string copy = specification;
   StringUtils::trimInPlace(copy);
+  if (copy.starts_with("https://")) {
+    // turn https:// into ssl:// for convenience
+    copy = "ssl://" + copy.substr(8);
+  }
+  if (copy.starts_with("http://")) {
+    // turn http:// into tcp:// for convenience
+    copy = "tcp://" + copy.substr(7);
+  }
 
-  if (specification.back() == '/') {
+  if (copy.ends_with('/')) {
     // address ends with a slash => remove
     copy.pop_back();
   }
@@ -108,22 +114,13 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   std::string schema = StringUtils::tolower(copy.substr(0, pos + 3));
 
   // read protocol from string
-  if (StringUtils::isPrefix(schema, "http+") ||
-      StringUtils::isPrefix(schema, "http@")) {
-    protocol = TransportType::HTTP;
+  if (schema.starts_with("http+") || schema.starts_with("http@")) {
     prefix = "http+";
     copy = copy.substr(5);
     schema = schema.substr(5);
   }
 
-  if (StringUtils::isPrefix(schema, "vst+")) {
-    protocol = TransportType::VST;
-    prefix = "vst+";
-    copy = copy.substr(4);
-    schema = schema.substr(4);
-  }
-
-  if (StringUtils::isPrefix(schema, "unix://")) {
+  if (schema.starts_with("unix://")) {
 #if ARANGODB_HAVE_DOMAIN_SOCKETS
     return prefix + schema + copy.substr(7);
 #else
@@ -132,18 +129,14 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 #endif
   }
 
-  if (StringUtils::isPrefix(schema, "srv://")) {
-#ifndef _WIN32
+  if (schema.starts_with("srv://")) {
     return prefix + schema + copy.substr(6);
-#else
-    return StaticStrings::Empty;
-#endif
   }
 
   // strip tcp:// or ssl://
-  if (StringUtils::isPrefix(schema, "ssl://")) {
+  if (schema.starts_with("ssl://")) {
     prefix.append("ssl://");
-  } else if (StringUtils::isPrefix(schema, "tcp://")) {
+  } else if (schema.starts_with("tcp://")) {
     prefix.append("tcp://");
   } else {
     return StaticStrings::Empty;
@@ -163,13 +156,8 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     found = copy.find("]", 1);
     if (found != std::string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
-      if (protocol == TransportType::VST) {
-        return prefix + copy + ":" +
-               StringUtils::itoa(EndpointIp::_defaultPortVst);
-      } else {
-        return prefix + copy + ":" +
-               StringUtils::itoa(EndpointIp::_defaultPortHttp);
-      }
+      return prefix + copy + ":" +
+             StringUtils::itoa(EndpointIp::_defaultPortHttp);
     }
 
     // invalid address specification
@@ -190,12 +178,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   }
 
   // hostname only
-  if (protocol == TransportType::HTTP) {
-    return prefix + copy + ":" +
-           StringUtils::itoa(EndpointIp::_defaultPortHttp);
-  } else {
-    return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortVst);
-  }
+  return prefix + copy + ":" + StringUtils::itoa(EndpointIp::_defaultPortHttp);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,9 +219,8 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
   }
 
   std::string copy = unifiedForm(specification);
-  TransportType protocol = TransportType::HTTP;
 
-  if (StringUtils::isPrefix(copy, "http+")) {
+  if (copy.starts_with("http+")) {
     copy = copy.substr(5);
   } else {
     // invalid protocol
@@ -247,7 +229,7 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
 
   EncryptionType encryption = EncryptionType::NONE;
 
-  if (StringUtils::isPrefix(copy, "unix://")) {
+  if (copy.starts_with("unix://")) {
 #if ARANGODB_HAVE_DOMAIN_SOCKETS
     return new EndpointUnixDomain(type, listenBacklog, copy.substr(7));
 #else
@@ -256,21 +238,17 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
 #endif
   }
 
-  if (StringUtils::isPrefix(copy, "srv://")) {
+  if (copy.starts_with("srv://")) {
     if (type != EndpointType::CLIENT) {
       return nullptr;
     }
 
-#ifndef _WIN32
     return new EndpointSrv(copy.substr(6));
-#else
-    return nullptr;
-#endif
   }
 
-  if (StringUtils::isPrefix(copy, "ssl://")) {
+  if (copy.starts_with("ssl://")) {
     encryption = EncryptionType::SSL;
-  } else if (!StringUtils::isPrefix(copy, "tcp://")) {
+  } else if (!copy.starts_with("tcp://")) {
     // invalid type
     return nullptr;
   }
@@ -297,8 +275,8 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
       uint16_t port = static_cast<uint16_t>(value);
       std::string host = copy.substr(1, found - 1);
 
-      return new EndpointIpV6(type, protocol, encryption, listenBacklog,
-                              reuseAddress, host, port);
+      return new EndpointIpV6(type, encryption, listenBacklog, reuseAddress,
+                              host, port);
     }
 
     found = copy.find("]", 1);
@@ -307,8 +285,8 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
     if (found != std::string::npos && found > 2 && found + 1 == copy.size()) {
       std::string host = copy.substr(1, found - 1);
 
-      return new EndpointIpV6(type, protocol, encryption, listenBacklog,
-                              reuseAddress, host, defaultPort);
+      return new EndpointIpV6(type, encryption, listenBacklog, reuseAddress,
+                              host, defaultPort);
     }
 
     // invalid address specification
@@ -332,34 +310,22 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
     uint16_t port = static_cast<uint16_t>(value);
     std::string host = copy.substr(0, found);
 
-    return new EndpointIpV4(type, protocol, encryption, listenBacklog,
-                            reuseAddress, host, port);
+    return new EndpointIpV4(type, encryption, listenBacklog, reuseAddress, host,
+                            port);
   }
 
   // hostname only
-  return new EndpointIpV4(type, protocol, encryption, listenBacklog,
-                          reuseAddress, copy, defaultPort);
+  return new EndpointIpV4(type, encryption, listenBacklog, reuseAddress, copy,
+                          defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the default endpoint (http/vstream)
+/// @brief return the default endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Endpoint::defaultEndpoint(TransportType type) {
-  switch (type) {
-    case TransportType::HTTP:
-      return "http+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
-             StringUtils::itoa(EndpointIp::_defaultPortHttp);
-
-    case TransportType::VST:
-      return "vst+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
-             StringUtils::itoa(EndpointIp::_defaultPortVst);
-
-    default: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid transport type");
-    }
-  }
+std::string Endpoint::defaultEndpoint() {
+  return "http+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +
+         StringUtils::itoa(EndpointIp::_defaultPortHttp);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,63 +379,49 @@ bool Endpoint::setSocketFlags(TRI_socket_t s) {
   return true;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::TransportType type) {
+std::ostream& operator<<(std::ostream& stream, Endpoint::EndpointType type) {
   switch (type) {
-    case arangodb::Endpoint::TransportType::HTTP:
-      stream << "http";
-      break;
-    case arangodb::Endpoint::TransportType::VST:
-      stream << "vst";
-      break;
-  }
-  return stream;
-}
-
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::EndpointType type) {
-  switch (type) {
-    case arangodb::Endpoint::EndpointType::SERVER:
+    case Endpoint::EndpointType::SERVER:
       stream << "server";
       break;
-    case arangodb::Endpoint::EndpointType::CLIENT:
+    case Endpoint::EndpointType::CLIENT:
       stream << "client";
       break;
   }
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::EncryptionType type) {
+std::ostream& operator<<(std::ostream& stream, Endpoint::EncryptionType type) {
   switch (type) {
-    case arangodb::Endpoint::EncryptionType::NONE:
+    case Endpoint::EncryptionType::NONE:
       stream << "none";
       break;
-    case arangodb::Endpoint::EncryptionType::SSL:
+    case Endpoint::EncryptionType::SSL:
       stream << "ssl";
       break;
   }
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::Endpoint::DomainType type) {
+std::ostream& operator<<(std::ostream& stream, Endpoint::DomainType type) {
   switch (type) {
-    case arangodb::Endpoint::DomainType::UNIX:
+    case Endpoint::DomainType::UNIX:
       stream << "unix";
       break;
-    case arangodb::Endpoint::DomainType::IPV4:
+    case Endpoint::DomainType::IPV4:
       stream << "ipv4";
       break;
-    case arangodb::Endpoint::DomainType::IPV6:
+    case Endpoint::DomainType::IPV6:
       stream << "ipv6";
       break;
-    case arangodb::Endpoint::DomainType::SRV:
+    case Endpoint::DomainType::SRV:
       stream << "srv";
       break;
-    case arangodb::Endpoint::DomainType::UNKNOWN:
+    case Endpoint::DomainType::UNKNOWN:
       stream << "unknown";
       break;
   }
   return stream;
 }
+
+}  // namespace arangodb

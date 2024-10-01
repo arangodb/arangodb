@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,13 +21,14 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/DownCast.h"
+
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
 #include "Mocks/Servers.h"  // this must be first because windows
 
-#include "src/objects/objects.h"
-#include "src/api/api.h"
-#include "src/objects/scope-info.h"
+#include <v8.h>
 
 #include "gtest/gtest.h"
 
@@ -36,10 +37,11 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 
-#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
+#include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogTopic.h"
@@ -49,6 +51,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-externals.h"
@@ -56,23 +59,10 @@
 #include "VocBase/vocbase.h"
 
 #if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
 namespace {
-
-class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
- public:
-  virtual void* Allocate(size_t length) override {
-    void* data = AllocateUninitialized(length);
-    return data == nullptr ? data : memset(data, 0, length);
-  }
-  virtual void* AllocateUninitialized(size_t length) override {
-    return malloc(length);
-  }
-  virtual void Free(void* data, size_t) override { free(data); }
-};
 
 struct TestView : public arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
@@ -85,7 +75,7 @@ struct TestView : public arangodb::LogicalView {
 
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(*this, vocbase, definition) {}
+      : arangodb::LogicalView(*this, vocbase, definition, false) {}
   arangodb::Result appendVPackImpl(arangodb::velocypack::Builder& build,
                                    Serialization, bool) const override {
     build.add("properties", _properties.slice());
@@ -117,14 +107,15 @@ struct ViewFactory : public arangodb::ViewFactory {
                                   arangodb::velocypack::Slice definition,
                                   bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
-    view = vocbase.createView(definition);
+    view = vocbase.createView(definition, false);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -195,11 +186,11 @@ class V8ViewsTest
 TEST_F(V8ViewsTest, test_auth) {
   // test create
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -207,10 +198,6 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(
         isolate.get());  // otherwise v8::Isolate::Logger() will fail (called
                          // from v8::Exception::Error)
-    v8::internal::Isolate::Current()
-        ->InitializeLoggingAndCounters();  // otherwise v8::Isolate::Logger()
-                                           // will fail (called from
-                                           // v8::Exception::Error)
     v8::HandleScope handleScope(
         isolate.get());  // required for v8::Context::New(...),
                          // v8::ObjectTemplate::New(...) and
@@ -242,11 +229,13 @@ TEST_F(V8ViewsTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -284,9 +273,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (RO user)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -315,9 +302,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // authorzed (RW user)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -346,14 +331,14 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -363,7 +348,6 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -387,11 +371,13 @@ TEST_F(V8ViewsTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -430,9 +416,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -463,9 +447,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -487,14 +469,14 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -504,7 +486,6 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -532,11 +513,13 @@ TEST_F(V8ViewsTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -573,9 +556,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -604,9 +585,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -626,14 +605,14 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -644,7 +623,6 @@ TEST_F(V8ViewsTest, test_auth) {
 
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -673,11 +651,13 @@ TEST_F(V8ViewsTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -718,9 +698,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -753,9 +731,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -796,9 +772,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -823,14 +797,14 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -844,7 +818,6 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -875,11 +848,13 @@ TEST_F(V8ViewsTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -918,9 +893,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -951,9 +924,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -994,9 +965,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -1038,14 +1007,14 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -1055,7 +1024,6 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -1079,11 +1047,13 @@ TEST_F(V8ViewsTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -1121,9 +1091,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1163,9 +1131,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1197,14 +1163,14 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -1218,7 +1184,6 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -1247,11 +1212,13 @@ TEST_F(V8ViewsTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -1290,9 +1257,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (failed detailed toVelocyPack(...))
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1334,9 +1299,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1373,16 +1336,16 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView1\", \"type\": \"testViewType\" }");
     auto createView2Json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView2\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView1 = vocbase.createView(createView1Json->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView1 = vocbase.createView(createView1Json->slice(), false);
     ASSERT_FALSE(!logicalView1);
-    auto logicalView2 = vocbase.createView(createView2Json->slice());
+    auto logicalView2 = vocbase.createView(createView2Json->slice(), false);
     ASSERT_FALSE(!logicalView2);
 
     v8::Isolate::CreateParams isolateParams;
-    ArrayBufferAllocator arrayBufferAllocator;
-    isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+    auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+        v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+    isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
     auto isolate = std::shared_ptr<v8::Isolate>(
         v8::Isolate::New(isolateParams),
         [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -1392,7 +1355,6 @@ TEST_F(V8ViewsTest, test_auth) {
     v8::Isolate::Scope isolateScope(isolate.get());
     // otherwise v8::Isolate::Logger() will fail (called from
     // v8::Exception::Error)
-    v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
     // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
     // TRI_AddMethodVocbase(...)
     v8::HandleScope handleScope(isolate.get());
@@ -1414,11 +1376,13 @@ TEST_F(V8ViewsTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -1458,9 +1422,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1506,9 +1468,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(

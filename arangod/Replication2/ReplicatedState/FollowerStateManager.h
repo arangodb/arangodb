@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,104 +23,94 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedState/ReplicatedState.h"
-#include "Replication2/ReplicatedState/StateInterfaces.h"
-#include "Replication2/Streams/Streams.h"
-#include "Replication2/Streams/LogMultiplexer.h"
+#include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
+#include "Replication2/ReplicatedState/StreamProxy.h"
+#include "Replication2/ReplicatedState/WaitForQueue.h"
 
-namespace arangodb::replication2::replicated_state {
+#include "Basics/Guarded.h"
+#include "Replication2/Storage/IteratorPosition.h"
+
+namespace arangodb {
+class Result;
+
+namespace futures {
+template<typename T>
+class Future;
+struct Unit;
+}  // namespace futures
+
+}  // namespace arangodb
+
+namespace arangodb::replication2 {
+struct IScheduler;
+
+namespace replicated_state {
+
+struct ReplicatedStateMetrics;
+
 template<typename S>
 struct FollowerStateManager
-    : ReplicatedState<S>::IStateManager,
-      std::enable_shared_from_this<FollowerStateManager<S>> {
-  using Factory = typename ReplicatedStateTraits<S>::FactoryType;
-  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
-  using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
-  using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
+    : std::enable_shared_from_this<FollowerStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
-  using WaitForAppliedQueue =
-      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
-  using WaitForAppliedPromise =
-      typename ReplicatedState<S>::IStateManager::WaitForAppliedPromise;
+  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
+  using Deserializer = typename ReplicatedStateTraits<S>::Deserializer;
 
-  using Stream = streams::Stream<EntryType>;
-  using Iterator = typename Stream::Iterator;
+  using StreamImpl = StreamProxy<S>;
 
-  FollowerStateManager(
+  explicit FollowerStateManager(
       LoggerContext loggerContext,
-      std::shared_ptr<ReplicatedStateBase> const& parent,
-      std::shared_ptr<replicated_log::ILogFollower> logFollower,
-      std::unique_ptr<CoreType> core,
-      std::unique_ptr<ReplicatedStateToken> token,
-      std::shared_ptr<Factory> factory,
-      std::shared_ptr<ReplicatedStateMetrics>) noexcept;
-  ~FollowerStateManager() override;
-
-  void run() noexcept override;
-
-  [[nodiscard]] auto getStatus() const -> StateStatus final;
-
-  [[nodiscard]] auto getFollowerState() const
-      -> std::shared_ptr<IReplicatedFollowerState<S>>;
-
+      std::shared_ptr<ReplicatedStateMetrics> metrics,
+      std::shared_ptr<IReplicatedFollowerState<S>> followerState,
+      std::shared_ptr<StreamImpl> stream,
+      std::shared_ptr<IScheduler> scheduler);
+  void acquireSnapshot(ServerID leader, LogIndex index, std::uint64_t);
+  void updateCommitIndex(LogIndex index);
   [[nodiscard]] auto resign() && noexcept
-      -> std::tuple<std::unique_ptr<CoreType>,
-                    std::unique_ptr<ReplicatedStateToken>,
-                    DeferredAction> override;
+      -> std::pair<std::unique_ptr<CoreType>,
+                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+  [[nodiscard]] auto getInternalStatus() const -> Status::Follower;
 
-  [[nodiscard]] auto getStream() const noexcept -> std::shared_ptr<Stream>;
-
-  auto waitForApplied(LogIndex) -> futures::Future<futures::Unit>;
+  [[nodiscard]] auto getStateMachine() const
+      -> std::shared_ptr<IReplicatedFollowerState<S>>;
+  [[nodiscard]] auto waitForApplied(LogIndex) -> WaitForQueue::WaitForFuture;
 
  private:
-  void waitForLogFollowerResign();
-  [[nodiscard]] auto waitForLeaderAcked() -> futures::Future<futures::Unit>;
-  void instantiateStateMachine();
-  [[nodiscard]] auto tryTransferSnapshot() -> futures::Future<futures::Unit>;
-  void startService();
-  void registerError(Result error);
-  [[nodiscard]] auto waitForNewEntries()
-      -> futures::Future<std::unique_ptr<typename Stream::Iterator>>;
-  [[nodiscard]] auto applyNewEntries() -> futures::Future<Result>;
-
-  [[nodiscard]] auto needsSnapshot() const noexcept -> bool;
-  [[nodiscard]] auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
-  void resolveAppliedEntriesQueue();
-  void saveNewEntriesIter(std::unique_ptr<typename Stream::Iterator> iter);
-
-  using Demultiplexer = streams::LogDemultiplexer<ReplicatedStateStreamSpec<S>>;
-
+  LoggerContext const _loggerContext;
+  std::shared_ptr<ReplicatedStateMetrics> const _metrics;
+  std::shared_ptr<IScheduler> const _scheduler;
+  void handleApplyEntriesResult(Result);
+  auto backOffSnapshotRetry() -> futures::Future<futures::Unit>;
+  void registerSnapshotError(Result error) noexcept;
   struct GuardedData {
-    FollowerStateManager& self;
-    LogIndex _nextWaitForIndex{1};
-    std::shared_ptr<Stream> stream;
-    std::shared_ptr<IReplicatedFollowerState<S>> state;
+    [[nodiscard]] auto updateCommitIndex(
+        LogIndex index, std::shared_ptr<ReplicatedStateMetrics> const& metrics,
+        std::shared_ptr<IScheduler> const& scheduler)
+        -> std::optional<futures::Future<Result>>;
+    [[nodiscard]] auto maybeScheduleApplyEntries(
+        std::shared_ptr<ReplicatedStateMetrics> const& metrics,
+        std::shared_ptr<IScheduler> const& scheduler)
+        -> std::optional<futures::Future<Result>>;
+    [[nodiscard]] auto getResolvablePromises(LogIndex index) noexcept
+        -> WaitForQueue;
+    [[nodiscard]] auto waitForApplied(LogIndex) -> WaitForQueue::WaitForFuture;
+    void registerSnapshotError(Result error,
+                               metrics::Counter& counter) noexcept;
+    void clearSnapshotErrors() noexcept;
 
-    FollowerInternalState internalState{
-        FollowerInternalState::kUninitializedState};
-    std::chrono::system_clock::time_point lastInternalStateChange;
-    std::optional<LogRange> ingestionRange;
-    std::optional<Result> lastError;
-    std::uint64_t errorCounter{0};
-
-    // core will be nullptr as soon as the FollowerState was created
-    std::unique_ptr<CoreType> core;
-    std::unique_ptr<ReplicatedStateToken> token;
-    WaitForAppliedQueue waitForAppliedQueue;
-    std::unique_ptr<typename Stream::Iterator> nextEntriesIter;
-
-    bool _didResign = false;
-
-    GuardedData(FollowerStateManager& self, std::unique_ptr<CoreType> core,
-                std::unique_ptr<ReplicatedStateToken> token);
-    void updateInternalState(FollowerInternalState newState);
+    std::shared_ptr<IReplicatedFollowerState<S>> _followerState;
+    std::shared_ptr<StreamImpl> _stream;
+    WaitForQueue _waitQueue{};
+    LogIndex _commitIndex = LogIndex{0};
+    storage::IteratorPosition _lastAppliedPosition{};
+    std::optional<Result> _lastSnapshotError{};
+    std::uint64_t _snapshotErrorCounter{0};
+    std::optional<storage::IteratorPosition> _applyEntriesPositionInFlight =
+        std::nullopt;
   };
-
   Guarded<GuardedData> _guardedData;
-  std::weak_ptr<ReplicatedStateBase> const parent;
-  std::shared_ptr<replicated_log::ILogFollower> const logFollower;
-  std::shared_ptr<Factory> const factory;
-  LoggerContext const loggerContext;
-  std::shared_ptr<ReplicatedStateMetrics> const metrics;
 };
-}  // namespace arangodb::replication2::replicated_state
+
+}  // namespace replicated_state
+}  // namespace arangodb::replication2

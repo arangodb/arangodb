@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -32,8 +32,13 @@
 #include "VocBase/voc-types.h"
 
 #include <rocksdb/types.h>
+#include <unordered_map>
 
 namespace arangodb {
+namespace futures {
+template<typename T>
+class Future;
+}
 struct RocksDBDocumentOperation;
 namespace transaction {
 class Methods;
@@ -51,8 +56,8 @@ class RocksDBTransactionCollection : public TransactionCollection {
   bool hasOperations() const override;
 
   bool canAccess(AccessMode::Type accessType) const override;
-  Result lockUsage() override;
-  void releaseUsage() override;
+  futures::Future<Result> lockUsage() override;
+  void releaseUsage() final;  // made final because it's called from destructor
 
   RevisionId revision() const { return _revision; }
   uint64_t numberDocuments() const {
@@ -120,6 +125,8 @@ class RocksDBTransactionCollection : public TransactionCollection {
   ///        Used to update the estimate after the trx commited
   void trackIndexRemove(IndexId iid, uint64_t hash);
 
+  void trackIndexCacheRefill(IndexId iid, std::string_view key);
+
   /// @brief tracked index operations
   struct TrackedIndexOperations {
     std::vector<uint64_t> inserts;
@@ -135,6 +142,8 @@ class RocksDBTransactionCollection : public TransactionCollection {
     return empty;
   }
 
+  void handleIndexCacheRefills();
+
  protected:
   virtual Result ensureCollection();
 
@@ -143,7 +152,7 @@ class RocksDBTransactionCollection : public TransactionCollection {
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
   /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
   /// and no other error occurred returns any other error code otherwise
-  Result doLock(AccessMode::Type) override;
+  futures::Future<Result> doLock(AccessMode::Type) override;
 
   /// @brief request an unlock for a collection
   Result doUnlock(AccessMode::Type) override;
@@ -162,6 +171,9 @@ class RocksDBTransactionCollection : public TransactionCollection {
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
   IndexOperationsMap _trackedIndexOperations;
+
+  containers::FlatHashMap<IndexId, std::vector<std::string>>
+      _trackedCacheRefills;
 
   bool _usageLocked;
   bool _exclusiveWrites;

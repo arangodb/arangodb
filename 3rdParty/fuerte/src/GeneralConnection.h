@@ -36,35 +36,32 @@
 /// other derived classes. There is not a lot implemented in there.
 ///
 /// The class template GeneralConnection<ST, RT> implements code which
-/// is the same for all three cases HTTP/1, VST and HTTP/2. Here, ST
+/// is the same for all three cases HTTP/1 and HTTP/2. Here, ST
 /// stands for the socket type (which can be Tcp (unencrypted), Ssl (TLS
 /// encryption with openssl) and Unix (unix domain socket, no encryption).
 /// Note that all 9 combination between protocol version and socket type
 /// are possible. RT is a type which represents a request which is run
 /// on the connection. For HTTP/1, this will be a `RequestItem`, for
-/// HTTP/2 it will be a `Stream` and for VST it will be a `vst::RequestItem`.
-/// All three RTs are separate classes but behave similarly and have
+/// HTTP/2 it will be a `Stream`.
+/// All two RTs are separate classes but behave similarly and have
 /// similar methods, such that the generic code can use them. They also
 /// have differences, since requests have to be handled differently
 /// in the three protocols.
 ///
-/// For the VST and HTTP/2 cases there is an intermediate class template
+/// For the HTTP/2 case there is an intermediate class template
 /// `MultiConnection<ST, RT>`, which inherits from `GeneralConnection<ST, RT>`
 /// and is needed, because - contrary to HTTP/1 - there can be more than
 /// one request in flight on a connection due to multiplexing. Furthermore,
-/// for VST a single request or response can be distributed across muliple
-/// "chunks" in the communication, and for HTTP/2, a single request or
-/// response can be distributed across multiple "frames".
+/// for HTTP/2, a single request or response can be distributed across 
+/// multiple "frames".
 ///
 /// Therefore, the `MultiConnection<ST, RT>` implementation has a member
 /// `_streams` which holds the current list of requests (instances of RT)
 /// which are currently in flight.
 ///
 /// Finally, there are the three class templates
-///   `H1Connection` inheriting from `GeneralConnection<ST, RequestItem>`,
-///   `H2Connection` inheriting from `MultiConnection<ST, Stream>` and
-///   `VstConnection` inheriting from `MultiConnection<ST, vst::RequestItem>`.
-/// 
+///   `H1Connection` inheriting from `GeneralConnection<ST, RequestItem>`
+///   and `H2Connection` inheriting from `MultiConnection<ST, Stream>`.
 
 #include <fuerte/connection.h>
 #include <fuerte/types.h>
@@ -73,6 +70,10 @@
 
 #include "AsioSockets.h"
 #include "debugging.h"
+
+#include <atomic>
+#include <chrono>
+#include <map>
 
 namespace arangodb { namespace fuerte {
 
@@ -86,7 +87,11 @@ class GeneralConnection : public fuerte::Connection {
                              detail::ConnectionConfiguration const& config)
       : Connection(config),
         _io_context(loop.nextIOContext()),
-        _proto(loop, *_io_context) {}
+        _proto(loop, *_io_context) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    _failConnectAttempts = config._failConnectAttempts;
+#endif
+  }
 
   virtual ~GeneralConnection() noexcept {
     _state.store(Connection::State::Closed);
@@ -103,6 +108,7 @@ class GeneralConnection : public fuerte::Connection {
   // Start an asynchronous request.
   void sendRequest(std::unique_ptr<Request> req, RequestCallback cb) override {
     // construct RequestItem
+    req->setTimeQueued();
     auto item = this->createRequest(std::move(req), std::move(cb));
     // set the point-in-time when this request expires
     if (item->request->timeout().count() > 0) {
@@ -149,10 +155,10 @@ class GeneralConnection : public fuerte::Connection {
   /// @brief cancel the connection, unusable afterwards
   void cancel() override {
     FUERTE_LOG_DEBUG << "cancel: this=" << this << "\n";
-    asio_ns::post(*_io_context, [self(weak_from_this()), this] {
+    asio_ns::post(*_io_context, [self(weak_from_this())] {
       auto s = self.lock();
       if (s) {
-        shutdownConnection(Error::ConnectionCanceled);
+        static_cast<GeneralConnection<ST, RT>&>(*s).shutdownConnection(Error::ConnectionCanceled);
       }
     });
   }
@@ -167,12 +173,11 @@ class GeneralConnection : public fuerte::Connection {
     if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
       FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
       FUERTE_ASSERT(_config._maxConnectRetries > 0);
-      tryConnect(_config._maxConnectRetries, Clock::now(),
-                 asio_ns::error_code());
+      tryConnect(_config._maxConnectRetries);
     } else {
       FUERTE_LOG_DEBUG << "startConnection: this=" << this
                        << " found unexpected state " << static_cast<int>(exp)
-                       << " not equal to 'Created'";
+                       << " not equal to 'Created'\n";
       FUERTE_ASSERT(false);
     }
   }
@@ -195,9 +200,10 @@ class GeneralConnection : public fuerte::Connection {
 
     abortRequests(err, /*now*/ Clock::time_point::max());
 
-    _proto.shutdown([=, this, self(shared_from_this())](auto const& ec) {
-      terminateActivity(err);
-      onFailure(err, msg);
+    _proto.shutdown([=, self = shared_from_this()](asio_ns::error_code ec) {
+      auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
+      me.terminateActivity(err);
+      me.onFailure(err, msg);
     });  // Close socket
   }
 
@@ -261,7 +267,7 @@ class GeneralConnection : public fuerte::Connection {
   /// The following is called when the connection is permanently failed. It is
   /// used to shut down any activity in the derived classes in a way that avoids
   /// sleeping barbers
-  void terminateActivity(const fuerte::Error err) {
+  void terminateActivity(fuerte::Error err) {
     // Usually, we are `active == true` when we get here, except for the
     // following case: If we are inactive but the connection is still open and
     // then the idle timeout goes off, then we shutdownConnection and in the TLS
@@ -277,6 +283,14 @@ class GeneralConnection : public fuerte::Connection {
         return;
       }
       this->_active.store(true);
+    }
+  }
+
+  void cancelTimer() noexcept {
+    try {
+      this->_proto.timer.cancel();
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during timer cancelation: " << ex.what() << "\n";
     }
   }
 
@@ -298,58 +312,93 @@ class GeneralConnection : public fuerte::Connection {
                                             RequestCallback&& cb) = 0;
 
  private:
-  // Connect with a given number of retries
-  void tryConnect(unsigned retries, Clock::time_point start,
-                  asio_ns::error_code const& ec) {
-    if (_state.load() != Connection::State::Connecting) {
-      return;
-    }
+  // Try to connect with a given number of retries
+  void tryConnect(unsigned retries) {
+    FUERTE_ASSERT(retries > 0);
 
-    if (retries == 0) {
-      std::string msg("connecting failed: '");
-      msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
-                                                           : "timeout");
-      msg.push_back('\'');
-      shutdownConnection(Error::CouldNotConnect, msg);
+    if (_state.load() != Connection::State::Connecting) {
       return;
     }
 
     FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
     auto self = Connection::shared_from_this();
 
-    _proto.timer.expires_at(start + _config._connectTimeout);
-    _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
-      if (!ec && self->state() == Connection::State::Connecting) {
-        // the connect handler below gets 'operation_aborted' error
-        static_cast<GeneralConnection<ST, RT>&>(*self)._proto.cancel();
-      }
-    });
+    _proto.connectTimerRole = ConnectTimerRole::kConnect;
+    _proto.timer.expires_after(_config._connectTimeout);
 
-    _proto.connect(_config, [self, start, retries](auto const& ec) mutable {
+    _proto.connect(_config, [self, retries](asio_ns::error_code ec) mutable {
       auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
-      me._proto.timer.cancel();
-      // Note that is is possible that the alarm has already gone off, in which
-      // case its closure might already be queued right after ourselves!
-      // However, we now quickly set the state to `Connected` in which case the
-      // closure will no longer shut down the socket and ruin our success.
+      me.cancelTimer();
+      // Note that is is possible that the alarm has already gone off. In this
+      // case its closure could have already executed, or it may be queued right
+      // after ourselves! In the first case the socket has already been closed,
+      // so we need to check that. For the latter case we now set the state to
+      // `Connected`, so the closure will simply do nothing.
+
+      if (!ec && !me._proto.isOpen()) {
+        // timer went off earlier and has already closed the socket.
+        ec = asio_ns::error::operation_aborted;
+      }
       if (!ec) {
+        FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") established connection this=" << self.get() << "\n";
         me.finishConnect();
         return;
       }
-      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
-      if (retries > 0 && ec != asio_ns::error::operation_aborted) {
-        auto end = std::min(Clock::now() + me._config._connectRetryPause,
-                            start + me._config._connectTimeout);
-        me._proto.timer.expires_at(end);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+      if (me._failConnectAttempts > 0) {
+        --me._failConnectAttempts;
+      }
+#endif      
+
+      FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), connecting failed: " << ec.message() << "\n";
+      if (retries > 1 && ec != asio_ns::error::operation_aborted) {
+        FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), scheduling retry operation. this=" << self.get() << "\n";
+        me._proto.connectTimerRole = ConnectTimerRole::kReconnect;
+        me._proto.timer.expires_after(me._config._connectRetryPause);
         me._proto.timer.async_wait(
-            [self(std::move(self)), start, retries](auto ec) mutable {
+            [self = std::move(self), retries](asio_ns::error_code ec) mutable {
               auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
-              me.tryConnect(!ec ? retries - 1 : 0, start, ec);
+              if (ec) {
+                FUERTE_LOG_DEBUG << "tryConnect, retry timer canceled. this=" << self.get() << "\n";
+                me.shutdownConnection(Error::CouldNotConnect, "connecting failed: retry timer canceled");
+                return;
+              }
+              // rearm socket so that we can use it again
+              FUERTE_LOG_DEBUG << "tryConnect, rearming connection this=" << self.get() << "\n";
+              me._proto.rearm();
+              me.tryConnect(retries - 1);
             });
       } else {
-        me.tryConnect(0, start, ec);  // <- handles errors
+        std::string msg("connecting failed: ");
+        msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
+                                                             : "timeout");
+        FUERTE_LOG_DEBUG << "tryConnect, calling shutdownConnection: " << msg << " this=" << self.get() << "\n";
+        me.shutdownConnection(Error::CouldNotConnect, msg);
       }
     });
+  
+    // only if we are still in the connect phase, we want to schedule a timer
+    // for the connect timeout. if the connect already failed and scheduled a
+    // timer for the reconnect timeout, we do not want to mess with the timer here.
+    if (_proto.connectTimerRole == ConnectTimerRole::kConnect) {
+      _proto.timer.async_wait([self = std::move(self)](asio_ns::error_code ec) {
+        if (!ec && self->state() == Connection::State::Connecting) {
+          // note: if the timer fires successfully, ec is empty here.
+          // the connect handler below gets 'operation_aborted' error
+          auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
+          // cancel the socket operations only if we are still in the connect
+          // phase.
+          // otherwise, we are in the reconnect phase already, and we
+          // do not want to cancel the socket.
+          if (me._proto.connectTimerRole == ConnectTimerRole::kConnect) {
+            FUERTE_LOG_DEBUG << "tryConnect, connect timeout this=" << self.get() << "\n";
+            me._proto.cancel();
+          } 
+        }
+      });
+    }
+
   }
 
  protected:
@@ -372,13 +421,19 @@ class GeneralConnection : public fuerte::Connection {
 
   std::atomic<bool> _active{false};
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // if this member is > 0, then this many connection attempts will fail
+  // in this connection
+  unsigned _failConnectAttempts = 0;
+#endif
+
   bool _reading = false;  // set to true while an async_read is ongoing
   bool _writing = false;  // set between starting an asyncWrite operation and
                           // executing the completion handler};
   bool _timeoutOnReadWrite = false;
 };
 
-// common superclass VST / HTTP2
+// common superclass HTTP2
 template <SocketType ST, typename RT>
 struct MultiConnection : public GeneralConnection<ST, RT> {
   explicit MultiConnection(EventLoopService& loop,
@@ -424,8 +479,7 @@ struct MultiConnection : public GeneralConnection<ST, RT> {
   void setTimeout(bool setIOBegin) {
     const bool wasIdle = _streams.empty();
     if (wasIdle && !this->_config._useIdleTimeout) {
-      asio_ns::error_code ec;
-      this->_proto.timer.cancel(ec);
+      this->cancelTimer();
       return;
     }
 
@@ -481,7 +535,6 @@ struct MultiConnection : public GeneralConnection<ST, RT> {
               setTimeout(/*setIOBegin*/ false);
             }
           } else if (wasWriting && me._writing && now - _lastIO > kIOTimeout) {
-
             FUERTE_LOG_DEBUG << "IO write timeout"
                              << " this=" << &me << "\n";
             me._timeoutOnReadWrite = true;

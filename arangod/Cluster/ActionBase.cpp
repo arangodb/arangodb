@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -48,7 +47,7 @@ ActionBase::ActionBase(MaintenanceFeature& feature,
     : _feature(feature),
       _description(desc),
       _state(READY),
-      _progress(0),
+      _progress(0.),
       _priority(desc.priority()) {
   init();
 }
@@ -57,7 +56,7 @@ ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
     : _feature(feature),
       _description(std::move(desc)),
       _state(READY),
-      _progress(0),
+      _progress(0.),
       _priority(desc.priority()) {
   init();
 }
@@ -96,8 +95,8 @@ bool ActionBase::matches(std::unordered_set<std::string> const& labels) const {
   return true;
 }
 
-bool ActionBase::fastTrack() const {
-  return _labels.find(FAST_TRACK) != _labels.end();
+bool ActionBase::fastTrack() const noexcept {
+  return _labels.contains(FAST_TRACK);
 }
 
 /// @brief execution finished successfully or failed ... and race timer expired
@@ -171,9 +170,8 @@ void ActionBase::startStats() {
 
 /// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
-  ++_progress;
+  _progress.fetch_add(1.);
   _actionLastStat = secs_since_epoch();
-
 }  // ActionBase::incStats
 
 void ActionBase::endStats() {
@@ -277,12 +275,17 @@ void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
   _result.reset(errorNumber, errorString);
 }
 
+arangodb::Result ActionBase::setProgress(double d) {
+  _progress.store(d, std::memory_order_relaxed);
+  return {};
+}
+
 /**
  * progress() operation is an expected future feature.  Not supported in the
  *  original ActionBase derivatives
  */
 arangodb::Result ActionBase::progress(double& progress) {
-  progress = 0.5;
+  progress = _progress.load();
   return {};
 }
 

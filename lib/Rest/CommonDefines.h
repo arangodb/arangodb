@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,11 +23,11 @@
 
 #pragma once
 
+#include <cstdint>
 #include <ostream>
 #include <string>
 
-namespace arangodb {
-namespace rest {
+namespace arangodb::rest {
 
 enum class RequestType {
   DELETE_REQ = 0,  // windows redefines DELETE
@@ -80,7 +80,13 @@ enum class ContentType {
 std::string contentTypeToString(ContentType type);
 ContentType stringToContentType(std::string const& input, ContentType def);
 
-enum class EncodingType { DEFLATE, UNSET };
+enum class ResponseCompressionType {
+  kUnset,
+  kNoCompression,
+  kAllowCompression
+};
+
+enum class EncodingType { DEFLATE, GZIP, LZ4, UNSET };
 
 enum class AuthenticationMethod : uint8_t { BASIC = 1, JWT = 2, NONE = 0 };
 
@@ -122,6 +128,7 @@ enum class ResponseCode {
   REQUESTED_RANGE_NOT_SATISFIABLE = 416,
   EXPECTATION_FAILED = 417,
   I_AM_A_TEAPOT = 418,
+  ENHANCE_YOUR_CALM = 420,
   MISDIRECTED_REQUEST = 421,
   UNPROCESSABLE_ENTITY = 422,
   LOCKED = 423,
@@ -210,8 +217,10 @@ inline const char* responseToString(ResponseCode responseCode) {
       return "417 EXPECTATION_FAILED";
     case ResponseCode::I_AM_A_TEAPOT:
       return "418 I_AM_A_TEAPOT";
+    case ResponseCode::ENHANCE_YOUR_CALM:
+      return "420 ENHANCE YOUR CALM";
     case ResponseCode::MISDIRECTED_REQUEST:
-      return "421_MISDIRECTED_REQUEST";
+      return "421 MISDIRECTED_REQUEST";
     case ResponseCode::UNPROCESSABLE_ENTITY:
       return "422 UNPROCESSABLE_ENTITY";
     case ResponseCode::LOCKED:
@@ -248,5 +257,4 @@ inline std::ostream& operator<<(std::ostream& ostream,
                                 ResponseCode responseCode) {
   return ostream << std::string(responseToString(responseCode));
 }
-}  // namespace rest
-}  // namespace arangodb
+}  // namespace arangodb::rest

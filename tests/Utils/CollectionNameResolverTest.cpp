@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,7 +46,7 @@ struct TestView : public arangodb::LogicalView {
 
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(*this, vocbase, definition) {}
+      : arangodb::LogicalView(*this, vocbase, definition, false) {}
   arangodb::Result appendVPackImpl(arangodb::velocypack::Builder&,
                                    Serialization, bool) const override {
     return {};
@@ -71,15 +71,16 @@ struct ViewFactory : public arangodb::ViewFactory {
   virtual arangodb::Result create(arangodb::LogicalView::ptr& view,
                                   TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Slice definition,
-                                  bool) const override {
-    view = vocbase.createView(definition);
+                                  bool isUserRequest) const override {
+    view = vocbase.createView(definition, isUserRequest);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -107,8 +108,7 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" "
       "}");  // any arbitrary view type
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                  testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()));
   arangodb::CollectionNameResolver resolver(vocbase);
 
   // not present collection (no datasource)
@@ -136,7 +136,7 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
   }
 
   auto collection = vocbase.createCollection(collectionJson->slice());
-  auto view = vocbase.createView(viewJson->slice());
+  auto view = vocbase.createView(viewJson->slice(), false);
 
   EXPECT_FALSE(collection->deleted());
   EXPECT_FALSE(view->deleted());
@@ -189,7 +189,7 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
     EXPECT_FALSE(resolver.getView("testViewGUID"));
   }
 
-  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true, 0).ok());
+  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true).ok());
   EXPECT_TRUE(view->drop().ok());
   EXPECT_TRUE(collection->deleted());
   EXPECT_TRUE(view->deleted());

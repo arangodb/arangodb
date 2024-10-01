@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,21 +25,25 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          std::string const& jobId, std::string const& creator,
                          std::string const& database,
                          std::string const& collection,
-                         std::string const& shard)
+                         std::string const& shard, std::string const& notBefore)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
-      _shard(shard) {}
+      _shard(shard),
+      _notBefore(notBefore) {}
 
 AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
                          JOB_STATUS status, std::string const& jobId)
@@ -50,12 +54,15 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
   auto tmp_collection = _snapshot.hasAsString(path + "collection");
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  auto tmp_timeCreated = _snapshot.hasAsString(path + "timeCreated");
 
-  if (tmp_database && tmp_collection && tmp_shard && tmp_creator) {
+  if (tmp_database && tmp_collection && tmp_shard && tmp_creator &&
+      tmp_timeCreated) {
     _database = tmp_database.value();
     _collection = tmp_collection.value();
     _shard = tmp_shard.value();
     _creator = tmp_creator.value();
+    _timeCreated = tmp_timeCreated.value();
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
@@ -65,6 +72,10 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
     finish("", tmp_shard.value_or(""), false, err.str());
     _status = FAILED;
   }
+  auto tmp_notBefore = _snapshot.hasAsString(path + "notBefore");
+  if (tmp_notBefore) {
+    _notBefore = tmp_notBefore.value();
+  }
 }
 
 AddFollower::~AddFollower() = default;
@@ -73,8 +84,8 @@ void AddFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("8f72c", INFO, Logger::SUPERVISION)
-      << "Todo: AddFollower(s) "
-      << " to shard " << _shard << " in collection " << _collection;
+      << "Todo: AddFollower(s) to shard " << _shard << " in collection "
+      << _collection;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -101,6 +112,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("shard", VPackValue(_shard));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
+    _jb->add("notBefore", VPackValue(_notBefore));
   }
 
   _status = TODO;
@@ -121,7 +133,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("02cef", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -135,7 +147,7 @@ bool AddFollower::start(bool&) {
     return false;
   }
   Node const& collection =
-      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection)->get();
+      *_snapshot.get(planColPrefix + _database + "/" + _collection);
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
@@ -146,8 +158,8 @@ bool AddFollower::start(bool&) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).value();
-
+  auto plannedBuilder = _snapshot.get(planPath)->toBuilder();
+  auto planned = plannedBuilder.slice();
   TRI_ASSERT(planned.isArray());
 
   // First check that we still have too few followers for the current
@@ -193,6 +205,22 @@ bool AddFollower::start(bool&) {
     return false;
   }
 
+  // Check if configured delay has passed since the creation of the job,
+  // or we are in "urgent" mode:
+  if (!_notBefore.empty()) {
+    auto now = std::chrono::system_clock::now();
+    std::chrono::system_clock::time_point notBefore =
+        stringToTimepoint(_notBefore);
+    if (now < notBefore) {
+      LOG_TOPIC("1de2c", DEBUG, Logger::SUPERVISION)
+          << "shard " << _shard
+          << " needs addFollower but configured AddFollowerDelay has not yet "
+             "passed, delaying job "
+          << _jobId;
+      return false;
+    }
+  }
+
   // Now find some new servers to add:
   auto available = Job::availableServers(_snapshot);
   // Remove those already in Plan:
@@ -204,7 +232,7 @@ bool AddFollower::start(bool&) {
   // Remove those that are not in state "GOOD":
   auto it = available.begin();
   while (it != available.end()) {
-    if (checkServerHealth(_snapshot, *it) != "GOOD") {
+    if (checkServerHealth(_snapshot, *it) != Supervision::HEALTH_STATUS_GOOD) {
       it = available.erase(it);
     } else {
       ++it;
@@ -228,7 +256,8 @@ bool AddFollower::start(bool&) {
   if (available.size() < desiredReplFactor - actualReplFactor) {
     LOG_TOPIC("50086", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
-        << " does not have enough candidates to add followers, waiting, jobId="
+        << " does not have enough candidates to add followers, waiting, "
+           "jobId="
         << _jobId;
     return false;
   }
@@ -262,8 +291,8 @@ bool AddFollower::start(bool&) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("24c50", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -321,14 +350,14 @@ bool AddFollower::start(bool&) {
             // "failoverCandidates":
             std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
             foCandsPath += StaticStrings::FailoverCandidates;
-            auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+            auto foCands = this->_snapshot.hasAsBuilder(foCandsPath);
             if (foCands) {
-              addPreconditionUnchanged(trx, foCandsPath, foCands.value());
+              addPreconditionUnchanged(trx, foCandsPath, foCands->slice());
             }
           });
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : chosen) {
-        addPreconditionServerHealth(trx, srv, "GOOD");
+        addPreconditionServerHealth(trx, srv, Supervision::HEALTH_STATUS_GOOD);
       }
     }  // precondition done
   }    // array for transaction done
@@ -340,12 +369,12 @@ bool AddFollower::start(bool&) {
     _status = FINISHED;
     LOG_TOPIC("961a4", INFO, Logger::SUPERVISION)
         << "Finished: Addfollower(s) to shard " << _shard << " in collection "
-        << _collection;
+        << _collection << ": " << chosen;
     return true;
   }
 
   LOG_TOPIC("63ba4", INFO, Logger::SUPERVISION)
-      << "Start precondition failed for AddFollower " + _jobId;
+      << "Start precondition failed for AddFollower " << _jobId;
   return false;
 }
 

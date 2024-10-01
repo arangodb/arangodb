@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +25,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -36,9 +37,6 @@
 #include <velocypack/Slice.h>
 
 #include "Agency/PathComponent.h"
-#include "AgencyComm.h"
-#include "Basics/Mutex.h"
-#include "Basics/Result.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/arangod.h"
@@ -46,6 +44,7 @@
 
 namespace arangodb {
 class Endpoint;
+class Result;
 
 namespace application_features {
 class ApplicationServer;
@@ -191,7 +190,6 @@ class AgencyCommHelper {
 
  public:
   static void initialize(std::string const& prefix);
-  static void shutdown();
 
   static std::string const& path() noexcept;
   static std::string path(std::string const&);
@@ -211,10 +209,11 @@ class AgencyPrecondition {
  public:
   enum class Type { NONE, EMPTY, VALUE, TIN, NOTIN, INTERSECTION_EMPTY };
 
- public:
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
+  AgencyPrecondition(std::string const& key, Type,
+                     std::shared_ptr<velocypack::Builder>);
   template<typename T>
   AgencyPrecondition(std::string const& key, Type t, T const& v)
       : key(AgencyCommHelper::path(key)),
@@ -229,6 +228,8 @@ class AgencyPrecondition {
                      Type, bool e);
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
                      Type, velocypack::Slice const&);
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type, std::shared_ptr<velocypack::Builder>);
   template<typename T>
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
                      Type t, T const& v)
@@ -240,16 +241,14 @@ class AgencyPrecondition {
     value = builder->slice();
   }
 
- public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
 
- public:
   std::string key;
   Type type;
   bool empty;
-  velocypack::Slice value;
   std::shared_ptr<VPackBuilder> builder;
+  velocypack::Slice value;
 };
 
 // -----------------------------------------------------------------------------
@@ -320,10 +319,13 @@ class AgencyOperation {
                   AgencyValueOperationType opType, velocypack::Slice newValue,
                   velocypack::Slice oldValue);
 
- public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
   AgencyOperationType type() const;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  std::string const& key() const { return _key; }
+#endif
 
  public:
   uint64_t _ttl = 0;
@@ -353,7 +355,6 @@ class AgencyCommResult {
   AgencyCommResult(AgencyCommResult&& other) noexcept;
   AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
- public:
   void set(rest::ResponseCode code, std::string message);
 
   [[nodiscard]] bool successful() const {
@@ -395,7 +396,6 @@ class AgencyCommResult {
                           std::optional<std::string_view>>
   parseBodyError() const;
 
- public:
   std::string _location = "";
   std::string _message = "";
 
@@ -584,7 +584,11 @@ class AgencyComm {
   static uint64_t const MAX_SLEEP_TIME = 50000;     // microseconds
 
  public:
-  explicit AgencyComm(ArangodServer&);
+  [[deprecated(
+      "Avoid this constructor to get rid of the ArangodServer "
+      "dependency")]] explicit AgencyComm(ArangodServer&);
+  AgencyComm(ApplicationServer&, ClusterFeature&, EngineSelectorFeature&,
+             DatabaseFeature&);
 
   AgencyCommResult sendServerState(double timeout);
 
@@ -637,19 +641,12 @@ class AgencyComm {
   AgencyCommResult unregisterCallback(std::string const& key,
                                       std::string const& endpoint);
 
-  bool lockRead(std::string const&, double, double);
-
-  bool lockWrite(std::string const&, double, double);
-
-  bool unlockRead(std::string const&, double);
-
-  bool unlockWrite(std::string const&, double);
-
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
-  ArangodServer& server();
-
+  // TODO I think this should be moved into ClusterFeature, which would allow us
+  //      here to get rid of both the ClusterFeature and the DatabaseFeature
+  //      dependencies.
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
@@ -667,12 +664,13 @@ class AgencyComm {
 
   bool shouldInitializeStructure();
 
- private:
-  ArangodServer& _server;
+  ApplicationServer& _server;
+  ClusterFeature& _clusterFeature;
+  EngineSelectorFeature& _engineSelectorFeature;
+  DatabaseFeature& _databaseFeature;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
-}  // namespace arangodb
 
-namespace std {
-ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
-}
+std::ostream& operator<<(std::ostream& o, AgencyCommResult const& a);
+
+}  // namespace arangodb

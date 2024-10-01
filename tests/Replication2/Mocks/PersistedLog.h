@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,18 +38,18 @@ namespace arangodb::replication2::test {
 using namespace replicated_log;
 
 struct MockLog : replication2::replicated_log::PersistedLog {
-  using storeType =
-      std::map<replication2::LogIndex, replication2::PersistingLogEntry>;
+  using storeType = std::map<replication2::LogIndex, replication2::LogEntry>;
 
   explicit MockLog(replication2::LogId id);
+  explicit MockLog(replication2::GlobalLogIdentifier gid);
   MockLog(replication2::LogId id, storeType storage);
 
-  auto insert(replication2::PersistedLogIterator& iter, WriteOptions const&)
+  auto insert(replication2::LogIterator& iter, WriteOptions const&)
       -> Result override;
-  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
+  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
   auto read(replication2::LogIndex start)
-      -> std::unique_ptr<replication2::PersistedLogIterator> override;
+      -> std::unique_ptr<replication2::LogIterator> override;
   auto removeFront(replication2::LogIndex stop)
       -> futures::Future<Result> override;
   auto removeBack(replication2::LogIndex start) -> Result override;
@@ -56,7 +57,7 @@ struct MockLog : replication2::replicated_log::PersistedLog {
 
   void setEntry(replication2::LogIndex idx, replication2::LogTerm term,
                 replication2::LogPayload payload);
-  void setEntry(replication2::PersistingLogEntry);
+  void setEntry(replication2::LogEntry);
 
   [[nodiscard]] storeType getStorage() const { return _storage; }
 
@@ -73,7 +74,7 @@ struct MockLog : replication2::replicated_log::PersistedLog {
 struct DelayedMockLog : MockLog {
   explicit DelayedMockLog(replication2::LogId id) : MockLog(id) {}
 
-  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
+  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
 
   auto hasPendingInsert() const noexcept -> bool {
@@ -82,9 +83,9 @@ struct DelayedMockLog : MockLog {
   void runAsyncInsert();
 
   struct PendingRequest {
-    PendingRequest(std::unique_ptr<replication2::PersistedLogIterator> iter,
+    PendingRequest(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions options);
-    std::unique_ptr<replication2::PersistedLogIterator> iter;
+    std::unique_ptr<replication2::LogIterator> iter;
     WriteOptions options;
     futures::Promise<Result> promise;
   };
@@ -97,7 +98,7 @@ struct AsyncMockLog : MockLog {
 
   ~AsyncMockLog() noexcept;
 
-  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
+  auto insertAsync(std::unique_ptr<replication2::LogIterator> iter,
                    WriteOptions const&) -> futures::Future<Result> override;
 
   auto stop() noexcept -> void {
@@ -114,7 +115,7 @@ struct AsyncMockLog : MockLog {
  private:
   struct QueueEntry {
     WriteOptions opts;
-    std::unique_ptr<replication2::PersistedLogIterator> iter;
+    std::unique_ptr<replication2::LogIterator> iter;
     futures::Promise<Result> promise;
   };
 

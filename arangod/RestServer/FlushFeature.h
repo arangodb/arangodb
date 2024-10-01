@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,12 +25,14 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -47,6 +49,7 @@ class FlushThread;
 struct FlushSubscription {
   virtual ~FlushSubscription() = default;
   virtual TRI_voc_tick_t tick() const = 0;
+  virtual std::string const& name() const = 0;
 };
 
 class FlushFeature final : public ArangodFeature {
@@ -65,7 +68,7 @@ class FlushFeature final : public ArangodFeature {
   ///        token commit
   /// @param subscription to register
   void registerFlushSubscription(
-      const std::shared_ptr<FlushSubscription>& subscription);
+      std::shared_ptr<FlushSubscription> const& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
   /// returns number of active flush subscriptions removed, the number of stale
@@ -80,6 +83,8 @@ class FlushFeature final : public ArangodFeature {
   std::mutex _flushSubscriptionsMutex;
   std::vector<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   bool _stopped;
+
+  metrics::Gauge<uint64_t>& _metricsFlushSubscriptions;
 };
 
 }  // namespace arangodb

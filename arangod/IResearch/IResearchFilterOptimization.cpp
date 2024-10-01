@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,31 +30,32 @@ namespace iresearch {
 
 bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
                                     std::string_view name,
-                                    irs::string_ref startsWith) {
+                                    std::string_view startsWith) {
   if (filter->type() == irs::type<irs::And>::id()) {
     for (auto& f : *filter) {
-      if (f.type() == irs::type<irs::by_edit_distance>::id()) {
-        auto& levenshtein = static_cast<irs::by_edit_distance&>(f);
+      if (f->type() == irs::type<irs::by_edit_distance>::id()) {
+        auto& levenshtein = static_cast<irs::by_edit_distance&>(*f);
         if (levenshtein.field() == name) {
           auto options = levenshtein.mutable_options();
           if (startsWith.size() <= options->prefix.size()) {
-            if (irs::starts_with(irs::ref_cast<char>(options->prefix),
-                                 startsWith)) {
+            if (irs::ViewCast<char>(irs::bytes_view{options->prefix})
+                    .starts_with(startsWith)) {
               // Nothing to do. We are already covered by this levenshtein
               // prefix
               return true;
             }
           } else {
             // maybe we could enlarge prefix to cover us?
-            if (irs::starts_with(startsWith,
-                                 irs::ref_cast<char>(options->prefix))) {
+            if (startsWith.starts_with(
+                    irs::ViewCast<char>(irs::bytes_view{options->prefix}))) {
               // looks promising - beginning of the levenshtein prefix is ok
               auto prefixTailSize = startsWith.size() - options->prefix.size();
-              if (irs::starts_with(irs::ref_cast<char>(options->term),
-                                   startsWith.c_str() + options->prefix.size(),
-                                   prefixTailSize)) {
+              if (irs::ViewCast<char>(irs::bytes_view{options->term})
+                      .starts_with(std::string_view{
+                          startsWith.data() + options->prefix.size(),
+                          prefixTailSize})) {
                 // we could enlarge prefix
-                options->prefix = irs::ref_cast<irs::byte_type>(startsWith);
+                options->prefix = irs::ViewCast<irs::byte_type>(startsWith);
                 options->term.erase(options->term.begin(),
                                     options->term.begin() + prefixTailSize);
                 return true;
@@ -66,7 +67,7 @@ bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
             // last optimization effort - we can't fulfill this conjunction.
             // make it empty
             filter->clear();
-            filter->add<irs::empty>();
+            filter->add<irs::Empty>();
             return true;
           }
         }

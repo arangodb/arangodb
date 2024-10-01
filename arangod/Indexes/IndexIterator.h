@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,13 +44,20 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include <iosfwd>
+#include "Aql/AqlValue.h"
+#include "Basics/debugging.h"
 #include "Containers/FlatHashMap.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
-#include "VocBase/vocbase.h"
 
 #include <cstdint>
+#include <functional>
 #include <string_view>
+#include <function2/function2.hpp>
+#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-common.h>
 
 namespace arangodb {
 class Index;
@@ -66,6 +73,7 @@ class Methods;
 }
 
 struct IndexIteratorOptions;
+enum class ReadOwnWrites : bool;
 
 class IndexIteratorCoveringData {
  public:
@@ -75,7 +83,7 @@ class IndexIteratorCoveringData {
   virtual VPackSlice value() const {
     // Only some "projections" are not accessed by index, but directly by value.
     // Like edge or primaryKey index. In general this method should not be
-    // called for indicies providing projections as "array-like" structure.
+    // called for indexes providing projections as "array-like" structure.
     TRI_ASSERT(false);
     return VPackSlice::noneSlice();
   }
@@ -83,11 +91,11 @@ class IndexIteratorCoveringData {
   virtual velocypack::ValueLength length() const = 0;
 };
 
+std::ostream& operator<<(std::ostream&, IndexIteratorCoveringData const&);
+
 /// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
 class IndexIterator {
-  friend class MultiIndexIterator;
-
  public:
   class SliceCoveringData final : public IndexIteratorCoveringData {
    public:
@@ -145,14 +153,82 @@ class IndexIterator {
     velocypack::ValueLength _storedValuesLength;
   };
 
-  typedef std::function<bool(LocalDocumentId const& token)>
-      LocalDocumentIdCallback;
-  typedef std::function<bool(LocalDocumentId const& token,
-                             velocypack::Slice doc)>
-      DocumentCallback;
-  typedef std::function<bool(LocalDocumentId const& token,
-                             IndexIteratorCoveringData& covering)>
-      CoveringCallback;
+  // TODO(MBkkt) move callback stuff to separate header
+  // TODO(MBkkt) try to use view/move_only options
+  template<typename... Funcs>
+  class CallbackImplStrict : fu2::function<Funcs...> {
+    using Base = fu2::function<Funcs...>;
+
+   public:
+    using Base::operator();
+    using Base::operator bool;
+
+    bool operator==(std::nullptr_t) { return !bool(*this); }
+
+    bool operator!=(std::nullptr_t) { return bool(*this); }
+
+    CallbackImplStrict() noexcept = default;
+
+    template<typename... Fs>
+    CallbackImplStrict(Fs&&... fs)
+        : Base{fu2::overload(std::forward<Fs>(fs)...)} {}
+  };
+
+  template<typename... Funcs>
+  class CallbackImplWeak : CallbackImplStrict<Funcs...> {
+    using Base = CallbackImplStrict<Funcs...>;
+
+    struct DummyRetval {
+      template<typename T>
+      operator T() const {
+        TRI_ASSERT(false);
+        throw std::bad_function_call{};
+      }
+    };
+
+   public:
+    using Base::operator();
+    using Base::operator bool;
+
+    bool operator==(std::nullptr_t) { return !bool(*this); }
+
+    bool operator!=(std::nullptr_t) { return bool(*this); }
+
+    CallbackImplWeak() noexcept = default;
+
+    template<typename... Fs>
+    CallbackImplWeak(Fs&&... fs)
+        : Base{std::forward<Fs>(fs)...,
+               [](auto&&...) { return DummyRetval{}; }} {}
+  };
+
+  using LocalDocumentIdCallback =
+      fu2::function<bool(LocalDocumentId token) const>;
+
+  // the bool return value of the callback indicates whether the callback
+  // has ignored or used the document.
+  // if the callback returns true, it means the callback has done something
+  // meaningful with the document, e.g. used it to write a result row into
+  // some output block in AQL. the caller can then use the returned true
+  // value as an indicator to count up the number of rows produced.
+  // if the callback returns false, it means the callback has ignored the
+  // document. this is true for example for callbacks that actively filter
+  // out certain documents.
+  using DocumentCallback = fu2::function<bool(
+      LocalDocumentId token, aql::DocumentData&& data, VPackSlice doc) const>;
+
+  static DocumentCallback makeDocumentCallback(velocypack::Builder& builder) {
+    return [&](LocalDocumentId, aql::DocumentData&&, VPackSlice doc) {
+      builder.add(doc);
+      return true;
+    };
+  }
+
+  using CoveringCallback =
+      CallbackImplWeak<bool(LocalDocumentId token,
+                            IndexIteratorCoveringData& covering) const,
+                       bool(aql::AqlValue&& searchDoc,
+                            IndexIteratorCoveringData& covering) const>;
 
  public:
   IndexIterator(IndexIterator const&) = delete;
@@ -246,6 +322,24 @@ class IndexIterator {
     return false;
   }
 
+  [[nodiscard]] bool rearm(velocypack::Slice slice,
+                           IndexIteratorOptions const& opts) {
+    TRI_ASSERT(canRearm());
+    // intentionally do not reset cache statistics here.
+    _hasMore = true;
+    if (rearmImpl(slice, opts)) {
+      reset();
+      return true;
+    }
+    return false;
+  }
+
+  // set an optional limit for the index iterator.
+  // the default implementation does nothing. derived classes can override it
+  // as a performance optimization, so that fewer index results will be
+  // produced.
+  virtual void setLimit(uint64_t limit) noexcept {}
+
   /// @brief skip the next toSkip many elements.
   ///        skipped will be increased by the amount of skipped elements
   ///        afterwards Check hasMore()==true before using this NOTE: This will
@@ -273,6 +367,9 @@ class IndexIterator {
 
   virtual bool rearmImpl(arangodb::aql::AstNode const* node,
                          arangodb::aql::Variable const* variable,
+                         IndexIteratorOptions const& opts);
+
+  virtual bool rearmImpl(velocypack::Slice slice,
                          IndexIteratorOptions const& opts);
 
   virtual bool nextImpl(LocalDocumentIdCallback const& callback,
@@ -345,52 +442,13 @@ class EmptyIndexIterator final : public IndexIterator {
   void skipImpl(uint64_t /*count*/, uint64_t& skipped) override { skipped = 0; }
 };
 
-/// @brief a wrapper class to iterate over several IndexIterators.
-///        Each iterator is requested at the index itself.
-///        This iterator does NOT check for uniqueness.
-///        Will always start with the first iterator in the vector. Reverse them
-///        outside if necessary.
-class MultiIndexIterator final : public IndexIterator {
- public:
-  MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                     arangodb::Index const* index,
-                     std::vector<std::unique_ptr<IndexIterator>> iterators)
-      : IndexIterator(collection, trx, ReadOwnWrites::no),
-        _iterators(std::move(iterators)),
-        _currentIdx(0),
-        _current(_iterators.empty() ? nullptr : _iterators[0].get()) {}
-
-  ~MultiIndexIterator() = default;
-
-  std::string_view typeName() const noexcept override {
-    return "multi-index-iterator";
-  }
-
-  /// @brief Get the next elements
-  ///        If one iterator is exhausted, the next one is used.
-  ///        If callback is called less than limit many times
-  ///        all iterators are exhausted
-  bool nextImpl(LocalDocumentIdCallback const& callback,
-                uint64_t limit) override;
-  bool nextDocumentImpl(DocumentCallback const& callback,
-                        uint64_t limit) override;
-  bool nextCoveringImpl(CoveringCallback const& callback,
-                        uint64_t limit) override;
-
-  /// @brief Reset the cursor
-  ///        This will reset ALL internal iterators and start all over again
-  void resetImpl() override;
-
- private:
-  std::vector<std::unique_ptr<IndexIterator>> _iterators;
-  size_t _currentIdx;
-  IndexIterator* _current;
-};
-
 /// Options for creating an index iterator
 struct IndexIteratorOptions {
   /// @brief Limit used in a parent LIMIT node (if non-zero)
   size_t limit = 0;
+  /// @brief number of lookahead elements considered before computing the next
+  /// intersection of the Z-curve with the search range
+  size_t lookahead = 1;
   /// @brief whether the index must sort its results
   bool sorted = true;
   /// @brief the index sort order - this is the same order for all indexes
@@ -400,9 +458,10 @@ struct IndexIteratorOptions {
   bool evaluateFCalls = true;
   /// @brief enable caching
   bool useCache = true;
-  /// @brief number of lookahead elements considered before computing the next
-  /// intersection of the Z-curve with the search range
-  size_t lookahead = 1;
+  /// @brief forcefully synchronize external indexes
+  bool waitForSync = false;
+  /// @brief iterator will be used with late materialization
+  bool forLateMaterialization{false};
 };
 
 /// index estimate map, defined here because it was convenient

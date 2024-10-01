@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,22 +23,30 @@
 
 #include "QuerySnippet.h"
 
-#include "Aql/ClusterNodes.h"
-#include "Aql/Collection.h"
-#include "Aql/CollectionAccessingNode.h"
-#include "Aql/DistributeConsumerNode.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CollectionAccessingNode.h"
+#include "Aql/ExecutionNode/DistributeConsumerNode.h"
+#include "Aql/ExecutionNode/DistributeNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/GraphNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/JoinNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/GraphNode.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/ShardLocking.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogLevel.h"
+#include "Logger/LogMacros.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/LocalGraphNode.h"
 #endif
+
+#include <map>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -48,17 +56,12 @@ namespace {
 DistributeConsumerNode* createConsumerNode(
     ExecutionPlan* plan, ScatterNode* internalScatter,
     std::string_view const distributeId) {
-  auto uniq_consumer = std::make_unique<DistributeConsumerNode>(
+  auto consumer = plan->createNode<DistributeConsumerNode>(
       plan, plan->nextId(), std::string(distributeId));
-  auto consumer = uniq_consumer.get();
-  TRI_ASSERT(consumer != nullptr);
-  // Hand over responsibility to plan, s.t. it can clean up if one of the below
-  // fails
-  plan->registerNode(uniq_consumer.release());
   consumer->setIsInSplicedSubquery(internalScatter->isInSplicedSubquery());
   consumer->addDependency(internalScatter);
   consumer->cloneRegisterPlan(internalScatter);
-  internalScatter->addClient(consumer);
+  internalScatter->addClient(*consumer);
   return consumer;
 }
 
@@ -183,6 +186,23 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
       }
+    } else if (clone->getType() == ExecutionNode::JOIN) {
+      // JoinNodes handles multiple collections
+      auto joinNode = dynamic_cast<JoinNode*>(clone);
+      if (joinNode != nullptr) {
+        // found a JoinNode, now add the `i` th shard for used collections
+        for (auto& idx : joinNode->getIndexInfos()) {
+          if (idx.usedAsSatellite) {
+            continue;
+          }
+          auto const& shards = permuter->second.at(idx.collection->name());
+          idx.usedShard = *std::next(shards.begin(), _shardId);
+        }
+
+      } else {
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+      }
     } else {
       auto collectionAccessingNode =
           dynamic_cast<CollectionAccessingNode*>(clone);
@@ -210,7 +230,7 @@ bool CloneWorker::before(ExecutionNode* node) {
   if (node->getType() == ExecutionNode::DISTRIBUTE_CONSUMER) {
     if (node->hasDependency() &&
         node->getFirstDependency()->getType() == ExecutionNode::MUTEX) {
-      auto clone = node->clone(plan, false, false);
+      auto clone = node->clone(plan, false);
 
       // set the used shards on the clone just created. We have
       // to handle graph nodes specially as they have multiple
@@ -237,7 +257,7 @@ bool CloneWorker::before(ExecutionNode* node) {
     // Never clone these nodes. We should never run into this case.
     TRI_ASSERT(false);
   } else {
-    auto clone = node->clone(plan, false, false);
+    auto clone = node->clone(plan, false);
 
     // set the used shards on the clone just created. We have
     // to handle graph nodes specially as they have multiple
@@ -310,6 +330,11 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
       bool const isSatellite = graphNode->isUsedAsSatellite();
       _expansions.emplace_back(node, !isSatellite, isSatellite);
+      break;
+    }
+    case ExecutionNode::JOIN: {
+      _expansions.emplace_back(
+          node, true, /* handled in separately in prepareFirstBranch */ false);
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
@@ -401,7 +426,7 @@ void QuerySnippet::serializeIntoBuilder(
     _remoteNode->setDistributeId(server);
     // Wire up this server to the global scatter
     TRI_ASSERT(_globalScatter != nullptr);
-    _globalScatter->addClient(_remoteNode);
+    _globalScatter->addClient(*_remoteNode);
 
     // For serialization remove the dependency of Remote
 
@@ -437,8 +462,8 @@ void QuerySnippet::serializeIntoBuilder(
     TRI_ASSERT(plan == _sinkNode->plan());
     // Clone the sink node, we do not need dependencies (second bool)
     // And we do not need variables
-    auto* internalGather = ExecutionNode::castTo<GatherNode*>(
-        _sinkNode->clone(plan, false, false));
+    auto* internalGather =
+        ExecutionNode::castTo<GatherNode*>(_sinkNode->clone(plan, false));
     // Use the same elements for sorting
     internalGather->elements(_sinkNode->elements());
     // We need to modify the registerPlanning.
@@ -446,6 +471,15 @@ void QuerySnippet::serializeIntoBuilder(
     // it needs to expose its input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLaterStack());
     internalGather->setRegsToClear({});
+    // No DBServer-internal parallelism (yet)
+    auto const parallelism = internalGather->parallelism();
+    LOG_TOPIC_IF("dd0f1", DEBUG, Logger::QUERIES,
+                 parallelism != GatherNode::Parallelism::Serial)
+        << "Overriding parallelism of " << toString(parallelism) << " with "
+        << toString(GatherNode::Parallelism::Serial)
+        << " on the DBServer's gather node (belonging to " << _sinkNode->id()
+        << ")";
+    internalGather->setParallelism(GatherNode::Parallelism::Serial);
     auto const reservedId = ExecutionNodeId::InternalNode;
     nodeAliases.try_emplace(internalGather->id(), reservedId);
 
@@ -455,7 +489,7 @@ void QuerySnippet::serializeIntoBuilder(
       TRI_ASSERT(_globalScatter != nullptr);
       TRI_ASSERT(plan == _globalScatter->plan());
       internalScatter = ExecutionNode::castTo<ScatterNode*>(
-          _globalScatter->clone(plan, false, false));
+          _globalScatter->clone(plan, false));
       internalScatter->clearClients();
 
       TRI_ASSERT(_remoteNode->getDependencies().size() == 0);
@@ -496,7 +530,7 @@ void QuerySnippet::serializeIntoBuilder(
         }
       } else {
         // In this case we actually do not care for the real value, we just need
-        // to ensure that every client get's exactly one copy.
+        // to ensure that every client gets exactly one copy.
         for (size_t i = 0; i < numberOfShardsToPermutate; i++) {
           distIds.emplace_back(StringUtils::itoa(i));
         }
@@ -522,6 +556,8 @@ void QuerySnippet::serializeIntoBuilder(
       }
     }
 
+    TRI_ASSERT(!_nodes.empty());
+
     // We do not need to copy the first stream, we can use the one we have.
     // We only need copies for the other streams.
     plan->insertAfter(_nodes.front(), internalGather);
@@ -530,7 +566,6 @@ void QuerySnippet::serializeIntoBuilder(
     // We will inject the permuted shards on the way.
     // Also note: the local plan will take memory responsibility
     // of the ExecutionNodes created during this procedure.
-    TRI_ASSERT(!_nodes.empty());
     auto snippetRoot = _nodes.at(0);
 
     // make sure we don't explode accessing distIds
@@ -602,7 +637,44 @@ auto QuerySnippet::prepareFirstBranch(
   std::unordered_map<std::string, std::set<ShardID>> myExpFinal;
 
   for (auto const& exp : _expansions) {
-    if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+    if (exp.node->getType() == ExecutionNode::JOIN) {
+      // the same translation is copied to all servers
+      // there are no local expansions
+      auto* joinNode = ExecutionNode::castTo<JoinNode*>(exp.node);
+
+      for (auto& idx : joinNode->getIndexInfos()) {
+        // It is of utmost importance that this is an ordered set of Shards.
+        // We can only join identical indexes of shards for each collection
+        // locally.
+        std::set<ShardID> myExp;
+
+        auto const& shards =
+            shardLocking.shardsForSnippet(id(), idx.collection);
+        TRI_ASSERT(!shards.empty());
+        for (auto const& s : shards) {
+          auto check = shardMapping.find(s);
+          // If we find a shard here that is not in this mapping,
+          // we have 1) a problem with locking before that should have thrown
+          // 2) a problem with shardMapping lookup that should have thrown
+          // before
+          TRI_ASSERT(check != shardMapping.end());
+          if (check->second == server || idx.usedAsSatellite) {
+            // add all shards on satellites.
+            // and all shards where this server is the leader
+            myExp.emplace(s);
+          }
+        }
+        if (myExp.empty()) {
+          return {TRI_ERROR_CLUSTER_NOT_LEADER};
+        }
+
+        idx.usedShard = *myExp.begin();
+        if (myExp.size() > 1) {
+          myExpFinal.insert({idx.collection->name(), std::move(myExp)});
+        }
+      }
+
+    } else if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
       // Special case, VIEWs can serve more than 1 shard per Node.
       // We need to inject them all at once.
       auto* viewNode =
@@ -727,7 +799,8 @@ auto QuerySnippet::prepareFirstBranch(
             // to serve later lookups for this collection, we insert an empty
             // string into the collection->shard map. on lookup, we will react
             // to this.
-            localGraphNode->addCollectionToShard(aqlCollection->name(), "");
+            localGraphNode->addCollectionToShard(aqlCollection->name(),
+                                                 ShardID::invalidShard());
           }
         }
       }
@@ -831,13 +904,7 @@ auto QuerySnippet::prepareFirstBranch(
         }
       }
     }
-
     if (exp.doExpand) {
-      auto collectionAccessingNode =
-          dynamic_cast<CollectionAccessingNode*>(exp.node);
-      TRI_ASSERT(collectionAccessingNode != nullptr);
-      TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       size_t numberOfShardsToPermutate = 0;
       // set the max loop index (note this will essentially be done only once)

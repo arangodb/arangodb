@@ -1,0 +1,15 @@
+name: arangodb_replication2_replicated_log_leader_append_entries_error_total
+introducedIn: "3.11.0"
+help: |
+  Counter of failed append-entries messages.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  The leader of a replicated log replicates the log entries by sending
+  append-entries requests to its followers.
+  This metric counts the amount of true failures, i.e. does not account
+  for expected protocol errors that are handled gracefully.

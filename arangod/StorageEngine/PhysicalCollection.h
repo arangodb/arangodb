@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,31 +23,42 @@
 
 #pragma once
 
-#include <set>
-
-#include <velocypack/Builder.h>
-
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "StorageEngine/ReplicationIterator.h"
+#include "StorageEngine/StorageEngine.h"  // consider just forward declaration
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/RevisionId.h"
-#include "VocBase/voc-types.h"
+#include "VocBase/Identifiers/TransactionId.h"
 
-#include <boost/container/flat_set.hpp>
+#include <functional>
+#include <memory>
+#include <set>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <vector>
+#include <span>
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
+
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
 
 class LocalDocumentId;
 class Index;
 class IndexIterator;
+class IndexesSnapshot;
 class LogicalCollection;
-class ManagedDocumentResult;
 struct OperationOptions;
 class Result;
 
@@ -57,27 +68,25 @@ class PhysicalCollection {
 
   virtual ~PhysicalCollection() = default;
 
-  virtual PhysicalCollection* clone(LogicalCollection& logical) const = 0;
-
-  // path to logical collection
-  virtual std::string const& path() const = 0;
   // creation happens atm in engine->createCollection
-  virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& slice, bool doSync) = 0;
-  virtual RevisionId revision(arangodb::transaction::Methods* trx) const = 0;
+  virtual Result updateProperties(velocypack::Slice slice) = 0;
+
+  virtual RevisionId revision(transaction::Methods* trx) const = 0;
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
-  virtual ErrorCode close() = 0;
-
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
 
+  void close();
+
   void drop();
 
+  virtual void freeMemory() noexcept;
+
   /// recalculate counts for collection in case of failure, blocking
-  virtual uint64_t recalculateCounts();
+  virtual futures::Future<uint64_t> recalculateCounts();
 
   /// @brief whether or not the collection contains any documents. this
   /// function is allowed to return true even if there are no documents
@@ -88,17 +97,15 @@ class PhysicalCollection {
   ///////////////////////////////////
 
   /// @brief fetches current index selectivity estimates
-  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
-  /// to fetch current values!
+  /// if allowUpdate is true, will potentially make a cluster-internal
+  /// roundtrip to fetch current values!
   virtual IndexEstMap clusterIndexEstimates(bool allowUpdating,
                                             TransactionId tid);
 
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
 
-  virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) = 0;
-
-  bool hasIndexOfType(arangodb::Index::IndexType type) const;
+  virtual void prepareIndexes(velocypack::Slice indexesSlice);
 
   /// @brief determines order of index execution on collection
   struct IndexOrder {
@@ -119,12 +126,23 @@ class PhysicalCollection {
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string_view idxName) const;
 
-  /// @brief get list of all indices
-  std::vector<std::shared_ptr<Index>> getIndexes() const;
+  /// @brief get list of all indexes. this includes in-progress indexes and thus
+  /// should be used with care
+  std::vector<std::shared_ptr<Index>> getAllIndexes() const;
+
+  /// @brief get a list of "ready" indexes, that means all indexes which are
+  /// not "in progress" anymore
+  std::vector<std::shared_ptr<Index>> getReadyIndexes() const;
+
+  /// @brief get a snapshot of all indexes of the collection, with the read
+  /// lock on the list of indexes being held while the snapshot is active
+  IndexesSnapshot getIndexesSnapshot();
+
+  virtual Index* primaryIndex() const;
 
   void getIndexesVPack(
       velocypack::Builder&,
-      std::function<bool(arangodb::Index const*,
+      std::function<bool(Index const*,
                          std::underlying_type<Index::Serialize>::type&)> const&
           filter) const;
 
@@ -132,12 +150,17 @@ class PhysicalCollection {
   virtual futures::Future<OperationResult> figures(
       bool details, OperationOptions const& options);
 
+  using Replication2Callback =
+      fu2::unique_function<futures::Future<ResultT<replication2::LogIndex>>()>;
+
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
-  virtual std::shared_ptr<Index> createIndex(velocypack::Slice info,
-                                             bool restore, bool& created) = 0;
+  virtual futures::Future<std::shared_ptr<Index>> createIndex(
+      velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
+      Replication2Callback replicationCb = nullptr) = 0;
 
-  virtual bool dropIndex(IndexId iid) = 0;
+  virtual Result dropIndex(IndexId iid);
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const = 0;
@@ -158,8 +181,8 @@ class PhysicalCollection {
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
-  virtual Result truncate(transaction::Methods& trx,
-                          OperationOptions& options) = 0;
+  virtual Result truncate(transaction::Methods& trx, OperationOptions& options,
+                          bool& usedRangeDelete) = 0;
 
   /// @brief compact-data operation
   virtual void compact() {}
@@ -175,52 +198,58 @@ class PhysicalCollection {
                            std::pair<LocalDocumentId, RevisionId>&,
                            ReadOwnWrites readOwnWrites) const = 0;
 
-  virtual Result read(transaction::Methods*, std::string_view key,
-                      IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
+  virtual Result lookupKeyForUpdate(
+      transaction::Methods*, std::string_view,
+      std::pair<LocalDocumentId, RevisionId>&) const = 0;
 
-  /// @brief read a documument referenced by token (internal method)
-  virtual Result read(transaction::Methods* trx, LocalDocumentId const& token,
-                      IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
+  struct LookupOptions {
+    bool readCache = true;
+    bool fillCache = true;
+    bool readOwnWrites = false;
+    bool countBytes = false;
+  };
 
-  virtual Result lookupDocument(transaction::Methods& trx,
-                                LocalDocumentId token,
-                                velocypack::Builder& builder, bool readCache,
-                                bool fillCache,
-                                ReadOwnWrites readOwnWrites) const = 0;
+  virtual Result lookup(transaction::Methods* trx, std::string_view key,
+                        IndexIterator::DocumentCallback const& cb,
+                        LookupOptions options) const = 0;
 
-  /// @brief read a documument referenced by token (internal method)
-  virtual bool readDocument(transaction::Methods* trx,
-                            LocalDocumentId const& token,
-                            ManagedDocumentResult& result,
-                            ReadOwnWrites readOwnWrites) const = 0;
+  virtual Result lookup(transaction::Methods* trx, LocalDocumentId token,
+                        IndexIterator::DocumentCallback const& cb,
+                        LookupOptions options,
+                        StorageSnapshot const* snapshot = nullptr) const = 0;
 
-  /**
-   * @brief Perform document insert, may generate a '_key' value
-   * If (options.returnNew == false && !options.silent) result might
-   * just contain an object with the '_key' field
-   */
-  virtual Result insert(transaction::Methods& trx, RevisionId newRevisionId,
-                        velocypack::Slice newDocument,
+  using MultiDocumentCallback =
+      fu2::function<bool(Result, LocalDocumentId token,
+                         aql::DocumentData&& data, VPackSlice doc) const>;
+
+  /// @brief looks up multiple documents. A result value is passed in for each
+  /// read document. `data` and `doc` are only valid if the result is ok.
+  virtual Result lookup(transaction::Methods* trx,
+                        std::span<LocalDocumentId> tokens,
+                        MultiDocumentCallback const& cb,
+                        LookupOptions options) const = 0;
+
+  virtual Result insert(transaction::Methods& trx,
+                        IndexesSnapshot const& indexesSnapshot,
+                        RevisionId newRevisionId, velocypack::Slice newDocument,
                         OperationOptions const& options) = 0;
 
   virtual Result update(transaction::Methods& trx,
+                        IndexesSnapshot const& indexesSnapshot,
                         LocalDocumentId newDocumentId,
                         RevisionId previousRevisionId,
                         velocypack::Slice previousDocument,
                         RevisionId newRevisionId, velocypack::Slice newDocument,
                         OperationOptions const& options) = 0;
 
-  virtual Result replace(transaction::Methods& trx,
-                         LocalDocumentId newDocumentId,
-                         RevisionId previousRevisionId,
-                         velocypack::Slice previousDocument,
-                         RevisionId newRevisionId,
-                         velocypack::Slice newDocument,
-                         OperationOptions const& options) = 0;
+  virtual Result replace(
+      transaction::Methods& trx, IndexesSnapshot const& indexesSnapshot,
+      LocalDocumentId newDocumentId, RevisionId previousRevisionId,
+      velocypack::Slice previousDocument, RevisionId newRevisionId,
+      velocypack::Slice newDocument, OperationOptions const& options) = 0;
 
   virtual Result remove(transaction::Methods& trx,
+                        IndexesSnapshot const& indexesSnapshot,
                         LocalDocumentId previousDocumentId,
                         RevisionId previousRevisionId,
                         velocypack::Slice previousDocument,
@@ -229,21 +258,35 @@ class PhysicalCollection {
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
-      uint64_t batchId);
+      rocksdb::SequenceNumber trxSeq);
   virtual std::unique_ptr<containers::RevisionTree> computeRevisionTree(
       uint64_t batchId);
 
-  virtual Result rebuildRevisionTree();
+  virtual futures::Future<Result> rebuildRevisionTree();
 
   virtual uint64_t placeRevisionTreeBlocker(TransactionId transactionId);
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
 
+  virtual bool cacheEnabled() const noexcept = 0;
+
  protected:
-  PhysicalCollection(LogicalCollection& collection, velocypack::Slice info);
+  explicit PhysicalCollection(LogicalCollection& collection);
+
+  // callback that is called directly before the index is dropped.
+  // the write-lock on all indexes is still held. not called during
+  // reocvery!
+  virtual Result duringDropIndex(std::shared_ptr<Index> idx);
+
+  // callback that is called directly after the index has been dropped.
+  // no locks are held anymore.
+  virtual Result afterDropIndex(std::shared_ptr<Index> idx);
+
+  // callback that is called while adding a new index. called under
+  // indexes write-lock
+  virtual void duringAddIndex(std::shared_ptr<Index> idx);
 
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(bool details,
-                               arangodb::velocypack::Builder&) = 0;
+  virtual void figuresSpecific(bool details, velocypack::Builder&) = 0;
 
   LogicalCollection& _logicalCollection;
 

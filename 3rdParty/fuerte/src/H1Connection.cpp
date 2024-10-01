@@ -22,6 +22,8 @@
 
 #include "H1Connection.h"
 
+#include <absl/strings/escaping.h>
+#include <absl/strings/str_cat.h>
 #include <fuerte/helper.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
@@ -46,7 +48,7 @@ RequestItem::RequestItem(std::unique_ptr<Request>&& req, RequestCallback&& cb,
       request(std::move(req)) {}
 
 template <SocketType ST>
-int H1Connection<ST>::on_message_begin(llhttp_t* p) {
+int H1Connection<ST>::on_message_begin(llhttp_t* p) try {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(p->data);
   self->_lastHeaderField.clear();
   self->_lastHeaderValue.clear();
@@ -55,23 +57,27 @@ int H1Connection<ST>::on_message_begin(llhttp_t* p) {
   self->_messageComplete = false;
   self->_response.reset(new Response());
   return HPE_OK;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template <SocketType ST>
 int H1Connection<ST>::on_status(llhttp_t* parser, const char* at,
-                                size_t len) {
+                                size_t len) try {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   // compat for arangosh
-  self->_response->header.addMeta(std::string("http/") +
-                                      std::to_string(parser->http_major) + '.' +
-                                      std::to_string(parser->http_minor),
-                                  std::to_string(parser->status_code) + ' ' + std::string(at, len));
+  self->_response->header.addMeta(
+      std::string("http/") + std::to_string(parser->http_major) + '.' +
+          std::to_string(parser->http_minor),
+      std::to_string(parser->status_code) + ' ' + std::string(at, len));
   return HPE_OK;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template <SocketType ST>
 int H1Connection<ST>::on_header_field(llhttp_t* parser, const char* at,
-                                      size_t len) {
+                                      size_t len) try {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   if (self->_lastHeaderWasValue) {
     toLowerInPlace(self->_lastHeaderField);  // in-place
@@ -83,11 +89,13 @@ int H1Connection<ST>::on_header_field(llhttp_t* parser, const char* at,
   }
   self->_lastHeaderWasValue = false;
   return HPE_OK;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template <SocketType ST>
 int H1Connection<ST>::on_header_value(llhttp_t* parser, const char* at,
-                                      size_t len) {
+                                      size_t len) try {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   if (self->_lastHeaderWasValue) {
     self->_lastHeaderValue.append(at, len);
@@ -96,10 +104,12 @@ int H1Connection<ST>::on_header_value(llhttp_t* parser, const char* at,
   }
   self->_lastHeaderWasValue = true;
   return HPE_OK;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_headers_complete(llhttp_t* parser) {
+int H1Connection<ST>::on_headers_complete(llhttp_t* parser) try {
   H1Connection<ST>* self = static_cast<H1Connection<ST>*>(parser->data);
   FUERTE_LOG_HTTPTRACE << "on_headers_complete this=" << self << "\n";
 
@@ -123,20 +133,28 @@ int H1Connection<ST>::on_headers_complete(llhttp_t* parser) {
   }
 
   return HPE_OK;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_body(llhttp_t* parser, const char* at, size_t len) {
-  FUERTE_LOG_HTTPTRACE << "on_body len=" << len << " this=" << parser->data << "\n";
+int H1Connection<ST>::on_body(llhttp_t* parser, const char* at,
+                              size_t len) try {
+  FUERTE_LOG_HTTPTRACE << "on_body len=" << len << " this=" << parser->data
+                       << "\n";
   static_cast<H1Connection<ST>*>(parser->data)->_responseBuffer.append(at, len);
   return HPE_OK;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template <SocketType ST>
-int H1Connection<ST>::on_message_complete(llhttp_t* parser) {
+int H1Connection<ST>::on_message_complete(llhttp_t* parser) try {
   FUERTE_LOG_HTTPTRACE << "on_message_complete this=" << parser->data << "\n";
   static_cast<H1Connection<ST>*>(parser->data)->_messageComplete = true;
   return HPE_OK;
+} catch (...) {
+  return HPE_INTERNAL;
 }
 
 template <SocketType ST>
@@ -161,8 +179,8 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
   // preemptively cache
   if (this->_config._authenticationType == AuthenticationType::Basic) {
     _authHeader.append("Authorization: Basic ");
-    _authHeader.append(fu::encodeBase64(
-        this->_config._user + ":" + this->_config._password, true));
+    _authHeader.append(absl::Base64Escape(
+        absl::StrCat(this->_config._user, ":", this->_config._password)));
     _authHeader.append("\r\n");
   } else if (this->_config._authenticationType == AuthenticationType::Jwt) {
     if (this->_config._jwtToken.empty()) {
@@ -331,6 +349,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
                                              std::size_t nwrite) {
         static_cast<H1Connection<ST>&>(*self).asyncWriteCallback(ec, nwrite);
       });
+  this->_item->request->setTimeAsyncWrite();
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: done, this=" << this << "\n";
 }
 
@@ -346,7 +365,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   FUERTE_ASSERT(this->_state == Connection::State::Connected ||
                 this->_state == Connection::State::Closed);
   this->_writing = false;  // indicate that no async write is ongoing any more
-  this->_proto.timer.cancel();  // cancel alarm for timeout
+  this->cancelTimer();  // cancel alarm for timeout
 
   auto const now = Clock::now();
   if (ec || _item == nullptr || _item->expires < now) {
@@ -369,6 +388,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   // Send succeeded
   FUERTE_LOG_HTTPTRACE << "asyncWriteCallback: send succeeded "
                        << "this=" << this << "\n";
+  this->_item->request->setTimeSent();
 
   // request is written we no longer need data for that
   _item->requestHeader.clear();
@@ -384,8 +404,8 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 template <SocketType ST>
 void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   // Do not cancel timeout now, because we might be going on to read!
-  if (_item == nullptr) { // could happen on aborts
-    this->_proto.timer.cancel();
+  if (_item == nullptr) {  // could happen on aborts
+    this->cancelTimer();
     this->shutdownConnection(Error::CloseRequested);
     return;
   }
@@ -402,12 +422,12 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
       /* Handle error. Usually just close the connection. */
       std::string msg("Invalid HTTP response in parser: '");
       msg.append(llhttp_errno_name(err))
-         .append("' reason: '")
-         .append(llhttp_get_error_reason(&_parser))
-         .append("'");
+          .append("' reason: '")
+          .append(llhttp_get_error_reason(&_parser))
+          .append("'");
       FUERTE_LOG_ERROR << msg << ", this=" << this << "\n";
       // will cleanup _item
-      this->shutdownConnection(Error::ProtocolError, msg);  
+      this->shutdownConnection(Error::ProtocolError, msg);
       return;
     }
     nparsed += buffer.size();
@@ -423,9 +443,10 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
 
   if (_messageComplete) {
     FUERTE_ASSERT(_response != nullptr);
-    _messageComplete = false; // prevent entering branch on EOF
+    _messageComplete = false;  // prevent entering branch on EOF
 
-    this->_proto.timer.cancel();  // got response in time
+    this->cancelTimer();  // got response in time
+
     if (!_responseBuffer.empty()) {
       _response->setPayload(std::move(_responseBuffer), 0);
     }
@@ -460,7 +481,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     this->shutdownConnection(translateError(ec, Error::ReadError));
   } else {
     FUERTE_LOG_HTTPTRACE << "asyncReadCallback: response not complete yet this="
-                        << this << "\n";
+                         << this << "\n";
 
     this->asyncReadSome();  // keep reading from socket
     // leave read timeout in place!
@@ -484,8 +505,7 @@ template <SocketType ST>
 void H1Connection<ST>::setIOTimeout() {
   const bool isIdle = _item == nullptr;
   if (isIdle && !this->_config._useIdleTimeout) {
-    asio_ns::error_code ec;
-    this->_proto.timer.cancel(ec);
+    this->cancelTimer();
     return;
   }
 

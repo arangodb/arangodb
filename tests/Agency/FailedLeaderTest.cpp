@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,20 +47,21 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace fakeit;
+using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace tests {
 namespace failed_leader_test {
 
-const std::string PREFIX = "arango";
-const std::string DATABASE = "database";
-const std::string COLLECTION = "collection";
-const std::string SHARD = "s99";
-const std::string SHARD_LEADER = "leader";
-const std::string SHARD_FOLLOWER1 = "follower1";
-const std::string SHARD_FOLLOWER2 = "follower2";
-const std::string FREE_SERVER = "free";
-const std::string FREE_SERVER2 = "free2";
+[[maybe_unused]] const std::string PREFIX = "arango";
+[[maybe_unused]] const std::string DATABASE = "database";
+[[maybe_unused]] const std::string COLLECTION = "collection";
+[[maybe_unused]] const ShardID SHARD{99};
+[[maybe_unused]] const std::string SHARD_LEADER = "leader";
+[[maybe_unused]] const std::string SHARD_FOLLOWER1 = "follower1";
+[[maybe_unused]] const std::string SHARD_FOLLOWER2 = "follower2";
+[[maybe_unused]] const std::string FREE_SERVER = "free";
+[[maybe_unused]] const std::string FREE_SERVER2 = "free2";
 
 bool aborts = false;
 
@@ -68,16 +69,8 @@ const char* agency =
 #include "FailedLeaderTest.json"
     ;
 
-Node createNodeFromBuilder(Builder const& builder) {
-  Builder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
+NodePtr createNodeFromBuilder(Builder const& builder) {
+  return Node::create(builder.slice());
 }
 
 Builder createBuilder(char const* c) {
@@ -91,7 +84,7 @@ Builder createBuilder(char const* c) {
   return builder;
 }
 
-Node createNode(char const* c) {
+NodePtr createNode(char const* c) {
   return createNodeFromBuilder(createBuilder(c));
 }
 
@@ -105,12 +98,20 @@ std::unordered_set<std::string> getKeySet(VPackSlice s) {
   return keys;
 }
 
-Node createRootNode() { return createNode(agency); }
+NodePtr createRootNode() { return createNode(agency); }
 
 char const* todo = R"=({
   "creator":"1", "type":"failedLeader", "database":"database",
   "collection":"collection", "shard":"s99", "fromServer":"leader",
-  "jobId":"1", "timeCreated":"2017-01-01 00:00:00"
+  "jobId":"1", "timeCreated":"2017-01-01 00:00:00",
+  "addsFollower": true
+  })=";
+
+char const* todo2 = R"=({
+  "creator":"1", "type":"failedLeader", "database":"database",
+  "collection":"collection", "shard":"s99", "fromServer":"leader",
+  "jobId":"1", "timeCreated":"2017-01-01 00:00:00",
+  "addsFollower": false
   })=";
 
 typedef std::function<std::unique_ptr<Builder>(Slice const&,
@@ -129,7 +130,7 @@ class FailedLeaderTest
     bool isFollower = false;
   };
 
-  Node baseStructure;
+  NodePtr baseStructure;
   Builder builder;
   write_ret_t fakeWriteResult;
   std::shared_ptr<Builder> transBuilder;
@@ -142,7 +143,7 @@ class FailedLeaderTest
         transBuilder(std::make_shared<Builder>()),
         fakeTransResult(true, "", 1, 0, transBuilder) {
     RandomGenerator::seed(3);
-    baseStructure.toBuilder(builder);
+    baseStructure->toBuilder(builder);
     VPackArrayBuilder a(transBuilder.get());
     transBuilder->add(VPackValue((uint64_t)1));
   }
@@ -160,8 +161,7 @@ class FailedLeaderTest
     return server;
   }
 
-  void AssertTransactionFormat(query_t const& q) {
-    auto slice = q->slice();
+  void AssertTransactionFormat(velocypack::Slice slice) {
     ASSERT_TRUE(slice.isArray());
     // This test only does one transaction per envelope
     EXPECT_EQ(slice.length(), 1);
@@ -172,7 +172,7 @@ class FailedLeaderTest
     EXPECT_LE(slice.length(), 2);  // At most [[write, precondition]]
   }
 
-  void AssertVersionIncremented(query_t const& q) {
+  void AssertVersionIncremented(velocypack::Slice q) {
     auto w = getWritePartUnsafe(q);
     auto path = "/arango/Plan/Version";
     ASSERT_TRUE(w.hasKey(path));
@@ -182,7 +182,7 @@ class FailedLeaderTest
     EXPECT_TRUE(w.get("op").isEqualString("increment"));
   }
 
-  void AssertShardLocked(query_t const& q, ShardInfo const& si) {
+  void AssertShardLocked(velocypack::Slice q, ShardInfo const& si) {
     if (si.isFollower) {
       // Nothing to check for followers
       return;
@@ -194,7 +194,7 @@ class FailedLeaderTest
     EXPECT_TRUE(w.isEqualString("1"));
   }
 
-  void AssertJobMovedToPending(query_t const& q, ShardInfo const& si,
+  void AssertJobMovedToPending(velocypack::Slice q, ShardInfo const& si,
                                std::string const& jobId) {
     auto w = getWritePartUnsafe(q);
     {
@@ -227,7 +227,7 @@ class FailedLeaderTest
     }
   }
 
-  void AssertNewServers(query_t const& q, ShardInfo const& si,
+  void AssertNewServers(velocypack::Slice q, ShardInfo const& si,
                         std::vector<std::string> const& expectedServers) {
     auto w = getWritePartUnsafe(q);
     auto path = "/arango/Plan/Collections/" + si.database + "/" +
@@ -244,7 +244,7 @@ class FailedLeaderTest
   }
 
   void AssertPreconditions(
-      query_t const& q, ShardInfo const& si,
+      velocypack::Slice q, ShardInfo const& si,
       std::vector<std::string> const& expectedServers,
       std::vector<std::string> const& lastGenPlan,
       std::vector<std::string> const& lastGenFollowers,
@@ -285,6 +285,13 @@ class FailedLeaderTest
       }
     }
     {
+      // Assert that collection still exists
+      auto path =
+          "/arango/Plan/Collections/" + si.database + "/" + si.collection;
+      ASSERT_TRUE(pre.hasKey(path)) << path << pre.toJson();
+      AssertOldNotEmptyObject(pre.get(path));
+    }
+    {
       // Section: Protection against lost plan updates:
       if (!si.isFollower) {
         // Plan, only the leader needs to be unmodified. The Followers can only
@@ -319,7 +326,7 @@ class FailedLeaderTest
   }
 
   void AssertIsValidTransaction(
-      query_t const& q, ShardInfo const& si, std::string const& jobId,
+      velocypack::Slice q, ShardInfo const& si, std::string const& jobId,
       std::vector<std::string> const& expectedServers,
       std::vector<std::string> const& lastGenPlan,
       std::vector<std::string> const& lastGenFollowers,
@@ -436,7 +443,9 @@ class FailedLeaderTest
       return applyJson(std::move(jsonString));
     }
 
-    auto createNode() const -> Node { return createNodeFromBuilder(_builder); }
+    auto createNode() const -> NodePtr {
+      return createNodeFromBuilder(_builder);
+    }
 
    private:
     auto vectorToArray(std::vector<std::string> servers) -> std::string {
@@ -468,14 +477,14 @@ class FailedLeaderTest
  private:
   // Internal helpers, do not call in test code.
 
-  auto getWritePartUnsafe(query_t const& q) -> VPackSlice {
+  auto getWritePartUnsafe(velocypack::Slice q) -> VPackSlice {
     // Call AssertTransactionFormat forst to ensure formatting
-    return q->slice().at(0).at(0);
+    return q.at(0).at(0);
   }
 
-  auto getPreconditionPartUnsafe(query_t const& q) -> VPackSlice {
+  auto getPreconditionPartUnsafe(velocypack::Slice q) -> VPackSlice {
     // Call AssertTransactionFormat forst to ensure formatting
-    return q->slice().at(0).at(1);
+    return q.at(0).at(1);
   }
 
   void AssertOldEmptyObject(VPackSlice obj) {
@@ -484,6 +493,14 @@ class FailedLeaderTest
     bool oldEmpty = VelocyPackHelper::getBooleanValue(obj, "oldEmpty", false);
     // Required to be TRUE!
     EXPECT_TRUE(oldEmpty);
+  }
+
+  void AssertOldNotEmptyObject(VPackSlice obj) {
+    ASSERT_TRUE(obj.isObject());
+    // Will be set to false if ommited, or actively se t to false
+    bool oldEmpty = VelocyPackHelper::getBooleanValue(obj, "oldEmpty", false);
+    // Required to be FALSE!
+    EXPECT_FALSE(oldEmpty);
   }
 
   void AssertOldIsString(VPackSlice obj, std::string const& expected) {
@@ -512,22 +529,21 @@ TEST_F(FailedLeaderTest, creating_a_job_should_create_a_job_in_todo) {
 
   std::string jobId = "1";
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
         auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
-        EXPECT_EQ(std::string(q->slice().typeName()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(),
                   1);  // we always simply override! no preconditions...
-        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
-        EXPECT_EQ(q->slice()[0][0].length(),
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
+        EXPECT_EQ(q[0][0].length(),
                   1);  // should ONLY do an entry in todo
-        EXPECT_TRUE(
-            std::string(q->slice()[0][0].get(expectedJobKey).typeName()) ==
-            "object");
+        EXPECT_TRUE(std::string(q[0][0].get(expectedJobKey).typeName()) ==
+                    "object");
 
-        auto job = q->slice()[0][0].get(expectedJobKey);
+        auto job = q[0][0].get(expectedJobKey);
         EXPECT_EQ(std::string(job.get("creator").typeName()), "string");
         EXPECT_EQ(std::string(job.get("type").typeName()), "string");
         EXPECT_EQ(job.get("type").copyString(), "failedLeader");
@@ -541,6 +557,7 @@ TEST_F(FailedLeaderTest, creating_a_job_should_create_a_job_in_todo) {
         EXPECT_EQ(job.get("fromServer").copyString(), SHARD_LEADER);
         EXPECT_EQ(std::string(job.get("jobId").typeName()), "string");
         EXPECT_EQ(std::string(job.get("timeCreated").typeName()), "string");
+        EXPECT_TRUE(job.get("addsFollower").isTrue());
 
         return fakeWriteResult;
       });
@@ -548,8 +565,57 @@ TEST_F(FailedLeaderTest, creating_a_job_should_create_a_job_in_todo) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(baseStructure, &agent, jobId, "unittest",
-                                   DATABASE, COLLECTION, SHARD, SHARD_LEADER);
+  auto failedLeader =
+      FailedLeader(*baseStructure, &agent, jobId, "unittest", DATABASE,
+                   COLLECTION, SHARD, SHARD_LEADER, true);
+  failedLeader.create();
+}
+
+TEST_F(FailedLeaderTest,
+       creating_a_job_should_create_a_job_in_todo_no_leader_adds_follower) {
+  Mock<AgentInterface> mockAgent;
+
+  std::string jobId = "1";
+  When(Method(mockAgent, write))
+      .AlwaysDo([&](velocypack::Slice q,
+                    consensus::AgentInterface::WriteMode w) -> write_ret_t {
+        auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(),
+                  1);  // we always simply override! no preconditions...
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
+        EXPECT_EQ(q[0][0].length(),
+                  1);  // should ONLY do an entry in todo
+        EXPECT_TRUE(std::string(q[0][0].get(expectedJobKey).typeName()) ==
+                    "object");
+
+        auto job = q[0][0].get(expectedJobKey);
+        EXPECT_EQ(std::string(job.get("creator").typeName()), "string");
+        EXPECT_EQ(std::string(job.get("type").typeName()), "string");
+        EXPECT_EQ(job.get("type").copyString(), "failedLeader");
+        EXPECT_EQ(std::string(job.get("database").typeName()), "string");
+        EXPECT_EQ(job.get("database").copyString(), DATABASE);
+        EXPECT_EQ(std::string(job.get("collection").typeName()), "string");
+        EXPECT_EQ(job.get("collection").copyString(), COLLECTION);
+        EXPECT_EQ(std::string(job.get("shard").typeName()), "string");
+        EXPECT_EQ(job.get("shard").copyString(), SHARD);
+        EXPECT_EQ(std::string(job.get("fromServer").typeName()), "string");
+        EXPECT_EQ(job.get("fromServer").copyString(), SHARD_LEADER);
+        EXPECT_EQ(std::string(job.get("jobId").typeName()), "string");
+        EXPECT_EQ(std::string(job.get("timeCreated").typeName()), "string");
+        EXPECT_TRUE(job.get("addsFollower").isFalse());
+
+        return fakeWriteResult;
+      });
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  auto failedLeader =
+      FailedLeader(*baseStructure, &agent, jobId, "unittest", DATABASE,
+                   COLLECTION, SHARD, SHARD_LEADER, false);
   failedLeader.create();
 }
 
@@ -581,22 +647,22 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(std::string(q->slice().typeName()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(),
                   1);  // we always simply override! no preconditions...
-        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_TRUE(
             std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
             "object");
@@ -615,8 +681,8 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -647,22 +713,22 @@ TEST_F(FailedLeaderTest, distributeshardslike_should_immediately_fail) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(std::string(q->slice().typeName()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(),
                   1);  // we always simply override! no preconditions...
-        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_TRUE(
             std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
             "object");
@@ -681,8 +747,8 @@ TEST_F(FailedLeaderTest, distributeshardslike_should_immediately_fail) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -701,9 +767,6 @@ TEST_F(FailedLeaderTest, if_leader_is_healthy_we_fail_the_job) {
           builder->add(it.key.copyString(), childBuilder->slice());
         }
       }
-      if (path == "/arango/Supervision/Health/" + SHARD_LEADER) {
-        builder->add("Status", VPackValue("GOOD"));
-      }
       if (path == "/arango/Target/ToDo") {
         builder->add("1", createBuilder(todo).slice());
       }
@@ -713,13 +776,15 @@ TEST_F(FailedLeaderTest, if_leader_is_healthy_we_fail_the_job) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
+  agency = agency->placeAt(
+      "/arango/Supervision/Health/" + SHARD_LEADER + "/Status", "GOOD");
 
   Mock<AgentInterface> mockAgent;
-  When(Method(mockAgent, transact)).Do([&](query_t const& q) -> trans_ret_t {
-    auto preconditions = q->slice()[0][1];
+  When(Method(mockAgent, transact)).Do([&](velocypack::Slice q) -> trans_ret_t {
+    auto preconditions = q[0][1];
     EXPECT_TRUE(
         preconditions
             .get("/arango/Supervision/Health/" + SHARD_LEADER + "/Status")
@@ -732,9 +797,9 @@ TEST_F(FailedLeaderTest, if_leader_is_healthy_we_fail_the_job) {
     return trans_ret_t(true, "", 0, 1, transBuilder);
   });
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_TRUE(
             std::string(
                 writes.get("/arango/Target/ToDo/1").get("op").typeName()) ==
@@ -747,7 +812,7 @@ TEST_F(FailedLeaderTest, if_leader_is_healthy_we_fail_the_job) {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
   auto failedLeader =
-      FailedLeader(agency.getOrCreate(PREFIX), &agent, JOB_STATUS::TODO, jobId);
+      FailedLeader(*agency->get(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write)).Exactly(Once);
@@ -783,15 +848,15 @@ TEST_F(FailedLeaderTest, job_must_not_be_started_if_no_server_is_in_sync) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   // nothing should happen
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
 }
 
@@ -834,20 +899,20 @@ TEST_F(FailedLeaderTest,
     }
     return builder;
   };
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   // nothing should happen
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         EXPECT_TRUE(false);
         return trans_ret_t();
       });
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -856,26 +921,25 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
 
   Builder moveShardBuilder;
   When(Method(moveShardMockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(std::string(q->slice().typeName()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-        EXPECT_TRUE(q->slice()[0].length() > 0);  // preconditions!
-        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_TRUE(q[0].length() > 0);  // preconditions!
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
         EXPECT_TRUE(
-            std::string(
-                q->slice()[0][0].get("/arango/Target/ToDo/2").typeName()) ==
+            std::string(q[0][0].get("/arango/Target/ToDo/2").typeName()) ==
             "object");
-        moveShardBuilder.add(q->slice()[0][0].get("/arango/Target/ToDo/2"));
+        moveShardBuilder.add(q[0][0].get("/arango/Target/ToDo/2"));
 
         return fakeWriteResult;
       });
   When(Method(moveShardMockAgent, waitFor)).Return();
   AgentInterface& moveShardAgent = moveShardMockAgent.get();
-  auto moveShard = MoveShard(
-      baseStructure.getOrCreate("arango"), &moveShardAgent, "2", "strunz",
-      DATABASE, COLLECTION, SHARD, SHARD_LEADER, FREE_SERVER, true, true);
+  auto moveShard = MoveShard(*baseStructure->get("arango"), &moveShardAgent,
+                             "2", "strunz", DATABASE, COLLECTION, SHARD,
+                             SHARD_LEADER, FREE_SERVER, true, true);
   moveShard.create();
 
   std::string jobId = "1";
@@ -892,7 +956,7 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
         }
       }
       if (path == "/arango/Supervision/Shards") {
-        builder->add(SHARD, VPackValue("2"));
+        builder->add(std::string{SHARD}, VPackValue("2"));
       } else if (path == "/arango/Target/ToDo") {
         builder->add("1", createBuilder(todo).slice());
       } else if (path == "/arango/Target/Pending") {
@@ -911,22 +975,21 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         // check that moveshard is being moved to failed
-        EXPECT_EQ(std::string(q->slice().typeName()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
         EXPECT_TRUE(
-            std::string(
-                q->slice()[0][0].get("/arango/Target/Failed/2").typeName()) ==
+            std::string(q[0][0].get("/arango/Target/Failed/2").typeName()) ==
             "object");
         return fakeWriteResult;
       });
@@ -934,8 +997,8 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedLeader.start(aborts));
   Verify(Method(mockAgent, write));
 }
@@ -970,21 +1033,21 @@ TEST_F(FailedLeaderTest, job_should_be_written_to_pending) {
     }
     return builder;
   };
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
-        EXPECT_EQ(std::string(q->slice().typeName()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-        EXPECT_EQ(q->slice()[0].length(), 2);  // preconditions!
-        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
-        EXPECT_EQ(std::string(q->slice()[0][1].typeName()), "object");
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(), 2);  // preconditions!
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q[0][1].typeName()), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_TRUE(
             std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
             "object");
@@ -1054,7 +1117,7 @@ TEST_F(FailedLeaderTest, job_should_be_written_to_pending) {
                         .copyString()
                         .compare(0, 4, FREE_SERVER) == 0);
 
-        auto preconditions = q->slice()[0][1];
+        auto preconditions = q[0][1];
         EXPECT_TRUE(
             std::string(preconditions.get("/arango/Supervision/Shards/" + SHARD)
                             .typeName()) == "object");
@@ -1136,10 +1199,200 @@ TEST_F(FailedLeaderTest, job_should_be_written_to_pending) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
+  failedLeader.start(aborts);
+}
+
+TEST_F(FailedLeaderTest,
+       job_should_be_written_to_pending_no_additional_follower) {
+  std::string jobId = "1";
+
+  TestStructureType createTestStructure = [&](Slice const& s,
+                                              std::string const& path) {
+    std::unique_ptr<Builder> builder(new Builder());
+    if (s.isObject()) {
+      VPackObjectBuilder b(builder.get());
+      for (auto it : VPackObjectIterator(s)) {
+        auto childBuilder =
+            createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+      if (path == "/arango/Target/ToDo") {
+        builder->add("1", createBuilder(todo2).slice());
+      }
+    } else {
+      if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION +
+                      "/" + SHARD + "/servers") {
+        VPackArrayBuilder a(builder.get());
+        builder->add(VPackValue(SHARD_LEADER));
+        builder->add(VPackValue(SHARD_FOLLOWER2));
+      } else {
+        builder->add(s);
+      }
+    }
+    return builder;
+  };
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  ASSERT_TRUE(builder);
+  auto agency = createNodeFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, transact))
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(), 2);  // preconditions!
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q[0][1].typeName()), "object");
+
+        auto writes = q[0][0];
+        EXPECT_TRUE(
+            std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
+            "object");
+        EXPECT_TRUE(
+            std::string(
+                writes.get("/arango/Target/ToDo/1").get("op").typeName()) ==
+            "string");
+        EXPECT_TRUE(
+            writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
+            "delete");
+        EXPECT_TRUE(
+            std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
+            "object");
+        EXPECT_TRUE(
+            std::string(writes.get("/arango/Target/Pending/1").typeName()) ==
+            "object");
+
+        auto job = writes.get("/arango/Target/Pending/1");
+        EXPECT_EQ(std::string(job.get("toServer").typeName()), "string");
+        EXPECT_EQ(job.get("toServer").copyString(), SHARD_FOLLOWER2);
+        EXPECT_EQ(std::string(job.get("timeStarted").typeName()), "string");
+
+        EXPECT_TRUE(
+            std::string(writes
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .typeName()) == "array");
+        EXPECT_TRUE(writes
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .length() == 3);
+        EXPECT_TRUE(
+            std::string(writes
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)[0]
+                            .typeName()) == "string");
+        EXPECT_TRUE(
+            std::string(writes
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)[1]
+                            .typeName()) == "string");
+        EXPECT_TRUE(
+            std::string(writes
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)[2]
+                            .typeName()) == "string");
+        EXPECT_TRUE(writes
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)[0]
+                        .copyString() == SHARD_FOLLOWER2);
+        EXPECT_TRUE(writes
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)[1]
+                        .copyString() == SHARD_LEADER);
+        EXPECT_TRUE(writes
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)[2]
+                        .copyString() == SHARD_FOLLOWER1);
+
+        auto preconditions = q[0][1];
+        EXPECT_TRUE(
+            std::string(preconditions.get("/arango/Supervision/Shards/" + SHARD)
+                            .typeName()) == "object");
+        EXPECT_TRUE(
+            std::string(preconditions.get("/arango/Supervision/Shards/" + SHARD)
+                            .get("oldEmpty")
+                            .typeName()) == "bool");
+        EXPECT_TRUE(preconditions.get("/arango/Supervision/Shards/" + SHARD)
+                        .get("oldEmpty")
+                        .getBool() == true);
+        EXPECT_TRUE(
+            preconditions
+                .get("/arango/Supervision/Health/" + SHARD_LEADER + "/Status")
+                .get("old")
+                .copyString() == "FAILED");
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Supervision/Health/" + SHARD_FOLLOWER2 +
+                             "/Status")
+                        .get("old")
+                        .copyString() == "GOOD");
+
+        EXPECT_TRUE(
+            std::string(preconditions
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .typeName()) == "object");
+        EXPECT_TRUE(
+            std::string(preconditions
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .get("old")
+                            .typeName()) == "array");
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")
+                        .length() == 3);
+        EXPECT_TRUE(
+            std::string(preconditions
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .get("old")[0]
+                            .typeName()) == "string");
+        EXPECT_TRUE(
+            std::string(preconditions
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .get("old")[1]
+                            .typeName()) == "string");
+        EXPECT_TRUE(
+            std::string(preconditions
+                            .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                                 COLLECTION + "/shards/" + SHARD)
+                            .get("old")[2]
+                            .typeName()) == "string");
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")[0]
+                        .copyString() == SHARD_LEADER);
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")[1]
+                        .copyString() == SHARD_FOLLOWER1);
+        EXPECT_TRUE(preconditions
+                        .get("/arango/Plan/Collections/" + DATABASE + "/" +
+                             COLLECTION + "/shards/" + SHARD)
+                        .get("old")[2]
+                        .copyString() == SHARD_FOLLOWER2);
+
+        auto result = std::make_shared<Builder>();
+        result->openArray();
+        result->add(VPackValue((uint64_t)1));
+        result->close();
+        return trans_ret_t(true, "1", 1, 0, result);
+      });
+  When(Method(mockAgent, waitFor))
+      .AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  AgentInterface& agent = mockAgent.get();
+
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1184,22 +1437,22 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish_2) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(std::string(q->slice().typeName()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(),
                   1);  // we always simply override! no preconditions...
-        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_TRUE(
             std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
             "object");
@@ -1219,8 +1472,8 @@ TEST_F(FailedLeaderTest, if_collection_is_missing_job_should_just_finish_2) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
 }
 
@@ -1275,14 +1528,14 @@ TEST_F(FailedLeaderTest, if_new_leader_doesnt_catch_up_we_wait) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
 }
 
@@ -1335,23 +1588,23 @@ TEST_F(FailedLeaderTest, if_timeout_job_should_be_aborted) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .Do([&](query_t const& q,
+      .Do([&](velocypack::Slice q,
               consensus::AgentInterface::WriteMode w) -> write_ret_t {
         try {
-          EXPECT_EQ(std::string(q->slice().typeName()), "array");
-          EXPECT_EQ(q->slice().length(), 1);
-          EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-          EXPECT_EQ(q->slice()[0].length(),
+          EXPECT_EQ(std::string(q.typeName()), "array");
+          EXPECT_EQ(q.length(), 1);
+          EXPECT_EQ(std::string(q[0].typeName()), "array");
+          EXPECT_EQ(q[0].length(),
                     1);  // we always simply override! no preconditions...
-          EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+          EXPECT_EQ(std::string(q[0][0].typeName()), "object");
 
-          auto writes = q->slice()[0][0];
+          auto writes = q[0][0];
           EXPECT_TRUE(std::string(writes.get("/arango/Target/Pending/1")
                                       .get("op")
                                       .typeName()) == "string");
@@ -1387,8 +1640,8 @@ TEST_F(FailedLeaderTest, if_timeout_job_should_be_aborted) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1423,6 +1676,7 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
           jobBuilder.add(
               "timeCreated",
               VPackValue(timepointToString(std::chrono::system_clock::now())));
+          jobBuilder.add("addsFollower", VPackValue(true));
         }
         builder->add("1", jobBuilder.slice());
       }
@@ -1443,22 +1697,22 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice q,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        EXPECT_EQ(std::string(q->slice().typeName()), "array");
-        EXPECT_EQ(q->slice().length(), 1);
-        EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
-        EXPECT_EQ(q->slice()[0].length(),
+        EXPECT_EQ(std::string(q.typeName()), "array");
+        EXPECT_EQ(q.length(), 1);
+        EXPECT_EQ(std::string(q[0].typeName()), "array");
+        EXPECT_EQ(q[0].length(),
                   1);  // we always simply override! no preconditions...
-        EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+        EXPECT_EQ(std::string(q[0][0].typeName()), "object");
 
-        auto writes = q->slice()[0][0];
+        auto writes = q[0][0];
         EXPECT_TRUE(
             std::string(
                 writes.get("/arango/Supervision/Shards/" + SHARD).typeName()) ==
@@ -1481,8 +1735,8 @@ TEST_F(FailedLeaderTest, when_everything_is_finished_there_should_be_cleanup) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::PENDING, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::PENDING, jobId);
   failedLeader.run(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -1492,8 +1746,8 @@ TEST_F(FailedLeaderTest,
   std::string jobId = "1";
   ShardInfo si{DATABASE, COLLECTION, SHARD};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           // follower2 in sync
           .setFollowers(si, {SHARD_LEADER, SHARD_FOLLOWER2})
           // but not part of the plan => will drop collection on next occasion
@@ -1503,7 +1757,7 @@ TEST_F(FailedLeaderTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // must NOT be called!
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -1512,10 +1766,8 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1524,7 +1776,7 @@ TEST_F(FailedLeaderTest,
   std::string jobId = "1";
   ShardInfo si{DATABASE, COLLECTION, SHARD};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     // Follower 1 planned
                     .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
                     // Follower 2 in followers
@@ -1534,7 +1786,7 @@ TEST_F(FailedLeaderTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // must NOT be called!
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -1543,10 +1795,8 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1556,7 +1806,7 @@ TEST_F(
   std::string jobId = "1";
   ShardInfo si{DATABASE, COLLECTION, SHARD};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     // Follower 1 planned
                     .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
                     // Follower 2 in candidates
@@ -1568,7 +1818,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // must NOT be called!
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -1577,10 +1827,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1590,7 +1838,7 @@ TEST_F(
   std::string jobId = "1";
   ShardInfo si{DATABASE, COLLECTION, SHARD};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     // Follower 1 planned
                     .setPlannedServers(si, {SHARD_LEADER, SHARD_FOLLOWER1})
                     // Follower 2 in candidates
@@ -1602,7 +1850,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // must NOT be called!
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -1611,10 +1859,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1629,7 +1875,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1,
                                         SHARD_FOLLOWER2};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     // Follower 1 planned
                     .setPlannedServers(si, planned)
                     // Follower 2 in candidates
@@ -1641,7 +1887,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         AssertIsValidTransaction(q, si, jobId, expected, planned, followers,
                                  failovers);
         return fakeTransResult;
@@ -1650,10 +1896,8 @@ TEST_F(FailedLeaderTest, failedleader_must_not_readd_servers_not_in_plan) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1668,7 +1912,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1,
                                         SHARD_FOLLOWER2};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     // Follower 1 planned
                     .setPlannedServers(si, planned)
                     // Follower 2 in candidates
@@ -1681,7 +1925,7 @@ TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         AssertIsValidTransaction(q, si, jobId, expected, planned, followers,
                                  failovers);
         return fakeTransResult;
@@ -1690,10 +1934,8 @@ TEST_F(FailedLeaderTest, failedleader_must_not_add_a_follower_if_none_exists) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1715,8 +1957,8 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case) {
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -1735,7 +1977,7 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned, followers,
@@ -1750,10 +1992,8 @@ TEST_F(FailedLeaderTest, failedleader_distribute_shard_like_good_case) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1779,8 +2019,8 @@ TEST_F(
   // candidate. Can be picked
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -1799,7 +2039,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned, followers,
@@ -1814,10 +2054,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1844,8 +2082,8 @@ TEST_F(
   // Can be picked
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, reducedFollowers)
@@ -1864,7 +2102,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned,
@@ -1879,10 +2117,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1906,7 +2142,7 @@ TEST_F(
   std::vector<std::string> reducedFailovers = {SHARD_LEADER};
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFailoverCandidates(si, failovers)
                     .setFollowers(si, followers)
@@ -1923,7 +2159,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Impossible to transact
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -1932,10 +2168,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -1959,7 +2193,7 @@ TEST_F(
   std::vector<std::string> reducedFailovers = {SHARD_LEADER};
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFailoverCandidates(si, reducedFailovers)
                     .setFollowers(si, reducedFollowers)
@@ -1976,7 +2210,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Impossible to transact
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -1985,10 +2219,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2012,8 +2244,8 @@ TEST_F(FailedLeaderTest,
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFollowers(si, followers)
           .setPlannedServers(distLike1, planned)
@@ -2029,7 +2261,7 @@ TEST_F(FailedLeaderTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned, followers,
@@ -2044,10 +2276,8 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2070,7 +2300,7 @@ TEST_F(
   // Follower2 has not enough followers, we cannot transact
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFollowers(si, followers)
                     .setPlannedServers(distLike1, planned)
@@ -2084,7 +2314,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Impossible to transact
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -2093,10 +2323,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2118,7 +2346,7 @@ TEST_F(
   // Follower2 has not enough followers, we cannot transact
   std::vector<std::string> reducedFollowers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFollowers(si, followers)
                     .setPlannedServers(distLike1, planned)
@@ -2133,7 +2361,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Impossible to transact
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -2142,10 +2370,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2168,7 +2394,7 @@ TEST_F(
   // Leader has not enough followers, we cannot transact
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFollowers(si, reducedFollowers)
                     .setPlannedServers(distLike1, planned)
@@ -2182,7 +2408,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Impossible to transact
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -2191,10 +2417,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2218,8 +2442,8 @@ TEST_F(FailedLeaderTest,
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2237,7 +2461,7 @@ TEST_F(FailedLeaderTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned, followers,
@@ -2252,10 +2476,8 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2281,8 +2503,8 @@ TEST_F(
   // candidate. Can be picked
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2300,7 +2522,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned, followers,
@@ -2315,10 +2537,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2344,8 +2564,8 @@ TEST_F(
   // Can be picked
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, reducedFollowers)
@@ -2363,7 +2583,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned,
@@ -2378,10 +2598,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2405,7 +2623,7 @@ TEST_F(
   std::vector<std::string> reducedFailovers = {SHARD_LEADER};
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFailoverCandidates(si, failovers)
                     .setFollowers(si, followers)
@@ -2421,7 +2639,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Impossible to transact
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -2430,10 +2648,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2457,7 +2673,7 @@ TEST_F(
   std::vector<std::string> reducedFailovers = {SHARD_LEADER};
   std::vector<std::string> reducedFollowers = {SHARD_LEADER};
 
-  Node agency = AgencyBuilder(baseStructure.toBuilder())
+  auto agency = AgencyBuilder(baseStructure->toBuilder())
                     .setPlannedServers(si, planned)
                     .setFailoverCandidates(si, reducedFailovers)
                     .setFollowers(si, reducedFollowers)
@@ -2473,7 +2689,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Impossible to transact
         EXPECT_TRUE(false);
         return fakeTransResult;
@@ -2482,10 +2698,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
@@ -2511,8 +2725,8 @@ TEST_F(FailedLeaderTest,
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2531,7 +2745,7 @@ TEST_F(FailedLeaderTest,
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned, followers,
@@ -2546,16 +2760,14 @@ TEST_F(FailedLeaderTest,
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
 TEST_F(
     FailedLeaderTest,
-    failedleader_distribute_shards_like_resigned_leader_all_repoted_in_current) {
+    failedleader_distribute_shards_like_resigned_leader_all_reported_in_current) {
   std::string jobId = "1";
 
   std::string col1 = "shardLike1";
@@ -2575,8 +2787,8 @@ TEST_F(
                                         SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2595,7 +2807,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned, followers,
@@ -2610,16 +2822,14 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
 TEST_F(
     FailedLeaderTest,
-    failedleader_distribute_shards_like_resigned_leader_leader_repoted_in_current) {
+    failedleader_distribute_shards_like_resigned_leader_leader_reported_in_current) {
   std::string jobId = "1";
 
   std::string col1 = "shardLike1";
@@ -2640,8 +2850,8 @@ TEST_F(
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, resignedFollowers)
@@ -2660,7 +2870,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned,
@@ -2675,16 +2885,14 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 
 TEST_F(
     FailedLeaderTest,
-    failedleader_distribute_shards_like_resigned_leader_follower_repoted_in_current) {
+    failedleader_distribute_shards_like_resigned_leader_follower_reported_in_current) {
   std::string jobId = "1";
 
   std::string col1 = "shardLike1";
@@ -2705,8 +2913,8 @@ TEST_F(
   std::vector<std::string> followers = {SHARD_LEADER, SHARD_FOLLOWER1};
   std::vector<std::string> failovers = {SHARD_LEADER, SHARD_FOLLOWER1};
 
-  Node agency =
-      AgencyBuilder(baseStructure.toBuilder())
+  auto agency =
+      AgencyBuilder(baseStructure->toBuilder())
           .setPlannedServers(si, planned)
           .setFailoverCandidates(si, failovers)
           .setFollowers(si, followers)
@@ -2725,7 +2933,7 @@ TEST_F(
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, transact))
-      .AlwaysDo([&](query_t const& q) -> trans_ret_t {
+      .AlwaysDo([&](velocypack::Slice q) -> trans_ret_t {
         // Must be a valid transaction for the full group of distribute shards
         // like
         AssertIsValidTransaction(q, si, jobId, expected, planned, followers,
@@ -2740,10 +2948,8 @@ TEST_F(
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
 
-  // new server will randomly be selected...so seed the random number generator
-  srand(1);
-  auto failedLeader = FailedLeader(agency.getOrCreate("arango"), &agent,
-                                   JOB_STATUS::TODO, jobId);
+  auto failedLeader =
+      FailedLeader(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId);
   failedLeader.start(aborts);
 }
 

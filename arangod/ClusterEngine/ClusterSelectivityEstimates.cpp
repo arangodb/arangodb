@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
@@ -88,7 +89,7 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdate,
 
 void ClusterSelectivityEstimates::set(IndexEstMap estimates) {
   // push new selectivity values into indexes' cache
-  auto indexes = _collection.getIndexes();
+  auto indexes = _collection.getPhysical()->getReadyIndexes();
 
   for (auto& idx : indexes) {
     auto it = estimates.find(std::to_string(idx->id().id()));
@@ -99,7 +100,7 @@ void ClusterSelectivityEstimates::set(IndexEstMap estimates) {
 
   double ttl = defaultTtl;
   // let selectivity estimates expire less often for system collections
-  if (!_collection.name().empty() && _collection.name()[0] == '_') {
+  if (_collection.name().starts_with('_')) {
     ttl = systemCollectionTtl;
   }
 

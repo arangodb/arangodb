@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,29 +27,35 @@
 #include <atomic>
 #include <string>
 #include <utility>
-#include <vector>
+#include <unordered_map>
 
 #include "Logger/LogLevel.h"
 
 namespace arangodb {
+
+using TopicName = std::string_view;
+
 class LogTopic {
   LogTopic& operator=(LogTopic const&) = delete;
 
  public:
-  static constexpr size_t MAX_LOG_TOPICS = 64;
+  static constexpr size_t GLOBAL_LOG_TOPIC = 64;
 
   // pseudo topic to address all log topics
-  static const std::string ALL;
+  static constexpr TopicName ALL = "all";
 
-  static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
-  static void setLogLevel(std::string const&, LogLevel);
-  static LogTopic* lookup(std::string const&);
-  static std::string lookup(size_t topicId);
+  static auto logLevelTopics() -> std::unordered_map<LogTopic*, LogLevel>;
+  static void setLogLevel(TopicName, LogLevel);
+  static LogTopic* topicForId(size_t topicId);
+  static LogTopic* lookup(TopicName);
+  static TopicName lookup(size_t topicId);
 
-  explicit LogTopic(std::string const& name);
   virtual ~LogTopic() = default;
 
-  LogTopic(std::string const& name, LogLevel level);
+  template<typename Topic>
+  LogTopic(Topic) requires requires(Topic) {
+    Topic::name;
+  };
 
   LogTopic(LogTopic const& that)
       : _id(that._id), _name(that._name), _displayName(that._displayName) {
@@ -64,17 +70,17 @@ class LogTopic {
   }
 
   size_t id() const { return _id; }
-  std::string const& name() const { return _name; }
+  TopicName name() const { return _name; }
   std::string const& displayName() const { return _displayName; }
   LogLevel level() const { return _level.load(std::memory_order_relaxed); }
 
-  virtual void setLogLevel(LogLevel level) {
-    _level.store(level, std::memory_order_relaxed);
-  }
+  virtual void setLogLevel(LogLevel level);
 
  private:
+  LogTopic(TopicName name, LogLevel level, size_t id);
+
   size_t const _id;
-  std::string const _name;
+  TopicName _name;
   std::string _displayName;
   std::atomic<LogLevel> _level;
 };

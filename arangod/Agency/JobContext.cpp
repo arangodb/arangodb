@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,23 +23,25 @@
 
 #include "JobContext.h"
 
-#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/FailedServer.h"
 #include "Agency/MoveShard.h"
+#include "Agency/Node.h"
+#include "Agency/ReconfigureReplicatedLog.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/ResignLeadership.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
-JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
-                       AgentInterface* agent)
+JobContext::JobContext(JOB_STATUS status, std::string const& id,
+                       Node const& snapshot, AgentInterface* agent)
     : _job(nullptr) {
-  std::string path = pos[status] + id;
-  auto typePair = snapshot.hasAsString(path + "/type");
+  auto typePair = snapshot.hasAsString(pos[status] + id + "/type");
   std::string type;
 
   if (typePair) {
@@ -62,8 +64,9 @@ JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
     _job = std::make_unique<AddFollower>(snapshot, agent, status, id);
   } else if (type == "removeFollower") {
     _job = std::make_unique<RemoveFollower>(snapshot, agent, status, id);
-  } else if (type == "activeFailover") {
-    _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
+  } else if (type == "reconfigureReplicatedLog") {
+    _job =
+        std::make_unique<ReconfigureReplicatedLog>(snapshot, agent, status, id);
   } else {
     LOG_TOPIC("bb53f", ERR, Logger::AGENCY)
         << "Failed to run supervision job " << type << " with id " << id;

@@ -1,6 +1,5 @@
 import 'jsoneditor-react/es/editor.min.css';
 import React, { Component } from 'react';
-import 'react-autocomplete-input/dist/bundle.css';
 import ReactDOM from 'react-dom';
 
 const jsoneditor = require('jsoneditor');
@@ -10,14 +9,23 @@ require('nvd3');
 // parse prometheus
 const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 
+require('../../frontend/js/arango/arangoValidationHelper.js');
+
 // import new react views
-// require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
-require('./views/views/ViewInfoReactView');
-require('./views/views/ViewSettingsReactView');
-require('./views/views/ViewConsolidationReactView');
-require('./views/views/ViewLinksReactView');
-require('./views/views/ViewJSONReactView');
+require('./views/collections/CollectionsReactView');
+require('./views/graphV2/listGraphs/GraphsListReactView');
+require('./views/databases/DatabasesReactView');
+require('./views/graphV2/viewGraph/GraphV2ReactView');
+require('./views/users/UserManagementReactView');
+require('./views/users/viewUser/UserPermissionsReactView');
+require('./views/views/ViewsReactView');
+require('./views/collections/indices/CollectionIndicesReactView');
+require('./views/query/QueryReactView');
+require('./views/shards/distribution/ShardDistributionReactView');
+require('./views/services/ServicesReactView');
+
+require('./reactUtils');
 
 // old libraries
 const jQuery = require('jquery');
@@ -45,7 +53,7 @@ require('../../frontend/css/highlightjs.css');
 require('../../frontend/css/jsoneditor.css');
 require('../../frontend/css/tippy.css');
 require('../../frontend/css/dygraph.css');
-require('../../frontend/css/leaflet.css');
+require('leaflet/dist/leaflet.css');
 require('../../frontend/css/nv.d3.css');
 require('../../frontend/css/grids-responsive-min.css');
 
@@ -59,7 +67,7 @@ require('../node_modules/noty/lib/themes/sunset.css');
 
 window.JST = {};
 
-function requireAll (context) {
+function requireAll(context) {
   context.keys().forEach(context);
   _.each(context.keys(), function (key) {
     // detect and store ejs templates
@@ -102,12 +110,6 @@ window._ = _;
 require('../../frontend/js/arango/templateEngine.js');
 require('../../frontend/js/arango/arango.js');
 
-// only set this for development
-if (window.frontendConfig && env === 'development') {
-  window.frontendConfig.basePath = process.env.REACT_APP_ARANGODB_HOST;
-  window.frontendConfig.react = true;
-}
-
 require('../../frontend/js/lib/jquery-ui-1.9.2.custom.min.js');
 require('../../frontend/js/lib/jquery.form.js');
 require('../../frontend/js/lib/jquery.uploadfile.min.js');
@@ -143,16 +145,13 @@ window.JSONEditor = jsoneditor;
 
 // ace
 window.define = window.ace.define;
-window.aqltemplates = require('../public/assets/aqltemplates.json');
 
 window.d3 = d3;
-require('../../frontend/js/lib/leaflet.js');
-require('../../frontend/js/lib/tile.stamen.js');
 
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
 window.Dygraph = require('../../frontend/js/lib/dygraph-combined.min.js');
 require('../../frontend/js/config/dygraphConfig.js');
-window.moment = require('../../frontend/js/lib/moment.min.js');
+window.moment = require('moment');
 
 // sigma
 window.sigma = Sigma;
@@ -180,7 +179,6 @@ require('../../frontend/js/lib/sigma.plugins.filter.js');
 require('../../frontend/js/lib/sigma.plugins.fullScreen.js');
 require('../../frontend/js/lib/sigma.plugins.lasso.js');
 require('../../frontend/js/lib/sigma.renderers.halo.js');
-require('../../frontend/js/lib/jquery.csv.min.js');
 
 require('../../frontend/js/lib/wheelnav.slicePath.js');
 require('../../frontend/js/lib/wheelnav.min.js');
@@ -194,10 +192,9 @@ window.randomColor = require('../../frontend/js/lib/randomColor.js');
 // require('../../frontend/src/mode-aql.js');
 
 class App extends Component {
-  // <Overview />
-  render () {
+  render() {
     return (
-      <div className="App"/>
+      <div className="App" />
     );
   }
 }

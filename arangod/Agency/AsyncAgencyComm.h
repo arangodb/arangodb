@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,17 +23,8 @@
 
 #pragma once
 
-#include <fuerte/message.h>
-
-#include <deque>
-#include <memory>
-#include <mutex>
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 #include "Agency/AgencyComm.h"
-
+#include "Agency/AgencyCommon.h"
 #include "Agency/PathComponent.h"
 #include "Basics/ResultT.h"
 #include "Basics/debugging.h"
@@ -41,17 +32,26 @@
 #include "Network/Methods.h"
 #include "Network/Utils.h"
 
+#include <fuerte/message.h>
+#include <fuerte/types.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
+#include <deque>
+#include <memory>
+#include <mutex>
+
 namespace arangodb {
 
 struct AsyncAgencyCommResult {
   arangodb::fuerte::Error error;
   std::unique_ptr<arangodb::fuerte::Response> response;
 
-  [[nodiscard]] bool ok() const {
+  [[nodiscard]] bool ok() const noexcept {
     return arangodb::fuerte::Error::NoError == this->error;
   }
 
-  [[nodiscard]] bool fail() const { return !ok(); }
+  [[nodiscard]] bool fail() const noexcept { return !ok(); }
 
   VPackSlice slice() const {
     TRI_ASSERT(response != nullptr);
@@ -187,6 +187,12 @@ class AsyncAgencyCommManager final {
   std::atomic<uint64_t> _nextRequestId = 0;
 };
 
+struct SetTransientOptions {
+  bool skipScheduler = false;
+  bool sendHLCHeader = false;
+  network::Timeout timeout = std::chrono::seconds{20};
+};
+
 class AsyncAgencyComm final {
  public:
   using FutureResult = arangodb::futures::Future<AsyncAgencyCommResult>;
@@ -200,6 +206,9 @@ class AsyncAgencyComm final {
       std::optional<network::Timeout> timeout = {}) const;
   [[nodiscard]] FutureResult poll(network::Timeout timeout,
                                   uint64_t index) const;
+
+  [[nodiscard]] futures::Future<consensus::index_t> getCurrentCommitIndex()
+      const;
 
   template<typename T>
   [[nodiscard]] FutureResult setValue(
@@ -254,6 +263,10 @@ class AsyncAgencyComm final {
   [[nodiscard]] FutureResult sendTransaction(
       network::Timeout timeout, AgencyWriteTransaction const&) const;
 
+  [[nodiscard]] FutureResult setTransientValue(
+      std::string const& key, arangodb::velocypack::Slice const& slice,
+      SetTransientOptions const& opts = {});
+
   enum class RequestType {
     READ,    // send the transaction again in the case of no response
     WRITE,   // does not send the transaction again but instead tries to do
@@ -265,23 +278,23 @@ class AsyncAgencyComm final {
   using ClientId = std::string;
 
   [[nodiscard]] FutureResult sendWithFailover(
-      arangodb::fuerte::RestVerb method, std::string const& url,
+      arangodb::fuerte::RestVerb method, std::string_view url,
       network::Timeout timeout, RequestType type,
       std::vector<ClientId> clientIds,
       velocypack::Buffer<uint8_t>&& body) const;
 
   [[nodiscard]] FutureResult sendWithFailover(
-      arangodb::fuerte::RestVerb method, std::string const& url,
+      arangodb::fuerte::RestVerb method, std::string_view url,
       network::Timeout timeout, RequestType type,
       std::vector<ClientId> clientIds, AgencyTransaction const& trx) const;
 
   [[nodiscard]] FutureResult sendWithFailover(
-      arangodb::fuerte::RestVerb method, std::string const& url,
+      arangodb::fuerte::RestVerb method, std::string_view url,
       network::Timeout timeout, RequestType type,
       velocypack::Buffer<uint8_t>&& body) const;
 
   [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
-                                              std::string const& url,
+                                              std::string_view url,
                                               network::Timeout timeout,
                                               RequestType type,
                                               uint64_t index) const;

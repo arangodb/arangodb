@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,15 +22,15 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "./SingleServerProvider.h"
+#include "SingleServerProvider.h"
 
 #include "Aql/QueryContext.h"
-#include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
-#include "Graph/Steps/SingleServerProviderStep.h"
-#include "Transaction/Helpers.h"
-
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
+#include "Logger/LogMacros.h"
+#include "Transaction/Helpers.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
@@ -78,12 +78,13 @@ SingleServerProvider<Step>::SingleServerProvider(
     arangodb::aql::QueryContext& queryContext,
     SingleServerBaseProviderOptions opts,
     arangodb::ResourceMonitor& resourceMonitor)
-    : _trx(std::make_unique<arangodb::transaction::Methods>(
+    : _monitor(resourceMonitor),
+      _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
              _opts.collectionToShardMap(), _opts.getVertexProjections(),
-             _opts.getEdgeProjections()),
+             _opts.getEdgeProjections(), _opts.produceVertices()),
       _stats{} {
   // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need
   // to do benchmarks if affordable) activateCache(false);
@@ -131,8 +132,6 @@ auto SingleServerProvider<Step>::fetch(std::vector<Step*> const& looseEnds)
   LOG_TOPIC("c9160", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Fetching...";
   std::vector<Step*> result{};
-  result.reserve(looseEnds.size());
-
   return futures::makeFuture(std::move(result));
 }
 
@@ -248,9 +247,14 @@ std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>>
 SingleServerProvider<Step>::buildCursor(
     arangodb::aql::FixedVarExpressionContext& expressionContext) {
   return std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
-      trx(), _opts.tmpVar(), _opts.indexInformations().first,
+      monitor(), trx(), _opts.tmpVar(), _opts.indexInformations().first,
       _opts.indexInformations().second, expressionContext,
-      _opts.hasWeightMethod() /*, requiresFullDocument*/);
+      /*requiresFullDocument*/ _opts.hasWeightMethod(), _opts.useCache());
+}
+
+template<class Step>
+ResourceMonitor& SingleServerProvider<Step>::monitor() {
+  return _monitor;
 }
 
 template<class Step>
@@ -282,7 +286,7 @@ auto SingleServerProvider<StepType>::fetchVertices(
     -> futures::Future<std::vector<Step*>> {
   // We will never need to fetch anything
   TRI_ASSERT(false);
-  return std::move(fetch(looseEnds));
+  return fetch(looseEnds);
 }
 
 template<class StepType>

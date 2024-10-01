@@ -1,28 +1,29 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, require*/
+/* global assertTrue, assertFalse, assertEqual, assertMatch */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -32,6 +33,7 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const url = require('url');
 const _ = require("lodash");
+const errors = require("internal").errors;
 const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
 const servers = getCoordinatorEndpoints();
@@ -85,6 +87,70 @@ function QueriesSuite () {
       coordinators = [];
     },
     
+    testKillQueriesWrongId: function() {
+      const query = "RETURN SLEEP(100000)";
+      // start background query
+      let result = sendRequest('POST', "/_api/cursor", { query }, true, { "x-arango-async" : "true" });
+      assertEqual(result.status, 202);
+
+      // wait for query to appear in list of running queries
+      let tries = 0;
+      while (++tries < 60) {
+        result = sendRequest('GET', "/_api/query/current", null, true);
+        assertEqual(result.status, 200);
+        if (isInList(result.body, query)) {
+          break;
+        }
+        require("internal").sleep(0.5);
+      }
+
+      result = sendRequest('GET', "/_api/query/current", null, true);
+      assertEqual(result.status, 200);
+      assertTrue(isInList(result.body, query));
+      
+      let queries = result.body.filter(function(data) { return data.query.indexOf(query) !== -1; });
+      assertEqual(1, queries.length);
+
+      let id = queries[0].id;
+      assertEqual("string", typeof id);
+      try {
+        // kill the query, but with wrong id
+        result = sendRequest('DELETE', "/_api/query/" + "12345" + id, null, true);
+        assertEqual(result.status, 404);
+        assertEqual(errors.ERROR_QUERY_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
+        
+        // kill the query, but with wrong id, on different server
+        result = sendRequest('DELETE', "/_api/query/" + "12345" + id, null, false);
+        assertEqual(result.status, 404);
+        assertEqual(errors.ERROR_QUERY_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
+      
+        // query must not vanish from list of currently running queries
+        result = sendRequest('GET', "/_api/query/current", null, true);
+        assertEqual(result.status, 200);
+        assertTrue(isInList(result.body, query));
+        
+        result = sendRequest('GET', "/_api/query/current", null, false);
+        assertEqual(result.status, 200);
+        assertTrue(isInList(result.body, query));
+      } finally {
+        // finally kill it
+        sendRequest('DELETE', "/_api/query/" + id, null, true);
+  
+        // wait until the query is fully gone
+        let tries = 0;
+        while (++tries < 60) {
+          result = sendRequest('GET', "/_api/query/current", null, true);
+          assertEqual(result.status, 200);
+          if (!isInList(result.body, query)) {
+            break;
+          }
+          require("internal").sleep(0.5);
+        }
+      }
+    },
+    
     testCurrentQueriesCoordinator: function() {
       const query = "RETURN SLEEP(100000)";
       // start background query
@@ -120,7 +186,7 @@ function QueriesSuite () {
       result = sendRequest('DELETE', "/_api/query/" + id, null, false);
       assertEqual(result.status, 200);
     
-      // query must not vanish from list of currently running queries
+      // query must vanish from list of currently running queries
       tries = 0;
       while (++tries < 60) {
         result = sendRequest('GET', "/_api/query/current", null, true);
@@ -179,7 +245,7 @@ function QueriesSuite () {
         result = sendRequest('DELETE', "/_api/query/" + id, null, false);
         assertEqual(result.status, 200);
       
-        // query must not vanish from list of currently running queries
+        // query must vanish from list of currently running queries
         tries = 0;
         while (++tries < 60) {
           result = sendRequest('GET', "/_api/query/current", null, true);

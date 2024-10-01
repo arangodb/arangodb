@@ -3,14 +3,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2014 triAGENS GmbH, Cologne, Germany
-// / Copyright 2015 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -96,9 +96,13 @@ var runInDatabase = function () {
             updateQuery.options = { ttl: 5, maxRuntime: 5 };
 
             db._query(updateQuery);
-            // db._jobs.update(job, update);
+
+            // generate unique task id (uniqueness only required during
+            // runtime of arangod process)
+            const id = "foxx-queue-worker-" + require("@arangodb/crypto").uuidv4();
 
             tasks.register({
+              id,
               command: function (cfg) {
                 var db = require('@arangodb').db;
                 var initialDatabase = db._name();
@@ -175,13 +179,16 @@ const resetDeadJobs = function () {
           global.KEYSPACE_CREATE('queue-control', 1, true);
         }
         done = true;
-      } catch(e) {
-        if (e.code === errors.ERROR_SHUTTING_DOWN.code) {
+      } catch (e) {
+        if (e.errorNum === errors.ERROR_SHUTTING_DOWN.code) {
           warn("Shutting down while resetting dead jobs on database " + name + ", aborting.");
           done = true; // we're quitting because shutdown is in progress
-        } else if (e.code === errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+        } else if (e.errorNum === errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
           warn("'_jobs' collection not found while resetting dead jobs on database " + name + ", aborting.");
           done = true; // we're quitting because the _jobs collection is missing
+        } else if (e.errorNum === errors.ERROR_ARANGO_READ_ONLY.code) {
+          warn("'_jobs' collection is read only while resetting dead jobs on database " + name + ", aborting.");
+          done = true;
         } else {
           maxTries--;
           warn("Exception while resetting dead jobs on database " + name + ": " + e.message +
@@ -347,6 +354,7 @@ exports.run = function () {
   if (tasks.register !== undefined) {
     // move the actual foxx queue operations execution to a background task
     tasks.register({
+      id: "foxx-queue-manager",
       command: function () {
         require('@arangodb/foxx/queues/manager').manage();
       },

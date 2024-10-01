@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,17 +23,18 @@
 
 #pragma once
 
+#include <deque>
+#include <vector>
+
 #include <s2/s2cap.h>
 #include <s2/s2cell_id.h>
 #include <s2/s2region.h>
 #include <s2/s2region_coverer.h>
 
-#include <deque>
-#include <vector>
-
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb::geo_index {
 
@@ -61,7 +62,7 @@ class CoveringUtils {
 
   size_t bufferSize() const { return _buffer.size(); }
 
-  LocalDocumentId const& getNext() const {
+  LocalDocumentId getNext() const {
     TRI_ASSERT(hasNext());
     return _buffer.front();
   }
@@ -111,7 +112,7 @@ class CoveringUtils {
   GeoDocumentsQueue _buffer;
 
   // deduplication filter
-  std::unordered_set<uint64_t> _seenDocs;
+  containers::FlatHashSet<uint64_t> _seenDocs;
 
   /// Coverer instance to use
   S2RegionCoverer _coverer;

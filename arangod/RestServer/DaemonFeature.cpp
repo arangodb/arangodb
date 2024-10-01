@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,10 +44,8 @@
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
 #include "Basics/threads.h"
-#include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
@@ -75,34 +73,27 @@ DaemonFeature::DaemonFeature(Server& server) : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 
-#ifndef _WIN32
   _workingDirectory = "/var/tmp";
-#endif
 }
 
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
-      "--daemon", "background the server, running it as daemon",
+      "--daemon",
+      "Start the server as a daemon (background process). Requires --pid-file "
+      "to be set.",
       new BooleanParameter(&_daemon),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::OsMac,
-                                   arangodb::options::Flags::Uncommon));
+      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--pid-file", "pid-file in daemon mode", new StringParameter(&_pidFile),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::OsMac,
-                                   arangodb::options::Flags::Uncommon));
+      "--pid-file",
+      "The name of the process ID file to use if the server runs as a daemon.",
+      new StringParameter(&_pidFile),
+      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--working-directory", "working directory in daemon mode",
+      "--working-directory", "The working directory in daemon mode.",
       new StringParameter(&_workingDirectory),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::OsMac,
-                                   arangodb::options::Flags::Uncommon));
+      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 }
 
 void DaemonFeature::validateOptions(
@@ -116,9 +107,6 @@ void DaemonFeature::validateOptions(
         << "need --pid-file in --daemon mode";
     FATAL_ERROR_EXIT();
   }
-
-  LoggerFeature& logger = server().getFeature<LoggerFeature>();
-  logger.setBackgrounded(true);
 
   // make the pid filename absolute
   std::string currentDir = FileUtils::currentDirectory().result();
@@ -203,7 +191,7 @@ void DaemonFeature::checkPidFile() {
 
         try {
           oldPid = std::stol(oldPidS);
-        } catch (std::invalid_argument const& ex) {
+        } catch (std::invalid_argument const&) {
           LOG_TOPIC("bd20c", FATAL, arangodb::Logger::FIXME)
               << "pid-file '" << _pidFile << "' doesn't contain a number.";
           FATAL_ERROR_EXIT();
@@ -281,7 +269,7 @@ int DaemonFeature::forkProcess() {
   TRI_ASSERT(pid == 0);  // we are in the child
 
   // child
-  LogAppender::allowStdLogging(false);
+  Logger::allowStdLogging(false);
   Logger::clearCachedPid();
 
   // change the file mode mask

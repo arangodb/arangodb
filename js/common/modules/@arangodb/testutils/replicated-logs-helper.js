@@ -1,26 +1,27 @@
 /*jshint strict: true */
 'use strict';
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Lars Maier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const {wait} = internal;
@@ -31,9 +32,13 @@ const ArangoError = arangodb.ArangoError;
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
-const helper = require('@arangodb/test-helper');
+const helper = require('@arangodb/test-helper-common');
+const clientHelper = require('@arangodb/test-helper');
+const isServer = arangodb.isServer;
 
-const waitFor = function (checkFn, maxTries = 240) {
+const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
+  const waitTimes = [0.1, 0.1, 0.2, 0.2, 0.2, 0.3, 0.5];
+  const getWaitTime = (count) => waitTimes[Math.min(waitTimes.length-1, count)];
   let count = 0;
   let result = null;
   while (count < maxTries) {
@@ -48,14 +53,18 @@ const waitFor = function (checkFn, maxTries = 240) {
     if (count % 10 === 0) {
       console.log(result);
     }
-    wait(0.5); // 240 * .5s = 2 minutes
+    wait(getWaitTime(count));
   }
-  throw result;
+  if (onErrorCallback !== undefined) {
+    onErrorCallback(result);
+  } else {
+    throw result;
+  }
 };
 
-const readAgencyValueAt = function (key) {
-  const response = helper.agency.get(key);
-  const path = ['arango', ...key.split('/')];
+const readAgencyValueAt = function (key, jwtBearerToken) {
+  const response = clientHelper.agency.get(key, jwtBearerToken);
+  const path = ['arango', ...key.split('/').filter(i => i)];
   let result = response;
   for (const p of path) {
     if (result === undefined) {
@@ -70,6 +79,17 @@ const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
 };
 
+const isDBServerInCurrent = function (serverId) {
+  return readAgencyValueAt(`Current/DBServers/${serverId}`);
+};
+
+const bumpServerRebootId = function (serverId) {
+  const response = clientHelper.agency.increaseVersion(`Current/ServersKnown/${serverId}/rebootId`);
+  if (response !== true) {
+    return undefined;
+  }
+  return getServerRebootId(serverId);
+};
 
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
@@ -102,10 +122,18 @@ const getServerHealth = function (serverId) {
 };
 
 const dbservers = (function () {
-  return helper.getDBServers().map((x) => x.id);
+  if (global.hasOwnProperty('instanceManager')) {
+    return global.instanceManager.arangods.filter(arangod => arangod.isRole("dbserver")).map((x) => x.id);
+  } else {
+    return clientHelper.getDBServers().map((x) => x.id);
+  }
 }());
 const coordinators = (function () {
-  return helper.getCoordinators().map((x) => x.id);
+  if (global.hasOwnProperty('instanceManager')) {
+    return global.instanceManager.arangods.filter(arangod => arangod.isRole("coordinator")).map((x) => x.id);
+  } else {
+    return clientHelper.getServersByType('coordinator').map((x) => x.id);
+  }
 }());
 
 
@@ -131,19 +159,32 @@ const coordinators = (function () {
  *       },
  *       plan: {
  *         id: number,
- *         participantsConfig: Object,
+ *         participantsConfig: {
+ *           participants: Object<string, {
+ *             forced: boolean,
+ *             allowedInQuorum: boolean,
+ *             allowedAsLeader: boolean
+ *           }>,
+ *           generation: number,
+ *           config: {
+ *             waitForSync: boolean,
+ *             effectiveWriteConcern: number
+ *           }
+ *         },
  *         currentTerm?: {
  *           term: number,
- *           leader: {
+ *           leader?: {
  *             serverId: string,
  *             rebootId: number
  *           }
  *         }
  *       },
  *       current: {
+ *         localStatus: Object<string, Object>,
  *         localState: Object,
  *         supervision?: Object,
- *         leader?: Object
+ *         leader?: Object,
+ *         safeRebootIds?: Object<string, number>
  *       }
  *   }}
  */
@@ -155,13 +196,13 @@ const readReplicatedLogAgency = function (database, logId) {
 };
 
 const replicatedLogSetPlanParticipantsConfig = function (database, logId, participantsConfig) {
-  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`, participantsConfig);
-  helper.agency.increaseVersion(`Plan/Version`);
+  clientHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`, participantsConfig);
+  clientHelper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetTargetParticipantsConfig = function (database, logId, participantsConfig) {
-  helper.agency.set(`Target/ReplicatedLogs/${database}/${logId}/participants`, participantsConfig);
-  helper.agency.increaseVersion(`Target/Version`);
+  clientHelper.agency.set(`Target/ReplicatedLogs/${database}/${logId}/participants`, participantsConfig);
+  clientHelper.agency.increaseVersion(`Target/Version`);
 };
 
 const replicatedLogUpdatePlanParticipantsConfigParticipants = function (database, logId, participants) {
@@ -193,33 +234,57 @@ const replicatedLogUpdateTargetParticipants = function (database, logId, partici
 };
 
 const replicatedLogSetPlanTerm = function (database, logId, term) {
-  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`, term);
-  helper.agency.increaseVersion(`Plan/Version`);
+  clientHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`, term);
+  clientHelper.agency.increaseVersion(`Plan/Version`);
+};
+
+const triggerLeaderElection = function (database, logId) {
+  // This operation has to be in one envelope. Otherwise we violate the assumption
+  // that they are only modified as a unit.
+  clientHelper.agency.transact([[{
+    [`/arango/Plan/ReplicatedLogs/${database}/${logId}/currentTerm/term`]: {
+      'op': 'increment',
+    },
+    [`/arango/Plan/ReplicatedLogs/${database}/${logId}/currentTerm/leader`]: {
+      'op': 'delete'
+    }
+  }]]);
+  clientHelper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetPlanTermConfig = function (database, logId, term) {
-  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm`, term);
-  helper.agency.increaseVersion(`Plan/Version`);
+  clientHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}/currentTerm`, term);
+  clientHelper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetPlan = function (database, logId, spec) {
-  helper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}`, spec);
-  helper.agency.increaseVersion(`Plan/Version`);
+  clientHelper.agency.set(`Plan/ReplicatedLogs/${database}/${logId}`, spec);
+  clientHelper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogSetTarget = function (database, logId, spec) {
-  helper.agency.set(`Target/ReplicatedLogs/${database}/${logId}`, spec);
-  helper.agency.increaseVersion(`Target/Version`);
+  clientHelper.agency.set(`Target/ReplicatedLogs/${database}/${logId}`, spec);
+  clientHelper.agency.increaseVersion(`Target/Version`);
 };
 
 const replicatedLogDeletePlan = function (database, logId) {
-  helper.agency.remove(`Plan/ReplicatedLogs/${database}/${logId}`);
-  helper.agency.increaseVersion(`Plan/Version`);
+  clientHelper.agency.remove(`Plan/ReplicatedLogs/${database}/${logId}`);
+  clientHelper.agency.increaseVersion(`Plan/Version`);
 };
 
 const replicatedLogDeleteTarget = function (database, logId) {
-  helper.agency.remove(`Target/ReplicatedLogs/${database}/${logId}`);
-  helper.agency.increaseVersion(`Target/Version`);
+  clientHelper.agency.remove(`Target/ReplicatedLogs/${database}/${logId}`);
+  clientHelper.agency.increaseVersion(`Target/Version`);
+};
+
+const createReconfigureJob = function (database, logId, ops) {
+  const jobId = nextUniqueLogId();
+  clientHelper.agency.set(`Target/ToDo/${jobId}`, {
+    type: "reconfigureReplicatedLog",
+    database, logId, jobId: "" + jobId,
+    operations: ops,
+  });
+  return jobId;
 };
 
 const waitForReplicatedLogAvailable = function (id) {
@@ -248,10 +313,15 @@ const waitForReplicatedLogAvailable = function (id) {
 
 
 const getServerProcessID = function (serverId) {
-  // Now look for instanceManager:
-  let pos = _.findIndex(global.instanceManager.arangods,
+  let arangods = [];
+  try {
+    arangods = global.instanceManager.arangods;
+  } catch(_) {
+    arangods = helper.getServersByType("dbserver");
+  }
+  let pos = _.findIndex(arangods,
       x => x.id === serverId);
-  return global.instanceManager.arangods[pos].pid;
+  return arangods[pos].pid;
 };
 
 const stopServerImpl = function (serverId) {
@@ -281,18 +351,18 @@ const stopServerWaitFailed = function (serverId) {
 };
 
 const nextUniqueLogId = function () {
-  return parseInt(helper.uniqid());
+  return parseInt(clientHelper.uniqid());
 };
 
 const registerAgencyTestBegin = function (testName) {
-  helper.agency.set(`Testing/${testName}/Begin`, (new Date()).toISOString());
+  clientHelper.agency.set(`Testing/${testName}/Begin`, (new Date()).toISOString());
 };
 
 const registerAgencyTestEnd = function (testName) {
-  helper.agency.set(`Testing/${testName}/End`, (new Date()).toISOString());
+  clientHelper.agency.set(`Testing/${testName}/End`, (new Date()).toISOString());
 };
 
-const getServerUrl = helper.getEndpointById;
+const getServerUrl = helper.getUrlById;
 
 const checkRequestResult = function (requestResult, expectingError=false) {
   if (requestResult === undefined) {
@@ -332,19 +402,12 @@ const checkRequestResult = function (requestResult, expectingError=false) {
     throw new ArangoError({
       'error': true,
       'code': requestResult.json.code,
-      'errorNum': arangodb.ERROR_INTERNAL,
-      'errorMessage': 'Error during request'
+      'errorNum': requestResult.json.errorNum,
+      'errorMessage': requestResult.json.errorMessage,
     });
   }
 
   return requestResult;
-};
-
-const getLocalStatus = function (database, logId, serverId) {
-  let url = getServerUrl(serverId);
-  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
-  checkRequestResult(res);
-  return res.json.result;
 };
 
 const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
@@ -364,8 +427,9 @@ const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
     throw error;
   }
   const leader = plan.currentTerm.leader.serverId;
+  const rebootId = plan.currentTerm.leader.rebootId;
   const term = plan.currentTerm.term;
-  return {leader, term};
+  return {leader, term, rebootId};
 };
 
 const getReplicatedLogLeaderTarget = function (database, logId) {
@@ -383,6 +447,7 @@ const createReplicatedLogPlanOnly = function (database, targetConfig, replicatio
     id: logId,
     currentTerm: createTermSpecification(term, servers, leader),
     participantsConfig: createParticipantsConfig(generation, targetConfig, servers),
+    properties: {implementation: {type: "black-hole", parameters: {}}}
   });
 
   // wait for all servers to have reported in current
@@ -390,6 +455,50 @@ const createReplicatedLogPlanOnly = function (database, targetConfig, replicatio
   const followers = _.difference(servers, [leader]);
   const remaining = _.difference(dbservers, servers);
   return {logId, servers, leader, term, followers, remaining};
+};
+
+const createReplicatedLogInTarget = function (database, targetConfig, replicationFactor, servers) {
+  const logId = nextUniqueLogId();
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  if (servers === undefined) {
+    servers = _.sampleSize(dbservers, replicationFactor);
+  }
+  replicatedLogSetTarget(database, logId, {
+    id: logId,
+    config: targetConfig,
+    participants: getParticipantsObjectForServers(servers),
+    supervision: {maxActionsTraceLength: 20},
+    properties: {implementation: {type: "black-hole", parameters: {}}}
+  });
+
+  waitFor(() => {
+    let {plan, current} = readReplicatedLogAgency(database, logId.toString());
+    if (current === undefined) {
+      return Error("current not yet defined");
+    }
+    if (plan === undefined) {
+      return Error("plan not yet defined");
+    }
+
+    if (!plan.currentTerm) {
+      return Error(`No term in plan`);
+    }
+
+    if (!current.leader) {
+      return Error("Leader has not yet established its term");
+    }
+    if (!current.leader.leadershipEstablished) {
+      return Error("Leader has not yet established its leadership");
+    }
+
+    return true;
+  });
+
+  const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
+  const followers = _.difference(servers, [leader]);
+  return {logId, servers, leader, term, followers};
 };
 
 const createReplicatedLog = function (database, targetConfig, replicationFactor) {
@@ -403,6 +512,28 @@ const createReplicatedLog = function (database, targetConfig, replicationFactor)
     config: targetConfig,
     participants: getParticipantsObjectForServers(servers),
     supervision: {maxActionsTraceLength: 20},
+    properties: {implementation: {type: "black-hole", parameters: {}}}
+  });
+
+  waitFor(lpreds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
+
+  const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
+  const followers = _.difference(servers, [leader]);
+  return {logId, servers, leader, term, followers};
+};
+
+const createReplicatedLogWithState = function (database, targetConfig, stateType, replicationFactor) {
+  const logId = nextUniqueLogId();
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  const servers = _.sampleSize(dbservers, replicationFactor);
+  replicatedLogSetTarget(database, logId, {
+    id: logId,
+    config: targetConfig,
+    participants: getParticipantsObjectForServers(servers),
+    supervision: {maxActionsTraceLength: 20},
+    properties: {implementation: {type: stateType, parameters: {}}}
   });
 
   waitFor(lpreds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
@@ -413,7 +544,7 @@ const createReplicatedLog = function (database, targetConfig, replicationFactor)
 };
 
 
-const testHelperFunctions = function (database) {
+const testHelperFunctions = function (database, databaseOptions = {}) {
   let previousDatabase, databaseExisted = true;
   let stoppedServers = {};
 
@@ -426,8 +557,12 @@ const testHelperFunctions = function (database) {
   };
 
   const stopServerWait = function (serverId) {
-    stopServer(serverId);
-    waitFor(lpreds.serverFailed(serverId));
+    stopServersWait([serverId]);
+  };
+
+  const stopServersWait = function (serverIds) {
+    serverIds.forEach(stopServer);
+    serverIds.forEach(serverId => waitFor(lpreds.serverFailed(serverId)));
   };
 
   const continueServer = function (serverId) {
@@ -439,21 +574,23 @@ const testHelperFunctions = function (database) {
   };
 
   const continueServerWait = function (serverId) {
-    continueServer(serverId);
-    waitFor(lpreds.serverHealthy(serverId));
+    continueServersWait([serverId]);
+  };
+
+  const continueServersWait = function (serverIds) {
+    serverIds.forEach(continueServer);
+    serverIds.forEach(serverId => waitFor(lpreds.serverHealthy(serverId)));
   };
 
   const resumeAll = function () {
-    Object.keys(stoppedServers).forEach(function (key) {
-      continueServerWait(key);
-    });
+    continueServersWait(Object.keys(stoppedServers));
     stoppedServers = {};
   };
 
   const createTestDatabase = function () {
     previousDatabase = db._name();
     if (!_.includes(db._databases(), database)) {
-      db._createDatabase(database);
+      db._createDatabase(database, databaseOptions);
       databaseExisted = false;
     }
     db._useDatabase(database);
@@ -495,8 +632,10 @@ const testHelperFunctions = function (database) {
   return {
     stopServer,
     stopServerWait,
+    stopServersWait,
     continueServer,
     continueServerWait,
+    continueServersWait,
     resumeAll,
     setUpAll,
     tearDownAll,
@@ -507,10 +646,14 @@ const testHelperFunctions = function (database) {
   };
 };
 
-const getSupervisionActionTypes = function (database, logId) {
+const getSupervisionActions = function (database, logId) {
   const {current} = readReplicatedLogAgency(database, logId);
   // filter out all empty actions
-  const actions = _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+  return _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+};
+
+const getSupervisionActionTypes = function (database, logId) {
+  const actions = getSupervisionActions(database, logId);
   return _.map(actions, (a) => a.desc.type);
 };
 
@@ -535,6 +678,15 @@ const updateReplicatedLogTarget = function(database, id, callback) {
   replicatedLogSetTarget(database, id, result);
 };
 
+const increaseTargetVersion = function (database, id) {
+  const {target} = readReplicatedLogAgency(database, id);
+  if (target) {
+    target.version = 1 + (target.version || 0);
+    replicatedLogSetTarget(database, id, target);
+    return target.version;
+  }
+};
+
 const sortedArrayEqualOrError = (left, right) => {
   if (_.isEqual(left, right)) {
     return true;
@@ -547,9 +699,99 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
-const dumpLog = function (shardId, limit=1000) {
-  let log = db._replicatedLog(shardIdToLogId(shardId));
+const dumpLogHead = function (logId, limit=1000) {
+  let log = db._replicatedLog(logId);
   return log.head(limit);
+};
+
+const getShardsToLogsMapping = function (dbName, colId, jwtBearerToken) {
+  const colPlan = readAgencyValueAt(`Plan/Collections/${dbName}/${colId}`, jwtBearerToken);
+  let mapping = {};
+  if (colPlan.hasOwnProperty("groupId")) {
+    const groupId = colPlan.groupId;
+    const shards = colPlan.shardsR2;
+    const colGroup = readAgencyValueAt(`Plan/CollectionGroups/${dbName}/${groupId}`, jwtBearerToken);
+    const shardSheaves = colGroup.shardSheaves;
+    for (let idx = 0; idx < shards.length; ++idx) {
+      mapping[shards[idx]] = shardSheaves[idx].replicatedLog;
+    }
+  } else {
+    // Legacy code, supporting system collections
+    const shards = colPlan.shards;
+    for (const [shardId, _] of Object.entries(shards)) {
+      mapping[shardId] = shardIdToLogId(shardId);
+    }
+  }
+  return mapping;
+};
+
+const setLeader = (database, logId, newLeader) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.post(`${url}/_db/${database}/_api/log/${logId}/leader/${newLeader}`);
+  checkRequestResult(res);
+  const { json: { result } } = res;
+  return result;
+};
+
+const unsetLeader = (database, logId) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.delete(`${url}/_db/${database}/_api/log/${logId}/leader`);
+  checkRequestResult(res);
+  const { json: { result } } = res;
+  return result;
+};
+
+/**
+ * Causes underlying replicated logs to trigger leader recovery.
+ */
+const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
+  const {numberOfShards, isSmart} = col.properties();
+  if (isSmart && numberOfShards === 0) {
+    // Adjust for SmartEdgeCollections
+    col = db._collection(`_local_${col.name()}`);
+  }
+  const shards = col.shards();
+  const shardsToLogs = getShardsToLogsMapping(dbn, col._id);
+  const stateMachineIds = shards.map(s => shardsToLogs[s]);
+
+  const increaseTerm = (stateId) => triggerLeaderElection(dbn, stateId);
+  const clearOldLeader = (stateId) => unsetLeader(dbn, stateId);
+
+  // Clear the old leader, so it doesn't get back automatically.
+  stateMachineIds.forEach(clearOldLeader);
+  stateMachineIds.forEach(increaseTerm);
+
+  const leaderReady = (stateId) => lpreds.replicatedLogLeaderEstablished(dbn, stateId, undefined, []);
+
+  stateMachineIds.forEach(x => waitFor(leaderReady(x)));
+};
+
+const getLocalStatus = function (serverId, database, logId) {
+  let url = getServerUrl(serverId);
+  const res = request.get(`${url}/_db/${database}/_api/log/${logId}/local-status`);
+  checkRequestResult(res);
+  return res.json.result;
+};
+
+const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
+  const url = getServerUrl(_.sample(coordinators));
+  const res = request.post(
+      `${url}/_db/${database}/_api/log/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
+  );
+  checkRequestResult(res);
+  const {json: {result}} = res;
+  return result;
+};
+
+const getAgencyJobStatus = function (jobId) {
+  const places = ["ToDo", "Pending", "Failed", "Finished"];
+  for (const p of places) {
+    const job = readAgencyValueAt(`Target/${p}/${jobId}`);
+    if (job !== undefined) {
+      return p;
+    }
+  }
+  return "NotFound";
 };
 
 exports.checkRequestResult = checkRequestResult;
@@ -569,8 +811,11 @@ exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
+exports.isDBServerInCurrent = isDBServerInCurrent;
+exports.bumpServerRebootId = bumpServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;
+exports.getSupervisionActions = getSupervisionActions;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.readReplicatedLogAgency = readReplicatedLogAgency;
@@ -593,4 +838,15 @@ exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
 exports.sortedArrayEqualOrError = sortedArrayEqualOrError;
 exports.shardIdToLogId = shardIdToLogId;
-exports.dumpLog = dumpLog;
+exports.dumpLogHead = dumpLogHead;
+exports.setLeader = setLeader;
+exports.unsetLeader = unsetLeader;
+exports.createReplicatedLogWithState = createReplicatedLogWithState;
+exports.bumpTermOfLogsAndWaitForConfirmation = bumpTermOfLogsAndWaitForConfirmation;
+exports.getShardsToLogsMapping = getShardsToLogsMapping;
+exports.replaceParticipant = replaceParticipant;
+exports.createReconfigureJob = createReconfigureJob;
+exports.getAgencyJobStatus = getAgencyJobStatus;
+exports.increaseTargetVersion = increaseTargetVersion;
+exports.triggerLeaderElection = triggerLeaderElection;
+exports.createReplicatedLogInTarget = createReplicatedLogInTarget;

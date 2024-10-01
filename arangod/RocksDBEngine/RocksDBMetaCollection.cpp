@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,13 +26,17 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/UnshackledMutex.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -42,9 +46,11 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
@@ -69,27 +75,67 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 }  // namespace
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             VPackSlice const& info)
-    : PhysicalCollection(collection, info),
+                                             velocypack::Slice info)
+    : PhysicalCollection(collection),
+      _exclusiveLock(_schedulerWrapper),
+      _engine(collection.vocbase().engine<RocksDBEngine>()),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
       _revisionTreeApplied(0),
       _revisionTreeCreationSeq(0),
       _revisionTreeSerializedSeq(0),
-      _revisionTreeSerializedTime(std::chrono::steady_clock::now()) {
+      _revisionTreeSerializedTime(std::chrono::steady_clock::now()),
+      _revisionsBufferedMemoryUsage(0) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
-  collection.vocbase()
-      .server()
-      .getFeature<EngineSelectorFeature>()
-      .engine<RocksDBEngine>()
-      .addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
-                            _logicalCollection.id());
+  _engine.addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
+                               _logicalCollection.id());
+}
+template<typename F>
+void RocksDBMetaCollection::SchedulerWrapper::queue(F&& fn) {
+  SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
+                                     std::forward<F>(fn));
+}
+template<typename F>
+RocksDBMetaCollection::SchedulerWrapper::WorkHandle
+RocksDBMetaCollection::SchedulerWrapper::queueDelayed(
+    F&& fn, std::chrono::milliseconds timeout) {
+  return SchedulerFeature::SCHEDULER->queueDelayed(
+      "rocksdb-meta-collection-lock-timeout", RequestLane::CLUSTER_INTERNAL,
+      timeout, std::forward<F>(fn));
 }
 
-std::string const& RocksDBMetaCollection::path() const {
-  return StaticStrings::Empty;  // we do not have any path
+RocksDBMetaCollection::~RocksDBMetaCollection() { freeMemory(); }
+
+void RocksDBMetaCollection::freeMemory() noexcept {
+  std::unique_lock<std::mutex> lock(_revisionTreeLock);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // only to validate that our math is correct and we are not missing
+  // anything.
+  uint64_t memoryUsage = 0;
+
+  for (auto const& it : _revisionInsertBuffers) {
+    memoryUsage +=
+        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
+  }
+
+  for (auto const& it : _revisionRemovalBuffers) {
+    memoryUsage +=
+        bufferedEntrySize() + bufferedEntryItemSize() * it.second.size();
+  }
+
+  memoryUsage += _revisionTruncateBuffer.size() * bufferedEntrySize();
+
+  TRI_ASSERT(memoryUsage == _revisionsBufferedMemoryUsage);
+#endif
+
+  _revisionRemovalBuffers.clear();
+  _revisionInsertBuffers.clear();
+  _revisionTruncateBuffer.clear();
+
+  decreaseBufferedMemoryUsage(_revisionsBufferedMemoryUsage);
+  _revisionsBufferedMemoryUsage = 0;
 }
 
 void RocksDBMetaCollection::deferDropCollection(
@@ -121,38 +167,16 @@ uint64_t RocksDBMetaCollection::numberDocuments(
   return trxCollection->numberDocuments();
 }
 
-/// @brief write locks a collection, with a timeout
-ErrorCode RocksDBMetaCollection::lockWrite(double timeout) {
-  return doLock(timeout, AccessMode::Type::WRITE);
-}
-
-/// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept {
-  _exclusiveLock.unlockWrite();
-}
-
-/// @brief read locks a collection, with a timeout
-ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
-  return doLock(timeout, AccessMode::Type::READ);
-}
-
-/// @brief read unlocks a collection
-void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlockRead(); }
-
 // rescans the collection to update document count
-uint64_t RocksDBMetaCollection::recalculateCounts() {
-  std::unique_lock<std::mutex> guard(_recalculationLock);
+futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
+  std::unique_lock<basics::UnshackledMutex> guard(_recalculationLock);
 
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db = _engine.db();
   const rocksdb::Snapshot* snapshot = nullptr;
   // start transaction to get a collection lock
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   if (!vocbase.use()) {  // someone dropped the database
-    return _meta.numberDocuments();
+    co_return _meta.numberDocuments();
   }
   auto useGuard = scopeGuard([&]() noexcept {
     // cppcheck-suppress knownConditionTrueFalse
@@ -168,11 +192,12 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   RocksDBBlockerGuard blocker(&_logicalCollection);
 
   uint64_t snapNumberOfDocuments = 0;
+  uint64_t ticket = 0;
   {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
     auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
-    auto res = lockWrite(transaction::Options::defaultLockTimeout);
+    auto res = co_await lockWrite(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
@@ -181,9 +206,10 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     // place a blocker. will be removed by blockerGuard automatically
     blocker.placeBlocker();
 
-    snapshot = engine.db()->GetSnapshot();
+    snapshot = _engine.db()->GetSnapshot();
+    TRI_ASSERT(snapshot != nullptr);
     snapNumberOfDocuments = _meta.numberDocuments();
-    TRI_ASSERT(snapshot);
+    ticket = _meta.documentCountAdjustmentTicket();
   }
 
   auto snapSeq = snapshot->GetSequenceNumber();
@@ -192,7 +218,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   bool set = false;
   {
     RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
-    for (auto it : _indexes) {
+    for (auto const& it : _indexes) {
       if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         bounds = RocksDBKeyBounds::PrimaryIndex(rix->objectId());
@@ -226,9 +252,19 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     TRI_ASSERT(it->key().compare(upper) < 0);
     ++count;
 
-    if (count % 4096 == 0 && server.isStopping()) {
-      // check for server shutdown
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    if (count % 4096 == 0) {
+      if (server.isStopping()) {
+        // server shutdown
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      if (_logicalCollection.vocbase().isDropped()) {
+        // database dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (_logicalCollection.deleted()) {
+        // collection dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      }
     }
   }
 
@@ -241,12 +277,13 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
         << ", snapshot value: " << snapNumberOfDocuments
         << ", current value: " << _meta.numberDocuments() << ", an offset of "
         << adjustment << " will be applied";
-    auto adjustSeq = engine.db()->GetLatestSequenceNumber();
+    auto adjustSeq = _engine.db()->GetLatestSequenceNumber();
     if (adjustSeq <= snapSeq) {
-      adjustSeq = ::forceWrite(engine);
+      adjustSeq = ::forceWrite(_engine);
       TRI_ASSERT(adjustSeq > snapSeq);
     }
-    _meta.adjustNumberDocuments(adjustSeq, RevisionId::none(), adjustment);
+    _meta.adjustNumberDocumentsWithTicket(ticket, adjustSeq, RevisionId::none(),
+                                          adjustment);
   } else {
     LOG_TOPIC("55df5", INFO, Logger::REPLICATION)
         << "no collection count adjustment needs to be applied for "
@@ -254,14 +291,11 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
         << ": counted value: " << count;
   }
 
-  return _meta.numberDocuments();
+  co_return _meta.numberDocuments();
 }
 
 void RocksDBMetaCollection::compact() {
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  engine.compactRange(bounds());
+  _engine.compactRange(bounds());
 
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (std::shared_ptr<Index> i : _indexes) {
@@ -273,10 +307,7 @@ void RocksDBMetaCollection::compact() {
 void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   TRI_ASSERT(!builder.isOpenObject() && !builder.isOpenArray());
 
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db = _engine.db();
   RocksDBKeyBounds bounds = this->bounds();
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out = 0, total = 0;
@@ -329,11 +360,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
     return nullptr;
   }
 
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
-  rocksdb::DB* db = engine.db()->GetRootDB();
+  rocksdb::DB* db = _engine.db()->GetRootDB();
 
   std::unique_lock<std::mutex> lock(_revisionTreeLock);
 
@@ -350,8 +377,8 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
     return allocateEmptyRevisionTree(revisionTreeDepth);
   }
 
-  // If the tree has already moved past `notAfter`, then all is lost and we can
-  // only give up:
+  // If the tree has already moved past `notAfter`, then all is lost and we
+  // can only give up:
   if (_revisionTreeApplied > notAfter) {
     return nullptr;
   }
@@ -361,8 +388,8 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
   TRI_ASSERT(_revisionTree != nullptr);
   TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
 
-  // now clone the tree so we can apply all updates consistent with our ongoing
-  // trx
+  // now clone the tree so we can apply all updates consistent with our
+  // ongoing trx
   auto tree = _revisionTree->clone();
   TRI_ASSERT(tree != nullptr);
 
@@ -381,20 +408,21 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
                            std::unique_lock<std::mutex>& lock)
           -> std::unique_ptr<containers::RevisionTree> {
         TRI_ASSERT(lock.owns_lock());
-        // apply any which are buffered and older than our ongoing transaction
-        // start
+        // apply any which are buffered and older than our ongoing
+        // transaction start
         Result res = applyUpdatesForTransaction(*tree, trxSeq, lock);
         if (res.fail()) {
           return nullptr;
         }
 
-        // now peek at updates buffered inside transaction and apply those too
+        // now peek at updates buffered inside transaction and apply those
+        // too
         auto const& operations =
             RocksDBTransactionState::toState(&trx)->trackedOperations(
                 _logicalCollection.id());
 
-        // this revision tree exists only temporarily, so we do not track its
-        // memory usage
+        // this revision tree exists only temporarily, so we do not track
+        // its memory usage
         tree->insert(operations.inserts);
         tree->remove(operations.removals);
 
@@ -403,20 +431,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
-    uint64_t batchId) {
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
-  RocksDBReplicationManager* manager = engine.replicationManager();
-  RocksDBReplicationContext* ctx =
-      batchId == 0 ? nullptr : manager->find(batchId);
-  if (!ctx) {
-    return nullptr;
-  }
-  auto guard =
-      scopeGuard([manager, ctx]() noexcept -> void { manager->release(ctx); });
-  rocksdb::SequenceNumber trxSeq = ctx->snapshotTick();
+    rocksdb::SequenceNumber trxSeq) {
   TRI_ASSERT(trxSeq != 0);
 
   return revisionTree(
@@ -425,8 +440,8 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
                      std::unique_lock<std::mutex>& lock)
           -> std::unique_ptr<containers::RevisionTree> {
         TRI_ASSERT(lock.owns_lock());
-        // apply any which are buffered and older than our ongoing transaction
-        // start
+        // apply any which are buffered and older than our ongoing
+        // transaction start
         Result res = applyUpdatesForTransaction(*tree, trxSeq, lock);
         if (res.fail()) {
           return nullptr;
@@ -460,31 +475,39 @@ RocksDBMetaCollection::computeRevisionTree(uint64_t batchId) {
 
 Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
     LogicalCollection& coll, RocksDBEngine& engine, rocksdb::WriteBatch& batch,
-    rocksdb::ColumnFamilyHandle* const cf, rocksdb::SequenceNumber maxCommitSeq,
-    bool force, std::string const& context, std::string& scratch,
+    rocksdb::ColumnFamilyHandle* const cf,
+    rocksdb::SequenceNumber wantedMaxCommitSeq, bool force,
+    std::string const& context, std::string& scratch,
     rocksdb::SequenceNumber& appliedSeq) {
-  TRI_ASSERT(coll.useSyncByRevision());
+  TRI_ASSERT(coll.useSyncByRevision() || coll.deleted());
 
   // might lower `appliedSeq`!
 
   // Get lock on revision tree:
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  if (maxCommitSeq < _revisionTreeApplied) {
+  auto correctedMaxCommitSeq = wantedMaxCommitSeq;
+  if (correctedMaxCommitSeq < _revisionTreeApplied) {
     // this function is called indirectly from RocksDBSettingsManager::sync
     // which passes in a seq nr that it has previously obtained, but it can
-    // happen that in the meantime the tree has been moved forward or a tree was
-    // rebuilt and _revisionTreeApplied is now greater than the seq nr we get
-    // passed in. In this case we have to bump the seq nr forward, because we
-    // cannot generate a tree from the past.
-    maxCommitSeq = _revisionTreeApplied;
+    // happen that in the meantime the tree has been moved forward or a tree
+    // was rebuilt and _revisionTreeApplied is now greater than the seq nr
+    // we get passed in. In this case we have to bump the seq nr forward,
+    // because we cannot generate a tree from the past.
+    correctedMaxCommitSeq = _revisionTreeApplied;
   }
 
-  maxCommitSeq = _meta.committableSeq(maxCommitSeq);
+  auto maxCommitableSeq = _meta.committableSeq(correctedMaxCommitSeq);
+  TRI_ASSERT(maxCommitableSeq <= correctedMaxCommitSeq);
+  auto maxCommitSeq = maxCommitableSeq;
   if ((force || needToPersistRevisionTree(maxCommitSeq, guard)) &&
       _revisionTreeCanBeSerialized) {
     rocksdb::SequenceNumber seq = maxCommitSeq;
 
-    TRI_ASSERT(maxCommitSeq >= _revisionTreeApplied);
+    TRI_ASSERT(maxCommitSeq >= _revisionTreeApplied)
+        << "maxCommitSeq = " << maxCommitSeq
+        << ", _revisionTreeApplied = " << _revisionTreeApplied
+        << ", wantedMaxCommitSeq = " << wantedMaxCommitSeq
+        << ", correctedMaxCommitSeq = " << correctedMaxCommitSeq;
 
     scratch.clear();
 
@@ -496,10 +519,7 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
           << ": caught exception during revision tree serialization: "
           << ex.what();
 
-      auto& engine = _logicalCollection.vocbase()
-                         .server()
-                         .getFeature<EngineSelectorFeature>()
-                         .engine<RocksDBEngine>();
+      auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
       auto* db = engine.db();
 
       rocksdb::WriteOptions wo;
@@ -521,8 +541,8 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
 
       batch.Clear();
 
-      // if we crash now, we won't have a revision tree and can rebuild it from
-      // scratch on restart.
+      // if we crash now, we won't have a revision tree and can rebuild it
+      // from scratch on restart.
 
       // now also prevent this revision tree from being serialized...
       _revisionTreeCanBeSerialized = false;
@@ -531,9 +551,10 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
       // schedule a rebuild for the tree:
       engine.scheduleTreeRebuild(coll.vocbase().id(), coll.guid());
 
-      // we cannot move beyond the seq no that we have already serialized up to.
-      // this will effectively keep the background thread from making progress,
-      // but the scheduled tree rebuild operation should unblock it eventually.
+      // we cannot move beyond the seq no that we have already serialized up
+      // to. this will effectively keep the background thread from making
+      // progress, but the scheduled tree rebuild operation should unblock
+      // it eventually.
       appliedSeq = std::min(appliedSeq, _revisionTreeSerializedSeq);
       return {};
     }
@@ -588,8 +609,8 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
         lastSerializedRevisionTree(maxCommitSeq, guard);
     appliedSeq = std::min(appliedSeq, seq);
 
-    // set the tree to sleep (note: hibernation requests may be ignored if there
-    // is not yet a need to hibernate)
+    // set the tree to sleep (note: hibernation requests may be ignored if
+    // there is not yet a need to hibernate)
     hibernateRevisionTree(guard);
   }
 
@@ -600,9 +621,13 @@ bool RocksDBMetaCollection::needToPersistRevisionTree(
     rocksdb::SequenceNumber maxCommitSeq,
     std::unique_lock<std::mutex> const& lock) const {
   TRI_ASSERT(lock.owns_lock());
-  TRI_ASSERT(_logicalCollection.useSyncByRevision());
 
-  if (!_revisionTreeCanBeSerialized) {
+  if (!_revisionTreeCanBeSerialized ||
+      !_logicalCollection.useSyncByRevision()) {
+    // note: useSyncByRevision() can return false nowadays once a collection
+    // is marked as deleted. the deletion can even happen while
+    // RocksDBSettingsManager::sync() is running. we can thus ignore all
+    // collections here for which useSyncByRevision() returns false.
     return false;
   }
 
@@ -660,8 +685,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(
 
   // A transaction commit proceeds as follows:
   //
-  //  1. Note the latest sequence number in the RocksDB WAL, call it "beginSeq"
-  //  2. Create a blocker for all collections involved with beginSeq, if this
+  //  1. Note the latest sequence number in the RocksDB WAL, call it
+  //  "beginSeq"
+  //  2. Create a blocker for all collections involved with beginSeq, if
+  //  this
   //     is not possible, bump beginSeq forward (by getting a new latest
   //     sequence number from RocksDB). After this step, we have blockers
   //     on all collections involved for sequence numbers, which are all
@@ -701,9 +728,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::lastSerializedRevisionTree(
     // with its commit marker at a sequence number between
     // `_revisionTreeSerializedSeq` and `seq` (i.e. its
     // `postCommitSeq`). Then it must have before got a blocker for its
-    // `beginSeq` number in Step 2 above. So either, we still see the blocker,
-    // or the corresponding operations have already been added to the buffers,
-    // or they have already been applied to the tree, in which case
+    // `beginSeq` number in Step 2 above. So either, we still see the
+    // blocker, or the corresponding operations have already been added to
+    // the buffers, or they have already been applied to the tree, in which
+    // case
     // `_revisionTreeApplied` would be larger than `seq`. q.e.d.
     LOG_TOPIC("32d45", TRACE, Logger::ENGINES)
         << "adjusting sequence number for " << _logicalCollection.name()
@@ -723,6 +751,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     std::string& output, rocksdb::SequenceNumber commitSeq, bool force,
     std::unique_lock<std::mutex> const& lock) {
   TRI_ASSERT(lock.owns_lock());
+  if (_logicalCollection.deleted()) {
+    return commitSeq;
+  }
+
   TRI_ASSERT(_logicalCollection.useSyncByRevision());
 
   if (!_revisionTree && !haveBufferedOperations(lock)) {  // empty collection
@@ -730,8 +762,8 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   }
   if (!_revisionTreeCanBeSerialized) {
     // previously, a revision tree was found to be bad and is now being
-    // repaired, in the meantime we return the number when it was last persisted
-    // to avoid lastSync jumping down again later
+    // repaired, in the meantime we return the number when it was last
+    // persisted to avoid lastSync jumping down again later
     return _revisionTreeSerializedSeq;
   }
 
@@ -768,39 +800,42 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
   return _revisionTreeSerializedSeq;
 }
 
-ResultT<std::pair<std::unique_ptr<containers::RevisionTree>,
-                  rocksdb::SequenceNumber>>
+futures::Future<ResultT<std::pair<std::unique_ptr<containers::RevisionTree>,
+                                  rocksdb::SequenceNumber>>>
 RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
-  auto ctxt =
-      transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-  SingleCollectionTransaction trx(ctxt, _logicalCollection,
+  auto origin =
+      transaction::OperationOriginInternal{"rebuilding revision tree"};
+  auto ctxt = transaction::StandaloneContext::create(
+      _logicalCollection.vocbase(), origin);
+  SingleCollectionTransaction trx(std::move(ctxt), _logicalCollection,
                                   AccessMode::Type::READ);
 
-  Result res = trx.begin();
+  Result res = co_await trx.beginAsync();
   if (res.fail()) {
     LOG_TOPIC("d1e53", WARN, arangodb::Logger::ENGINES)
         << "failed to begin transaction to rebuild revision tree "
            "for collection '"
         << _logicalCollection.id().id() << "'";
-    return res;
+    co_return res;
   }
 
   auto* state = RocksDBTransactionState::toState(&trx);
 
   if (checkForBlockers && _meta.hasBlockerUpTo(state->beginSeq())) {
-    return Result(TRI_ERROR_LOCKED,
-                  "cannot rebuild revision tree now as there are still "
-                  "transaction blockers in place");
+    co_return Result(TRI_ERROR_LOCKED,
+                     "cannot rebuild revision tree now as there are still "
+                     "transaction blockers in place");
   }
 
   auto iter =
       getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
   if (!iter) {
     LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
-        << "failed to retrieve replication iterator to rebuild revision tree "
+        << "failed to retrieve replication iterator to rebuild revision "
+           "tree "
            "for collection '"
         << _logicalCollection.id().id() << "'";
-    return Result(TRI_ERROR_INTERNAL);
+    co_return Result(TRI_ERROR_INTERNAL);
   }
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(iter.get());
@@ -809,7 +844,7 @@ RocksDBMetaCollection::revisionTreeFromCollection(bool checkForBlockers) {
   // not track its memory usage here, but rather at some indirect call sites
   // only.
   auto newTree = buildTreeFromIterator(it);
-  return std::make_pair(std::move(newTree), state->beginSeq());
+  co_return std::make_pair(std::move(newTree), state->beginSeq());
 }
 
 std::unique_ptr<containers::RevisionTree>
@@ -827,7 +862,16 @@ RocksDBMetaCollection::buildTreeFromIterator(
       revisions.clear();
 
       if (_logicalCollection.vocbase().server().isStopping()) {
+        // server shutdown
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      if (_logicalCollection.vocbase().isDropped()) {
+        // database dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (_logicalCollection.deleted()) {
+        // collection dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     }
     it.next();
@@ -856,16 +900,16 @@ void RocksDBMetaCollection::corruptRevisionTree(uint64_t count, uint64_t hash) {
 }
 #endif
 
-Result RocksDBMetaCollection::rebuildRevisionTree() {
+futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
   if (!_logicalCollection.useSyncByRevision()) {
-    return {};
+    co_return {};
   }
 
-  return basics::catchToResult([this]() -> Result {
+  auto const lambda = [this]() -> futures::Future<Result> {
     auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
     // get the exclusive lock on the collection, so that no new write
     // transactions can start for this collection
-    auto res = lockWrite(/*timeout*/ 180.0);
+    auto res = co_await lockWrite(/*timeout*/ 180.0);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
@@ -877,24 +921,35 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     // requires the buffer lock to be held!
     auto removeBufferedUpdatesUpTo = [this](rocksdb::SequenceNumber seq) {
       {
+        uint64_t memoryUsage = 0;
         auto it = _revisionTruncateBuffer.begin();
         while (it != _revisionTruncateBuffer.end() && *it <= seq) {
+          memoryUsage += bufferedEntrySize();
           it = _revisionTruncateBuffer.erase(it);
         }
+        decreaseBufferedMemoryUsage(memoryUsage);
       }
 
       {
+        uint64_t memoryUsage = 0;
         auto it = _revisionInsertBuffers.begin();
         while (it != _revisionInsertBuffers.end() && it->first <= seq) {
+          memoryUsage +=
+              bufferedEntrySize() + bufferedEntryItemSize() * it->second.size();
           it = _revisionInsertBuffers.erase(it);
         }
+        decreaseBufferedMemoryUsage(memoryUsage);
       }
 
       {
+        uint64_t memoryUsage = 0;
         auto it = _revisionRemovalBuffers.begin();
         while (it != _revisionRemovalBuffers.end() && it->first <= seq) {
+          memoryUsage +=
+              bufferedEntrySize() + bufferedEntryItemSize() * it->second.size();
           it = _revisionRemovalBuffers.erase(it);
         }
+        decreaseBufferedMemoryUsage(memoryUsage);
       }
     };
 
@@ -921,14 +976,6 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
           std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
 
-    {
-      // we may still have some buffered updates, so let's remove them.
-      std::unique_lock<std::mutex> guard(_revisionTreeLock);
-      removeBufferedUpdatesUpTo(blockerSeq - 1);
-
-      _revisionTreeApplied = blockerSeq - 1;
-    }
-
     // unlock the collection again
     lockGuard.fire();
 
@@ -940,9 +987,9 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     // now rebuild the tree from the collection data, using a
     // snapshot that will be acquired inside `revisionTreeFromCollection`.
     // note that the snapshot may have a sequence number > blockerSeq!
-    auto result = revisionTreeFromCollection(false);
+    auto result = co_await revisionTreeFromCollection(false);
     if (result.fail()) {
-      return result.result();
+      co_return result.result();
     }
 
     auto&& [newTree, beginSeq] = result.get();
@@ -958,18 +1005,14 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     }
 
     // we need to set a timeout for this operation, because if it does not
-    // complete within reasonable bounds, we need to relinquish the thread that
-    // is kept busy waiting here.
+    // complete within reasonable bounds, we need to relinquish the thread
+    // that is kept busy waiting here.
     auto const endTime =
         std::chrono::steady_clock::now() + std::chrono::minutes(2);
 
     // wait until all blockers before the snapshot have been removed
     while (true) {
       std::unique_lock<std::mutex> guard(_revisionTreeLock);
-
-      if (_revisionTreeApplied < beginSeq) {
-        _revisionTreeApplied = beginSeq;
-      }
 
       TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
         if (RandomGenerator::interval(uint32_t(2000)) > 1750) {
@@ -1004,8 +1047,8 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       TRI_ASSERT(_revisionTreeApplied <= beginSeq);
       TRI_ASSERT(_revisionTreeSerializedSeq <= beginSeq);
 
-      // establish the new tree. this will also track the memory usage of the
-      // tree
+      // establish the new tree. this will also track the memory usage of
+      // the tree
       _revisionTree = std::make_unique<RevisionTreeAccessor>(
           std::move(newTree), _logicalCollection);
       _revisionTreeApplied = beginSeq;
@@ -1017,9 +1060,10 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
       // finally remove all pending updates up to including our own sequence
       // number
       removeBufferedUpdatesUpTo(beginSeq);
-      return {};
+      co_return {};
     }
-  });
+  };
+  co_return co_await asResult(lambda());
 }
 
 void RocksDBMetaCollection::rebuildRevisionTree(
@@ -1038,10 +1082,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(
           ->GetComparator();
   rocksdb::Slice const end = documentBounds.end();
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   auto* db = engine.db();
 
   std::vector<std::uint64_t> revisions;
@@ -1058,7 +1099,16 @@ void RocksDBMetaCollection::rebuildRevisionTree(
       revisions.clear();
 
       if (_logicalCollection.vocbase().server().isStopping()) {
+        // server shutdown
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      if (_logicalCollection.vocbase().isDropped()) {
+        // database dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (_logicalCollection.deleted()) {
+        // collection dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     }
   }
@@ -1091,19 +1141,19 @@ std::pair<uint64_t, uint64_t> RocksDBMetaCollection::revisionTreeInfo() const {
   return {0, 0};
 }
 
-void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
-                                                bool fromCollection) {
+futures::Future<futures::Unit> RocksDBMetaCollection::revisionTreeSummary(
+    VPackBuilder& builder, bool fromCollection) {
   if (!_logicalCollection.useSyncByRevision()) {
-    return;
+    co_return;
   }
 
   uint64_t count = 0;
   uint64_t hash = 0;
-  uint64_t byteSize = 0;
+  uint64_t memoryUsage = 0;
 
   if (fromCollection) {
     // rebuild a temporary tree from the collection
-    auto result = revisionTreeFromCollection(false);
+    auto result = co_await revisionTreeFromCollection(false);
     // the tree is only there temporarily, so we intentionally do
     // not track its memory usage!
 
@@ -1115,7 +1165,7 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
 
     count = tree->count();
     hash = tree->rootValue();
-    byteSize = tree->byteSize();
+    memoryUsage = tree->memoryUsage();
   } else {
     // use existing revision tree
     std::unique_lock<std::mutex> guard(_revisionTreeLock);
@@ -1123,14 +1173,14 @@ void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder,
     if (_revisionTree != nullptr) {
       count = _revisionTree->count();
       hash = _revisionTree->rootValue();
-      byteSize = _revisionTree->compressedSize();
+      memoryUsage = _revisionTree->compressedSize();
     }
   }
 
   VPackObjectBuilder obj(&builder);
   obj->add(StaticStrings::RevisionTreeCount, VPackValue(count));
   obj->add(StaticStrings::RevisionTreeHash, VPackValue(hash));
-  obj->add("byteSize", VPackValue(byteSize));
+  obj->add("byteSize", VPackValue(memoryUsage));
 }
 
 void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
@@ -1160,11 +1210,7 @@ void RocksDBMetaCollection::revisionTreePendingUpdates(VPackBuilder& builder) {
 
 uint64_t RocksDBMetaCollection::placeRevisionTreeBlocker(
     TransactionId transactionId) {
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db = _engine.db();
 
   // make sure that the global revision tree in _revisionTree does not move
   // beyond the sequence number we get here from RocksDB:
@@ -1182,7 +1228,16 @@ uint64_t RocksDBMetaCollection::placeRevisionTreeBlocker(
     }
 
     if (_logicalCollection.vocbase().server().isStopping()) {
+      // server shutdown
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+    if (_logicalCollection.vocbase().isDropped()) {
+      // database dropped
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+    if (_logicalCollection.deleted()) {
+      // collection dropped
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
     std::this_thread::yield();
@@ -1210,11 +1265,7 @@ void RocksDBMetaCollection::bufferUpdates(
         << "rejecting change with too low sequence number " << seq
         << " for collection " << _logicalCollection.name();
 
-    TRI_ASSERT(_logicalCollection.vocbase()
-                   .server()
-                   .getFeature<EngineSelectorFeature>()
-                   .engine()
-                   .inRecovery());
+    TRI_ASSERT(_engine.inRecovery());
     return;
   }
 
@@ -1224,42 +1275,26 @@ void RocksDBMetaCollection::bufferUpdates(
   }
 
   LOG_TOPIC("bafcf", TRACE, Logger::ENGINES)
-      << "buffering " << inserts.size() << "inserts and " << removals.size()
+      << "buffering " << inserts.size() << " inserts and " << removals.size()
       << " removals "
       << "for collection " << _logicalCollection.name();
 
   if (!inserts.empty()) {
-    // will default-construct an empty entry if it does not yet exist
-    TRI_ASSERT(_revisionInsertBuffers.find(seq) ==
-               _revisionInsertBuffers.end());
-    auto& elem = _revisionInsertBuffers[seq];
-    if (elem.empty()) {
-      elem = std::move(inserts);
-    } else {
-      // should only happen in recovery, if at all
-      TRI_ASSERT(_logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine()
-                     .inRecovery());
-      elem.insert(elem.end(), inserts.begin(), inserts.end());
+    auto [it, inserted] =
+        _revisionInsertBuffers.emplace(seq, std::move(inserts));
+    TRI_ASSERT(inserted);
+    if (inserted) {
+      increaseBufferedMemoryUsage(bufferedEntrySize() +
+                                  bufferedEntryItemSize() * it->second.size());
     }
   }
   if (!removals.empty()) {
-    // will default-construct an empty entry if it does not yet exist
-    TRI_ASSERT(_revisionRemovalBuffers.find(seq) ==
-               _revisionRemovalBuffers.end());
-    auto& elem = _revisionRemovalBuffers[seq];
-    if (elem.empty()) {
-      elem = std::move(removals);
-    } else {
-      // should only happen in recovery, if at all
-      TRI_ASSERT(_logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine()
-                     .inRecovery());
-      elem.insert(elem.end(), removals.begin(), removals.end());
+    auto [it, inserted] =
+        _revisionRemovalBuffers.emplace(seq, std::move(removals));
+    TRI_ASSERT(inserted);
+    if (inserted) {
+      increaseBufferedMemoryUsage(bufferedEntrySize() +
+                                  bufferedEntryItemSize() * it->second.size());
     }
   }
 }
@@ -1274,7 +1309,11 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
     if (_revisionTreeApplied >= seq) {
       return;
     }
-    _revisionTruncateBuffer.emplace(seq);
+    auto [it, inserted] = _revisionTruncateBuffer.emplace(seq);
+    TRI_ASSERT(inserted);
+    if (inserted) {
+      increaseBufferedMemoryUsage(bufferedEntrySize());
+    }
   });
   return res;
 }
@@ -1344,23 +1383,42 @@ void RocksDBMetaCollection::applyUpdates(
           0;  // truncate will increase this sequence
       bool foundTruncate = false;
 
-      while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
-        ignoreSeq = *it;
-        TRI_ASSERT(ignoreSeq > _revisionTreeApplied);
-        TRI_ASSERT(ignoreSeq != 0);
-        foundTruncate = true;
-        it = _revisionTruncateBuffer.erase(it);
+      {
+        uint64_t memoryUsage = 0;
+        while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
+          ignoreSeq = *it;
+          TRI_ASSERT(ignoreSeq > _revisionTreeApplied);
+          TRI_ASSERT(ignoreSeq != 0);
+          foundTruncate = true;
+          memoryUsage += bufferedEntrySize();
+          it = _revisionTruncateBuffer.erase(it);
+        }
+        decreaseBufferedMemoryUsage(memoryUsage);
       }
 
       if (foundTruncate) {
         TRI_ASSERT(ignoreSeq <= commitSeq);
-        while (insertIt != _revisionInsertBuffers.end() &&
-               insertIt->first <= ignoreSeq) {
-          insertIt = _revisionInsertBuffers.erase(insertIt);
+
+        {
+          uint64_t memoryUsage = 0;
+          while (insertIt != _revisionInsertBuffers.end() &&
+                 insertIt->first <= ignoreSeq) {
+            memoryUsage += bufferedEntrySize() +
+                           bufferedEntryItemSize() * insertIt->second.size();
+            insertIt = _revisionInsertBuffers.erase(insertIt);
+          }
+          decreaseBufferedMemoryUsage(memoryUsage);
         }
-        while (removeIt != _revisionRemovalBuffers.end() &&
-               removeIt->first <= ignoreSeq) {
-          removeIt = _revisionRemovalBuffers.erase(removeIt);
+
+        {
+          uint64_t memoryUsage = 0;
+          while (removeIt != _revisionRemovalBuffers.end() &&
+                 removeIt->first <= ignoreSeq) {
+            memoryUsage += bufferedEntrySize() +
+                           bufferedEntryItemSize() * removeIt->second.size();
+            removeIt = _revisionRemovalBuffers.erase(removeIt);
+          }
+          decreaseBufferedMemoryUsage(memoryUsage);
         }
 
         checkIterators();
@@ -1376,6 +1434,7 @@ void RocksDBMetaCollection::applyUpdates(
     }
 
     // still holding the mutex here
+    bool worked = false;
 
     while (true) {
       checkIterators();
@@ -1386,26 +1445,47 @@ void RocksDBMetaCollection::applyUpdates(
       bool haveRemovals = removeIt != _revisionRemovalBuffers.end() &&
                           removeIt->first <= commitSeq;
 
+      TRI_ASSERT(haveInserts || insertIt == _revisionInsertBuffers.end() ||
+                 insertIt->first >= _revisionTreeApplied);
+      TRI_ASSERT(haveRemovals || removeIt == _revisionRemovalBuffers.end() ||
+                 removeIt->first >= _revisionTreeApplied);
+
       bool applyInserts =
           haveInserts && (!haveRemovals || removeIt->first >= insertIt->first);
       bool applyRemovals = haveRemovals && !applyInserts;
 
       // no inserts or removals left to apply, drop out of loop
       if (!applyInserts && !applyRemovals) {
+        TRI_ASSERT(!haveInserts);
+        TRI_ASSERT(!haveRemovals);
         // we have applied all changes up to including commitSeq
         TRI_IF_FAILURE("TransactionChaos::randomSleep") {
           std::this_thread::sleep_for(std::chrono::milliseconds(
               RandomGenerator::interval(uint32_t(5))));
         }
+        LOG_TOPIC("c06cf", TRACE, Logger::ENGINES)
+            << "nothing to do for shard " << _logicalCollection.vocbase().name()
+            << "/" << _logicalCollection.name()
+            << ". bumping applied sequence from " << _revisionTreeApplied
+            << " to " << commitSeq;
         bumpSequence(commitSeq);
+
+        if (worked) {
+          // delay next compression attempt so that we don't have data
+          // changes followed by an immediate compression
+          _revisionTree->delayCompression();
+        }
         return;
       }
 
+      worked = true;
+
       // another concurrent thread may insert new elements into
-      // _revisionInsertBuffers or _revisionRemovalBuffers while we are here. it
-      // is safe for us to access the elements pointed to by insertIt and
-      // removeIt here without holding the lock on these containers though,
-      // because of std::map's iterator invalidation rules:
+      // _revisionInsertBuffers or _revisionRemovalBuffers while we are
+      // here. it is safe for us to access the elements pointed to by
+      // insertIt and removeIt here without holding the lock on these
+      // containers though, because of std::map's iterator invalidation
+      // rules:
       // - emplace / insert: No iterators or references are invalidated.
       // - erase: References and iterators to the erased elements are
       // invalidated. Other references and iterators are not affected.
@@ -1420,17 +1500,19 @@ void RocksDBMetaCollection::applyUpdates(
 
         TRI_ASSERT(insertIt->first > _revisionTreeApplied);
 
-        // apply inserts, without holding the lock
+        // apply inserts.
         // if this throws we will not have modified _revisionInsertBuffers
         try {
           _revisionTree->insert(insertIt->second);
         } catch (std::exception const& ex) {
           LOG_TOPIC("27811", ERR, Logger::ENGINES)
-              << "unable to apply revision tree inserts for "
+              << "unable to apply " << insertIt->second.size()
+              << " revision tree insert operation(s) for sequence number "
+              << insertIt->first << " in "
               << _logicalCollection.vocbase().name() << "/"
               << _logicalCollection.name() << ": " << ex.what();
-          // it is pretty bad if this fails, so we want to see it in our tests
-          // and not overlook it.
+          // it is pretty bad if this fails, so we want to see it in our
+          // tests and not overlook it.
           TRI_ASSERT(false);
 
           // if an exception escapes from here, the insert will not have
@@ -1443,9 +1525,14 @@ void RocksDBMetaCollection::applyUpdates(
               RandomGenerator::interval(uint32_t(5))));
         }
 
-        // if the insert succeeded, we remove it from the list of operations,
-        // so it won't be reapplied even if subsequent operations fail.
+        // if the insert succeeded, we remove it from the list of
+        // operations, so it won't be reapplied even if subsequent
+        // operations fail.
+        uint64_t memoryUsage =
+            bufferedEntrySize() +
+            bufferedEntryItemSize() * insertIt->second.size();
         insertIt = _revisionInsertBuffers.erase(insertIt);
+        decreaseBufferedMemoryUsage(memoryUsage);
       }
 
       // check for removals
@@ -1458,22 +1545,25 @@ void RocksDBMetaCollection::applyUpdates(
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        // apply removals, without holding the lock
+        // apply removals.
         // if this throws we will not have modified _revisionRemovalBuffers
         try {
           _revisionTree->remove(removeIt->second);
         } catch (std::exception const& ex) {
           // this should never fail, anyway log...
           LOG_TOPIC("a5ba8", ERR, Logger::ENGINES)
-              << "unable to apply revision tree removals for "
+              << "unable to apply " << removeIt->second.size()
+              << " revision tree removal operation(s) for sequence number "
+              << removeIt->first << " in "
               << _logicalCollection.vocbase().name() << "/"
               << _logicalCollection.name() << ": " << ex.what();
-          // it is pretty bad if this fails in real life, but we would trigger
-          // this assertion during failure testing as well, so we cannot enable
-          // it TRI_ASSERT(false);
+          // it is pretty bad if this fails in real life, but we would
+          // trigger this assertion during failure testing as well, so we
+          // cannot enable it
+          TRI_ASSERT(false);
 
-          // if an exception escapes from here, the same remove will be retried
-          // next time.
+          // if an exception escapes from here, the same remove will be
+          // retried next time.
           throw;
         }
 
@@ -1482,9 +1572,14 @@ void RocksDBMetaCollection::applyUpdates(
               RandomGenerator::interval(uint32_t(5))));
         }
 
-        // if the remove succeeded, we remove it from the list of operations,
-        // so it won't be reapplied even if subsequent operations fail.
+        // if the remove succeeded, we remove it from the list of
+        // operations, so it won't be reapplied even if subsequent
+        // operations fail.
+        uint64_t memoryUsage =
+            bufferedEntrySize() +
+            bufferedEntryItemSize() * removeIt->second.size();
         removeIt = _revisionRemovalBuffers.erase(removeIt);
+        decreaseBufferedMemoryUsage(memoryUsage);
       }
     }
   });
@@ -1492,14 +1587,10 @@ void RocksDBMetaCollection::applyUpdates(
   // if memory usage changed, track the adjustment
   auto newMemoryUsage = _revisionTree->memoryUsage();
   if (oldMemoryUsage != newMemoryUsage) {
-    auto& engine = _logicalCollection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>();
     if (oldMemoryUsage > newMemoryUsage) {
-      engine.trackRevisionTreeMemoryDecrease(oldMemoryUsage - newMemoryUsage);
+      _engine.trackRevisionTreeMemoryDecrease(oldMemoryUsage - newMemoryUsage);
     } else {
-      engine.trackRevisionTreeMemoryIncrease(newMemoryUsage - oldMemoryUsage);
+      _engine.trackRevisionTreeMemoryIncrease(newMemoryUsage - oldMemoryUsage);
     }
   }
 
@@ -1512,9 +1603,7 @@ void RocksDBMetaCollection::applyUpdates(
   }
 
   TRI_IF_FAILURE("applyUpdates::forceHibernation2") {
-    if (_revisionTree != nullptr) {
-      _revisionTree->hibernate(/*force*/ true);
-    }
+    _revisionTree->hibernate(/*force*/ true);
   }
 }
 
@@ -1522,7 +1611,8 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
     containers::RevisionTree& tree, rocksdb::SequenceNumber commitSeq,
     std::unique_lock<std::mutex>& lock) const {
   TRI_ASSERT(lock.owns_lock());
-  TRI_ASSERT(_logicalCollection.useSyncByRevision());
+  TRI_ASSERT(_logicalCollection.useSyncByRevision() ||
+             _logicalCollection.deleted());
 
   return basics::catchVoidToResult([&]() -> void {
     auto insertIt = _revisionInsertBuffers.begin();
@@ -1591,76 +1681,106 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 
       // apply inserts
       if (inserts) {
-        tree.insert(*inserts);
+        try {
+          tree.insert(*inserts);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("7a4d5", ERR, Logger::ENGINES)
+              << "unable to apply revision tree inserts for "
+              << _logicalCollection.vocbase().name() << "/"
+              << _logicalCollection.name() << " for commit seq " << commitSeq
+              << ": " << ex.what();
+          throw;
+        }
       }
 
       // apply removals
       if (removals) {
-        tree.remove(*removals);
+        try {
+          tree.remove(*removals);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("f37b2", ERR, Logger::ENGINES)
+              << "unable to apply revision tree removals for "
+              << _logicalCollection.vocbase().name() << "/"
+              << _logicalCollection.name() << " for commit seq " << commitSeq
+              << ": " << ex.what();
+          throw;
+        }
       }
     }
   });
 }
 
-/// @brief lock a collection, with a timeout
-ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
-  uint64_t waitTime = 0;  // indicates that time is uninitialized
-  double startTime = 0.0;
+/// @brief write locks a collection, with a timeout
+futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
+  return doLock(timeout, AccessMode::Type::WRITE);
+}
 
+/// @brief write unlocks a collection
+void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
+
+/// @brief read locks a collection, with a timeout
+futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
+  TRI_IF_FAILURE("assertLockTimeoutLow") {
+    if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
+      // In the test we expect that fast path locking is done with 2s timeout.
+      TRI_ASSERT(timeout < 10);
+    }
+  }
+  TRI_IF_FAILURE("assertLockTimeoutHigh") {
+    if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
+      // In the test we expect that an lazy locking happens on the follower
+      // with the default timeout of more than 2 seconds:
+      TRI_ASSERT(timeout > 10);
+    }
+  }
+  return doLock(timeout, AccessMode::Type::READ);
+}
+
+/// @brief read unlocks a collection
+void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlock(); }
+
+/// @brief lock a collection, with a timeout
+futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
+    double timeout, AccessMode::Type mode) {
   // user read operations don't require any lock in RocksDB, so we won't get
   // here. user write operations will acquire the R/W lock in read mode, and
   // user exclusive operations will acquire the R/W lock in write mode.
   TRI_ASSERT(mode == AccessMode::Type::READ || mode == AccessMode::Type::WRITE);
 
-  while (true) {
-    bool gotLock = false;
-    if (mode == AccessMode::Type::WRITE) {
-      gotLock = _exclusiveLock.tryLockWrite();
-    } else if (mode == AccessMode::Type::READ) {
-      gotLock = _exclusiveLock.tryLockRead();
-    } else {
-      // we should never get here
-      TRI_ASSERT(false);
-      return TRI_ERROR_INTERNAL;
-    }
+  if (timeout <= 0) {
+    timeout = defaultLockTimeout;
+  }
+  auto timeout_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::duration<double>(timeout));
 
+  bool gotLock = false;
+  if (mode == AccessMode::Type::WRITE) {
+    auto result =
+        co_await asTry(_exclusiveLock.asyncTryLockExclusiveFor(timeout_ms));
+    gotLock = result.hasValue();
     if (gotLock) {
-      // keep the lock and exit the loop
-      return TRI_ERROR_NO_ERROR;
+      result.get().release();
     }
-
-    double now = TRI_microtime();
-    if (waitTime == 0) {  // initialize times
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = defaultLockTimeout;
-      }
-
-      startTime = now;
-      waitTime = 1;
-    } else {
-      TRI_ASSERT(startTime > 0.0);
-
-      if (now > startTime + timeout) {
-        LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
-            << "timed out after " << timeout << " s waiting for "
-            << AccessMode::typeString(mode) << " lock on collection '"
-            << _logicalCollection.name() << "'";
-
-        return TRI_ERROR_LOCK_TIMEOUT;
-      }
-    }
-
-    if (now - startTime < 0.001) {
-      std::this_thread::yield();
-    } else {
-      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
-
-      if (waitTime < 32) {
-        waitTime *= 2;
-      }
+  } else {
+    auto result =
+        co_await asTry(_exclusiveLock.asyncTryLockSharedFor(timeout_ms));
+    gotLock = result.hasValue();
+    if (gotLock) {
+      result.get().release();
     }
   }
+
+  if (gotLock) {
+    // keep the lock and exit
+    co_return TRI_ERROR_NO_ERROR;
+  }
+
+  LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
+      << "timed out after " << timeout << " s waiting for "
+      << AccessMode::typeString(mode) << " lock on collection '"
+      << _logicalCollection.name() << "'";
+
+  co_return TRI_ERROR_LOCK_TIMEOUT;
 }
 
 bool RocksDBMetaCollection::haveBufferedOperations(
@@ -1676,18 +1796,19 @@ std::unique_ptr<containers::RevisionTree>
 RocksDBMetaCollection::allocateEmptyRevisionTree(std::size_t depth) const {
   // determine the minimum revision id for the collection.
   // for smart edge collection children collections, the _rev values are
-  // determined via the agency's uniqid() function. they can be anything, so we
-  // need to assume 0 as the lower bound. for other collections, it is mostly
-  // safe to assume that there will be no data inserted with non-recent
-  // revisions. So a minRevision id that is relatively recent (HLC value from
-  // January 2021) will mostly work for these cases. There are some exceptions
-  // (e.g. some system collections are never dropped by the replication on the
-  // follower but only truncated, which may lead to collections on the follower
-  // being "older" than on the leader, plus because of DC2DC, which may insert
-  // arbitrary data into a collection). For these special cases no current
-  // minRevision value would do, but we would like to avoid using a value very
-  // much in the past. thus we still go with a HLC from January 2021 and in
-  // addition allow the minRevision to decrease in the revision trees.
+  // determined via the agency's uniqid() function. they can be anything, so
+  // we need to assume 0 as the lower bound. for other collections, it is
+  // mostly safe to assume that there will be no data inserted with
+  // non-recent revisions. So a minRevision id that is relatively recent
+  // (HLC value from January 2021) will mostly work for these cases. There
+  // are some exceptions (e.g. some system collections are never dropped by
+  // the replication on the follower but only truncated, which may lead to
+  // collections on the follower being "older" than on the leader, plus
+  // because of DC2DC, which may insert arbitrary data into a collection).
+  // For these special cases no current minRevision value would do, but we
+  // would like to avoid using a value very much in the past. thus we still
+  // go with a HLC from January 2021 and in addition allow the minRevision
+  // to decrease in the revision trees.
   RevisionId minRevision = _logicalCollection.isSmartChild()
                                ? RevisionId::none()
                                : RevisionId::lowerBound();
@@ -1697,17 +1818,12 @@ RocksDBMetaCollection::allocateEmptyRevisionTree(std::size_t depth) const {
 void RocksDBMetaCollection::ensureRevisionTree() {
   // should have _revisionTreeLock held outside
   if (_revisionTree == nullptr) {
-    auto& engine = _logicalCollection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>();
-
     auto newTree = allocateEmptyRevisionTree(revisionTreeDepth);
     TRI_ASSERT(newTree->depth() == revisionTreeDepth);
 
     _revisionTree = std::make_unique<RevisionTreeAccessor>(std::move(newTree),
                                                            _logicalCollection);
-    _revisionTreeCreationSeq = engine.db()->GetLatestSequenceNumber();
+    _revisionTreeCreationSeq = _engine.db()->GetLatestSequenceNumber();
     _revisionTreeSerializedSeq = _revisionTreeCreationSeq;
     _revisionTreeCanBeSerialized = true;
 
@@ -1718,6 +1834,19 @@ void RocksDBMetaCollection::ensureRevisionTree() {
 
   TRI_ASSERT(_revisionTree != nullptr);
   TRI_ASSERT(_revisionTree->depth() == revisionTreeDepth);
+}
+
+void RocksDBMetaCollection::increaseBufferedMemoryUsage(
+    uint64_t value) noexcept {
+  _revisionsBufferedMemoryUsage += value;
+  _engine.trackRevisionTreeBufferedMemoryIncrease(value);
+}
+
+void RocksDBMetaCollection::decreaseBufferedMemoryUsage(
+    uint64_t value) noexcept {
+  TRI_ASSERT(_revisionsBufferedMemoryUsage >= value);
+  _revisionsBufferedMemoryUsage -= value;
+  _engine.trackRevisionTreeBufferedMemoryDecrease(value);
 }
 
 /// @brief construct from revision tree
@@ -1732,10 +1861,7 @@ RocksDBMetaCollection::RevisionTreeAccessor::RevisionTreeAccessor(
   TRI_ASSERT(_depth == revisionTreeDepth);
   TRI_ASSERT(_tree != nullptr);
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage());
 }
 
@@ -1743,10 +1869,7 @@ RocksDBMetaCollection::RevisionTreeAccessor::~RevisionTreeAccessor() {
   TRI_ASSERT((_tree == nullptr && !_compressed.empty()) ||
              (_tree != nullptr && _compressed.empty()));
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   if (_tree != nullptr) {
     engine.trackRevisionTreeMemoryDecrease(_tree->memoryUsage());
   } else if (!_compressed.empty()) {
@@ -1771,9 +1894,10 @@ void RocksDBMetaCollection::RevisionTreeAccessor::clear() {
 
   // do not track memory usage here. the caller has to do this
   _tree->clear();
-  TRI_ASSERT(_tree->memoryUsage() == 0);
+  TRI_ASSERT(_tree->memoryUsage() == containers::MerkleTreeBase::MetaSize);
   _compressed.clear();
   _compressible = true;
+  _lastHibernateAttempt = {};
 
   TRI_ASSERT(_tree != nullptr && _compressed.empty());
 }
@@ -1827,14 +1951,11 @@ void RocksDBMetaCollection::RevisionTreeAccessor::corrupt(uint64_t count,
 
   // track memory usage differences
   auto oldMemoryUsage = _tree->memoryUsage();
-  // corrupt will _insert_ intentionally broken data into the tree. it does not
-  // _remove_ data
+  // corrupt will _insert_ intentionally broken data into the tree. it does
+  // not _remove_ data
   _tree->corrupt(count, hash);
 
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
+  RocksDBEngine& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage() - oldMemoryUsage);
 }
 #endif
@@ -1866,18 +1987,28 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
       return;
     }
 
-    if (oldMemoryUsage == 0) {
-      // tree is empty -> we do not want to compress it!
+    if (oldMemoryUsage <= 256) {
+      // tree is empty or at least small -> we do not want to compress it!
       return;
     }
 
-    if (++_hibernationRequests < 10) {
+    auto now = std::chrono::steady_clock::now();
+
+    if (_lastHibernateAttempt.time_since_epoch().count() > 0 &&
+        now - _lastHibernateAttempt < std::chrono::minutes(1)) {
+      // wait at least one minute before retrying the compression
+      return;
+    }
+
+    if (++_hibernationRequests < 12) {
       // sit out the first few hibernation requests before we
       // actually work (10 is just an arbitrary value here to avoid
       // some pathologic hibernation/resurrection cycles, e.g. by
       // the statistics collections)
       return;
     }
+
+    _lastHibernateAttempt = now;
   }
 
   double start = TRI_microtime();
@@ -1891,18 +2022,16 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   LOG_TOPIC("45eae", DEBUG, Logger::REPLICATION)
       << "hibernating revision tree for " << _logicalCollection.vocbase().name()
       << "/" << _logicalCollection.name() << " with " << count
-      << " entries and size " << _tree->byteSize()
+      << " entries and size " << _tree->memoryUsage()
       << ", hibernated size: " << _compressed.size()
       << ", hibernation took: " << (TRI_microtime() - start);
 
   // we would like to see at least 50% compressibility
-  if (_compressed.size() * 2 < _tree->byteSize()) {
+  if (_compressed.size() * 2 < _tree->memoryUsage()) {
     // compression ratio ok.
     // remove tree from memory. now we only have _compressed
-    RocksDBEngine& engine = _logicalCollection.vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine<RocksDBEngine>();
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().engine<RocksDBEngine>();
     engine.trackRevisionTreeHibernation();
     engine.trackRevisionTreeMemoryIncrease(_compressed.size());
     engine.trackRevisionTreeMemoryDecrease(oldMemoryUsage);
@@ -1930,6 +2059,10 @@ void RocksDBMetaCollection::RevisionTreeAccessor::serializeBinary(
   }
 }
 
+void RocksDBMetaCollection::RevisionTreeAccessor::delayCompression() {
+  _lastHibernateAttempt = std::chrono::steady_clock::now();
+}
+
 // unfortunately we need to declare this method const although it can
 // modify internal (mutable) state
 void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
@@ -1949,16 +2082,15 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
                                      "unable to uncompress tree");
     }
 
-    RocksDBEngine& engine = _logicalCollection.vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine<RocksDBEngine>();
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().engine<RocksDBEngine>();
     engine.trackRevisionTreeResurrection();
     engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage());
     engine.trackRevisionTreeMemoryDecrease(_compressed.size());
 
     // reset hibernation counter
     _hibernationRequests = 0;
+    _lastHibernateAttempt = {};
 
     TRI_ASSERT(_tree->depth() == _depth);
 

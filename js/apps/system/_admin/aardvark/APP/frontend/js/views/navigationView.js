@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, templateEngine, $, window, sessionStorage, Storage, arangoHelper, _ */
+/* global templateEngine, frontendConfig */
 (function () {
   'use strict';
   window.NavigationView = Backbone.View.extend({
@@ -12,11 +10,20 @@
       'click .tab': 'navigateByTab',
       'click li': 'switchTab',
       'click .arangodbLogo': 'selectMenuItem',
-      'click .shortcut-icons p': 'showShortcutModal'
     },
 
     renderFirst: true,
     activeSubMenu: undefined,
+    isOffline: true,
+    isOfflineCounter: 0,
+    firstLogin: true,
+    timer: 15000,
+    lap: 0,
+    reconnectTimeout: null,
+    // last time of JWT renewal call, in seconds.
+    // this is initialized to the current time so we don't 
+    // fire off a renewal request at the very beginning.
+    lastTokenRenewal: Date.now() / 1000, 
 
     changeDB: function () {
       window.location.hash = '#login';
@@ -50,6 +57,74 @@
       Backbone.history.on('all', function () {
         self.selectMenuItem();
       });
+
+      // also server online check
+      window.setInterval(() => {
+        this.getVersion();
+      }, this.timer);
+      this.getVersion();
+
+      window.VISIBLE = true;
+      document.addEventListener('visibilitychange', () => {
+        window.VISIBLE = !window.VISIBLE;
+      });
+
+      $('#offlinePlaceholder button').on('click', () => {
+        this.getVersion();
+      });
+
+      window.setTimeout(() => {
+        if (window.frontendConfig.isCluster === true) {
+          $('.health-state').css('cursor', 'pointer');
+          $('.health-state').on('click', () => {
+            window.App.navigate('#nodes', {trigger: true});
+          });
+        }
+      }, 1000);
+
+      // track an activity once when we initialize this view
+      arangoHelper.noteActivity();
+      
+      window.setInterval(() => {
+        if (this.isOffline) {
+          // only try to renew token if we are still online
+          return;
+        }
+        
+        var frac = (frontendConfig.sessionTimeout >= 1800) ? 0.95 : 0.8;
+        // threshold for renewal: once session is x% over
+        var renewalThreshold = frontendConfig.sessionTimeout * frac;
+
+        var now = Date.now() / 1000;
+        var lastActivity = arangoHelper.lastActivity();
+
+        // seconds in which the last user activity counts as significant
+        var lastSignificantActivityTimePeriod = 90 * 60;
+
+        // if this is more than the renewal threshold, limit it
+        if (lastSignificantActivityTimePeriod > renewalThreshold * 0.95) {
+          lastSignificantActivityTimePeriod = renewalThreshold * 0.95;
+        }
+
+        if (lastActivity > 0 && (now - lastActivity) > lastSignificantActivityTimePeriod) {
+          // don't make an attempt to renew the token if last 
+          // user activity is longer than 90 minutes ago
+          return;
+        }
+
+        // to save some superfluous HTTP requests to the server, 
+        // try to renew only if session time is x% or more over
+        if (now - this.lastTokenRenewal < renewalThreshold) {
+          return;
+        }
+
+        arangoHelper.renewJwt(() => {
+          // successful renewal of token. now store last renewal time so
+          // that we later only renew if the session is again about to
+          // expire
+          this.lastTokenRenewal = now;
+        });
+      }, 15 * 1000);
     },
 
     showShortcutModal: function () {
@@ -120,6 +195,7 @@
       if (window.frontendConfig.isEnterprise === true) {
         $('#ArangoDBLogo').after('<span id="enterpriseLabel" style="display: none">Enterprise Edition</span>');
         $('#enterpriseLabel').fadeIn('slow');
+        $('.enterprise-menu').hide();
       } else {
         $('#ArangoDBLogo').after('<span id="communityLabel" style="display: none">Community Edition</span>');
         $('#communityLabel').fadeIn('slow');
@@ -142,10 +218,9 @@
           } else {
             self.showLicenseError();
           }
-        },
-        error: function () {
-          self.showLicenseError();
         }
+        // intentionally no error handling: non-root users may not be allowed to fetch license information, but in that case we do not want to show an error
+        // Additional note: This is required if "--server.harden true" is being set.
       });
     },
 
@@ -248,7 +323,7 @@
       var navigateTo = tab.id;
       var dropdown = false;
 
-      if (navigateTo === 'enterprise') {
+      if (navigateTo === 'enterprise' || navigateTo === 'shortcuts') {
         return;
       }
 
@@ -298,29 +373,6 @@
           name: '',
           view: undefined,
           active: false
-        }
-      ],
-      queries: [
-        {
-          name: 'Editor',
-          route: 'query',
-          active: true
-        },
-        {
-          name: 'Running Queries',
-          route: 'queryManagement',
-          params: {
-            active: true
-          },
-          active: undefined
-        },
-        {
-          name: 'Slow Query History',
-          route: 'queryManagement',
-          params: {
-            active: false
-          },
-          active: undefined
         }
       ]
     },
@@ -385,10 +437,19 @@
     },
 
     switchTab: function (e) {
-      var id = $(e.currentTarget).children().first().attr('id');
+      var link = $(e.currentTarget).children().first();
+      var id = link.attr('id');
 
       if (id === 'enterprise') {
-        window.open('https://www.arangodb.com/download-arangodb-enterprise/', '_blank');
+        e.preventDefault();
+        window.open(link.attr('href'), '_blank');
+        return;
+      }
+
+      if (id === 'shortcuts') {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        this.showShortcutModal();
         return;
       }
 
@@ -431,6 +492,176 @@
         }
       }
       arangoHelper.hideArangoNotifications();
+    },
+
+    showServerStatus: function (isOnline) {
+      if (!window.App.isCluster) {
+        if (isOnline === true) {
+          $('#healthStatus').removeClass('negative');
+          $('#healthStatus').addClass('positive');
+          $('.health-state').html('GOOD');
+          $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+          $('#offlinePlaceholder').hide();
+        } else {
+          $('#healthStatus').removeClass('positive');
+          $('#healthStatus').addClass('negative');
+          $('.health-state').html('UNKNOWN');
+          $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+
+          // remove modals if visible
+          window.modalView.hide();
+
+          // show offline overlay
+          $('#offlinePlaceholder').show();
+
+          // remove error messages
+          Noty.clearQueue();
+          Noty.closeAll();
+
+          this.reconnectAnimation(0);
+        }
+      } else {
+        this.renderClusterState(isOnline);
+      }
+    },
+
+    reconnectAnimation: function (lap) {
+      if (lap === 0) {
+        this.lap = lap;
+        $('#offlineSeconds').text(this.timer / 1000);
+        clearTimeout(this.reconnectTimeout);
+      }
+
+      if (this.lap < this.timer / 1000) {
+        this.lap++;
+        $('#offlineSeconds').text(this.timer / 1000 - this.lap);
+
+        this.reconnectTimeout = window.setTimeout(() => {
+          if (this.timer / 1000 - this.lap === 0) {
+            this.getVersion();
+          } else {
+            this.reconnectAnimation(this.lap);
+          }
+        }, 1000);
+      }
+    },
+
+    renderClusterState: function (connection) {
+      if (connection) {
+        $('#offlinePlaceholder').hide();
+
+        var callbackFunction = (data) => {
+          window.clusterHealth = data.Health;
+
+          var error = 0;
+
+          if (Object.keys(window.clusterHealth).length !== 0) {
+            _.each(window.clusterHealth, (node) => {
+              if (node.Role === 'DBServer' || node.Role === 'Coordinator') {
+                if (node.Status !== 'GOOD') {
+                  error++;
+                }
+              }
+            });
+
+            if (error > 0) {
+              $('#healthStatus').removeClass('positive');
+              $('#healthStatus').addClass('negative');
+              $('.health-state').html(error + ' NODE(S) ERROR');
+              $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+            } else {
+              $('#healthStatus').removeClass('negative');
+              $('#healthStatus').addClass('positive');
+              $('.health-state').html('NODES OK');
+              $('.health-icon').html('<i class="fa fa-check-circle"></i>');
+            }
+          } else {
+            $('.health-state').html('HEALTH ERROR');
+            $('#healthStatus').removeClass('positive');
+            $('#healthStatus').addClass('negative');
+            $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+          }
+        };
+
+        if (frontendConfig.clusterApiJwtPolicy !== 'jwt-all') {
+          // check cluster state
+          $.ajax({
+            type: 'GET',
+            cache: false,
+            url: arangoHelper.databaseUrl('/_admin/cluster/health'),
+            contentType: 'application/json',
+            processData: false,
+            async: true,
+            success: (data) => {
+              if (window.App) {
+                window.App.lastHealthCheckResult = data;
+              }
+              callbackFunction(data);
+              // notify NodesView about new health data
+              if (window.location.hash === '#nodes' && window.App && window.App.nodesView) {
+                window.App.nodesView.render(false);
+              }
+            },
+            error: () => {
+              if (window.App) {
+                window.App.lastHealthCheckResult = null;
+              }
+            }
+          });
+        }
+      } else {
+        $('#healthStatus').removeClass('positive');
+        $('#healthStatus').addClass('negative');
+        $('.health-state').html(window.location.host + ' OFFLINE');
+        $('.health-icon').html('<i class="fa fa-exclamation-circle"></i>');
+
+        // show offline overlay
+        $('#offlinePlaceholder').show();
+        this.reconnectAnimation(0);
+      }
+    },
+
+    getVersion: function () {
+      // always retry this call, because it also checks if the server is online
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/version'),
+        contentType: 'application/json',
+        processData: false,
+        async: true,
+        success: (data) => {
+          frontendConfig.version = data;
+          if (!frontendConfig.version.hasOwnProperty('version')) {
+            frontendConfig.version.version = 'N/A';
+          }
+          this.showServerStatus(true);
+          if (this.isOffline === true) {
+            this.isOffline = false;
+            this.isOfflineCounter = 0;
+            if (!this.firstLogin) {
+              window.setTimeout(() => {
+                this.showServerStatus(true);
+              }, 1000);
+            } else {
+              this.firstLogin = false;
+            }
+          }
+        },
+        error: (jqXHR) => {
+          if (jqXHR.status === 401) {
+            this.showServerStatus(true);
+            window.App.navigate('login', {trigger: true});
+          } else {
+            this.isOffline = true;
+            this.isOfflineCounter++;
+            if (this.isOfflineCounter >= 1) {
+              // arangoHelper.arangoError("Server", "Server is offline")
+              this.showServerStatus(false);
+            }
+          }
+        }
+      });
     }
 
   });

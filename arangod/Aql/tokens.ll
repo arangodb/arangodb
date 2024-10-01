@@ -18,21 +18,12 @@
 #include <algorithm>
 #include <cstdint>
 
-#if (_MSC_VER >= 1)
-// fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
-#pragma warning( disable : 4267)
-#endif
 }
 
 %{
-#include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/operating-system.h"
-
-#if _WIN32
-#include "Basics/win-utils.h"
-#endif
 
 // introduce the namespace here, otherwise following references to
 // the namespace in auto-generated headers might fail
@@ -44,6 +35,7 @@ class Parser;
 }
 }
 
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/grammar.hpp"
 #include "Aql/Functions.h"
@@ -103,10 +95,14 @@ class Parser;
 }
 
 (?i:LIMIT) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_LIMIT;
 }
 
 (?i:WINDOW) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_WINDOW;
 }
 
@@ -126,7 +122,7 @@ class Parser;
   return T_DESC;
 }
 
-(?i:NOT[ \t\r\n]+IN) {
+(?i:NOT[ \t\r\n]+IN)/[^_a-zA-Z0-9] {
   return T_NOT_IN;
 }
 
@@ -147,10 +143,14 @@ class Parser;
 }
 
 (?i:INTO) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_INTO;
 }
 
 (?i:WITH) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_WITH;
 }
 
@@ -195,22 +195,32 @@ class Parser;
 }
 
 (?i:OUTBOUND) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_OUTBOUND;
 }
 
 (?i:INBOUND) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_INBOUND;
 }
 
 (?i:ANY) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_ANY;
 }
 
 (?i:ALL) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_ALL;
 }
 
 (?i:NONE) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_NONE;
 }
 
@@ -219,6 +229,8 @@ class Parser;
 }
 
 (?i:LIKE) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_LIKE;
 }
 
@@ -278,7 +290,7 @@ class Parser;
   return T_ASSIGN;
 }
 
-(?i:![ \t\r\n]*IN) {
+(?i:![ \t\r\n]*IN)/[^_a-zA-Z0-9] {
   return T_NOT_IN;
 }
 

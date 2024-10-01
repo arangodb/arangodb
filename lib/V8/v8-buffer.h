@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,7 +48,9 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
 #include "V8/v8-globals.h"
 #include "V8/v8-wrapper.h"
@@ -57,15 +59,7 @@
 /// @brief buffer encoding
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef enum TRI_V8_encoding_e {
-  ASCII,
-  UTF8,
-  BASE64,
-  UCS2,
-  BINARY,
-  HEX,
-  BUFFER
-} TRI_V8_encoding_t;
+enum TRI_V8_encoding_t { ASCII, UTF8, BASE64, UCS2, BINARY, HEX, BUFFER };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief binary buffer
@@ -99,16 +93,14 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   /// @brief the buffer data for a handle
   //////////////////////////////////////////////////////////////////////////////
 
-  static inline char* data(v8::Isolate* iso, v8::Handle<v8::Value> val) {
+  static inline char* data(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     TRI_ASSERT(val->IsObject());
-    v8::Local<v8::Context> context = iso->GetCurrentContext();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
     auto o = TRI_GetObject(context, val);
     int32_t offsetValue = 0;
 
     if (o->InternalFieldCount() == 0) {
       // seems object has become a FastBuffer already
-      ISOLATE;
-
       if (TRI_HasProperty(context, isolate, o, "offset")) {
         v8::Handle<v8::Value> offset =
             TRI_GetProperty(context, isolate, o, "offset");
@@ -154,16 +146,14 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   /// @brief length of the data for a handle
   //////////////////////////////////////////////////////////////////////////////
 
-  static inline size_t length(v8::Isolate* iso, v8::Handle<v8::Value> val) {
+  static inline size_t length(v8::Isolate* isolate, v8::Handle<v8::Value> val) {
     TRI_ASSERT(val->IsObject());
-    v8::Local<v8::Context> context = iso->GetCurrentContext();
+    v8::Local<v8::Context> context = isolate->GetCurrentContext();
     auto o = TRI_GetObject(context, val);
     int32_t lengthValue = -1;
 
     if (o->InternalFieldCount() == 0) {
       // seems object has become a FastBuffer already
-      ISOLATE;
-
       if (TRI_HasProperty(context, isolate, o, "length")) {
         v8::Handle<v8::Value> length =
             TRI_GetProperty(context, isolate, o, "length");

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,12 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/Utils/ShardID.h"
+
+#include <functional>
+#include <string>
+#include <string_view>
+#include <memory>
 
 namespace arangodb {
 class ShardingInfo;
@@ -51,7 +55,7 @@ class ShardingStrategy {
 
   virtual bool usesDefaultShardKeys() const noexcept = 0;
 
-  virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;
+  virtual void toVelocyPack(velocypack::Builder& result) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find the shard that is responsible for a document, which is given
@@ -71,10 +75,10 @@ class ShardingStrategy {
   /// `_key` is the one and only sharding attribute.
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
-                                        bool docComplete, ShardID& shardID,
-                                        bool& usesDefaultShardKeys,
-                                        std::string_view const& key) = 0;
+  virtual ResultT<ShardID> getResponsibleShard(velocypack::Slice slice,
+                                               bool docComplete,
+                                               bool& usesDefaultShardKeys,
+                                               std::string_view key) = 0;
 };
 
 }  // namespace arangodb

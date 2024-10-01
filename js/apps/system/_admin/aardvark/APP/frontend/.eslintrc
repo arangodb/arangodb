@@ -1,0 +1,25 @@
+---
+  env:
+    browser: true
+
+  globals:
+    "_": readonly
+    "$": readonly
+    "arangoHelper": readonly
+    "Backbone": readonly
+    "CryptoJS": readonly
+    "d3": readonly
+    "define": readonly
+    "Dygraph": readonly
+    "Joi": readonly
+    "JSONEditor": readonly
+    "moment": readonly
+    "Noty": readonly
+    "numeral": readonly
+    "prettyBytes": readonly
+    "React": readonly
+    "ReactDOM": readonly
+    "sigma": readonly
+    "tippy": readonly
+  
+  ignorePatterns: ["lib/*.js"]

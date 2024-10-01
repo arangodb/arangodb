@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,7 +30,7 @@
 
 using namespace arangodb::aql;
 
-ModificationOptions::ModificationOptions(VPackSlice const& slice)
+ModificationOptions::ModificationOptions(velocypack::Slice slice)
     : OperationOptions() {
   VPackSlice obj = slice.get("modificationFlags");
 
@@ -49,6 +49,18 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
   overwriteMode = OperationOptions::determineOverwriteMode(
       basics::VelocyPackHelper::getStringView(obj, StaticStrings::OverwriteMode,
                                               ""));
+  if (velocypack::Slice s = obj.get(StaticStrings::RefillIndexCachesString);
+      s.isBoolean()) {
+    // this attribute can have 3 values: default, true and false. only
+    // pick it up when it is set to true or false
+    refillIndexCaches = s.isTrue() ? RefillIndexCaches::kRefill
+                                   : RefillIndexCaches::kDontRefill;
+  }
+
+  if (velocypack::Slice s = obj.get(StaticStrings::VersionAttributeString);
+      s.isString()) {
+    versionAttribute = s.copyString();
+  }
 
   ignoreErrors =
       basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false);
@@ -60,7 +72,7 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
       basics::VelocyPackHelper::getBooleanValue(obj, "exclusive", false);
 }
 
-void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
+void ModificationOptions::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder guard(&builder);
 
   // relevant attributes from OperationOptions
@@ -71,6 +83,18 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add(StaticStrings::IgnoreRevsString, VPackValue(ignoreRevs));
   builder.add(StaticStrings::IsRestoreString, VPackValue(isRestore));
 
+  if (refillIndexCaches != RefillIndexCaches::kDefault) {
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    builder.add(StaticStrings::RefillIndexCachesString,
+                VPackValue(refillIndexCaches == RefillIndexCaches::kRefill));
+  }
+
+  if (!versionAttribute.empty()) {
+    builder.add(StaticStrings::VersionAttributeString,
+                VPackValue(versionAttribute));
+  }
+
   if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
     builder.add(
         StaticStrings::OverwriteMode,
@@ -80,9 +104,6 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   // our own attributes
   builder.add("ignoreErrors", VPackValue(ignoreErrors));
   builder.add("ignoreDocumentNotFound", VPackValue(ignoreDocumentNotFound));
-  // "readCompleteInput" was removed in 3.9. We'll leave it here only to be
-  // downwards-compatible. TODO: remove attribute in 3.10
-  builder.add("readCompleteInput", VPackValue(false));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
 }

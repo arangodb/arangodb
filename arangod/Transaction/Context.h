@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,12 +25,11 @@
 
 #include <memory>
 
-#include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Containers/SmallVector.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Options.h>
 
 struct TRI_vocbase_t;
 
@@ -45,18 +44,16 @@ class CollectionNameResolver;
 class TransactionState;
 
 namespace transaction {
-
-class Methods;
+class CounterGuard;
 struct Options;
 
 class Context {
- public:
+ protected:
   Context(Context const&) = delete;
   Context& operator=(Context const&) = delete;
 
- protected:
   /// @brief create the context
-  explicit Context(TRI_vocbase_t& vocbase);
+  explicit Context(TRI_vocbase_t& vocbase, OperationOrigin operationOrigin);
 
  public:
   /// @brief destroy the context
@@ -91,21 +88,44 @@ class Context {
   TEST_VIRTUAL void returnBuilder(arangodb::velocypack::Builder*) noexcept;
 
   /// @brief get velocypack options with a custom type handler
-  TEST_VIRTUAL arangodb::velocypack::Options* getVPackOptions();
+  TEST_VIRTUAL velocypack::Options* getVPackOptions();
 
-  /// @brief unregister the transaction
-  /// this will save the transaction's id and status locally
-  void storeTransactionResult(TransactionId id, bool wasRegistered,
-                              bool isReadOnlyTransaction,
-                              bool isFollowerTranaction) noexcept;
-
- public:
   /// @brief get a custom type handler
   virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
 
   /// @brief get transaction state, determine commit responsiblity
   virtual std::shared_ptr<TransactionState> acquireState(
       transaction::Options const& options, bool& responsibleForCommit) = 0;
+
+  OperationOrigin operationOrigin() const noexcept { return _operationOrigin; }
+
+  /// @brief whether or not is from a streaming transaction (used to know
+  /// whether or not can read from query cache)
+  bool isStreaming() const noexcept { return _meta.isStreamingTransaction; }
+
+  /// @brief whether or not transaction is JS (used to know
+  /// whether or not can read from query cache)
+  bool isTransactionJS() const noexcept { return _meta.isJStransaction; }
+
+  bool isReadOnlyTransaction() const noexcept {
+    return _meta.isReadOnlyTransaction;
+  }
+
+  void setReadOnly() noexcept { _meta.isReadOnlyTransaction = true; }
+
+  /// @brief sets the transaction to be streaming (used to know whether or not
+  /// can read from query cache)
+  void setStreaming() noexcept {
+    TRI_ASSERT(_meta.isJStransaction == false);
+    _meta.isStreamingTransaction = true;
+  }
+
+  /// @brief sets the transaction to be JS (used to know whether or not
+  /// can read from query cache)
+  void setJStransaction() noexcept {
+    TRI_ASSERT(_meta.isStreamingTransaction == false);
+    _meta.isJStransaction = true;
+  }
 
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
@@ -123,6 +143,8 @@ class Context {
 
   virtual bool isV8Context() { return false; }
 
+  void setCounterGuard(std::shared_ptr<CounterGuard> guard) noexcept;
+
   /// @brief generates correct ID based on server type
   static TransactionId makeTransactionId();
 
@@ -130,23 +152,27 @@ class Context {
   std::shared_ptr<TransactionState> createState(
       transaction::Options const& options);
 
- protected:
   TRI_vocbase_t& _vocbase;
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
   containers::SmallVector<arangodb::velocypack::Builder*, 8> _builders;
   containers::SmallVector<std::string*, 4> _strings;
 
-  arangodb::velocypack::Options _options;
+  velocypack::Options _options;
+
+  OperationOrigin _operationOrigin;
 
  private:
   std::unique_ptr<CollectionNameResolver> _resolver;
 
+  std::shared_ptr<CounterGuard> _counterGuard;
+
   struct {
-    TransactionId id;
-    bool isReadOnlyTransaction;
-    bool isFollowerTransaction;
-  } _transaction;
+    bool isReadOnlyTransaction = false;
+    bool isFollowerTransaction = false;
+    bool isStreamingTransaction = false;
+    bool isJStransaction = false;
+  } _meta;
 };
 
 }  // namespace transaction

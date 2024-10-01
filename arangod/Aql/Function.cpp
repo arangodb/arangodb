@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,7 +37,7 @@ using namespace arangodb::aql;
 /// @brief create the function
 Function::Function(std::string const& name, char const* arguments,
                    std::underlying_type<Flags>::type flags,
-                   FunctionImplementation implementation)
+                   functions::FunctionImplementation implementation)
     : name(name),
       arguments(arguments),
       flags(flags),
@@ -70,12 +70,19 @@ Function::Function(std::string const& name, char const* arguments,
   // functions that read documents are not usable in analyzers.
   TRI_ASSERT(!hasFlag(Flags::CanReadDocuments) ||
              !hasFlag(Flags::CanUseInAnalyzer));
+
+  // only the V8 function does not have a C++ implementation.
+  // don't ever change this!
+  // note: CUSTOMSCORER and INVALID are only used by unit tests
+  TRI_ASSERT(hasCxxImplementation() || name == "V8" || name == "CUSTOMSCORER" ||
+             name == "INVALID")
+      << "unexpected AQL function without C++ implementation: " << name;
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // constructor to create a function stub. only used from tests
 Function::Function(std::string const& name,
-                   FunctionImplementation implementation)
+                   functions::FunctionImplementation implementation)
     : name(name),
       arguments("."),
       flags(makeFlags()),
@@ -151,6 +158,22 @@ void Function::initializeArguments() {
         } else if (conversions[position] == Conversion::None) {
           // we already had a parameter at this position
           conversions[position] = Conversion::Optional;
+        }
+        foundArg = true;
+        break;
+
+      case 'b':
+        // we found an arbitrary other parameter, but if it is a bind
+        // parameter, it must be expanded early
+
+        // set the conversion info for the position
+        if (conversions.size() <= position) {
+          // we don't yet have another parameter at this position
+          conversions.emplace_back(Conversion::RequiredBindParameter);
+        } else {
+          // we already had a parameter at this position - should not happen
+          TRI_ASSERT(false);
+          conversions[position] = Conversion::RequiredBindParameter;
         }
         foundArg = true;
         break;

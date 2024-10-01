@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,10 +29,17 @@
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
+#include "Agency/Node.h"
+#include "Agency/NodeDeserialization.h"
+#include "Agency/ReconfigureReplicatedLog.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
                                    std::string const& jobId,
@@ -47,10 +54,12 @@ ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
   std::string path = pos[status] + _jobId + "/";
   auto tmp_server = _snapshot.hasAsString(path + "server");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  auto tmp_undoMoves = _snapshot.hasAsBool(path + "undoMoves");
 
   if (tmp_server && tmp_creator) {
     _server = tmp_server.value();
     _creator = tmp_creator.value();
+    _undoMoves = tmp_undoMoves.value_or(true);
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
@@ -69,8 +78,8 @@ JOB_STATUS ResignLeadership::status() {
     return _status;
   }
 
-  auto const& todos = _snapshot.hasAsChildren(toDoPrefix).value().get();
-  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).value().get();
+  auto const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  auto const& pends = *_snapshot.hasAsChildren(pendingPrefix);
   size_t found = 0;
 
   for (auto const& subJob : todos) {
@@ -98,8 +107,7 @@ JOB_STATUS ResignLeadership::status() {
     return PENDING;
   }
 
-  Node::Children const& failed =
-      _snapshot.hasAsChildren(failedPrefix).value().get();
+  Node::Children const& failed = *_snapshot.hasAsChildren(failedPrefix);
   size_t failedFound = 0;
   for (auto const& subJob : failed) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -147,7 +155,7 @@ JOB_STATUS ResignLeadership::status() {
 
 bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("dead7", DEBUG, Logger::SUPERVISION)
-      << "Todo: Resign leadership server " + _server;
+      << "Todo: Resign leadership server " << _server;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -169,6 +177,7 @@ bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
       _jb->add("server", VPackValue(_server));
       _jb->add("jobId", VPackValue(_jobId));
       _jb->add("creator", VPackValue(_creator));
+      _jb->add("undoMoves", VPackValue(_undoMoves));
       _jb->add("timeCreated",
                VPackValue(timepointToString(std::chrono::system_clock::now())));
     }
@@ -189,7 +198,7 @@ bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("dead8", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -213,7 +222,7 @@ bool ResignLeadership::start(bool& aborts) {
 
   // Check that the server is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _server);
-  if (health != "GOOD") {
+  if (health != Supervision::HEALTH_STATUS_GOOD) {
     LOG_TOPIC("deada", DEBUG, Logger::SUPERVISION)
         << "server " << _server << " is currently " << health
         << ", not starting ResignLeadership job " << _jobId;
@@ -222,9 +231,9 @@ bool ResignLeadership::start(bool& aborts) {
 
   // Check that _to is not in `Target/CleanedServers`:
   VPackBuilder cleanedServersBuilder;
-  auto const& cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
+  auto const& cleanedServersNode = _snapshot.get(cleanedPrefix);
   if (cleanedServersNode) {
-    cleanedServersNode->get().toBuilder(cleanedServersBuilder);
+    cleanedServersNode->toBuilder(cleanedServersBuilder);
   } else {
     // ignore this check
     cleanedServersBuilder.clear();
@@ -233,7 +242,7 @@ bool ResignLeadership::start(bool& aborts) {
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
   if (cleanedServers.isArray()) {
     for (VPackSlice x : VPackArrayIterator(cleanedServers)) {
-      if (x.isString() && x.copyString() == _server) {
+      if (x.isString() && x.stringView() == _server) {
         finish("", "", false, "server must not be in `Target/CleanedServers`");
         return false;
       }
@@ -242,12 +251,12 @@ bool ResignLeadership::start(bool& aborts) {
 
   // Check that _to is not in `Target/FailedServers`:
   //  (this node is expected to NOT exists, so make test before processing
-  //   so that hasAsNode does not generate a warning log message)
+  //   so that get does not generate a warning log message)
   VPackBuilder failedServersBuilder;
   if (_snapshot.has(failedServersPrefix)) {
-    auto const& failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
+    auto const& failedServersNode = _snapshot.get(failedServersPrefix);
     if (failedServersNode) {
-      failedServersNode->get().toBuilder(failedServersBuilder);
+      failedServersNode->toBuilder(failedServersBuilder);
     } else {
       // ignore this check
       failedServersBuilder.clear();
@@ -285,13 +294,13 @@ bool ResignLeadership::start(bool& aborts) {
     // will not be in the snapshot under ToDo, but in this case we find it
     // in _jb:
     if (_jb == nullptr) {
-      auto tmp_todo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
-      if (!tmp_todo) {
+      auto tmpTodo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
+      if (!tmpTodo) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("deadb", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -338,7 +347,8 @@ bool ResignLeadership::start(bool& aborts) {
     {
       VPackObjectBuilder objectForPrecondition(pending.get());
       addPreconditionServerNotBlocked(*pending, _server);
-      addPreconditionServerHealth(*pending, _server, "GOOD");
+      addPreconditionServerHealth(*pending, _server,
+                                  Supervision::HEALTH_STATUS_GOOD);
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
     }
@@ -349,28 +359,71 @@ bool ResignLeadership::start(bool& aborts) {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("deadd", DEBUG, Logger::SUPERVISION)
-        << "Pending: Clean out server " + _server;
+        << "Pending: Clean out server " << _server;
 
     return true;
   }
 
   LOG_TOPIC("deade", INFO, Logger::SUPERVISION)
-      << "Precondition failed for starting ResignLeadership job " + _jobId;
+      << "Precondition failed for starting ResignLeadership job " << _jobId;
 
   return false;
+}
+
+void ResignLeadership::scheduleJobsR2(std::shared_ptr<Builder>& trx,
+                                      DatabaseID const& database, size_t& sub) {
+  auto replicatedLogsPath =
+      basics::StringUtils::concatT("/Target/ReplicatedLogs/", database);
+  auto logs = _snapshot.hasAsChildren(replicatedLogsPath);
+
+  for (auto const& [logIdString, logNode] : *logs) {
+    auto logTarget = deserialize<replication2::agency::LogTarget>(logNode);
+    auto logPlan = readLogPlan(_snapshot, database, logTarget.id);
+
+    bool changeLeader = [&] {
+      if (logTarget.leader == _server) {
+        return true;
+      }
+      if (logPlan && logPlan->currentTerm && logPlan->currentTerm->leader) {
+        return logPlan->currentTerm->leader->serverId == _server;
+      }
+      return false;
+    }();
+
+    if (changeLeader) {
+      auto replacement =
+          findOtherHealthyParticipant(_snapshot, logTarget, {_server});
+
+      if (replacement.empty()) {
+        continue;
+      }
+
+      auto undo =
+          _undoMoves ? std::optional<std::string>{_server} : std::nullopt;
+      ReconfigureReplicatedLog(
+          _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
+          database, logTarget.id,
+          {ReconfigureOperation{
+              ReconfigureOperation::SetLeader{.participant = replacement}}},
+          // cppcheck-suppress accessMoved
+          std::move(undo))
+          .create(trx);
+    }
+  }
 }
 
 bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
   Node::Children const& databaseProperties =
-      _snapshot.hasAsChildren(planDBPrefix).value().get();
-  Node::Children const& databases =
-      _snapshot.hasAsChildren(planColPrefix).value().get();
+      *_snapshot.hasAsChildren(planDBPrefix);
+  Node::Children const& databases = *_snapshot.hasAsChildren(planColPrefix);
   size_t sub = 0;
 
   for (auto const& database : databases) {
-    if (isReplicationTwoDB(databaseProperties, database.first)) {
+    bool const isRepl2 = isReplicationTwoDB(databaseProperties, database.first);
+    if (isRepl2) {
+      scheduleJobsR2(trx, database.first, sub);
       continue;
     }
 
@@ -382,24 +435,23 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         continue;
       }
 
-      for (auto const& shard :
-           collection.hasAsChildren("shards").value().get()) {
+      for (auto const& shard : *collection.hasAsChildren("shards")) {
         // Only shards, which are affected
         int found = -1;
         int count = 0;
-        for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
-          if (dbserver.copyString() == _server) {
+        for (VPackSlice dbserver : *shard.second->getArray()) {
+          if (dbserver.stringView() == _server) {
             found = count;
             break;
           }
           count++;
         }
+
         if (found == -1) {
           continue;
         }
 
         bool isLeader = (found == 0);
-
         if (isLeader) {
           std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
               _snapshot, database.first, collptr.first, shard.first, _server);
@@ -409,8 +461,9 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           }
 
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                    _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, true)
+                    _jobId, database.first, collptr.first, ShardID{shard.first},
+                    _server, toServer, isLeader, /*remainsFollower*/ true,
+                    _undoMoves)
               .withParent(_jobId)
               .create(trx);
 
@@ -460,10 +513,8 @@ arangodb::Result ResignLeadership::abort(std::string const& reason) {
   }
 
   // Abort all our subjobs:
-  Node::Children const& todos =
-      _snapshot.hasAsChildren(toDoPrefix).value().get();
-  Node::Children const& pends =
-      _snapshot.hasAsChildren(pendingPrefix).value().get();
+  Node::Children const& todos = *_snapshot.hasAsChildren(toDoPrefix);
+  Node::Children const& pends = *_snapshot.hasAsChildren(pendingPrefix);
 
   std::string moveShardAbortReason = "resign leadership aborted: " + reason;
 

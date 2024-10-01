@@ -1,7 +1,80 @@
-$c-body-color: #333;
-$c-login-bg: #dee8d0;
+:root {
+  --green-50: #f5faeb;
+  --green-100: #e9f4d3;
+  --green-200: #d5e9ad;
+  --green-300: #b8da7c;
+  --green-400: #9dc853;
+  --green-500: #7ead35;
+  --green-600: #608726;
+  --green-700: #4b6922;
+  --green-800: #3e5420;
+  --green-900: #35481f;
+  --green-950: #1a270c;
+  --red-50: #fff2f1;
+  --red-100: #ffe1df;
+  --red-200: #ffc7c4;
+  --red-300: #ffa19b;
+  --red-400: #ff6a61;
+  --red-500: #ff3b30;
+  --red-600: #e6190d;
+  --red-700: #cc1409;
+  --red-800: #a8150c;
+  --red-900: #8b1811;
+  --red-950: #4c0703;
+  --gray-50: #f8f8f8;
+  --gray-100: #f0f0f0;
+  --gray-200: #e5e5e5;
+  --gray-300: #d1d1d1;
+  --gray-400: #b4b4b4;
+  --gray-500: #9a9a9a;
+  --gray-600: #818181;
+  --gray-700: #6a6a6a;
+  --gray-800: #5a5a5a;
+  --gray-900: #4e4e4e;
+  --gray-950: #282828;
+  --yellow-50: #fef9e8;
+  --yellow-100: #fef0c3;
+  --yellow-200: #fee28a;
+  --yellow-300: #fdd147;
+  --yellow-400: #fac215;
+  --yellow-500: #eab308;
+  --yellow-600: #ca9a04;
+  --yellow-700: #a17c07;
+  --yellow-800: #85680e;
+  --yellow-900: #715a12;
+  --yellow-950: #423306;
 
-$c-arangodb-green: rgb(159, 175, 77);
+  --blue-50: #f0faff;
+  --blue-100: #e0f4fe;
+  --blue-200: #bae6fd;
+  --blue-300: #7dd1fc;
+  --blue-400: #38b7f8;
+  --blue-500: #0e9fe9;
+  --blue-600: #0284c7;
+  --blue-700: #036ba1;
+  --blue-800: #075a85;
+  --blue-900: #0c4d6e;
+  --blue-950: #083349;
+
+  --orange-50: #fff4ed;
+  --orange-100: #ffe6d5;
+  --orange-200: #feccaa;
+  --orange-300: #fdac74;
+  --orange-400: #fb8a3c;
+  --orange-500: #f97316;
+  --orange-600: #ea670c;
+  --orange-700: #c2570c;
+  --orange-800: #9a4a12;
+  --orange-900: #7c3d12;
+  --orange-950: #432007;
+
+  --button-text-color: white;
+  --font-family: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono-font-family: droid sans mono, monospace, courier new, courier, sans-serif;
+}
+
+$c-body-color: black;
+$c-login-bg: #dee8d0;
 
 $c-lightgreen-bg: rgba(222, 233, 207, 1);
 $c-lightgreen-2-bg: #f5f8f0;
@@ -10,30 +83,30 @@ $c-lightgreen-2-transp-bg: rgba(245, 248, 240, .95);
 
 $c-pong-green: rgb(140, 219, 139);
 
-$c-positive: rgb(46, 204, 113);
-$c-positive-hover: rgb(88, 214, 141);
+$c-positive: var(--green-600);
+$c-positive-hover: var(--green-700);
 
 $c-positive-high-transparency: rgba($c-positive, 0.1);
 $c-positive-low-transparency: rgba($c-positive, 0.2);
 
 $c-table-odd-color: rgba(104, 103, 102, .05);
 
-$c-negative: #e74c3c;
-$c-negative-hover: #ec7063;
-$c-negative-bg: desaturate(lighten($c-negative-hover, 40%), 50%);
+$c-negative: var(--red-600);
+$c-negative-hover: var(--red-700);
+$c-negative-bg: desaturate(lighten(#cc1409, 40%), 50%);
 
 $c-neutral: #8f8d8c;
 $c-neutral-hover: #736b68;
 
-$c-warning: #f1c40f;
-$c-warning-hover: #f4d313;
+$c-warning: var(--yellow-500);
+$c-warning-hover: var(--yellow-600);
 $c-unloaded: #ff8f35;
 
 $c-primary: #34495e;
 $c-primary-hover: #415b76;
 
-$c-notification: #faa020;
-$c-notification-hover: #f87c0f;
+$c-notification: var(--orange-600);
+$c-notification-hover: var(--orange-700);
 
 $c-inactive: #d3d3d3;
 $c-inactive-hover: #d3d3d3;
@@ -187,3 +260,4 @@ $c-active-green: rgb(119, 203, 153);
 $c-test-green: rgb(100, 144, 104);
 $c-test-green-transp: rgba(100, 144, 104, .7);
 $c-login-grey: #f2f2f2;
+

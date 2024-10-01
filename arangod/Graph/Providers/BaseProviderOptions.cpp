@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -83,10 +83,10 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
     aql::FixedVarExpressionContext& expressionContext,
     std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
         filterConditionVariables,
-    std::unordered_map<std::string, std::vector<std::string>> const&
-        collectionToShardMap,
+    MonitoredCollectionToShardMap const& collectionToShardMap,
     aql::Projections const& vertexProjections,
-    aql::Projections const& edgeProjections)
+    aql::Projections const& edgeProjections, bool produceVertices,
+    bool useCache)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
@@ -94,7 +94,9 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
       _weightCallback(std::nullopt),
       _filterConditionVariables(filterConditionVariables),
       _vertexProjections{vertexProjections},
-      _edgeProjections{edgeProjections} {}
+      _edgeProjections{edgeProjections},
+      _produceVertices(produceVertices),
+      _useCache(useCache) {}
 
 aql::Variable const* SingleServerBaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -107,7 +109,7 @@ SingleServerBaseProviderOptions::indexInformations() {
   return _indexInformation;
 }
 
-std::unordered_map<std::string, std::vector<std::string>> const&
+MonitoredCollectionToShardMap const&
 SingleServerBaseProviderOptions::collectionToShardMap() const {
   return _collectionToShardMap;
 }
@@ -117,8 +119,16 @@ SingleServerBaseProviderOptions::expressionContext() const {
   return _expressionContext;
 }
 
-bool SingleServerBaseProviderOptions::hasWeightMethod() const {
+bool SingleServerBaseProviderOptions::hasWeightMethod() const noexcept {
   return _weightCallback.has_value();
+}
+
+bool SingleServerBaseProviderOptions::produceVertices() const noexcept {
+  return _produceVertices;
+}
+
+bool SingleServerBaseProviderOptions::useCache() const noexcept {
+  return _useCache;
 }
 
 void SingleServerBaseProviderOptions::setWeightEdgeCallback(
@@ -195,9 +205,11 @@ RefactoredClusterTraverserCache* ClusterBaseProviderOptions::getCache() {
   return _cache.get();
 }
 
-bool ClusterBaseProviderOptions::isBackward() const { return _backward; }
+bool ClusterBaseProviderOptions::isBackward() const noexcept {
+  return _backward;
+}
 
-bool ClusterBaseProviderOptions::produceVertices() const {
+bool ClusterBaseProviderOptions::produceVertices() const noexcept {
   return _produceVertices;
 }
 

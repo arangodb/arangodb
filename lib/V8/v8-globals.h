@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,19 +23,24 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <string.h>
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 
 #include <v8.h>
 
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/operating-system.h"
 #include "V8/JavaScriptSecurityContext.h"
+#include "V8/V8PlatformFeature.h"
 
 struct TRI_v8_global_t;
 struct TRI_vocbase_t;
@@ -49,9 +54,6 @@ class ApplicationServer;
 class CommunicationFeaturePhase;
 }  // namespace application_features
 }  // namespace arangodb
-
-/// @brief shortcut for fetching the isolate from the thread context
-#define ISOLATE v8::Isolate* isolate = v8::Isolate::GetCurrent()
 
 /// @brief macro to initiate a try-catch sequence for V8 callbacks
 #define TRI_V8_TRY_CATCH_BEGIN(isolateVar) \
@@ -145,14 +147,6 @@ v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate,
 /// @brief shortcut for creating a v8 symbol for the specified string
 #define TRI_V8_STRING_UTF16(isolate, name, length) \
   v8TwoByteStringFactory(isolate, (name), (int)(length))
-
-/// @brief shortcut for current v8 globals and scope
-#define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                            \
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(             \
-      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT)); \
-  v8::HandleScope scope(isolate);                                   \
-  do {                                                              \
-  } while (0)
 
 /// @brief shortcut for throwing an exception with an error code
 #define TRI_V8_SET_EXCEPTION(code)        \
@@ -379,81 +373,47 @@ v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate,
 #define TRI_GET_STRING(VAL) \
   VAL->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>())
 
-inline v8::Local<v8::Object> TRI_GetObject(v8::Local<v8::Context>& context,
-                                           v8::Handle<v8::Value> const& val) {
-  return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
-}
+v8::Local<v8::Object> TRI_GetObject(v8::Local<v8::Context> context,
+                                    v8::Handle<v8::Value> val);
 
-inline bool TRI_HasProperty(v8::Local<v8::Context>& context,
-                            v8::Isolate* isolate,
-                            v8::Local<v8::Object> const& obj, char const* key) {
-  return obj->Has(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(false);
-}
+bool TRI_HasProperty(v8::Local<v8::Context> context, v8::Isolate* isolate,
+                     v8::Local<v8::Object> obj, std::string_view key);
 
-inline bool TRI_HasProperty(v8::Local<v8::Context>& context,
-                            v8::Isolate* isolate,
-                            v8::Local<v8::Object> const& obj,
-                            v8::Local<v8::String> const& key) {
-  return obj->Has(context, key).FromMaybe(false);
-}
+bool TRI_HasProperty(v8::Local<v8::Context> context, v8::Isolate* isolate,
+                     v8::Local<v8::Object> obj, v8::Local<v8::String> key);
 
-inline bool TRI_HasRealNamedProperty(v8::Local<v8::Context>& context,
+bool TRI_HasRealNamedProperty(v8::Local<v8::Context> context,
+                              v8::Isolate* isolate, v8::Local<v8::Object> obj,
+                              v8::Local<v8::String> key);
+
+v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context> context,
                                      v8::Isolate* isolate,
-                                     v8::Local<v8::Object> const& obj,
-                                     v8::Local<v8::String> const& key) {
-  return obj->HasRealNamedProperty(context, key).FromMaybe(false);
-}
+                                     v8::Local<v8::Object> obj,
+                                     std::string_view key);
 
-inline v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
-                                            v8::Isolate* isolate,
-                                            v8::Local<v8::Object> const& obj,
-                                            char const* key) {
-  return obj->Get(context, TRI_V8_ASCII_STRING(isolate, key))
-      .FromMaybe(v8::Local<v8::Value>());
-}
-inline v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context>& context,
-                                            v8::Isolate* isolate,
-                                            v8::Local<v8::Object> const& obj,
-                                            v8::Local<v8::String> const& key) {
-  return obj->Get(context, key).FromMaybe(v8::Local<v8::Value>());
-}
+v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context> context,
+                                     v8::Isolate* isolate,
+                                     v8::Local<v8::Object> obj,
+                                     v8::Local<v8::String> key);
 
-inline bool TRI_DeleteProperty(v8::Local<v8::Context>& context,
-                               v8::Isolate* isolate, v8::Local<v8::Object>& obj,
-                               char const* key) {
-  return obj->Delete(context, TRI_V8_ASCII_STRING(isolate, key))
-      .FromMaybe(false);
-}
-inline bool TRI_DeleteProperty(v8::Local<v8::Context>& context,
-                               v8::Isolate* isolate, v8::Local<v8::Object>& obj,
-                               v8::Local<v8::Value> const& key) {
-  return obj->Delete(context, key).FromMaybe(false);
-}
+bool TRI_DeleteProperty(v8::Local<v8::Context> context, v8::Isolate* isolate,
+                        v8::Local<v8::Object>& obj, std::string_view key);
 
-inline v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context>& context,
-                                          v8::Handle<v8::Value> const& val) {
-  return val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
-}
+bool TRI_DeleteProperty(v8::Local<v8::Context> context, v8::Isolate* isolate,
+                        v8::Local<v8::Object>& obj, v8::Local<v8::Value> key);
 
-inline v8::Local<v8::String> TRI_ObjectToString(
-    v8::Local<v8::Context>& context, v8::Handle<v8::Value> const& val) {
-  return val->ToString(context).FromMaybe(v8::Local<v8::String>());
-}
-inline std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
-                                      v8::Isolate* isolate,
-                                      v8::MaybeLocal<v8::Value> const& val) {
-  v8::String::Utf8Value x(isolate, val.FromMaybe(v8::Local<v8::Value>())
-                                       ->ToString(context)
-                                       .FromMaybe(v8::Local<v8::String>()));
-  return std::string(*x, x.length());
-}
+v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context> context,
+                                   v8::Handle<v8::Value> val);
 
-inline std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
-                                      v8::Isolate* isolate,
-                                      v8::Local<v8::String> const& val) {
-  v8::String::Utf8Value x(isolate, val);
-  return std::string(*x, x.length());
-}
+v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context> context,
+                                         v8::Handle<v8::Value> val);
+
+std::string TRI_ObjectToString(v8::Local<v8::Context> context,
+                               v8::Isolate* isolate,
+                               v8::MaybeLocal<v8::Value> val);
+
+std::string TRI_ObjectToString(v8::Local<v8::Context> context,
+                               v8::Isolate* isolate, v8::Local<v8::String> val);
 
 /// @brief retrieve the instance of the TRI_v8_global_t of the current thread
 ///   implicitly creates a variable 'v8g' with a pointer to it.
@@ -464,10 +424,6 @@ inline std::string TRI_ObjectToString(v8::Local<v8::Context>& context,
 
 #define TRI_GET_SERVER_GLOBALS(server)                    \
   V8Global<server>* v8g = static_cast<V8Global<server>*>( \
-      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
-
-#define TRI_GET_GLOBALS2(isolate)                       \
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>( \
       isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT))
 
 /// @brief fetch a string-member from the global into the local scope of the
@@ -536,13 +492,13 @@ struct TRI_v8_global_t {
   ~TRI_v8_global_t();
 
   /// @brief whether or not the context has active externals
-  inline bool hasActiveExternals() const { return _activeExternals > 0; }
+  bool hasActiveExternals() const { return _activeExternals > 0; }
 
   /// @brief increase the number of active externals
-  inline void increaseActiveExternals() { ++_activeExternals; }
+  void increaseActiveExternals() { ++_activeExternals; }
 
   /// @brief decrease the number of active externals
-  inline void decreaseActiveExternals() { --_activeExternals; }
+  void decreaseActiveExternals() { --_activeExternals; }
 
   /// @brief agency template
   v8::Persistent<v8::ObjectTemplate> AgencyTempl;
@@ -570,9 +526,6 @@ struct TRI_v8_global_t {
 
   /// @brief replicated log template
   v8::Persistent<v8::ObjectTemplate> VocbaseReplicatedLogTempl;
-
-  /// @brief prototype state template
-  v8::Persistent<v8::ObjectTemplate> VocbasePrototypeStateTempl;
 
   /// @brief TRI_vocbase_t template
   v8::Persistent<v8::ObjectTemplate> VocbaseTempl;
@@ -680,6 +633,9 @@ struct TRI_v8_global_t {
   /// @brief "errorNum" key name
   v8::Persistent<v8::String> ErrorNumKey;
 
+  /// @brief "original" key name
+  v8::Persistent<v8::String> OriginalKey;
+
   /// @brief "headers" key name
   v8::Persistent<v8::String> HeadersKey;
 
@@ -752,14 +708,17 @@ struct TRI_v8_global_t {
   /// @brief "protocol" key name
   v8::Persistent<v8::String> ProtocolKey;
 
+  /// @brief "rawRequestBody" key name
+  v8::Persistent<v8::String> RawRequestBodyKey;
+
   /// @brief "rawSuffix" key name
   v8::Persistent<v8::String> RawSuffixKey;
 
+  /// @brief "refillIndexCaches" key name
+  v8::Persistent<v8::String> RefillIndexCachesKey;
+
   /// @brief "requestBody" key name
   v8::Persistent<v8::String> RequestBodyKey;
-
-  /// @brief "rawRequestBody" key name
-  v8::Persistent<v8::String> RawRequestBodyKey;
 
   /// @brief "requestType" key name
   v8::Persistent<v8::String> RequestTypeKey;
@@ -812,6 +771,9 @@ struct TRI_v8_global_t {
   /// @brief "value" key
   v8::Persistent<v8::String> ValueKey;
 
+  /// @brief "versionAttribute" key name
+  v8::Persistent<v8::String> VersionAttributeKey;
+
   /// @brief "version" key
   v8::Persistent<v8::String> VersionKeyHidden;
 
@@ -835,10 +797,10 @@ struct TRI_v8_global_t {
   v8::Persistent<v8::String> _ToKey;
 
   /// @brief currently request object (might be invalid!)
-  v8::Handle<v8::Value> _currentRequest;
+  v8::Persistent<v8::Value> _currentRequest;
 
   /// @brief currently response object (might be invalid!)
-  v8::Handle<v8::Value> _currentResponse;
+  v8::Persistent<v8::Value> _currentResponse;
 
   /// @brief information about the currently running transaction
   arangodb::transaction::V8Context* _transactionContext;
@@ -936,51 +898,23 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);
 
 /// @brief adds a method to the prototype of an object
 template<typename TARGET>
-bool TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl,
+void TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl,
                            v8::Handle<v8::String> name,
                            v8::FunctionCallback callback,
                            bool isHidden = false) {
-  // hidden method
   if (isHidden) {
+    // hidden method
     tpl->PrototypeTemplate()->Set(
         name, v8::FunctionTemplate::New(isolate, callback), v8::DontEnum);
-  }
-
-  // normal method
-  else {
+  } else {
+    // normal method
     tpl->PrototypeTemplate()->Set(name,
                                   v8::FunctionTemplate::New(isolate, callback));
   }
-  return true;
 }
 
 /// @brief adds a method to an object
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, v8::Function tpl,
-                             v8::Handle<v8::String> name,
-                             v8::Handle<v8::FunctionTemplate> callback,
-                             bool isHidden = false) {
-  auto context = TRI_IGETC;
-  // hidden method
-  if (isHidden) {
-    return tpl
-        .DefineOwnProperty(
-            context, name,
-            callback->GetFunction(context).FromMaybe(v8::Local<v8::Function>()),
-            v8::DontEnum)
-        .FromMaybe(false);
-  }
-  // normal method
-  else {
-    return tpl
-        .Set(context, name,
-             callback->GetFunction(context).FromMaybe(v8::Local<v8::Value>()))
-        .FromMaybe(false);
-  }
-  return false;
-}
-
-/// @brief adds a method to an object
-bool TRI_AddMethodVocbase(
+void TRI_AddMethodVocbase(
     v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
     v8::Handle<v8::String> name,
     void (*func)(v8::FunctionCallbackInfo<v8::Value> const&),

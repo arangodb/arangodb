@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,38 +27,40 @@
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 
-struct TRI_vocbase_t;  // forward declaration
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
-class VocbaseContext;  // forward declaration
+class VocbaseContext;
 }
 
 struct GeneralRequestMock : public arangodb::GeneralRequest {
   int64_t _contentLength;
-  std::unique_ptr<arangodb::VocbaseContext>
+  std::shared_ptr<arangodb::VocbaseContext>
       _context;  // VocbaseContext required for use with RestVocbaseBaseHandler
   arangodb::velocypack::Builder _payload;  // request body
 
   GeneralRequestMock(TRI_vocbase_t& vocbase);
   ~GeneralRequestMock();
   using arangodb::GeneralRequest::addSuffix;
-  virtual size_t contentLength() const override;
-  virtual void setDefaultContentType() override {
+  size_t contentLength() const noexcept override;
+  void setDefaultContentType() noexcept override {
     _contentType = arangodb::rest::ContentType::VPACK;
   }
-  virtual std::string_view rawPayload() const override;
-  virtual arangodb::velocypack::Slice payload(
-      bool strictValidation = true) override;
-  virtual void setPayload(
-      arangodb::velocypack::Buffer<uint8_t> buffer) override;
-  virtual void setData(arangodb::velocypack::Slice slice);
-  virtual arangodb::Endpoint::TransportType transportType() override;
+  std::string_view rawPayload() const override;
+  arangodb::velocypack::Slice payload(bool strictValidation = true) override;
+  void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override;
+  void setData(arangodb::velocypack::Slice slice);
   std::unordered_map<std::string, std::string>& values() { return _values; }
 };
 
 struct GeneralResponseMock : public arangodb::GeneralResponse {
   arangodb::velocypack::Builder _payload;
-  virtual bool isResponseEmpty() const override { return _payload.isEmpty(); }
+  virtual bool isResponseEmpty() const noexcept override {
+    return _payload.isEmpty();
+  }
 
   GeneralResponseMock(arangodb::ResponseCode code = arangodb::ResponseCode::OK);
   virtual void addPayload(
@@ -71,7 +73,15 @@ struct GeneralResponseMock : public arangodb::GeneralResponse {
       bool resolveExternals = true) override;
   virtual void addRawPayload(std::string_view payload) override;
   virtual void reset(arangodb::ResponseCode code) override;
-  virtual arangodb::Endpoint::TransportType transportType() override;
-  ErrorCode deflate() override;
-  bool isCompressionAllowed() override { return false; }
+  void setAllowCompression(
+      arangodb::rest::ResponseCompressionType rct) noexcept override {}
+  arangodb::rest::ResponseCompressionType compressionAllowed()
+      const noexcept override {
+    return arangodb::rest::ResponseCompressionType::kNoCompression;
+  }
+  virtual size_t bodySize() const override { return _payload.size(); }
+  virtual ErrorCode zlibDeflate(bool onlyIfSmaller) override;
+  virtual ErrorCode gzipCompress(bool onlyIfSmaller) override;
+  virtual ErrorCode lz4Compress(bool onlyIfSmaller) override;
+  void clearBody() noexcept override { _payload.clear(); }
 };

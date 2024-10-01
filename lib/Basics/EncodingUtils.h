@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,13 +23,12 @@
 
 #pragma once
 
+#include "Basics/ErrorCode.h"
+
 #include <cstddef>
 #include <cstdint>
 
-#include "Basics/ErrorCode.h"
-
-namespace arangodb {
-namespace encoding {
+namespace arangodb::encoding {
 
 template<typename T>
 [[nodiscard]] ErrorCode gzipUncompress(uint8_t const* compressed,
@@ -37,12 +36,23 @@ template<typename T>
                                        T& uncompressed);
 
 template<typename T>
-[[nodiscard]] ErrorCode gzipInflate(uint8_t const* compressed,
+[[nodiscard]] ErrorCode zlibInflate(uint8_t const* compressed,
                                     size_t compressedLength, T& uncompressed);
 
 template<typename T>
-[[nodiscard]] ErrorCode gzipDeflate(uint8_t const* uncompressed,
+[[nodiscard]] ErrorCode lz4Uncompress(uint8_t const* compressed,
+                                      size_t compressedLength, T& uncompressed);
+
+template<typename T>
+[[nodiscard]] ErrorCode gzipCompress(uint8_t const* uncompressed,
+                                     size_t uncompressedLength, T& compressed);
+
+template<typename T>
+[[nodiscard]] ErrorCode zlibDeflate(uint8_t const* uncompressed,
                                     size_t uncompressedLength, T& compressed);
 
-}  // namespace encoding
-}  // namespace arangodb
+template<typename T>
+[[nodiscard]] ErrorCode lz4Compress(uint8_t const* uncompressed,
+                                    size_t uncompressedLength, T& compressed);
+
+}  // namespace arangodb::encoding

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,13 +21,13 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Executor/AqlExecutorTestCase.h"
 #include "gtest/gtest.h"
-
-#include "AqlExecutorTestCase.h"
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/MultiAqlItemBlockInputRange.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 #if GTEST_HAS_TYPED_TEST_P
 
@@ -53,8 +53,6 @@ std::string const stateToString(MainQueryState state) {
 template<typename Range>
 class InputRangeTest : public AqlExecutorTestCase<> {
  protected:
-  // Used to holdData for InputMatrixTests
-  AqlItemMatrix _matrix{1};
   // Picked a random number of dependencies for MultiInputRanges
   size_t _numberDependencies{3};
 

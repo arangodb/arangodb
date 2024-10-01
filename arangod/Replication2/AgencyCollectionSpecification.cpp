@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,87 +21,42 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <velocypack/Iterator.h>
-
-#include <Basics/debugging.h>
-#include <Basics/StaticStrings.h>
-
 #include "AgencyCollectionSpecification.h"
+
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb::replication2::agency;
 using namespace arangodb::basics;
 
-CollectionGroup::CollectionGroup(VPackSlice slice)
-    : id(CollectionGroupId{
-          slice.get(StaticStrings::Id)
-              .extract<CollectionGroupId::Identifier::BaseType>()}),
-      attributes(slice.get("attributes")) {
-  {
-    auto cs = slice.get("collections");
-    TRI_ASSERT(cs.isObject());
-    collections.reserve(cs.length());
-    for (auto const& [key, value] : VPackObjectIterator(cs)) {
-      auto cid = key.extract<std::string>();
-      collections.emplace(std::move(cid), Collection(value));
+bool Collection::MutableProperties::operator==(
+    MutableProperties const& other) const noexcept {
+  if (schema.has_value() != other.schema.has_value()) {
+    if (schema.has_value()) {
+      if (!(schema.value().slice().isNone() ||
+            schema.value().slice().isNull())) {
+        // Null is equal to absence, everything else is a difference
+        return false;
+      }
+    } else {
+      if (!(other.schema.value().slice().isNone() ||
+            other.schema.value().slice().isNull())) {
+        // Null is equal to absence, everything else is a difference
+        return false;
+      }
+    }
+  } else {
+    // Both either have a schema or not.
+    if (schema.has_value()) {
+      // If both have a schema, compare them
+      TRI_ASSERT(other.schema.has_value())
+          << "We should have tested that either both or none have a schema";
+      if (!VelocyPackHelper::equal(schema.value().slice(),
+                                   other.schema.value().slice(), true)) {
+        return false;
+      }
     }
   }
-
-  {
-    auto sss = slice.get("shardSheaves");
-    TRI_ASSERT(sss.isArray());
-    shardSheaves.reserve(sss.length());
-    for (auto const& rs : VPackArrayIterator(sss)) {
-      shardSheaves.emplace_back(rs);
-    }
-  }
-}
-
-void CollectionGroup::toVelocyPack(VPackBuilder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::Id, VPackValue(id.id()));
-  builder.add(VPackValue("attributes"));
-  attributes.toVelocyPack(builder);
-  {
-    VPackObjectBuilder cb(&builder, "collections");
-    for (auto const& [cid, collection] : collections) {
-      builder.add(VPackValue(cid));
-      collection.toVelocyPack(builder);
-    }
-  }
-  {
-    VPackArrayBuilder sb(&builder, "shardSheaves");
-    for (auto const& sheaf : shardSheaves) {
-      sheaf.toVelocyPack(builder);
-    }
-  }
-}
-
-CollectionGroup::Collection::Collection(VPackSlice slice) {
-  TRI_ASSERT(slice.isEmptyObject());
-}
-
-void CollectionGroup::Collection::toVelocyPack(VPackBuilder& builder) const {
-  builder.add(VPackSlice::emptyObjectSlice());
-}
-
-CollectionGroup::ShardSheaf::ShardSheaf(VPackSlice slice) {
-  TRI_ASSERT(slice.isObject());
-  replicatedLog = LogId{slice.get("replicatedLog").extract<uint64_t>()};
-}
-
-void CollectionGroup::ShardSheaf::toVelocyPack(VPackBuilder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add("replicatedLog", VPackValue(replicatedLog.id()));
-}
-
-CollectionGroup::Attributes::Attributes(VPackSlice slice) {
-  TRI_ASSERT(slice.isObject());
-  waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
-  writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
-}
-
-void CollectionGroup::Attributes::toVelocyPack(VPackBuilder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
-  builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
+  return VelocyPackHelper::equal(computedValues.slice(),
+                                 other.computedValues.slice(), true) &&
+         other.cacheEnabled == cacheEnabled;
 }

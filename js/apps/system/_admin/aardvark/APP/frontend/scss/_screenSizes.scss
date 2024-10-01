@@ -26,12 +26,16 @@
   .login-window {
     padding: 10px 10px 30px;
     top: 20px;
-    
+
     .login-logo-round {
-      margin-bottom: 10px;
-      margin-left: 25%;
-      margin-top: 0;
-      width: 50%;
+      margin-bottom: 15px;
+      margin-top: 15px;
+
+      img,
+      #ArangoDBLogoVersion {
+        width: 50%;
+        font-size: 7pt;
+      }
     }
 
     #logout {
@@ -220,8 +224,7 @@
     display: none;
   }
 
-  div.bodyWrapper,
-  .footer {
+  div.bodyWrapper {
     left: 40px;
   }
 

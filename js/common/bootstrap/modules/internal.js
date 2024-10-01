@@ -7,34 +7,30 @@ global.DEFINE_MODULE('internal', (function () {
 
   const exports = {};
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // @brief module "internal"
-  //
-  // @file
-  //
-  // DISCLAIMER
-  //
-  // Copyright 2018 ArangoDB GmbH, Cologne, Germany
-  // Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-  //
-  // Licensed under the Apache License, Version 2.0 (the "License")
-  // you may not use this file except in compliance with the License.
-  // You may obtain a copy of the License at
-  //
-  //     http://www.apache.org/licenses/LICENSE-2.0
-  //
-  // Unless required by applicable law or agreed to in writing, software
-  // distributed under the License is distributed on an "AS IS" BASIS,
-  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  // See the License for the specific language governing permissions and
-  // limitations under the License.
-  //
-  // Copyright holder is ArangoDB GmbH, Cologne, Germany
-  //
-  // @author Dr. Frank Celler
-  // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-  // @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
-  // //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// / @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoError
@@ -50,6 +46,9 @@ global.DEFINE_MODULE('internal', (function () {
         this.code = error.code;                  // int - http status code
         this.errorNum = error.errorNum;          // int - internal arangodb error code
         this.errorMessage = error.errorMessage;  // string - error message
+        if (error.error) {
+          this.original = error;
+        }
       }
     };
 
@@ -102,17 +101,6 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.ARANGO_QUIET) {
     exports.quiet = global.ARANGO_QUIET;
     delete global.ARANGO_QUIET;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief coverage
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.coverage = false;
-
-  if (global.COVERAGE) {
-    exports.coverage = global.COVERAGE;
-    delete global.COVERAGE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -639,6 +627,15 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief set the scheduler priority on an external process
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_SET_PRIORITY_EXTERNAL) {
+    exports.setPriorityExternal = global.SYS_SET_PRIORITY_EXTERNAL;
+    delete global.SYS_SET_PRIORITY_EXTERNAL;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief testPort
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -942,15 +939,10 @@ global.DEFINE_MODULE('internal', (function () {
   // //////////////////////////////////////////////////////////////////////////////
 
   function printIndent (context) {
-    var j;
-    var indent = '';
+    let indent = '';
 
     if (context.prettyPrint) {
-      indent += '\n';
-
-      for (j = 0; j < context.level; ++j) {
-        indent += '  ';
-      }
+      indent += '\n' + '  '.repeat(context.level);
     }
 
     context.output += indent;
@@ -1728,15 +1720,6 @@ global.DEFINE_MODULE('internal', (function () {
   }
   
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief ldapEnabled
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (typeof LDAP_ENABLED !== 'undefined') {
-    exports.ldapEnabled = global.LDAP_ENABLED;
-    delete global.LDAP_ENABLED;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief options
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -1749,25 +1732,30 @@ global.DEFINE_MODULE('internal', (function () {
   // / @brief options
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (typeof ENCRYPTION_KEY_RELOAD !== 'undefined') {
-    exports.encryptionKeyReload = global.ENCRYPTION_KEY_RELOAD;
-    delete global.ENCRYPTION_KEY_RELOAD;
-  }
-
   let testsBasePaths = {};
-  exports.pathForTesting = function(path, prefix = 'js') {
+  let testsBasePathsEnterprise = {};
+  exports.pathForTesting = function (path, prefix = 'js', enterprise = false) {
     let fs = require('fs');
-    if (!testsBasePaths.hasOwnProperty(prefix)) {
+    let dict = null;
+    let preprefix = null;
+    if(enterprise){
+      dict = testsBasePathsEnterprise;
+      preprefix = fs.join('enterprise', 'tests');
+    } else {
+      dict = testsBasePaths;
+      preprefix = fs.join('tests');
+    }
+    if (!dict.hasOwnProperty(prefix)) {
       // first invocation
-      testsBasePaths[prefix] = fs.join('tests', prefix);
+      dict[prefix] = fs.join(preprefix, prefix);
       // build path with version number contained
       let versionString = exports.version.replace(/-.*$/, '');
-      if (fs.isDirectory(fs.join(testsBasePaths[prefix], versionString))) {
-        testsBasePaths[prefix] = fs.join(testsBasePaths[prefix], versionString);
+      if (fs.isDirectory(fs.join(dict[prefix], versionString))) {
+        dict[prefix] = fs.join(dict[prefix], versionString);
       }
     }
 
-    return fs.join(testsBasePaths[prefix], path);
+    return fs.join(dict[prefix], path);
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -1851,6 +1839,28 @@ global.DEFINE_MODULE('internal', (function () {
 
   global.stop_color_print = function stop_color_print () {
     require('internal').stopColorPrint();
+  };
+  
+  [ "arangobackup", "arangobench", "arangod", "arangodb", "arangodbtests",
+    "arangodump", "arangoexport", "arangoimp", "arangoimport", "arango-init-database",
+    "arangoinspect", "arangorestore", "arango-secure-installation", "arangosh", "arangovpack"].forEach((executableName) => {
+    global[executableName] = () => {
+      let console = require("console");
+      console.warn("This command must be executed in a system shell and cannot be used inside of arangosh: '" + executableName + "'");
+    };
+    global[executableName]._PRINT = function (context) {
+      global[executableName]();
+    };
+  });
+
+  global.exit = global.quit = () => {
+    global.SYS_EXIT_REPL();
+  };
+  global.exit._PRINT = (context) => {
+    global.exit();
+  };
+  global.quit._PRINT = (context) => {
+    global.quit();
   };
 
   if (global.EXPORTS_SLOW_BUFFER) {

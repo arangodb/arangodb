@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,20 +42,20 @@
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                        \
-  throw ::arangodb::basics::Exception::createWithParams(ADB_HERE, code, \
+#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                          \
+  throw ::arangodb::basics::Exception::createWithParams(ADB_HERE, (code), \
                                                         __VA_ARGS__)
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                \
-  throw ::arangodb::basics::Exception::createWithFormat(ADB_HERE, code, \
-                                                        format, __VA_ARGS__)
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                  \
+  throw ::arangodb::basics::Exception::createWithFormat(ADB_HERE, (code), \
+                                                        (format), __VA_ARGS__)
 
 /// @brief throws an arango exception with an error code and an already-built
 /// error message
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
-  throw ::arangodb::basics::Exception(code, message, ADB_HERE)
+  throw ::arangodb::basics::Exception((code), (message), ADB_HERE)
 
 namespace arangodb::futures {
 template<typename T>
@@ -72,27 +72,18 @@ class Exception : public virtual std::exception {
  public:
   // primary constructor
   Exception(ErrorCode code, std::string&& errorMessage,
-            SourceLocation location) noexcept;
+            SourceLocation location = SourceLocation::current()) noexcept;
 
   // convenience constructors
-  Exception(ErrorCode code, SourceLocation location);
-  Exception(Result const&, SourceLocation location);
-  Exception(Result&&, SourceLocation location) noexcept;
+  Exception(ErrorCode code,
+            SourceLocation location = SourceLocation::current());
+  Exception(Result const&, SourceLocation location = SourceLocation::current());
+  Exception(Result&&,
+            SourceLocation location = SourceLocation::current()) noexcept;
   Exception(ErrorCode code, std::string_view errorMessage,
-            SourceLocation location);
-  Exception(ErrorCode code, char const* errorMessage, SourceLocation location);
-
-  // I think we should get rid of the following (char*,int) versions as opposed
-  // to the SourceLocation ones, to keep it a little clearer.
-  Exception(ErrorCode code, char const* file, int line);
-  Exception(Result const&, char const* file, int line);
-  Exception(Result&&, char const* file, int line) noexcept;
-  Exception(ErrorCode code, std::string_view errorMessage, char const* file,
-            int line);
-  Exception(ErrorCode code, std::string&& errorMessage, char const* file,
-            int line) noexcept;
-  Exception(ErrorCode code, char const* errorMessage, char const* file,
-            int line);
+            SourceLocation location = SourceLocation::current());
+  Exception(ErrorCode code, char const* errorMessage,
+            SourceLocation location = SourceLocation::current());
 
   ~Exception() override = default;
   Exception(Exception const&) = default;

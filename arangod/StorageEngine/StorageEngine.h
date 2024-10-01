@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,17 +24,20 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
-#include "StorageEngine/HealthData.h"
 #include "RestServer/arangod.h"
+#include "StorageEngine/HealthData.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 #include <chrono>
+#include <memory>
+#include <vector>
 
 namespace arangodb {
 
@@ -71,6 +74,10 @@ namespace rest {
 class RestHandlerFactory;
 }
 
+namespace replication2::storage {
+struct PersistedStateInfo;
+}
+
 namespace transaction {
 
 class Context;
@@ -80,6 +87,16 @@ class Methods;
 struct Options;
 
 }  // namespace transaction
+
+class StorageSnapshot {
+ public:
+  StorageSnapshot() = default;
+  StorageSnapshot(StorageSnapshot const&) = delete;
+  StorageSnapshot& operator=(StorageSnapshot const&) = delete;
+  virtual ~StorageSnapshot() = default;
+
+  virtual TRI_voc_tick_t tick() const noexcept = 0;
+};
 
 class StorageEngine : public ArangodFeature {
  public:
@@ -94,7 +111,8 @@ class StorageEngine : public ArangodFeature {
       transaction::ManagerFeature&) = 0;
   virtual std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId,
-      transaction::Options const& options) = 0;
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin) = 0;
 
   // when a new collection is created, this method is called to augment the
   // collection creation data with engine-specific information
@@ -103,7 +121,7 @@ class StorageEngine : public ArangodFeature {
 
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice const& info) = 0;
+      LogicalCollection& collection, velocypack::Slice info) = 0;
 
   // status functionality
   // --------------------
@@ -138,11 +156,8 @@ class StorageEngine : public ArangodFeature {
   // return the absolute path for the VERSION file of a database
   virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;
 
-  // return the path for the actual data
-  virtual std::string dataPath() const = 0;
-
   // return the path for a database
-  virtual std::string databasePath(TRI_vocbase_t const* vocbase) const = 0;
+  virtual std::string databasePath() const { return std::string(); }
 
   // database, collection and index management
   // -----------------------------------------
@@ -155,9 +170,9 @@ class StorageEngine : public ArangodFeature {
   virtual std::vector<std::string> currentWalFiles() const = 0;
 
   virtual Result flushWal(bool waitForSync = false,
-                          bool waitForCollector = false) = 0;
+                          bool flushColumnFamilies = false) = 0;
 
-  virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) = 0;
+  virtual void waitForEstimatorSync() = 0;
 
   //// operations on databases
 
@@ -172,13 +187,13 @@ class StorageEngine : public ArangodFeature {
   // storage engine is required to fully clean up the creation and throw only
   // then, so that subsequent database creation requests will not fail. the WAL
   // entry for the database creation will be written *after* the call to
-  // "createDatabase" returns no way to acquire id within this function?!
+  // "createDatabase"
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(
-      arangodb::CreateDatabaseInfo&&, ErrorCode& status) = 0;
+      arangodb::CreateDatabaseInfo&&);
 
   // @brief write create marker for database
   virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                           velocypack::Slice const& slice);
+                                           velocypack::Slice slice);
 
   // asks the storage engine to drop the specified database and persist the
   // deletion info. Note that physical deletion of the database data must not
@@ -203,16 +218,16 @@ class StorageEngine : public ArangodFeature {
   /// @brief current recovery tick
   virtual TRI_voc_tick_t recoveryTick() = 0;
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> = 0;
-
-  virtual auto dropReplicatedLog(
+  virtual auto dropReplicatedState(
       TRI_vocbase_t&,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const&)
+      std::unique_ptr<replication2::storage::IStorageEngineMethods>&)
       -> Result = 0;
+
+  virtual auto createReplicatedState(
+      TRI_vocbase_t&, arangodb::replication2::LogId,
+      arangodb::replication2::storage::PersistedStateInfo const&)
+      -> ResultT<
+          std::unique_ptr<replication2::storage::IStorageEngineMethods>> = 0;
 
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
@@ -250,8 +265,7 @@ class StorageEngine : public ArangodFeature {
   // not fail. the WAL entry for the propery change will be written *after* the
   // call to "changeCollection" returns
   virtual void changeCollection(TRI_vocbase_t& vocbase,
-                                LogicalCollection const& collection,
-                                bool doSync) = 0;
+                                LogicalCollection const& collection) = 0;
 
   // asks the storage engine to persist renaming of a collection
   virtual arangodb::Result renameCollection(TRI_vocbase_t& vocbase,
@@ -303,8 +317,10 @@ class StorageEngine : public ArangodFeature {
   /// @brief Add engine-specific optimizer rules
   virtual void addOptimizerRules(aql::OptimizerRulesFeature&);
 
+#ifdef USE_V8
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions();
+#endif
 
   /// @brief Add engine-specific REST handlers
   virtual void addRestHandlers(rest::RestHandlerFactory& handlerFactory);
@@ -338,16 +354,26 @@ class StorageEngine : public ArangodFeature {
                             uint64_t tickEnd, velocypack::Builder& builder) = 0;
   virtual WalAccess const* walAccess() const = 0;
 
-  void getCapabilities(velocypack::Builder& builder) const;
+  virtual void getCapabilities(velocypack::Builder& builder) const;
 
   virtual void getStatistics(velocypack::Builder& builder) const;
 
-  virtual void getStatistics(std::string& result) const;
+  virtual void toPrometheus(std::string& result, std::string_view globals,
+                            bool ensureWhitespace) const;
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const = 0;
   virtual TRI_voc_tick_t releasedTick() const = 0;
   virtual void releaseTick(TRI_voc_tick_t) = 0;
+  virtual std::shared_ptr<StorageSnapshot> currentSnapshot() = 0;
+
+  virtual void scheduleFullIndexRefill(std::string const& database,
+                                       std::string const& collection,
+                                       IndexId iid);
+
+  virtual bool autoRefillIndexCaches() const = 0;
+  virtual bool autoRefillIndexCachesOnFollowers() const = 0;
+  virtual void syncIndexCaches();
 
  protected:
   void registerCollection(
@@ -357,10 +383,9 @@ class StorageEngine : public ArangodFeature {
   void registerView(TRI_vocbase_t& vocbase,
                     std::shared_ptr<arangodb::LogicalView> const& view);
 
-  static void registerReplicatedLog(
-      TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>
-          log);
+  static void registerReplicatedState(
+      TRI_vocbase_t& vocbase, arangodb::replication2::LogId,
+      std::unique_ptr<replication2::storage::IStorageEngineMethods>);
 
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;

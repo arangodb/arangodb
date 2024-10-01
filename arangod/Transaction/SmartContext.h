@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Transaction/Context.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/AccessMode.h"
 
@@ -45,14 +45,14 @@ namespace transaction {
 class SmartContext : public Context {
  public:
   SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
-               std::shared_ptr<TransactionState> state);
+               std::shared_ptr<TransactionState> state,
+               OperationOrigin operationOrigin);
 
   /// @brief destroy the context
   ~SmartContext();
 
   /// @brief order a custom type handler
-  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler()
-      override final;
+  velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
 
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override final { return true; }
@@ -78,8 +78,9 @@ struct TransactionContextSideUser {};
 /// Used for a standalone AQL query. Always creates the state first.
 /// Registers the TransactionState with the manager
 struct AQLStandaloneContext final : public SmartContext {
-  AQLStandaloneContext(TRI_vocbase_t& vocbase, TransactionId globalId)
-      : SmartContext(vocbase, globalId, nullptr) {}
+  AQLStandaloneContext(TRI_vocbase_t& vocbase, TransactionId globalId,
+                       OperationOrigin operationOrigin)
+      : SmartContext(vocbase, globalId, nullptr, operationOrigin) {}
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(

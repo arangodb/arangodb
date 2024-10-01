@@ -1,14 +1,14 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,27 +25,21 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <unordered_map>
 
 #include "AutoTuneThread.h"
 #include "QuickHistogram.h"
 
-#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/csv.h"
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
 
 namespace arangodb {
 class ClientFeature;
 class EncryptionFeature;
 namespace httpclient {
 class SimpleHttpClient;
-class SimpleHttpResult;
 struct SimpleHttpClientParams;
 }  // namespace httpclient
 }  // namespace arangodb
@@ -54,20 +48,26 @@ struct SimpleHttpClientParams;
 /// @brief class for http requests
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace arangodb {
-namespace import {
+namespace arangodb::import {
 class SenderThread;
 
 struct ImportStatistics {
+  uint64_t const _maxErrors;
+
+  uint64_t _errorsLogged = 0;
+
   size_t _numberCreated = 0;
   size_t _numberErrors = 0;
   size_t _numberUpdated = 0;
   size_t _numberIgnored = 0;
 
-  arangodb::Mutex _mutex;
+  std::mutex _mutex;
   QuickHistogram _histogram;
 
-  explicit ImportStatistics(application_features::ApplicationServer&);
+  explicit ImportStatistics(application_features::ApplicationServer&,
+                            uint64_t maxErrors);
+
+  bool logError(std::string_view message);
 };
 
 class ImportHelper {
@@ -86,7 +86,7 @@ class ImportHelper {
   ImportHelper(EncryptionFeature* encryption, ClientFeature const& client,
                std::string const& endpoint,
                httpclient::SimpleHttpClientParams const& params,
-               uint64_t maxUploadSize, uint32_t threadCount,
+               uint64_t maxUploadSize, uint32_t threadCount, uint64_t maxErrors,
                bool autoUploadSize = false);
 
   ~ImportHelper();
@@ -257,25 +257,25 @@ class ImportHelper {
   /// @brief get the number of lines read (meaningful for CSV only)
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getReadLines() { return _numberLines; }
+  size_t getReadLines() const { return _numberLines; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of documents imported
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getNumberCreated() { return _stats._numberCreated; }
+  size_t getNumberCreated() const { return _stats._numberCreated; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of errors
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getNumberErrors() { return _stats._numberErrors; }
+  size_t getNumberErrors() const { return _stats._numberErrors; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of updated documents
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t getNumberUpdated() { return _stats._numberUpdated; }
+  size_t getNumberUpdated() const { return _stats._numberUpdated; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the number of ignored documents
@@ -298,6 +298,7 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief start the optional histogram thread
   //////////////////////////////////////////////////////////////////////////////
+
   void startHistogram() { _stats._histogram.start(); }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -306,9 +307,9 @@ class ImportHelper {
   /// @return string       get the error message
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::string> getErrorMessages() { return _errorMessages; }
+  std::vector<std::string> getErrorMessages() const { return _errorMessages; }
 
-  uint64_t getMaxUploadSize() {
+  uint64_t getMaxUploadSize() const {
     return (_maxUploadSize.load(std::memory_order_relaxed));
   }
   void setMaxUploadSize(uint64_t newSize) {
@@ -320,7 +321,12 @@ class ImportHelper {
 
   uint32_t getThreadCount() const { return _threadCount; }
 
-  static unsigned const MaxBatchSize;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// the server has a built-in limit for the batch size
+  ///  and will reject bigger HTTP request bodies
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static constexpr unsigned kMaxBatchSize = 768 * 1024 * 1024;
 
  private:
   // read headers from separate file
@@ -355,10 +361,11 @@ class ImportHelper {
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   std::atomic<uint64_t> _maxUploadSize;
   std::atomic<uint64_t> _periodByteCount;
-  bool const _autoUploadSize;
   std::unique_ptr<AutoTuneThread> _autoTuneThread;
   std::vector<std::unique_ptr<SenderThread>> _senderThreads;
+  uint64_t const _maxErrors;
   uint32_t const _threadCount;
+  bool const _autoUploadSize;
   basics::ConditionVariable _threadsCondition;
   basics::StringBuffer _tempBuffer;
 
@@ -406,7 +413,6 @@ class ImportHelper {
   bool _emittedField;
   std::vector<std::string> _errorMessages;
 
-  static double const ProgressStep;
+  static constexpr double kProgressStep = 3.0;
 };
-}  // namespace import
-}  // namespace arangodb
+}  // namespace arangodb::import

@@ -1,10 +1,14 @@
 .hotkeysList {
+  font-weight: 400;
+  color: var(--gray-950);
+  margin: 0 0 10px 25px;
 
-  //width: 50%;
+  *, *::after, *::before {
+    box-sizing: border-box;
+  }
 
   .hotkeysLabel {
     clear: both;
-    color: $c-black;
     font-size: 16px;
     font-weight: 400;
   }

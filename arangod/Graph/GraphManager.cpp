@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,7 +33,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
-#include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Basics/ReadLocker.h"
@@ -49,14 +48,20 @@
 #include "Logger/LoggerStream.h"
 #include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "Transaction/V8Context.h"
+#endif
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -76,42 +81,13 @@ static bool arrayContainsCollection(VPackSlice array,
 }  // namespace
 
 std::shared_ptr<transaction::Context> GraphManager::ctx() const {
+#ifdef USE_V8
   // we must use v8
-  return transaction::V8Context::CreateWhenRequired(_vocbase, true);
-}
-
-Result GraphManager::createEdgeCollection(std::string const& name,
-                                          bool waitForSync,
-                                          VPackSlice options) {
-  return createCollection(name, TRI_COL_TYPE_EDGE, waitForSync, options);
-}
-
-Result GraphManager::createVertexCollection(std::string const& name,
-                                            bool waitForSync,
-                                            VPackSlice options) {
-  return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSync, options);
-}
-
-Result GraphManager::createCollection(std::string const& name,
-                                      TRI_col_type_e colType, bool waitForSync,
-                                      VPackSlice options) {
-  TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
-
-  auto& vocbase = ctx()->vocbase();
-
-  std::shared_ptr<LogicalCollection> coll;
-  OperationOptions opOptions(ExecContext::current());
-  auto res = arangodb::methods::Collections::create(  // create collection
-      vocbase,                                        // collection vocbase
-      opOptions,
-      name,     // collection name
-      colType,  // collection type
-      options,  // collection properties
-      /*createWaitsForSyncReplication*/ waitForSync,
-      /*enforceReplicationFactor*/ true,
-      /*isNewDatabase*/ false, coll);
-
-  return res;
+  return transaction::V8Context::createWhenRequired(_vocbase, _operationOrigin,
+                                                    true);
+#else
+  return transaction::StandaloneContext::create(_vocbase, _operationOrigin);
+#endif
 }
 
 bool GraphManager::renameGraphCollection(std::string const& oldName,
@@ -132,7 +108,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
     return false;
   }
 
-  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphsCollection,
                                   AccessMode::Type::WRITE);
   res = trx.begin();
 
@@ -149,7 +125,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
 
     try {
       OperationResult opRes =
-          trx.update(StaticStrings::GraphCollection, builder.slice(), options);
+          trx.update(StaticStrings::GraphsCollection, builder.slice(), options);
       if (opRes.fail()) {
         res = trx.finish(opRes.result);
         if (res.fail()) {
@@ -305,7 +281,7 @@ bool GraphManager::graphExists(std::string const& graphName) const {
     checkDocument.add(StaticStrings::KeyString, VPackValue(graphName));
   }
 
-  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphsCollection,
                                   AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -316,14 +292,14 @@ bool GraphManager::graphExists(std::string const& graphName) const {
   }
 
   OperationOptions options;
-  OperationResult checkDoc = trx.document(StaticStrings::GraphCollection,
+  OperationResult checkDoc = trx.document(StaticStrings::GraphsCollection,
                                           checkDocument.slice(), options);
   return trx.finish(checkDoc.result).ok();
 }
 
 ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
     std::string const& name) const {
-  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphsCollection,
                                   AccessMode::Type::READ);
 
   Result res = trx.begin();
@@ -345,13 +321,13 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
   OperationOptions options;
 
   OperationResult result =
-      trx.document(StaticStrings::GraphCollection, b.slice(), options);
+      trx.document(StaticStrings::GraphsCollection, b.slice(), options);
 
   // Commit or abort.
   res = trx.finish(result.result);
 
   if (result.fail()) {
-    if (result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       std::string msg = basics::Exception::FillExceptionString(
           TRI_ERROR_GRAPH_NOT_FOUND, name.c_str());
       return Result{TRI_ERROR_GRAPH_NOT_FOUND, std::move(msg)};
@@ -424,7 +400,7 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
   // Here we need a second transaction.
   // If now someone has created a graph with the same name
   // in the meanwhile, sorry bad luck.
-  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
+  SingleCollectionTransaction trx(ctx(), StaticStrings::GraphsCollection,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -434,10 +410,11 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
   if (res.fail()) {
     return OperationResult{std::move(res), options};
   }
-  OperationResult result = isUpdate ? trx.update(StaticStrings::GraphCollection,
-                                                 builder.slice(), options)
-                                    : trx.insert(StaticStrings::GraphCollection,
-                                                 builder.slice(), options);
+  OperationResult result = isUpdate
+                               ? trx.update(StaticStrings::GraphsCollection,
+                                            builder.slice(), options)
+                               : trx.insert(StaticStrings::GraphsCollection,
+                                            builder.slice(), options);
 
   res = trx.finish(result.result);
   if (res.fail() && result.ok()) {
@@ -450,7 +427,7 @@ Result GraphManager::applyOnAllGraphs(
     std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
+      transaction::StandaloneContext::create(_vocbase, _operationOrigin),
       arangodb::aql::QueryString{queryStr}, nullptr);
   query->queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query->executeSync();
@@ -566,84 +543,129 @@ Result GraphManager::ensureCollections(
     std::unordered_set<std::shared_ptr<LogicalCollection>> const&
         existentEdgeCollections,
     std::unordered_set<std::string> const& satellites, bool waitForSync) const {
-  // II. Validate graph
-  // a) Initial Validation
-  if (!existentDocumentCollections.empty()) {
-    for (auto const& col : existentDocumentCollections) {
-      graph.ensureInitial(*col);
+  CollectionNameResolver resolver(_vocbase);
+  auto getLeaderName = [&](LogicalCollection const& col) -> std::string {
+    auto const& distLike = col.distributeShardsLike();
+    if (distLike.empty()) {
+      return col.name();
     }
-  }
-
-  // b) Enterprise Sharding
-#ifdef USE_ENTERPRISE
-  std::string createdInitialName;
-  {
-    auto [res, createdCollectionName] = ensureEnterpriseCollectionSharding(
-        &graph, waitForSync, documentCollectionsToCreate);
-    if (res.fail()) {
-      return res;
+    if (ServerState::instance()->isRunningInCluster()) {
+      return resolver.getCollectionNameCluster(
+          DataSourceId{basics::StringUtils::uint64(distLike)});
     }
-    createdInitialName = createdCollectionName;
-  }
+    return distLike;
+  };
 
-  ScopeGuard guard([&]() noexcept {
-    // rollback initial collection, in case it got created
-    if (!createdInitialName.empty()) {
-      std::shared_ptr<LogicalCollection> coll;
-      Result found = methods::Collections::lookup(ctx()->vocbase(),
-                                                  createdInitialName, coll);
-      if (found.ok()) {
-        TRI_ASSERT(coll);
-        Result dropResult =
-            arangodb::methods::Collections::drop(*coll, false, -1.0);
-        if (dropResult.fail()) {
-          LOG_TOPIC("04c89", WARN, Logger::GRAPHS)
-              << "While cleaning up graph `" << graph.name() << "`: "
-              << "Dropping collection `" << createdInitialName
-              << "` failed with error " << dropResult.errorNumber() << ": "
-              << dropResult.errorMessage();
+  auto anyExistingCollection =
+      std::invoke([&]() -> std::shared_ptr<LogicalCollection> {
+        if (!existentDocumentCollections.empty()) {
+          // Prefer Vertex collections
+          for (auto const& col : existentDocumentCollections) {
+            // We need to ignore satelliteCollections on SmartGraphs
+            if (!graph.isSmart() || !col->isSatellite()) {
+              return col;
+            }
+          }
         }
-      }
-    }
-  });
-#endif
+        if (!existentEdgeCollections.empty()) {
+          // over edge collections
+          for (auto const& col : existentEdgeCollections) {
+            // We need to ignore satelliteCollections on SmartGraphs
+            if (!graph.isSmart() || !col->isSatellite()) {
+              return col;
+            }
+          }
+        }
+        return nullptr;
+      });
 
-  // III. Validate collections
+  auto config = _vocbase.getDatabaseConfiguration();
+  std::optional<std::string> leadingCollection = std::nullopt;
+  bool pickedExisting = false;
+
+  if (config.isOneShardDB) {
+    leadingCollection = config.defaultDistributeShardsLike;
+    TRI_ASSERT(leadingCollection.has_value() &&
+               !leadingCollection.value().empty());
+    pickedExisting = true;
+  } else {
+    // This will only have effect in Enterprise Version
+    std::tie(leadingCollection, pickedExisting) = graph.getLeadingCollection(
+        documentCollectionsToCreate, edgeCollectionsToCreate, satellites,
+        anyExistingCollection, getLeaderName);
+  }
+
+  // Validate if the existing collections can be used within this graph type.
+
   // document collections
   for (auto const& col : existentDocumentCollections) {
-    Result res = graph.validateCollection(*col);
+    Result res =
+        graph.validateCollection(*col, leadingCollection, getLeaderName);
     if (res.fail()) {
       return res;
     }
   }
   // edge collections
   for (auto const& col : existentEdgeCollections) {
-    Result res = graph.validateCollection(*col);
+    Result res =
+        graph.validateCollection(*col, leadingCollection, getLeaderName);
     if (res.fail()) {
       return res;
     }
   }
 
-  // Storage space for VPackSlices used in options
-  std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackLake{};
+  std::vector<CreateCollectionBody> createRequests;
 
-  auto collectionsToCreate = prepareCollectionsToCreate(
-      &graph, waitForSync, documentCollectionsToCreate, edgeCollectionsToCreate,
-      satellites, vpackLake);
-  if (!collectionsToCreate.ok()) {
-    return collectionsToCreate.result();
+  if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
+    // We create the leader within this call, rewire distributeShardsLike
+    // lookup:
+    auto originalCallback = config.getCollectionGroupSharding;
+    config.getCollectionGroupSharding =
+        [&leadingCollection, &createRequests,
+         originalCallback = std::move(originalCallback)](
+            std::string const& name) -> ResultT<UserInputCollectionProperties> {
+      // We can only search for the leading collection.
+      TRI_ASSERT(name == leadingCollection.value())
+          << name << " does not match " << leadingCollection.value();
+      for (auto const& c : createRequests) {
+        if (c.name == name) {
+          // On new graphs the leading collection is in the first position.
+          // So we will quickly loop here, even if it is not this loop is safe
+          return c;
+        }
+      }
+      // Try lookup via Database
+      return originalCallback(name);
+    };
+  }
+  for (auto const& c : documentCollectionsToCreate) {
+    auto col = graph.prepareCreateCollectionBodyVertex(c, leadingCollection,
+                                                       satellites, config);
+    if (col.fail()) {
+      return col.result();
+    }
+    createRequests.emplace_back(std::move(col.get()));
   }
 
-  if (collectionsToCreate.get().empty()) {
-    // NOTE: Empty graph is allowed.
-#ifdef USE_ENTERPRISE
-    guard.cancel();
-#endif
-    return TRI_ERROR_NO_ERROR;
+  for (auto const& c : edgeCollectionsToCreate) {
+    auto col = graph.prepareCreateCollectionBodyEdge(c, leadingCollection,
+                                                     satellites, config);
+    if (col.fail()) {
+      return col.result();
+    }
+    createRequests.emplace_back(std::move(col.get()));
   }
-
-  std::vector<std::shared_ptr<LogicalCollection>> created;
-  OperationOptions opOptions(ExecContext::current());
+  if (createRequests.empty()) {
+    // Nothing to do.
+    if (leadingCollection.has_value() && graph.requiresInitialUpdate()) {
+      // We can only end up here if we have an existing collection
+      TRI_ASSERT(anyExistingCollection != nullptr);
+      TRI_ASSERT(pickedExisting);
+      graph.updateInitial({anyExistingCollection}, leadingCollection,
+                          getLeaderName);
+    }
+    return {};
+  }
 
 #ifdef USE_ENTERPRISE
   bool const allowEnterpriseCollectionsOnSingleServer =
@@ -652,55 +674,40 @@ Result GraphManager::ensureCollections(
 #else
   bool const allowEnterpriseCollectionsOnSingleServer = false;
 #endif
+  auto& cluster = _vocbase.server().getFeature<ClusterFeature>();
+  bool waitForSyncReplication = cluster.createWaitsForSyncReplication();
 
-  Result finalResult = methods::Collections::create(
-      ctx()->vocbase(), opOptions, collectionsToCreate.get(),
-      /*createWaitsForSyncReplication*/ waitForSync,
-      /*enforceReplicationFactor*/ true,
-      /*isNewDatabase*/ false, nullptr, created, /*allowSystem*/ false,
+  OperationOptions opOptions(ExecContext::current());
+  auto finalResult = methods::Collections::create(
+      ctx()->vocbase(), opOptions, std::move(createRequests),
+      waitForSyncReplication, true, false,
       allowEnterpriseCollectionsOnSingleServer);
-#ifdef USE_ENTERPRISE
-  if (finalResult.ok()) {
-    guard.cancel();
+  // We do not care for the Collections here, just forward the result
+  // API guarantees all or none.
+  if (finalResult.ok() && leadingCollection.has_value() &&
+      graph.requiresInitialUpdate()) {
+    if (pickedExisting) {
+      if (config.isOneShardDB) {
+        // We need to shard by the default sharding collection
+        // Take initial from the selected existing one
+        auto defaultSharding =
+            resolver.getCollection(config.defaultDistributeShardsLike);
+        ADB_PROD_ASSERT(defaultSharding != nullptr)
+            << "We have lost the leading collection of a oneShardDatabase";
+        graph.updateInitial({std::move(defaultSharding)}, leadingCollection,
+                            getLeaderName);
+      } else {
+        // Take initial from the selected existing one
+        graph.updateInitial({anyExistingCollection}, leadingCollection,
+                            getLeaderName);
+      }
+    } else {
+      // Take the initial from freshly created collections
+      graph.updateInitial(finalResult.get(), leadingCollection, getLeaderName);
+    }
   }
-#endif
-
-  return finalResult;
+  return finalResult.result();
 }
-
-#ifndef USE_ENTERPRISE
-ResultT<std::vector<CollectionCreationInfo>>
-GraphManager::prepareCollectionsToCreate(
-    Graph const* graph, bool waitForSync,
-    std::unordered_set<std::string> const& documentsCollectionNames,
-    std::unordered_set<std::string> const& edgeCollectionNames,
-    std::unordered_set<std::string> const& satellites,
-    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>>& vpackLake) const {
-  std::vector<CollectionCreationInfo> collectionsToCreate;
-  collectionsToCreate.reserve(documentsCollectionNames.size() +
-                              edgeCollectionNames.size());
-  // IV. Create collections
-  VPackBuilder optionsBuilder;
-  optionsBuilder.openObject();
-  graph->createCollectionOptions(optionsBuilder, waitForSync);
-  optionsBuilder.close();
-  VPackSlice options = optionsBuilder.slice();
-  //  Retain the options storage space
-  vpackLake.emplace_back(optionsBuilder.steal());
-  // Create Document Collections
-  for (auto const& vertexColl : documentsCollectionNames) {
-    collectionsToCreate.emplace_back(
-        CollectionCreationInfo{vertexColl, TRI_COL_TYPE_DOCUMENT, options});
-  }
-
-  // Create Edge Collections
-  for (auto const& edgeColl : edgeCollectionNames) {
-    collectionsToCreate.emplace_back(
-        CollectionCreationInfo{edgeColl, TRI_COL_TYPE_EDGE, options});
-  }
-  return collectionsToCreate;
-}
-#endif
 
 bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
   for (auto const& cname : graph->vertexCollections()) {
@@ -835,7 +842,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
 
     LOG_TOPIC("89b89", DEBUG, Logger::GRAPHS)
         << logprefix << "No write access to " << databaseName << "."
-        << StaticStrings::GraphCollection;
+        << StaticStrings::GraphsCollection;
     return {TRI_ERROR_ARANGO_READ_ONLY,
             "Createing Graphs requires RW access on the database (" +
                 databaseName + ")"};
@@ -929,17 +936,16 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     OperationOptions options(ExecContext::current());
     options.waitForSync = waitForSync;
 
-    Result res;
-    SingleCollectionTransaction trx{ctx(), StaticStrings::GraphCollection,
+    SingleCollectionTransaction trx{ctx(), StaticStrings::GraphsCollection,
                                     AccessMode::Type::WRITE};
 
-    res = trx.begin();
+    Result res = trx.begin();
     if (res.fail()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, options);
     }
     VPackSlice search = builder.slice();
     OperationResult result =
-        trx.remove(StaticStrings::GraphCollection, search, options);
+        trx.remove(StaticStrings::GraphsCollection, search, options);
 
     res = trx.finish(result.result);
     if (result.fail()) {
@@ -969,7 +975,9 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
           methods::Collections::lookup(ctx()->vocbase(), cname, coll);
       if (found.ok()) {
         TRI_ASSERT(coll);
-        dropResult = arangodb::methods::Collections::drop(*coll, false, -1.0);
+        CollectionDropOptions dropOptions{.allowDropSystem = false,
+                                          .allowDropGraphCollection = true};
+        dropResult = arangodb::methods::Collections::drop(*coll, dropOptions);
       }
 
       if (dropResult.fail()) {
@@ -1105,11 +1113,11 @@ Result GraphManager::checkDropGraphPermissions(
 
   // We need RW on _graphs (which is the same as RW on the database). But in
   // case we don't even have RO access, throw FORBIDDEN instead of READ_ONLY.
-  if (!execContext.canUseCollection(StaticStrings::GraphCollection,
+  if (!execContext.canUseCollection(StaticStrings::GraphsCollection,
                                     auth::Level::RO)) {
     LOG_TOPIC("bfe63", DEBUG, Logger::GRAPHS)
         << logprefix << "No read access to " << databaseName << "."
-        << StaticStrings::GraphCollection;
+        << StaticStrings::GraphsCollection;
     return TRI_ERROR_FORBIDDEN;
   }
 
@@ -1118,11 +1126,11 @@ Result GraphManager::checkDropGraphPermissions(
   // as canUseDatabase(RW) <=> canUseCollection("_...", RW).
   // However, in case a collection has to be created but can't, we have to
   // throw FORBIDDEN instead of READ_ONLY for backwards compatibility.
-  if (!execContext.canUseCollection(StaticStrings::GraphCollection,
+  if (!execContext.canUseCollection(StaticStrings::GraphsCollection,
                                     auth::Level::RW)) {
     LOG_TOPIC("bbb09", DEBUG, Logger::GRAPHS)
         << logprefix << "No write access to " << databaseName << "."
-        << StaticStrings::GraphCollection;
+        << StaticStrings::GraphsCollection;
     return TRI_ERROR_ARANGO_READ_ONLY;
   }
 
@@ -1135,7 +1143,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(
     if (options.isObject()) {
       VPackSlice s = options.get(StaticStrings::ReplicationFactor);
       return ((s.isNumber() && s.getNumber<int>() == 0) ||
-              (s.isString() && s.stringRef() == "satellite"));
+              (s.isString() && s.stringView() == "satellite"));
     }
     return false;
   };
@@ -1174,6 +1182,11 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(
         }
 
         if (options.isObject()) {
+          if (options.hasKey(StaticStrings::GraphSatellites) &&
+              !options.get(StaticStrings::GraphSatellites).isArray()) {
+            return Result{TRI_ERROR_BAD_PARAMETER,
+                          "Missing array for field 'satellites'"};
+          }
           VPackSlice replicationFactor =
               options.get(StaticStrings::ReplicationFactor);
           if ((replicationFactor.isNumber() &&

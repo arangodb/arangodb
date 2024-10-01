@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,8 +24,9 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 
 #include <algorithm>
 #include <vector>
@@ -65,12 +66,6 @@ class FixedSizeAllocator {
       return _data + _numUsed++;
     }
 
-    // roll back the effect of nextSlot()
-    void rollbackSlot() noexcept {
-      TRI_ASSERT(_numUsed > 0);
-      --_numUsed;
-    }
-
     bool full() const noexcept { return _numUsed == _numAllocated; }
 
     size_t numUsed() const noexcept { return _numUsed; }
@@ -100,19 +95,45 @@ class FixedSizeAllocator {
   FixedSizeAllocator() = default;
   ~FixedSizeAllocator() noexcept { clear(); }
 
-  template<typename... Args>
-  T* allocate(Args&&... args) {
+  void ensureCapacity() {
     if (_head == nullptr || _head->full()) {
       allocateBlock();
     }
+  }
+
+  // requires: ensureCapacity() has been called before!
+  template<typename... Args>
+  T* allocate(Args&&... args) {
     TRI_ASSERT(_head != nullptr);
     TRI_ASSERT(!_head->full());
 
+    // get memory location for next T object.
+    // this moves forward the memory pointer in the memory block
+    // and increases _numUsed.
+    T* p = _head->nextSlot();
+    TRI_ASSERT(p != nullptr);
     try {
-      T* p = _head->nextSlot();
-      return new (p) T(std::forward<Args>(args)...);
+      // create new T object in place
+      new (p) T(std::forward<Args>(args)...);
+      return p;
     } catch (...) {
-      _head->rollbackSlot();
+      // if creating the T object has failed, we will have a
+      // gap in the memory block with no valid object in it.
+      // we cannot easily rollback the memory pointer now, because
+      // it may have been moved forward already (e.g. if the ctor
+      // of T invoked the same FixedSizeAllocator recursively).
+      // thus all we can do here is to patch the "hole" in the
+      // memory block with a default-constructed T.
+      // if the default ctor of T throws here, there is not much we
+      // can do anymore.
+      try {
+        new (p) T();
+      } catch (...) {
+        LOG_TOPIC("b50d1", FATAL, Logger::FIXME)
+            << "unrecoverable out-of-memory error in FixedSizeAllocator. "
+               "terminating process";
+        FATAL_ERROR_EXIT();
+      }
       throw;
     }
   }

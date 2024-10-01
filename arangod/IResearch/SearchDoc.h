@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramo
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -27,17 +27,14 @@
 #include <span>
 
 #include "Aql/AqlValue.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "ViewSnapshot.h"
 #include "utils/type_limits.hpp"
-
-namespace iresearch {
-
-struct sub_reader;
-
-}
 
 namespace arangodb::iresearch {
 
-constexpr size_t kSearchDocBufSize = sizeof(size_t) + sizeof(irs::doc_id_t);
+constexpr size_t kSearchDocBufSize =
+    sizeof(ViewSegment const*) + sizeof(irs::doc_id_t);
 
 class SearchDoc {
  public:
@@ -53,10 +50,10 @@ class SearchDoc {
 
   constexpr SearchDoc() = default;
 
-  SearchDoc(irs::sub_reader const& segment, irs::doc_id_t doc) noexcept
+  SearchDoc(ViewSegment const& segment, irs::doc_id_t doc) noexcept
       : _segment{&segment}, _doc{doc} {}
 
-  irs::sub_reader const* segment() const noexcept { return _segment; }
+  ViewSegment const* segment() const noexcept { return _segment; }
 
   irs::doc_id_t doc() const noexcept { return _doc; }
 
@@ -79,7 +76,7 @@ class SearchDoc {
   }
 
  private:
-  irs::sub_reader const* _segment{};
+  ViewSegment const* _segment{};
   irs::doc_id_t _doc{irs::doc_limits::invalid()};
 };
 

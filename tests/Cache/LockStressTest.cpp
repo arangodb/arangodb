@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,22 +30,32 @@
 #include <thread>
 #include <vector>
 
+#include "Basics/ThreadGuard.h"
 #include "Cache/Manager.h"
 #include "Cache/Rebalancer.h"
 #include "Random/RandomGenerator.h"
+
+#include "Mocks/Servers.h"
 
 #include "MockScheduler.h"
 #include "TransactionalStore.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 // long-running
 
 TEST(CacheLockStressTest, test_transactionality_for_mixed_load) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  Manager manager(scheduler.ioService(), 32 * 1024 * 1024);
+  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    scheduler.post(fn);
+    return true;
+  };
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024);
   TransactionalStore store(&manager);
   std::uint64_t totalDocuments = 1000000;
   std::uint64_t readBatchSize = 10000;
@@ -77,17 +87,14 @@ TEST(CacheLockStressTest, test_transactionality_for_mixed_load) {
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  std::vector<std::thread*> threads;
+  auto threads = ThreadGuard(readerCount);
+
   // dispatch reader threads
   for (std::size_t i = 0; i < readerCount; i++) {
-    threads.push_back(new std::thread(readWorker));
+    threads.emplace(readWorker);
   }
 
-  // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.joinAll();
 
   auto end = std::chrono::high_resolution_clock::now();
   std::cout << "time: "

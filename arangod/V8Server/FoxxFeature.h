@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
 #include "RestServer/arangod.h"
 
@@ -37,17 +41,15 @@ class FoxxFeature final : public ArangodFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
 
   // return poll interval for foxx queues. returns a negative number if
   // foxx queues are turned off
-  double pollInterval() const {
-    if (!_enabled) {
-      return -1.0;
-    }
-    return _pollInterval;
-  }
+  double pollInterval() const noexcept;
 
-  bool startupWaitForSelfHeal() const;
+  bool startupWaitForSelfHeal() const noexcept;
+
+  bool foxxEnabled() const noexcept;
 
   // store the locally applied version of the queue. this method will make sure
   // we will not go below any version that we have already seen.
@@ -75,9 +77,10 @@ class FoxxFeature final : public ArangodFeature {
   uint64_t _queueVersion;
   uint64_t _localQueueInserts;
 
-  double _pollInterval;
-  bool _enabled;
+  double _queuesPollInterval;
+  bool _queuesEnabled;
   bool _startupWaitForSelfHeal;
+  bool _foxxEnabled;
 };
 
 }  // namespace arangodb

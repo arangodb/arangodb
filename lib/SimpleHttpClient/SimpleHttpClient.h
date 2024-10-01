@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,16 +25,15 @@
 
 #pragma once
 
-#include <string.h>
 #include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
@@ -57,50 +56,56 @@ class GeneralClientConnection;
 struct SimpleHttpClientParams {
   friend class SimpleHttpClient;
 
-  SimpleHttpClientParams(double requestTimeout, bool warn)
+  SimpleHttpClientParams(double requestTimeout, bool warn,
+                         bool addContentLength = true)
       : _requestTimeout(requestTimeout),
         _warn(warn),
+        _addContentLength(addContentLength),
         _locationRewriter({nullptr, nullptr}) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief leave connection open on destruction
   //////////////////////////////////////////////////////////////////////////////
 
-  void keepConnectionOnDestruction(bool b) { _keepConnectionOnDestruction = b; }
+  void keepConnectionOnDestruction(bool b) noexcept {
+    _keepConnectionOnDestruction = b;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief enable or disable keep-alive
   //////////////////////////////////////////////////////////////////////////////
 
-  void setKeepAlive(bool value) { _keepAlive = value; }
+  void setKeepAlive(bool value) noexcept { _keepAlive = value; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief expose ArangoDB via user-agent?
   //////////////////////////////////////////////////////////////////////////////
 
-  void setExposeArangoDB(bool value) { _exposeArangoDB = value; }
+  void setExposeArangoDB(bool value) noexcept { _exposeArangoDB = value; }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief advertise support for deflate?
-  //////////////////////////////////////////////////////////////////////////////
+  void setCompressRequestThreshold(uint64_t value) noexcept {
+    _compressRequestThreshold = value;
+  }
 
-  void setSupportDeflate(bool value) { _supportDeflate = value; }
+  void setAllowCompressedResponses(bool value) noexcept {
+    _allowCompressedResponses = value;
+  }
 
-  void setMaxRetries(size_t s) { _maxRetries = s; }
+  void setMaxRetries(size_t s) noexcept { _maxRetries = s; }
 
-  size_t getMaxRetries() { return _maxRetries; }
+  size_t getMaxRetries() const noexcept { return _maxRetries; }
 
-  void setRetryWaitTime(uint64_t wt) { _retryWaitTime = wt; }
+  void setRetryWaitTime(uint64_t wt) noexcept { _retryWaitTime = wt; }
 
-  uint64_t getRetryWaitTime() { return _retryWaitTime; }
+  uint64_t getRetryWaitTime() const noexcept { return _retryWaitTime; }
 
   void setRetryMessage(std::string const& m) { _retryMessage = m; }
 
-  double getRequestTimeout() const { return _requestTimeout; }
+  double getRequestTimeout() const noexcept { return _requestTimeout; }
 
   void setRequestTimeout(double value) noexcept { _requestTimeout = value; }
 
-  void setMaxPacketSize(size_t ms) { _maxPacketSize = ms; }
+  void setMaxPacketSize(size_t ms) noexcept { _maxPacketSize = ms; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets username and password
@@ -114,20 +119,16 @@ struct SimpleHttpClientParams {
   void setJwt(std::string const& jwt) { _jwt = jwt; }
 
   // sets username and password
-  void setUserNamePassword(char const* prefix, std::string const& username,
-                           std::string const& password) {
-    TRI_ASSERT(prefix != nullptr);
-    TRI_ASSERT(strcmp(prefix, "/") == 0);
-    _basicAuth =
-        arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
-  }
+  void setUserNamePassword(std::string_view prefix, std::string_view username,
+                           std::string_view password);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief allows rewriting locations
   //////////////////////////////////////////////////////////////////////////////
 
-  void setLocationRewriter(void* data,
-                           std::string (*func)(void*, std::string const&)) {
+  void setLocationRewriter(void const* data,
+                           std::string (*func)(void const*,
+                                               std::string const&)) {
     _locationRewriter.data = data;
     _locationRewriter.func = func;
   }
@@ -146,11 +147,16 @@ struct SimpleHttpClientParams {
 
   bool _warn;
 
+  bool _addContentLength = true;
+
   bool _keepAlive = true;
 
   bool _exposeArangoDB = true;
 
-  bool _supportDeflate = true;
+  // if true, then the SimpleHttpClient will advertise via the HTTP header
+  // "accept-encoding: deflate" that it supports handling compressed response
+  // bodies.
+  bool _allowCompressedResponses = true;
 
   size_t _maxRetries = 3;
 
@@ -159,6 +165,10 @@ struct SimpleHttpClientParams {
   std::string _retryMessage;
 
   size_t _maxPacketSize = SimpleHttpClientParams::MaxPacketSize;
+
+  // compress request bodies if their size is >= this value. disabled by
+  // default.
+  uint64_t _compressRequestThreshold = 0;
 
   std::string _basicAuth;
 
@@ -169,11 +179,10 @@ struct SimpleHttpClientParams {
   //////////////////////////////////////////////////////////////////////////////
 
   struct {
-    void* data;
-    std::string (*func)(void*, std::string const&);
+    void const* data;
+    std::string (*func)(void const*, std::string const&);
   } _locationRewriter;
 
- private:
   // default value for max packet size
   static size_t MaxPacketSize;
 };
@@ -203,7 +212,6 @@ class SimpleHttpClient {
     DEAD
   };
 
- public:
   SimpleHttpClient(std::unique_ptr<GeneralClientConnection>&,
                    SimpleHttpClientParams const&);
   SimpleHttpClient(GeneralClientConnection*, SimpleHttpClientParams const&);
@@ -318,14 +326,7 @@ class SimpleHttpClient {
   /// @brief register an error message
   //////////////////////////////////////////////////////////////////////////////
 
-  void setErrorMessage(std::string_view message, ErrorCode error) {
-    if (error != TRI_ERROR_NO_ERROR) {
-      _errorMessage =
-          basics::StringUtils::concatT(message, ": ", TRI_errno_string(error));
-    } else {
-      setErrorMessage(message);
-    }
-  }
+  void setErrorMessage(std::string_view message, ErrorCode error);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether an error message is already there
@@ -408,7 +409,7 @@ class SimpleHttpClient {
   /// @param headerFields                   list of header fields
   //////////////////////////////////////////////////////////////////////////////
 
-  void setRequest(
+  ErrorCode setRequest(
       rest::RequestType method, std::string const& location, char const* body,
       size_t bodyLength,
       std::unordered_map<std::string, std::string> const& headerFields);

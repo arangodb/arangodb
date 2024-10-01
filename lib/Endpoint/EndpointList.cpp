@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -80,34 +80,6 @@ std::vector<std::string> EndpointList::all() const {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all typed endpoints
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<std::string> EndpointList::all(
-    Endpoint::TransportType transport) const {
-  std::string_view prefix;
-
-  switch (transport) {
-    case Endpoint::TransportType::HTTP:
-      prefix = "http+";
-      break;
-
-    case Endpoint::TransportType::VST:
-      prefix = "vst+";
-      break;
-  }
-
-  std::vector<std::string> result;
-  for (auto& it : _endpoints) {
-    if (it.first.starts_with(prefix)) {
-      result.emplace_back(it.first);
-    }
-  }
-
-  return result;
-}
-
 void EndpointList::apply(
     std::function<void(std::string const&, Endpoint&)> const& cb) {
   for (auto& it : _endpoints) {
@@ -122,8 +94,7 @@ void EndpointList::apply(
 
 bool EndpointList::hasSsl() const {
   for (auto& it : _endpoints) {
-    if (it.first.starts_with("http+ssl://") ||
-        it.first.starts_with("vst+ssl://")) {
+    if (it.first.starts_with("http+ssl://")) {
       return true;
     }
   }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,15 +24,20 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Basics/StaticStrings.h"
 #include "Futures/Future.h"
 #include "GeneralServer/RequestLane.h"
+#include "Inspection/VPack.h"
 #include "Network/ConnectionPool.h"
+#include "Network/RequestOptions.h"
 #include "Network/types.h"
 
 #include <fuerte/message.h>
 
 #include <chrono>
+#include <cstdint>
+#include <string>
 #include <memory>
 
 namespace arangodb {
@@ -41,6 +46,8 @@ template<typename T>
 class Buffer;
 class Slice;
 }  // namespace velocypack
+
+struct ShardID;
 
 namespace network {
 class ConnectionPool;
@@ -82,18 +89,27 @@ struct Response {
   [[nodiscard]] std::unique_ptr<arangodb::fuerte::Response>
   stealResponse() noexcept;
 
-  [[nodiscard]] bool ok() const {
+  [[nodiscard]] bool ok() const noexcept {
     return fuerte::Error::NoError == this->error;
   }
 
-  [[nodiscard]] bool fail() const { return !ok(); }
+  [[nodiscard]] bool fail() const noexcept { return !ok(); }
 
   // returns a slice of the payload if there was no error
-  [[nodiscard]] velocypack::Slice slice() const;
+  [[nodiscard]] velocypack::Slice slice() const noexcept;
+
+  template<typename T>
+  [[nodiscard]] auto deserialize() -> ResultT<T> {
+    if (auto res = combinedResult(); res.fail()) {
+      return res;
+    } else {
+      return velocypack::deserialize<T>(slice().get("result"));
+    }
+  }
 
   [[nodiscard]] std::size_t payloadSize() const noexcept;
 
-  fuerte::StatusCode statusCode() const;
+  fuerte::StatusCode statusCode() const noexcept;
 
   /// @brief Build a Result that contains
   ///   - no error if everything went well, otherwise
@@ -102,7 +118,7 @@ struct Response {
   ///   - the fuerte error, if there was a connectivity error.
   [[nodiscard]] Result combinedResult() const;
 
-  [[nodiscard]] std::string destinationShard()
+  [[nodiscard]] ResultT<ShardID> destinationShard()
       const;                                   /// @brief shardId or empty
   [[nodiscard]] std::string serverId() const;  /// @brief server ID
 
@@ -117,34 +133,6 @@ struct Response {
 
 static_assert(std::is_nothrow_move_constructible<Response>::value, "");
 using FutureRes = arangodb::futures::Future<Response>;
-
-static constexpr Timeout TimeoutDefault = Timeout(120.0);
-
-// Container for optional (often defaulted) parameters
-struct RequestOptions {
-  std::string database;
-  std::string contentType;  // uses vpack by default
-  std::string acceptType;   // uses vpack by default
-  fuerte::StringMap parameters;
-  Timeout timeout = TimeoutDefault;
-  bool retryNotFound = false;  // retry if answers is "datasource not found"
-  bool skipScheduler = false;  // do not use Scheduler queue
-  RequestLane continuationLane = RequestLane::CONTINUATION;
-
-  // Normally this is empty, if it is set to the ID of a server in the
-  // cluster, we will direct a read operation to a shard not as usual to
-  // the leader, but rather to the server given here. This is read for
-  // the "allowDirtyReads" options when we want to read from followers.
-  std::string overrideDestination;
-
-  template<typename K, typename V>
-  RequestOptions& param(K&& key, V&& val) {
-    TRI_ASSERT(!std::string_view{val}.empty());  // cannot parse it on receiver
-    this->parameters.insert_or_assign(std::forward<K>(key),
-                                      std::forward<V>(val));
-    return *this;
-  }
-};
 
 /// @brief send a request to a given destination
 /// This method must not throw under penalty of ...

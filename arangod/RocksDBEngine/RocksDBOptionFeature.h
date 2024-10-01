@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,10 +30,13 @@
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
 
-#include "Basics/Common.h"
 #include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
+
+// TODO: enable this once we upgrade to a newer version of RocksDB and
+// remove the ifdefs
+#undef ARANGODB_ROCKSDB8
 
 namespace arangodb {
 namespace options {
@@ -72,6 +75,9 @@ class RocksDBOptionFeature final : public ArangodFeature,
   }
   uint32_t numThreadsHigh() const noexcept override { return _numThreadsHigh; }
   uint32_t numThreadsLow() const noexcept override { return _numThreadsLow; }
+  uint64_t periodicCompactionTtl() const noexcept override {
+    return _periodicCompactionTtl;
+  }
 
  protected:
   rocksdb::Options doGetOptions() const override;
@@ -81,7 +87,6 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
-  std::string _compressionType;
   uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
   // Update max_write_buffer_number above if you change number of families used
@@ -102,6 +107,22 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
+#ifdef ARANGODB_ROCKSDB8
+  // only used for HyperClockCache
+  uint64_t _blockCacheEstimatedEntryCharge;
+#endif
+  uint64_t _minBlobSize;
+  uint64_t _blobFileSize;
+#ifdef ARANGODB_ROCKSDB8
+  uint32_t _blobFileStartingLevel;
+#endif
+  bool _enableBlobFiles;
+#ifdef ARANGODB_ROCKSDB8
+  bool _enableBlobCache;
+#endif
+  double _blobGarbageCollectionAgeCutoff;
+  double _blobGarbageCollectionForceThreshold;
+  double _bloomBitsPerKey;
   uint64_t _tableBlockSize;
   uint64_t _compactionReadaheadSize;
   int64_t _level0CompactionTrigger;
@@ -109,14 +130,23 @@ class RocksDBOptionFeature final : public ArangodFeature,
   int64_t _level0StopTrigger;
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
+  uint64_t _periodicCompactionTtl;
+  size_t _recycleLogFileNum;
+  std::string _compressionType;
+  std::string _blobCompressionType;
+  std::string _blockCacheType;
   std::string _checksumType;
   std::string _compactionStyle;
   uint32_t _formatVersion;
   bool _enableIndexCompression;
+  bool _useJemallocAllocator;
   bool _prepopulateBlockCache;
+#ifdef ARANGODB_ROCKSDB8
+  bool _prepopulateBlobCache;
+#endif
   bool _reserveTableBuilderMemory;
   bool _reserveTableReaderMemory;
-  bool _recycleLogFileNum;
+  bool _reserveFileMetadataMemory;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
   bool _cacheIndexAndFilterBlocksWithHighPriority;
@@ -134,9 +164,14 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _useFileLogging;
   bool _limitOpenFilesAtStartup;
   bool _allowFAllocate;
+  bool _enableBlobGarbageCollection;
   bool _exclusiveWrites;
-
   bool _minWriteBufferNumberToMergeTouched;
+  bool _partitionFilesForDocumentsCf;
+  bool _partitionFilesForPrimaryIndexCf;
+  bool _partitionFilesForEdgeIndexCf;
+  bool _partitionFilesForVPackIndexCf;
+  bool _partitionFilesForMdiIndexCf;
 
   /// per column family write buffer limits
   std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies>

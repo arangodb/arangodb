@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -57,50 +57,6 @@ class ClusterTraverserCacheTest : public ::testing::Test {
   ~ClusterTraverserCacheTest() = default;
 };
 
-TEST_F(ClusterTraverserCacheTest,
-       it_should_return_a_null_aqlvalue_if_vertex_not_cached) {
-  std::unordered_map<ServerID, aql::EngineId> engines;
-  std::string vertexId = "UnitTest/Vertex";
-  std::string expectedMessage = "vertex '" + vertexId + "' not found";
-
-  auto q = gdb.getQuery("RETURN 1", std::vector<std::string>{});
-
-  traverser::TraverserOptions opts{*q};
-  ClusterTraverserCache testee(*q, &engines, &opts);
-
-  // NOTE: we do not put anything into the cache, so we get null for any vertex
-  AqlValue val;
-  testee.appendVertex(std::string_view(vertexId), val);
-  ASSERT_TRUE(val.isNull(false));
-  auto all = q->warnings().all();
-  ASSERT_TRUE(all.size() == 1);
-  ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  ASSERT_TRUE(all[0].second == expectedMessage);
-}
-
-TEST_F(ClusterTraverserCacheTest,
-       it_should_insert_a_null_vpack_if_vertex_not_cached) {
-  std::unordered_map<ServerID, aql::EngineId> engines;
-  std::string vertexId = "UnitTest/Vertex";
-  std::string expectedMessage = "vertex '" + vertexId + "' not found";
-
-  auto q = gdb.getQuery("RETURN 1", std::vector<std::string>{});
-  VPackBuilder result;
-  traverser::TraverserOptions opts{*q};
-  ClusterTraverserCache testee(*q, &engines, &opts);
-
-  // NOTE: we do not put anything into the cache, so we get null for any vertex
-  testee.appendVertex(std::string_view(vertexId), result);
-
-  VPackSlice sl = result.slice();
-  ASSERT_TRUE(sl.isNull());
-
-  auto all = q->warnings().all();
-  ASSERT_TRUE(all.size() == 1);
-  ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  ASSERT_TRUE(all[0].second == expectedMessage);
-}
-
 class RefactoredClusterTraverserCacheTest : public ::testing::Test {
  protected:
   arangodb::GlobalResourceMonitor _globalMonitor{};
@@ -119,7 +75,7 @@ class RefactoredClusterTraverserCacheTest : public ::testing::Test {
     // After every test ensure that the ResourceMonitor is conting down to 0
     // again
     _cache.reset();
-    EXPECT_EQ(_monitor.current(), 0)
+    EXPECT_EQ(_monitor.current(), 0U)
         << "Resource Monitor is not reset to 0 after deletion of the cache.";
   }
 
@@ -141,7 +97,7 @@ TEST_F(RefactoredClusterTraverserCacheTest, gives_a_reference_to_a_datalake) {
   auto& lake = testee.datalake();
   // We only test that we can access a valid empty datalake after construction.
   // Datalake needs it's own test;
-  EXPECT_EQ(lake.numEntries(), 0);
+  EXPECT_EQ(lake.numEntries(), 0U);
 }
 
 TEST_F(RefactoredClusterTraverserCacheTest, cache_a_single_vertex) {

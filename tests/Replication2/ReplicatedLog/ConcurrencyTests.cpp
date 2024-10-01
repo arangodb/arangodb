@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,8 +25,9 @@
 
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/types.h"
-#include "TestHelper.h"
+#include "Replication2/Helper/TestHelper.h"
 
+#include <Basics/ThreadGuard.h>
 #include <Basics/ScopeGuard.h>
 #include <Basics/application-exit.h>
 
@@ -117,7 +119,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
           auto fut = log->waitFor(idx);
           fut.get();
           auto snapshot = log->getReplicatedLogSnapshot();
-          ASSERT_LT(0, idx.value);
+          ASSERT_LT(0U, idx.value);
           ASSERT_LE(idx.value, snapshot.size());
           auto const& entry = snapshot[idx.value - 1];
           EXPECT_EQ(idx, entry.entry().logIndex());
@@ -160,7 +162,7 @@ struct ReplicatedLogConcurrentTest : ReplicatedLogTest {
         auto const payload = std::optional(
             LogPayload::createFromString(genPayload(threadIdx, i + k)));
         auto const idx = idxs[k];
-        ASSERT_LT(0, idx.value);
+        ASSERT_LT(0U, idx.value);
         ASSERT_LE(idx.value, snapshot.size());
         auto const& entry = snapshot[idx.value - 1];
         EXPECT_EQ(idx, entry.entry().logIndex());
@@ -231,12 +233,12 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   auto replicationThread =
       std::thread{runReplicationWithIntermittentPauses, std::ref(data)};
 
-  std::vector<std::thread> clientThreads;
+  auto clientThreads = ThreadGuard(2);
+
   auto threadCounter = uint16_t{0};
-  clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++,
-                             std::ref(data));
-  clientThreads.emplace_back(insertManyThenRead, threadCounter++,
-                             std::ref(data));
+  clientThreads.emplace(alternatinglyInsertAndRead, threadCounter++,
+                        std::ref(data));
+  clientThreads.emplace(insertManyThenRead, threadCounter++, std::ref(data));
 
   ASSERT_EQ(clientThreads.size(), threadCounter);
   while (data.threadsReady.load() < clientThreads.size()) {
@@ -247,9 +249,7 @@ TEST_F(ReplicatedLogConcurrentTest, lonelyLeader) {
   }
   data.stopClientThreads.store(true);
 
-  for (auto& thread : clientThreads) {
-    thread.join();
-  }
+  clientThreads.joinAll();
 
   // stop replication only after all client threads joined, so we don't block
   // them in some intermediate state
@@ -294,12 +294,12 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
       runFollowerReplicationWithIntermittentPauses,
       std::vector{follower1.get(), follower2.get()}, std::ref(data)};
 
-  std::vector<std::thread> clientThreads;
+  auto clientThreads = ThreadGuard(2);
+
   auto threadCounter = uint16_t{0};
-  clientThreads.emplace_back(alternatinglyInsertAndRead, threadCounter++,
-                             std::ref(data));
-  clientThreads.emplace_back(insertManyThenRead, threadCounter++,
-                             std::ref(data));
+  clientThreads.emplace(alternatinglyInsertAndRead, threadCounter++,
+                        std::ref(data));
+  clientThreads.emplace(insertManyThenRead, threadCounter++, std::ref(data));
 
   ASSERT_EQ(clientThreads.size(), threadCounter);
   while (data.threadsReady.load() < clientThreads.size()) {
@@ -310,9 +310,7 @@ TEST_F(ReplicatedLogConcurrentTest, leaderWithFollowers) {
   }
   data.stopClientThreads.store(true);
 
-  for (auto& thread : clientThreads) {
-    thread.join();
-  }
+  clientThreads.joinAll();
 
   // stop replication only after all client threads joined, so we don't block
   // them in some intermediate state

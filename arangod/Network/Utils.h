@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,10 +28,14 @@
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "Utils/OperationResult.h"
+#include "Futures/Future.h"
 
 #include <fuerte/types.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
+
+#include <string>
+#include <unordered_map>
 
 namespace arangodb {
 namespace velocypack {
@@ -44,12 +48,15 @@ class ClusterInfo;
 class NetworkFeature;
 
 namespace network {
+struct RequestOptions;
 
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
-ErrorCode resolveDestination(NetworkFeature const&, DestinationId const& dest,
-                             network::EndpointSpec&);
-ErrorCode resolveDestination(ClusterInfo&, DestinationId const& dest,
-                             network::EndpointSpec&);
+futures::Future<ErrorCode> resolveDestination(NetworkFeature const&,
+                                              DestinationId const& dest,
+                                              network::EndpointSpec&);
+futures::Future<ErrorCode> resolveDestination(ClusterInfo&,
+                                              DestinationId const& dest,
+                                              network::EndpointSpec&);
 
 Result resultFromBody(
     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,
@@ -63,7 +70,7 @@ template<typename T>
 OperationResult opResultFromBody(T const& body, ErrorCode defaultErrorCode,
                                  OperationOptions&& options) {
   return OperationResult(
-      arangodb::network::resultFromBody(body, defaultErrorCode),
+      arangodb::network::resultFromBody(body, defaultErrorCode), body,
       std::move(options));
 }
 
@@ -91,6 +98,9 @@ fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);
 rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb);
 
 void addSourceHeader(consensus::Agent* agent, fuerte::Request& req);
+
+/// @brief add "user" request parameter
+void addUserParameter(RequestOptions& reqOpts, std::string_view value);
 
 }  // namespace network
 }  // namespace arangodb

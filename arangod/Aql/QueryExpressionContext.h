@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,8 +30,11 @@
 
 #include <velocypack/Slice.h>
 
+#include <string_view>
+
 namespace arangodb {
 struct ValidatorBase;
+
 namespace aql {
 class QueryContext;
 class AqlFunctionsInternalCache;
@@ -49,19 +52,20 @@ class QueryExpressionContext : public aql::ExpressionContext {
         _query(query),
         _aqlFunctionsInternalCache(cache) {}
 
-  void registerWarning(ErrorCode errorCode, char const* msg) override final;
-  void registerError(ErrorCode errorCode, char const* msg) override final;
+  void registerWarning(ErrorCode errorCode,
+                       std::string_view msg) override final;
+  void registerError(ErrorCode errorCode, std::string_view msg) override final;
 
-  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
-                                       bool caseInsensitive) override final;
-  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
-                                      bool caseInsensitive) override final;
-  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression,
-                                       velocypack::Options const* opts,
-                                       bool& isEmptyExpression) override final;
+  icu_64_64::RegexMatcher* buildRegexMatcher(
+      std::string_view expr, bool caseInsensitive) override final;
+  icu_64_64::RegexMatcher* buildLikeMatcher(
+      std::string_view expr, bool caseInsensitive) override final;
+  icu_64_64::RegexMatcher* buildSplitMatcher(
+      AqlValue splitExpression, velocypack::Options const* opts,
+      bool& isEmptyExpression) override final;
 
   arangodb::ValidatorBase* buildValidator(
-      arangodb::velocypack::Slice const&) override final;
+      arangodb::velocypack::Slice) override final;
 
   TRI_vocbase_t& vocbase() const override final;
   // may be inaccessible on some platforms

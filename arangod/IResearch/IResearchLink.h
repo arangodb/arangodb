@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,21 +24,17 @@
 
 #pragma once
 
-#include "index/directory_reader.hpp"
-#include "index/index_writer.hpp"
-#include "store/directory.hpp"
-#include "utils/utf8_path.hpp"
-
+#include "Basics/Result.h"
 #include "IResearch/IResearchDataStore.h"
-#include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchVPackComparer.h"
-#include "IResearch/IResearchViewMeta.h"
-#include "Indexes/Index.h"
-#include "Metrics/Fwd.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "Transaction/Status.h"
-#include "Utils/OperationOptions.h"
-#include "VocBase/Identifiers/IndexId.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
+#include <atomic>
+#include <memory>
+#include <string>
+#include <string_view>
 
 namespace arangodb::iresearch {
 
@@ -55,43 +51,16 @@ class IResearchLink : public IResearchDataStore {
   IResearchLink& operator=(IResearchLink const&) = delete;
   IResearchLink& operator=(IResearchLink&&) = delete;
 
-  ~IResearchLink() override;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this IResearch Link reference the supplied view
-  ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(LogicalView const& view) const noexcept;
-  bool operator!=(LogicalView const& view) const noexcept {
-    return !(*this == view);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this iResearch Link match the meta definition
-  ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(IResearchLinkMeta const& meta) const noexcept;
-  bool operator!=(IResearchLinkMeta const& meta) const noexcept {
-    return !(*this == meta);
-  }
-
-  static bool canBeDropped() {
-    // valid for a link to be dropped from an ArangoSearch view
-    return true;
-  }
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result drop();
 
-  static bool isHidden();  // arangodb::Index override
-  static bool isSorted();  // arangodb::Index override
+  static bool isHidden();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief called when the iResearch Link is loaded into memory
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  void load();
+  // IResearch does not provide a fixed default sort order
+  static constexpr bool isSorted() noexcept { return false; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief index comparator, used by the coordinator to detect if the
@@ -107,18 +76,6 @@ class IResearchLink : public IResearchDataStore {
   ///        elements are appended to an existing object
   //////////////////////////////////////////////////////////////////////////////
   Result properties(velocypack::Builder& builder, bool forPersistence) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief ArangoSearch Link index type enum value
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  static Index::IndexType type();
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief ArangoSearch Link index type string value
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  static char const* typeName();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is unloaded from memory
@@ -139,11 +96,6 @@ class IResearchLink : public IResearchDataStore {
               InitCallback const& init = {});
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @return arangosearch internal format identifier
-  ////////////////////////////////////////////////////////////////////////////////
-  std::string_view format() const noexcept;
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief get stored values
   ////////////////////////////////////////////////////////////////////////////////
   IResearchViewStoredValues const& storedValues() const noexcept;
@@ -155,34 +107,35 @@ class IResearchLink : public IResearchDataStore {
   /// _collectionName if it is not empty.
   /// @return true if name not existed in link before and was actually set by
   /// this call, false otherwise
-  bool setCollectionName(irs::string_ref name) noexcept;
+  bool setCollectionName(std::string_view name) noexcept;
 
-  /// @brief insert an ArangoDB document into an iResearch View using '_meta'
-  /// params
-  /// @note arangodb::Index override
-  ////////////////////////////////////////////////////////////////////////////////
-  Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc);
-
+  std::string const& getDbName() const noexcept;
   std::string const& getViewId() const noexcept;
-  std::string const& getDbName() const;
-  std::string const& getShardName() const noexcept;
   std::string getCollectionName() const;
-  bool hasNested() const noexcept;
+  std::string const& getShardName() const noexcept;
+
+  auto const& meta() const noexcept { return _meta; }
+
+  void setBuilding(bool building) noexcept {
+    _isBuilding.store(building, std::memory_order_relaxed);
+  }
+  [[nodiscard]] bool isBuilding() const noexcept {
+    return _isBuilding.load(std::memory_order_relaxed);
+  }
 
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...)
   /// after
   ////////////////////////////////////////////////////////////////////////////////
-  IResearchLink(IndexId iid, LogicalCollection& collection);
+  using IResearchDataStore::IResearchDataStore;
 
   void insertMetrics() final;
   void removeMetrics() final;
 
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
-  irs::comparer const* getComparator() const noexcept override {
+  irs::Comparer const* getComparator() const noexcept final {
     return &_comparer;
   }
 
@@ -202,6 +155,8 @@ class IResearchLink : public IResearchDataStore {
   std::string _viewGuid;
 
   VPackComparer<IResearchViewSort> _comparer;
+
+  std::atomic_bool _isBuilding{false};
 };
 
 }  // namespace arangodb::iresearch

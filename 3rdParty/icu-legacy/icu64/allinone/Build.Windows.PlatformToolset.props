@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (C) 2016 and later: Unicode, Inc. and others. License & terms of use: http://www.unicode.org/copyright.html -->
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- This file is used to set the PlatformToolset configuration option for all UWP projects. -->
+  
+  <!-- Automatic PlatformToolset version selection. -->
+  <!-- If there is no DefaultPlatformToolset set, we will detect the version based on version of the build tools. -->
+  <PropertyGroup>
+    <BuildToolVersion>$(VisualStudioVersion)</BuildToolVersion>
+    <BuildToolVersion Condition="'$(BuildToolVersion)'==''">$(MSBuildToolsVersion)</BuildToolVersion>
+    <!-- Note: v140 is the Visual Studio 2015 toolset. v141 is the Visual Studio 2017 toolset. -->
+    <AutoDetectedPlatformToolset Condition="'$(BuildToolVersion)'=='14.0'">v140</AutoDetectedPlatformToolset>
+    <AutoDetectedPlatformToolset Condition="'$(BuildToolVersion)'=='15.0'">v141</AutoDetectedPlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="EmptyDefaultPlatformToolset">
+    <DefaultPlatformToolset Condition=" '$(DefaultPlatformToolset)' == '' ">$(AutoDetectedPlatformToolset)</DefaultPlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Label="PlatformToolset">
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Disable MSBuild warning about Linker OutputFile. -->
+    <!-- Ex: MSBuild complains that the common project creates "icuuc62.dll" rather than "common.dll". However, this is intentional. -->
+    <MSBuildWarningsAsMessages>MSB8012</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+</Project>

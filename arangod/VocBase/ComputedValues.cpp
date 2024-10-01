@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Expression.h"
-#include "Aql/ExpressionContext.h"
+#include "Aql/LazyConditions.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
@@ -37,11 +37,11 @@
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/debugging.h"
-#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -85,7 +85,7 @@ transaction::Methods& ComputedValuesExpressionContext::trx() const {
 }
 
 void ComputedValuesExpressionContext::registerWarning(ErrorCode errorCode,
-                                                      char const* msg) {
+                                                      std::string_view msg) {
   if (_failOnWarning) {
     // treat as an error if we are supposed to treat warnings as errors
     registerError(errorCode, msg);
@@ -96,7 +96,7 @@ void ComputedValuesExpressionContext::registerWarning(ErrorCode errorCode,
 }
 
 void ComputedValuesExpressionContext::registerError(ErrorCode errorCode,
-                                                    char const* msg) {
+                                                    std::string_view msg) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
 
   std::string error = buildLogMessage("error", msg);
@@ -105,34 +105,28 @@ void ComputedValuesExpressionContext::registerError(ErrorCode errorCode,
 }
 
 std::string ComputedValuesExpressionContext::buildLogMessage(
-    std::string_view type, char const* msg) const {
+    std::string_view type, std::string_view msg) const {
   // note: on DB servers, the error message will contain the shard name
   // rather than the collection name.
-  std::string error =
-      absl::StrCat("computed values expression evaluation produced a runtime ",
-                   type, " for attribute '", _name, "' of collection '",
-                   _collection.vocbase().name(), "/", _collection.name(), "'");
-
-  if (msg != nullptr) {
-    absl::StrAppend(&error, ": ", msg);
-  }
+  std::string error = absl::StrCat(
+      "computed values expression evaluation produced a runtime ", type,
+      " for attribute '", _name, "' of collection '",
+      _collection.vocbase().name(), "/", _collection.name(), "': ", msg);
 
   return error;
 }
 
-icu::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length,
-                                                      caseInsensitive);
+icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length,
-                                                     caseInsensitive);
+icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
+icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
     aql::AqlValue splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
@@ -140,7 +134,7 @@ icu::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
 }
 
 ValidatorBase* ComputedValuesExpressionContext::buildValidator(
-    velocypack::Slice const& params) {
+    velocypack::Slice params) {
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 
@@ -169,12 +163,11 @@ void ComputedValuesExpressionContext::clearVariable(
   _variables.erase(variable);
 }
 
-ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
-                                             std::string_view name,
-                                             std::string_view expressionString,
-                                             ComputeValuesOn mustComputeOn,
-                                             bool overwrite, bool failOnWarning,
-                                             bool keepNull)
+ComputedValues::ComputedValue::ComputedValue(
+    TRI_vocbase_t& vocbase, std::string_view name,
+    std::string_view expressionString,
+    transaction::OperationOrigin operationOrigin, ComputeValuesOn mustComputeOn,
+    bool overwrite, bool failOnWarning, bool keepNull)
     : _vocbase(vocbase),
       _name(name),
       _expressionString(expressionString),
@@ -182,12 +175,18 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
       _overwrite(overwrite),
       _failOnWarning(failOnWarning),
       _keepNull(keepNull),
-      _queryContext(aql::StandaloneCalculation::buildQueryContext(_vocbase)),
+      _queryContext(aql::StandaloneCalculation::buildQueryContext(
+          _vocbase, operationOrigin)),
       _rootNode(nullptr) {
   aql::Ast* ast = _queryContext->ast();
 
   auto qs = aql::QueryString(expressionString);
   aql::Parser parser(*_queryContext, *ast, qs);
+  // force the condition of the ternary operator (condition ? truePart :
+  // falsePart) to be always inlined and not be extracted into its own LET node.
+  // if we don't set this boolean flag here, then a ternary operator could
+  // create additional LET nodes, which is not supported inside computed values.
+  parser.lazyConditions().pushForceInline();
   // will throw if there is any error, but the expression should have been
   // validated before
   parser.parse();
@@ -314,13 +313,14 @@ void ComputedValues::ComputedValue::computeAttribute(
 
   auto const& vopts = ctx.trx().vpackOptions();
   aql::AqlValueMaterializer materializer(&vopts);
-  output.add(_name, materializer.slice(result, false));
+  output.add(_name, materializer.slice(result));
 }
 
 ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
                                std::span<std::string const> shardKeys,
-                               velocypack::Slice params) {
-  Result res = buildDefinitions(vocbase, shardKeys, params);
+                               velocypack::Slice params,
+                               transaction::OperationOrigin operationOrigin) {
+  Result res = buildDefinitions(vocbase, shardKeys, params, operationOrigin);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -416,9 +416,9 @@ void ComputedValues::mergeComputedAttributes(
   output.close();
 }
 
-Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
-                                        std::span<std::string const> shardKeys,
-                                        velocypack::Slice params) {
+Result ComputedValues::buildDefinitions(
+    TRI_vocbase_t& vocbase, std::span<std::string const> shardKeys,
+    velocypack::Slice params, transaction::OperationOrigin operationOrigin) {
   if (params.isNone() || params.isNull()) {
     return {};
   }
@@ -524,7 +524,8 @@ Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
     // validate the actual expression
     Result res = aql::StandaloneCalculation::validateQuery(
         vocbase, expression.stringView(), ::docParameter,
-        " in computation expression", /*isComputedValue*/ true);
+        " in computation expression", operationOrigin,
+        /*isComputedValue*/ true);
     if (res.fail()) {
       return {
           TRI_ERROR_BAD_PARAMETER,
@@ -551,8 +552,8 @@ Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
 
     try {
       _values.emplace_back(vocbase, name.stringView(), expression.stringView(),
-                           mustComputeOn, overwrite.getBoolean(), failOnWarning,
-                           keepNull);
+                           operationOrigin, mustComputeOn,
+                           overwrite.getBoolean(), failOnWarning, keepNull);
     } catch (std::exception const& ex) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("invalid 'computedValues' entry: ", ex.what())};
@@ -564,7 +565,8 @@ Result ComputedValues::buildDefinitions(TRI_vocbase_t& vocbase,
 
 ResultT<std::shared_ptr<ComputedValues>> ComputedValues::buildInstance(
     TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
-    velocypack::Slice computedValues) {
+    velocypack::Slice computedValues,
+    transaction::OperationOrigin operationOrigin) {
   if (!computedValues.isNone()) {
     if (computedValues.isNull()) {
       computedValues = VPackSlice::emptyArraySlice();
@@ -585,7 +587,7 @@ ResultT<std::shared_ptr<ComputedValues>> ComputedValues::buildInstance(
             vocbase.server()
                 .getFeature<DatabaseFeature>()
                 .getCalculationVocbase(),
-            std::span(shardKeys), computedValues);
+            std::span(shardKeys), computedValues, operationOrigin);
       } catch (std::exception const& ex) {
         return Result{
             TRI_ERROR_BAD_PARAMETER,

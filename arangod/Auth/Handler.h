@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,17 +36,12 @@ namespace auth {
 
 class HandlerResult {
  public:
-  explicit HandlerResult(arangodb::auth::Source const& source)
-      : HandlerResult(TRI_ERROR_FAILED, source) {}
+  explicit HandlerResult() : HandlerResult(TRI_ERROR_FAILED) {}
 
-  HandlerResult(ErrorCode errorNumber, arangodb::auth::Source const& source)
-      : _result(errorNumber), _authSource(source) {}
+  HandlerResult(ErrorCode errorNumber) : _result(errorNumber) {}
 
-  HandlerResult(std::set<std::string> const& roles, auth::Source const& source)
-      : _result(TRI_ERROR_NO_ERROR), _authSource(source), _roles(roles) {}
-
- public:
-  arangodb::auth::Source source() const { return _authSource; }
+  HandlerResult(std::set<std::string> const& roles)
+      : _result(TRI_ERROR_NO_ERROR), _roles(roles) {}
 
   std::set<std::string> roles() const { return _roles; }
 
@@ -58,7 +53,6 @@ class HandlerResult {
 
  protected:
   Result _result;
-  arangodb::auth::Source _authSource;
   std::set<std::string> _roles;
 };
 
@@ -67,7 +61,6 @@ class Handler {
   /// Refresh rate for users from this source in seconds
   virtual double refreshRate() const = 0;
   virtual bool allowOfflineCacheUsage() const = 0;
-  virtual auth::Source source() const = 0;
 
   /// Authenticate user and return user permissions and roles
   virtual HandlerResult authenticate(std::string const& username,

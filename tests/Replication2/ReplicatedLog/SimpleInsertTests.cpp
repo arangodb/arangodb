@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "TestHelper.h"
+#include "Replication2/Helper/TestHelper.h"
 
 #include <Basics/IndexIter.h>
 
@@ -73,10 +74,10 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     // Metric still unused
     auto numAppendEntries =
         countHistogramEntries(_logMetricsMock->replicatedLogAppendEntriesRttUs);
-    EXPECT_EQ(numAppendEntries, 0);
+    EXPECT_EQ(numAppendEntries, 0U);
     auto numFollowerAppendEntries = countHistogramEntries(
         _logMetricsMock->replicatedLogFollowerAppendEntriesRtUs);
-    EXPECT_EQ(numFollowerAppendEntries, 0);
+    EXPECT_EQ(numFollowerAppendEntries, 0U);
   }
 
   {
@@ -104,7 +105,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
     {
       // check the leader log, there should be two entries written
-      auto entry = std::optional<PersistingLogEntry>{};
+      auto entry = std::optional<LogEntry>{};
       auto followerLog = getPersistedLogById(LogId{1});
       auto iter = followerLog->read(LogIndex{1});
 
@@ -148,7 +149,7 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
 
     {
       // check the follower log, there should be two entries written
-      auto entry = std::optional<PersistingLogEntry>{};
+      auto entry = std::optional<LogEntry>{};
       auto followerLog = getPersistedLogById(LogId{2});
       auto iter = followerLog->read(LogIndex{1});
 
@@ -207,23 +208,21 @@ TEST_F(ReplicatedLogTest, write_single_entry_to_follower) {
     // Finally, the LCI is updated with another round of requests.
     auto numAppendEntries =
         countHistogramEntries(_logMetricsMock->replicatedLogAppendEntriesRttUs);
-    EXPECT_EQ(numAppendEntries, 6);
+    EXPECT_EQ(numAppendEntries, 6U);
     auto numFollowerAppendEntries = countHistogramEntries(
         _logMetricsMock->replicatedLogFollowerAppendEntriesRtUs);
-    EXPECT_EQ(numFollowerAppendEntries, 6);
+    EXPECT_EQ(numFollowerAppendEntries, 6U);
   }
 }
 
 TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
   auto const entries = {
-      replication2::PersistingLogEntry(
-          LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::PersistingLogEntry(
-          LogTerm{1}, LogIndex{2},
-          LogPayload::createFromString("second entry")),
-      replication2::PersistingLogEntry(
-          LogTerm{2}, LogIndex{3},
-          LogPayload::createFromString("third entry"))};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1},
+                             LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -276,7 +275,7 @@ TEST_F(ReplicatedLogTest, wake_up_as_leader_with_persistent_data) {
     // AppendEntries with prevLogIndex 0 -> success = true
     // AppendEntries with new commitIndex
     // AppendEntries with new LCI
-    EXPECT_EQ(number_of_runs, 4);
+    EXPECT_EQ(number_of_runs, 4U);
   }
 
   {
@@ -460,14 +459,12 @@ TEST_F(ReplicatedLogTest, multiple_follower) {
 TEST_F(ReplicatedLogTest,
        write_concern_one_immediate_leader_commit_on_startup) {
   auto const entries = {
-      replication2::PersistingLogEntry(
-          LogTerm{1}, LogIndex{1}, LogPayload::createFromString("first entry")),
-      replication2::PersistingLogEntry(
-          LogTerm{1}, LogIndex{2},
-          LogPayload::createFromString("second entry")),
-      replication2::PersistingLogEntry(
-          LogTerm{2}, LogIndex{3},
-          LogPayload::createFromString("third entry"))};
+      replication2::LogEntry(LogTerm{1}, LogIndex{1},
+                             LogPayload::createFromString("first entry")),
+      replication2::LogEntry(LogTerm{1}, LogIndex{2},
+                             LogPayload::createFromString("second entry")),
+      replication2::LogEntry(LogTerm{2}, LogIndex{3},
+                             LogPayload::createFromString("third entry"))};
 
   auto coreA = std::unique_ptr<LogCore>(nullptr);
   {
@@ -519,7 +516,7 @@ TEST_F(ReplicatedLogTest,
     // AppendEntries with prevLogIndex 2 -> success = false, replicated log
     // empty AppendEntries with prevLogIndex 2 -> success = true, including
     // commit index AppendEntries with LCI
-    EXPECT_EQ(number_of_runs, 3);
+    EXPECT_EQ(number_of_runs, 3U);
   }
 
   {

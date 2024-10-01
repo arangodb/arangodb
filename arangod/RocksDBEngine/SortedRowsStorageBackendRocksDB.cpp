@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,15 +26,16 @@
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/Executor/SortExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
-#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBFormat.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBSortedRowsStorageContext.h"
 #include "RocksDBEngine/RocksDBTempStorage.h"
 
@@ -48,9 +49,17 @@ namespace arangodb {
 
 SortedRowsStorageBackendRocksDB::SortedRowsStorageBackendRocksDB(
     RocksDBTempStorage& storage, aql::SortExecutorInfos& infos)
-    : _tempStorage(storage), _infos(infos), _rowNumberForInsert(0) {}
+    : _tempStorage(storage),
+      _infos(infos),
+      _rowNumberForInsert(0),
+      _memoryTracker(nullptr, nullptr,
+                     RocksDBMethodsMemoryTracker::kDefaultGranularity) {
+  _memoryTracker.beginQuery(_infos.getQuery().resourceMonitorAsSharedPtr());
+}
 
 SortedRowsStorageBackendRocksDB::~SortedRowsStorageBackendRocksDB() {
+  _memoryTracker.endQuery();
+
   try {
     cleanup();
   } catch (...) {
@@ -61,7 +70,7 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
     aql::AqlItemBlockInputRange& inputRange) {
   if (_context == nullptr) {
     // create context on the fly
-    _context = _tempStorage.getSortedRowsStorageContext();
+    _context = _tempStorage.getSortedRowsStorageContext(_memoryTracker);
   }
 
   TRI_ASSERT(_iterator == nullptr);

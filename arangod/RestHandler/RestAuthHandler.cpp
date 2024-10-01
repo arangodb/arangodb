@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,9 +23,9 @@
 
 #include "RestAuthHandler.h"
 
-#include <fuerte/jwt.h>
-#include <velocypack/Builder.h>
-
+#include "Auth/Handler.h"
+#include "Auth/TokenCache.h"
+#include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -33,6 +33,9 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Utils/Events.h"
+
+#include <fuerte/jwt.h>
+#include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -80,7 +83,7 @@ RestStatus RestAuthHandler::execute() {
         // this case!
       }
 
-      generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
+      generateResult(rest::ResponseCode::OK, resultBuilder.slice());
     }
     return RestStatus::DONE;
   }
@@ -102,8 +105,8 @@ RestStatus RestAuthHandler::execute() {
     return badRequest();
   }
 
-  std::string const username = usernameSlice.copyString();
-  std::string const password = passwordSlice.copyString();
+  std::string username = usernameSlice.copyString();
+  std::string password = passwordSlice.copyString();
 
   bool isValid = false;
 
@@ -127,7 +130,7 @@ RestStatus RestAuthHandler::execute() {
     }
 
     isValid = true;
-    generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
+    generateResult(rest::ResponseCode::OK, resultBuilder.slice());
   } else {
     // mop: rfc 2616 10.4.2 (if credentials wrong 401)
     generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED,

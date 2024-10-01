@@ -13,7 +13,7 @@ exposedBy:
 description: |
   This metric reflects the lifetime hit rate of the ArangoDB in-memory
   cache which is sitting in front of RocksDB. For example, the edge
-  cache is a part of this. The value will be a ratio between 0 and 1.
+  cache is a part of this. The value is a ratio between `0` and `1`.
   "Lifetime" means here that accounting is done from the most recent
   start of the `arangod` instance.
   If the hit rate is too low, you might have to little RAM available

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,16 +24,20 @@
 #pragma once
 
 #include "Aql/AqlFunctionsInternalCache.h"
-#include "Aql/DocumentProducingNode.h"
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
+#include "Aql/IndexHint.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
-#include "Basics/Common.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
+#include "Aql/VarInfoMap.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -55,7 +59,6 @@ class Slice;
 namespace graph {
 
 class EdgeCursor;
-class SingleServerEdgeCursor;
 class TraverserCache;
 
 /**
@@ -73,6 +76,7 @@ class TraverserCache;
  *          - K_Shortest_Paths
  *          - K_Paths
  */
+
 struct BaseOptions {
  public:
   struct LookupInfo {
@@ -98,10 +102,9 @@ struct BaseOptions {
     LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice info,
                arangodb::velocypack::Slice shards);
 
-    void initializeNonConstExpressions(
-        aql::Ast* ast,
-        std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-        aql::Variable const* indexVariable);
+    void initializeNonConstExpressions(aql::Ast* ast,
+                                       aql::VarInfoMap const& varInfo,
+                                       aql::Variable const* indexVariable);
 
     /// @brief Build a velocypack containing all relevant information
     ///        for DBServer traverser engines.
@@ -149,16 +152,19 @@ struct BaseOptions {
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
-  void setCollectionToShard(
-      std::unordered_map<std::string, std::string> const&);
+  void setCollectionToShard(std::unordered_map<std::string, ShardID> const&);
 
-  bool produceVertices() const { return _produceVertices; }
+  bool produceVertices() const noexcept { return _produceVertices; }
 
-  bool produceEdges() const { return _produceEdges; }
+  bool produceEdges() const noexcept { return _produceEdges; }
 
-  void setProduceVertices(bool value) { _produceVertices = value; }
+  bool useCache() const noexcept { return _useCache; }
 
-  void setProduceEdges(bool value) { _produceEdges = value; }
+  void setProduceVertices(bool value) noexcept { _produceVertices = value; }
+
+  void setProduceEdges(bool value) noexcept { _produceEdges = value; }
+
+  void setUseCache(bool value) noexcept { _useCache = value; }
 
   transaction::Methods* trx() const;
 
@@ -176,7 +182,7 @@ struct BaseOptions {
 
   /// @brief whether or not an edge collection shall be excluded
   /// this can be overridden in TraverserOptions
-  virtual bool shouldExcludeEdgeCollection(std::string const& name) const {
+  virtual bool shouldExcludeEdgeCollection(std::string const& /*name*/) const {
     return false;
   }
 
@@ -191,8 +197,7 @@ struct BaseOptions {
       bool enableDocumentCache,
       std::unordered_map<ServerID, aql::EngineId> const* engines);
 
-  std::unordered_map<std::string, std::vector<std::string>> const&
-  collectionToShard() const {
+  MonitoredCollectionToShardMap const& collectionToShard() const {
     return _collectionToShard;
   }
 
@@ -204,7 +209,7 @@ struct BaseOptions {
 
   void setParallelism(size_t p) noexcept { _parallelism = p; }
 
-  size_t parallelism() const { return _parallelism; }
+  size_t parallelism() const noexcept { return _parallelism; }
 
   void isQueryKilledCallback() const;
 
@@ -220,19 +225,18 @@ struct BaseOptions {
 
   aql::Projections const& getEdgeProjections() const;
 
-  void setRefactor(bool r) noexcept { _refactor = r; }
+  aql::IndexHint const& hint() const;
 
-  bool refactor() const { return _refactor; }
+  void setHint(aql::IndexHint hint);
 
   aql::Variable const* tmpVar();  // TODO check public
   arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
 
   arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
 
-  virtual void initializeIndexConditions(
-      aql::Ast* ast,
-      std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-      aql::Variable const* indexVariable);
+  virtual void initializeIndexConditions(aql::Ast* ast,
+                                         aql::VarInfoMap const& varInfo,
+                                         aql::Variable const* indexVariable);
 
   virtual void calculateIndexExpressions(aql::Ast* ast);
 
@@ -256,26 +260,25 @@ struct BaseOptions {
                               std::string const& collectionName,
                               std::string const& attributeName,
                               aql::AstNode* condition, bool onlyEdgeIndexes,
-                              TRI_edge_direction_e direction);
-
-  void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
+                              TRI_edge_direction_e direction,
+                              std::optional<uint64_t> depth);
 
   void toVelocyPackBase(VPackBuilder& builder) const;
 
   void parseShardIndependentFlags(arangodb::velocypack::Slice info);
 
  protected:
-  mutable arangodb::transaction::Methods _trx;
+  mutable transaction::Methods _trx;
 
   // needed for expression evaluation.
   // This entry is required by API, but not actively used here
-  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   /// This context holds values for Variables/References in AqlNodes
   /// it is read from whenever we need to do a calculation in this class.
   /// e.g. edge.weight > a
   /// Here "a" is read from the expression context.
-  arangodb::aql::FixedVarExpressionContext _expressionCtx;
+  aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
   /// This vector holds the information necessary for the Storage layer.
@@ -298,10 +301,11 @@ struct BaseOptions {
   /// @brief the traverser cache
   /// This basically caches strings, and items we want to reference multiple
   /// times.
+  /// (monitored: non-dynamic and dynamic memory)
   std::unique_ptr<TraverserCache> _cache;
 
-  // @brief - translations for one-shard-databases
-  std::unordered_map<std::string, std::vector<std::string>> _collectionToShard;
+  // @brief - translations for one-shard-databases (monitored)
+  MonitoredCollectionToShardMap _collectionToShard;
 
   /// Section for Options the user has given in the AQL query
 
@@ -319,21 +323,23 @@ struct BaseOptions {
   /// query.
   bool _produceEdges{true};
 
+  /// @brief whether or not to use the edge cache or other indexes' caches
+  /// during edge lookups
+  bool _useCache{true};
+
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
 
   size_t _maxProjections{aql::DocumentProducingNode::kMaxProjections};
 
-  /// @brief Projections used on vertex data
+  /// @brief Projections used on vertex data (monitored)
   aql::Projections _vertexProjections;
 
-  /// @brief Projections used on edge data
+  /// @brief Projections used on edge data (monitored)
   aql::Projections _edgeProjections;
 
-  /// @brief whether or not we are running the refactored version
-  /// TODO: This must be removed prior release - (is currently needed for the
-  /// refactoring)
-  bool _refactor;
+  /// @brief user hint regarding which indexes to use
+  aql::IndexHint _hint;
 };
 
 }  // namespace graph

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,12 +38,11 @@
 #include <chrono>
 #include <future>
 #include <memory>
+#include <mutex>
 #include <utility>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 
 // public rocksdb headers
 #include <rocksdb/db.h>
@@ -54,13 +53,7 @@
 // write_controller.
 //  need either ROCKSDB_PLATFORM_POSIX or OS_WIN set before the <db/...>
 //  includes
-#ifndef _WIN32
 #define ROCKSDB_PLATFORM_POSIX 1
-#else
-#define OS_WIN 1
-#include <sys/types.h>
-#define _SSIZE_T_DEFINED 1
-#endif
 #include <db/db_impl/db_impl.h>
 #include <db/write_controller.h>
 
@@ -74,16 +67,16 @@ class RocksDBThrottle : public rocksdb::EventListener {
   virtual ~RocksDBThrottle();
 
   void OnFlushBegin(rocksdb::DB* db,
-                    const rocksdb::FlushJobInfo& flush_job_info) override;
+                    rocksdb::FlushJobInfo const& flush_job_info) override;
 
   void OnFlushCompleted(rocksdb::DB* db,
-                        const rocksdb::FlushJobInfo& flush_job_info) override;
+                        rocksdb::FlushJobInfo const& flush_job_info) override;
 
   void OnCompactionCompleted(rocksdb::DB* db,
-                             const rocksdb::CompactionJobInfo& ci) override;
+                             rocksdb::CompactionJobInfo const& ci) override;
 
-  void setFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& Families) {
-    _families = Families;
+  void setFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& families) {
+    _families = families;
   }
 
   void stopThread();
@@ -93,8 +86,8 @@ class RocksDBThrottle : public rocksdb::EventListener {
  private:
   void startup(rocksdb::DB* db);
 
-  void setThrottleWriteRate(std::chrono::microseconds Micros, uint64_t Keys,
-                            uint64_t Bytes, bool IsLevel0);
+  void setThrottleWriteRate(std::chrono::microseconds micros, uint64_t keys,
+                            uint64_t bytes, bool isLevel0);
 
   void threadLoop();
 
@@ -130,7 +123,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
   };
   std::atomic<ThrottleState> _throttleState;
 
-  Mutex _threadMutex;
+  std::mutex _threadMutex;
   basics::ConditionVariable _threadCondvar;
 
   // this array stores compaction statistics used in throttle calculation.

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,17 +35,23 @@
 #include "Basics/overload.h"
 #include "Execution.h"
 #include "Server.h"
+#include "Workloads/EdgeCache.h"
 #include "Workloads/GetByPrimaryKey.h"
 #include "Workloads/InsertDocuments.h"
 #include "Workloads/IterateDocuments.h"
+#include "Workloads/WriteWriteConflict.h"
 #include "velocypack/Collection.h"
+#include "velocypack/Parser.h"
 
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 namespace {
 std::size_t getFolderSize(std::string_view path) {
@@ -84,18 +90,26 @@ auto Runner::runBenchmark() -> Report {
 
   std::cout << "Running benchmark...\n";
   auto workload = std::visit(
-      overload{[](workloads::GetByPrimaryKey::Options& opts)
-                   -> std::shared_ptr<Workload> {
-                 return std::make_shared<workloads::GetByPrimaryKey>(opts);
-               },
-               [](workloads::InsertDocuments::Options& opts)
-                   -> std::shared_ptr<Workload> {
-                 return std::make_shared<workloads::InsertDocuments>(opts);
-               },
-               [](workloads::IterateDocuments::Options& opts)
-                   -> std::shared_ptr<Workload> {
-                 return std::make_shared<workloads::IterateDocuments>(opts);
-               }},
+      overload{
+          [](workloads::WriteWriteConflict::Options& opts)
+              -> std::shared_ptr<Workload> {
+            return std::make_shared<workloads::WriteWriteConflict>(opts);
+          },
+          [](workloads::GetByPrimaryKey::Options& opts)
+              -> std::shared_ptr<Workload> {
+            return std::make_shared<workloads::GetByPrimaryKey>(opts);
+          },
+          [](workloads::EdgeCache::Options& opts) -> std::shared_ptr<Workload> {
+            return std::make_shared<workloads::EdgeCache>(opts);
+          },
+          [](workloads::InsertDocuments::Options& opts)
+              -> std::shared_ptr<Workload> {
+            return std::make_shared<workloads::InsertDocuments>(opts);
+          },
+          [](workloads::IterateDocuments::Options& opts)
+              -> std::shared_ptr<Workload> {
+            return std::make_shared<workloads::IterateDocuments>(opts);
+          }},
       _options.workload);
 
   Execution exec(_options, workload);
@@ -157,51 +171,70 @@ void Runner::startServer() {
   if (_options.clearDatabaseDirectory) {
     std::filesystem::remove_all(_options.databaseDirectory);
   }
-  _server =
-      std::make_unique<Server>(_options.rocksdb, _options.databaseDirectory);
+  _server = std::make_unique<Server>(_options.rocksdb, _options.cache,
+                                     _options.databaseDirectory);
   _server->start(_executable.data());
 }
 
 void Runner::setup() {
-  std::cout << "Setting up collections\n";
-  for (auto& col : _options.setup.collections) {
-    auto collection = createCollection(col.name);
-    for (auto& idx : col.indexes) {
-      createIndex(*collection, idx);
+  if (!_options.setup.collections.empty()) {
+    std::cout << "Setting up collections\n";
+    for (auto& col : _options.setup.collections) {
+      auto collection = createCollection(col.name, col.type);
+      for (auto& idx : col.indexes) {
+        createIndex(*collection, idx);
+      }
     }
   }
 
-  std::cout << "Running prefill...\n";
-  for (auto& opts : _options.setup.prefill) {
-    auto workload = std::make_shared<workloads::InsertDocuments>(opts.second);
-    Execution exec(_options, workload);
-    exec.createThreads(*_server);
-    std::ignore = exec.run();  // TODO - do we need the report?
+  if (!_options.setup.prefill.empty()) {
+    std::cout << "Running prefill...\n";
+    for (auto& opts : _options.setup.prefill) {
+      auto workload = std::make_shared<workloads::InsertDocuments>(opts.second);
+      Execution exec(_options, workload);
+      exec.createThreads(*_server);
+      std::ignore = exec.run();  // TODO - do we need the report?
+    }
   }
 }
 
-auto Runner::createCollection(std::string const& name)
+auto Runner::createCollection(std::string const& name, std::string const& type)
     -> std::shared_ptr<LogicalCollection> {
-  VPackBuilder optionsBuilder;
-  optionsBuilder.openObject();
-  optionsBuilder.close();
+  VPackBuilder b;
+  b.openObject();
+  b.add("name", VPackValue(name));
+  b.add("type",
+        VPackValue(type == "edge" ? TRI_COL_TYPE_EDGE : TRI_COL_TYPE_DOCUMENT));
+  b.close();
 
-  std::shared_ptr<LogicalCollection> collection;
+  bool enforceReplicationFactor = true;
+  auto config = _server->vocbase()->getDatabaseConfiguration();
+  config.enforceReplicationFactor = enforceReplicationFactor;
+
+  auto planCollection =
+      CreateCollectionBody::fromCreateAPIBody(b.slice(), config);
+
+  if (planCollection.fail()) {
+    throw std::runtime_error("Failed to create collection: " +
+                             std::string(planCollection.errorMessage()));
+  }
+
+  std::vector<CreateCollectionBody> collections{
+      std::move(planCollection.get())};
+
   auto res = methods::Collections::create(
-      *_server->vocbase(),     // collection vocbase
-      {},                      // operation options
-      name,                    // collection name
-      TRI_COL_TYPE_DOCUMENT,   // collection type
-      optionsBuilder.slice(),  // collection properties
-      false,                   // replication wait flag
-      false,                   // replication factor flag
-      false,                   // new Database?, here always false
-      collection);
+      *_server->vocbase(),  // collection vocbase
+      {},                   // operation options
+      collections,
+      /*waitForSyncReplication*/ true, enforceReplicationFactor,
+      /*isNewDatabase*/ false);
+
   if (!res.ok()) {
     throw std::runtime_error("Failed to create collection: " +
                              std::string(res.errorMessage()));
   }
-  return collection;
+  TRI_ASSERT(res.get().size() == 1);
+  return res.get().at(0);
 }
 
 void Runner::createIndex(LogicalCollection& col, IndexSetup const& index) {

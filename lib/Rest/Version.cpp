@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,11 +23,9 @@
 
 #include "Rest/Version.h"
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
+#include <cstdint>
 #include <sstream>
+#include <string_view>
 
 #include <openssl/ssl.h>
 
@@ -38,6 +36,8 @@
 #include <velocypack/Version.h>
 
 #include "Basics/FeatureFlags.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/asio_ns.h"
@@ -45,9 +45,11 @@
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
+#include "BuildId/BuildId.h"
 
 #include "../3rdParty/iresearch/core/utils/version_defines.hpp"
 
+using namespace arangodb;
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
@@ -139,12 +141,11 @@ void Version::initialize() {
 
   Values["architecture"] =
       (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
-#ifdef __arm__
+#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   Values["arm"] = "true";
 #else
   Values["arm"] = "false";
 #endif
-  Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
   Values["compiler"] = getCompiler();
@@ -163,11 +164,16 @@ void Version::initialize() {
 #else
   Values["ndebug"] = "false";
 #endif
+#ifdef USE_COVERAGE
+  Values["coverage"] = "true";
+#else
+  Values["coverage"] = "false";
+#endif
 #ifdef ARCHITECTURE_OPTIMIZATIONS
   Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
 #endif
   Values["endianness"] = getEndianness();
-  Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
+  Values["fd-setsize"] = basics::StringUtils::itoa(FD_SETSIZE);
   Values["full-version-string"] = getVerboseVersionString();
   Values["icu-version"] = getICUVersion();
   Values["openssl-version-compile-time"] = getOpenSSLVersion(true);
@@ -185,14 +191,11 @@ void Version::initialize() {
   Values["platform"] = getPlatform();
   Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();
-  Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
-  Values["sizeof long"] = arangodb::basics::StringUtils::itoa(sizeof(long));
-  Values["sizeof void*"] = arangodb::basics::StringUtils::itoa(sizeof(void*));
-#ifdef TRI_UNALIGNED_ACCESS
-  Values["unaligned-access"] = "true";
-#else
+  Values["sizeof int"] = basics::StringUtils::itoa(sizeof(int));
+  Values["sizeof long"] = basics::StringUtils::itoa(sizeof(long));
+  Values["sizeof void*"] = basics::StringUtils::itoa(sizeof(void*));
+  // always hard-coded to "false" since 3.12
   Values["unaligned-access"] = "false";
-#endif
   Values["v8-version"] = getV8Version();
   Values["vpack-version"] = getVPackVersion();
   Values["zlib-version"] = getZLibVersion();
@@ -306,14 +309,19 @@ void Version::initialize() {
   Values["libunwind"] = "false";
 #endif
 
-  if (::arangodb::replication2::EnableReplication2) {
+  if constexpr (arangodb::build_id::supportsBuildIdReader()) {
+    Values["build-id"] =
+        basics::StringUtils::encodeHex(arangodb::build_id::getBuildId());
+  }
+
+  if (replication2::EnableReplication2) {
     Values["replication2-enabled"] = "true";
   } else {
     Values["replication2-enabled"] = "false";
   }
 
   for (auto& it : Values) {
-    arangodb::basics::StringUtils::trimInPlace(it.second);
+    basics::StringUtils::trimInPlace(it.second);
   }
 }
 
@@ -328,7 +336,7 @@ int32_t Version::getNumericServerVersion() {
   }
 
   TRI_ASSERT(*p == '.');
-  int32_t major = TRI_Int32String(apiVersion, (p - apiVersion));
+  int32_t major = NumberUtils::atoi_positive_unchecked<int32_t>(apiVersion, p);
 
   apiVersion = ++p;
 
@@ -338,7 +346,7 @@ int32_t Version::getNumericServerVersion() {
   }
 
   TRI_ASSERT((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion);
-  int32_t minor = TRI_Int32String(apiVersion, (p - apiVersion));
+  int32_t minor = NumberUtils::atoi_positive_unchecked<int32_t>(apiVersion, p);
 
   int32_t patch = 0;
   if (*p == '.') {
@@ -350,7 +358,7 @@ int32_t Version::getNumericServerVersion() {
     }
 
     if (p != apiVersion) {
-      patch = TRI_Int32String(apiVersion, (p - apiVersion));
+      patch = NumberUtils::atoi_positive_unchecked<int32_t>(apiVersion, p);
     }
   }
 
@@ -394,10 +402,14 @@ std::string Version::getRocksDBVersion() {
 
 // get V8 version
 std::string Version::getV8Version() {
+#ifdef USE_V8
 #ifdef ARANGODB_V8_VERSION
   return std::string(ARANGODB_V8_VERSION);
 #else
   return std::string();
+#endif
+#else
+  return "none";
 #endif
 }
 
@@ -424,7 +436,7 @@ std::string Version::getOpenSSLVersion(bool compileTime) {
 
 // get vpack version
 std::string Version::getVPackVersion() {
-  return arangodb::velocypack::Version::BuildVersion.toString();
+  return velocypack::Version::BuildVersion.toString();
 }
 
 // get zlib version
@@ -455,9 +467,6 @@ std::string Version::getCompiler() {
   return "clang [" + std::string(__VERSION__) + "]";
 #elif defined(__GNUC__) || defined(__GNUG__)
   return "gcc [" + std::string(__VERSION__) + "]";
-#elif defined(_MSC_VER)
-  return "msvc [" + std::to_string(_MSC_VER) + "]";
-#else
   return "unknown";
 #endif
 }
@@ -522,6 +531,14 @@ std::string Version::getOskarBuildRepository() {
 #endif
 }
 
+std::string const& Version::getBuildId() {
+  auto it = Values.find("build-id");
+  if (it == Values.end()) {
+    return StaticStrings::Empty;
+  }
+  return (*it).second;
+}
+
 // return a server version string
 std::string Version::getVerboseVersionString() {
   std::ostringstream version;
@@ -551,7 +568,14 @@ std::string Version::getVerboseVersionString() {
   version << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
-          << "V8 " << getV8Version() << ", " << getOpenSSLVersion(false);
+#ifdef USE_V8
+          << "V8 " << getV8Version() << ", "
+#endif
+          << getOpenSSLVersion(false);
+
+  if (Values.contains("build-id")) {
+    version << ", build-id: " << Values["build-id"];
+  }
 
   return version.str();
 }
@@ -567,11 +591,7 @@ std::string Version::getDetailed() {
       result.append(it.first);
       result.append(": ");
       result.append(it.second);
-#ifdef _WIN32
-      result += "\r\n";
-#else
       result += "\n";
-#endif
     }
   }
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,7 +34,6 @@
 #include "Basics/StringHeap.h"
 #include "Containers/FlatHashMap.h"
 
-#include "Transaction/Methods.h"
 #include "Graph/Steps/ClusterProviderStep.h"
 
 #include <vector>
@@ -55,6 +54,9 @@ class Builder;
 class HashedStringRef;
 }  // namespace velocypack
 
+namespace transaction {
+class Methods;
+}
 namespace graph {
 
 // TODO: we need to control from the outside if and which parts of the vertex -
@@ -78,6 +80,7 @@ class ClusterProvider {
   ClusterProvider& operator=(ClusterProvider const&) = delete;
 
   void clear();
+  void clearWithForce();
 
   auto startVertex(const VertexType& vertex, size_t depth = 0,
                    double weight = 0.0) -> Step;
@@ -92,6 +95,7 @@ class ClusterProvider {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+
   VPackSlice readEdge(EdgeType const& edgeID);
 
   void addEdgeIDToBuilder(typename Step::Edge const& edge,

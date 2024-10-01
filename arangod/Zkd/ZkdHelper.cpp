@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,8 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
 #include "Containers/SmallVector.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <algorithm>
 #include <cassert>
@@ -306,6 +308,7 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min,
   std::size_t step = 0;
   std::size_t dim = 0;
 
+  TRI_ASSERT(dimensions > 0 || max_size == 0);
   for (std::size_t i = 0; i < 8 * max_size; i++) {
     TRI_ASSERT(step == i / dimensions);
     TRI_ASSERT(dim == i % dimensions);
@@ -344,9 +347,8 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min,
 auto zkd::testInBox(byte_string_view cur, byte_string_view min,
                     byte_string_view max, std::size_t dimensions) -> bool {
   if (dimensions == 0) {
-    auto msg = std::string{"dimensions argument to "};
-    msg += __func__;
-    msg += " must be greater than zero.";
+    auto msg = absl::StrCat("dimensions argument to ", __func__,
+                            " must be greater than zero.");
     throw std::invalid_argument{msg};
   }
 
@@ -360,7 +362,7 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min,
   isLargerLowerThanMinMax.resize(dimensions);
 
   unsigned dim = 0;
-  unsigned finished_dims = 2 * dimensions;
+  unsigned finished_dims = static_cast<unsigned>(2 * dimensions);
   for (std::size_t i = 0; i < 8 * max_size; i++) {
     auto cur_bit = cur_reader.next().value_or(Bit::ZERO);
     auto min_bit = min_reader.next().value_or(Bit::ZERO);
@@ -427,6 +429,7 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
     while (changeBP != 0 && !update_dims) {
       --changeBP;
       if (nisp.getBit(changeBP) == Bit::ZERO) {
+        TRI_ASSERT(dims > 0);
         auto dim = changeBP % dims;
         auto step = changeBP / dims;
         if (cmpResult[dim].saveMax <= step) {
@@ -455,6 +458,7 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
   // after `bitPos`
   auto const nextGreaterBitInDim = [dims](std::size_t const bitPos,
                                           std::size_t const dim) {
+    TRI_ASSERT(dims > 0);
     auto const posRem = bitPos % dims;
     auto const posFloor = bitPos - posRem;
     auto const result = dim > posRem ? (posFloor + dim) : posFloor + dims + dim;

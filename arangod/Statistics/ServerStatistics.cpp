@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
@@ -49,6 +50,10 @@ DECLARE_COUNTER(
 DECLARE_COUNTER(
     arangodb_collection_lock_timeouts_write_total,
     "Number of timeouts when trying to acquire collection write locks");
+DECLARE_GAUGE(arangodb_transactions_rest_memory_usage, uint64_t,
+              "Memory usage of transactions (excl. AQL queries)");
+DECLARE_GAUGE(arangodb_transactions_internal_memory_usage, uint64_t,
+              "Memory usage of internal transactions");
 DECLARE_COUNTER(arangodb_transactions_aborted_total,
                 "Number of transactions aborted");
 DECLARE_COUNTER(arangodb_transactions_committed_total,
@@ -89,6 +94,10 @@ DECLARE_HISTOGRAM(arangodb_collection_truncate_time, TimeScale<>,
 
 TransactionStatistics::TransactionStatistics(metrics::MetricsFeature& metrics)
     : _metrics(metrics),
+      _restTransactionsMemoryUsage(
+          _metrics.add(arangodb_transactions_rest_memory_usage{})),
+      _internalTransactionsMemoryUsage(
+          _metrics.add(arangodb_transactions_internal_memory_usage{})),
       _transactionsStarted(_metrics.add(arangodb_transactions_started_total{})),
       _transactionsAborted(_metrics.add(arangodb_transactions_aborted_total{})),
       _transactionsCommitted(

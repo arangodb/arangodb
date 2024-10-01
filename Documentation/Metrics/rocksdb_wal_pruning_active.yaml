@@ -12,9 +12,9 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric contains a value of 0 if the pruning of archived RocksDB WAL
-  files is not activated, and 1 if it is activated.
+  This metric contains a value of `0` if the pruning of archived RocksDB WAL
+  files is not activated, and `1` if it is activated.
   WAL file pruning is normally deactivated for the first few minutes after
   an instance is started, so that other instances in the cluster can start
   replicating from the instance before all archived WAL files are deleted.
-  The value should flip from 0 to 1 a few minutes after server start.
+  The value should flip from `0` to `1` a few minutes after server start.

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,12 +24,10 @@
 #pragma once
 
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionState.h"
 #include "Aql/ExecutionEngine.h"
-
-#include "Aql/ModificationExecutorAccumulator.h"
-#include "Aql/ModificationExecutorInfos.h"
-
+#include "Aql/ExecutionState.h"
+#include "Aql/Executor/ModificationExecutorAccumulator.h"
+#include "Aql/Executor/ModificationExecutorInfos.h"
 #include "Aql/InsertModifier.h"
 #include "Aql/RemoveModifier.h"
 #include "Aql/UpdateReplaceModifier.h"
@@ -113,11 +111,10 @@ class SimpleModifier : public std::enable_shared_from_this<
     VPackArrayIterator _resultsIterator;
   };
 
- public:
   explicit SimpleModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
-        _completion(infos),
-        _batchSize(ExecutionBlock::DefaultBatchSize),
+        _completion(_infos),
+        _batchSize(_infos._batchSize),
         _results(NoResult{}) {
     TRI_ASSERT(_infos.engine() != nullptr);
   }
@@ -152,6 +149,11 @@ class SimpleModifier : public std::enable_shared_from_this<
 
   bool hasResultOrException() const noexcept;
   bool hasNeitherResultNorOperationPending() const noexcept;
+
+  // Destroy all InputAqlItemRows, and with it SharedAqlItemBlockPtrs, this
+  // holds. This is necessary to ensure the lifetime of the AqlItemBlocks is
+  // shorter than of the AqlItemBlockManager, to which they are returned.
+  void stopAndClear() noexcept;
 
  private:
   [[nodiscard]] bool resultAvailable() const;

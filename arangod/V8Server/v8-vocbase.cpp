@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,10 @@
 ///
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
 #include "v8-vocbaseprivate.h"
 
@@ -37,15 +41,14 @@
 #include "Agency/State.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "Aql/ClusterQuery.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
 #include "Basics/HybridLogicalClock.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
@@ -84,7 +87,6 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-general-graph.h"
 #include "V8Server/v8-replicated-logs.h"
-#include "V8Server/v8-prototype-state.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-users.h"
@@ -95,10 +97,6 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Queries.h"
 #include "VocBase/Methods/Transactions.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -195,7 +193,7 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (arangodb::ExecContext::isAuthEnabled()) {
     user = ExecContext::current().user();
   }
-  mgr->toVelocyPack(builder, vocbase.name(), user, fanout);
+  mgr->toVelocyPack(builder, vocbase.name(), user, fanout, /*details*/ false);
 
   builder.close();
 
@@ -313,7 +311,8 @@ static void JS_GetIcuTimezones(
 
   UErrorCode status = U_ZERO_ERROR;
 
-  icu::StringEnumeration* timeZones = icu::TimeZone::createEnumeration();
+  icu_64_64::StringEnumeration* timeZones =
+      icu_64_64::TimeZone::createEnumeration();
   if (timeZones) {
     int32_t idsCount = timeZones->count(status);
 
@@ -349,10 +348,11 @@ static void JS_GetIcuLocales(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
   int32_t count = 0;
-  const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
+  const icu_64_64::Locale* locales =
+      icu_64_64::Locale::getAvailableLocales(count);
   if (locales) {
     for (int32_t i = 0; i < count; ++i) {
-      const icu::Locale* l = locales + i;
+      const icu_64_64::Locale* l = locales + i;
       char const* str = l->getBaseName();
 
       result
@@ -385,7 +385,7 @@ static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Value pattern(
       isolate, args[1]->ToString(context).FromMaybe(v8::Handle<v8::String>()));
 
-  icu::TimeZone* tz = nullptr;
+  icu_64_64::TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(isolate, args[2]->ToString(context).FromMaybe(
                                          v8::Handle<v8::String>()));
@@ -396,27 +396,29 @@ static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // compilers.
     // ..........................................................................
 
-    icu::UnicodeString ts((const UChar*)*value, value.length());
-    tz = icu::TimeZone::createTimeZone(ts);
+    icu_64_64::UnicodeString ts((const UChar*)*value, value.length());
+    tz = icu_64_64::TimeZone::createTimeZone(ts);
   } else {
-    tz = icu::TimeZone::createDefault();
+    tz = icu_64_64::TimeZone::createDefault();
   }
 
-  icu::Locale locale;
+  icu_64_64::Locale locale;
   if (args.Length() > 3) {
     std::string name = TRI_ObjectToString(isolate, args[3]);
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   } else {
     // use language of default collator
     std::string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   }
 
-  icu::UnicodeString formattedString;
+  icu_64_64::UnicodeString formattedString;
   UErrorCode status = U_ZERO_ERROR;
-  icu::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
-  icu::DateFormatSymbols* ds = new icu::DateFormatSymbols(locale, status);
-  icu::SimpleDateFormat* s = new icu::SimpleDateFormat(aPattern, ds, status);
+  icu_64_64::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
+  icu_64_64::DateFormatSymbols* ds =
+      new icu_64_64::DateFormatSymbols(locale, status);
+  icu_64_64::SimpleDateFormat* s =
+      new icu_64_64::SimpleDateFormat(aPattern, ds, status);
   s->setTimeZone(*tz);
   s->format((UDate)(datetime * 1000), formattedString);
 
@@ -449,7 +451,7 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Value pattern(
       isolate, args[1]->ToString(context).FromMaybe(v8::Handle<v8::String>()));
 
-  icu::TimeZone* tz = nullptr;
+  icu_64_64::TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(isolate, args[2]->ToString(context).FromMaybe(
                                          v8::Handle<v8::String>()));
@@ -460,28 +462,30 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // compilers.
     // ..........................................................................
 
-    icu::UnicodeString ts((const UChar*)*value, value.length());
-    tz = icu::TimeZone::createTimeZone(ts);
+    icu_64_64::UnicodeString ts((const UChar*)*value, value.length());
+    tz = icu_64_64::TimeZone::createTimeZone(ts);
   } else {
-    tz = icu::TimeZone::createDefault();
+    tz = icu_64_64::TimeZone::createDefault();
   }
 
-  icu::Locale locale;
+  icu_64_64::Locale locale;
   if (args.Length() > 3) {
     std::string name = TRI_ObjectToString(isolate, args[3]);
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   } else {
     // use language of default collator
     std::string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   }
 
-  icu::UnicodeString formattedString((const UChar*)*datetimeString,
-                                     datetimeString.length());
+  icu_64_64::UnicodeString formattedString((const UChar*)*datetimeString,
+                                           datetimeString.length());
   UErrorCode status = U_ZERO_ERROR;
-  icu::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
-  icu::DateFormatSymbols* ds = new icu::DateFormatSymbols(locale, status);
-  icu::SimpleDateFormat* s = new icu::SimpleDateFormat(aPattern, ds, status);
+  icu_64_64::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
+  icu_64_64::DateFormatSymbols* ds =
+      new icu_64_64::DateFormatSymbols(locale, status);
+  icu_64_64::SimpleDateFormat* s =
+      new icu_64_64::SimpleDateFormat(aPattern, ds, status);
   s->setTimeZone(*tz);
 
   UDate udate = s->parse(formattedString, status);
@@ -514,8 +518,9 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const queryString(TRI_ObjectToString(isolate, args[0]));
   // If we execute an AQL query from V8 we need to unset the nolock headers
+  auto origin = transaction::OperationOriginAQL{"parsing query"};
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(vocbase, true),
+      transaction::V8Context::create(vocbase, origin, true),
       aql::QueryString(queryString), nullptr);
   auto parseResult = query->parse();
 
@@ -644,7 +649,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
     }
     if (args[1]->IsObject()) {
-      bindVars.reset(new VPackBuilder);
+      bindVars = std::make_shared<VPackBuilder>();
 
       TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
     }
@@ -660,8 +665,9 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
+  auto origin = transaction::OperationOriginAQL{"explaining query"};
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(vocbase, true),
+      transaction::V8Context::create(vocbase, origin, true),
       aql::QueryString(std::move(queryString)), std::move(bindVars),
       aql::QueryOptions(options.slice()));
   auto queryResult = query->explain();
@@ -762,17 +768,10 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, options, args[1], false);
   }
 
-  arangodb::aql::QueryId queryId;
-  if (ServerState::instance()->isCoordinator()) {
-    queryId =
-        vocbase.server().getFeature<ClusterFeature>().clusterInfo().uniqid();
-  } else {
-    queryId = TRI_NewServerSpecificTick();
-  }
-
-  auto query = arangodb::aql::ClusterQuery::create(
-      queryId, transaction::V8Context::Create(vocbase, true),
-      aql::QueryOptions(options.slice()));
+  auto origin = transaction::OperationOriginAQL{"executing query from JSON"};
+  auto query = aql::Query::create(
+      transaction::V8Context::create(vocbase, origin, true), aql::QueryString{},
+      /*bindParameters*/ nullptr, aql::QueryOptions(options.slice()));
 
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
@@ -793,10 +792,9 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
-  query->prepareClusterQuery(VPackSlice::emptyObjectSlice(), collections,
-                             variables, snippetBuilder.slice(),
-                             VPackSlice::noneSlice(), ignoreResponse,
-                             analyzersRevision);
+  query->prepareFromVelocyPack(
+      /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
+      /*snippets*/ snippetBuilder.slice(), analyzersRevision);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -894,14 +892,23 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (!args[2]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
-
     TRI_V8ToVPack(isolate, options, args[2], false);
   }
 
+  TRI_GET_GLOBALS();
+  auto origin = transaction::OperationOriginAQL{"executing query"};
+  auto v8Context = transaction::V8Context::create(vocbase, origin, true);
+  if (v8g->_transactionContext != nullptr) {
+    if (v8g->_transactionContext->isTransactionJS()) {
+      v8Context->setJStransaction();
+    }
+    if (v8g->_transactionContext->isReadOnlyTransaction()) {
+      v8Context->setReadOnly();
+    }
+  }
   auto query = arangodb::aql::Query::create(
-      transaction::V8Context::Create(vocbase, true),
-      aql::QueryString(std::move(queryString)), std::move(bindVars),
-      aql::QueryOptions(options.slice()));
+      std::move(v8Context), aql::QueryString(std::move(queryString)),
+      std::move(bindVars), aql::QueryOptions(options.slice()));
 
   arangodb::aql::QueryResultV8 queryResult = query->executeV8(isolate);
 
@@ -1311,10 +1318,6 @@ static v8::Handle<v8::Object> WrapVocBase(v8::Isolate* isolate,
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock collectionDatabaseCollectionName
-////////////////////////////////////////////////////////////////////////////////
-
 static void MapGetVocBase(v8::Local<v8::Name> const name,
                           v8::PropertyCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
@@ -1397,36 +1400,28 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
             .FromMaybe(v8::Local<v8::Object>());
     auto* collection = UnwrapCollection(isolate, value);
 
-    // check if the collection is from the same database
-    if (collection && &(collection->vocbase()) == &vocbase) {
-      // we cannot use collection->getStatusLocked() here, because we
-      // have no idea who is calling us (db[...]). The problem is that
-      // if we are called from within a JavaScript transaction, the
-      // caller may have already acquired the collection's status lock
-      // with that transaction. if we now lock again, we may deadlock!
-      auto status = collection->status();
-      auto cid = collection->id();
-      auto internalVersion = collection->v8CacheVersion();
-
-      // check if the collection is still alive
-      if (status != TRI_VOC_COL_STATUS_DELETED && cid.isSet() &&
-          !ServerState::instance()->isCoordinator()) {
+    // check if the collection is from the same database and
+    // hasn't been deleted
+    if (!ServerState::instance()->isCoordinator() && collection &&
+        &(collection->vocbase()) == &vocbase && !collection->deleted()) {
+      if (auto cid = collection->id(); cid.isSet()) {
         TRI_GET_GLOBAL_STRING(_IdKey);
-        TRI_GET_GLOBAL_STRING(VersionKeyHidden);
         if (TRI_HasProperty(context, isolate, value, _IdKey)) {
           DataSourceId cachedCid{TRI_ObjectToUInt64(
               isolate,
               value->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>()),
               true)};
-          uint32_t cachedVersion = (uint32_t)TRI_ObjectToInt64(
+
+          TRI_GET_GLOBAL_STRING(VersionKeyHidden);
+          uint32_t cachedVersion = static_cast<uint32_t>(TRI_ObjectToInt64(
               isolate, value->Get(context, VersionKeyHidden)
-                           .FromMaybe(v8::Local<v8::Value>()));
+                           .FromMaybe(v8::Local<v8::Value>())));
+          auto internalVersion = collection->v8CacheVersion();
 
           if (cachedCid == cid && cachedVersion == internalVersion) {
             // cache hit
             TRI_V8_RETURN(value);
           }
-
           // store the updated version number in the object for future
           // comparisons
           value
@@ -1456,7 +1451,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
                        .getCollectionNT(vocbase.name(), std::string(key));
     }
   } else {
-    collection = vocbase.lookupCollection(std::string(key));
+    collection = vocbase.lookupCollection(std::string_view(key, keyLength));
   }
 
   if (collection == nullptr) {
@@ -1520,10 +1515,6 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseVersion
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1546,19 +1537,14 @@ static void JS_VersionServer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databasePath
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_PathDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto& vocbase = GetContextVocBase(isolate);
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   StorageEngine& engine =
       v8g->server().getFeature<EngineSelectorFeature>().engine();
 
-  TRI_V8_RETURN_STD_STRING(engine.databasePath(&vocbase));
+  TRI_V8_RETURN_STD_STRING(engine.databasePath());
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1575,10 +1561,6 @@ static void JS_VersionFilenameDatabase(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseId
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1587,10 +1569,6 @@ static void JS_IdDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_tick_t>(isolate, vocbase.id()));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseName
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1601,10 +1579,6 @@ static void JS_NameDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_STD_STRING(n);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseIsSystem
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsSystemDatabase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1626,10 +1600,6 @@ static void JS_FakeFlushCache(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseUseDatabase
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1646,16 +1616,16 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto& databaseFeature = v8g->server().getFeature<DatabaseFeature>();
   std::string const name = TRI_ObjectToString(isolate, args[0]);
-  auto* vocbase = &GetContextVocBase(isolate);
 
-  if (vocbase->isDropped() && name != StaticStrings::SystemDatabase) {
+  if (auto* vocbase = &GetContextVocBase(isolate);
+      vocbase->isDropped() && name != StaticStrings::SystemDatabase) {
     // still allow changing back into the _system database even if
     // the current database has been dropped
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // check if the other database exists, and increase its refcount
-  vocbase = databaseFeature.useDatabase(name);
+  auto vocbase = databaseFeature.useDatabase(name);
 
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1664,19 +1634,13 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(!vocbase->isDangling());
 
   // switch databases
-  void* orig = v8g->_vocbase;
+  VocbasePtr orig{std::exchange(v8g->_vocbase, vocbase.release())};
   TRI_ASSERT(orig != nullptr);
+  orig.reset();
 
-  v8g->_vocbase = vocbase;
-  static_cast<TRI_vocbase_t*>(orig)->release();
-
-  TRI_V8_RETURN(WrapVocBase(isolate, vocbase));
+  TRI_V8_RETURN(WrapVocBase(isolate, v8g->_vocbase));
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseListDatabase
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1713,10 +1677,6 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseCreateDatabase
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1782,10 +1742,6 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseDropDatabase
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -1814,10 +1770,6 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock databaseListDatabase
-////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DBProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -1917,23 +1869,6 @@ static void JS_AuthenticationEnabled(
       v8::Boolean::New(isolate, authentication.isActive());
 
   TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-#ifdef USE_ENTERPRISE
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  TRI_ASSERT(v8g->server().hasFeature<LdapFeature>());
-  auto& ldap = v8g->server().getFeature<LdapFeature>();
-  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
-#else
-  // LDAP only enabled in Enterprise Edition
-  TRI_V8_RETURN(v8::False(isolate));
-#endif
-
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2149,8 +2084,10 @@ static void JS_EncryptionKeyReload(
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                         arangodb::aql::QueryRegistry* queryRegistry,
+                         arangodb::aql::QueryRegistry* /*queryRegistry*/,
                          TRI_vocbase_t& vocbase, size_t threadNumber) {
+  auto& server = vocbase.server();
+
   v8::HandleScope scope(isolate);
 
   // check the isolate
@@ -2160,9 +2097,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // register the database
   v8g->_vocbase = &vocbase;
 
-  // .............................................................................
+  // ...........................................................................
   // generate the TRI_vocbase_t template
-  // .............................................................................
+  // ...........................................................................
 
   v8::Handle<v8::FunctionTemplate> ft = v8::FunctionTemplate::New(isolate);
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoDatabase"));
@@ -2171,8 +2108,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   ArangoNS->SetInternalFieldCount(2);
 
   ArangoNS->SetHandler(v8::NamedPropertyHandlerConfiguration(MapGetVocBase));
-
-  //  ArangoNS->SetNamedPropertyHandler(MapGetVocBase);
 
   // for any database function added here, be sure to add it to in function
   // JS_CompletionsVocbase, too for the auto-completion
@@ -2234,14 +2169,12 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
   TRI_InitV8Views(*v8g, isolate);
   TRI_InitV8ReplicatedLogs(v8g, isolate);
-  TRI_InitV8PrototypeStates(v8g, isolate);
   TRI_InitV8Users(context, &vocbase, v8g, isolate);
   TRI_InitV8GeneralGraph(context, &vocbase, v8g, isolate);
 
   TRI_InitV8cursor(context, v8g);
 
-  StorageEngine& engine =
-      v8g->server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
   engine.addV8Functions();
 
   // .............................................................................
@@ -2322,10 +2255,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       JS_AuthenticationEnabled, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "LDAP_ENABLED"),
-                               JS_LdapEnabled, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "TRUSTED_PROXIES"),
                                JS_TrustedProxies, true);
 
@@ -2345,8 +2274,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       JS_SystemStatistics, true);
 
 #ifdef USE_ENTERPRISE
-  if (v8g->server().hasFeature<V8DealerFeature>() &&
-      v8g->server().getFeature<V8DealerFeature>().allowAdminExecute()) {
+  if (server.hasFeature<V8DealerFeature>() &&
+      server.getFeature<V8DealerFeature>().allowAdminExecute()) {
     TRI_AddGlobalFunctionVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ENCRYPTION_KEY_RELOAD"),
         JS_EncryptionKeyReload, true);
@@ -2374,6 +2303,15 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           v8::Object::New(isolate), v8::DontEnum)
       .FromMaybe(false);  // ignore result
 
+  // extended names enabled
+  context->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FE_EXTENDED_NAMES"),
+          v8::Boolean::New(
+              isolate, server.getFeature<DatabaseFeature>().extendedNames()),
+          v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
+      .FromMaybe(false);  // ignore result
+
   // current thread number
   context->Global()
       ->DefineOwnProperty(
@@ -2385,9 +2323,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
-          v8::Boolean::New(
-              isolate,
-              vocbase.server().getFeature<StatisticsFeature>().isEnabled()),
+          v8::Boolean::New(isolate,
+                           server.getFeature<StatisticsFeature>().isEnabled()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
@@ -2395,27 +2332,27 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "DEFAULT_REPLICATION_FACTOR"),
-          v8::Number::New(isolate, vocbase.server()
-                                       .getFeature<ClusterFeature>()
-                                       .defaultReplicationFactor()),
+          v8::Number::New(
+              isolate,
+              server.getFeature<ClusterFeature>().defaultReplicationFactor()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "MIN_REPLICATION_FACTOR"),
-          v8::Number::New(isolate, vocbase.server()
-                                       .getFeature<ClusterFeature>()
-                                       .minReplicationFactor()),
+          v8::Number::New(
+              isolate,
+              server.getFeature<ClusterFeature>().minReplicationFactor()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "MAX_REPLICATION_FACTOR"),
-          v8::Number::New(isolate, vocbase.server()
-                                       .getFeature<ClusterFeature>()
-                                       .maxReplicationFactor()),
+          v8::Number::New(
+              isolate,
+              server.getFeature<ClusterFeature>().maxReplicationFactor()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
@@ -2423,9 +2360,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
-          v8::Number::New(isolate, vocbase.server()
-                                       .getFeature<ClusterFeature>()
-                                       .maxNumberOfShards()),
+          v8::Number::New(
+              isolate, server.getFeature<ClusterFeature>().maxNumberOfShards()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
@@ -2433,9 +2369,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_MOVE_SHARDS"),
-          v8::Number::New(isolate, vocbase.server()
-                                       .getFeature<ClusterFeature>()
-                                       .maxNumberOfMoveShards()),
+          v8::Number::New(
+              isolate,
+              server.getFeature<ClusterFeature>().maxNumberOfMoveShards()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
@@ -2443,9 +2379,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FORCE_ONE_SHARD"),
-          v8::Boolean::New(
-              isolate,
-              vocbase.server().getFeature<ClusterFeature>().forceOneShard()),
+          v8::Boolean::New(isolate,
+                           server.getFeature<ClusterFeature>().forceOneShard()),
           v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 

@@ -1,5 +1,5 @@
 .loginFixedWindow {
-  background: $c-test-green;
+  background: var(--gray-400);
   height: 100%;
   left: 0;
   position: fixed;
@@ -35,18 +35,18 @@
 }
 
 .login-window {
-  //background-color: $c-white;
-  background-color: rgba(255, 255, 255, .75);
-  border: 1px solid $c-content-border;
-  border-radius: 3px;
+  background-color: white;
+  border-radius: 8px;
   height: auto;
   margin: 0 auto;
+
   padding: {
     bottom: 50px;
     left: 20px;
     right: 20px;
     top: 20px;
-  };
+  }
+
   position: relative;
   top: 25px;
   width: 350px;
@@ -69,19 +69,25 @@
   }
 
   .login-logo-round {
-    margin-bottom: 25px;
-    margin-top: 10px;
+    margin-bottom: 30px;
+    margin-top: 35px;
 
-    object {
-      margin-left: 15%;
-      width: 70%;
-    }
-
-    img {
+    img,
+    #ArangoDBLogoVersion {
       display: block;
       margin: 0 auto;
-      width: 250px;
+      width: 270px;
     }
+
+    #ArangoDBLogoVersion {
+      font-family: Roboto, sans-serif;
+      font-weight: 400;
+      font-size: 9pt;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: right;
+    }
+
   }
 
   .checking-password {
@@ -121,13 +127,10 @@
 
   .login-input {
     @extend %inputs;
-    background: $c-login-grey !important;
-    background-color: $c-login-grey !important;
-    border: 2px $c-login-grey !important;
-    border-bottom-left-radius: 3px;
-    border-bottom-right-radius: 3px;
-    border-top-left-radius: 3px;
-    border-top-right-radius: 3px;
+    background: var(--gray-100) !important;
+    background-color: var(--gray-100) !important;
+    border: 2px solid var(--gray-100) !important;
+    border-radius: 6px;
     box-sizing: border-box;
     font-size: 14px;
     height: 40px;
@@ -136,6 +139,11 @@
     padding: 10px;
     padding-left: 35px;
     width: 100%;
+
+    &:focus {
+      border: 2px solid var(--blue-600) !important;
+      box-shadow: none !important;
+    }
   }
 
   .databaseInput {
@@ -153,4 +161,3 @@
   }
 
 }
-

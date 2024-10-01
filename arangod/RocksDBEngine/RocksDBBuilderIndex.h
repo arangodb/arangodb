@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,55 +28,58 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "Transaction/OperationOrigin.h"
 
 #include <atomic>
 
 namespace arangodb {
+class RocksDBBatchedBaseMethods;
 
 namespace trx {
-struct BuilderTrx : public arangodb::transaction::Methods {
-  BuilderTrx(
-      std::shared_ptr<arangodb::transaction::Context> const& transactionContext,
-      arangodb::LogicalDataSource const& collection,
-      arangodb::AccessMode::Type type)
-      : arangodb::transaction::Methods(transactionContext),
+struct BuilderTrx : public transaction::Methods {
+  BuilderTrx(std::shared_ptr<transaction::Context> const& transactionContext,
+             LogicalDataSource const& collection, AccessMode::Type type,
+             transaction::Options options = transaction::Options())
+      : transaction::Methods(transactionContext, options),
         _cid(collection.id()) {
     // add the (sole) data-source
     addCollection(collection.id(), collection.name(), type);
-    addHint(arangodb::transaction::Hints::Hint::NO_DLD);
   }
 
   /// @brief get the underlying transaction collection
-  arangodb::RocksDBTransactionCollection* resolveTrxCollection() {
-    return static_cast<arangodb::RocksDBTransactionCollection*>(
-        trxCollection(_cid));
+  RocksDBTransactionCollection* resolveTrxCollection() {
+    return static_cast<RocksDBTransactionCollection*>(trxCollection(_cid));
   }
 
  private:
-  arangodb::DataSourceId _cid;
+  DataSourceId _cid;
 };
 }  // namespace trx
 
-Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
+Result partiallyCommitInsertions(RocksDBBatchedBaseMethods& batched,
+                                 rocksdb::WriteBatchBase& batch,
                                  rocksdb::DB* rootDB,
                                  RocksDBTransactionCollection* trxColl,
                                  std::atomic<uint64_t>& docsProcessed,
                                  RocksDBIndex& ridx, bool isForeground);
 
 Result fillIndexSingleThreaded(
-    bool foreground, RocksDBMethods& batched, rocksdb::Options const& dbOptions,
-    rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
-    trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
-    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it);
+    bool foreground, RocksDBBatchedBaseMethods& batched,
+    rocksdb::Options const& dbOptions, rocksdb::WriteBatchBase& batch,
+    std::atomic<std::uint64_t>& docsProcessed, trx::BuilderTrx& trx,
+    RocksDBIndex& ridx, rocksdb::Snapshot const* snap, rocksdb::DB* rootDB,
+    std::unique_ptr<rocksdb::Iterator> it,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress =
+        nullptr);
 
 class RocksDBCollection;
 
 /// Dummy index class that contains the logic to build indexes
 /// without an exclusive lock. It wraps the actual index implementation
 /// and adds some required synchronization logic on top
-class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
+class RocksDBBuilderIndex final : public RocksDBIndex {
  public:
-  explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex>,
+  explicit RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex>,
                                uint64_t numDocsHint, size_t parallelism);
 
   /// @brief return a VelocyPack representation of the index
@@ -108,9 +111,9 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   Result drop() override { return _wrapped->drop(); }
 
-  void afterTruncate(TRI_voc_tick_t tick,
-                     arangodb::transaction::Methods* trx) override {
-    _wrapped->afterTruncate(tick, trx);
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final {
+    _wrapped->truncateCommit(std::move(guard), tick, trx);
   }
 
   void load() override { _wrapped->load(); }
@@ -122,15 +125,14 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice slice,
+                LocalDocumentId documentId, velocypack::Slice slice,
                 OperationOptions const& options,
                 bool /*performChecks*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods*,
-                LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice slice) override;
+                LocalDocumentId documentId, velocypack::Slice slice,
+                OperationOptions const& /*options*/) override;
 
   /// @brief get index estimator, optional
   RocksDBCuckooIndexEstimatorType* estimator() override {
@@ -142,12 +144,13 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
   /// @brief assumes an exclusive lock on the collection
-  Result fillIndexForeground();
+  Result fillIndexForeground(
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
   struct Locker {
     explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
     ~Locker() { unlock(); }
-    bool lock();
+    futures::Future<bool> lock();
     void unlock();
     bool isLocked() const { return _locked; }
 
@@ -158,13 +161,15 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   /// @brief fill the index, assume already locked exclusively
   /// @param locker locks and unlocks the collection
-  Result fillIndexBackground(Locker& locker);
+  futures::Future<Result> fillIndexBackground(
+      Locker& locker,
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
  private:
   static constexpr uint64_t kThreadBatchSize = 100000;
   static constexpr size_t kSingleThreadThreshold = 120000;
 
-  std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
+  std::shared_ptr<RocksDBIndex> _wrapped;
   std::atomic<uint64_t> _docsProcessed;
   uint64_t const _numDocsHint;
   size_t const _numThreads;

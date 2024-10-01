@@ -1,21 +1,18 @@
 /* jshint -W051, -W020 */
-/* global global:true, require, arango */
+/* global arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoShell client API
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +20,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Achim Brandt
 // / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
@@ -44,7 +41,7 @@ global.clearTimeout = global.clearTimeout || function () {};
 // / @brief start paging
 // //////////////////////////////////////////////////////////////////////////////
 
-global.start_pager = function start_pager () {
+global.start_pager = function () {
   require('internal').startPager();
 };
 
@@ -52,7 +49,7 @@ global.start_pager = function start_pager () {
 // / @brief stop paging
 // //////////////////////////////////////////////////////////////////////////////
 
-global.stop_pager = function stop_pager () {
+global.stop_pager = function () {
   require('internal').stopPager();
 };
 
@@ -60,7 +57,7 @@ global.stop_pager = function stop_pager () {
 // / @brief print the overall help
 // //////////////////////////////////////////////////////////////////////////////
 
-global.help = function help () {
+global.help = function () {
   let internal = require('internal');
   let arangodb = require('@arangodb');
   let arangosh = require('@arangodb/arangosh');
@@ -71,6 +68,13 @@ global.help = function help () {
   arangodb.ArangoStatement.prototype._help();
   arangodb.ArangoQueryCursor.prototype._help();
   internal.print(arangosh.helpExtended);
+};
+
+global.help._PRINT = function (context) {
+  let internal = require('internal');
+  internal.startCaptureMode();
+  global.help();
+  context.output = internal.stopCaptureMode();
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -189,11 +193,9 @@ if (!(
   global.IS_EXECUTE_SCRIPT ||
   global.IS_EXECUTE_STRING ||
   global.IS_CHECK_SCRIPT ||
-  global.IS_UNIT_TESTS ||
-  global.IS_JS_LINT
+  global.IS_UNIT_TESTS
   )) {
   try {
-    // this will not work from within a browser
     let __fs__ = require('fs');
     let __rcf__ = __fs__.join(__fs__.home(), '.arangosh.rc');
 
@@ -211,7 +213,6 @@ delete global.IS_EXECUTE_SCRIPT;
 delete global.IS_EXECUTE_STRING;
 delete global.IS_CHECK_SCRIPT;
 delete global.IS_UNIT_TESTS;
-delete global.IS_JS_LINT;
 
 {
   const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');

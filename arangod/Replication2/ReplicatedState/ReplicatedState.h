@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,34 +23,23 @@
 
 #pragma once
 
-#include <map>
-
-#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
-#include "Replication2/ReplicatedState/StateStatus.h"
-#include "Replication2/Streams/Streams.h"
+#include "Replication2/ReplicatedState/ReplicatedStateManager.h"
+#include "Replication2/Streams/StreamSpecification.h"
 
 #include "Basics/Guarded.h"
-#include "Replication2/DeferredExecution.h"
-#include "Replication2/LoggerContext.h"
 
-namespace arangodb::futures {
-template<typename T>
-class Future;
-template<typename T>
-class Promise;
-struct Unit;
-}  // namespace arangodb::futures
-namespace arangodb {
-class Result;
+struct TRI_vocbase_t;
+
+namespace arangodb::velocypack {
+class SharedSlice;
 }
+
 namespace arangodb::replication2 {
+struct IScheduler;
 namespace replicated_log {
 struct ReplicatedLog;
-struct ILogFollower;
-struct ILogLeader;
-struct ILogParticipant;
-struct LogUnconfiguredParticipant;
 }  // namespace replicated_log
 
 namespace replicated_state {
@@ -58,7 +47,13 @@ struct ReplicatedStateMetrics;
 struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
 
-struct IStateManagerBase {};
+template<typename S>
+using ReplicatedStateStreamSpec =
+    streams::stream_descriptor_set<streams::stream_descriptor<
+        streams::StreamId{1}, typename ReplicatedStateTraits<S>::EntryType,
+        streams::tag_descriptor_set<streams::tag_descriptor<
+            1, typename ReplicatedStateTraits<S>::Deserializer,
+            typename ReplicatedStateTraits<S>::Serializer>>>>;
 
 /**
  * Common base class for all ReplicatedStates, hiding the type information.
@@ -66,12 +61,8 @@ struct IStateManagerBase {};
 struct ReplicatedStateBase {
   virtual ~ReplicatedStateBase() = default;
 
-  virtual void flush(StateGeneration plannedGeneration) = 0;
-  virtual void start(
-      std::unique_ptr<ReplicatedStateToken> token,
-      std::optional<velocypack::SharedSlice> const& coreParameter) = 0;
-  virtual void rebuildMe(IStateManagerBase const* caller) noexcept = 0;
-  [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
+  virtual void drop(
+      std::shared_ptr<replicated_log::IReplicatedStateHandle>) && = 0;
   [[nodiscard]] auto getLeader()
       -> std::shared_ptr<IReplicatedLeaderStateBase> {
     return getLeaderBase();
@@ -80,6 +71,13 @@ struct ReplicatedStateBase {
       -> std::shared_ptr<IReplicatedFollowerStateBase> {
     return getFollowerBase();
   }
+
+  [[nodiscard]] virtual auto createStateHandle(
+      TRI_vocbase_t& vocbase,
+      std::optional<velocypack::SharedSlice> const& coreParameters)
+      -> std::unique_ptr<replicated_log::IReplicatedStateHandle> = 0;
+
+  [[nodiscard]] virtual auto type() const noexcept -> std::string_view = 0;
 
  private:
   [[nodiscard]] virtual auto getLeaderBase()
@@ -98,20 +96,16 @@ struct ReplicatedState final
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
-  explicit ReplicatedState(std::shared_ptr<replicated_log::ReplicatedLog> log,
+  explicit ReplicatedState(GlobalLogIdentifier gid,
+                           std::shared_ptr<replicated_log::ReplicatedLog> log,
                            std::shared_ptr<Factory> factory,
                            LoggerContext loggerContext,
-                           std::shared_ptr<ReplicatedStateMetrics>);
+                           std::shared_ptr<ReplicatedStateMetrics> metrics,
+                           std::shared_ptr<IScheduler> scheduler);
   ~ReplicatedState() override;
 
-  /**
-   * Forces to rebuild the state machine depending on the replicated log state.
-   */
-  void flush(StateGeneration planGeneration) override;
-  void start(
-      std::unique_ptr<ReplicatedStateToken> token,
-      std::optional<velocypack::SharedSlice> const& coreParameter) override;
-
+  void drop(std::shared_ptr<replicated_log::IReplicatedStateHandle>) &&
+      override;
   /**
    * Returns the follower state machine. Returns nullptr if no follower state
    * machine is present. (i.e. this server is not a follower)
@@ -123,28 +117,16 @@ struct ReplicatedState final
    */
   [[nodiscard]] auto getLeader() const -> std::shared_ptr<LeaderType>;
 
-  [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
+  auto createStateHandle(
+      TRI_vocbase_t& vocbase,
+      std::optional<velocypack::SharedSlice> const& coreParameter)
+      -> std::unique_ptr<replicated_log::IReplicatedStateHandle> override;
 
-  /**
-   * Rebuilds the managers. Called by the manager when its participant is gone.
-   */
-  void rebuildMe(IStateManagerBase const* caller) noexcept override;
-
-  struct IStateManager : IStateManagerBase {
-    virtual ~IStateManager() = default;
-    virtual void run() = 0;
-
-    using WaitForAppliedPromise = futures::Promise<futures::Unit>;
-    using WaitForAppliedQueue = std::multimap<LogIndex, WaitForAppliedPromise>;
-
-    [[nodiscard]] virtual auto getStatus() const -> StateStatus = 0;
-    [[nodiscard]] virtual auto resign() && noexcept
-        -> std::tuple<std::unique_ptr<CoreType>,
-                      std::unique_ptr<ReplicatedStateToken>,
-                      DeferredAction> = 0;
-  };
+  auto type() const noexcept -> std::string_view override { return S::NAME; }
 
  private:
+  auto buildCore(TRI_vocbase_t& vocbase,
+                 std::optional<velocypack::SharedSlice> const& coreParameter);
   auto getLeaderBase() -> std::shared_ptr<IReplicatedLeaderStateBase> final {
     return getLeader();
   }
@@ -153,49 +135,17 @@ struct ReplicatedState final
     return getFollower();
   }
 
+  std::optional<ReplicatedStateManager<S>> manager;
+
   std::shared_ptr<Factory> const factory;
+  GlobalLogIdentifier const gid;
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
 
-  struct GuardedData {
-    auto rebuildMe(IStateManagerBase const* caller) noexcept -> DeferredAction;
-
-    auto runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader,
-                   std::unique_ptr<CoreType>,
-                   std::unique_ptr<ReplicatedStateToken> token) noexcept
-        -> DeferredAction;
-    auto runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
-                     std::unique_ptr<CoreType>,
-                     std::unique_ptr<ReplicatedStateToken> token) noexcept
-        -> DeferredAction;
-    auto runUnconfigured(
-        std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
-            unconfiguredParticipant,
-        std::unique_ptr<CoreType> core,
-        std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction;
-
-    auto rebuild(std::unique_ptr<CoreType> core,
-                 std::unique_ptr<ReplicatedStateToken> token) noexcept
-        -> DeferredAction;
-
-    auto flush(StateGeneration planGeneration) -> DeferredAction;
-
-    explicit GuardedData(ReplicatedState& self) : _self(self) {}
-
-    ReplicatedState& _self;
-    std::shared_ptr<IStateManager> currentManager = nullptr;
-  };
-  Guarded<GuardedData> guardedData;
   LoggerContext const loggerContext;
   DatabaseID const database;
   std::shared_ptr<ReplicatedStateMetrics> const metrics;
+  std::shared_ptr<IScheduler> const scheduler;
 };
 
-template<typename S>
-using ReplicatedStateStreamSpec =
-    streams::stream_descriptor_set<streams::stream_descriptor<
-        streams::StreamId{1}, typename ReplicatedStateTraits<S>::EntryType,
-        streams::tag_descriptor_set<streams::tag_descriptor<
-            1, typename ReplicatedStateTraits<S>::Deserializer,
-            typename ReplicatedStateTraits<S>::Serializer>>>>;
 }  // namespace replicated_state
 }  // namespace arangodb::replication2

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,9 @@
 #pragma once
 
 #include "Aql/QueryExpressionContext.h"
+#include "Aql/RegisterId.h"
+#include "Aql/Variable.h"
+#include "Containers/FlatHashMap.h"
 
 namespace arangodb {
 namespace transaction {
@@ -42,12 +45,13 @@ class DocumentProducingExpressionContext : public QueryExpressionContext {
   DocumentProducingExpressionContext(
       transaction::Methods& trx, QueryContext& query,
       aql::AqlFunctionsInternalCache& cache,
-      std::vector<std::pair<VariableId, RegisterId>> const&
-          filterVarsToRegister,
-      InputAqlItemRow const& inputRow) noexcept
-      : QueryExpressionContext(trx, query, cache),
-        _filterVarsToRegister(filterVarsToRegister),
-        _inputRow(inputRow) {}
+      std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
+      InputAqlItemRow const& inputRow)
+      : QueryExpressionContext(trx, query, cache), _inputRow(inputRow) {
+    for (auto const& it : varsToRegister) {
+      _varsToRegister.emplace(it.first, it.second);
+    }
+  }
 
   ~DocumentProducingExpressionContext() = default;
 
@@ -56,8 +60,16 @@ class DocumentProducingExpressionContext : public QueryExpressionContext {
   virtual bool isLateMaterialized() const noexcept = 0;
 #endif
 
+  RegisterId registerForVariable(VariableId id) const noexcept {
+    auto it = _varsToRegister.find(id);
+    if (it != _varsToRegister.end()) {
+      return it->second;
+    }
+    return RegisterId::maxRegisterId;
+  }
+
  protected:
-  std::vector<std::pair<VariableId, RegisterId>> const& _filterVarsToRegister;
+  containers::FlatHashMap<VariableId, RegisterId> _varsToRegister;
 
   InputAqlItemRow const& _inputRow;
 };

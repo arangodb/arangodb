@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,12 +27,13 @@
 #include <cstring>
 #include <ctime>
 #include <memory>
+#include <mutex>
 #include <string_view>
+
+#include <absl/strings/escaping.h>
 
 #include "Nonce.h"
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
@@ -45,7 +46,7 @@ using namespace arangodb::basics;
 
 namespace {
 // protects access to nonces
-Mutex mutex;
+std::mutex mutex;
 
 std::unique_ptr<uint32_t[]> nonces;
 }  // namespace
@@ -67,8 +68,8 @@ std::string createNonce() {
   memcpy(buffer + 4, &rand1, 4);
   memcpy(buffer + 8, &rand2, 4);
 
-  return StringUtils::encodeBase64U(
-      std::string_view(reinterpret_cast<char const*>(&buffer[0]), 12));
+  return absl::WebSafeBase64Escape(
+      std::string_view{reinterpret_cast<char const*>(&buffer[0]), 12});
 }
 
 bool checkAndMark(std::string const& nonce) {
@@ -91,7 +92,7 @@ bool checkAndMark(std::string const& nonce) {
 }
 
 bool checkAndMark(uint32_t timestamp, uint64_t random) {
-  MUTEX_LOCKER(mutexLocker, ::mutex);
+  std::lock_guard mutexLocker{::mutex};
 
   // allocate nonces buffer lazily upon first access
   if (::nonces == nullptr) {

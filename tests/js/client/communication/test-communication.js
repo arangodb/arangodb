@@ -5,13 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,7 +20,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
@@ -27,22 +28,29 @@ const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
+const isEnterprise = require("internal").isEnterprise();
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
+
+let { versionHas } = require('@arangodb/test-helper');
+
+const isCov = versionHas('coverage');
+const {
+  launchSnippetInBG,
+  joinBGShells,
+  cleanupBGShells
+} = require('@arangodb/testutils/client-tools').run;
 
 const graphModule = require('@arangodb/general-graph');
 const { expect } = require('chai');
 const toArgv = require('internal').toArgv;
 
-let { debugCanUseFailAt,
-      debugSetFailAt,
-      debugResetRaceControl,
-      debugRemoveFailAt,
-      debugClearFailAt
-    } = require('@arangodb/test-helper');
 
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
+let { debugResetRaceControl } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 const endpointToURL = (endpoint) => {
   if (endpoint.substr(0, 6) === 'ssl://') {
@@ -63,168 +71,10 @@ const debug = function (text) {
 
 function getEndpointById(id) {
   const toEndpoint = (d) => (d.endpoint);
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter((d) => (d.id === id))
+  return global.instanceManager.arangods.filter((d) => (d.id === id))
     .map(toEndpoint)
     .map(endpointToURL)[0];
 }
-
-const runShell = function (args, prefix) {
-  let options = internal.options();
-
-  let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
-  let moreArgs = {
-    'javascript.startup-directory': options['javascript.startup-directory'],
-    'server.endpoint': endpoint,
-    'server.database': arango.getDatabaseName(),
-    'server.username': arango.connectedUser(),
-    'server.password': '',
-    'server.request-timeout': '30',
-    'log.foreground-tty': 'false',
-    'log.output': 'file://' + prefix + '.log'
-  };
-  _.assign(args, moreArgs);
-  let argv = toArgv(args);
-
-  for (let o in options['javascript.module-directory']) {
-    argv.push('--javascript.module-directory');
-    argv.push(options['javascript.module-directory'][o]);
-  }
-
-  let result = internal.executeExternal(arangosh, argv, false /*usePipes*/);
-  assertTrue(result.hasOwnProperty('pid'));
-  let status = internal.statusExternal(result.pid);
-  assertEqual(status.status, "RUNNING");
-  return result.pid;
-};
-
-
-function CommunicationSuite() {
-  'use strict';
-  // generate a random collection name
-  const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
-
-  assertTrue(fs.isFile(arangosh), "arangosh executable not found!");
-
-
-
-  let buildCode = function (key, command) {
-    let file = fs.getTempFile() + "-" + key;
-    fs.write(file, `
-(function() {
-  let tries = 0;
-  while (true) {
-    if (++tries % 10 === 0) {
-      if (db['${cn}'].exists('stop')) {
-        break;
-      }
-    }
-    ${command}
-  }
-  db['${cn}'].insert({ _key: "${key}", done: true, iterations: tries });
-})();
-    `);
-
-    let args = {'javascript.execute': file};
-    let pid = runShell(args, file);
-    debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-    return { key, file, pid };
-  };
-
-
-  let runTests = function (tests, duration) {
-    assertFalse(db[cn].exists("stop"));
-    let clients = [];
-    debug("starting " + tests.length + " test clients");
-    try {
-      tests.forEach(function (test) {
-        let key = test[0];
-        let code = test[1];
-        let client = buildCode(key, code);
-        client.done = false;
-        client.failed = true; // assume the worst
-        clients.push(client);
-      });
-
-      debug("running test for " + duration + " s...");
-
-      require('internal').sleep(duration);
-
-      debug("stopping all test clients");
-
-      // broad cast stop signal
-      assertFalse(db[cn].exists("stop"));
-      db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
-      let tries = 0;
-      let done = 0;
-      while (++tries < 60) {
-        clients.forEach(function (client) {
-          if (!client.done) {
-            let status = internal.statusExternal(client.pid);
-            if (status.status === 'NOT-FOUND' || status.status === 'TERMINATED') {
-              client.done = true;
-            }
-            if (status.status === 'TERMINATED' && status.exit === 0) {
-              client.failed = false;
-            }
-          }
-        });
-
-        done = clients.reduce(function (accumulator, currentValue) {
-          return accumulator + (currentValue.done ? 1 : 0);
-        }, 0);
-
-        if (done === clients.length) {
-          break;
-        }
-
-        require('internal').sleep(0.5);
-      }
-
-      assertEqual(done, clients.length, "not all shells could be joined");
-      assertEqual(1 + clients.length, db[cn].count());
-      let stats = {};
-      clients.forEach(function (client) {
-        let doc = db[cn].document(client.key);
-        assertEqual(client.key, doc._key);
-        assertTrue(doc.done);
-
-        stats[client.key] = doc.iterations;
-      });
-
-      debug("test run iterations: " + JSON.stringify(stats));
-    } finally {
-      clients.forEach(function (client) {
-        try {
-          fs.remove(client.file);
-        } catch (err) { }
-
-        const logfile = client.file + '.log';
-        if (client.failed) {
-          if (fs.exists(logfile)) {
-            debug("test client with pid " + client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
-          } else {
-            debug("test client with pid " + client.pid + " has failed and did not write a logfile");
-          }
-        }
-        try {
-          fs.remove(logfile);
-        } catch (err) { }
-
-        if (!client.done) {
-          // hard-kill all running instances
-          try {
-            let status = internal.statusExternal(client.pid).status;
-            if (status === 'RUNNING') {
-              debug("forcefully killing test client with pid " + client.pid);
-              internal.killExternal(client.pid, 9 /*SIGKILL*/);
-            }
-          } catch (err) { }
-        }
-      });
-    }
-  };
-
   // TODO externalize
 
   function getEndpointsByType(type) {
@@ -241,11 +91,60 @@ function CommunicationSuite() {
       return 'http' + endpoint.substr(pos);
     };
 
-    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    return instanceInfo.arangods.filter(isType)
+    return global.instanceManager.arangods.filter(isType)
       .map(toEndpoint)
       .map(endpointToURL);
   }
+
+function CommunicationSuite() {
+  'use strict';
+  // generate a random collection name
+  const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
+
+  let runTests = function (tests, duration) {
+    assertFalse(db[cn].exists("stop"));
+    let clients = [];
+    debug("starting " + tests.length + " test clients");
+    try {
+      tests.forEach(function (test) {
+        let key = test[0];
+        let code = test[1];
+        let client = launchSnippetInBG(IM.options, code, key, cn);
+        client.done = false;
+        client.failed = true; // assume the worst
+        clients.push(client);
+      });
+
+      debug("running test for " + duration + " s...");
+
+      internal.sleep(duration);
+
+      debug("stopping all test clients");
+
+      // broad cast stop signal
+      assertFalse(db[cn].exists("stop"));
+      db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
+      let tries = 0;
+      let done = 0;
+      const waitFor = isCov ? 60 * 4 : 60;
+      joinBGShells(IM.options, clients, waitFor);
+
+      assertEqual(1 + clients.length, db[cn].count());
+      let stats = {};
+      clients.forEach(function (client) {
+        let doc = db[cn].document(client.key);
+        assertEqual(client.key, doc._key);
+        assertTrue(doc.done);
+
+        stats[client.key] = doc.iterations;
+      });
+
+      debug("test run iterations: " + JSON.stringify(stats));
+    } finally {
+      cleanupBGShells(clients);
+    }
+  };
+
 
   return {
 
@@ -255,9 +154,14 @@ function CommunicationSuite() {
 
       db._drop("UnitTestsTemp");
       let c = db._create("UnitTestsTemp");
+      if (isEnterprise) {
+        c.ensureIndex({type: 'inverted', name: 'inverted', fields: [{ "name": "new_value", "nested": [{"name": "nested_1", "nested": ["nested_2"]}]}]});
+      } else {
+        c.ensureIndex({type: 'inverted', name: 'inverted', fields: [{ "name": "new_value.nested_1.nested_2"}]});
+      }
       let docs = [];
       for (let i = 0; i < 50000; ++i) {
-        docs.push({ value: i });
+        docs.push({ value: i , new_value: [{nested_1: [{nested_2: i.toString()}]}]});
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
@@ -298,12 +202,12 @@ function GenericAqlSetupPathSuite(type) {
   const vertexName = "UnitTestVertices";
   const edgeName = "UnitTestEdges";
   const viewName = "UnitTestView";
+  const searchAliasViewName = "UnitTestSearchAliasView";
 
   const activateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
-      const endpoint = getEndpointById(servers[0]);
-      debugSetFailAt(endpoint, `WaitOnLock::${shard}`);
+      IM.debugSetFailAt(`WaitOnLock::${shard}`, instanceRole.dbServer, servers[0]);
     }
   };
 
@@ -311,9 +215,8 @@ function GenericAqlSetupPathSuite(type) {
   const deactivateShardLockingFailure = () => {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
-      const endpoint = getEndpointById(servers[0]);
-      debugClearFailAt(endpoint);
-      debugResetRaceControl(endpoint);
+      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, servers[0]);
+      IM.debugResetRaceControl(instanceRole.dbServer, servers[0]);
     }
   };
 
@@ -322,15 +225,19 @@ function GenericAqlSetupPathSuite(type) {
   const selectExclusiveQuery = () => {
     switch (type) {
       case "Plain":
-        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: ''}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "Graph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key, b: [{c: [{d: 'a'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "NamedGraph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key, b: [{c: [{d: 'b'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "View":
-        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+      case "SearchAliasView":
+        return `db._query("FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+      case "InvertedIndex":
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       case "Satellite":
-        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'v'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
       default:
         // Illegal Test
         assertEqual(true, false);
@@ -340,15 +247,19 @@ function GenericAqlSetupPathSuite(type) {
   const selectWriteQuery = () => {
     switch (type) {
       case "Plain":
-        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "Graph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 's'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "NamedGraph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'f'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "View":
-        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+      case "SearchAliasView":
+        return `db._query("FOR v IN ${searchAliasViewName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+      case "InvertedIndex":
+        return `db._query("FOR v IN ${vertexName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
       case "Satellite":
-        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'm'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
         default:
         // Illegal Test
         assertEqual(true, false);
@@ -365,6 +276,10 @@ function GenericAqlSetupPathSuite(type) {
         return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN ${twoShardColName} RETURN x")`;
       case "View":
         return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;
+      case "SearchAliasView":
+        return `db._query("FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;
+      case "InvertedIndex":
+        return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;  
       case "Satellite":
         return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;
       default:
@@ -381,7 +296,7 @@ function GenericAqlSetupPathSuite(type) {
       const db = require("@arangodb").db;
       const col = db.${twoShardColName};
       for (let i = 0; i < ${docsPerWrite}; ++i) {
-        col.save({});
+        col.save({b: [{c: [{d: i.toString()}]}]});
       }
     }
   `;
@@ -425,7 +340,7 @@ function GenericAqlSetupPathSuite(type) {
     let result = arango.POST_RAW("/_api/transaction/begin", obj);
     if (result.code === 201) {
       trx = result.parsedBody.result.id;
-      const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
+      const query = "FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'aaa'}]}]} INTO ${twoShardColName}";
       result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
       if (result.code === 201) {
         // Commit
@@ -446,7 +361,7 @@ function GenericAqlSetupPathSuite(type) {
     let result = arango.POST_RAW("/_api/transaction/begin", obj, {});
     if (result.code === 201) {
       trx = result.parsedBody.result.id;
-      const query = "FOR x IN 1..${docsPerWrite} INSERT {} INTO ${twoShardColName}";
+      const query = "FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'bbb'}]}]} INTO ${twoShardColName}";
       result = arango.POST_RAW("/_api/cursor", { query }, { "x-arango-trx-id": trx });
       if (result.code === 201) {
         // Commit
@@ -486,24 +401,10 @@ function GenericAqlSetupPathSuite(type) {
   const documentWrite = `
     const docs = [];
     for (let i = 0; i < ${docsPerWrite}; ++i) {
-      docs.push({});
+      docs.push({b: [{c: [{d: i.toString()}]}]});
     }
     db["${twoShardColName}"].save(docs);
   `;
-
-  const buildSingleRunCode = (key, command) => {
-    const cmd = `
-    (function() {
-        ${command}
-        db['${cn}'].insert({ _key: "${key}", done: true, iterations: 1 });
-    })();
-    `;
-
-    let args = {'javascript.execute-string': cmd};
-    let pid = runShell(args, key);
-    debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-    return { key, pid };
-  };
 
   const singleRun = (tests) => {
     let clients = [];
@@ -511,41 +412,15 @@ function GenericAqlSetupPathSuite(type) {
     debug("starting " + tests.length + " test clients");
     try {
       tests.forEach(function ([key, code]) {
-        let client = buildSingleRunCode(key, code);
+        let client = launchSnippetInBG(IM.options, code, key, cn, true);
         client.done = false;
         client.failed = true; // assume the worst
         clients.push(client);
       });
 
       debug("waiting for all test clients");
-
-      let tries = 0;
-      let done = 0;
-      while (++tries < 60) {
-        clients.forEach((client) => {
-          if (!client.done) {
-            let status = internal.statusExternal(client.pid);
-            if (status.status === 'NOT-FOUND' || status.status === 'TERMINATED') {
-              client.done = true;
-            }
-            if (status.status === 'TERMINATED' && status.exit === 0) {
-              client.failed = false;
-            }
-          }
-        });
-
-        done = clients.reduce(function (accumulator, currentValue) {
-          return accumulator + (currentValue.done ? 1 : 0);
-        }, 0);
-
-        if (done === clients.length) {
-          break;
-        }
-
-        require('internal').sleep(0.5);
-      }
-
-      assertEqual(done, clients.length, "not all shells could be joined");
+      const waitFor = isCov ? 60 * 4 : 60;
+      joinBGShells(IM.options, clients, waitFor, cn);
       assertEqual(clients.length, db[cn].count());
       let stats = {};
       clients.forEach(function (client) {
@@ -558,30 +433,7 @@ function GenericAqlSetupPathSuite(type) {
 
       debug("test run iterations: " + JSON.stringify(stats));
     } finally {
-      clients.forEach(function (client) {
-        const logfile = client.file + '.log';
-        if (client.failed) {
-          if (fs.exists(logfile)) {
-            debug("test client with pid " + client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
-          } else {
-            debug("test client with pid " + client.pid + " has failed and did not write a logfile");
-          }
-        }
-        try {
-          fs.remove(logfile);
-        } catch (err) { }
-
-        if (!client.done) {
-          // hard-kill all running instances
-          try {
-            let status = internal.statusExternal(client.pid).status;
-            if (status === 'RUNNING') {
-              debug("forcefully killing test client with pid " + client.pid);
-              internal.killExternal(client.pid, 9 /*SIGKILL*/);
-            }
-          } catch (err) { }
-        }
-      });
+      cleanupBGShells(clients);
     }
   };
 
@@ -657,31 +509,94 @@ function GenericAqlSetupPathSuite(type) {
       db._create(cn);
 
       db._drop(twoShardColName);
-      db._create(twoShardColName, { numberOfShards: 2 });
+      let c = db._create(twoShardColName, { numberOfShards: 2 });
       switch (type) {
         case "Graph":
         case "NamedGraph": {
           // We create a graph with a single vertex that has a self reference.
           const g = graphModule._create(graphName, [graphModule._relation(edgeName, vertexName, vertexName)], [], { numberOfShards: 3 });
-          const v = g[vertexName].save({ _key: "a" });
-          g[edgeName].save({ _from: v._id, _to: v._id });
+          const v = g[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'bar'}]}] });
+          g[edgeName].save({ _from: v._id, _to: v._id, "b": [{"c": [{"d": 'foo'}]}] });
           break;
         }
         case "View": {
           db._create(vertexName, { numberOfShards: 3 });
-          db._createView(viewName, "arangosearch", { links: { [vertexName]: { includeAllFields: true } } });
-          db[vertexName].save({ _key: "a" });
+          let meta = {};
+          if (isEnterprise) {
+            meta = { links: { [vertexName]: {
+              includeAllFields: true,
+              fields: {
+                "b": {
+                  "nested": {
+                    "c": {
+                      "nested":{
+                        "d": {}
+                      }
+                    }
+                  }
+                }
+              }
+            }}};
+          } else {
+            meta = { links: { [vertexName]: {
+              includeAllFields: true
+            }}};
+          }
+          db._createView(viewName, "arangosearch", meta);
+          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foobar'}]}] });
+          break;
+        }
+        case "SearchAliasView": {
+          let c2 = db._create(vertexName, { numberOfShards: 3 });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {
+              type: 'inverted', name: 'inverted', includeAllFields: true, fields: [{"name": "b", "nested": [{"name": "c", "nested": [{"name": "d"}]}]}]
+            };
+          } else {
+            meta = {
+              type: 'inverted', name: 'inverted', includeAllFields: true
+            };
+          }
+          let i1 = c.ensureIndex(meta);;
+          let i2 = c2.ensureIndex(meta);
+
+          db._createView(searchAliasViewName, "search-alias", {
+            indexes: [{collection: vertexName, index: i2.name}]
+          });
+
+          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foooof'}]}] });
+          break;
+        }
+        case "InvertedIndex": {
+          let c2 = db._create(vertexName, { numberOfShards: 3 });
+          let meta = {};
+          if (isEnterprise) {
+            meta = {
+              type: 'inverted', name: 'inverted', includeAllFields: true, fields: [{"name": "b", "nested": [{"name": "c", "nested": [{"name": "d"}]}]}]
+            };
+          } else {
+            meta = {
+              type: 'inverted', name: 'inverted', includeAllFields: true
+            };
+          }
+
+          let i1 = c.ensureIndex(meta);;
+          let i2 = c2.ensureIndex(meta);
+
+          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foooof'}]}] });
           break;
         }
         case "Satellite": {
           db._create(vertexName, { replicationFactor: "satellite" });
-          db[vertexName].save({ _key: "a" });
+          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foobuz'}]}] });
           break;
         }
       }
     },
 
     tearDown: function () {
+      IM.debugClearFailAt();
       deactivateShardLockingFailure();
       db[twoShardColName].truncate({ compact: false });
       db[cn].truncate({ compact: false });
@@ -696,6 +611,15 @@ function GenericAqlSetupPathSuite(type) {
         }
         case "View": {
           db._dropView(viewName);
+          db._drop(vertexName);
+          break;
+        }
+        case "SearchAliasView": {
+          db._dropView(searchAliasViewName);
+          db._drop(vertexName);
+          break;
+        }
+        case "InvertedIndex": {
           db._drop(vertexName);
           break;
         }
@@ -742,17 +666,27 @@ function AqlViewSetupPathSuite() {
   return GenericAqlSetupPathSuite("View");
 }
 
+function AqlSearchAliasViewSetupPathSuite() {
+  return GenericAqlSetupPathSuite("SearchAliasView");
+}
+
+function AqlSearchInvertedIndexSetupPathSuite() {
+  return GenericAqlSetupPathSuite("InvertedIndex");
+}
+
 function AqlSatelliteSetupPathSuite() {
   return GenericAqlSetupPathSuite("Satellite");
 }
 
-jsunity.run(CommunicationSuite);
+// jsunity.run(CommunicationSuite);
 if (internal.isCluster()) {
   jsunity.run(AqlSetupPathSuite);
   jsunity.run(AqlGraphSetupPathSuite);
   jsunity.run(AqlNamedGraphSetupPathSuite);
   jsunity.run(AqlViewSetupPathSuite);
-  if (internal.isEnterprise()) {
+  jsunity.run(AqlSearchAliasViewSetupPathSuite);
+  jsunity.run(AqlSearchInvertedIndexSetupPathSuite);
+  if (isEnterprise) {
     jsunity.run(AqlSatelliteSetupPathSuite);
   }
 }

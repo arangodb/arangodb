@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,18 +30,21 @@ class RocksDBTransactionMethods;
 
 class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
  public:
-  ReplicatedRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                    transaction::Options const& options);
+  ReplicatedRocksDBTransactionState(
+      TRI_vocbase_t& vocbase, TransactionId tid,
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin);
 
   ~ReplicatedRocksDBTransactionState() override;
 
   /// @brief begin a transaction
-  Result beginTransaction(transaction::Hints hints) override;
+  futures::Future<Result> beginTransaction(transaction::Hints hints) override;
 
   RocksDBTransactionMethods* rocksdbMethods(
       DataSourceId collectionId) const override;
 
-  void beginQuery(bool isModificationQuery) override;
+  void beginQuery(std::shared_ptr<ResourceMonitor> resourceMonitor,
+                  bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
 
   /// @returns tick of last operation in a transaction
@@ -50,11 +53,22 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
   TRI_voc_tick_t lastOperationTick() const noexcept override;
 
   /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const override;
+  uint64_t numCommits() const noexcept override;
+
+  uint64_t numIntermediateCommits() const noexcept override;
+
+  void addIntermediateCommits(uint64_t value) override;
+
+  arangodb::Result triggerIntermediateCommit() override;
+
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+      DataSourceId collectionId) override;
 
   bool hasOperations() const noexcept override;
 
   uint64_t numOperations() const noexcept override;
+
+  uint64_t numPrimitiveOperations() const noexcept override;
 
   bool ensureSnapshot() override;
 

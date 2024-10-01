@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,10 +40,12 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
   uint64_t maxTotalWalSize() const noexcept override;
   uint32_t numThreadsHigh() const noexcept override;
   uint32_t numThreadsLow() const noexcept override;
+  uint64_t periodicCompactionTtl() const noexcept override;
 
   struct GeneralOptions {
     uint32_t numThreadsLow;
     uint32_t numThreadsHigh;
+    uint64_t periodicCompactionTtl;
 
     uint64_t maxTotalWalSize;
 
@@ -110,6 +112,8 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
       return f.object(o).fields(
           f.field("numThreadsLow", o.numThreadsLow).fallback(f.keep()),
           f.field("numThreadsHigh", o.numThreadsHigh).fallback(f.keep()),
+          f.field("periodicCompactionTtl", o.periodicCompactionTtl)
+              .fallback(f.keep()),
 
           f.field("maxTotalWalSize", o.maxTotalWalSize).fallback(f.keep()),
           f.field("allowFAllocate", o.allowFAllocate).fallback(f.keep()),

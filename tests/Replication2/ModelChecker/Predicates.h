@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -239,47 +240,30 @@ struct combined : combined_base<std::index_sequence_for<Os...>, Os...> {
 template<typename... Os>
 combined(Os...) -> combined<Os...>;
 
+namespace detail {
+
+template<typename T, unsigned N>
+struct Str {
+  constexpr Str(const T (&str)[N]) {
+    for (unsigned k = 0; k < N; k++) {
+      buffer[k] = str[k];
+    }
+  }
+  T buffer[N];
+};
+
+template<Str File, std::size_t Line>
+struct FileLineType {
+  static auto annotate(std::string_view message) -> std::string {
+    return fmt::format("{}:{}: {}", File.buffer, Line, message);
+  }
+};
+}  // namespace detail
+
 }  // namespace arangodb::test::model_checker
 
-#if defined(__APPLE__) && defined(__clang__)
-// We had issues with AppleClang when we tried to use the
-// filename as a template parameter, so it is going to be just the line number
-// for now.
-
-template<std::size_t Line>
-struct FileLineType {
-  static inline constexpr std::size_t line = Line;
-  static auto annotate(std::string_view message) -> std::string {
-    return std::to_string(line) + std::string{message};
-  }
-};
-
-#define MC_HERE ([] { return ::FileLineType<__LINE__>{}; }())
-#else
-template<const char File[], std::size_t FileLen, typename>
-struct StringBuffer;
-template<const char File[], std::size_t FileLen, std::size_t... Idxs>
-struct StringBuffer<File, FileLen, std::index_sequence<Idxs...>> {
-  static inline constexpr char buffer[FileLen] = {File[Idxs]...};
-};
-
-template<const char File[], std::size_t FileLen, std::size_t Line>
-struct FileLineType {
-  static inline constexpr auto filename =
-      StringBuffer<File, FileLen, std::make_index_sequence<FileLen>>::buffer;
-  static inline constexpr std::size_t line = Line;
-
-  static auto annotate(std::string_view message) -> std::string {
-    return fmt::format("{}:{}:{}", filename, line, message);
-  }
-};
-
-#define MC_HERE                                                \
-  ([] {                                                        \
-    static constexpr char data[sizeof(__FILE__)] = __FILE__;   \
-    return ::FileLineType<data, sizeof(__FILE__), __LINE__>{}; \
-  }())
-#endif
+#define MC_HERE \
+  (::arangodb::test::model_checker::detail::FileLineType<__FILE__, __LINE__>{})
 
 #define MC_GTEST_PRED(name, pred)           \
   model_checker::gtest_predicate {          \

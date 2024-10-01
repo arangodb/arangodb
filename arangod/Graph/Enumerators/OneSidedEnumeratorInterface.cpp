@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -81,17 +81,17 @@ using namespace arangodb::graph;
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);                  \
   }
 
-#define GENERATE_ORDER_SWITCH(Provider)                                   \
-  switch (order) {                                                        \
-    case traverser::TraverserOptions::Order::DFS:                         \
-      GENERATE_UNIQUENESS_SWITCH(DFSEnumerator, Provider);                \
-      break;                                                              \
-    case traverser::TraverserOptions::Order::BFS:                         \
-      GENERATE_UNIQUENESS_SWITCH(BFSEnumerator, Provider);                \
-      break;                                                              \
-    case traverser::TraverserOptions::Order::WEIGHTED:                    \
-      GENERATE_UNIQUENESS_SWITCH(WeightedEnumeratorRefactored, Provider); \
-      break;                                                              \
+#define GENERATE_ORDER_SWITCH(Provider)                         \
+  switch (order) {                                              \
+    case traverser::TraverserOptions::Order::DFS:               \
+      GENERATE_UNIQUENESS_SWITCH(DFSEnumerator, Provider);      \
+      break;                                                    \
+    case traverser::TraverserOptions::Order::BFS:               \
+      GENERATE_UNIQUENESS_SWITCH(BFSEnumerator, Provider);      \
+      break;                                                    \
+    case traverser::TraverserOptions::Order::WEIGHTED:          \
+      GENERATE_UNIQUENESS_SWITCH(WeightedEnumerator, Provider); \
+      break;                                                    \
   }
 
 #define GENERATE_TRACED_ORDER_SWITCH(Provider)                        \

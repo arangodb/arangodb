@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global frontendConfig, arangoHelper, Backbone, templateEngine, $, window */
+/* global frontendConfig, templateEngine */
 (function () {
   'use strict';
 
@@ -80,15 +78,6 @@
           var currentUser = null;
           if (username !== false) {
             var continueFunc = function () {
-              if (frontendConfig.ldapEnabled) {
-                self.userCollection.add({
-                  name: window.App.currentUser,
-                  user: window.App.currentUser,
-                  username: window.App.currentUser,
-                  active: true,
-                  img: undefined
-                });
-              }
               currentUser = self.userCollection.findWhere({user: username});
               currentUser.set({loggedIn: true});
               name = currentUser.get('extra').name;
@@ -104,11 +93,13 @@
               }
 
               self.$el = $('#userBar');
+              var autoLoginEnabled = arangoHelper.getAutoLoginEnabled(autoLoginEnabled);
               self.$el.html(self.template.render({
                 img: img,
                 name: name,
                 username: username,
-                active: active
+                active: active,
+                autoLoginEnabled: autoLoginEnabled === 'true'
               }));
 
               self.delegateEvents();

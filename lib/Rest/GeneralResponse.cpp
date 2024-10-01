@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -112,6 +112,8 @@ std::string GeneralResponse::responseString(ResponseCode code) {
       return "417 Expectation Failed";
     case ResponseCode::I_AM_A_TEAPOT:
       return "418 I'm a teapot";
+    case ResponseCode::ENHANCE_YOUR_CALM:
+      return "420 Enhance Your Calm";
     case ResponseCode::UNPROCESSABLE_ENTITY:
       return "422 Unprocessable Entity";
     case ResponseCode::LOCKED:
@@ -245,6 +247,8 @@ rest::ResponseCode GeneralResponse::responseCode(std::string const& str) {
       return ResponseCode::EXPECTATION_FAILED;
     case 418:
       return ResponseCode::I_AM_A_TEAPOT;
+    case 420:
+      return ResponseCode::ENHANCE_YOUR_CALM;
     case 422:
       return ResponseCode::UNPROCESSABLE_ENTITY;
     case 423:
@@ -371,8 +375,6 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
         TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_VALIDATION_FAILED):
     case static_cast<int>(TRI_ERROR_VALIDATION_BAD_PARAMETER):
-    case static_cast<int>(
-        TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED):
       return ResponseCode::BAD;
 
     case static_cast<int>(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE):
@@ -400,6 +402,9 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST):
     case static_cast<int>(TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION):
     case static_cast<int>(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED):
+    case static_cast<int>(
+        TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH):
+    case static_cast<int>(TRI_ERROR_GRAPH_COLLECTION_NOT_PART_OF_THE_GRAPH):
     case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND):
       return ResponseCode::NOT_FOUND;
@@ -451,6 +456,9 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_STARTING_UP):
     case static_cast<int>(TRI_ERROR_CLUSTER_CONNECTION_LOST):
     case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED):
+    case static_cast<int>(TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED):
       return ResponseCode::SERVICE_UNAVAILABLE;
 
     case static_cast<int>(TRI_ERROR_HTTP_NOT_IMPLEMENTED):
@@ -471,5 +479,4 @@ GeneralResponse::GeneralResponse(ResponseCode responseCode, uint64_t mid)
       _responseCode(responseCode),
       _contentType(ContentType::UNSET),
       _contentTypeRequested(ContentType::UNSET),
-      _generateBody(true),
-      _allowCompression(false) {}
+      _generateBody(true) {}

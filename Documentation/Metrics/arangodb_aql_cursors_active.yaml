@@ -1,0 +1,32 @@
+name: arangodb_aql_cursors_active
+introducedIn: "3.12.0"
+help: |
+  Current number of active AQL query cursors.
+unit: number
+type: gauge
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+  - agent
+  - single
+description: |
+  Current number of active AQL query cursors.
+  AQL query cursors are created for queries that produce
+  more results than specified in the `batchSize` query option
+  (default value: 1000). Such results can be fetched incrementally
+  by client operations in chunks.
+  As it is unclear if and when a client will fetch any remaining
+  data from a cursor, every cursor has a server-side timeout value
+  (TTL) after which it is garbage-collected.
+troubleshoot: |
+  This number can grow temporary in case a lot of concurrent AQL queries
+  are executed. It should go down again however when the query results
+  are consumed.
+  If this number does not decrease a lot, it means that cursors are kept
+  on the server and wait for their expiry.
+  As active cursors can use resources (memory for query results and
+  potentially some collection locks), it is advisable to check the client
+  application code for ttl values and also check if the client application
+  code fully consumes query results or only fetches them partially.
+

@@ -16,8 +16,8 @@
 ### Abseil - C++ Common Libraries
 
 * Name: abseil-cpp
-* Version: 7f850b3167fb38e6b4a9ce1824e6fabd733b5d62
-* Date: 2022-02-18
+* Version: 13708db87b1ab69f4f2b3214f3f51e986546f282
+* Date: 2022-11-22
 * Project Home: https://abseil.io
 * License: https://raw.githubusercontent.com/abseil/abseil-cpp/master/LICENSE
 * License Name: Apache License 2.0
@@ -125,23 +125,23 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+#### glibc
+
+* Name: glibc
+* Version: 2.39.0
+* Date: 2024-01-31
+* Project Home: https://www.gnu.org/software/libc
+* License: https://www.gnu.org/licenses/lgpl-3.0.html
+* License Name: GNU Lesser General Public License
+* License Id: LGPL-3.0
+
 ### Google V8
 
 * Name: V8
-* Version: 7.9.317
-* Date: 2019-10-16 09:56:02Z
+* Version: 12.1.165
+* Date: 2023-11-20 02:40:45 -0800
 * Project Home: https://github.com/v8/v8
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.v8
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-
-#### binutils
-
-* Name: binutils
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/binutils/download.py
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/LICENSE.v8
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
@@ -151,9 +151,19 @@ _Enterprise Edition only_
 * Version: (see V8)
 * Date: (see V8)
 * Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/colorama/LICENSE
+* License: https://github.com/arangodb/v8/tree/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/colorama
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
+
+#### cpu_features
+
+* Name: cpu_features
+* Version: 0.8.0
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://github.com/arangodb/v8/tree/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/cpu_features
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
 
 #### FDLIBM
 
@@ -161,37 +171,56 @@ _Enterprise Edition only_
 * Version: (see V8)
 * Date: (see V8)
 * Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.fdlibm
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/LICENSE.fdlibm
 * License Comment: free as-is license (like ISC without liability clauses)
 
-#### googletest
+#### glibc mathematical functions
 
-* Name: googlestest
+* Name: glibc
 * Version: (see V8)
 * Date: (see V8)
 * Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/googletest/README.chromium
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/glibc/LICENSE
+* License Name: GNU Lesser General Public License
+* License Id: LGPL-2.1-only
+
+#### Google Benchmark
+
+* Name: Google benchmark
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://github.com/arangodb/v8/tree/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/google_benchmark
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
+
+#### googletest
+
+* Name: googletest
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://github.com/arangodb/v8/tree/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/googletest
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
 #### gyp
 
 * Name: gyp
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/gyp/LICENSE
+* Version: 0.16.1
+* Date: 2023-10-25 08:29:23 +0200
+* Project Home: https://github.com/nodejs/gyp-next
+* License: https://github.com/arangodb/arangodb/blob/devel/3rdParty/v8-build/gyp/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
 #### ICU
 
 * Name: ICU (International Components for Unicode)
-* Version: 64.2
-* Version: (see V8)
+* Version: 73.1
 * Date: (see V8)
 * Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/icu/LICENSE
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/icu/LICENSE
 * License Name: ICU license
 * License Comment: BSD-3-Clause + third-party license
 
@@ -201,19 +230,9 @@ _Enterprise Edition only_
 * Version: (see V8)
 * Date: (see V8)
 * Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/inspector_protocol/LICENSE
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/inspector_protocol/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
-
-#### is-wsl
-
-* Name: is-wsl
-* Version: 2.2.0
-* Date: 2.12.2020
-* Project Home: https://github.com/sindresorhus/is-wsl
-* License: https://github.com/sindresorhus/is-wsl/blob/main/license
-* License Name: MIT License
-* License Id: MIT
 
 #### Jinja2
 
@@ -221,9 +240,19 @@ _Enterprise Edition only_
 * Version: (see V8)
 * Date: (see V8)
 * Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/jinja2/LICENSE
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/jinja2/LICENSE.rst
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
+
+#### jsoncpp
+
+* Name: jsoncpp JSON parser and builder
+* Version: (see V8)
+* Date: (see V8)
+* Project Home: (bundled with V8)
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/jsoncpp/LICENSE
+* License Name: MIT License
+* License Id: MIT
 
 #### markupsafe
 
@@ -231,49 +260,9 @@ _Enterprise Edition only_
 * Version: (see V8)
 * Date: (see V8)
 * Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/markupsafe/LICENSE
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/markupsafe/LICENSE
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
-
-#### Object-keys
-
-* Name: Object-keys
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/test/mjsunit/third_party/object-keys/LICENSE
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-
-#### PCRE
-
-* Name: PCRE
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/test/mjsunit/third_party/regexp-pcre/LICENSE
-* License Name: PCRE LICENCE
-* License Id: PCRE
-
-#### SipHash
-
-* Name: SipHash
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/src/third_party/siphash/LICENSE
-* License Name: Creative Commons CC0 1.0 Universal
-* License: CC0
-
-#### SixSpeed
-
-* Name: SixSpeed
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/test/js-perf-test/SixSpeed/LICENSE.sixspeed
-* License Name: MIT license
-* License Id: MIT
 
 #### Strongtalk
 
@@ -281,29 +270,9 @@ _Enterprise Edition only_
 * Version: (bundled with V8)
 * Date: (bundled with V8)
 * Project Home: https://github.com/talksmall/Strongtalk
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.strongtalk
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/LICENSE.strongtalk
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
-
-#### testharness.js
-
-* Name: testharness.js
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/test/wasm-js/LICENSE.testharness
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-
-#### utf8-decoder
-
-* Name: DFA UTF-8 Decoder
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/src/third_party/utf8-decoder/LICENSE
-* License Name: MIT license
-* License Id: MIT
 
 #### V8 builtins
 
@@ -311,30 +280,9 @@ _Enterprise Edition only_
 * Version: (see V8)
 * Date: (see V8)
 * Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/v8/builtins/LICENSE
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/v8/builtins/LICENSE
 * License Name: Python Software Foundation License Version 2
 * License Id: Python-2.0
-
-#### Valgrind
-
-* Name: Valgrind
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.valgrind
-* License Name: BSD 4-clause "Original" or "Old" License
-* License Id: BSD-4-Clause
-
-#### vtune
-
-* Name: vtune
-* Version: (see V8)
-* Date: (see V8)
-* Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/src/third_party/vtune/LICENSE
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-* License Comment: dual license
 
 #### wasm-c-api
 
@@ -342,15 +290,15 @@ _Enterprise Edition only_
 * Version: (see V8)
 * Date: (see V8)
 * Project Home: (bundled with V8)
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/wasm-api/LICENSE
+* License: https://github.com/arangodb/v8/blob/980b6da33f7275a2ef369e83299163f6446dd81f/third_party/wasm-api/LICENSE
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 
 ### wcwidth
 
 * Name: wcwidth
-* Version: commit 27f12a21fc7f49f134d17bffcdd500bca272c550
-* Date: 2020-08-07T11:23:03+0200
+* Version: commit 911263c514237997c9c590517672c6ea729388dc
+* Date: 2022-12-16T06:51:44+0000
 * Project Home: https://github.com/termux/wcwidth
 * License: https://github.com/termux/wcwidth/blob/master/LICENSE.txt
 * License Name: MIT License
@@ -359,27 +307,27 @@ _Enterprise Edition only_
 ### Google Test
 
 * Name: Google Test (gtest)
-* Version: 1.8.1
-* Date: 2018-08-31 15:53:24Z
+* Version: 1.12.1
+* Date: 2022-06-30 10:14:00Z
 * Project Home: https://github.com/google/googletest
-* License: https://raw.githubusercontent.com/abseil/googletest/master/googletest/LICENSE
+* License: https://raw.githubusercontent.com/google/googletest/release-1.12.1/LICENSE 
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
 ### immer
 
 * Name: immer
-* Version: 0.7.0
-* Date: 2021-11-08 17:27:00 UTC
+* Version: 0.8.0
+* Date: 2022-12-06 11:30 UTC
 * Project Home: https://github.com/arximboldi/immer
-* License: https://github.com/arximboldi/immer/blob/v0.7.0/LICENSE
+* License: https://github.com/arximboldi/immer/blob/v0.8.0/LICENSE
 * License Name: Boost Software License 1.0
 
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.3.0, commit 54eaed1d8b56b1aa528be3bdd1877e59c56fa90c
-* Date: 2022-05-06 11:28:25 -0700
+* Version: 5.3.0, commit e4817c8d89a2a413e835c4adeab5c5c4412f9235
+* Date: 2023-10-24 13:51:14 -0700
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -397,8 +345,8 @@ _Enterprise Edition only_
 ### libunwind
 
 * Name: libunwind
-* Version: 1.5
-* Date: 2020-11-10 16:16:31Z
+* Version: 1.7.2
+* Date: 2023-07-29 11:04:36 -0400
 * Project Home: https://github.com/libunwind/libunwind
 * License: https://raw.githubusercontent.com/libunwind/libunwind/master/LICENSE
 * License Name: MIT License
@@ -424,33 +372,15 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
-### libmusl
-
-* Name: libmusl
-* Version: Alpine 3.13
-* Project Home: https://git.musl-libc.org/
-* License: https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT
-* License Name: MIT License
-* License Id: MIT
-
 ### nghttp2
 
 * Name: nghttp2
-* Version: 1.40.0
-* Date: 2019-11-15 14:34:03Z
+* Version: 1.61.0
+* Date: 2024-04-04 17:16:56 +09:00
 * GitHub: https://github.com/nghttp2/nghttp2
 * License: https://raw.githubusercontent.com/nghttp2/nghttp2/master/COPYING
 * License Name: MIT License
 * License Id: MIT
-
-### OpenLDAP
-
-* Name: OpenLDAP
-* Version: 2.4.59
-* Date: 2021-06-03
-* License: https://www.openldap.org/software/release/copyright.html
-* License Name: BSD Style License
-* License Id: OpenLDAP
 
 ### OpenSSL
 
@@ -474,8 +404,8 @@ _Enterprise Edition only_
 ### S2 Geometry Library
 
 * Name: s2geometry
-* Version: dfefe0c
-* Date: 2018-11-29 15:49:17Z
+* Version: ce14f45ae0b6c28e3f47cbcf6646d988d41046b5
+* Date: 2023-01-04
 * Project Home: https://s2geometry.io/
 * License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/s2geometry/dfefe0c/LICENSE
 * License Name: Apache License 2.0
@@ -534,8 +464,8 @@ _Enterprise Edition only_
 ### zlib
 
 * Name: zlib
-* Version: 1.2.12
-* Date: 2022-03-27 15:47:03 -0700
+* Version: 1.2.13
+* Date: 2022-10-13
 * Project Home: https://github.com/madler/zlib/
 * License: https://raw.githubusercontent.com/madler/zlib/master/README
 * License Comment: free as-is license
@@ -593,8 +523,8 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/3rdParty/ire
 ### fmt
 
 * Name: fmt
-* Version: 8.1.1
-* Date: 2022-01-06
+* Version: 9.1.0
+* Date: 2022-08-27 08:57:10-0700
 * Project Home: https://fmt.dev/
 * License: https://github.com/fmtlib/fmt/blob/master/LICENSE.rst
 * License Name: MIT
@@ -621,6 +551,26 @@ Project Home: https://github.com/unicode-org/cldr
 License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
 License Name: ICU License
 License Id: ICU
+
+#### The Project Gutenberg eBook, Children of the Frost, by Jack London
+
+Name: The Project Gutenberg eBook, Children of the Frost, by Jack London
+Version: N/A
+Date: N/A
+Project Home: https://www.gutenberg.org/ebooks/10736
+License: https://www.gutenberg.org/policy/license.html
+License Name: The Project Gutenberg License
+License Id: -
+
+#### The Project Gutenberg eBook of A Dream Of Red Mansions, by Xueqin Cao
+
+Name: The Project Gutenberg eBook of A Dream Of Red Mansions, by Xueqin Cao
+Version: N/A
+Date: N/A
+Project Home: https://www.gutenberg.org/ebooks/24264
+License: https://www.gutenberg.org/policy/license.html
+License Name: The Project Gutenberg License
+License Id: -
 
 ## JavaScript
 
@@ -884,7 +834,7 @@ License Id: ICU
 #### Swagger UI
 
 * Name: swagger-ui
-* Version: 3.25.1
+* Version: 5.4.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE
@@ -1685,6 +1635,15 @@ License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_
 License Name: MIT License
 License Id: MIT
 
+#### is-wsl
+
+* Name: is-wsl
+* Version: 2.2.0
+* Project Home: https://github.com/sindresorhus/is-wsl
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/node-netstat/node_modules/is-wsl/LICENSE
+* License Name: MIT License
+* License Id: MIT
+
 #### isemail
 
 Name: isemail
@@ -1810,6 +1769,15 @@ Project Home: https://github.com/sinonjs/lolex
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/sinon/node_modules/lolex/LICENSE
 License Name: BSD 3-clause "New" or "Revised" License
 License Id: BSD-3-Clause
+
+#### media-typer
+
+* Name: media-typer
+* Version: 0.3.0
+* Project Home: https://github.com/jshttp/media-typer
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/js/node/node_modules/type-is/node_modules/media-typer/LICENSE
+* License Name: MIT License
+* License Id: MIT
 
 #### mime-db
 

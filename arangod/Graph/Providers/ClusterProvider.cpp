@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,17 +25,19 @@
 #include "ClusterProvider.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryContext.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Transaction/Helpers.h"
-
-#include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
+#include "VocBase/vocbase.h"
 
 #include <utility>
 #include <vector>
@@ -103,11 +105,18 @@ ClusterProvider<StepImpl>::ClusterProvider(
 
 template<class StepImpl>
 ClusterProvider<StepImpl>::~ClusterProvider() {
-  clear();
+  clearWithForce();  // Make sure we actually free all memory in the edge cache!
 }
 
 template<class StepImpl>
 void ClusterProvider<StepImpl>::clear() {
+  if (_opts.clearEdgeCacheOnClear()) {
+    clearWithForce();
+  }
+}
+
+template<class StepImpl>
+void ClusterProvider<StepImpl>::clearWithForce() {
   for (auto const& entry : _vertexConnectedEdges) {
     _resourceMonitor->decreaseMemoryUsage(
         costPerVertexOrEdgeType +
@@ -130,20 +139,42 @@ auto ClusterProvider<StepImpl>::startVertex(const VertexType& vertex,
 template<class StepImpl>
 void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
     std::vector<Step*> const& looseEnds, std::vector<Step*>& result) {
-  auto const* engines = _opts.engines();
   // slow path, sharding not deducable from _id
+  bool mustSend = false;
+
   transaction::BuilderLeaser leased(trx());
   leased->openObject();
-  leased->add("keys", VPackValue(VPackValueType::Array));
-  for (auto const& looseEnd : looseEnds) {
-    auto const& vertexId = looseEnd->getVertex().getID();
-    if (!_opts.getCache()->isVertexCached(vertexId)) {
-      leased->add(VPackValuePair(vertexId.data(), vertexId.length(),
-                                 VPackValueType::String));
+
+  if (_opts.produceVertices()) {
+    // slow path, sharding not deducable from _id
+    leased->add("keys", VPackValue(VPackValueType::Array));
+    for (auto const& looseEnd : looseEnds) {
+      TRI_ASSERT(looseEnd->isLooseEnd());
+      auto const& vertexId = looseEnd->getVertex().getID();
+      if (!_opts.getCache()->isVertexCached(vertexId)) {
+        leased->add(VPackValuePair(vertexId.data(), vertexId.size(),
+                                   VPackValueType::String));
+        mustSend = true;
+        LOG_TOPIC("9e0f4", TRACE, Logger::GRAPHS)
+            << "<ClusterProvider> Fetching vertex " << vertexId;
+      }
     }
+    leased->close();  // 'keys' Array
   }
-  leased->close();  // 'keys' Array
   leased->close();  // base object
+
+  if (!mustSend) {
+    // nothing to send. save requests...
+    for (auto& looseEnd : looseEnds) {
+      auto const& vertexId = looseEnd->getVertex().getID();
+      if (!_opts.getCache()->isVertexCached(vertexId)) {
+        _opts.getCache()->cacheVertex(vertexId, VPackSlice::nullSlice());
+      }
+      result.emplace_back(looseEnd);
+      looseEnd->setVertexFetched();
+    }
+    return;
+  }
 
   auto* pool =
       trx()->vocbase().server().template getFeature<NetworkFeature>().pool();
@@ -152,6 +183,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   reqOpts.database = trx()->vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
+  auto const* engines = _opts.engines();
   std::vector<Future<network::Response>> futures;
   futures.reserve(engines->size());
 
@@ -174,7 +206,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
@@ -212,34 +244,26 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
       // Retain it.
       _opts.getCache()->datalake().add(std::move(payload));
     }
-
-    /* TODO: Needs to be taken care of as soon as we enable shortest paths for
-    ClusterProvider bool forShortestPath = true; if (!forShortestPath) {
-      // Fill everything we did not find with NULL
-      for (auto const& v : vertexIds) {
-        result.try_emplace(v, VPackSlice::nullSlice());
-      }
-    vertexIds.clear();
-    }
-    */
   }
 
   // Note: This disables the ScopeGuard
   futures.clear();
 
   // put back all looseEnds. We were able to cache
-  for (auto& lE : looseEnds) {
-    if (!_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
+  for (auto& looseEnd : looseEnds) {
+    auto const& vertexId = looseEnd->getVertex().getID();
+    if (!_opts.getCache()->isVertexCached(vertexId)) {
       // if we end up here. We were not able to cache the requested vertex
       // (e.g. it does not exist)
       _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
-                                         lE->getVertexIdentifier().toString());
-      _opts.getCache()->cacheVertex(lE->getVertexIdentifier(),
-                                    VPackSlice::nullSlice());
+                                         vertexId.toString());
+      _opts.getCache()->cacheVertex(vertexId, VPackSlice::nullSlice());
     }
-    result.emplace_back(lE);
-    lE->setVertexFetched();
+    result.emplace_back(looseEnd);
+    looseEnd->setVertexFetched();
   }
+
+  _stats.incrHttpRequests(_opts.engines()->size());
 }
 
 template<class StepImpl>
@@ -269,7 +293,7 @@ void ClusterProvider<StepImpl>::destroyEngines() {
                    "/_internal/traverser/" +
                        arangodb::basics::StringUtils::itoa(engine.second),
                    VPackBuffer<uint8_t>(), options)
-                   .get();
+                   .waitAndGet();
 
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have
@@ -284,7 +308,8 @@ void ClusterProvider<StepImpl>::destroyEngines() {
 template<class StepImpl>
 Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   TRI_ASSERT(step != nullptr);
-
+  LOG_TOPIC("fa7dc", TRACE, Logger::GRAPHS)
+      << "<ClusterProvider> Expanding " << step->getVertex().getID();
   auto const* engines = _opts.engines();
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
@@ -294,6 +319,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   // [GraphRefactor] TODO: Differentiate between algorithms -> traversal vs.
   // ksp.
   /* Needed for TRAVERSALS only - Begin */
+  // But note that the field "depth" must be set to an integer in any case!
   leased->add("depth", VPackValue(step->getDepth()));
   if (_opts.expressionContext() != nullptr) {
     leased->add(VPackValue("variables"));
@@ -337,7 +363,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
@@ -376,6 +402,9 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
             << "got invalid edge id type: " << id.typeName();
         continue;
       }
+      LOG_TOPIC("f4b3b", TRACE, Logger::GRAPHS)
+          << "<ClusterProvider> Neighbor of " << step->getVertex().getID()
+          << " -> " << id.toJson();
 
       auto [edge, needToCache] = _opts.getCache()->persistEdgeData(e);
       if (needToCache) {
@@ -434,7 +463,6 @@ auto ClusterProvider<StepImpl>::fetchVertices(
       }
     } else {
       fetchVerticesFromEngines(looseEnds, result);
-      _stats.incrHttpRequests(_opts.engines()->size() * looseEnds.size());
     }
   }
   return result;

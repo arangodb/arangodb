@@ -1,18 +1,18 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,42 +22,60 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
+/// @author Andrei Lobov
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'recovery': 'run recovery tests'
+  'recovery': 'run recovery tests',
+  'recovery_cluster': 'run recovery cluster tests'
 };
-const optionsDocumentation = [
-];
 
 const fs = require('fs');
+const internal = require('internal');
+const executeScript = internal.executeScript;
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
+const ct = require('@arangodb/testutils/client-tools');
+const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
-const _ = require('lodash');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const _ = require('lodash');
+const { isEnterprise, versionHas } = require("@arangodb/test-helper");
 
-const toArgv = require('internal').toArgv;
+const toArgv = internal.toArgv;
+const ArangoError = require('@arangodb').ArangoError;
 
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 
+const termSignal = 15;
+
+// At the moment only view-tests supported by cluster recovery tests:
 const testPaths = {
-  'recovery': [tu.pathForTesting('server/recovery')]
+  'recovery': [tu.pathForTesting('client/recovery')],
+  'recovery_cluster': [tu.pathForTesting('client/recovery/search')]
 };
+
+// These tests should NOT be killed after the setup phase.
+const doNotKillTests = [
+  "tests/js/client/recovery/check-warnings-exitzero.js"
+];
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params, useEncryption) {
+function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   let additionalParams= {
+    'foxx.queues': 'false',
+    'server.statistics': 'false',
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
+    'temp.path': params.temp_path
   };
-
+  
   if (useEncryption) {
     // randomly turn on or off hardware-acceleration for encryption for both
     // setup and the actual test. given enough tests, this will ensure that we run
@@ -67,33 +85,39 @@ function runArangodRecovery (params, useEncryption) {
     additionalParams['rocksdb.encryption-hardware-acceleration'] = (Math.random() * 100 >= 50) ? "true" : "false";
   }
 
-  let argv = [];
-
-  let binary = pu.ARANGOD_BIN;
   if (params.setup) {
-    additionalParams['javascript.script-parameter'] = 'setup';
-
     // special handling for crash-handler recovery tests
     if (params.script.match(/crash-handler/)) {
       // forcefully enable crash handler, even if turned off globally
       // during testing
-      require('internal').env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
+      internal.env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
     }
 
-    // enable development debugging if extremeVerbosity is set
-    let args = Object.assign({
-      'rocksdb.wal-file-timeout-initial': 10,
-      'server.rest-server': 'false',
-      'replication.auto-start': 'true',
-      'javascript.script': params.script,
-      'log.output': 'file://' + params.crashLog
-    }, params.options.extraArgs);
+    params.options.disableMonitor = true;
     
+    let instanceArgs = {};
+    
+    // enable development debugging if extremeVerbosity is set
     if (params.options.extremeVerbosity === true) {
-      args['log.level'] = 'development=info';
+      instanceArgs['log.level'] = 'development=info';
     }
-
+    instanceArgs = Object.assign(instanceArgs, params.options.extraArgs);
+    instanceArgs = Object.assign(instanceArgs, {
+      'rocksdb.wal-file-timeout-initial': 10,
+      'replication.auto-start': 'true',
+    });
+    if (!params.options.cluster) {
+      instanceArgs = Object.assign(instanceArgs, {
+        'log.output': 'file://' + params.crashLog,
+        'log.level': 'INFO'
+      });
+    }
     if (useEncryption) {
+      params.keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
+      if (!fs.exists(params.keyDir)) {
+        fs.makeDirectory(params.keyDir);
+      }
+
       const key = '01234567890123456789012345678901';
       
       let keyfile = fs.join(params.keyDir, 'rocksdb-encryption-keyfile');
@@ -101,174 +125,213 @@ function runArangodRecovery (params, useEncryption) {
 
       // special handling for encryption-keyfolder tests
       if (params.script.match(/encryption-keyfolder/)) {
-        args['rocksdb.encryption-keyfolder'] = params.keyDir;
+        instanceArgs['rocksdb.encryption-keyfolder'] = params.keyDir;
         process.env["rocksdb-encryption-keyfolder"] = params.keyDir;
       } else {
-        args['rocksdb.encryption-keyfile'] = keyfile;
+        instanceArgs['rocksdb.encryption-keyfile'] = keyfile;
         process.env["rocksdb-encryption-keyfile"] = keyfile;
       }
     }
-    params.options.disableMonitor = true;
-    params.testDir = fs.join(params.tempDir, `${params.count}`);
-    params['instance'] = new inst.instance(params.options,
-                                           inst.instanceRole.single,
-                                           args, {}, 'tcp', params.testDir, '',
-                                           new inst.agencyConfig(params.options, null));
 
-    argv = toArgv(Object.assign(params.instance.args, additionalParams));
-  } else {
-    additionalParams['javascript.script-parameter'] = 'recovery';
-    argv = toArgv(Object.assign(params.instance.args, additionalParams));
-    
-    if (params.options.rr) {
-      binary = 'rr';
-      argv.unshift(pu.ARANGOD_BIN);
-    }
+    params.instanceArgs = instanceArgs;
+      
   }
-  
+
   process.env["state-file"] = params.stateFile;
-  process.env["crash-log"] = params.crashLog;
-  process.env["isAsan"] = params.options.isAsan;
-  params.instanceInfo.pid = pu.executeAndWait(
-    binary,
-    argv,
-    params.options,
-    'recovery',
-    params.instance.rootDir,
-    !params.setup && params.options.coreCheck);
+  if (!params.options.cluster) {
+    process.env["crash-log"] = params.crashLog;
+  }
+  process.env["isSan"] = params.options.isSan;
+
+  if (params.setup) {
+    params.instanceArgs = Object.assign(params.instanceArgs, additionalParams);
+    params.instanceManager = new im.instanceManager(params.options.protocol,
+                                                    params.options,
+                                                    params.instanceArgs,
+                                                    fs.join('recovery',
+                                                            params.count.toString()));
+    params.instanceManager.prepareInstance();
+    params.instanceManager.launchTcpDump("");
+    params.instanceManager.nonfatalAssertSearch();
+    if (!params.instanceManager.launchInstance()) {
+      params.instanceManager.destructor(false);
+      return {
+        export: {
+          status: false,
+          message: 'failed to start server!'
+        }
+      };
+    }
+  } else {
+    print(BLUE + "Restarting " + RESET);
+    params.instanceManager.reStartInstance();
+  }
+  params.instanceManager.reconnect();
+  internal.db._useDatabase('_system');
+
+  let testCode = fs.readFileSync(params.script);
+  global.instanceManager = params.instanceManager;
+  let testFunc;
+  let success = -1;
+  try {
+    let content = `(function(){ let runSetup=${params.setup?"true":"false"};${testCode}
+}())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
+    success = executeScript(content, true, params.script);
+
+    if (params.setup && success !== 0) {
+      if ( typeof success === 'object' && !Array.isArray(success) && success !== null) {
+        print(`faulty test: setup phase did not terminate with integer: ${params.script}: \n ${JSON.stringify(success)}`);
+        throw new Error(`faulty test: ${params.script} - setup phase did not terminate with integer`);
+      }
+      print('Nonzero exit code of setup: ' + JSON.stringify(success));
+      params.instanceManager.shutdownInstance(false);
+      params.instanceManager.destructor(false);
+      return {
+        status: false,
+        message: 'Nonzero exit code of test: ' + JSON.stringify(success)
+      };
+    }
+  } catch (ex) {
+    let msg;
+    if (ex instanceof ArangoError) {
+     msg = `test '${params.script} Arango Error during test execution:\n${ex.errorNum}: ${ex.message}\n${ex.stack}`;
+    } else {
+      msg = `test '${params.script} failed by javascript error: \n${ex.stack}`;
+    }
+    print(`${RED}${msg}${RESET}`);
+    if (!params.instanceManager.checkDebugTerminated()) {
+      params.instanceManager.shutdownInstance(false);
+    }
+    params.instanceManager.destructor(false);
+    return {
+      status: false,
+      message: `Error from: '${params.script}'\n${msg}`,
+      stack: ex.stack
+    };
+  }
+  if (params.setup) {
+    let dbServers = params.instanceManager.arangods;
+    if (params.options.cluster) {
+      dbServers = dbServers.filter(
+        (a) => {
+          return a.isRole(inst.instanceRole.dbServer) ||
+            a.isRole(inst.instanceRole.coordinator);
+        });
+    }
+
+    if (isKillAfterSetup) {
+      print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators/Singles " + RESET);
+      dbServers.forEach((arangod) => {
+        params.instanceManager.debugTerminate();
+      });
+    }
+    return {
+      status: true,
+      message: ""
+    };
+  } else {
+    success['shutdown'] = {
+      status:  params.instanceManager.shutdownInstance(false),
+      message: "during shutdown"
+    };
+    return success;
+  }
 }
 
-function recovery (options) {
-  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
-      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') {
+function _recovery (options, recoveryTests) {
+  if (!versionHas('failure-tests') || !versionHas('maintainer-mode')) {
     return {
       recovery: {
         status: false,
-        message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
+        message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On and -DUSE_MAINTAINER_MODE=On'
       },
       status: false
     };
   }
+  if (options.isInstrumented) {
+    arango.timeout(arango.timeout() * 4);
+  }
+  let timeout = arango.timeout();
+  let localOptions = _.clone(options);
+  localOptions.enableAliveMonitor = false;
 
   let results = {
     status: true
   };
+  let useEncryption = isEnterprise();
 
-  let useEncryption = false;
-
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      useEncryption = true;
-    }
-  }
-
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
-
-  recoveryTests = tu.splitBuckets(options, recoveryTests);
+  recoveryTests = tu.splitBuckets(localOptions, recoveryTests);
 
   let count = 0;
-
-  let tmpMgr = new tmpDirMmgr('recovery', options);
+  let tmpMgr = new tmpDirMmgr('recovery', localOptions);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
     let filtered = {};
+    arango.timeout(timeout);
 
-    if (tu.filterTestcaseByOptions(test, options, filtered)) {
+    if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
       count += 1;
-      let iteration = 0;
-      let stateFile = fs.getTempFile();
-
-      while (true) {
-        ++iteration;
-        print(BLUE + "running setup #" + iteration + " of test " + count + " - " + test + RESET);
-        let params = {
-          tempDir: tmpMgr.tempDir,
-          instanceInfo: {
-            rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
-          },
-          options: _.cloneDeep(options),
-          script: test,
-          setup: true,
-          count: count,
-          testDir: "",
-          stateFile,
-          crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
-          crashLog: "",
-          keyDir: ""          
+      ////////////////////////////////////////////////////////////////////////
+      print(BLUE + "running setup of test " + count + " - " + test + RESET);
+      let params = {
+        tempDir: tmpMgr.tempDir,
+        rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString()),
+        options: _.cloneDeep(localOptions),
+        script: test,
+        setup: true,
+        count: count,
+        keyDir: "",
+        temp_path: fs.join(tmpMgr.tempDir, count.toString()),
+        crashLogDir: fs.join(fs.getTempPath(), `crash_${count}`),
+        crashLog: "",
+      };
+      fs.makeDirectoryRecursive(params.crashLogDir);
+      params.crashLog = fs.join(params.crashLogDir, 'crash.log');
+      fs.makeDirectoryRecursive(params.rootDir);
+      fs.makeDirectoryRecursive(params.temp_path);
+      let ret = runArangodRecovery(params, useEncryption, !doNotKillTests.includes(test));
+      if (!ret.status) {
+        results[test] = ret;
+        results.status = false;
+        continue;
+      }
+      ////////////////////////////////////////////////////////////////////////
+      print(BLUE + "running recovery of test " + count + " - " + test + RESET);
+      params.options.disableMonitor = localOptions.disableMonitor;
+      params.setup = false;
+      try {
+        results[test] = runArangodRecovery(params, useEncryption);
+        results.status = results.status && results[test].status;
+      } catch (err) {
+        results[test] = {
+          failed: 1,
+          status: false,
+          message: `Crashed! \n${err.message}\nAborting execution of more tests\n${err.stack}`,
+          duration: -1
         };
-        fs.makeDirectoryRecursive(params.crashLogDir);
-        params.crashLog = fs.join(params.crashLogDir, 'crash.log');
-        if (useEncryption) {
-          params.keyDir = fs.join(fs.getTempPath(), `arango_encryption_${count}`);
-          fs.makeDirectory(params.keyDir);
-        }
-        runArangodRecovery(params, useEncryption);
+        results.status = false;
+        results.crashed = true;
+        print("skipping more tests!");
+        return results;
+      }
 
-        ////////////////////////////////////////////////////////////////////////
-        print(BLUE + "running recovery #" + iteration + " of test " + count + " - " + test + RESET);
-        params.options.disableMonitor = options.disableMonitor;
-        params.setup = false;
-        try {
-          tu.writeTestResult(params.instance.args['temp.path'], {
-            failed: 1,
-            status: false, 
-            message: "unable to run recovery test " + test,
-            duration: -1
-          });
-        } catch (er) {}
-        runArangodRecovery(params, useEncryption);
-
-        results[test] = tu.readTestResult(
-          params.instance.args['temp.path'],
-          {
-            status: false
-          },
-          test
-        );
-        if (!results[test].status) {
-          print("Not cleaning up " + params.testDir);
-          results.status = false;
-          // end while loop
-          break;
-        } 
-
-        // check if the state file has been written by the test.
-        // if so, we will run another round of this test!
-        try {
-          if (String(fs.readFileSync(stateFile)).length) {
-            print('Going into next iteration of recovery test');
-            if (params.options.cleanup) {
-              if (params.crashLogDir !== "") {
-                fs.removeDirectoryRecursive(params.crashLogDir, true);
-              }
-              if (params.keyDir !== "") {
-                fs.removeDirectoryRecursive(params.keyDir, true);
-              }
-              continue;
-            }
-          }
-        } catch (err) {
+      params.instanceManager.destructor(results[test].status);
+      if (results[test].status) {
+        if (params.keyDir !== "") {
+          fs.removeDirectoryRecursive(params.keyDir);
         }
-        // last iteration. break out of while loop
-        if (params.options.cleanup) {
-          if (params.crashLogDir !== "") {
-            fs.removeDirectoryRecursive(params.crashLogDir, true);
-          }
-          if (params.keyDir !== "") {
-            fs.removeDirectoryRecursive(params.keyDir, true);
-          }
-        }
-        break;
+      } else {
+        print("Not cleaning up " + params.rootDir);
+        results.status = false;
       }
     } else {
-      if (options.extremeVerbosity) {
+      if (localOptions.extremeVerbosity) {
         print('Skipped ' + test + ' because of ' + filtered.filter);
       }
     }
   }
-  tmpMgr.destructor(options.cleanup && results.status);
+  tmpMgr.destructor(localOptions.cleanup && results.status);
   if (count === 0) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {
@@ -283,9 +346,23 @@ function recovery (options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+function recovery (options) {
+  options.agency = undefined;
+  options.cluster = false; 
+  options.singles = 1;
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
+  return _recovery(options, recoveryTests);
+}
+
+function recovery_cluster (options) {
+  options.cluster = true;
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options);
+  return _recovery(options, recoveryTests);
+}
+
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery'] = recovery;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  testFns['recovery_cluster'] = recovery_cluster;
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

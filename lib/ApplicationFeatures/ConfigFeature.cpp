@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,6 +42,12 @@
 
 #include <cstdlib>
 
+#ifdef __linux__
+#ifdef __GLIBC__
+#include <nss.h>
+#endif
+#endif
+
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
@@ -67,10 +73,17 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--check-configuration", "check the configuration and exit",
+      "--check-configuration", "Check the configuration and exit.",
       new BooleanParameter(&_checkConfiguration),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
+
+  options->addOption(
+      "--honor-nsswitch",
+      "Allow hostname lookup configuration via /etc/nsswitch.conf if on "
+      "Linux/glibc.",
+      new BooleanParameter(&_honorNsswitch),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void ConfigFeature::loadOptions(std::shared_ptr<ProgramOptions> options,
@@ -146,7 +159,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   std::string basename = progname;
   bool checkArangoImp = (progname == "arangoimport");
 
-  if (!StringUtils::isSuffix(basename, ".conf")) {
+  if (!basename.ends_with(".conf")) {
     basename += ".conf";
   }
 
@@ -250,4 +263,34 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   }
 }
 
+void ConfigFeature::prepare() {
+#ifdef __linux__
+#ifdef __GLIBC__
+  // This code deserves and explanation.
+  // Our release builds use Ubuntu 24.04 with glibc 2.39.0 (at the time of this
+  // writing) and build static executables. This is all nice and convenient but
+  // it has one disadvantage: If host name lookups or user name lookups happen,
+  // the glibc uses the configuration file /etc/nsswitch.conf to decide how to
+  // do these lookups. This is a runtime configuration option of glibc.
+  // Unfortunately, glibc implements some of the options via dynamically loaded
+  // modules (notably mdns4_minimal via libnss_mdns4_minimal.so) and does not
+  // do versioned symbols for this.
+  // If this happens on a system with a different version of glibc installed
+  // (like for example an older Ubuntu system or a Debian or RedHat system),
+  // then glibc tries to dynamically load a module which does not fit and the
+  // process crashes with a high likelihood. To prevent this, we use the
+  // (undocumented) override function below. This has the consequence that the
+  // host name lookup will always just use /etc/hosts and normal DNS lookup. And
+  // username lookup will always just use /etc/passwd, regardless of the system
+  // configuration. There is an opt-out for this in form of the configuration
+  // option --honor-nsswitch. Use this only if you are running on a system
+  // without glibc installed, or with glibc version 2.39.0.
+  if (!_honorNsswitch) {
+    __nss_configure_lookup("hosts", "files dns");
+    __nss_configure_lookup("passwd", "files");
+    __nss_configure_lookup("group", "files");
+  }
+#endif
+#endif
+}
 }  // namespace arangodb

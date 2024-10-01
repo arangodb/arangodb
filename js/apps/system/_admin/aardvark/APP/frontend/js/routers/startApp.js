@@ -1,6 +1,3 @@
-/* jshint unused: false */
-/* global window, $, Backbone, document, arangoHelper */
-
 (function () {
   'use strict';
   // We have to start the app only in production mode, not in test mode

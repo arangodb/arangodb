@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,9 +24,9 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <rocksdb/slice.h>
+
+#include <string_view>
 
 namespace arangodb {
 
@@ -56,12 +56,14 @@ enum class RocksDBEntryType : char {
   // RevisionTreeValue = '@', // pre-3.8 GA revision trees. do not use or reuse!
   // RevisionTreeValue = '/', // pre-3.8 GA revision trees. do not use or reuse!
   RevisionTreeValue = '*',
-  ReplicatedLog = 'l',
-  ZkdIndexValue = 'z',
-  UniqueZkdIndexValue = 'Z',
+  ReplicatedState = 's',
+  MdiIndexValue = 'z',
+  UniqueMdiIndexValue = 'Z',
+  MdiVPackIndexValue = 'w',
+  UniqueMdiVPackIndexValue = 'W',
 };
 
-char const* rocksDBEntryTypeName(RocksDBEntryType);
+std::string_view rocksDBEntryTypeName(RocksDBEntryType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Used to for various metadata in the write-ahead-log
@@ -102,15 +104,20 @@ enum class RocksDBSettingsType : char {
   Version = 'V',
   ServerTick = 'S',
   Endianness = 'E',
-  ExtendedDatabaseNames = 'X',
+  ExtendedNamesIndexes = 'W',
+  ExtendedNamesDatabases = 'X',
+  ExtendedNamesCollections = 'Y',
+  ExtendedNamesViews = 'Z',
 };
 
 /// @brief endianess value
 enum class RocksDBEndianness : char { Invalid = 0, Little = 'L', Big = 'B' };
 
+std::string_view rocksDBEndiannessString(RocksDBEndianness value);
+
 /// @brief rocksdb format version
 char rocksDBFormatVersion();
 
-char const* rocksDBLogTypeName(RocksDBLogType);
+std::string_view rocksDBLogTypeName(RocksDBLogType);
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }  // namespace arangodb

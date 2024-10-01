@@ -124,7 +124,7 @@
       width: auto;
 
       &.arango-active-tab {
-        border-bottom: 2px solid $c-active-green;
+        border-bottom: 2px solid var(--green-600);
         font-weight: 400;
         height: 35px;
         opacity: 1;

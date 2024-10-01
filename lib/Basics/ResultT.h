@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,11 +26,12 @@
 #include <type_traits>
 
 #include <optional>
+#include <variant>
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Inspection/Types.h"
 
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 11)
 #pragma GCC diagnostic push
@@ -152,7 +153,18 @@ class ResultT {
   // cppcheck-suppress noExplicitConstructor
   /* implicit */ ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
-  ResultT() = delete;
+  template<typename U>
+  ResultT(U&& val) requires(std::is_convertible_v<U, T> &&
+                            !std::is_same_v<std::decay_t<U>, std::nullopt_t> &&
+                            !std::is_convertible_v<U, Result>)
+      : ResultT(std::forward<U>(val), TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT(_val.has_value());
+  }
+
+  // Default constructor calls default constructor of T
+  // If T is not default constructable, ResultT cannot be default constructable
+  ResultT() requires(std::is_nothrow_default_constructible_v<T>) : _val{T{}} {}
+  ResultT() requires(!std::is_nothrow_default_constructible_v<T>) = delete;
 
   ResultT& operator=(T const& val_) {
     _val = val_;
@@ -281,6 +293,51 @@ class ResultT {
   ResultT(std::optional<T>&& val_, Result&& result)
       : _result(std::move(result)), _val(std::move(val_)) {}
 };
+
+namespace detail {
+template<typename T>
+struct ResultTSerializer
+    : std::variant<std::reference_wrapper<const arangodb::Result>,
+                   std::reference_wrapper<T>> {};
+template<typename Inspector, typename T>
+auto inspect(Inspector& f, ResultTSerializer<T>& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<std::reference_wrapper<T>>("value"),
+      arangodb::inspection::type<
+          std::reference_wrapper<const arangodb::Result>>("error"));
+}
+template<typename T>
+struct ResultTDeserializer : std::variant<arangodb::Result, T> {};
+template<typename Inspector, typename T>
+auto inspect(Inspector& f, ResultTDeserializer<T>& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<T>("value"),
+      arangodb::inspection::type<arangodb::Result>("error"));
+}
+}  // namespace detail
+template<typename Inspector, typename T>
+auto inspect(Inspector& f, arangodb::ResultT<T>& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = detail::ResultTDeserializer<T>{};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      if (std::holds_alternative<arangodb::Result>(v)) {
+        x = std::get<arangodb::Result>(std::move(v));
+      } else {
+        x = std::get<T>(std::move(v));
+      }
+    }
+    return res;
+  } else {
+    auto variant = [&]() -> detail::ResultTSerializer<T> {
+      if (x.fail()) {
+        return {std::ref(x.result())};
+      }
+      return {std::ref(x.get())};
+    }();
+    return f.apply(variant);
+  }
+}
 
 }  // namespace arangodb
 

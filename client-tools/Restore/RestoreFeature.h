@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -43,10 +44,6 @@ namespace arangodb {
 
 namespace basics {
 class StringBuffer;
-}
-
-namespace httpclient {
-class SimpleHttpResult;
 }
 
 class ManagedDirectory;
@@ -93,8 +90,10 @@ class RestoreFeature final : public ArangoRestoreFeature {
     uint64_t chunkSize{1024 * 1024 * 8};
     uint64_t defaultNumberOfShards{1};     // deprecated
     uint64_t defaultReplicationFactor{1};  // deprecated
+    uint64_t maxUnusedBufferSize{1024 * 1024 * 512};
     std::vector<std::string> numberOfShards;
     std::vector<std::string> replicationFactor;
+    std::vector<std::string> writeConcern;
     uint32_t threadCount{2};
     uint32_t initialConnectRetries{3};
     bool clusterMode{false};
@@ -107,7 +106,6 @@ class RestoreFeature final : public ArangoRestoreFeature {
     bool importStructure{true};
     bool includeSystemCollections{false};
     bool overwrite{true};
-    bool useEnvelope{true};
     bool enableRevisionTrees{true};
     bool continueRestore{false};
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -124,12 +122,28 @@ class RestoreFeature final : public ArangoRestoreFeature {
     RESTORED = 3,
   };
 
+  struct MultiFileReadOffset {
+    size_t fileNo{0};
+    size_t readOffset{0};
+
+    friend auto operator<=>(MultiFileReadOffset const&,
+                            MultiFileReadOffset const&) noexcept = default;
+
+    auto operator+(size_t x) {
+      return MultiFileReadOffset{fileNo, readOffset + x};
+    }
+
+    friend auto& operator<<(std::ostream& os, MultiFileReadOffset const& x) {
+      return os << x.fileNo << ":" << x.readOffset;
+    }
+  };
+
   struct CollectionStatus {
     CollectionState state{UNKNOWN};
-    size_t bytes_acked{0};
+    MultiFileReadOffset bytesAcked;
 
     CollectionStatus();
-    explicit CollectionStatus(CollectionState state, size_t bytes_acked = 0u);
+    explicit CollectionStatus(CollectionState state, MultiFileReadOffset);
     explicit CollectionStatus(VPackSlice slice);
 
     void toVelocyPack(VPackBuilder& builder) const;
@@ -149,9 +163,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
   /// @brief shared state for a single collection, can be shared by multiple
   /// RestoreJobs (one RestoreMainJob and x RestoreSendJobs)
   struct SharedState {
-    SharedState() : readCompleteInputfile(false) {}
-
-    Mutex mutex;
+    std::mutex mutex;
 
     /// @brief this contains errors produced by background send operations
     /// (i.e. RestoreSendJobs)
@@ -161,17 +173,22 @@ class RestoreFeature final : public ArangoRestoreFeature {
     /// currently ongoing. Resumption of the restore must start at the smallest
     /// key value contained in here (note: we also need to track the length of
     /// each chunk to test the resumption of a restore after a crash)
-    std::map<size_t, size_t> readOffsets;
+    std::map<MultiFileReadOffset, size_t> readOffsets;
+
+    /// @brief number of dispatched jobs that we need to wait for until we
+    /// can declare final success. this is important only when restoring the
+    /// data for a collection/shards from multiple files.
+    size_t pendingJobs{0};
 
     /// @brief whether ot not we have read the complete input data file for the
     /// collection
-    bool readCompleteInputfile;
+    bool readCompleteInputfile{false};
   };
 
   /// @brief Stores all necessary data to restore a single collection or shard
   struct RestoreJob {
     RestoreJob(RestoreFeature& feature, RestoreProgressTracker& progressTracker,
-               Options const& options, Stats& stats, bool useEnvelope,
+               Options const& options, Stats& stats,
                std::string const& collectionName,
                std::shared_ptr<SharedState> sharedState);
 
@@ -182,14 +199,13 @@ class RestoreFeature final : public ArangoRestoreFeature {
     void updateProgress();
 
     Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& client,
-                           size_t readOffset, char const* buffer,
-                           size_t bufferSize);
+                           MultiFileReadOffset readOffset, char const* buffer,
+                           size_t bufferSize, bool useVPack);
 
     RestoreFeature& feature;
     RestoreProgressTracker& progressTracker;
     Options const& options;
     Stats& stats;
-    bool useEnvelope;
     std::string const collectionName;
     std::shared_ptr<SharedState> sharedState;
   };
@@ -198,15 +214,16 @@ class RestoreFeature final : public ArangoRestoreFeature {
     RestoreMainJob(ManagedDirectory& directory, RestoreFeature& feature,
                    RestoreProgressTracker& progressTracker,
                    Options const& options, Stats& stats, VPackSlice parameters,
-                   bool useEnvelope);
+                   bool useEnvelope, bool useVPack);
 
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
     Result dispatchRestoreData(arangodb::httpclient::SimpleHttpClient& client,
-                               size_t readOffset, char const* data,
+                               MultiFileReadOffset readOffset, char const* data,
                                size_t length, bool forceDirect);
 
-    Result restoreData(arangodb::httpclient::SimpleHttpClient& client);
+    Result restoreData(arangodb::httpclient::SimpleHttpClient& client,
+                       bool useVPack);
 
     /// @brief Restore a collection's indexes given its description
     Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& client);
@@ -217,20 +234,26 @@ class RestoreFeature final : public ArangoRestoreFeature {
 
     ManagedDirectory& directory;
     VPackSlice parameters;
+    bool useEnvelope;
+    bool useVPack;
   };
 
   struct RestoreSendJob : public RestoreJob {
     RestoreSendJob(RestoreFeature& feature,
                    RestoreProgressTracker& progressTracker,
-                   Options const& options, Stats& stats, bool useEnvelope,
+                   Options const& options, Stats& stats,
                    std::string const& collectionName,
-                   std::shared_ptr<SharedState> sharedState, size_t readOffset,
-                   std::unique_ptr<basics::StringBuffer> buffer);
+                   std::shared_ptr<SharedState> sharedState,
+                   MultiFileReadOffset readOffset,
+                   std::unique_ptr<basics::StringBuffer> buffer, bool useVPack);
+
+    ~RestoreSendJob();
 
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
-    size_t const readOffset;
+    MultiFileReadOffset const readOffset;
     std::unique_ptr<basics::StringBuffer> buffer;
+    bool useVPack;
   };
 
   ClientTaskQueue<RestoreJob>& taskQueue();
@@ -255,11 +278,12 @@ class RestoreFeature final : public ArangoRestoreFeature {
   int& _exitCode;
   Options _options;
   Stats _stats;
-  Mutex mutable _workerErrorLock;
-  std::queue<Result> _workerErrors;
+  std::mutex mutable _workerErrorLock;
+  std::vector<Result> _workerErrors;
 
-  Mutex _buffersLock;
+  std::mutex _buffersLock;
   std::vector<std::unique_ptr<basics::StringBuffer>> _buffers;
+  size_t _buffersCapacity = 0;
 };
 
 }  // namespace arangodb

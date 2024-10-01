@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,9 +23,9 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedState/ReplicatedStateToken.h"
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
+#include "Replication2/ReplicatedState/WaitForQueue.h"
 #include "Replication2/Streams/Streams.h"
 
 namespace arangodb::futures {
@@ -46,6 +47,8 @@ namespace replicated_state {
 
 template<typename S>
 struct FollowerStateManager;
+template<typename S>
+struct ReplicatedStateManager;
 
 struct IReplicatedLeaderStateBase {
   virtual ~IReplicatedLeaderStateBase() = default;
@@ -56,7 +59,15 @@ struct IReplicatedFollowerStateBase {
 };
 
 template<typename S>
-struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
+struct IReplicatedStateImplBase {
+  using CoreType = typename ReplicatedStateTraits<S>::CoreType;
+  virtual ~IReplicatedStateImplBase() = default;
+  virtual auto resign() && noexcept -> std::unique_ptr<CoreType> = 0;
+};
+
+template<typename S>
+struct IReplicatedLeaderState : IReplicatedStateImplBase<S>,
+                                IReplicatedLeaderStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using Stream = streams::ProducerStream<EntryType>;
@@ -78,15 +89,15 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
   [[nodiscard]] auto getStream() const noexcept
       -> std::shared_ptr<Stream> const&;
 
-  [[nodiscard]] virtual auto resign() && noexcept
-      -> std::unique_ptr<CoreType> = 0;
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<CoreType> override = 0;
 
   /**
    * This hook is called after leader recovery is completed and the internal
    * state has been updated. The underlying stream is guaranteed to have been
    * initialized.
    */
-  virtual void onSnapshotCompleted() noexcept {};
+  virtual void onRecoveryCompleted() noexcept {};
 
   void setStream(std::shared_ptr<Stream> stream) noexcept {
     _stream = std::move(stream);
@@ -97,7 +108,8 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
 };
 
 template<typename S>
-struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
+struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
+                                  IReplicatedFollowerStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using Stream = streams::Stream<EntryType>;
@@ -131,16 +143,20 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
    * @return Future with Result value. If the result contains an error,
    *    the operation is eventually retried.
    */
-  virtual auto acquireSnapshot(ParticipantId const& leader,
-                               LogIndex localCommitIndex) noexcept
+  virtual auto acquireSnapshot(ParticipantId const& leader) noexcept
       -> futures::Future<Result> = 0;
 
   /**
    * TODO Comment missing
    * @return
    */
-  [[nodiscard]] virtual auto resign() && noexcept
-      -> std::unique_ptr<CoreType> = 0;
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<CoreType> override = 0;
+
+ public:
+  void setStream(std::shared_ptr<Stream> stream) noexcept {
+    _stream = std::move(stream);
+  }
 
  protected:
   [[nodiscard]] auto getStream() const noexcept
@@ -148,6 +164,7 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
 
  private:
   friend struct FollowerStateManager<S>;
+  friend struct ReplicatedStateManager<S>;
 
   void setStateManager(
       std::shared_ptr<FollowerStateManager<S>> manager) noexcept;

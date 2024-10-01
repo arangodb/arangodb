@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,16 +24,17 @@
 
 #pragma once
 
+#include "Aql/ExecutionNode/DistributeNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Basics/Common.h"
-#include "ClusterNodes.h"
 #include "Containers/SmallUnorderedMap.h"
-#include "ExecutionNode.h"
 #include "VocBase/vocbase.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 class Optimizer;
 class ExecutionNode;
 class SubqueryNode;
@@ -46,7 +47,6 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
 
 void insertDistributeInputCalculation(ExecutionPlan& plan);
 
-void enableAsyncPrefetching(ExecutionPlan& plan);
 void activateCallstackSplit(ExecutionPlan& plan);
 
 /// @brief adds a SORT operation for IN right-hand side operands
@@ -144,6 +144,10 @@ void interchangeAdjacentEnumerationsRule(Optimizer*,
 void substituteClusterSingleDocumentOperationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
 
+/// @brief replace multiple document operations in cluster by special handling
+void substituteClusterMultipleDocumentOperationsRule(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const&);
+
 #ifdef USE_ENTERPRISE
 /// @brief optimize queries in the cluster so that the entire query gets pushed
 /// to a single server
@@ -179,6 +183,14 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
+void distributeOffsetInfoToClusterRule(aql::Optimizer* opt,
+                                       std::unique_ptr<aql::ExecutionPlan> plan,
+                                       aql::OptimizerRule const& rule);
+
+void lateMaterialiationOffsetInfoRule(aql::Optimizer* opt,
+                                      std::unique_ptr<aql::ExecutionPlan> plan,
+                                      aql::OptimizerRule const& rule);
+
 ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
                                             ExecutionNode* node,
                                             bool& wasModified);
@@ -278,6 +290,10 @@ void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                             OptimizerRule const&);
 
+/// @brief optimizes away unused K_PATHS things
+void optimizePathsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                       OptimizerRule const&);
+
 /// @brief removes filter nodes already covered by the traversal and removes
 /// unused variables
 void removeFiltersCoveredByTraversal(Optimizer* opt,
@@ -309,6 +325,15 @@ void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief replace legacy JS functions in the plan.
 void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);
+
+/// @brief replace LIKE function with range scan where possible
+void replaceLikeWithRangeRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                              OptimizerRule const&);
+
+/// @brief replace enumeration of ENTRIES with object iteration
+void replaceEntriesWithObjectIteration(Optimizer*,
+                                       std::unique_ptr<ExecutionPlan>,
+                                       OptimizerRule const&);
 
 /// @brief move filters into EnumerateCollection nodes
 void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -358,16 +383,36 @@ void findSubqueriesInPlan(
     containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
 
 //// @brief create a DistributeNode for the given ExecutionNode
-auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node)
-    -> DistributeNode*;
+DistributeNode* createDistributeNodeFor(ExecutionPlan& plan,
+                                        ExecutionNode* node);
 
 //// @brief create a gather node matching the given DistributeNode
-auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node)
-    -> GatherNode*;
+GatherNode* createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node);
 
 //// @brief enclose a node in DISTRIBUTE/GATHER
-auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at,
-                                   SubqueryNode* snode) -> DistributeNode*;
+DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
+                                              ExecutionNode* at,
+                                              SubqueryNode* snode);
 
-}  // namespace aql
-}  // namespace arangodb
+void joinIndexNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                        OptimizerRule const&);
+
+void optimizeProjections(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                         OptimizerRule const&);
+
+void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                   OptimizerRule const&);
+
+void batchMaterializeDocumentsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                   OptimizerRule const&);
+
+void pushDownLateMaterializationRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                     OptimizerRule const&);
+
+void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                     OptimizerRule const&);
+
+void pushLimitIntoIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                            OptimizerRule const&);
+
+}  // namespace arangodb::aql

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,29 +24,28 @@
 
 #include "HttpRequest.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/conversions.h"
+#include "Basics/debugging.h"
+
+#include <fuerte/types.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Validator.h>
 
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
-#include "Basics/debugging.h"
-#include "Basics/tri-strings.h"
-#include "Logger/Logger.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-std::string url_decode(const char* begin, const char* end) {
+std::string urlDecode(char const* begin, char const* end) {
   std::string out;
   out.reserve(static_cast<size_t>(end - begin));
-  for (const char* i = begin; i != end; ++i) {
+  for (char const* i = begin; i != end; ++i) {
     std::string::value_type c = (*i);
     if (c == '%') {
       if (i + 2 < end) {
@@ -73,13 +72,63 @@ std::string url_decode(const char* begin, const char* end) {
 }
 }  // namespace
 
-HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, uint64_t mid,
-                         bool allowMethodOverride)
-    : GeneralRequest(connectionInfo, mid),
-      _allowMethodOverride(allowMethodOverride),
-      _validatedPayload(false) {
+HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, uint64_t mid)
+    : GeneralRequest(connectionInfo, mid), _validatedPayload(false) {
   _contentType = ContentType::UNSET;
   _contentTypeResponse = ContentType::JSON;
+  TRI_ASSERT(_memoryUsage == 0);
+  _memoryUsage += sizeof(HttpRequest);
+}
+
+HttpRequest::~HttpRequest() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto expected = sizeof(HttpRequest) + _fullUrl.size() + _requestPath.size() +
+                  _databaseName.size() + _user.size() + _prefix.size() +
+                  _contentTypeResponsePlain.size() + _payload.size();
+  for (auto const& it : _suffixes) {
+    expected += it.size();
+  }
+  for (auto const& it : _headers) {
+    expected += it.first.size() + it.second.size();
+  }
+  for (auto const& it : _cookies) {
+    expected += it.first.size() + it.second.size();
+  }
+  for (auto const& it : _values) {
+    expected += it.first.size() + it.second.size();
+  }
+  for (auto const& it : _arrayValues) {
+    expected += it.first.size();
+    for (auto const& it2 : it.second) {
+      expected += it2.size();
+    }
+  }
+  if (_vpackBuilder) {
+    expected += _vpackBuilder->bufferRef().size();
+  }
+
+  TRI_ASSERT(_memoryUsage == expected)
+      << "expected memory usage: " << expected << ", actual: " << _memoryUsage
+      << ", diff: " << (_memoryUsage - expected);
+#endif
+}
+
+void HttpRequest::appendBody(char const* data, size_t size) {
+  _payload.append(data, size);
+  _memoryUsage += size;
+}
+
+void HttpRequest::appendNullTerminator() {
+  _payload.push_back('\0');
+  _payload.resetTo(_payload.size() - 1);
+  // DO NOT increase memory usage here
+}
+
+void HttpRequest::clearBody() noexcept {
+  auto old = _payload.size();
+  _payload.clear();
+  TRI_ASSERT(_memoryUsage >= old);
+  _memoryUsage -= old;
 }
 
 void HttpRequest::parseHeader(char* start, size_t length) {
@@ -234,7 +283,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
                 ++q;
               }
 
-              _databaseName = ::url_decode(pathBegin, q);
+              setDatabaseName(::urlDecode(pathBegin, q));
               if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
                 THROW_ARANGO_EXCEPTION_MESSAGE(
                     TRI_ERROR_ARANGO_ILLEGAL_NAME,
@@ -251,7 +300,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
             paramEnd = paramBegin = pathEnd;
 
             // set full url = complete path
-            _fullUrl = std::string(pathBegin, pathEnd - pathBegin);
+            setFullUrl(std::string(pathBegin, pathEnd - pathBegin));
           }
 
           // no question mark
@@ -261,7 +310,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
             paramEnd = paramBegin = f;
 
             // set full url = complete path
-            _fullUrl = std::string(pathBegin, pathEnd - pathBegin);
+            setFullUrl(std::string(pathBegin, pathEnd - pathBegin));
           }
 
           // found a question mark
@@ -280,14 +329,14 @@ void HttpRequest::parseHeader(char* start, size_t length) {
             paramEnd = g;
 
             // set full url = complete path + query parameters
-            _fullUrl = std::string(pathBegin, paramEnd - pathBegin);
+            setFullUrl(std::string(pathBegin, paramEnd - pathBegin));
 
             // now that the full url was saved, we can insert the null bytes
             *pathEnd = '\0';
           }
 
           if (pathBegin < pathEnd) {
-            _requestPath = std::string(pathBegin, pathEnd - pathBegin);
+            setRequestPath(std::string(pathBegin, pathEnd - pathBegin));
           }
 
           if (paramBegin < paramEnd) {
@@ -383,8 +432,8 @@ void HttpRequest::parseHeader(char* start, size_t length) {
         }
 
         if (keyBegin < keyEnd) {
-          setHeader(keyBegin, keyEnd - keyBegin, valueBegin,
-                    valueEnd - valueBegin);
+          setHeader(std::string(keyBegin, keyEnd - keyBegin),
+                    std::string(valueBegin, valueEnd - valueBegin));
         }
       }
 
@@ -404,7 +453,8 @@ void HttpRequest::parseHeader(char* start, size_t length) {
 
         // use empty value
         if (keyBegin < keyEnd) {
-          setHeader(keyBegin, keyEnd - keyBegin);
+          setHeader(std::string(keyBegin, keyEnd - keyBegin),
+                    std::string("", 0));
         }
       }
     }
@@ -413,7 +463,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
   }
 }
 
-void HttpRequest::parseUrl(const char* path, size_t length) {
+void HttpRequest::parseUrl(char const* path, size_t length) {
   std::string tmp;
   tmp.reserve(length);
   // get rid of '//'
@@ -426,8 +476,8 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
     }
   }
 
-  const char* start = tmp.data();
-  const char* end = start + tmp.size();
+  char const* start = tmp.data();
+  char const* end = start + tmp.size();
   // look for database name in URL
   if (end - start >= 5) {
     char const* q = start;
@@ -448,25 +498,21 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       }
 
       TRI_ASSERT(q >= start);
-      _databaseName = ::url_decode(start, q);
+      setDatabaseName(::urlDecode(start, q));
       if (_databaseName != normalizeUtf8ToNFC(_databaseName)) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_ARANGO_ILLEGAL_NAME,
             "database name is not properly UTF-8 NFC-normalized");
       }
-      _fullUrl.assign(q, end - q);
-
+      setFullUrl(std::string(q, end - q));
       start = q;
     } else {
-      _fullUrl.assign(start, end - start);
+      setFullUrl(std::string(start, end - start));
     }
   } else {
-    _fullUrl.assign(start, end - start);
+    setFullUrl(std::string(start, end - start));
   }
 
-  if (_fullUrl.empty()) {
-    _fullUrl.push_back('/');
-  }
   TRI_ASSERT(!_fullUrl.empty());
 
   char const* q = start;
@@ -475,16 +521,16 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
   }
 
   if (q == end || *q == '?') {
-    _requestPath.assign(start, q - start);
+    setRequestPath(std::string(start, q - start));
   }
   if (q == end) {
     return;
   }
 
   bool keyPhase = true;
-  const char* keyBegin = ++q;
-  const char* keyEnd = keyBegin;
-  const char* valueBegin = nullptr;
+  char const* keyBegin = ++q;
+  char const* keyEnd = keyBegin;
+  char const* valueBegin = nullptr;
 
   while (q != end) {
     if (keyPhase) {
@@ -497,27 +543,33 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       continue;
     }
 
-    if (q + 1 == end || *(q + 1) == '&') {
-      ++q;  // skip ahead
+    bool isAmpersand = (*q == '&');
 
-      std::string val = ::url_decode(valueBegin, q);
+    if (q + 1 == end || *(q + 1) == '&' || isAmpersand) {
+      if (!isAmpersand) {
+        ++q;  // skip ahead
+      }
+
+      std::string val = ::urlDecode(valueBegin, q);
       if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' &&
           *(keyEnd - 1) == ']') {
         // found parameter xxx[]
-        _arrayValues[::url_decode(keyBegin, keyEnd - 2)].emplace_back(
-            std::move(val));
+        setArrayValue(::urlDecode(keyBegin, keyEnd - 2), std::move(val));
       } else {
-        _values[::url_decode(keyBegin, keyEnd)] = std::move(val);
+        setValue(::urlDecode(keyBegin, keyEnd), std::move(val));
       }
       keyPhase = true;
       keyBegin = q + 1;
-      continue;
+
+      if (!isAmpersand) {
+        continue;
+      }
     }
     ++q;
   }
 }
 
-void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
+void HttpRequest::setHeader(std::string key, std::string value) {
   StringUtils::tolowerInPlace(key);  // always lowercase key
 
   if (key == StaticStrings::ContentLength) {
@@ -536,15 +588,15 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     _contentTypeResponse =
         rest::stringToContentType(value, /*default*/ ContentType::JSON);
     if (value.find(',') != std::string::npos) {
-      _contentTypeResponsePlain = value;
+      setStringValue(_contentTypeResponsePlain, std::move(value));
     } else {
-      _contentTypeResponsePlain.clear();
+      setStringValue(_contentTypeResponsePlain, std::string());
     }
     return;
-  } else if ((_contentType == ContentType::UNSET) &&
-             (key == StaticStrings::ContentTypeHeader)) {
+  } else if (_contentType == ContentType::UNSET &&
+             key == StaticStrings::ContentTypeHeader) {
     auto res = rest::stringToContentType(value, /*default*/ ContentType::UNSET);
-    // simon: the "@arangodb/requests" module by default the "text/plain"
+    // simon: the "@arangodb/requests" module by default uses the "text/plain"
     // content-types for JSON in most tests. As soon as someone fixes all the
     // tests we can enable these again.
     if (res == ContentType::JSON || res == ContentType::VPACK ||
@@ -553,43 +605,21 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
       return;
     }
   } else if (key == StaticStrings::AcceptEncoding) {
-    // This can be much more elaborated as the can specify weights on encodings
-    // However, for now just toggle on deflate if deflate is requested
-    if (StaticStrings::EncodingDeflate == value) {
-      // FXIME: cannot use substring search, Java driver chokes on deflated
-      // response
-      // if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
-      _acceptEncoding = EncodingType::DEFLATE;
-    }
-  }
-
-  if (key == "cookie") {
+    _acceptEncoding = parseAcceptEncoding(value);
+  } else if (key == StaticStrings::Cookie) {
     parseCookies(value.c_str(), value.size());
     return;
   }
 
-  if (_allowMethodOverride && key.size() >= 13 && key[0] == 'x' &&
-      key[1] == '-') {
-    // handle x-... headers
-
-    // override HTTP method?
-    if (key == "x-http-method" || key == "x-method-override" ||
-        key == "x-http-method-override") {
-      StringUtils::tolowerInPlace(value);
-      _type = findRequestType(value.c_str(), value.size());
-      // don't insert this header!!
-      return;
-    }
+  auto memoryUsage = key.size() + value.size();
+  auto it = _headers.try_emplace(std::move(key), std::move(value));
+  if (!it.second) {
+    auto old = it.first->first.size() + it.first->second.size();
+    // cppcheck-suppress accessMoved
+    _headers[std::move(key)] = std::move(value);
+    _memoryUsage -= old;
   }
-
-  _headers[std::move(key)] = std::move(value);
-}
-
-void HttpRequest::setArrayValue(char const* key, size_t length,
-                                char const* value) {
-  TRI_ASSERT(key != nullptr);
-  TRI_ASSERT(value != nullptr);
-  _arrayValues[std::string(key, length)].emplace_back(value);
+  _memoryUsage += memoryUsage;
 }
 
 void HttpRequest::setValues(char* buffer, char* end) {
@@ -633,10 +663,11 @@ void HttpRequest::setValues(char* buffer, char* end) {
       if (key - keyBegin > 2 && (*(key - 2)) == '[' && (*(key - 1)) == ']') {
         // found parameter xxx[]
         *(key - 2) = '\0';
-        setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
+        setArrayValue(std::string(keyBegin, key - keyBegin - 2),
+                      std::string(valueBegin, value - valueBegin));
       } else {
-        _values[std::string(keyBegin, key - keyBegin)] =
-            std::string(valueBegin, value - valueBegin);
+        setValue(std::string(keyBegin, key - keyBegin),
+                 std::string(valueBegin, value - valueBegin));
       }
 
       keyBegin = key = buffer + 1;
@@ -693,95 +724,25 @@ void HttpRequest::setValues(char* buffer, char* end) {
     if (key - keyBegin > 2 && (*(key - 2)) == '[' && (*(key - 1)) == ']') {
       // found parameter xxx[]
       *(key - 2) = '\0';
-      setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
+      setArrayValue(std::string(keyBegin, key - keyBegin - 2),
+                    std::string(valueBegin, value - valueBegin));
     } else {
-      _values[std::string(keyBegin, key - keyBegin)] =
-          std::string(valueBegin, value - valueBegin);
+      setValue(std::string(keyBegin, key - keyBegin),
+               std::string(valueBegin, value - valueBegin));
     }
   }
 }
 
-/// @brief sets a key/value header
-void HttpRequest::setHeader(char const* key, size_t keyLength,
-                            char const* value, size_t valueLength) {
-  TRI_ASSERT(key != nullptr);
-  TRI_ASSERT(value != nullptr);
-
-  if (keyLength == StaticStrings::ContentLength.size() &&
-      memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) ==
-          0) {  // 14 = strlen("content-length")
-    // do not store this header
-    return;
+void HttpRequest::setCookie(std::string key, std::string value) {
+  auto memoryUsage = key.size() + value.size();
+  auto it = _cookies.try_emplace(std::move(key), std::move(value));
+  if (!it.second) {
+    auto old = it.first->first.size() + it.first->second.size();
+    // cppcheck-suppress accessMoved
+    _cookies[std::move(key)] = std::move(value);
+    _memoryUsage -= old;
   }
-
-  if (keyLength == StaticStrings::Accept.size() &&
-      valueLength == StaticStrings::MimeTypeVPack.size() &&
-      memcmp(key, StaticStrings::Accept.c_str(), keyLength) == 0 &&
-      memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
-    _contentTypeResponse = ContentType::VPACK;
-  } else if (keyLength == StaticStrings::AcceptEncoding.size() &&
-             valueLength == StaticStrings::EncodingDeflate.size() &&
-             memcmp(key, StaticStrings::AcceptEncoding.c_str(), keyLength) ==
-                 0 &&
-             memcmp(value, StaticStrings::EncodingDeflate.c_str(),
-                    valueLength) == 0) {
-    // This can be much more elaborated as the can specify weights on encodings
-    // However, for now just toggle on deflate if deflate is requested
-    _acceptEncoding = EncodingType::DEFLATE;
-  } else if ((_contentType == ContentType::UNSET) &&
-             (keyLength == StaticStrings::ContentTypeHeader.size()) &&
-             (memcmp(key, StaticStrings::ContentTypeHeader.c_str(),
-                     keyLength) == 0)) {
-    if (valueLength == StaticStrings::MimeTypeVPack.size() &&
-        memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
-      _contentType = ContentType::VPACK;
-      // don't insert this header!!
-      return;
-    }
-    if (valueLength >= StaticStrings::MimeTypeJsonNoEncoding.size() &&
-        memcmp(value, StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-               StaticStrings::MimeTypeJsonNoEncoding.length()) == 0) {
-      _contentType = ContentType::JSON;
-      // don't insert this header!!
-      return;
-    }
-  }
-
-  if (keyLength == 6 &&
-      memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
-    parseCookies(value, valueLength);
-    return;
-  }
-
-  if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
-      *(key + 1) == '-') {
-    // handle x-... headers
-
-    // override HTTP method?
-    if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
-        (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
-        (keyLength == 22 &&
-         memcmp(key, "x-http-method-override", keyLength) == 0)) {
-      std::string overriddenType(value, valueLength);
-      StringUtils::tolowerInPlace(overriddenType);
-
-      _type = findRequestType(overriddenType.c_str(), overriddenType.size());
-
-      // don't insert this header!!
-      return;
-    }
-  }
-
-  _headers[std::string(key, keyLength)] = std::string(value, valueLength);
-}
-
-/// @brief sets a key-only header
-void HttpRequest::setHeader(char const* key, size_t keyLength) {
-  _headers[std::string(key, keyLength)] = StaticStrings::Empty;
-}
-
-void HttpRequest::setCookie(char* key, size_t length, char const* value) {
-  _cookies[std::string(key, length)] = value;
+  _memoryUsage += memoryUsage;
 }
 
 void HttpRequest::parseCookies(char const* buffer, size_t length) {
@@ -825,7 +786,8 @@ void HttpRequest::parseCookies(char const* buffer, size_t length) {
         *value = '\0';
       }
 
-      setCookie(keyBegin, key - keyBegin, valueBegin);
+      setCookie(std::string(keyBegin, key - keyBegin),
+                std::string(valueBegin, value - valueBegin));
 
       // keyBegin = key = buffer2 + 1;
       while (*(keyBegin = key = buffer2 + 1) == SPACE && buffer2 < end) {
@@ -879,7 +841,8 @@ void HttpRequest::parseCookies(char const* buffer, size_t length) {
       *value = '\0';
     }
 
-    setCookie(keyBegin, key - keyBegin, valueBegin);
+    setCookie(std::string(keyBegin, key - keyBegin),
+              std::string(valueBegin, value - valueBegin));
   }
 }
 
@@ -912,8 +875,7 @@ std::string_view HttpRequest::rawPayload() const {
 }
 
 VPackSlice HttpRequest::payload(bool strictValidation) {
-  if ((_contentType == ContentType::UNSET) ||
-      (_contentType == ContentType::JSON)) {
+  if (_contentType == ContentType::UNSET || _contentType == ContentType::JSON) {
     if (!_payload.empty()) {
       if (!_vpackBuilder) {
         TRI_ASSERT(!_validatedPayload);
@@ -922,20 +884,42 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
         parser.parse(_payload.data(), _payload.size());
         _vpackBuilder = parser.steal();
         _validatedPayload = true;
+        _memoryUsage += _vpackBuilder->bufferRef().size();
       }
       TRI_ASSERT(_validatedPayload);
       return VPackSlice(_vpackBuilder->slice());
     }
-    return VPackSlice::noneSlice();  // no body
+    // no body
+    // fallthrough intentional
   } else if (_contentType == ContentType::VPACK) {
-    if (!_validatedPayload) {
-      VPackOptions const* options = validationOptions(strictValidation);
-      VPackValidator validator(options);
-      _validatedPayload = validator.validate(
-          _payload.data(), _payload.length());  // throws on error
+    if (!_payload.empty()) {
+      if (!_validatedPayload) {
+        VPackOptions const* options = validationOptions(strictValidation);
+        VPackValidator validator(options);
+        _validatedPayload = validator.validate(
+            _payload.data(), _payload.length());  // throws on error
+      }
+      TRI_ASSERT(_validatedPayload);
+      return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
     }
-    TRI_ASSERT(_validatedPayload);
-    return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
+    // no body
+    // fallthrough intentional
   }
+
   return VPackSlice::noneSlice();
+}
+
+EncodingType HttpRequest::parseAcceptEncoding(std::string_view value) const {
+  // let fuerte translate the content encoding for us
+  switch (fuerte::to_ContentEncoding(value)) {
+    case fuerte::ContentEncoding::Deflate:
+      return EncodingType::DEFLATE;
+    case fuerte::ContentEncoding::Gzip:
+      return EncodingType::GZIP;
+    case fuerte::ContentEncoding::Lz4:
+      return EncodingType::LZ4;
+    default:
+      // everything else counts as unset
+      return EncodingType::UNSET;
+  }
 }

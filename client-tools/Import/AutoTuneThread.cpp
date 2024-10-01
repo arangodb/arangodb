@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,7 +28,7 @@
 #include "ImportFeature.h"
 #include "ImportHelper.h"
 
-#include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -72,8 +72,8 @@ void AutoTuneThread::beginShutdown() {
   Thread::beginShutdown();
 
   // wake up the thread that may be waiting in run()
-  CONDITION_LOCKER(guard, _condition);
-  guard.broadcast();
+  std::lock_guard guard{_condition.mutex};
+  _condition.cv.notify_all();
 }
 
 void AutoTuneThread::run() {
@@ -81,8 +81,8 @@ void AutoTuneThread::run() {
 
   while (!isStopping()) {
     {
-      CONDITION_LOCKER(guard, _condition);
-      guard.wait(std::chrono::seconds(period));
+      std::unique_lock guard{_condition.mutex};
+      _condition.cv.wait_for(guard, std::chrono::seconds(period));
     }
     if (!isStopping()) {
       // getMaxUploadSize() is per thread
@@ -107,8 +107,8 @@ void AutoTuneThread::run() {
       newMax /= _importHelper.getThreadCount();
 
       // notes in Import mention an internal limit of 768MBytes
-      if ((arangodb::import::ImportHelper::MaxBatchSize) < newMax) {
-        newMax = arangodb::import::ImportHelper::MaxBatchSize;
+      if (arangodb::import::ImportHelper::kMaxBatchSize < newMax) {
+        newMax = arangodb::import::ImportHelper::kMaxBatchSize;
       }
 
       LOG_TOPIC("e815e", DEBUG, arangodb::Logger::FIXME)

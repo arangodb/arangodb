@@ -1,0 +1,62 @@
+html {
+    box-sizing: border-box;
+    overflow: -moz-scrollbars-vertical;
+    overflow-y: scroll;
+}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
+body {
+    margin: 0;
+    background: #fafafa;
+}
+
+/* #region ArangoDB-specific changes */
+#swagger-ui .topbar {
+    display: none;
+}
+
+#swagger-ui .info {
+    margin: 15px 0;
+}
+
+#swagger-ui .markdown, #swagger-ui .renderedMarkdown {
+    line-height: 1.25;
+    font-size: 14px;
+}
+
+#swagger-ui .markdown code, #swagger-ui .renderedMarkdown code {
+    color: #000;
+    padding: 1px 4px;
+}
+
+#swagger-ui .markdown pre, #swagger-ui .renderedMarkdown pre {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+    padding: 7px;
+}
+
+#swagger-ui .markdown pre code, #swagger-ui .renderedMarkdown pre code {
+    background: none;
+    border-radius: 0;
+    padding: 0;
+    font-weight: normal;
+}
+
+#swagger-ui .model-box {
+    background: none;
+}
+
+#swagger-ui .model-title {
+    font-size: 14px;
+}
+
+#swagger-ui .model .markdown {
+    font-family: sans-serif;
+    font-weight: normal;
+}
+/* #endregion */

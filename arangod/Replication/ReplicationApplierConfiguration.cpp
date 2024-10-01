@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "ReplicationApplierConfiguration.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/TokenCache.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -40,13 +41,18 @@ using namespace arangodb;
 ReplicationApplierConfiguration::ReplicationApplierConfiguration(
     ArangodServer& server)
     : _server(server),
+      _replicationFeature(server.hasFeature<ReplicationFeature>()
+                              ? &server.getFeature<ReplicationFeature>()
+                              : nullptr),
       _endpoint(),
       _database(),
       _username(),
       _password(),
       _jwt(),
-      _requestTimeout(600.0),
-      _connectTimeout(10.0),
+      _requestTimeout(
+          _replicationFeature ? _replicationFeature->requestTimeout() : 600.0),
+      _connectTimeout(
+          _replicationFeature ? _replicationFeature->connectTimeout() : 10.0),
       _ignoreErrors(0),
       _maxConnectRetries(100),
       _lockTimeoutRetries(0),
@@ -67,13 +73,7 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration(
       _requireFromPresent(true),
       _incremental(false),
       _verbose(false),
-      _restrictType(RestrictType::None) {
-  if (_server.hasFeature<ReplicationFeature>()) {
-    auto& feature = _server.getFeature<ReplicationFeature>();
-    _requestTimeout = feature.requestTimeout();
-    _connectTimeout = feature.connectTimeout();
-  }
-}
+      _restrictType(RestrictType::None) {}
 
 /// @brief construct the configuration with default values
 ReplicationApplierConfiguration& ReplicationApplierConfiguration::operator=(
@@ -120,8 +120,10 @@ void ReplicationApplierConfiguration::reset() {
   _username.clear();
   _password.clear();
   _jwt.clear();
-  _requestTimeout = 600.0;
-  _connectTimeout = 10.0;
+  _requestTimeout =
+      _replicationFeature ? _replicationFeature->requestTimeout() : 600.0;
+  _connectTimeout =
+      _replicationFeature ? _replicationFeature->connectTimeout() : 10.0;
   _ignoreErrors = 0;
   _maxConnectRetries = 100;
   _lockTimeoutRetries = 0;
@@ -144,12 +146,6 @@ void ReplicationApplierConfiguration::reset() {
   _verbose = false;
   _restrictType = RestrictType::None;
   _restrictCollections.clear();
-
-  if (_server.hasFeature<ReplicationFeature>()) {
-    auto& feature = _server.getFeature<ReplicationFeature>();
-    _requestTimeout = feature.requestTimeout();
-    _connectTimeout = feature.connectTimeout();
-  }
 }
 
 /// @brief get a VelocyPack representation

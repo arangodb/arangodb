@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,12 +23,10 @@
 
 #include "Algorithms.h"
 
-#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
-#include "Cluster/FailureOracle.h"
 #include "Logger/LogMacros.h"
-#include "Random/RandomGenerator.h"
+#include "Replication2/ReplicatedLog/TermIndexMapping.h"
 
 #include <algorithm>
 #include <random>
@@ -58,8 +56,9 @@ auto algorithms::to_string(ConflictReason r) noexcept -> std::string_view {
   FATAL_ERROR_ABORT();
 }
 
-auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
-                                TermIndexPair prevLog) noexcept
+auto algorithms::detectConflict(
+    replicated_log::TermIndexMapping const& termIndexMap,
+    TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>> {
   /*
    * There are three situations to handle here:
@@ -68,14 +67,14 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
    *    - It is before our first entry
    *  - The term does not match.
    */
-  auto entry = log.getEntryByIndex(prevLog.index);
+  auto entry = termIndexMap.getTermOfIndex(prevLog.index);
   if (entry.has_value()) {
     // check if the term matches
-    if (entry->entry().logTerm() != prevLog.term) {
+    if (*entry != prevLog.term) {
       auto conflict = std::invoke([&] {
-        if (auto idx = log.getFirstIndexOfTerm(entry->entry().logTerm());
+        if (auto idx = termIndexMap.getFirstIndexOfTerm(*entry);
             idx.has_value()) {
-          return TermIndexPair{entry->entry().logTerm(), *idx};
+          return TermIndexPair{*entry, *idx};
         }
         return TermIndexPair{};
       });
@@ -86,18 +85,18 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
       return std::nullopt;
     }
   } else {
-    auto lastEntry = log.getLastEntry();
-    if (!lastEntry.has_value()) {
+    auto lastEntry = termIndexMap.getLastIndex();
+    if (not lastEntry.has_value()) {
       // The log is empty, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_EMPTY, TermIndexPair{});
-    } else if (prevLog.index > lastEntry->entry().logIndex()) {
+    } else if (prevLog.index > lastEntry->index) {
       // the given entry is too far ahead
-      return std::make_pair(ConflictReason::LOG_ENTRY_AFTER_END,
-                            TermIndexPair{lastEntry->entry().logTerm(),
-                                          lastEntry->entry().logIndex() + 1});
+      return std::make_pair(
+          ConflictReason::LOG_ENTRY_AFTER_END,
+          TermIndexPair{lastEntry->term, lastEntry->index + 1});
     } else {
-      TRI_ASSERT(prevLog.index < lastEntry->entry().logIndex());
-      TRI_ASSERT(prevLog.index < log.getFirstEntry()->entry().logIndex());
+      TRI_ASSERT(prevLog.index < lastEntry->index);
+      TRI_ASSERT(prevLog.index < termIndexMap.getFirstIndex()->index);
       // the given index too old, reset to (0, 0)
       return std::make_pair(ConflictReason::LOG_ENTRY_BEFORE_BEGIN,
                             TermIndexPair{});
@@ -105,83 +104,11 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
   }
 }
 
-auto algorithms::updateReplicatedLog(
-    LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
-    LogId logId, agency::LogPlanSpecification const* spec,
-    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
-    -> futures::Future<arangodb::Result> {
-  auto result = basics::catchToResultT([&]() -> futures::Future<
-                                                 arangodb::Result> {
-    if (spec == nullptr) {
-      return ctx.dropReplicatedLog(logId);
-    }
-
-    TRI_ASSERT(logId == spec->id);
-    TRI_ASSERT(spec->currentTerm.has_value());
-    auto& plannedLeader = spec->currentTerm->leader;
-    auto log = ctx.ensureReplicatedLog(logId);
-
-    if (log->getParticipant()->getTerm() == spec->currentTerm->term) {
-      // something has changed in the term volatile configuration
-      auto leader = log->getLeader();
-      TRI_ASSERT(leader != nullptr);
-      // Provide the leader with a way to build a follower
-      auto const buildFollower = [&ctx,
-                                  &logId](ParticipantId const& participantId) {
-        return ctx.buildAbstractFollowerImpl(logId, participantId);
-      };
-      auto index = leader->updateParticipantsConfig(
-          std::make_shared<ParticipantsConfig const>(spec->participantsConfig),
-          buildFollower);
-      return leader->waitFor(index).thenValue(
-          [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
-    } else if (plannedLeader.has_value() &&
-               plannedLeader->serverId == myServerId &&
-               plannedLeader->rebootId == myRebootId) {
-      auto followers = std::vector<
-          std::shared_ptr<replication2::replicated_log::AbstractFollower>>{};
-      for (auto const& [participant, data] :
-           spec->participantsConfig.participants) {
-        if (participant != myServerId) {
-          followers.emplace_back(
-              ctx.buildAbstractFollowerImpl(logId, participant));
-        }
-      }
-
-      TRI_ASSERT(spec->participantsConfig.generation > 0);
-      auto newLeader = log->becomeLeader(
-          myServerId, spec->currentTerm->term, followers,
-          std::make_shared<ParticipantsConfig>(spec->participantsConfig),
-          std::move(failureOracle));
-      newLeader->triggerAsyncReplication();  // TODO move this call into
-                                             // becomeLeader?
-      return newLeader->waitForLeadership().thenValue(
-          [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
-    } else {
-      auto leaderString = std::optional<ParticipantId>{};
-      if (spec->currentTerm->leader) {
-        leaderString = spec->currentTerm->leader->serverId;
-      }
-
-      std::ignore = log->becomeFollower(myServerId, spec->currentTerm->term,
-                                        leaderString);
-    }
-
-    return futures::Future<arangodb::Result>{std::in_place};
-  });
-
-  if (result.ok()) {
-    return *std::move(result);
-  } else {
-    return futures::Future<arangodb::Result>{std::in_place, result.result()};
-  }
-}
-
 auto algorithms::operator<<(std::ostream& os,
                             ParticipantState const& p) noexcept
     -> std::ostream& {
-  os << '{' << p.id << ':' << p.lastAckedEntry << ", ";
-  os << "failed = " << std::boolalpha << p.failed;
+  os << '{' << p.id << ':' << p.lastAckedEntry;
+  os << ", snapshot = " << std::boolalpha << p.snapshotAvailable;
   os << ", flags = " << p.flags;
   os << '}';
   return os;
@@ -195,7 +122,9 @@ auto ParticipantState::isForced() const noexcept -> bool {
   return flags.forced;
 };
 
-auto ParticipantState::isFailed() const noexcept -> bool { return failed; };
+auto ParticipantState::isSnapshotAvailable() const noexcept -> bool {
+  return snapshotAvailable;
+}
 
 auto ParticipantState::lastTerm() const noexcept -> LogTerm {
   return lastAckedEntry.term;
@@ -218,8 +147,8 @@ auto operator<=>(ParticipantState const& left,
 auto algorithms::calculateCommitIndex(
     std::vector<ParticipantState> const& participants,
     size_t const effectiveWriteConcern, LogIndex const currentCommitIndex,
-    TermIndexPair const lastTermIndex)
-    -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
+    TermIndexPair const lastTermIndex, LogIndex const currentSyncCommitIndex)
+    -> CommitIndexReport {
   // We keep a vector of eligible participants.
   // To be eligible, a participant
   //  - must not be excluded, and
@@ -230,7 +159,7 @@ auto algorithms::calculateCommitIndex(
   eligible.reserve(participants.size());
   std::copy_if(std::begin(participants), std::end(participants),
                std::back_inserter(eligible), [&](auto const& p) {
-                 return p.isAllowedInQuorum() &&
+                 return p.isAllowedInQuorum() and p.isSnapshotAvailable() and
                         p.lastTerm() == lastTermIndex.term;
                });
 
@@ -240,6 +169,7 @@ auto algorithms::calculateCommitIndex(
     // anything, even if all participants are eligible.
     TRI_ASSERT(!participants.empty());
     return {currentCommitIndex,
+            currentSyncCommitIndex,
             CommitFailReason::withFewerParticipantsThanWriteConcern({
                 .effectiveWriteConcern = effectiveWriteConcern,
                 .numParticipants = participants.size(),
@@ -253,6 +183,7 @@ auto algorithms::calculateCommitIndex(
   // If there are no forced participants, this component is just
   // the spearhead (the furthest we could commit to).
   auto minForcedCommitIndex = spearhead;
+  auto minForcedSyncCommitIndex = spearhead;
   auto minForcedParticipantId = std::optional<ParticipantId>{};
   for (auto const& pt : participants) {
     if (pt.isForced()) {
@@ -260,6 +191,7 @@ auto algorithms::calculateCommitIndex(
         // A forced participant has entries from a previous term. We can't use
         // this participant, hence it becomes impossible to commit anything.
         return {currentCommitIndex,
+                currentSyncCommitIndex,
                 CommitFailReason::withForcedParticipantNotInQuorum(pt.id),
                 {}};
       }
@@ -267,12 +199,17 @@ auto algorithms::calculateCommitIndex(
         minForcedCommitIndex = pt.lastIndex();
         minForcedParticipantId = pt.id;
       }
+      minForcedSyncCommitIndex =
+          std::min(minForcedSyncCommitIndex, pt.syncIndex);
     }
   }
 
   // While effectiveWriteConcern == 0 is silly we still allow it.
   if (effectiveWriteConcern == 0) {
-    return {minForcedCommitIndex, CommitFailReason::withNothingToCommit(), {}};
+    return {minForcedCommitIndex,
+            minForcedSyncCommitIndex,
+            CommitFailReason::withNothingToCommit(),
+            {}};
   }
 
   if (effectiveWriteConcern <= eligible.size()) {
@@ -296,17 +233,28 @@ auto algorithms::calculateCommitIndex(
     std::transform(std::begin(eligible), std::next(nth),
                    std::back_inserter(quorum), [](auto& p) { return p.id; });
 
+    // syncCommitIndex is only reported
+    std::nth_element(std::begin(eligible), nth, std::end(eligible),
+                     [](auto& left, auto& right) {
+                       return left.syncIndex > right.syncIndex;
+                     });
+    auto const minNonExcludedSyncCommitIndex = nth->syncIndex;
+    auto syncCommitIndex =
+        std::min(minForcedSyncCommitIndex, minNonExcludedSyncCommitIndex);
+    TRI_ASSERT(syncCommitIndex <= commitIndex);
+
     if (spearhead == commitIndex) {
       // The quorum has been reached and any uncommitted entries can now be
       // committed.
-      return {commitIndex, CommitFailReason::withNothingToCommit(),
-              std::move(quorum)};
+      return {commitIndex, syncCommitIndex,
+              CommitFailReason::withNothingToCommit(), std::move(quorum)};
     } else if (minForcedCommitIndex < minNonExcludedCommitIndex) {
       // The forced participant didn't make the quorum because its index
       // is too low. Return its index, but report that it is dragging down the
       // commit index.
       TRI_ASSERT(minForcedParticipantId.has_value());
       return {commitIndex,
+              syncCommitIndex,
               CommitFailReason::withForcedParticipantNotInQuorum(
                   minForcedParticipantId.value()),
               {}};
@@ -316,17 +264,18 @@ auto algorithms::calculateCommitIndex(
       auto who = CommitFailReason::QuorumSizeNotReached::who_type();
       for (auto const& participant : participants) {
         if (participant.lastAckedEntry < lastTermIndex ||
-            !participant.isAllowedInQuorum()) {
+            !participant.isAllowedInQuorum() ||
+            !participant.isSnapshotAvailable()) {
           who.try_emplace(
               participant.id,
               CommitFailReason::QuorumSizeNotReached::ParticipantInfo{
-                  .isFailed = participant.isFailed(),
                   .isAllowedInQuorum = participant.isAllowedInQuorum(),
+                  .snapshotAvailable = participant.isSnapshotAvailable(),
                   .lastAcknowledged = participant.lastAckedEntry,
               });
         }
       }
-      return {commitIndex,
+      return {commitIndex, syncCommitIndex,
               CommitFailReason::withQuorumSizeNotReached(std::move(who),
                                                          lastTermIndex),
               std::move(quorum)};
@@ -342,16 +291,21 @@ auto algorithms::calculateCommitIndex(
     if (!p.isAllowedInQuorum()) {
       candidates.emplace(p.id,
                          CommitFailReason::NonEligibleServerRequiredForQuorum::
-                             kNotAllowedInQuorum);
+                             Why::kNotAllowedInQuorum);
     } else if (p.lastTerm() != lastTermIndex.term) {
-      candidates.emplace(
-          p.id,
-          CommitFailReason::NonEligibleServerRequiredForQuorum::kWrongTerm);
+      candidates.emplace(p.id,
+                         CommitFailReason::NonEligibleServerRequiredForQuorum::
+                             Why::kWrongTerm);
+    } else if (not p.isSnapshotAvailable()) {
+      candidates.emplace(p.id,
+                         CommitFailReason::NonEligibleServerRequiredForQuorum::
+                             Why::kSnapshotMissing);
     }
   }
 
   TRI_ASSERT(!participants.empty());
   return {currentCommitIndex,
+          currentSyncCommitIndex,
           CommitFailReason::withNonEligibleServerRequiredForQuorum(
               std::move(candidates)),
           {}};

@@ -1,5 +1,5 @@
 name: arangodb_replication2_replicated_log_number_meta_entries_total
-introducedIn: "3.10.0"
+introducedIn: "3.11.0"
 help: |
   Number of meta log entries.
 unit: number

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,17 +23,22 @@
 
 #include "v8-vpack.h"
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-#include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
+#include "V8/V8PlatformFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 
+#include <absl/strings/str_cat.h>
 #include <string_view>
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
@@ -82,8 +87,8 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
       v8::Local<v8::Value> sub;
       if (v.isString()) {
         char const* p = v.getString(l);
-        // value of _key, _id, _from, _to, and _rev is ASCII too
-        sub = TRI_V8_ASCII_PAIR_STRING(isolate, p, l);
+        // value of _key, _id, _from, _to, and _rev
+        sub = TRI_V8_PAIR_STRING(isolate, p, l);
       } else {
         sub = TRI_VPackToV8(isolate, v, options, &slice);
       }
@@ -350,8 +355,10 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
 
     if (context.level + 1 > VPackOptions::Defaults.nestingLimit) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "input value is nested too deep");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("input value is nested too deep - input ", context.level,
+                       "; max ", VPackOptions::Defaults.nestingLimit));
     }
 
     AddValue<VPackValue, inObject>(context, attributeName,
@@ -464,8 +471,10 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     uint32_t const n = names->Length();
 
     if (context.level + 1 > VPackOptions::Defaults.nestingLimit) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "input value is nested too deep");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          absl::StrCat("input value is nested too deep - input ", context.level,
+                       "; max ", VPackOptions::Defaults.nestingLimit));
     }
 
     AddValue<VPackValue, inObject>(context, attributeName,

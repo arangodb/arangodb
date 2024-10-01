@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,13 +24,15 @@
 #pragma once
 
 #include "Basics/Thread.h"
-#include "V8Server/V8Context.h"
+#include "V8Server/V8Executor.h"
 #include "RestServer/arangod.h"
+
+#include <mutex>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class V8ContextGuard;
+class V8ExecutorGuard;
 class V8LineEditor;
 }  // namespace arangodb
 
@@ -44,25 +46,20 @@ class ConsoleThread final : public ServerThread<ArangodServer> {
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 
  public:
-  static arangodb::V8LineEditor* serverConsole;
-  static arangodb::Mutex serverConsoleMutex;
-
- public:
   ConsoleThread(Server&, TRI_vocbase_t*);
-
   ~ConsoleThread();
 
- public:
   void run() override;
   bool isSilent() const override { return true; }
 
- public:
   void userAbort() { _userAborted.store(true); }
 
- private:
-  void inner(V8ContextGuard const&);
+  static arangodb::V8LineEditor* serverConsole;
+  static std::mutex serverConsoleMutex;
 
  private:
+  void inner(V8ExecutorGuard&);
+
   TRI_vocbase_t* _vocbase;
   std::atomic<bool> _userAborted;
 };

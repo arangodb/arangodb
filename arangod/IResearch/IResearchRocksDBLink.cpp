@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,9 +23,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"  // required for RocksDBColumnFamilyManager.h
-#include "IResearchLinkHelper.h"
-#include "IResearchView.h"
+#include "Basics/StaticStrings.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchRocksDBLink.h"
+#include "IResearch/IResearchRocksDBEncryption.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -35,28 +37,24 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "IResearch/IResearchFeature.h"
 
-#include "IResearchRocksDBLink.h"
-#include "IResearchRocksDBEncryption.h"
+#include <absl/strings/str_cat.h>
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
                                            LogicalCollection& collection,
                                            uint64_t objectId)
-    : RocksDBIndex(iid, collection,
+    : RocksDBIndex{iid, collection,
                    IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::Invalid),
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
-      IResearchLink(iid, collection) {
+                   collection.vocbase().engine<RocksDBEngine>()},
+      IResearchLink{collection.vocbase().server(), collection} {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
@@ -64,13 +62,13 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
 
 void IResearchRocksDBLink::toVelocyPack(
     VPackBuilder& builder,
-    std::underlying_type<Index::Serialize>::type flags) const {
+    std::underlying_type_t<Index::Serialize> flags) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(Result(  // result
-        TRI_ERROR_BAD_PARAMETER,    // code
-        std::string("failed to generate link definition for arangosearch view "
-                    "RocksDB link '") +
-            std::to_string(Index::id().id()) + "'"));
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("failed to generate link definition for arangosearch view "
+                     "RocksDB link '",
+                     id().id(), "'"));
   }
 
   auto forPersistence = Index::hasFlag(flags, Index::Serialize::Internals);
@@ -78,16 +76,15 @@ void IResearchRocksDBLink::toVelocyPack(
   builder.openObject();
 
   if (!IResearchLink::properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to generate link definition for arangosearch view "
-                    "RocksDB link '") +
-            std::to_string(Index::id().id()) + "'"));
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, absl::StrCat("failed to generate link definition "
+                                         "for arangosearch view RocksDB link '",
+                                         id().id(), "'"));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Internals)) {
     TRI_ASSERT(objectId() != 0);  // If we store it, it cannot be 0
-    builder.add("objectId", VPackValue(std::to_string(objectId())));
+    builder.add("objectId", VPackValue(absl::AlphaNum{objectId()}.Piece()));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {
@@ -109,7 +106,7 @@ bool IResearchRocksDBLink::IndexFactory::equal(
 
 std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
     LogicalCollection& collection, VPackSlice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
+    bool isOpening) const {
   uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
       definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
@@ -124,16 +121,17 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
       link->drop();
     }
   });
-  auto const res =
-      link->init(definition, pathExists, [this]() -> irs::directory_attributes {
-        auto& selector = _server.getFeature<EngineSelectorFeature>();
-        TRI_ASSERT(selector.isRocksDB());
-        auto& engine = selector.engine<RocksDBEngine>();
+  if (!isOpening) {
+    link->setBuilding(true);
+  }
+  auto const res = link->init(
+      definition, pathExists, [&collection]() -> irs::directory_attributes {
+        auto& engine = collection.vocbase().engine<RocksDBEngine>();
         auto* encryption = engine.encryptionProvider();
         if (encryption) {
           return irs::directory_attributes{
-              0, std::make_unique<RocksDBEncryptionProvider>(
-                     *encryption, engine.rocksDBOptions())};
+              std::make_unique<RocksDBEncryptionProvider>(
+                  *encryption, engine.rocksDBOptions())};
         }
         return irs::directory_attributes{};
       });
@@ -159,5 +157,4 @@ IResearchRocksDBLink::createFactory(ArangodServer& server) {
   return std::shared_ptr<IResearchRocksDBLink::IndexFactory>(
       new IResearchRocksDBLink::IndexFactory(server));
 }
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

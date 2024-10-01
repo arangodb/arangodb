@@ -1,7 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, $, localStorage, window, arangoHelper, templateEngine, JSONEditor */
-/* global document, _ */
+/* global templateEngine */
 
 (function () {
   'use strict';
@@ -412,6 +409,9 @@
     },
 
     saveDocument: function () {
+      if (this.editor.repair) {
+        this.editor.repair();
+      }
       if ($('#saveDocumentButton').attr('disabled') === undefined) {
         if (this.collection.first().attributes._id.substr(0, 1) === '_') {
           var buttons = []; var tableContent = [];
@@ -453,21 +453,23 @@
       model = JSON.stringify(model);
 
       if (this.type === 'edge' || this.type._from) {
-        var callbackE = function (error, data, navigate) {
+        var callbackE = function (error, data) {
           if (error) {
             arangoHelper.arangoError('Error', data.responseJSON.errorMessage);
           } else {
-            // here we need to do an additional error check as PUT API is returning 202 (PUT) with error inside - lol
-            if (data[0].error) {
-              arangoHelper.arangoError('Error', data[0].errorMessage);
+            // Here we need to do an additional error check as PUT API is returning 202 (PUT) with error inside.
+            // Can contain error variable, but can contain errorNum and errorMessage as well (Babies API)
+            const entry = data[0];
+            if (entry.errorNum && entry.errorMessage) {
+              arangoHelper.arangoError('Error', `${entry.errorMessage} [${entry.errorNum}]`);
               return;
             }
 
             this.successConfirmation();
             var model = this.collection.first();
             // update local model
-            var newFrom = data[0].new._from;
-            var newTo = data[0].new._to;
+            var newFrom = entry.new._from;
+            var newTo = entry.new._to;
             model.set('_from', newFrom);
             model.set('_to', newTo);
             // remove unsaved classes
@@ -534,8 +536,9 @@
 
     breadcrumb: function () {
       var name = window.location.hash.split('/');
+      var collid = decodeURIComponent(name[1]);
       $('#subNavigationBar .breadcrumb').html(
-        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + _.escape(name[1].length > 64 ? name[1].substr(0, 64) + "..." : name[1]) + '</a>' +
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + _.escape(collid.length > 64 ? collid.substr(0, 64) + "..." : collid) + '</a>' +
         '<i class="fa fa-chevron-right"></i>' +
         this.type.charAt(0).toUpperCase() + this.type.slice(1) + ': ' + _.escape(decodeURIComponent(name[2]))
       );

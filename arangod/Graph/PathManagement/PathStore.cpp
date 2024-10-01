@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -110,13 +110,18 @@ auto PathStore<Step>::buildPath(Step const& vertex, PathResultType& path) const
     -> void {
   Step const* myStep = &vertex;
 
+  // Append the weight, as we do accumulate the weight on all steps,
+  // this only needs to be added once.
+  path.addWeight(vertex.getWeight());
+
   while (!myStep->isFirst()) {
     path.prependVertex(myStep->getVertex());
     TRI_ASSERT(myStep->getEdge().isValid());
-    path.prependEdge(myStep->getEdge());
-
     TRI_ASSERT(size() > myStep->getPrevious());
-    myStep = &_schreier[myStep->getPrevious()];
+    Step const* prevStep = &_schreier[myStep->getPrevious()];
+    path.prependEdge(myStep->getEdge(),
+                     myStep->getWeight() - prevStep->getWeight());
+    myStep = prevStep;
   }
   path.prependVertex(myStep->getVertex());
 }
@@ -140,19 +145,25 @@ auto PathStore<Step>::reverseBuildPath(
   TRI_ASSERT(size() > vertex.getPrevious());
   // We have added the vertex, but we still need the edge on the other side of
   // the path
+  Step const* prevStep = &_schreier[vertex.getPrevious()];
 
   TRI_ASSERT(vertex.getEdge().isValid());
-  path.appendEdge(vertex.getEdge());
+  path.appendEdge(vertex.getEdge(), vertex.getWeight() - prevStep->getWeight());
 
-  Step const* myStep = &_schreier[vertex.getPrevious()];
+  // Append the weight, as we do accumulate the weight on all steps,
+  // this only needs to be added once.
+  path.addWeight(vertex.getWeight());
+
+  Step const* myStep = prevStep;
 
   while (!myStep->isFirst()) {
     path.appendVertex(myStep->getVertex());
     TRI_ASSERT(myStep->getEdge().isValid());
-    path.appendEdge(myStep->getEdge());
-
     TRI_ASSERT(size() > myStep->getPrevious());
-    myStep = &_schreier[myStep->getPrevious()];
+    prevStep = &_schreier[myStep->getPrevious()];
+    path.appendEdge(myStep->getEdge(),
+                    myStep->getWeight() - prevStep->getWeight());
+    myStep = prevStep;
   }
   path.appendVertex(myStep->getVertex());
 }

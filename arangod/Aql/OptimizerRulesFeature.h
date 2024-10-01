@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,9 +47,6 @@ class OptimizerRulesFeature final : public ArangodFeature {
     return _optimizerRules;
   }
 
-  /// @brief whether or not certain write operations can be parallelized
-  bool parallelizeGatherWrites() const { return _parallelizeGatherWrites; }
-
   /// @brief translate a list of rule ids into rule name
   static std::vector<std::string_view> translateRules(std::vector<int> const&);
 
@@ -74,7 +71,8 @@ class OptimizerRulesFeature final : public ArangodFeature {
   /// @brief register a rule, don't call this after prepare()
   void registerRule(std::string_view name, RuleFunction func,
                     OptimizerRule::RuleLevel level,
-                    std::underlying_type<OptimizerRule::Flags>::type flags);
+                    std::underlying_type<OptimizerRule::Flags>::type flags,
+                    std::string_view description);
 
  private:
   void addRules();
@@ -82,11 +80,6 @@ class OptimizerRulesFeature final : public ArangodFeature {
   void enableOrDisableRules();
 
   std::vector<std::string> _optimizerRules;
-
-  /// @brief if set to true, a gather node will be parallelized even for
-  /// certain write operations. this is false by default, enabling it is
-  /// experimental
-  bool _parallelizeGatherWrites;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _fixed = false;

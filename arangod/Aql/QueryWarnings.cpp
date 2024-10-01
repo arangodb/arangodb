@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@
 
 #include "QueryWarnings.h"
 
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/QueryOptions.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
@@ -36,19 +37,18 @@ QueryWarnings::QueryWarnings()
     : _maxWarningCount(std::numeric_limits<size_t>::max()),
       _failOnWarning(false) {}
 
-/// @brief register an error
-/// this also makes the query abort
+// register an error
+// this also makes the query abort
 void QueryWarnings::registerError(ErrorCode code, std::string_view details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
-  if (details.data() == nullptr) {
+  if (details.empty()) {
     THROW_ARANGO_EXCEPTION(code);
   }
-
   THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
 }
 
-/// @brief register a warning
+// register a warning
 void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
@@ -56,9 +56,6 @@ void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
 
   if (_failOnWarning) {
     // make an error from each warning if requested
-    if (details.data() == nullptr) {
-      THROW_ARANGO_EXCEPTION(code);
-    }
     THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
   }
 
@@ -66,7 +63,7 @@ void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
     return;
   }
 
-  if (details.data() == nullptr) {
+  if (details.empty()) {
     _list.emplace_back(code, TRI_errno_string(code));
   } else {
     _list.emplace_back(code, details);
@@ -93,7 +90,12 @@ bool QueryWarnings::empty() const {
   return _list.empty();
 }
 
-void QueryWarnings::updateOptions(QueryOptions const& opts) {
+size_t QueryWarnings::count() const {
+  std::lock_guard<std::mutex> guard(_mutex);
+  return _list.size();
+}
+
+void QueryWarnings::updateFromOptions(QueryOptions const& opts) {
   std::lock_guard<std::mutex> guard(_mutex);
   _maxWarningCount = opts.maxWarningCount;
   _failOnWarning = opts.failOnWarning;
@@ -102,11 +104,4 @@ void QueryWarnings::updateOptions(QueryOptions const& opts) {
 std::vector<std::pair<ErrorCode, std::string>> QueryWarnings::all() const {
   std::lock_guard<std::mutex> guard(_mutex);
   return _list;
-}
-
-std::string QueryWarnings::buildFormattedString(ErrorCode code,
-                                                std::string_view details) {
-  // std::string_view is not necessarily NUL-terminated
-  std::string temp(details);
-  return arangodb::basics::Exception::FillExceptionString(code, temp.c_str());
 }

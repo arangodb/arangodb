@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,8 +29,7 @@
 #include <string>
 #include <string_view>
 
-#include "Basics/Common.h"
-#include "Basics/ReadWriteSpinLock.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterTypes.h"
 #include "RestServer/arangod.h"
@@ -71,21 +70,22 @@ class ServerState {
     STARTUP = 1,
     /// reject almost all requests
     MAINTENANCE = 2,
-    /// status unclear, client must try again
-    TRYAGAIN = 3,
-    /// redirect to lead server if possible
-    REDIRECT = 4,
+
     INVALID = 255,  // this mode is used to indicate shutdown
   };
 
- public:
   explicit ServerState(ArangodServer&);
 
   ~ServerState();
 
- public:
   /// @brief create the (sole) instance
   static ServerState* instance() noexcept;
+
+  /// @brief whether or not the id is from a coordinator
+  static bool isCoordinatorId(std::string_view id);
+
+  /// @brief whether or not the id is from a DB server
+  static bool isDBServerId(std::string_view id);
 
   /// @brief get the string representation of a role
   static std::string roleToString(RoleEnum);
@@ -99,50 +99,43 @@ class ServerState {
   static std::string roleToAgencyKey(RoleEnum role);
 
   /// @brief convert a string to a role
-  static RoleEnum stringToRole(std::string_view);
+  static RoleEnum stringToRole(std::string_view) noexcept;
 
   /// @brief get the string representation of a state
   static std::string stateToString(StateEnum);
 
   /// @brief convert a string representation to a state
-  static StateEnum stringToState(std::string_view);
+  static StateEnum stringToState(std::string_view) noexcept;
 
   /// @brief get the string representation of a mode
   static std::string modeToString(Mode);
 
   /// @brief convert a string representation to a mode
-  static Mode stringToMode(std::string_view);
+  static Mode stringToMode(std::string_view) noexcept;
 
   /// @brief atomically load current server mode
-  static Mode mode();
+  static Mode mode() noexcept;
 
   /// @brief sets server mode, returns previously held
   /// value (performs atomic read-modify-write operation)
-  static Mode setServerMode(Mode mode);
+  static Mode setServerMode(Mode mode) noexcept;
 
   /// @brief checks maintenance mode
-  static bool isStartupOrMaintenance();
+  static bool isStartupOrMaintenance() noexcept;
 
   /// @brief should not allow DDL operations / transactions
-  static bool readOnly();
+  static bool readOnly() noexcept;
 
   /// @brief should not allow DDL operations / transactions
-  static bool readOnlyByLicense();
+  static bool readOnlyByLicense() noexcept;
 
   /// @brief should not allow DDL operations / transactions
-  static bool readOnlyByAPI();
+  static bool readOnlyByAPI() noexcept;
 
   /// @brief set server read-only
-  static bool setReadOnly(ReadOnlyMode);
+  static bool setReadOnly(ReadOnlyMode) noexcept;
 
   static void reset();
-
- public:
-  /// @brief sets the initialized flag
-  void setInitialized() { _initialized = true; }
-
-  /// @brief whether or not the cluster was properly initialized
-  bool initialized() const { return _initialized; }
 
   bool isSingleServer() const noexcept { return isSingleServer(loadRole()); }
 
@@ -338,7 +331,7 @@ class ServerState {
   std::atomic<RoleEnum> _role;
 
   /// @brief r/w lock for state
-  mutable arangodb::basics::ReadWriteSpinLock _lock;
+  mutable basics::ReadWriteLock _lock;
 
   /// @brief the server's id, can be set just once, use getId and setId, do not
   /// access directly
@@ -364,7 +357,7 @@ class ServerState {
   ///
   /// Changes of rebootIds (i.e. server reboots) are noticed in ClusterInfo and
   /// can be used through a notification architecture from there
-  RebootId _rebootId;
+  std::atomic<RebootId::value_type> _rebootId = 0;
 
   /// @brief the server's own endpoint, can be set just once
   std::string _myEndpoint;
@@ -379,17 +372,17 @@ class ServerState {
   /// @brief the current state
   StateEnum _state;
 
-  /// @brief whether or not the cluster was initialized
-  bool _initialized;
-
   /// @brief lock for all foxxmaster-related members
-  mutable arangodb::basics::ReadWriteSpinLock _foxxmasterLock;
+  mutable basics::ReadWriteLock _foxxmasterLock;
 
+  // protected by _foxxmasterLock
   std::string _foxxmaster;
 
-  // @brief point in time since which this server is the Foxxmaster
+  // @brief point in time since which this server is the Foxxmaster.
+  // protected by _foxxmasterLock
   TRI_voc_tick_t _foxxmasterSince;
 
+  // protected by _foxxmasterLock
   bool _foxxmasterQueueupdate;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

@@ -1,0 +1,38 @@
+name: arangodb_aql_cursors_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Total memory usage of active AQL query result cursors.
+unit: bytes
+type: gauge
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+  - agent
+  - single
+description: |
+  Total memory usage of active AQL query result cursors.
+  This metric contains the memory usage of query result cursors that
+  are created when a non-stream AQL query has finished and stores its
+  result on the server for the client application to consume in batches.
+  
+  When an AQL query has finished building up its result, the initial batch
+  of the result will be sent back to the client application. If the entire
+  query result fits into a single batch, no cursor will be created and the
+  query result will be returned to the client.
+  If the query result is larger than a single batch, a server-side cursor
+  is created, from which the client application can incrementally fetch
+  more data. While that server-side cursor is present, its memory usage
+  is counted in this metric.
+  
+  While an AQL query is executing and is building up its result, the memory 
+  usage of the query is included in the running query's `memoryUsage`
+  attribute and in the metric `arangodb_aql_global_memory_usage`.
+
+  The memory usage of stream AQL queries is not included in this metric,
+  because a stream AQL query does not build up its entire result first
+  and then creates a cursor, but it will start executing and create a 
+  cursor already after building the first batch of results. The query
+  will remain active until the entire result is consumed or the query gets
+  aborted. While the query is active, its memory usage is included in its
+  `memoryUsage` attribute and in the metric `arangodb_aql_global_memory_usage`.

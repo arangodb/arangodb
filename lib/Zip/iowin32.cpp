@@ -107,7 +107,7 @@ voidpf ZCALLBACK win32_open64_file_funcA(voidpf opaque, const void* filename,
                             &dwShareMode, &dwFlagsAndAttributes);
 
   if ((filename != NULL) && (dwDesiredAccess != 0)) {
-    icu::UnicodeString fn((LPSTR)filename);
+    icu_64_64::UnicodeString fn((LPSTR)filename);
     hFile = CreateFileW((wchar_t*)fn.getTerminatedBuffer(), dwDesiredAccess,
                         dwShareMode, NULL, dwCreationDisposition,
                         dwFlagsAndAttributes, NULL);

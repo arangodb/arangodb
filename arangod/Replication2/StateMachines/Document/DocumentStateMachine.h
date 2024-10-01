@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,10 @@
 
 #include <memory>
 
+namespace arangodb::transaction {
+struct IManager;
+}
+
 namespace arangodb::replication2::replicated_state {
 /**
  * The Document State Machine is used as a middle-man between a shard and a
@@ -44,9 +48,15 @@ struct DocumentCore;
 struct DocumentCoreParameters;
 
 struct IDocumentStateHandlersFactory;
+struct IDocumentStateShardHandler;
 
 struct ReplicationOptions {
   bool waitForCommit{false};
+  bool waitForSync{false};
+};
+
+struct DocumentCleanupHandler {
+  void drop(std::unique_ptr<DocumentCore>);
 };
 
 struct DocumentState {
@@ -58,36 +68,44 @@ struct DocumentState {
   using FactoryType = DocumentFactory;
   using CoreType = DocumentCore;
   using CoreParameterType = DocumentCoreParameters;
+  using CleanupHandlerType = DocumentCleanupHandler;
 };
 
 struct DocumentCoreParameters {
-  std::string collectionId;
   std::string databaseName;
+  std::uint64_t groupId;  // TODO use CollectionGroupId type
+  std::size_t shardSheafIndex;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentCoreParameters& p) {
-    return f.object(p).fields(f.field("collectionId", p.collectionId),
-                              f.field("databaseName", p.databaseName));
+    return f.object(p).fields(f.field("databaseName", p.databaseName),
+                              f.field("groupId", p.groupId),
+                              f.field("shardSheafIndex", p.shardSheafIndex));
   }
 
-  auto toSharedSlice() -> velocypack::SharedSlice;
+  [[nodiscard]] auto toSharedSlice() const -> velocypack::SharedSlice;
 };
 
 struct DocumentFactory {
   explicit DocumentFactory(
-      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory);
+      std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
+      transaction::IManager& transactionManager);
 
-  auto constructFollower(std::unique_ptr<DocumentCore> core)
+  auto constructFollower(std::unique_ptr<DocumentCore> core,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<DocumentFollowerState>;
 
   auto constructLeader(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentLeaderState>;
 
-  auto constructCore(GlobalLogIdentifier, DocumentCoreParameters)
-      -> std::unique_ptr<DocumentCore>;
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier,
+                     DocumentCoreParameters) -> std::unique_ptr<DocumentCore>;
+
+  auto constructCleanupHandler() -> std::shared_ptr<DocumentCleanupHandler>;
 
  private:
   std::shared_ptr<IDocumentStateHandlersFactory> const _handlersFactory;
+  transaction::IManager& _transactionManager;
 };
 }  // namespace document
 
@@ -95,6 +113,3 @@ extern template struct replicated_state::ReplicatedState<
     document::DocumentState>;
 
 }  // namespace arangodb::replication2::replicated_state
-
-#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
-#include "Replication2/StateMachines/Document/DocumentLeaderState.h"

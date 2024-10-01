@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -178,7 +178,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   // check that we get proper eviction candidate
   CachedValue* candidate = bucket->evictionCandidate();
   ASSERT_EQ(candidate, ptrs[0]);
-  bucket->evict(candidate, false);
+  bucket->evict(candidate);
   CachedValue* res = bucket->find<BinaryKeyHasher>(hashes[0], ptrs[0]->key(),
                                                    ptrs[0]->keySize());
   ASSERT_EQ(nullptr, res);
@@ -187,7 +187,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   // check that we still find the right candidate if not full
   candidate = bucket->evictionCandidate();
   ASSERT_EQ(candidate, ptrs[1]);
-  bucket->evict(candidate, true);
+  bucket->evict(candidate);
   res = bucket->find<BinaryKeyHasher>(hashes[1], ptrs[1]->key(),
                                       ptrs[1]->keySize());
   ASSERT_EQ(nullptr, res);

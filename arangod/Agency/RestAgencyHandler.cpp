@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,25 +23,26 @@
 
 #include "RestAgencyHandler.h"
 
-#include <thread>
-
-#include <velocypack/Builder.h>
-
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
-#include "Metrics/Histogram.h"
-#include "Metrics/LogScale.h"
+
+#include <velocypack/Builder.h>
+
+#include <thread>
 
 using namespace arangodb;
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Rest agency handler
@@ -52,29 +53,29 @@ RestAgencyHandler::RestAgencyHandler(ArangodServer& server,
                                      GeneralResponse* response, Agent* agent)
     : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
-inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
+RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportTooManySuffices() {
+RestStatus RestAgencyHandler::reportTooManySuffices() {
   LOG_TOPIC("ef6ae", WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportUnknownMethod() {
+RestStatus RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC("9b810", WARN, Logger::AGENCY)
       << "Public REST interface has no method " << _request->suffixes()[0];
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
-                                                   std::string const& message) {
+RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
+                                            std::string const& message) {
   LOG_TOPIC("8a454", DEBUG, Logger::AGENCY) << message;
   Builder body;
   {
@@ -105,21 +106,21 @@ RestStatus RestAgencyHandler::handleTransient() {
   }
 
   // Convert to velocypack
-  query_t query;
+  velocypack::Slice query;
   try {
-    query = _request->toVelocyPackBuilderPtr();
+    query = _request->payload();
   } catch (std::exception const& e) {
     return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // Need Array input
-  if (!query->slice().isArray()) {
+  if (!query.isArray()) {
     return reportMessage(rest::ResponseCode::BAD,
                          "Expecting array of arrays as body for writes");
   }
 
   // Empty request array
-  if (query->slice().length() == 0) {
+  if (query.length() == 0) {
     return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
 
@@ -170,7 +171,7 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
               VPackSlice res = rb->slice();
 
               if (res.isObject() && res.hasKey("result")) {
-                if (res.hasKey("error")) {  // leadership loss
+                if (res.hasKey(StaticStrings::Error)) {  // leadership loss
                   generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                                 TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
                                 "No leader");
@@ -220,19 +221,14 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
                   }
                   generateResult(rest::ResponseCode::OK,
                                  std::move(*builder.steal()));
-                  return;
                 } else {
                   generateResult(rest::ResponseCode::OK,
                                  std::move(*rb->steal()));
-                  return;
                 }
               } else {
                 generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                               TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
               }
-            })
-            .thenError<VPackException>([this](VPackException const& e) {
-              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
             })
             .thenError<std::exception>([this](std::exception const& e) {
               generateError(rest::ResponseCode::SERVER_ERROR,
@@ -260,13 +256,12 @@ static bool readValue(GeneralRequest const& req, char const* name, T& val) {
     LOG_TOPIC("f4732", DEBUG, Logger::AGENCY)
         << "Query string " << name << " missing.";
     return false;
-  } else {
-    if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
-      LOG_TOPIC("f4237", WARN, Logger::AGENCY)
-          << "Conversion of query string " << name << " with " << val_str
-          << " to " << typeid(T).name() << " failed";
-      return false;
-    }
+  }
+  if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
+    LOG_TOPIC("f4237", WARN, Logger::AGENCY)
+        << "Conversion of query string " << name << " with " << val_str
+        << " to " << typeid(T).name() << " failed";
+    return false;
   }
   return true;
 }
@@ -338,11 +333,11 @@ RestStatus RestAgencyHandler::handleStores() {
 
 RestStatus RestAgencyHandler::handleStore() {
   if (_request->requestType() == rest::RequestType::POST) {
-    auto query = _request->toVelocyPackBuilderPtr();
+    velocypack::Slice query = _request->payload();
     arangodb::consensus::index_t index = 0;
 
     try {
-      index = query->slice().getUInt();
+      index = query.getUInt();
     } catch (...) {
       index = _agent->lastCommitted();
     }
@@ -366,23 +361,23 @@ RestStatus RestAgencyHandler::handleWrite() {
     return reportMethodNotAllowed();
   }
 
-  query_t query;
+  velocypack::Slice query;
 
   // Convert to velocypack
   try {
-    query = _request->toVelocyPackBuilderPtr();
+    query = _request->payload();
   } catch (std::exception const& e) {
     return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // Need Array input
-  if (!query->slice().isArray()) {
+  if (!query.isArray()) {
     return reportMessage(rest::ResponseCode::BAD,
                          "Expecting array of arrays as body for writes");
   }
 
   // Empty request array
-  if (query->slice().length() == 0) {
+  if (query.length() == 0) {
     return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
 
@@ -405,20 +400,20 @@ RestStatus RestAgencyHandler::handleWrite() {
   // We're leading and handling the request
   if (ret.accepted) {
     bool found;
-    std::string call_mode = _request->header("x-arangodb-agency-mode", found);
+    std::string callMode = _request->header("x-arangodb-agency-mode", found);
 
     if (!found) {
-      call_mode = "waitForCommitted";
+      callMode = "waitForCommitted";
     }
 
-    size_t precondition_failed = 0;
+    size_t preconditionFailed = 0;
     size_t forbidden = 0;
 
     Builder body;
     body.openObject();
     Agent::raft_commit_t result = Agent::raft_commit_t::OK;
 
-    if (call_mode != "noWait") {
+    if (callMode != "noWait") {
       // Note success/error
       body.add("results", VPackValue(VPackValueType::Array));
       for (auto const& index : ret.indices) {
@@ -429,7 +424,7 @@ RestStatus RestAgencyHandler::handleWrite() {
           case APPLIED:
             break;
           case PRECONDITION_FAILED:
-            ++precondition_failed;
+            ++preconditionFailed;
             break;
           case FORBIDDEN:
             ++forbidden;
@@ -441,7 +436,7 @@ RestStatus RestAgencyHandler::handleWrite() {
       body.close();
 
       // Wait for commit of highest except if it is 0?
-      if (!ret.indices.empty() && call_mode == "waitForCommitted") {
+      if (!ret.indices.empty() && callMode == "waitForCommitted") {
         arangodb::consensus::index_t max_index = 0;
         try {
           max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
@@ -469,7 +464,7 @@ RestStatus RestAgencyHandler::handleWrite() {
     } else {
       if (forbidden > 0) {
         generateResult(rest::ResponseCode::FORBIDDEN, body.slice());
-      } else if (precondition_failed > 0) {  // Some/all requests failed
+      } else if (preconditionFailed > 0) {  // Some/all requests failed
         generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
       } else {  // All good
         generateResult(rest::ResponseCode::OK, body.slice());
@@ -494,23 +489,23 @@ RestStatus RestAgencyHandler::handleTransact() {
     return reportMethodNotAllowed();
   }
 
-  query_t query;
+  velocypack::Slice query;
 
   // Convert to velocypack
   try {
-    query = _request->toVelocyPackBuilderPtr();
+    query = _request->payload();
   } catch (std::exception const& e) {
     return reportMessage(rest::ResponseCode::BAD, e.what());
   }
 
   // Need Array input
-  if (!query->slice().isArray()) {
+  if (!query.isArray()) {
     return reportMessage(rest::ResponseCode::BAD,
                          "Expecting array of arrays as body for writes");
   }
 
   // Empty request array
-  if (query->slice().length() == 0) {
+  if (query.length() == 0) {
     return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
 
@@ -555,11 +550,11 @@ RestStatus RestAgencyHandler::handleInquire() {
     return reportMethodNotAllowed();
   }
 
-  query_t query;
+  velocypack::Slice query;
 
   // Get query from body
   try {
-    query = _request->toVelocyPackBuilderPtr();
+    query = _request->payload();
   } catch (std::exception const& ex) {
     LOG_TOPIC("78755", DEBUG, Logger::AGENCY) << ex.what();
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
@@ -581,9 +576,9 @@ RestStatus RestAgencyHandler::handleInquire() {
   if (ret.accepted) {  // I am leading
 
     bool found;
-    std::string call_mode = _request->header("x-arangodb-agency-mode", found);
+    std::string callMode = _request->header("x-arangodb-agency-mode", found);
     if (!found) {
-      call_mode = "waitForCommitted";
+      callMode = "waitForCommitted";
     }
 
     // First possibility: The answer is empty, we have never heard about
@@ -606,7 +601,7 @@ RestStatus RestAgencyHandler::handleInquire() {
       }
 
       if (max_index > 0) {
-        if (call_mode == "waitForCommitted") {
+        if (callMode == "waitForCommitted") {
           result = _agent->waitFor(max_index);
         } else {
           allCommitted = _agent->isCommitted(max_index);
@@ -661,9 +656,9 @@ RestStatus RestAgencyHandler::handleInquire() {
 
 RestStatus RestAgencyHandler::handleRead() {
   if (_request->requestType() == rest::RequestType::POST) {
-    query_t query;
+    velocypack::Slice query;
     try {
-      query = _request->toVelocyPackBuilderPtr();
+      query = _request->payload();
     } catch (std::exception const& e) {
       return reportMessage(rest::ResponseCode::BAD, e.what());
     }
@@ -700,7 +695,7 @@ RestStatus RestAgencyHandler::handleConfig() {
   // Update endpoint of peer
   if (_request->requestType() == rest::RequestType::POST) {
     try {
-      _agent->updatePeerEndpoint(_request->toVelocyPackBuilderPtr());
+      _agent->updatePeerEndpoint(_request->payload());
     } catch (std::exception const& e) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     e.what());
@@ -708,8 +703,7 @@ RestStatus RestAgencyHandler::handleConfig() {
     }
   } else if (_request->requestType() == rest::RequestType::PUT) {
     try {
-      _agent->updateSomeConfigValues(
-          _request->toVelocyPackBuilderPtr()->slice());
+      _agent->updateSomeConfigValues(_request->payload());
     } catch (std::exception const& e) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                     e.what());
@@ -772,7 +766,8 @@ RestStatus RestAgencyHandler::handleState() {
     _agent->readDB(body);
   }
 
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginInternal{"returning agency state"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
   generateResult(rest::ResponseCode::OK, body.slice(), ctx.getVPackOptions());
   return RestStatus::DONE;
 }
@@ -784,7 +779,8 @@ RestStatus RestAgencyHandler::reportMethodNotAllowed() {
 }
 
 RestStatus RestAgencyHandler::execute() {
-  response()->setAllowCompression(true);
+  response()->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
   try {
     auto const& suffixes = _request->suffixes();
     if (suffixes.empty()) {  // Empty request

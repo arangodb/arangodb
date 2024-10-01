@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,9 +30,6 @@
 
 namespace arangodb::cache {
 
-const std::size_t CachedValue::_headerAllocSize =
-    sizeof(CachedValue) + CachedValue::_padding;
-
 CachedValue* CachedValue::copy() const {
   // cppcheck detects a memory leak here for "buf", but this is a false
   // positive. cppcheck-suppress *
@@ -52,15 +49,15 @@ CachedValue* CachedValue::copy() const {
 CachedValue* CachedValue::construct(void const* k, std::size_t kSize,
                                     void const* v, std::size_t vSize) {
   if (kSize == 0 || k == nullptr || (vSize > 0 && v == nullptr) ||
-      kSize > maxKeySize || vSize > maxValueSize) {
+      kSize > kMaxKeySize || vSize > kMaxValueSize) {
     return nullptr;
   }
 
   // cppcheck-suppress *
-  std::uint8_t* buf = new std::uint8_t[_headerAllocSize + kSize + vSize];
+  std::uint8_t* buf = new std::uint8_t[kCachedValueHeaderSize + kSize + vSize];
   std::uint8_t* aligned = reinterpret_cast<std::uint8_t*>(
-      (reinterpret_cast<std::size_t>(buf) + _headerAllocOffset) &
-      _headerAllocMask);
+      (reinterpret_cast<std::size_t>(buf) + kHeaderAllocOffset) &
+      kHeaderAllocMask);
   std::size_t offset = buf - aligned;
   // ctor of CachedValue is noexcept
   // cppcheck-suppress memleak
@@ -77,7 +74,7 @@ void CachedValue::operator delete(void* ptr) {
 CachedValue::CachedValue(std::size_t off, void const* k, std::size_t kSize,
                          void const* v, std::size_t vSize) noexcept
     : _refCount(0),
-      _keySize(static_cast<std::uint32_t>(kSize + (off << _offsetShift))),
+      _keySize(static_cast<std::uint32_t>(kSize + (off << kOffsetShift))),
       _valueSize(static_cast<std::uint32_t>(vSize)) {
   std::memcpy(const_cast<std::uint8_t*>(key()), k, kSize);
   if (vSize > 0) {
@@ -89,6 +86,10 @@ CachedValue::CachedValue(CachedValue const& other) noexcept
     : _refCount(0), _keySize(other._keySize), _valueSize(other._valueSize) {
   std::memcpy(const_cast<std::uint8_t*>(key()), other.key(),
               keySize() + valueSize());
+}
+
+std::size_t CachedValue::size() const noexcept {
+  return kCachedValueHeaderSize + keySize() + valueSize();
 }
 
 }  // namespace arangodb::cache

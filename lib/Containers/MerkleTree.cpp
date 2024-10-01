@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,27 +20,6 @@
 ///
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <cstring>
-#include <functional>
-#include <limits>
-#include <memory>
-#include <mutex>
-#include <shared_mutex>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
-
-#include <snappy.h>
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
 
 #include "MerkleTree.h"
 
@@ -56,6 +35,27 @@
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 #include "Random/RandomGenerator.h"
 #endif
+
+#include <snappy.h>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstring>
+#include <functional>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 // can turn this on for more aggressive and expensive consistency checks
 // #define PARANOID_TREE_CHECKS
@@ -77,7 +77,7 @@ namespace arangodb {
 namespace containers {
 
 std::uint64_t FnvHashProvider::hash(std::uint64_t input) const {
-  return TRI_FnvHashPod(input);
+  return FnvHashPod(input);
 }
 
 static_assert(std::is_trivial_v<MerkleTreeBase::Meta> &&
@@ -95,6 +95,7 @@ void MerkleTreeBase::Data::ensureShard(std::uint64_t shard,
     shards[shard] = buildShard(shardSize);
     memoryUsage += shardSize;
   }
+  TRI_ASSERT(shards[shard] != nullptr);
 }
 
 /*static*/ MerkleTreeBase::Data::ShardType MerkleTreeBase::Data::buildShard(
@@ -541,6 +542,12 @@ MerkleTree<Hasher, BranchingBits>& MerkleTree<Hasher, BranchingBits>::operator=(
 template<typename Hasher, std::uint64_t const BranchingBits>
 std::uint64_t MerkleTree<Hasher, BranchingBits>::memoryUsage() const {
   std::shared_lock<std::shared_mutex> guard(_dataLock);
+  return MetaSize + _data.memoryUsage;
+}
+
+template<typename Hasher, std::uint64_t const BranchingBits>
+std::uint64_t MerkleTree<Hasher, BranchingBits>::dynamicMemoryUsage() const {
+  std::shared_lock<std::shared_mutex> guard(_dataLock);
   return _data.memoryUsage;
 }
 
@@ -611,10 +618,13 @@ void MerkleTree<Hasher, BranchingBits>::insert(
   }
 
   std::vector<std::uint64_t> sortedKeys = keys;
+  // we need to sort here so that we can easily determine the
+  // minimum and maximum key values. we need these values to do
+  // the bounds-check on the tree later.
   std::sort(sortedKeys.begin(), sortedKeys.end());
 
-  std::uint64_t minKey = sortedKeys[0];
-  std::uint64_t maxKey = sortedKeys[sortedKeys.size() - 1];
+  std::uint64_t minKey = sortedKeys.front();
+  std::uint64_t maxKey = sortedKeys.back();
 
   std::unique_lock<std::shared_mutex> guard(_dataLock);
 
@@ -648,19 +658,38 @@ void MerkleTree<Hasher, BranchingBits>::remove(
   }
 
   std::vector<std::uint64_t> sortedKeys = keys;
+  // we need to sort here so that we can easily determine the
+  // minimum and maximum key values. we need these values to do
+  // the bounds-check on the tree later.
   std::sort(sortedKeys.begin(), sortedKeys.end());
 
-  std::uint64_t minKey = sortedKeys[0];
-  std::uint64_t maxKey = sortedKeys[sortedKeys.size() - 1];
+  std::uint64_t minKey = sortedKeys.front();
+  std::uint64_t maxKey = sortedKeys.back();
 
   std::unique_lock<std::shared_mutex> guard(_dataLock);
 
+  // we don't grow the tree automatically here, as remove operations
+  // are only expected for keys that have been added before.
   if (minKey < meta().rangeMin || maxKey >= meta().rangeMax) {
     throw std::out_of_range("Cannot remove, key out of current range.");
   }
 
   modify(sortedKeys, /*isInsert*/ false);
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+template<typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::removeUnsorted(
+    std::vector<std::uint64_t> const& keys) {
+  if (keys.size() < 2) {
+    return remove(keys);
+  }
+
+  std::unique_lock<std::shared_mutex> guard(_dataLock);
+
+  modify(keys, /*isInsert*/ false);
+}
+#endif
 
 template<typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::clear() {
@@ -720,10 +749,10 @@ MerkleTree<Hasher, BranchingBits>::diff(
     MerkleTree<Hasher, BranchingBits>& other) {
   std::scoped_lock guard(_dataLock, other._dataLock);
 
-  if (this->meta().depth != other.meta().depth) {
+  std::uint64_t depth = this->meta().depth;
+  if (depth != other.meta().depth) {
     throw std::invalid_argument("Expecting two trees with same depth.");
   }
-  std::uint64_t depth = this->meta().depth;
 
   while (true) {  // left by break
     std::uint64_t width = this->meta().rangeMax - this->meta().rangeMin;
@@ -758,23 +787,20 @@ MerkleTree<Hasher, BranchingBits>::diff(
     tree2 = dummy;
   }
   // Now the rangeMin of tree1 is <= the rangeMin of tree2.
-
   TRI_ASSERT(tree1->meta().rangeMin <= tree2->meta().rangeMin);
+
+  TRI_ASSERT(tree1->numberOfShards() == tree2->numberOfShards());
 
   std::vector<std::pair<std::uint64_t, std::uint64_t>> result;
   std::uint64_t n = nodeCountAtDepth(depth);
 
   auto addRange = [&result](std::uint64_t min, std::uint64_t max) {
-    if (result.size() == 0) {
-      result.push_back(std::make_pair(min, max));
-      return;
-    }
-    if (result.back().second + 1 == min) {
+    if (!result.empty() && result.back().second + 1 == min) {
       // Extend range: //
       result.back().second = max;
-      return;
+    } else {
+      result.push_back(std::make_pair(min, max));
     }
-    result.push_back(std::make_pair(min, max));
   };
 
   // First do the stuff tree2 does not even have:
@@ -782,7 +808,8 @@ MerkleTree<Hasher, BranchingBits>::diff(
       (tree1->meta().rangeMax - tree1->meta().rangeMin) / n;
   std::uint64_t index1 = 0;
   std::uint64_t pos = tree1->meta().rangeMin;
-  for (; pos < tree2->meta().rangeMin; pos += keysPerBucket) {
+  for (; pos < tree2->meta().rangeMin && pos < tree1->meta().rangeMax;
+       pos += keysPerBucket) {
     Node const& node1 = tree1->node(index1);
     if (node1.count != 0) {
       addRange(pos, pos + keysPerBucket - 1);
@@ -790,9 +817,14 @@ MerkleTree<Hasher, BranchingBits>::diff(
     ++index1;
   }
   // Now the buckets they both have:
+  TRI_ASSERT(pos == tree2->meta().rangeMin ||
+             (pos == tree1->meta().rangeMax &&
+              tree2->meta().rangeMin > tree1->meta().rangeMax));
+  // note that pos can be < tree2->meta().rangeMin if the trees do not overlap
+  // at all
   std::uint64_t index2 = 0;
-  TRI_ASSERT(pos == tree2->meta().rangeMin);
-  for (; pos < tree1->meta().rangeMax; pos += keysPerBucket) {
+  for (pos = tree2->meta().rangeMin; pos < tree1->meta().rangeMax;
+       pos += keysPerBucket) {
     Node const& node1 = tree1->node(index1);
     Node const& node2 = tree2->node(index2);
     if (node1.hash != node2.hash || node1.count != node2.count) {
@@ -1264,7 +1296,7 @@ void MerkleTree<Hasher, BranchingBits>::modify(std::uint64_t key,
                                                bool isInsert) {
   // not thread-safe, shared-lock buffer from outside
   Hasher h;
-  std::uint64_t const value = h.hash(key);
+  std::uint64_t value = h.hash(key);
 
   // adjust bucket node
   bool success = modifyLocal(key, value, isInsert);
@@ -1286,13 +1318,14 @@ void MerkleTree<Hasher, BranchingBits>::modify(
   for (std::uint64_t key : keys) {
     std::uint64_t value = h.hash(key);
     bool success = modifyLocal(key, value, isInsert);
-    if (ADB_UNLIKELY(!success)) {
+    if (ADB_UNLIKELY(!success && totalCount > 0)) {
       // roll back the changes we already made, using best effort
-      for (std::uint64_t k : keys) {
-        if (k == key) {
-          break;
-        }
+      TRI_ASSERT(!isInsert);
+      for (std::uint64_t i = 0; i < totalCount; ++i) {
+        TRI_ASSERT(i < keys.size());
+        std::uint64_t k = keys[i];
         [[maybe_unused]] bool rolledBack = modifyLocal(k, h.hash(k), !isInsert);
+        TRI_ASSERT(rolledBack);
       }
       throw std::invalid_argument("Tried to remove key that is not present.");
     }
@@ -1321,8 +1354,11 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(Node& node,
   }
   node.hash ^= value;
 
-  TRI_ASSERT(node.count > 0 || node.hash == 0);
-
+  TRI_ASSERT(node.count > 0 || node.hash == 0)
+      << "node count: " << node.count << ", hash: " << node.hash
+      << ", count: " << count << ", value: " << value
+      << ", isInsert: " << isInsert
+      << ", isRoot: " << (&node == &(meta().summary));
   return true;
 }
 
@@ -1332,6 +1368,7 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(std::uint64_t key,
                                                     bool isInsert) {
   // only use via modify
   std::uint64_t index = this->index(key);
+  TRI_ASSERT(&(this->node(index)) != &(meta().summary));
   return modifyLocal(this->node(index), 1, value, isInsert);
 }
 
@@ -1340,6 +1377,11 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(std::uint64_t key,
 template<typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::leftCombine(bool withShift) {
   // not thread-safe, lock nodes from outside
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef PARANOID_TREE_CHECKS
+  checkInternalConsistency();
+#endif
+#endif
 
   // First to depth:
   auto const depth = meta().depth;
@@ -1414,6 +1456,11 @@ void MerkleTree<Hasher, BranchingBits>::leftCombine(bool withShift) {
 template<typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::growRight(std::uint64_t key) {
   // not thread-safe, lock buffer from outside
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef PARANOID_TREE_CHECKS
+  checkInternalConsistency();
+#endif
+#endif
 
   std::uint64_t depth = meta().depth;
   std::uint64_t rangeMin = meta().rangeMin;
@@ -1473,6 +1520,11 @@ void MerkleTree<Hasher, BranchingBits>::growRight(std::uint64_t key) {
 template<typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::rightCombine(bool withShift) {
   // not thread-safe, lock nodes from outside
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef PARANOID_TREE_CHECKS
+  checkInternalConsistency();
+#endif
+#endif
 
   // First to depth:
   auto const depth = meta().depth;
@@ -1547,6 +1599,11 @@ void MerkleTree<Hasher, BranchingBits>::rightCombine(bool withShift) {
 template<typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::growLeft(std::uint64_t key) {
   // not thread-safe, lock buffer from outside
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#ifdef PARANOID_TREE_CHECKS
+  checkInternalConsistency();
+#endif
+#endif
 
   std::uint64_t depth = meta().depth;
   std::uint64_t rangeMin = meta().rangeMin;
@@ -1632,6 +1689,7 @@ void MerkleTree<Hasher, BranchingBits>::checkInternalConsistency() const {
   std::uint64_t rangeMin = meta().rangeMin;
   std::uint64_t rangeMax = meta().rangeMax;
   std::uint64_t initialRangeMin = meta().initialRangeMin;
+  std::uint64_t width = rangeMax - rangeMin;
 
   if (depth < 2) {
     throw std::invalid_argument("Invalid tree depth");
@@ -1650,6 +1708,11 @@ void MerkleTree<Hasher, BranchingBits>::checkInternalConsistency() const {
         "Expecting difference between initial min and min to be divisible by "
         "(max-min)/nodeCountAt(depth)");
   }
+
+  TRI_ASSERT(width > 0);
+  TRI_ASSERT(numberOfShards() > 0);
+  std::size_t shardSize = width / numberOfShards();
+  TRI_ASSERT(width % shardSize == 0);
 
   std::uint64_t totalCount = 0;
   std::uint64_t totalHash = 0;
@@ -1686,7 +1749,8 @@ void MerkleTree<Hasher, BranchingBits>::serializeNodes(std::string& output,
   std::uint64_t last = nodeCountAtDepth(depth);
   for (std::uint64_t index = 0; index < last; ++index) {
     Node const& src = this->node(index);
-    TRI_ASSERT(src.count > 0 || src.hash == 0);
+    TRI_ASSERT(src.count > 0 || src.hash == 0)
+        << "node count: " << src.count << ", hash: " << src.hash;
 
     // serialize only the non-zero buckets
     if (src.count == 0 && !all) {

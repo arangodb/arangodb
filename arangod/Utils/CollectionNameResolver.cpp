@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,12 +24,14 @@
 #include "CollectionNameResolver.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/DownCast.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
@@ -40,6 +42,9 @@ constexpr std::string_view kUnknown = "_unknown";
 
 }  // namespace
 namespace arangodb {
+
+CollectionNameResolver::CollectionNameResolver(TRI_vocbase_t& vocbase)
+    : _vocbase(vocbase), _serverRole(ServerState::instance()->getRole()) {}
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -124,7 +129,7 @@ DataSourceId CollectionNameResolver::getCollectionIdCluster(
     return getCollectionIdLocal(name);
   }
   if (name.empty()) {
-    DataSourceId::none();
+    return DataSourceId::none();
   }
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
@@ -135,7 +140,7 @@ DataSourceId CollectionNameResolver::getCollectionIdCluster(
     auto type = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 
     if (type == TRI_COL_TYPE_UNKNOWN) {
-      DataSourceId::none();
+      return DataSourceId::none();
     }
     return cid;
   }

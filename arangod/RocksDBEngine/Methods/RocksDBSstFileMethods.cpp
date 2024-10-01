@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,9 +25,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/RocksDBUtils.h"
-#include "Basics/files.h"
+#include "Basics/Thread.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/TemporaryStorageFeature.h"
@@ -40,25 +41,26 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(
     bool isForeground, rocksdb::DB* rootDB,
     RocksDBTransactionCollection* trxColl, RocksDBIndex& ridx,
     rocksdb::Options const& dbOptions, std::string const& idxPath,
-    StorageUsageTracker& usageTracker)
-    : RocksDBMethods(),
+    StorageUsageTracker& usageTracker,
+    RocksDBMethodsMemoryTracker& memoryTracker)
+    : RocksDBBatchedBaseMethods(memoryTracker),
       _isForeground(isForeground),
       _rootDB(rootDB),
       _trxColl(trxColl),
       _ridx(&ridx),
       _cf(ridx.columnFamily()),
       _sstFileWriter(rocksdb::EnvOptions(dbOptions), dbOptions,
-                     ridx.columnFamily()->GetComparator(), ridx.columnFamily()),
+                     ridx.columnFamily()),
       _idxPath(idxPath),
       _usageTracker(usageTracker),
       _bytesWrittenToDir(0) {}
 
-RocksDBSstFileMethods::RocksDBSstFileMethods(rocksdb::DB* rootDB,
-                                             rocksdb::ColumnFamilyHandle* cf,
-                                             rocksdb::Options const& dbOptions,
-                                             std::string const& idxPath,
-                                             StorageUsageTracker& usageTracker)
-    : RocksDBMethods(),
+RocksDBSstFileMethods::RocksDBSstFileMethods(
+    rocksdb::DB* rootDB, rocksdb::ColumnFamilyHandle* cf,
+    rocksdb::Options const& dbOptions, std::string const& idxPath,
+    StorageUsageTracker& usageTracker,
+    RocksDBMethodsMemoryTracker& memoryTracker)
+    : RocksDBBatchedBaseMethods(memoryTracker),
       _isForeground(false),
       _rootDB(rootDB),
       _trxColl(nullptr),
@@ -222,4 +224,8 @@ rocksdb::Status RocksDBSstFileMethods::SingleDelete(
 
 void RocksDBSstFileMethods::PutLogData(rocksdb::Slice const& blob) {
   TRI_ASSERT(false);
+}
+
+size_t RocksDBSstFileMethods::currentWriteBatchSize() const noexcept {
+  return _bytesToWriteCount;
 }

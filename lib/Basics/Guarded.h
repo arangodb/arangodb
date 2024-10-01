@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,9 +25,7 @@
 
 #include "Basics/system-compiler.h"
 
-#include <algorithm>
 #include <condition_variable>
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -83,11 +81,11 @@ namespace basics {
 class UnshackledMutex;
 }
 
-class Mutex;
-
 template<class T, class L>
 class MutexGuard {
  public:
+  template<typename S>
+  explicit MutexGuard(T& value, MutexGuard<S, L>&& alias);
   explicit MutexGuard(T& value, L mutexLock);
   ~MutexGuard() = default;
 
@@ -124,7 +122,12 @@ class MutexGuard {
        std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>)>
   wait(ConditionVariable& cv, Predicate stop_waiting);
 
+  auto isLocked() const noexcept -> bool;
+
  private:
+  template<typename S, typename M>
+  friend class MutexGuard;
+
   struct nop {
     void operator()(T*) {}
   };
@@ -135,6 +138,15 @@ class MutexGuard {
 template<class T, class L>
 MutexGuard<T, L>::MutexGuard(T& value, L mutexLock)
     : _value(&value), _mutexLock(std::move(mutexLock)) {
+  if (ADB_UNLIKELY(!_mutexLock.owns_lock())) {
+    throw std::invalid_argument("Lock not owned");
+  }
+}
+
+template<class T, class L>
+template<typename S>
+MutexGuard<T, L>::MutexGuard(T& value, MutexGuard<S, L>&& alias)
+    : _value(&value), _mutexLock(std::move(alias._mutexLock)) {
   if (ADB_UNLIKELY(!_mutexLock.owns_lock())) {
     throw std::invalid_argument("Lock not owned");
   }
@@ -157,6 +169,11 @@ void MutexGuard<T, L>::unlock() noexcept(noexcept(std::declval<L>().unlock())) {
   _value.reset();
   _mutexLock.unlock();
   _mutexLock.release();
+}
+
+template<class T, class L>
+auto MutexGuard<T, L>::isLocked() const noexcept -> bool {
+  return _value != nullptr;
 }
 
 template<class T, class L>
@@ -234,7 +251,7 @@ class Guarded {
  private:
   template<class F, class R = std::invoke_result_t<F, value_type&>,
            class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
-  [[nodiscard]] static auto tryCallUnderLock(M& Mutex, F&& callback, T& value)
+  [[nodiscard]] static auto tryCallUnderLock(M& mutex, F&& callback, T& value)
       -> std::optional<Q>;
 
   value_type _value;
@@ -253,14 +270,14 @@ template<class T, class M, template<class> class L>
 template<class F, class R>
 auto Guarded<T, M, L>::doUnderLock(F&& callback) -> R {
   auto guard = lock_type(_mutex);
-  return std::invoke(std::forward<F>(callback), _value);
+  return std::forward<F>(callback)(_value);
 }
 
 template<class T, class M, template<class> class L>
 template<class F, class R>
 auto Guarded<T, M, L>::doUnderLock(F&& callback) const -> R {
   auto guard = lock_type(_mutex);
-  return std::invoke(std::forward<F>(callback), _value);
+  return std::forward<F>(callback)(_value);
 }
 
 template<class T, class M, template<class> class L>

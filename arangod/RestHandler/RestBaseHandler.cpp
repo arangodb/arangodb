@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,15 +23,14 @@
 
 #include "RestBaseHandler.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+#include "Logger/LogMacros.h"
+#include "Transaction/Context.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Options.h>
-
-#include "Basics/Exceptions.h"
-#include "Basics/StaticStrings.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "Logger/LogMacros.h"
-#include "Transaction/Context.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -45,10 +44,17 @@ RestBaseHandler::RestBaseHandler(ArangodServer& server, GeneralRequest* request,
 /// @brief parses the body as VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
+velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
   try {
     success = true;
-    return _request->payload(true);
+    // calling the payload(...) function may allocate more memory in the
+    // request. we want to track the additional memory here, but avoid
+    // duplicate counting. thus we keep track of the request's memory
+    // before making a call to payload() and after.
+    auto old = _request->memoryUsage();
+    auto slice = _request->payload(true);
+    _currentRequestsSizeTracker.add(_request->memoryUsage() - old);
+    return slice;
   } catch (VPackException const& e) {
     // simon: do not mess with the error message format, tests break
     std::string errmsg("VPackError error: ");
@@ -76,6 +82,9 @@ template<typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code,
                                      Payload&& payload) {
   resetResponse(code);
+  if (_potentialDirtyReads) {
+    _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
   writeResult(std::forward<Payload>(payload), VPackOptions::Defaults);
 }
 
@@ -83,6 +92,9 @@ template<typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
                                      VPackOptions const* options) {
   resetResponse(code);
+  if (_potentialDirtyReads) {
+    _response->setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
+  }
   writeResult(std::forward<Payload>(payload), *options);
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +115,8 @@ void RestBaseHandler::generateResult(
 /// convenience function akin to generateError,
 /// renders payload in 'result' field
 /// adds proper `error`, `code` fields
-void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
+void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload,
+                                 VPackOptions const& options) {
   resetResponse(code);
 
   try {
@@ -117,7 +130,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
     }
     tmp.close();
 
-    writeResult(std::move(buffer), VPackOptions::Defaults);
+    writeResult(std::move(buffer), options);
   } catch (...) {
     // Building the error response failed
   }

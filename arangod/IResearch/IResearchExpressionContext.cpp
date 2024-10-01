@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,16 +24,14 @@
 
 #include "IResearchExpressionContext.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/QueryContext.h"
-#include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/HashSet.h"
 
-#include <Containers/HashSet.h>
-
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 using namespace arangodb::aql;
 
@@ -42,28 +40,26 @@ using namespace arangodb::aql;
 // -----------------------------------------------------------------------------
 
 void ViewExpressionContextBase::registerWarning(ErrorCode errorCode,
-                                                char const* msg) {
+                                                std::string_view msg) {
   _query->warnings().registerWarning(errorCode, msg);
 }
 
 void ViewExpressionContextBase::registerError(ErrorCode errorCode,
-                                              char const* msg) {
+                                              std::string_view msg) {
   _query->warnings().registerError(errorCode, msg);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache->buildRegexMatcher(ptr, length,
-                                                       caseInsensitive);
+icu_64_64::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildRegexMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache->buildLikeMatcher(ptr, length,
-                                                      caseInsensitive);
+icu_64_64::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildLikeMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
+icu_64_64::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
     AqlValue splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts,
@@ -71,7 +67,7 @@ icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
 }
 
 arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(
-    arangodb::velocypack::Slice const& params) {
+    arangodb::velocypack::Slice params) {
   return _aqlFunctionsInternalCache->buildValidator(params);
 }
 
@@ -167,9 +163,4 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
   return value;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}  // namespace arangodb::iresearch

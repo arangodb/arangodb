@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,13 +35,13 @@ RocksDBRestCollectionHandler::RocksDBRestCollectionHandler(
     ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
-Result RocksDBRestCollectionHandler::handleExtraCommandPut(
+futures::Future<Result> RocksDBRestCollectionHandler::handleExtraCommandPut(
     std::shared_ptr<LogicalCollection> coll, std::string const& suffix,
     velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
     if (!ExecContext::current().canUseCollection(coll->name(),
                                                  auth::Level::RW)) {
-      return Result(TRI_ERROR_FORBIDDEN);
+      co_return Result(TRI_ERROR_FORBIDDEN);
     }
 
     auto physical = toRocksDBCollection(coll->getPhysical());
@@ -49,7 +49,7 @@ Result RocksDBRestCollectionHandler::handleExtraCommandPut(
     Result res;
     uint64_t count = 0;
     try {
-      count = physical->recalculateCounts();
+      count = co_await physical->recalculateCounts();
     } catch (basics::Exception const& e) {
       res.reset(e.code(), e.message());
     }
@@ -58,8 +58,8 @@ Result RocksDBRestCollectionHandler::handleExtraCommandPut(
       builder.add("result", VPackValue(true));
       builder.add("count", VPackValue(count));
     }
-    return res;
+    co_return res;
   }
 
-  return TRI_ERROR_NOT_IMPLEMENTED;
+  co_return TRI_ERROR_NOT_IMPLEMENTED;
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -197,6 +197,9 @@ struct LogStatistics {
   LogIndex commitIndex{};
   LogIndex firstIndex{};
   LogIndex releaseIndex{};
+  LogIndex syncIndex{};
+  LogIndex lowestIndexToKeep{};
+  LogIndex appliedIndex{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice)
@@ -213,7 +216,9 @@ auto inspect(Inspector& f, LogStatistics& x) {
       f.field(StaticStrings::Spearhead, x.spearHead),
       f.field(StaticStrings::CommitIndex, x.commitIndex),
       f.field(StaticStrings::FirstIndex, x.firstIndex),
-      f.field(StaticStrings::ReleaseIndex, x.releaseIndex));
+      f.field(StaticStrings::ReleaseIndex, x.releaseIndex),
+      f.field(StaticStrings::SyncIndex, x.syncIndex),
+      f.field(StaticStrings::AppliedIndex, x.appliedIndex));
 }
 
 struct AbstractFollower {
@@ -235,5 +240,45 @@ struct QuorumData {
 
   void toVelocyPack(velocypack::Builder& builder) const;
 };
+
+namespace {
+constexpr std::string_view kStringUnconfigured = "Unconfigured";
+constexpr std::string_view kStringConnecting = "Connecting";
+constexpr std::string_view kStringRecovery = "RecoveryInProgress";
+constexpr std::string_view kStringAcquiringSnapshot = "AcquiringSnapshot";
+constexpr std::string_view kStringOperational = "ServiceOperational";
+}  // namespace
+
+enum class LocalStateMachineStatus {
+  // resigned or not constructed
+  kUnconfigured,
+  // a follower is connecting before it processed its first append entries
+  // request successfully
+  kConnecting,
+  // a leader is in this state until it has completed recovery
+  kRecovery,
+  // a follower that has established a connection to the leader, but doesn't
+  // have a snapshot yet
+  kAcquiringSnapshot,
+  // state machine is operational, i.e. on a leader, recovery has completed
+  // succesfully; and on a follower, it has established a connection to the
+  // leader (received and processed an append entries request successfully) and
+  // has a valid snapshot
+  kOperational
+};
+
+auto to_string(LocalStateMachineStatus) noexcept -> std::string_view;
+auto operator<<(std::ostream& ostream, LocalStateMachineStatus const& status)
+    -> std::ostream&;
+
+template<class Inspector>
+auto inspect(Inspector& f, LocalStateMachineStatus& x) {
+  return f.enumeration(x).values(
+      LocalStateMachineStatus::kUnconfigured, kStringUnconfigured,
+      LocalStateMachineStatus::kConnecting, kStringConnecting,
+      LocalStateMachineStatus::kRecovery, kStringRecovery,
+      LocalStateMachineStatus::kAcquiringSnapshot, kStringAcquiringSnapshot,
+      LocalStateMachineStatus::kOperational, kStringOperational);
+}
 
 }  // namespace arangodb::replication2::replicated_log

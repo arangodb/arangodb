@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@
 
 #include "MultiAqlItemBlockInputRange.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Aql/RegisterId.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
@@ -255,16 +256,23 @@ auto MultiAqlItemBlockInputRange::skipAllRemainingDataRows() -> size_t {
   return 0;
 }
 
-auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth(size_t depth)
-    -> std::vector<size_t> {
+template<int depthOffset>
+requires(depthOffset == 0 ||
+         depthOffset == -1) auto MultiAqlItemBlockInputRange::
+    skipAllShadowRowsOfDepth(size_t depth) -> std::vector<size_t> {
   size_t const n = _inputs.size();
   std::vector<size_t> skipped{};
   skipped.reserve(n);
   for (auto& input : _inputs) {
-    skipped.emplace_back(input.skipAllShadowRowsOfDepth(depth));
+    skipped.emplace_back(input.skipAllShadowRowsOfDepth<depthOffset>(depth));
   }
   return skipped;
 }
+
+template auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth<-1>(
+    size_t depth) -> std::vector<size_t>;
+template auto MultiAqlItemBlockInputRange::skipAllShadowRowsOfDepth<0>(
+    size_t depth) -> std::vector<size_t>;
 
 // Subtract up to count rows from the local _skipped state
 auto MultiAqlItemBlockInputRange::skipForDependency(size_t dependency,

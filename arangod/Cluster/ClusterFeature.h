@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,15 +23,15 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include <mutex>
+#include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
-#include "Network/NetworkFeature.h"
 #include "Metrics/Fwd.h"
+#include "Scheduler/Scheduler.h"
 
 namespace arangodb {
 namespace application_features {
@@ -41,9 +41,14 @@ class DatabaseFeaturePhase;
 namespace metrics {
 class MetricsFeature;
 }
+namespace network {
+class ConnectionPool;
+}
 
 class AgencyCache;
+class AgencyCallback;
 class AgencyCallbackRegistry;
+class ClusterInfo;
 class DatabaseFeature;
 class HeartbeatThread;
 
@@ -63,6 +68,7 @@ class ClusterFeature : public ArangodFeature {
   void unprepare() override final;
 
   void allocateMembers();
+  void shutdown();
 
   std::vector<std::string> agencyEndpoints() const { return _agencyEndpoints; }
 
@@ -86,24 +92,36 @@ class ClusterFeature : public ArangodFeature {
   std::string const clusterRestPath() const { return "/_api/cluster"; }
 
   void setUnregisterOnShutdown(bool);
-  bool createWaitsForSyncReplication() const {
+  bool createWaitsForSyncReplication() const noexcept {
     return _createWaitsForSyncReplication;
   }
-  std::uint32_t writeConcern() const { return _writeConcern; }
-  std::uint32_t systemReplicationFactor() const {
+  std::uint32_t writeConcern() const noexcept { return _writeConcern; }
+  std::uint32_t systemReplicationFactor() const noexcept {
     return _systemReplicationFactor;
   }
-  std::uint32_t defaultReplicationFactor() const {
+  std::uint32_t defaultReplicationFactor() const noexcept {
     return _defaultReplicationFactor;
   }
-  std::uint32_t maxNumberOfShards() const { return _maxNumberOfShards; }
-  std::uint32_t minReplicationFactor() const { return _minReplicationFactor; }
-  std::uint32_t maxReplicationFactor() const { return _maxReplicationFactor; }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void defaultReplicationFactor(std::uint32_t value) noexcept {
+    _defaultReplicationFactor = value;
+  }
+#endif
+
+  std::uint32_t maxNumberOfShards() const noexcept {
+    return _maxNumberOfShards;
+  }
+  std::uint32_t minReplicationFactor() const noexcept {
+    return _minReplicationFactor;
+  }
+  std::uint32_t maxReplicationFactor() const noexcept {
+    return _maxReplicationFactor;
+  }
   std::uint32_t maxNumberOfMoveShards() const { return _maxNumberOfMoveShards; }
-  bool forceOneShard() const { return _forceOneShard; }
+  bool forceOneShard() const noexcept { return _forceOneShard; }
   /// @brief index creation timeout in seconds. note: this used to be
   /// a configurable parameter in previous versions, but is now hard-coded.
-  double indexCreationTimeout() const { return _indexCreationTimeout; }
+  double indexCreationTimeout() const noexcept { return _indexCreationTimeout; }
 
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
@@ -114,6 +132,10 @@ class ClusterFeature : public ArangodFeature {
   /// - "jwt-write"  = JWT required to access post/put/delete operations
   /// - "jwt-compat" = compatibility mode = same permissions as in 3.7
   std::string const& apiJwtPolicy() const noexcept { return _apiJwtPolicy; }
+
+  std::uint32_t statusCodeFailedWriteConcern() const {
+    return _statusCodeFailedWriteConcern;
+  }
 
   metrics::Counter& followersDroppedCounter() {
     TRI_ASSERT(_followersDroppedCounter != nullptr);
@@ -127,9 +149,9 @@ class ClusterFeature : public ArangodFeature {
     TRI_ASSERT(_followersWrongChecksumCounter != nullptr);
     return *_followersWrongChecksumCounter;
   }
-  metrics::Counter& followersTotalRebuildCounter() {
-    TRI_ASSERT(_followersTotalRebuildCounter != nullptr);
-    return *_followersTotalRebuildCounter;
+  metrics::Counter& syncTreeRebuildCounter() {
+    TRI_ASSERT(_syncTreeRebuildCounter != nullptr);
+    return *_syncTreeRebuildCounter;
   }
   metrics::Counter& potentiallyDirtyDocumentReadsCounter() {
     TRI_ASSERT(_potentiallyDirtyDocumentReadsCounter != nullptr);
@@ -164,9 +186,7 @@ class ClusterFeature : public ArangodFeature {
   bool isDirty(std::string const& database) const;
 
   /// @brief hand out async agency comm connection pool pruning:
-  void pruneAsyncAgencyConnectionPool() {
-    _asyncAgencyCommPool->pruneConnections();
-  }
+  void pruneAsyncAgencyConnectionPool();
 
   /// the following methods may also be called from tests
 
@@ -197,6 +217,8 @@ class ClusterFeature : public ArangodFeature {
   ClusterFeature(Server& server, metrics::MetricsFeature& metrics,
                  DatabaseFeature& database, size_t registration);
   void reportRole(ServerState::RoleEnum);
+  void scheduleConnectivityCheck(std::uint32_t inSeconds);
+  void runConnectivityCheck();
 
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
@@ -204,16 +226,17 @@ class ClusterFeature : public ArangodFeature {
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
   std::string _apiJwtPolicy;
-  std::uint32_t _writeConcern = 1;  // write concern
-  std::uint32_t _defaultReplicationFactor =
-      0;  // a value of 0 means it will use the min replication factor
+
+  // hard-coded limit for maximum replicationFactor value
+  static constexpr std::uint32_t kMaxReplicationFactor = 10;
+
+  std::uint32_t _connectivityCheckInterval = 3600;  // seconds
+  std::uint32_t _writeConcern = 1;                  // write concern
+  std::uint32_t _defaultReplicationFactor = 1;
   std::uint32_t _systemReplicationFactor = 2;
-  std::uint32_t _minReplicationFactor =
-      1;  // minimum replication factor (0 = unrestricted)
-  std::uint32_t _maxReplicationFactor =
-      10;  // maximum replication factor (0 = unrestricted)
-  std::uint32_t _maxNumberOfShards =
-      1000;  // maximum number of shards (0 = unrestricted)
+  std::uint32_t _minReplicationFactor = 1;
+  std::uint32_t _maxReplicationFactor = kMaxReplicationFactor;
+  std::uint32_t _maxNumberOfShards = 1000;  // maximum number of shards
   std::uint32_t _maxNumberOfMoveShards =
       10;  // maximum number of shards to be moved per rebalance operation
            // if value = 0, no move shards operations will be scheduled
@@ -223,6 +246,13 @@ class ClusterFeature : public ArangodFeature {
   bool _unregisterOnShutdown = false;
   bool _enableCluster = false;
   bool _requirePersistedId = false;
+  // The following value indicates what HTTP status code should be returned if
+  // a configured write concern cannot currently be fulfilled. The old
+  // behavior (currently the default) means that a 403 Forbidden
+  // with an error of 1004 ERROR_ARANGO_READ_ONLY is returned. It is possible to
+  // adjust the behavior so that an HTTP 503 Service Unavailable with an error
+  // of 1429 ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED is returned.
+  uint32_t _statusCodeFailedWriteConcern = 403;
   /// @brief coordinator timeout for index creation. defaults to 4 days
   double _indexCreationTimeout = 72.0 * 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;
@@ -237,15 +267,23 @@ class ClusterFeature : public ArangodFeature {
   metrics::Counter* _followersDroppedCounter = nullptr;
   metrics::Counter* _followersRefusedCounter = nullptr;
   metrics::Counter* _followersWrongChecksumCounter = nullptr;
+  // note: this metric is only there for downwards-compatibility reasons. it
+  // will always have a value of 0.
   metrics::Counter* _followersTotalRebuildCounter = nullptr;
+  metrics::Counter* _syncTreeRebuildCounter = nullptr;
   metrics::Counter* _potentiallyDirtyDocumentReadsCounter = nullptr;
   metrics::Counter* _dirtyReadQueriesCounter = nullptr;
   std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback = nullptr;
 
   /// @brief lock for dirty database list
-  mutable arangodb::Mutex _dirtyLock;
+  mutable std::mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)
   containers::FlatHashSet<std::string> _dirtyDatabases;
+
+  std::mutex _connectivityCheckMutex;
+  Scheduler::WorkHandle _connectivityCheck;
+  metrics::Counter* _connectivityCheckFailsCoordinators = nullptr;
+  metrics::Counter* _connectivityCheckFailsDBServers = nullptr;
 };
 
 }  // namespace arangodb

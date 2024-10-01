@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,10 +28,12 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Covering.h"
 #include "GeoIndex/Near.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -207,8 +209,9 @@ template<typename CMP = geo_index::DocumentsAscending>
 class RDBNearIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
-  RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
-                  RocksDBGeoIndex const* index, geo::QueryParams&& params)
+  RDBNearIterator(ResourceMonitor& monitor, LogicalCollection* collection,
+                  transaction::Methods* trx, RocksDBGeoIndex const* index,
+                  geo::QueryParams&& params)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         // geo index never needs to observe own writes since it cannot be used
         // for an UPSERT subquery
@@ -257,34 +260,31 @@ class RDBNearIterator final : public IndexIterator {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           bool result = true;  // this is updated by the callback
-          if (!_collection->getPhysical()
-                   ->read(
-                       _trx, gdoc.token,
-                       [&](LocalDocumentId const&, VPackSlice doc) {
-                         geo::FilterType const ft = _near.filterType();
-                         if (ft != geo::FilterType::NONE) {  // expensive test
-                           geo::ShapeContainer const& filter =
-                               _near.filterShape();
-                           TRI_ASSERT(filter.type() !=
-                                      geo::ShapeContainer::Type::EMPTY);
-                           geo::ShapeContainer test;
-                           Result res = _index->shape(doc, test);
-                           TRI_ASSERT(res.ok());  // this should never fail here
-                           if (res.fail() ||
-                               (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
-                               (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
-                             result = false;
-                             return false;
-                           }
-                         }
-                         cb(gdoc.token, doc);  // return document
-                         result = true;
-                         return true;
-                         // geo index never needs to observe own writes
-                       },
-                       ReadOwnWrites::no)
+          auto callback = [&](LocalDocumentId, aql::DocumentData&& data,
+                              VPackSlice doc) {
+            geo::FilterType const ft = _near.filterType();
+            if (ft != geo::FilterType::NONE) {  // expensive test
+              geo::ShapeContainer const& filter = _near.filterShape();
+              TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                   !filter.intersects(test))) {
+                result = false;
+                return false;
+              }
+            }
+            cb(gdoc.token, std::move(data), doc);  // return document
+            result = true;
+            return true;
+          };
+          auto* physical = _collection->getPhysical();
+          // geo index never needs to observe own writes
+          if (!physical
+                   ->lookup(_trx, gdoc.token, callback, {.countBytes = true})
                    .ok()) {
             return false;  // ignore document
           }
@@ -301,25 +301,24 @@ class RDBNearIterator final : public IndexIterator {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
             bool result = true;  // this is updated by the callback
-            if (!_collection->getPhysical()
-                     ->read(
-                         _trx, gdoc.token,
-                         [&](LocalDocumentId const&, VPackSlice doc) {
-                           geo::ShapeContainer test;
-                           Result res = _index->shape(doc, test);
-                           TRI_ASSERT(res.ok());  // this should never fail here
-                           if (res.fail() ||
-                               (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
-                               (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
-                             result = false;
-                             return false;
-                           }
-                           return true;
-                           // geo index never needs to observe own writes
-                         },
-                         ReadOwnWrites::no)
+            auto callback = [&](LocalDocumentId, aql::DocumentData&&,
+                                VPackSlice doc) {
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                   !filter.intersects(test))) {
+                result = false;
+                return false;
+              }
+              return true;
+            };
+            auto* physical = _collection->getPhysical();
+            // geo index never needs to observe own writes
+            if (!physical
+                     ->lookup(_trx, gdoc.token, callback, {.countBytes = true})
                      .ok()) {
               return false;
             }
@@ -364,7 +363,7 @@ class RDBNearIterator final : public IndexIterator {
         if (!_iter->Valid()) {  // no more valid keys after this
           break;
         } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
-          continue;  // beyond range already
+          continue;  // beyond the range already
         } else if (cmp->Compare(bds.start(), _iter->key()) <= 0) {
           seek = false;  // already in range: min <= key <= max
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.end()) <= 0);
@@ -427,8 +426,9 @@ class RDBNearIterator final : public IndexIterator {
 class RDBCoveringIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
-  RDBCoveringIterator(LogicalCollection* collection, transaction::Methods* trx,
-                      RocksDBGeoIndex const* index, geo::QueryParams&& params)
+  RDBCoveringIterator(ResourceMonitor& monitor, LogicalCollection* collection,
+                      transaction::Methods* trx, RocksDBGeoIndex const* index,
+                      geo::QueryParams&& params)
       : IndexIterator(collection, trx, ReadOwnWrites::no),
         // geo index never needs to observe own writes since it cannot be used
         // for an UPSERT subquery
@@ -475,34 +475,30 @@ class RDBCoveringIterator final : public IndexIterator {
 
   bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return nextToken(
-        [this, &cb](LocalDocumentId const& docid) -> bool {
+        [this, &cb](LocalDocumentId docid) -> bool {
           bool result = true;  // this is updated by the callback
-          if (!_collection->getPhysical()
-                   ->read(
-                       _trx, docid,
-                       [&](LocalDocumentId const&, VPackSlice doc) {
-                         geo::FilterType const ft = _covering.filterType();
-                         geo::ShapeContainer const& filter =
-                             _covering.filterShape();
-                         TRI_ASSERT(filter.type() !=
-                                    geo::ShapeContainer::Type::EMPTY);
-                         geo::ShapeContainer test;
-                         Result res = _index->shape(doc, test);
-                         TRI_ASSERT(res.ok());  // this should never fail here
-                         if (res.fail() ||
-                             (ft == geo::FilterType::CONTAINS &&
-                              !filter.contains(&test)) ||
-                             (ft == geo::FilterType::INTERSECTS &&
-                              !filter.intersects(&test))) {
-                           result = false;
-                           return false;
-                         }
-                         cb(docid, doc);  // return document
-                         result = true;
-                         return true;
-                         // geo index never needs to observe own writes
-                       },
-                       ReadOwnWrites::no)
+          auto callback = [&](LocalDocumentId, aql::DocumentData&& data,
+                              VPackSlice doc) {
+            geo::FilterType const ft = _covering.filterType();
+            geo::ShapeContainer const& filter = _covering.filterShape();
+            TRI_ASSERT(filter.type() != geo::ShapeContainer::Type::EMPTY);
+            geo::ShapeContainer test;
+            Result res = _index->shape(doc, test);
+            TRI_ASSERT(res.ok());  // this should never fail here
+            if (res.fail() ||
+                (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                (ft == geo::FilterType::INTERSECTS &&
+                 !filter.intersects(test))) {
+              result = false;
+              return false;
+            }
+            cb(docid, std::move(data), doc);  // return document
+            result = true;
+            return true;
+          };
+          auto* physical = _collection->getPhysical();
+          // geo index never needs to observe own writes
+          if (!physical->lookup(_trx, docid, callback, {.countBytes = true})
                    .ok()) {
             return false;  // ignore document
           }
@@ -513,31 +509,29 @@ class RDBCoveringIterator final : public IndexIterator {
 
   bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     return nextToken(
-        [this, &cb](LocalDocumentId const& docid) -> bool {
+        [this, &cb](LocalDocumentId docid) -> bool {
           geo::FilterType const ft = _covering.filterType();
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _covering.filterShape();
             TRI_ASSERT(!filter.empty());
             bool result = true;  // this is updated by the callback
-            if (!_collection->getPhysical()
-                     ->read(
-                         _trx, docid,
-                         [&](LocalDocumentId const&, VPackSlice doc) {
-                           geo::ShapeContainer test;
-                           Result res = _index->shape(doc, test);
-                           TRI_ASSERT(res.ok());  // this should never fail here
-                           if (res.fail() ||
-                               (ft == geo::FilterType::CONTAINS &&
-                                !filter.contains(&test)) ||
-                               (ft == geo::FilterType::INTERSECTS &&
-                                !filter.intersects(&test))) {
-                             result = false;
-                             return false;
-                           }
-                           return true;
-                           // geo index never needs to observe own writes
-                         },
-                         ReadOwnWrites::no)
+            auto callback = [&](LocalDocumentId, aql::DocumentData&&,
+                                VPackSlice doc) {
+              geo::ShapeContainer test;
+              Result res = _index->shape(doc, test);
+              TRI_ASSERT(res.ok());  // this should never fail here
+              if (res.fail() ||
+                  (ft == geo::FilterType::CONTAINS && !filter.contains(test)) ||
+                  (ft == geo::FilterType::INTERSECTS &&
+                   !filter.intersects(test))) {
+                result = false;
+                return false;
+              }
+              return true;
+            };
+            auto* physical = _collection->getPhysical();
+            // geo index never needs to observe own writes
+            if (!physical->lookup(_trx, docid, callback, {.countBytes = true})
                      .ok()) {
               return false;
             }
@@ -558,7 +552,7 @@ class RDBCoveringIterator final : public IndexIterator {
   void performScan() {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
-    if (_gotIntervals) {
+    if (!_gotIntervals) {
       _scan = _covering.intervals();
       _gotIntervals = true;
       _scanningInterval = 0;
@@ -575,9 +569,22 @@ class RDBCoveringIterator final : public IndexIterator {
       if (_scanningInterval > 0) {
         TRI_ASSERT(_scan[_scanningInterval - 1].range_max < it.range_min);
         if (!_iter->Valid()) {  // no more valid keys after this
+          // Here is why we actually want to give up here:
+          // Intervals come from cells, two cells either do not intersect,
+          // or one is contained in the other, the same holds for the intervals.
+          // The iterator has an implicit upper bound on the column family, if
+          // we ever run past this for one interval I, then this means that
+          // there is nothing of interest in the index past the end of the
+          // interval I, and we have found everything we need in I.
+          // However, any later interval J will have a beginning which is
+          // greater or equal to the beginning of I, therefore nothing new
+          // can be found from interval J. Therefore:
+          _scanningInterval = _scan.size();
+          // Besides, if we would not stop here we would have an endless loop.
           break;
         } else if (cmp->Compare(_iter->key(), bds.end()) > 0) {
-          continue;  // beyond range already
+          ++_scanningInterval;  // Move to the next interval, since we are
+          continue;             // beyond range already
         } else if (cmp->Compare(bds.start(), _iter->key()) <= 0) {
           seek = false;  // already in range: min <= key <= max
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.end()) <= 0);
@@ -632,21 +639,12 @@ RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
+                   collection.vocbase().engine<RocksDBEngine>()),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
   TRI_ASSERT(iid.isSet());
   _unique = false;
   _sparse = true;
-  // If the legacyPolygons value is not set here, it is from a previous
-  // version, so we default to `true` here. Coming from `ensureIndex`,
-  // we have always set the value in the definition, and if the user does
-  // not specify it, it defaults to `false` via the IndexTypeFactory.
-  _legacyPolygons = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      info, StaticStrings::IndexLegacyPolygons, true);
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
 }
 
@@ -736,7 +734,8 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, arangodb::aql::AstNode const* node,
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
     ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -759,11 +758,12 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
   if (!params.sorted &&
       (params.filterType == geo::FilterType::CONTAINS ||
        params.filterType == geo::FilterType::INTERSECTS) &&
-      (params.minDistanceRad() < geo::kRadEps &&
-       params.maxDistanceRad() >
-           geo::kMaxRadiansBetweenPoints - geo::kRadEps)) {
-    return std::make_unique<RDBCoveringIterator>(&_collection, trx, this,
-                                                 std::move(params));
+      !params.distanceRestricted) {
+    LOG_TOPIC("54612", DEBUG, Logger::AQL)
+        << "Using RDBCoveringIterator for geo index query: "
+        << params.toString();
+    return std::make_unique<RDBCoveringIterator>(monitor, &_collection, trx,
+                                                 this, std::move(params));
   }
 
   params.sorted = true;  // RDBNearIterator always works sorted!
@@ -791,18 +791,21 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
 
+  LOG_TOPIC("54613", DEBUG, Logger::AQL)
+      << "Using RDBNearIterator for geo index query: " << params.toString();
+
   if (params.ascending) {
     return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(
-        &_collection, trx, this, std::move(params));
+        monitor, &_collection, trx, this, std::move(params));
   } else {
     return std::make_unique<RDBNearIterator<geo_index::DocumentsDescending>>(
-        &_collection, trx, this, std::move(params));
+        monitor, &_collection, trx, this, std::move(params));
   }
 }
 
 /// internal insert function, set batch or trx before calling
 Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
-                               LocalDocumentId const& documentId,
+                               LocalDocumentId documentId,
                                velocypack::Slice doc,
                                arangodb::OperationOptions const& /*options*/,
                                bool /*performChecks*/) {
@@ -852,15 +855,14 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
-                               LocalDocumentId const& documentId,
-                               velocypack::Slice doc) {
-  Result res;
-
+                               LocalDocumentId documentId,
+                               velocypack::Slice doc,
+                               OperationOptions const& /*options*/) {
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   S2Point centroid;
 
-  res = geo_index::Index::indexCells(doc, cells, centroid);
+  Result res = geo_index::Index::indexCells(doc, cells, centroid);
 
   if (res.fail()) {  // might occur if insert is rolled back
     if (res.is(TRI_ERROR_BAD_PARAMETER)) {
@@ -889,4 +891,16 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
     }
   }
   return res;
+}
+
+arangodb::Index::FilterCosts RocksDBGeoIndex::supportsFilterCondition(
+    transaction::Methods& /*trx*/,
+    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+    aql::AstNode const* node, aql::Variable const* reference,
+    size_t itemsInIndex) const {
+  arangodb::Index::FilterCosts costs =
+      arangodb::Index::FilterCosts::defaultCosts(itemsInIndex, 1);
+  costs.estimatedItems /= 100;
+  costs.estimatedCosts = static_cast<double>(costs.estimatedItems);
+  return costs;
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseContext.h"
+
+#include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -34,11 +36,12 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-VocbaseContext::VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
-                               ExecContext::Type type, auth::Level systemLevel,
-                               auth::Level dbLevel, bool isAdminUser)
-    : ExecContext(type, req.user(), req.databaseName(), systemLevel, dbLevel,
-                  isAdminUser),
+VocbaseContext::VocbaseContext(ConstructorToken, GeneralRequest& req,
+                               TRI_vocbase_t& vocbase, ExecContext::Type type,
+                               auth::Level systemLevel, auth::Level dbLevel,
+                               bool isAdminUser)
+    : ExecContext(ExecContext::ConstructorToken{}, type, req.user(),
+                  req.databaseName(), systemLevel, dbLevel, isAdminUser),
 #ifdef USE_ENTERPRISE
       _request(req),
 #endif
@@ -53,20 +56,20 @@ VocbaseContext::~VocbaseContext() {
   _vocbase.release();
 }
 
-VocbaseContext* VocbaseContext::create(GeneralRequest& req,
-                                       TRI_vocbase_t& vocbase) {
+std::shared_ptr<VocbaseContext> VocbaseContext::create(GeneralRequest& req,
+                                                       TRI_vocbase_t& vocbase) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!vocbase.isDangling());
 
   // superusers will have an empty username. This MUST be invalid
   // for users authenticating with name / password
-  const bool isSuperUser =
-      req.authenticated() && req.user().empty() &&
-      req.authenticationMethod() == AuthenticationMethod::JWT;
+  bool isSuperUser = req.authenticated() && req.user().empty() &&
+                     req.authenticationMethod() == AuthenticationMethod::JWT;
   if (isSuperUser) {
-    return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
-                              /*sysLevel*/ auth::Level::RW,
-                              /*dbLevel*/ auth::Level::RW, true);
+    return std::make_shared<VocbaseContext>(ConstructorToken{}, req, vocbase,
+                                            ExecContext::Type::Internal,
+                                            /*sysLevel*/ auth::Level::RW,
+                                            /*dbLevel*/ auth::Level::RW, true);
   }
 
   AuthenticationFeature* auth = AuthenticationFeature::instance();
@@ -74,27 +77,30 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req,
   if (!auth->isActive()) {
     if (ServerState::readOnly()) {
       // special read-only case
-      return new VocbaseContext(req, vocbase, ExecContext::Type::Internal,
-                                /*sysLevel*/ auth::Level::RO,
-                                /*dbLevel*/ auth::Level::RO, true);
+      return std::make_shared<VocbaseContext>(
+          ConstructorToken{}, req, vocbase, ExecContext::Type::Internal,
+          /*sysLevel*/ auth::Level::RO,
+          /*dbLevel*/ auth::Level::RO, true);
     }
-    return new VocbaseContext(req, vocbase,
-                              req.user().empty() ? ExecContext::Type::Internal
-                                                 : ExecContext::Type::Default,
-                              /*sysLevel*/ auth::Level::RW,
-                              /*dbLevel*/ auth::Level::RW, true);
+    return std::make_shared<VocbaseContext>(ConstructorToken{}, req, vocbase,
+                                            req.user().empty()
+                                                ? ExecContext::Type::Internal
+                                                : ExecContext::Type::Default,
+                                            /*sysLevel*/ auth::Level::RW,
+                                            /*dbLevel*/ auth::Level::RW, true);
   }
 
   if (!req.authenticated()) {
-    return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
-                              /*sysLevel*/ auth::Level::NONE,
-                              /*dbLevel*/ auth::Level::NONE, false);
+    return std::make_shared<VocbaseContext>(
+        ConstructorToken{}, req, vocbase, ExecContext::Type::Default,
+        /*sysLevel*/ auth::Level::NONE,
+        /*dbLevel*/ auth::Level::NONE, false);
   }
 
   if (req.user().empty()) {
     std::string msg = "only jwt can be used to authenticate as superuser";
     LOG_TOPIC("2d0f6", WARN, Logger::AUTHENTICATION) << msg;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::move(msg));
   }
 
   auth::UserManager* um = auth->userManager();
@@ -120,9 +126,10 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req,
                               true) == auth::Level::RW;
   }
 
-  return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
-                            /*sysLevel*/ sysLvl,
-                            /*dbLevel*/ dbLvl, isAdminUser);
+  return std::make_shared<VocbaseContext>(ConstructorToken{}, req, vocbase,
+                                          ExecContext::Type::Default,
+                                          /*sysLevel*/ sysLvl,
+                                          /*dbLevel*/ dbLvl, isAdminUser);
 }
 
 void VocbaseContext::forceSuperuser() {
@@ -149,12 +156,9 @@ std::string VocbaseContext::authMethod() const {
   switch (_request.authenticationMethod()) {
     case rest::AuthenticationMethod::BASIC:
       return "http basic";
-      break;
     case rest::AuthenticationMethod::JWT:
       return "http jwt";
-      break;
     case rest::AuthenticationMethod::NONE:
-      return "n/a";
       break;
   }
   return "n/a";

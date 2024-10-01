@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,7 +34,7 @@
 #include <utility>
 
 #include "Basics/system-compiler.h"
-#include "Basics/CrashHandler.h"
+#include "CrashHandler/CrashHandler.h"
 
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
@@ -146,6 +146,11 @@ struct remove_cvref {
 template<class T>
 using remove_cvref_t = typename remove_cvref<T>::type;
 
+template<typename>
+struct is_basic_string : std::false_type {};
+template<typename C, typename T, typename A>
+struct is_basic_string<std::basic_string<C, T, A>> : std::true_type {};
+
 template<typename T>
 struct is_container
     : std::conditional<
@@ -156,7 +161,7 @@ struct is_container
               !std::is_same_v<unsigned char*, typename std::decay<T>::type> &&
               !std::is_same_v<unsigned char const*,
                               typename std::decay<T>::type> &&
-              !std::is_same_v<T, std::string> &&
+              !is_basic_string<T>::value &&
               !std::is_same_v<T, std::string_view> &&
               !std::is_same_v<T, const std::string>,
           std::true_type, std::false_type>::type {};
@@ -227,127 +232,7 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o,
   o << " " << conpar<is_associative<T>::value>::close;
   return o;
 }
-
-namespace debug {
-
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-
-struct NoOpStream {
-  template<typename T>
-  auto operator<<(T const&) noexcept -> NoOpStream& {
-    return *this;
-  }
-};
-
-struct AssertionNoOpLogger {
-  void operator&(NoOpStream const& stream) const {}
-};
-
-#else  // #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-
-struct AssertionConditionalStream {
-  bool condition{false};
-  std::ostringstream stream;
-  template<typename T>
-  auto operator<<(T const& v) noexcept -> AssertionConditionalStream& {
-    stream << v;
-    return *this;
-  }
-  auto withCondition(bool c) -> AssertionConditionalStream& {
-    condition = c;
-    return *this;
-  }
-};
-
-struct AssertionConditionalLogger {
-  void operator&(AssertionConditionalStream& stream) const {
-    if (!stream.condition) {
-      std::string message = stream.stream.str();
-      arangodb::CrashHandler::assertionFailure(
-          file, line, function, expr,
-          message.empty() ? nullptr : message.c_str());
-    } else {
-      // need to clear the stream to avoid cumulation of assertion output!
-      stream.stream.str({});
-      stream.stream.clear();
-    }
-  }
-
-  const char* file;
-  int line;
-  const char* function;
-  const char* expr;
-
-  static thread_local AssertionConditionalStream assertionStringStream;
-};
-
-#endif  // #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-
-struct AssertionLogger {
-  [[noreturn]] void operator&(std::ostringstream const& stream) const {
-    std::string message = stream.str();
-    arangodb::CrashHandler::assertionFailure(
-        file, line, function, expr,
-        message.empty() ? nullptr : message.c_str());
-  }
-
-  // can be removed in C++20 because of LWG 1203
-  [[noreturn]] void operator&(std::ostream const& stream) const {
-    operator&(static_cast<std::ostringstream const&>(stream));
-  }
-
-  const char* file;
-  int line;
-  const char* function;
-  const char* expr;
-
-  static thread_local std::ostringstream assertionStringStream;
-};
-
-}  // namespace debug
 }  // namespace arangodb
 
-/// @brief assert, only enabled in maintainer mode
-#ifndef TRI_ASSERT
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                  \
-  (ADB_LIKELY(expr))                                                          \
-      ? (void)nullptr                                                         \
-      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
-                                           ARANGODB_PRETTY_FUNCTION, #expr} & \
-            ::arangodb::debug::AssertionLogger::assertionStringStream
-
-#else
-
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/          \
-  (true) ? ((false) ? (void)(expr) : (void)nullptr)   \
-         : ::arangodb::debug::AssertionNoOpLogger{} & \
-               ::arangodb::debug::NoOpStream {}
-
-#endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#endif  // #ifndef TRI_ASSERT
-/// @brief assert, always enabled. Yes, even in production.
-#ifndef ADB_PROD_ASSERT
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-// This version of the macro always evaluates the output string, even if the
-// assertion did not fail.
-#define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                          \
-  ::arangodb::debug::AssertionConditionalLogger{                           \
-      __FILE__, __LINE__, ARANGODB_PRETTY_FUNCTION, #expr} &               \
-      ::arangodb::debug::AssertionConditionalLogger::assertionStringStream \
-          .withCondition(expr)
-
-#else
-// This version of the macro only evaluates the output string, if the assertion
-// failed.
-#define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                             \
-  (ADB_LIKELY(expr))                                                          \
-      ? (void)nullptr                                                         \
-      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
-                                           ARANGODB_PRETTY_FUNCTION, #expr} & \
-            ::arangodb::debug::AssertionLogger::assertionStringStream
-
-#endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#endif  // #ifndef ADB_PROD_ASSERT
+#include "Assertions/Assert.h"
+#include "Assertions/ProdAssert.h"

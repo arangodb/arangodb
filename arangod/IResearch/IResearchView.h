@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,7 +55,6 @@ namespace iresearch {
 ///////////////////////////////////////////////////////////////////////////////
 
 class IResearchFeature;
-class AsyncLinkHandle;
 template<typename T>
 class AsyncValue;
 
@@ -83,7 +82,7 @@ class IResearchView final : public LogicalView {
 
  public:
   static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
-    return {ViewType::kView, StaticStrings::ViewType};
+    return {ViewType::kArangoSearch, StaticStrings::ViewArangoSearchType};
   }
 
   ~IResearchView() final;
@@ -135,6 +134,8 @@ class IResearchView final : public LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   bool visitCollections(CollectionVisitor const& visitor) const final;
 
+  IResearchViewMeta const& meta() const noexcept { return _meta; }
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sorting order of a view, empty -> use system order
   ///////////////////////////////////////////////////////////////////////////////
@@ -156,6 +157,22 @@ class IResearchView final : public LogicalView {
     return _meta._storedValues;
   }
 
+  bool pkCache() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _meta._pkCache;
+#else
+    return false;
+#endif
+  }
+
+  bool sortCache() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _meta._sortCache;
+#else
+    return false;
+#endif
+  }
+
   auto linksReadLock() const noexcept {
     return std::shared_lock<boost::upgrade_mutex>{_mutex};
   }
@@ -163,7 +180,8 @@ class IResearchView final : public LogicalView {
   LinkLock linkLock(std::shared_lock<boost::upgrade_mutex> const& guard,
                     DataSourceId cid) const noexcept;
 
-  ViewSnapshot::Links getLinks() const noexcept;
+  ViewSnapshot::Links getLinks(
+      containers::FlatHashSet<DataSourceId> const* sources) const noexcept;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -184,6 +202,8 @@ class IResearchView final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   Result renameImpl(std::string const& oldName) final;
 
+  bool isBuilding() const final;
+
   using AsyncViewPtr = std::shared_ptr<AsyncValue<IResearchView>>;
   struct ViewFactory;
 
@@ -199,8 +219,8 @@ class IResearchView final : public LogicalView {
       _trxCallback;  // for snapshot(...)
   std::atomic<bool> _inRecovery;
 
-  IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& info,
-                IResearchViewMeta&& meta);
+  IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice info,
+                IResearchViewMeta&& meta, bool isUserRequest);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)

@@ -13,7 +13,7 @@ exposedBy:
   - agent
   - single
 description: |
-  This counter reflects the total number of HTTP (or VST)
+  This counter reflects the total number of HTTP
   requests that have been authenticated with the JWT superuser token,
   which have hit this particular instance of
   `arangod`.

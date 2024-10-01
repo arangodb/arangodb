@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,69 +46,49 @@
 
 #include <velocypack/Iterator.h>
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 // private hash function
-static ErrorCode HexHashFromData(std::string const& hashMethod,
+static ErrorCode HexHashFromData(std::string_view hashMethod,
                                  std::string const& str, std::string& outHash) {
-  char* crypted = nullptr;
+  // maximum length is 64 bytes for SHA512
+  char buffer[64];
   size_t cryptedLength;
 
-  try {
-    if (hashMethod == "sha1") {
-      arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), crypted,
-                                            cryptedLength);
-    } else if (hashMethod == "sha512") {
-      arangodb::rest::SslInterface::sslSHA512(str.data(), str.size(), crypted,
-                                              cryptedLength);
-    } else if (hashMethod == "sha384") {
-      arangodb::rest::SslInterface::sslSHA384(str.data(), str.size(), crypted,
-                                              cryptedLength);
-    } else if (hashMethod == "sha256") {
-      arangodb::rest::SslInterface::sslSHA256(str.data(), str.size(), crypted,
-                                              cryptedLength);
-    } else if (hashMethod == "sha224") {
-      arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), crypted,
-                                              cryptedLength);
-    } else if (hashMethod == "md5") {  // WFT?!!!
-      arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), crypted,
-                                           cryptedLength);
-    } else {
-      // invalid algorithm...
-      LOG_TOPIC("3c13c", DEBUG, arangodb::Logger::AUTHENTICATION)
-          << "invalid algorithm for hexHashFromData: " << hashMethod;
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-  } catch (...) {
-    // SslInterface::ssl....() allocates strings with new, which might throw
-    // exceptions
-    return TRI_ERROR_FAILED;
+  if (hashMethod == "sha1") {
+    arangodb::rest::SslInterface::sslSHA1(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 20;
+  } else if (hashMethod == "sha512") {
+    arangodb::rest::SslInterface::sslSHA512(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 64;
+  } else if (hashMethod == "sha384") {
+    arangodb::rest::SslInterface::sslSHA384(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 48;
+  } else if (hashMethod == "sha256") {
+    arangodb::rest::SslInterface::sslSHA256(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 32;
+  } else if (hashMethod == "sha224") {
+    arangodb::rest::SslInterface::sslSHA224(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 28;
+  } else if (hashMethod == "md5") {
+    arangodb::rest::SslInterface::sslMD5(str.data(), str.size(), &buffer[0]);
+    cryptedLength = 16;
+  } else {
+    // invalid algorithm...
+    LOG_TOPIC("3c13c", DEBUG, arangodb::Logger::AUTHENTICATION)
+        << "invalid algorithm for hexHashFromData: " << hashMethod;
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
-  auto sg = arangodb::scopeGuard([&]() noexcept { delete[] crypted; });
+  TRI_ASSERT(cryptedLength > 0);
 
-  if (crypted == nullptr || cryptedLength == 0) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  outHash = basics::StringUtils::encodeHex(crypted, cryptedLength);
+  outHash = basics::StringUtils::encodeHex(&buffer[0], cryptedLength);
 
   return TRI_ERROR_NO_ERROR;
-}
-
-static void AddSource(VPackBuilder& builder, auth::Source source) {
-  switch (source) {
-    case auth::Source::Local:  // used to be collection
-      builder.add("source", VPackValue("LOCAL"));
-      break;
-    case auth::Source::LDAP:
-      builder.add("source", VPackValue("LDAP"));
-      break;
-    default:
-      TRI_ASSERT(false);
-  }
 }
 
 static void AddAuthLevel(VPackBuilder& builder, auth::Level lvl) {
@@ -126,7 +106,7 @@ static void AddAuthLevel(VPackBuilder& builder, auth::Level lvl) {
   }
 }
 
-static auth::Level AuthLevelFromSlice(VPackSlice const& slice) {
+static auth::Level AuthLevelFromSlice(VPackSlice slice) {
   TRI_ASSERT(slice.isObject());
   VPackSlice v = slice.get("write");
   if (v.isBool() && v.isTrue()) {
@@ -146,11 +126,9 @@ static auth::Level AuthLevelFromSlice(VPackSlice const& slice) {
 // ============= static ==================
 
 auth::User auth::User::newUser(std::string const& user,
-                               std::string const& password,
-                               auth::Source source) {
+                               std::string const& password) {
   auth::User entry("", RevisionId::none());
   entry._active = true;
-  entry._source = source;
 
   entry._username = user;
   entry._passwordMethod = "sha256";
@@ -194,7 +172,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
       VPackSlice collectionsSlice = obj.value.get("collections");
 
       if (collectionsSlice.isObject()) {
-        for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
+        for (auto collection : VPackObjectIterator(collectionsSlice)) {
           std::string const cName = collection.key.copyString();
           auto const collPerSlice = collection.value.get("permissions");
 
@@ -211,7 +189,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
     } else {
       LOG_TOPIC("c4dd7", DEBUG, arangodb::Logger::CONFIG)
           << "updating deprecated access rights struct for user '"
-          << userSlice.copyString() << "'";
+          << userSlice.stringView() << "'";
       VPackValueLength length;
       char const* value = obj.value.getString(length);
 
@@ -288,7 +266,6 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
   auth::User entry(keySlice.copyString(), rev);
   entry._active = activeSlice.getBool();
-  entry._source = auth::Source::Local;
   entry._username = userSlice.copyString();
   entry._passwordMethod = methodSlice.copyString();
   entry._passwordSalt = saltSlice.copyString();
@@ -367,13 +344,12 @@ VPackBuilder auth::User::toVPackBuilder() const {
     }
 
     builder.add("user", VPackValue(_username));
-    AddSource(builder, _source);
 
     // authData sub-object
     {
       VPackObjectBuilder o2(&builder, "authData", true);
       builder.add("active", VPackValue(_active));
-      if (_source == auth::Source::Local) {
+      {
         VPackObjectBuilder o3(&builder, "simple", true);
         builder.add("hash", VPackValue(_passwordHash));
         builder.add("salt", VPackValue(_passwordSalt));
@@ -562,7 +538,7 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
 
 /// Find the access level for a collection. Will automatically try to fall back
 auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
-                                            std::string const& cname) const {
+                                            std::string_view cname) const {
   if (cname.empty() || (dbname == "*" && cname != "*")) {
     return auth::Level::NONE;  // invalid collection names
   }

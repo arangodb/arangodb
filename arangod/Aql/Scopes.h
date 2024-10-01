@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,14 +26,11 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
-#include "Aql/Variable.h"
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
-
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
+struct Variable;
 
 enum ScopeType {
   AQL_SCOPE_MAIN,
@@ -50,7 +47,6 @@ class Scope {
   /// @brief destroy the scope
   ~Scope();
 
- public:
   /// @brief return the name of a scope type
   std::string typeName() const;
 
@@ -58,7 +54,7 @@ class Scope {
   static std::string typeName(ScopeType);
 
   /// @brief return the scope type
-  inline ScopeType type() const { return _type; }
+  ScopeType type() const noexcept { return _type; }
 
   /// @brief adds a variable to the scope
   void addVariable(Variable*);
@@ -90,24 +86,18 @@ class Scopes {
   /// @brief destroy the scopes
   ~Scopes();
 
- public:
   /// @brief number of currently active scopes
-  inline size_t numActive() const { return _activeScopes.size(); }
+  size_t numActive() const noexcept { return _activeScopes.size(); }
 
   /// @brief return the type of the currently active scope
-  ScopeType type() const {
-    TRI_ASSERT(numActive() > 0);
-    return _activeScopes.back()->type();
-  }
+  ScopeType type() const;
 
   /// @brief whether or not the $CURRENT variable can be used at the caller's
   /// current position
-  inline bool canUseCurrentVariable() const {
-    return (!_currentVariables.empty());
-  }
+  bool canUseCurrentVariable() const noexcept;
 
   /// @brief start a new scope
-  void start(ScopeType);
+  void start(ScopeType type);
 
   /// @brief end the current scope
   void endCurrent();
@@ -116,10 +106,10 @@ class Scopes {
   void endNested();
 
   /// @brief adds a variable to the current scope
-  void addVariable(Variable*);
+  void addVariable(Variable* variable);
 
   /// @brief replaces an existing variable in the current scope
-  void replaceVariable(Variable*);
+  void replaceVariable(Variable* variable);
 
   /// @brief checks whether a variable exists in any scope
   bool existsVariable(std::string_view name) const;
@@ -147,5 +137,5 @@ class Scopes {
   /// @brief a stack with aliases for the $CURRENT variable
   std::vector<Variable const*> _currentVariables;
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql

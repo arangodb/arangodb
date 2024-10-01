@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,7 +34,7 @@ using namespace arangodb::aql;
 
 template<BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
+DependencyProxy<blockPassthrough>::execute(AqlCallStack const& stack) {
   ExecutionState state = ExecutionState::HASMORE;
   SkipResult skipped;
   SharedAqlItemBlockPtr block = nullptr;
@@ -56,8 +56,8 @@ DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
 
 template<BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
-DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
-                                                        AqlCallStack& stack) {
+DependencyProxy<blockPassthrough>::executeForDependency(
+    size_t dependency, AqlCallStack const& stack) {
   ExecutionState state = ExecutionState::HASMORE;
   SkipResult skipped;
   SharedAqlItemBlockPtr block = nullptr;
@@ -84,11 +84,13 @@ DependencyProxy<blockPassthrough>::executeForDependency(size_t dependency,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (skipped.nothingSkipped() && block == nullptr) {
     // We're either waiting or Done
     TRI_ASSERT(state == ExecutionState::DONE ||
                state == ExecutionState::WAITING);
   }
+#endif
   return {state, skipped, std::move(block)};
 }
 
@@ -117,19 +119,19 @@ void DependencyProxy<blockPassthrough>::reset() {
 }
 
 template<BlockPassthrough blockPassthrough>
-ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlock() {
+ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlock() const {
   return upstreamBlockForDependency(_currentDependency);
 }
 
 template<BlockPassthrough blockPassthrough>
 ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlockForDependency(
-    size_t index) {
+    size_t index) const {
   TRI_ASSERT(_dependencies.size() > index);
   return *_dependencies[index];
 }
 
 template<BlockPassthrough blockPassthrough>
-bool DependencyProxy<blockPassthrough>::advanceDependency() {
+bool DependencyProxy<blockPassthrough>::advanceDependency() noexcept {
   if (_currentDependency + 1 >= _dependencies.size()) {
     return false;
   }

@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/debugging.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/SourceLocation.h"
+#include "Basics/ThreadGuard.h"
+#include "Basics/debugging.h"
 #include "Random/RandomGenerator.h"
 
 #include <chrono>
@@ -159,8 +161,8 @@ struct DFSEnumerator {
   friend auto operator<<(std::ostream& os, PathVectorType const& path)
       -> std::ostream& {
     for (auto const& [v, t] : path) {
-      os << "{" << v->state << "}" << std::endl
-         << " -[" << t << "]-> " << std::endl;
+      os << "{" << v->state << "}\n"
+         << " -[" << t << "]-> \n";
     }
     return os;
   }
@@ -291,15 +293,17 @@ struct DFSEnumerator {
             result.stats.eliminatedStates += 1;
           }
           auto checkResult = step->observer.check(step->state);
+          constexpr auto maxDepth = 40;
           if (isPrune(checkResult)) {
             continue;
           } else if (isError(checkResult)) {
             result.failed.emplace(checkResult.asError(), step,
                                   buildPathVector());
             return result;
-          } else if (v->depth > 40) {
-            result.failed.emplace(CheckError("path to long"), step,
-                                  buildPathVector());
+          } else if (v->depth > maxDepth) {
+            result.failed.emplace(
+                CheckError(fmt::format("path too long (>{})", maxDepth)), step,
+                buildPathVector());
             return result;
           }
           if (step->isActive()) {
@@ -388,8 +392,8 @@ struct RandomEnumerator {
   friend auto operator<<(std::ostream& os, PathVectorType const& path)
       -> std::ostream& {
     for (auto const& [v, t] : path) {
-      os << "{" << v->state << "}"
-         << " -[" << t << "]-> ";
+      os << "{" << v->state << "}\n"
+         << " -[" << t << "]-> \n";
     }
     return os;
   }
@@ -583,19 +587,19 @@ struct RandomEnumerator {
     auto const numThreads = std::min<decltype(NumberOfCores::getValue() +
                                               randomParameters.iterations)>(
         NumberOfCores::getValue(), randomParameters.iterations);
-    auto threads = std::vector<std::thread>();
-    threads.reserve(numThreads);
+
+    auto threads = ThreadGuard(numThreads);
+
     auto results = std::vector<std::optional<Result>>(numThreads, std::nullopt);
     auto iterationsLeftToDistribute = randomParameters.iterations;
+    RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     for (std::size_t thrIdx = 0; thrIdx < numThreads; ++thrIdx) {
       // Note that with a fixed `randomParameters.seed`, the pairs (thrIdx,
       // threadSeed) given here are deterministic.
       auto const iters = iterationsLeftToDistribute / (numThreads - thrIdx);
       iterationsLeftToDistribute -= iters;
-      threads.emplace_back([&driver, initialObserver, initialState, iters,
-                            threadSeed = gen(), result = &results[thrIdx]] {
-        // the random device is thread_local
-        RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
+      threads.emplace([&driver, initialObserver, initialState, iters,
+                       threadSeed = gen(), result = &results[thrIdx]] {
         // use an additional PRNG, so we can report the seed that can be
         // used to create the failed path
         auto gen = std::mt19937(threadSeed);
@@ -621,9 +625,7 @@ struct RandomEnumerator {
 
     TRI_ASSERT(iterationsLeftToDistribute == 0);
 
-    for (auto& thr : threads) {
-      thr.join();
-    }
+    threads.joinAll();
 
     for (auto const& result : results) {
       TRI_ASSERT(result.has_value());

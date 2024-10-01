@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,21 +24,23 @@
 #include "RocksDBTrxMethods.h"
 
 #include "Aql/QueryCache.h"
-#include "Random/RandomGenerator.h"
+#include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Statistics/ServerStatistics.h"
-#include "Metrics/Counter.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state,
+                                     IRocksDBTransactionCallback& callback,
                                      rocksdb::TransactionDB* db)
-    : RocksDBTrxBaseMethods(state, db) {
+    : RocksDBTrxBaseMethods(state, callback, db) {
   TRI_ASSERT(!_state->isSingleOperation());
 }
 
@@ -47,7 +49,7 @@ RocksDBTrxMethods::~RocksDBTrxMethods() {
   // and call it ourselves here, because the call in the base class would only
   // execute the base class implementation, therefore leaking the
   // iteratorReadSnapshot.
-  cleanupTransaction();
+  RocksDBTrxMethods::cleanupTransaction();
 }
 
 Result RocksDBTrxMethods::beginTransaction() {
@@ -100,15 +102,9 @@ void RocksDBTrxMethods::rollbackOperation(
   }
 }
 
-Result RocksDBTrxMethods::checkIntermediateCommit() {
-  Result res;
-  if (hasIntermediateCommitsEnabled()) {
-    // perform an intermediate commit if necessary
-    size_t currentSize =
-        _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
-    res.reset(checkIntermediateCommit(currentSize));
-  }
-  return res;
+bool RocksDBTrxMethods::isIntermediateCommitNeeded() {
+  return hasIntermediateCommitsEnabled() &&
+         checkIntermediateCommit(_memoryTracker.memoryUsage());
 }
 
 rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -121,11 +117,29 @@ rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   if (readOwnWrites == ReadOwnWrites::no) {
     if (_readWriteBatch) {
       return _readWriteBatch->GetFromBatchAndDB(_db, ro, cf, key, val);
-    } else {
-      return _db->Get(ro, cf, key, val);
     }
+    return _db->Get(ro, cf, key, val);
   }
   return _rocksTransaction->Get(ro, cf, key, val);
+}
+
+void RocksDBTrxMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
+                                 size_t count, rocksdb::Slice const* keys,
+                                 rocksdb::PinnableSlice* values,
+                                 rocksdb::Status* statuses,
+                                 ReadOwnWrites readOwnWrites) {
+  if (readOwnWrites == ReadOwnWrites::no) {
+    if (_readWriteBatch) {
+      _readWriteBatch->MultiGetFromBatchAndDB(_db, _readOptions, &family, count,
+                                              keys, values, statuses, false);
+    } else {
+      _db->MultiGet(_readOptions, &family, count, keys, values, statuses,
+                    false);
+    }
+  } else {
+    _rocksTransaction->MultiGet(_readOptions, &family, count, keys, values,
+                                statuses, false);
+  }
 }
 
 std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
@@ -149,11 +163,15 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     // at least compile. But since checkIntermediateCommits is only defined in
     // maintainer mode, we have to wrap this assert in another ifdef.
     TRI_ASSERT(!opts.checkIntermediateCommits ||
-               !hasIntermediateCommitsEnabled());
+               !hasIntermediateCommitsEnabled() ||
+               _state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
 #endif
     iterator.reset(_rocksTransaction->GetIterator(opts, cf));
   } else {
     if (iteratorMustCheckBounds(ReadOwnWrites::no)) {
+      TRI_ASSERT(_readWriteBatch != nullptr);
+      TRI_ASSERT(opts.iterate_lower_bound == nullptr);
+      TRI_ASSERT(opts.iterate_upper_bound == nullptr);
       iterator.reset(
           _readWriteBatch->NewIteratorWithBase(cf, _db->NewIterator(opts, cf)));
     } else {
@@ -201,7 +219,7 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
 
   TRI_ASSERT(!_state->isSingleOperation());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "INTERMEDIATE COMMIT!";
+  LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "executing intermediate commit";
 #endif
 
   Result res = doCommit();
@@ -210,13 +228,13 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
     return res;
   }
 
+  ++_numIntermediateCommits;
   ++_state->statistics()._intermediateCommits;
 
   TRI_IF_FAILURE("logAfterIntermediateCommit") {
-    LOG_DEVEL << "_numInserts = " << _numInserts
-              << " _numUpdates = " << _numUpdates
-              << " _numRemoves = " << _numRemoves
-              << " _numLogdata = " << _numLogdata;
+    LOG_TOPIC("e7d51", ERR, Logger::ENGINES)
+        << "_numInserts = " << _numInserts << " _numUpdates = " << _numUpdates
+        << " _numRemoves = " << _numRemoves << " _numLogdata = " << _numLogdata;
   }
 
   // reset counters for DML operations, but intentionally don't reset
@@ -234,28 +252,27 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
   }
 
   createTransaction();
+  ensureSnapshot();
   _readOptions.snapshot = _rocksTransaction->GetSnapshot();
-  TRI_ASSERT(_iteratorReadSnapshot != nullptr);
+  // read snapshots are only required for AQL queries. But since on followers we
+  // do not run AQL queries, we can have intermediate commits _without_ read
+  // snapshots.
+  TRI_ASSERT(_iteratorReadSnapshot != nullptr ||
+             _state->options().isFollowerTransaction);
   TRI_ASSERT(_readOptions.snapshot != nullptr);
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
-Result RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize) {
+bool RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize) {
   TRI_ASSERT(hasIntermediateCommitsEnabled());
 
-  TRI_IF_FAILURE("noIntermediateCommits") { return {}; }
+  TRI_IF_FAILURE("noIntermediateCommits") { return false; }
 
-  Result res;
   auto numOperations = this->numOperations();
-  // perform an intermediate commit
-  // this will be done if either the "number of operations" or the
+  // perform an intermediate commit if either the "number of operations" or the
   // "transaction size" counters have reached their limit
-  if (_state->options().intermediateCommitCount <= numOperations ||
-      _state->options().intermediateCommitSize <= newSize) {
-    res.reset(triggerIntermediateCommit());
-  }
-
-  return res;
+  return _state->options().intermediateCommitCount <= numOperations ||
+         _state->options().intermediateCommitSize <= newSize;
 }
 
 bool RocksDBTrxMethods::hasIntermediateCommitsEnabled() const noexcept {
@@ -278,7 +295,13 @@ bool RocksDBTrxMethods::iteratorMustCheckBounds(
           _readWriteBatch->GetWriteBatch()->GetDataSize() > 0);
 }
 
-void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
+void RocksDBTrxMethods::beginQuery(
+    std::shared_ptr<ResourceMonitor> resourceMonitor,
+    bool isModificationQuery) {
+  // report to parent
+  RocksDBTrxBaseMethods::beginQuery(std::move(resourceMonitor),
+                                    isModificationQuery);
+
   if (!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // don't bother with query tracking in non globally managed trx
     return;
@@ -302,6 +325,7 @@ void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
     TRI_ASSERT(_hasActiveModificationQuery.load());
     TRI_ASSERT(_ownsReadWriteBatch == false);
     initializeReadWriteBatch();
+    TRI_ASSERT(_ownsReadWriteBatch == true);
   } else {
     TRI_ASSERT(_ownsReadWriteBatch == false);
     TRI_ASSERT(_hasActiveModificationQuery.load() == false);
@@ -316,8 +340,12 @@ void RocksDBTrxMethods::beginQuery(bool isModificationQuery) {
 }
 
 void RocksDBTrxMethods::endQuery(bool isModificationQuery) noexcept {
+  // report to parent
+  RocksDBTrxBaseMethods::endQuery(isModificationQuery);
+
   if (!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // don't bother with query tracking in non globally managed trx
+    TRI_ASSERT(_memoryUsedByReadWriteBatch == 0);
     return;
   }
 
@@ -326,6 +354,10 @@ void RocksDBTrxMethods::endQuery(bool isModificationQuery) noexcept {
     TRI_ASSERT(_hasActiveModificationQuery.load());
     TRI_ASSERT(_numActiveReadOnlyQueries.load() == 0);
     _hasActiveModificationQuery.store(false, std::memory_order_relaxed);
+    // must reset memory usage here, because the above endQuery() call
+    // already resetted this transaction's memory usage to what it used
+    // to be at the start of the query we are about to end.
+    _memoryUsedByReadWriteBatch = 0;
     releaseReadWriteBatch();
     TRI_ASSERT(_readWriteBatch == nullptr && !_ownsReadWriteBatch);
     _readWriteBatch = _rocksTransaction->GetWriteBatch();
@@ -339,31 +371,43 @@ void RocksDBTrxMethods::endQuery(bool isModificationQuery) noexcept {
 
 void RocksDBTrxMethods::initializeReadWriteBatch() {
   TRI_ASSERT(_ownsReadWriteBatch == false);
+
+  // get the transaction's current WriteBatch
+  TRI_ASSERT(_rocksTransaction != nullptr);
+  rocksdb::WriteBatch* wb = _rocksTransaction->GetWriteBatch()->GetWriteBatch();
+
   _readWriteBatch = new rocksdb::WriteBatchWithIndex(
-      rocksdb::BytewiseComparator(), 0, true, 0);
+      rocksdb::BytewiseComparator(), /*reserved_bytes*/ wb->GetDataSize(),
+      /*overwrite_key*/ true, /*max_bytes*/ 0);
   _ownsReadWriteBatch = true;
 
   struct WBCloner final : public rocksdb::WriteBatch::Handler {
-    explicit WBCloner(rocksdb::WriteBatchWithIndex& target) : wbwi(target) {}
+    explicit WBCloner(rocksdb::WriteBatchWithIndex& target)
+        : wbwi(target), memoryUsage(0) {}
 
     rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                           const rocksdb::Slice& value) override {
+      memoryUsage += key.size() + fixedIndexingEntryOverhead;
       return wbwi.Put(familyId(column_family_id), key, value);
     }
 
     rocksdb::Status DeleteCF(uint32_t column_family_id,
                              const rocksdb::Slice& key) override {
+      memoryUsage += key.size() + fixedIndexingEntryOverhead;
       return wbwi.Delete(familyId(column_family_id), key);
     }
 
     rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
                                    const rocksdb::Slice& key) override {
+      memoryUsage += key.size() + fixedIndexingEntryOverhead;
       return wbwi.SingleDelete(familyId(column_family_id), key);
     }
 
     rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
                                   const rocksdb::Slice& begin_key,
                                   const rocksdb::Slice& end_key) override {
+      memoryUsage +=
+          begin_key.size() + end_key.size() + fixedIndexingEntryOverhead;
       return wbwi.DeleteRange(familyId(column_family_id), begin_key, end_key);
     }
 
@@ -372,10 +416,14 @@ void RocksDBTrxMethods::initializeReadWriteBatch() {
                             const rocksdb::Slice& value) override {
       // should never be used by our code
       TRI_ASSERT(false);
+      memoryUsage += key.size() + fixedIndexingEntryOverhead;
       return wbwi.Merge(familyId(column_family_id), key, value);
     }
 
-    void LogData(const rocksdb::Slice& blob) override { wbwi.PutLogData(blob); }
+    void LogData(const rocksdb::Slice& blob) override {
+      memoryUsage += blob.size();
+      wbwi.PutLogData(blob);
+    }
 
     rocksdb::Status MarkBeginPrepare(bool = false) override {
       TRI_ASSERT(false);
@@ -416,16 +464,24 @@ void RocksDBTrxMethods::initializeReadWriteBatch() {
     }
 
     rocksdb::WriteBatchWithIndex& wbwi;
+    uint64_t memoryUsage;
   } cloner(*_readWriteBatch);
 
-  // get the transaction's current WriteBatch
-  TRI_ASSERT(_rocksTransaction != nullptr);
-  rocksdb::WriteBatch* wb = _rocksTransaction->GetWriteBatch()->GetWriteBatch();
   rocksdb::Status s = wb->Iterate(&cloner);
 
   if (!s.ok()) {
     THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(s));
   }
+
+  // add memory usage of underlying WriteBatch linear buffer to our own
+  // memory usage. we are going to count this memory usage down again when
+  // we release the WriteBatch.
+  TRI_ASSERT(_memoryUsedByReadWriteBatch == 0);
+  auto value =
+      _readWriteBatch->GetWriteBatch()->Data().capacity() + cloner.memoryUsage;
+  // may throw
+  _memoryTracker.increaseMemoryUsage(value);
+  _memoryUsedByReadWriteBatch = value;
 }
 
 void RocksDBTrxMethods::releaseReadWriteBatch() noexcept {
@@ -433,5 +489,9 @@ void RocksDBTrxMethods::releaseReadWriteBatch() noexcept {
     delete _readWriteBatch;
     _readWriteBatch = nullptr;
     _ownsReadWriteBatch = false;
+
+    // count down memory again
+    auto value = std::exchange(_memoryUsedByReadWriteBatch, 0);
+    _memoryTracker.decreaseMemoryUsage(value);
   }
 }

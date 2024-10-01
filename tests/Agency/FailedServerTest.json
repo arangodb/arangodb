@@ -17,9 +17,17 @@ R"=(
       }
     },
     "Plan": {
+      "Databases": {
+        "database": {
+          "name": "database",
+          "id": "1",
+          "replicationVersion": 1
+        }
+      },
       "Collections": {
         "database": {
           "collection": {
+            "replicationFactor": 3,
             "shards": {
               "shard": [
                 "leader",

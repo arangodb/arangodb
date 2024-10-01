@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,16 +32,27 @@
 #include "Agency/Inception.h"
 #include "Agency/State.h"
 #include "Agency/Store.h"
-#include "Futures/Promise.h"
-#include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
-#include "RestServer/arangod.h"
+#include "Futures/Promise.h"
 #include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
 
-struct TRI_vocbase_t;
+#include <atomic>
+#include <chrono>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::velocypack {
+class Slice;
+}
+
+namespace arangodb::consensus {
 
 class Supervision;
 
@@ -49,7 +60,8 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
                     public AgentInterface {
  public:
   /// @brief Construct with program options
-  explicit Agent(ArangodServer& server, config_t const&);
+  Agent(ArangodServer& server, metrics::MetricsFeature& metrics,
+        config_t const&);
 
   /// @brief Clean up
   ~Agent();
@@ -65,10 +77,10 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   /// @brief Vote request
   priv_rpc_ret_t requestVote(term_t, std::string const&, index_t, index_t,
-                             query_t const&, int64_t timeoutMult);
+                             int64_t timeoutMult);
 
   /// @brief Provide configuration
-  config_t const config() const;
+  config_t const& config() const override;
 
   /// @brief Get timeoutMult:
   int64_t getTimeoutMult() const;
@@ -89,12 +101,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief My endpoint
   std::string endpoint() const;
 
-  /// @brief Verbose print of myself
-  void print(arangodb::LoggerStream&) const;
-
-  /// @brief Are we fit to run?
-  bool fitness() const;
-
   /// @brief Leader ID
   index_t lastCommitted() const;
 
@@ -114,16 +120,16 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   void load();
 
   /// @brief Unpersisted key-value-store
-  trans_ret_t transient(query_t const&) override;
+  trans_ret_t transient(velocypack::Slice query) override;
 
   /// @brief Attempt write
   ///        Startup flag should NEVER be discarded solely for purpose of
   ///        persisting the agency configuration
-  write_ret_t write(query_t const&,
+  write_ret_t write(velocypack::Slice query,
                     WriteMode const& wmode = WriteMode()) override;
 
   /// @brief Read from agency
-  read_ret_t read(query_t const&);
+  read_ret_t read(velocypack::Slice query);
 
   /// @brief Long pool for higher index than given if leader or else empty
   /// builder and false
@@ -131,16 +137,16 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
                                                                double timeout);
 
   /// @brief Inquire success of logs given clientIds
-  write_ret_t inquire(query_t const&);
+  write_ret_t inquire(velocypack::Slice query);
 
   /// @brief Attempt read/write transaction
-  trans_ret_t transact(query_t const&) override;
+  trans_ret_t transact(velocypack::Slice qs) override;
 
   /// @brief Put trxs into list of ongoing ones.
-  void addTrxsOngoing(Slice trxs);
+  void addTrxsOngoing(velocypack::Slice trxs);
 
   /// @brief Remove trxs from list of ongoing ones.
-  void removeTrxsOngoing(Slice trxs) noexcept;
+  void removeTrxsOngoing(velocypack::Slice trxs) noexcept;
 
   /// @brief Check whether a trx is ongoing.
   bool isTrxOngoing(std::string const& id) const noexcept;
@@ -150,13 +156,10 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   priv_rpc_ret_t recvAppendEntriesRPC(term_t term, std::string const& leaderId,
                                       index_t prevIndex, term_t prevTerm,
                                       index_t leaderCommitIndex,
-                                      query_t const& queries);
+                                      velocypack::Slice payload);
 
   /// @brief Resign leadership
   void resign(term_t otherTerm = 0);
-
-  /// @brief collect store callbacks for removal
-  void trashStoreCallback(std::string const& url, velocypack::Slice body);
 
  private:
   void logsForTrigger();
@@ -171,9 +174,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief trigger all expire polls
   void clearExpiredPolls();
 
-  /// @brief empty callback trash bin
-  void emptyCbTrashBin();
-
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
   void sendAppendEntriesRPC();
@@ -182,17 +182,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// can advance _commitIndex and apply things to readDB.
   void advanceCommitIndex();
 
-  /// In a single server agency advanceCommitIndex can be called from any
-  /// thread which does `transact` or `write`. However, it is not thread-safe,
-  /// since it is usually only called in the main agent thread. Therefore,
-  /// in these cases we protect it with this mutex.
-  std::mutex _protectAdvanceCommitIndexInSingleServerAgency;
-
  public:
-  /// @brief Get last confirmed index of an agent. Default my own.
-  ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
-  index_t confirmed(std::string const& serverId = std::string()) const;
-
   /// @brief Invoked by leader to replicate log entries ($5.3);w
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
@@ -203,17 +193,8 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   ///        2. Report success of write processes.
   void run() override final;
 
-  /// @brief Are we still booting?
-  bool booting();
-
   /// @brief Gossip in
   query_t gossip(velocypack::Slice, bool callback = false, size_t version = 0);
-
-  /// @brief Persisted agents
-  bool persistedAgents();
-
-  /// @brief Gossip in
-  bool activeAgency();
 
   /// @brief Get the index at which the leader is
   index_t index();
@@ -226,7 +207,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Report a failed append entry call from AgentCallback
-  void reportFailed(std::string const& slaveId, size_t toLog,
+  void reportFailed(std::string const& followerId, size_t toLog,
                     bool sent = false);
 
   /// @brief Wait for slaves to confirm appended entries
@@ -260,19 +241,12 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   /// @brief execute a callback while holding _ioLock
   ///  and write lock for _readDB
-#if 0
-// currently not called from anywhere
-  void executeLockedWrite(std::function<void()> const& cb);
-#endif
 
   /// @brief execute a callback while holding _transientLock
   void executeTransientLocked(std::function<void()> const& cb);
 
   /// @brief Get read store and compaction index
-  index_t readDB(Node&) const;
-
-  /// @brief Get read store and compaction index
-  index_t readDB(VPackBuilder&) const;
+  index_t readDB(velocypack::Builder&) const;
 
   /// @brief Get read store
   ///  WARNING: this assumes caller holds appropriate
@@ -290,11 +264,8 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// WARNING: this assumes caller holds _transientLock
   Store const& transient() const;
 
-  /// @brief Serve active agent interface
-  bool serveActiveAgent();
-
   /// @brief Get notification as inactive pool member
-  void notify(query_t const&);
+  void notify(velocypack::Slice message);
 
   /// @brief Get copy of log entries starting with begin ending on end
   std::vector<log_t> logs(
@@ -302,7 +273,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
       index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
-  void lastAckedAgo(Builder&) const;
+  void lastAckedAgo(velocypack::Builder&) const;
 
   /// @brief Are we ready for RAFT?
   bool ready() const;
@@ -310,14 +281,11 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief Set readyness for RAFT
   void ready(bool b);
 
-  /// @brief Reset RAFT timeout intervals
-  void resetRAFTTimes(double minTimeout, double maxTimeout);
-
   /// @brief How long back did I take over leadership, result in seconds
   int64_t leaderFor() const;
 
   /// @brief Update a peers endpoint in my configuration
-  void updatePeerEndpoint(query_t const& message);
+  void updatePeerEndpoint(velocypack::Slice message);
 
   /// @brief Update a peers endpoint in my configuration
   void updatePeerEndpoint(std::string const& id, std::string const& ep);
@@ -354,22 +322,18 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   bool mergeConfiguration(VPackSlice persisted);
 
   /// @brief Wakeup main loop of the agent (needed from Constituent)
-  void wakeupMainLoop() {
-    CONDITION_LOCKER(guard, _appendCV);
-    _agentNeedsWakeup = true;
-    _appendCV.broadcast();
-  }
+  void wakeupMainLoop();
 
   /// @brief Activate this agent in single agent mode.
   void activateAgency();
 
   /// @brief add agent to configuration (from State after successful local
   /// persistence)
-  void updateConfiguration(VPackSlice slice);
+  void updateConfiguration(velocypack::Slice slice);
 
   /// @brief patch some configuration values, this is for manual interaction
   /// with the agency leader.
-  void updateSomeConfigValues(VPackSlice data);
+  void updateSomeConfigValues(velocypack::Slice data);
 
   metrics::Histogram<metrics::LogScale<float>>& commitHist() const;
 
@@ -433,45 +397,35 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   arangodb::basics::ConditionVariable _appendCV;
   bool _agentNeedsWakeup;
 
-  /// The following two members are strictly only used in the
-  /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
-  /// necessary for these:
+  struct FollowerData {
+    /// @brief _lastSent stores for each follower the time stamp of the time
+    /// when the main Agent thread has last sent a non-empty
+    /// appendEntriesRPC to that follower.
+    SteadyTimePoint _lastSent;
 
-  /// @brief _lastSent stores for each follower the time stamp of the time
-  /// when the main Agent thread has last sent a non-empty
-  /// appendEntriesRPC to that follower.
-  std::unordered_map<std::string, SteadyTimePoint> _lastSent;
+    /// @brief stores for each follower the highest index log it has reported as
+    /// locally logged, and the timestamp we last recevied an answer to
+    /// sendAppendEntries
+    SteadyTimePoint _lastAckedTime;
+    index_t _lastAckedIndex{0};
 
-  /// The following three members are protected by _tiLock:
+    /// @brief The earliest timepoint at which we will send new
+    /// sendAppendEntries to a particular follower. This is a measure to avoid
+    /// bombarding a follower, that has trouble keeping up.
+    SteadyTimePoint _earliestPackage;
 
-  /// @brief stores for each follower the highest index log it has reported as
-  /// locally logged, and the timestamp we last recevied an answer to
-  /// sendAppendEntries
-  std::unordered_map<std::string, std::pair<SteadyTimePoint, index_t>>
-      _lastAckedIndex;
+    SteadyTimePoint _lastEmptyAcked;
+  };
 
-  /// @brief The earliest timepoint at which we will send new sendAppendEntries
-  /// to a particular follower. This is a measure to avoid bombarding a
-  /// follower, that has trouble keeping up.
-  std::unordered_map<std::string, SteadyTimePoint> _earliestPackage;
+  Guarded<std::unordered_map<std::string, FollowerData>> _followerData;
 
-  // @brief Lock for the above time data about other agents. This
-  // protects _confirmed, _lastAcked and _earliestPackage:
-  mutable arangodb::Mutex _tiLock;
-
-  /// @brief Facilitate quick note of followership on leaders
-  mutable arangodb::Mutex _emptyAppendLock;
-  std::unordered_map<std::string, SteadyTimePoint> _lastEmptyAcked;
+  MutexGuard<FollowerData, std::unique_lock<std::mutex>> getFollower(
+      std::string const& followerId);
 
   /// @brief RAFT consistency lock:
   ///   _spearhead
   ///
-  mutable arangodb::Mutex _ioLock;
-
-  /// @brief Callback trash bin lock
-  ///   _callbackTrashBin
-  ///
-  mutable arangodb::Mutex _cbtLock;
+  mutable std::mutex _ioLock;
 
   /// @brief RAFT consistency lock:
   ///   _readDB and _commitIndex
@@ -481,7 +435,7 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   /// @brief The following mutex protects the _transient store. It is
   /// needed for all accesses to _transient.
-  mutable arangodb::Mutex _transientLock;
+  mutable std::mutex _transientLock;
 
   /// @brief RAFT consistency lock and update notifier:
   ///   _readDB and _commitIndex
@@ -534,16 +488,11 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief load() has completed
   std::atomic<bool> _loaded;
 
-  /// @brief Container for callbacks for removal
-  std::unordered_map<std::string, std::unordered_set<std::string>>
-      _callbackTrashBin;
-  std::chrono::time_point<std::chrono::steady_clock> _callbackLastPurged;
-
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;
 
   // lock for _ongoingTrxs
-  mutable arangodb::Mutex _trxsLock;
+  mutable std::mutex _trxsLock;
 
   // @brief promises for poll interface and the guard
   //        The map holds all current poll promises.
@@ -565,5 +514,5 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   metrics::Histogram<metrics::LogScale<float>>& _compaction_hist_msec;
   metrics::Gauge<uint64_t>& _local_index;
 };
-}  // namespace consensus
-}  // namespace arangodb
+
+}  // namespace arangodb::consensus

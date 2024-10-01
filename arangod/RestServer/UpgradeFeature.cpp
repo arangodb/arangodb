@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,9 +24,11 @@
 #include "UpgradeFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
+#include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
@@ -68,25 +70,43 @@ void UpgradeFeature::addTask(methods::Upgrade::Task&& task) {
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("upgrade", "database.auto-upgrade");
 
-  options->addOption("--database.auto-upgrade",
-                     "perform a database upgrade if necessary",
-                     new BooleanParameter(&_upgrade));
+  options
+      ->addOption("--database.auto-upgrade",
+                  "Perform a database upgrade if necessary.",
+                  new BooleanParameter(&_upgrade))
+      .setLongDescription(R"(If you specify this option, then the server
+performs a database upgrade instead of starting normally.
+
+A database upgrade first compares the version number stored in the `VERSION`
+file in the database directory with the current server version.
+
+If the version number found in the database directory is higher than that of the
+server, the server considers this is an unintentional downgrade and warns about
+this. Using the server in these conditions is neither recommended nor supported.
+
+If the version number found in the database directory is lower than that of the
+server, the server checks whether there are any upgrade tasks to perform.
+It then executes all required upgrade tasks and prints the status. If one of the
+upgrade tasks fails, the server exits with an error. Re-starting the server with
+the upgrade option again triggers the upgrade check and execution until the
+problem is fixed.
+
+Whether or not you specify this option, the server always perform a version
+check on startup. If you running the server with a non-matching version number
+in the `VERSION` file, the server refuses to start.)");
 
   options->addOption(
-      "--database.upgrade-check", "skip a database upgrade",
+      "--database.upgrade-check", "Skip the database upgrade if set to false.",
       new BooleanParameter(&_upgradeCheck),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
-#ifndef _WIN32
 static int upgradeRestart() {
   unsetenv(StaticStrings::UpgradeEnvName.c_str());
   return 0;
 }
-#endif
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-#ifndef _WIN32
   // The following environment variable is another way to run a database
   // upgrade. If the environment variable is set, the system does a database
   // upgrade and then restarts itself without the environment variable.
@@ -105,12 +125,11 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << " with value " << upgrade
         << " will perform database auto-upgrade and immediately restart.";
   }
-#endif
   if (_upgrade && !_upgradeCheck) {
     LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.auto-upgrade true' and "
            "'--database.upgrade-check false'";
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
   }
 
   if (!_upgrade) {
@@ -135,8 +154,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       }
     };
 
-    server().forceDisableFeatures(std::array{
-        Server::id<GreetingsFeature>(), Server::id<pregel::PregelFeature>()});
+    server().forceDisableFeatures(std::array{Server::id<GreetingsFeature>()});
     disableDaemonAndSupervisor();
   } else {
     server().forceDisableFeatures(_nonServerFeatures);
@@ -216,7 +234,7 @@ void UpgradeFeature::start() {
 
       VPackSlice extras = VPackSlice::noneSlice();
       res = um->storeUser(true, "root", init.defaultPassword(), true, extras);
-      if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
+      if (res.is(TRI_ERROR_USER_NOT_FOUND)) {
         res =
             um->storeUser(false, "root", init.defaultPassword(), true, extras);
       }
@@ -264,23 +282,40 @@ void UpgradeFeature::upgradeLocalDatabase() {
   bool ignoreDatafileErrors = databaseFeature.ignoreDatafileErrors();
 
   for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
+    auto vocbase = databaseFeature.useDatabase(name);
+
+    // in this phase, all databases returned by getDatabaseNames() should
+    // still be present and shouldn't be deleted concurrently
     TRI_ASSERT(vocbase != nullptr);
+
+    if (vocbase == nullptr) {
+      continue;
+    }
 
     auto res =
         methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
 
     if (res.fail()) {
-      char const* typeName = "initialization";
+      std::string_view typeName = "initialization";
+      int exitCode = TRI_EXIT_FAILED;
 
       if (res.type == methods::VersionResult::UPGRADE_NEEDED) {
         typeName = "upgrade";  // an upgrade failed or is required
 
         if (!_upgrade) {
+          exitCode = TRI_EXIT_UPGRADE_REQUIRED;
           LOG_TOPIC("1c156", ERR, arangodb::Logger::FIXME)
               << "Database '" << vocbase->name() << "' needs upgrade. "
               << "Please start the server with --database.auto-upgrade";
+        } else {
+          exitCode = TRI_EXIT_UPGRADE_FAILED;
         }
+      } else if (res.type == methods::VersionResult::DOWNGRADE_NEEDED) {
+        exitCode = TRI_EXIT_DOWNGRADE_REQUIRED;
+      } else if (res.type ==
+                     methods::VersionResult::CANNOT_PARSE_VERSION_FILE ||
+                 res.type == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
+        exitCode = TRI_EXIT_VERSION_CHECK_FAILED;
       }
 
       LOG_TOPIC("2eb08", FATAL, arangodb::Logger::FIXME)
@@ -289,7 +324,7 @@ void UpgradeFeature::upgradeLocalDatabase() {
           << "Please inspect the logs from the " << typeName << " procedure"
           << " and try starting the server again.";
 
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(exitCode);
     }
   }
 

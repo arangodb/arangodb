@@ -1,4 +1,4 @@
-# Generate zic format 'leapseconds' from NIST format 'leap-seconds.list'.
+# Generate zic format 'leapseconds' from NIST/IERS format 'leap-seconds.list'.
 
 # This file is in the public domain.
 
@@ -21,13 +21,10 @@ BEGIN {
   print "# This file is in the public domain."
   print ""
   print "# This file is generated automatically from the data in the public-domain"
-  print "# NIST format leap-seconds.list file, which can be copied from"
-  print "# <ftp://ftp.nist.gov/pub/time/leap-seconds.list>"
-  print "# or <ftp://ftp.boulder.nist.gov/pub/time/leap-seconds.list>."
-  print "# The NIST file is used instead of its IERS upstream counterpart"
+  print "# NIST/IERS format leap-seconds.list file, which can be copied from"
   print "# <https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list>"
-  print "# because under US law the NIST file is public domain"
-  print "# whereas the IERS file's copyright and license status is unclear."
+  print "# or, in a variant with different comments, from"
+  print "# <ftp://ftp.boulder.nist.gov/pub/time/leap-seconds.list>."
   print "# For more about leap-seconds.list, please see"
   print "# The NTP Timescale and Leap Seconds"
   print "# <https://www.eecis.udel.edu/~mills/leap.html>."
@@ -104,18 +101,23 @@ BEGIN {
 }
 
 END {
-    sstamp_to_ymdhMs(expires, ss_NTP)
-
     print ""
-    print "# UTC timestamp when this leap second list expires."
-    print "# Any additional leap seconds will come after this."
-    if (! EXPIRES_LINE) {
-      print "# This Expires line is commented out for now,"
-      print "# so that pre-2020a zic implementations do not reject this file."
+
+    if (expires) {
+      sstamp_to_ymdhMs(expires, ss_NTP)
+
+      print "# UTC timestamp when this leap second list expires."
+      print "# Any additional leap seconds will come after this."
+      if (! EXPIRES_LINE) {
+	print "# This Expires line is commented out for now,"
+	print "# so that pre-2020a zic implementations do not reject this file."
+      }
+      printf "%sExpires %.4d\t%s\t%.2d\t%.2d:%.2d:%.2d\n", \
+	EXPIRES_LINE ? "" : "#", \
+	ss_year, monthabbr[ss_month], ss_mday, ss_hour, ss_min, ss_sec
+    } else {
+      print "# (No Expires line, since the expires time is unknown.)"
     }
-    printf "%sExpires %.4d\t%s\t%.2d\t%.2d:%.2d:%.2d\n", \
-      EXPIRES_LINE ? "" : "#", \
-      ss_year, monthabbr[ss_month], ss_mday, ss_hour, ss_min, ss_sec
 
     # The difference between the NTP and POSIX epochs is 70 years
     # (including 17 leap days), each 24 hours of 60 minutes of 60
@@ -124,15 +126,22 @@ END {
 
     print ""
     print "# POSIX timestamps for the data in this file:"
-    sstamp_to_ymdhMs(updated, ss_NTP)
-    printf "#updated %d (%.4d-%.2d-%.2d %.2d:%.2d:%.2d UTC)\n", \
-      updated - epoch_minus_NTP, \
-      ss_year, ss_month, ss_mday, ss_hour, ss_min, ss_sec
-    sstamp_to_ymdhMs(expires, ss_NTP)
-    printf "#expires %d (%.4d-%.2d-%.2d %.2d:%.2d:%.2d UTC)\n", \
-      expires - epoch_minus_NTP, \
-      ss_year, ss_month, ss_mday, ss_hour, ss_min, ss_sec
-
+    if (updated) {
+      sstamp_to_ymdhMs(updated, ss_NTP)
+      printf "#updated %d (%.4d-%.2d-%.2d %.2d:%.2d:%.2d UTC)\n", \
+	updated - epoch_minus_NTP, \
+	ss_year, ss_month, ss_mday, ss_hour, ss_min, ss_sec
+    } else {
+      print "#(updated time unknown)"
+    }
+    if (expires) {
+      sstamp_to_ymdhMs(expires, ss_NTP)
+      printf "#expires %d (%.4d-%.2d-%.2d %.2d:%.2d:%.2d UTC)\n", \
+	expires - epoch_minus_NTP, \
+	ss_year, ss_month, ss_mday, ss_hour, ss_min, ss_sec
+    } else {
+      print "#(expires time unknown)"
+    }
     printf "\n%s", last_lines
 }
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,8 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "ClusterV8Functions.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
@@ -31,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -51,20 +53,22 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
 
   bool waitForSync = false;
-  bool waitForCollector = false;
+  bool flushColumnFamilies = false;
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
       v8::Handle<v8::Object> obj =
           args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-      if (TRI_HasProperty(context, isolate, obj, "waitForSync")) {
+      if (TRI_HasProperty(context, isolate, obj,
+                          StaticStrings::WaitForSyncString)) {
         waitForSync = TRI_ObjectToBoolean(
             isolate,
-            obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForSync"))
+            obj->Get(context, TRI_V8_ASCII_STD_STRING(
+                                  isolate, StaticStrings::WaitForSyncString))
                 .FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "waitForCollector")) {
-        waitForCollector = TRI_ObjectToBoolean(
+        flushColumnFamilies = TRI_ObjectToBoolean(
             isolate,
             obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForCollector"))
                 .FromMaybe(v8::Local<v8::Value>()));
@@ -73,15 +77,16 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
 
       if (args.Length() > 1) {
-        waitForCollector = TRI_ObjectToBoolean(isolate, args[1]);
+        flushColumnFamilies = TRI_ObjectToBoolean(isolate, args[1]);
       }
     }
   }
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   auto& feature = v8g->server().getFeature<ClusterFeature>();
-  auto res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res =
+      flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
+  if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
   TRI_V8_RETURN_TRUE();
@@ -157,7 +162,7 @@ static void JS_EstimateCollectionSize(
   builder.add("documents", VPackValue(0));
   builder.add("indexes", VPackValue(VPackValueType::Object));
 
-  for (auto& i : collection->getIndexes()) {
+  for (auto const& i : collection->getPhysical()->getReadyIndexes()) {
     builder.add(std::to_string(i->id().id()), VPackValue(0));
   }
 
@@ -179,14 +184,14 @@ static void JS_WaitForEstimatorSync(
   v8g->server()
       .getFeature<EngineSelectorFeature>()
       .engine()
-      .waitForEstimatorSync(std::chrono::seconds(10));
+      .waitForEstimatorSync();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
 void ClusterV8Functions::registerResources() {
-  ISOLATE;
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   v8::HandleScope scope(isolate);
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,30 +23,29 @@
 
 #include "BaseOptions.h"
 
-#include "Aql/AqlTransaction.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
+#include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
-#include <Graph/Cache/RefactoredClusterTraverserCache.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -214,11 +213,10 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 }
 
 void BaseOptions::LookupInfo::initializeNonConstExpressions(
-    aql::Ast* ast,
-    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Ast* ast, aql::VarInfoMap const& varInfo,
     aql::Variable const* indexVariable) {
   _nonConstContainer = aql::utils::extractNonConstPartsOfIndexCondition(
-      ast, varInfo, false, false, indexCondition, indexVariable);
+      ast, varInfo, false, nullptr, indexCondition, indexVariable);
   // We cannot optimize V8 expressions
   TRI_ASSERT(!_nonConstContainer._hasV8Expression);
 }
@@ -238,7 +236,7 @@ void BaseOptions::LookupInfo::calculateIndexExpressions(
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(&(ctx.trx().vpackOptions()));
-    VPackSlice slice = materializer.slice(a, false);
+    VPackSlice slice = materializer.slice(a);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
     AstNode* tmp = indexCondition;
@@ -273,12 +271,14 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _expressionCtx(_trx, query, _aqlFunctionsInternalCache),
       _query(query),
       _tmpVar(nullptr),
+      _collectionToShard{resourceMonitor()},
       _parallelism(1),
       _produceVertices(true),
+      _produceEdges(true),
+      _useCache(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _vertexProjections{},
-      _edgeProjections{},
-      _refactor(true) {}
+      _edgeProjections{} {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -288,19 +288,22 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _collectionToShard(other._collectionToShard),
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
+      _produceEdges(other._produceEdges),
+      _useCache(other._useCache),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _maxProjections{other._maxProjections},
-      _vertexProjections{other._vertexProjections},
-      _edgeProjections{other._edgeProjections},
-      _refactor(other._refactor) {
+      _hint(other._hint) {
+  setVertexProjections(other._vertexProjections);
+  setEdgeProjections(other._edgeProjections);
+
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
     TRI_ASSERT(other._tmpVar == nullptr);
   }
 }
 
-BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
-                         VPackSlice collections)
+BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,
+                         velocypack::Slice info, velocypack::Slice collections)
     : BaseOptions(query) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
@@ -330,9 +333,29 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
   }
 
   parseShardIndependentFlags(info);
+
+  if (VPackSlice hintNode = info.get(StaticStrings::IndexHintOption);
+      hintNode.isObject()) {
+    setHint(IndexHint(hintNode));
+  }
+
+  if (VPackSlice useCache = info.get(StaticStrings::UseCache);
+      useCache.isBool()) {
+    setUseCache(useCache.isTrue());
+  }
 }
 
-BaseOptions::~BaseOptions() = default;
+BaseOptions::~BaseOptions() {
+  if (!getVertexProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
+
+  if (!getEdgeProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
+}
 
 arangodb::ResourceMonitor& BaseOptions::resourceMonitor() const {
   return _query.resourceMonitor();
@@ -369,16 +392,15 @@ void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan,
                                 aql::AstNode* condition, bool onlyEdgeIndexes,
                                 TRI_edge_direction_e direction) {
   injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
-                         condition, onlyEdgeIndexes, direction);
+                         condition, onlyEdgeIndexes, direction,
+                         /*depth*/ std::nullopt);
 }
 
-void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
-                                         aql::ExecutionPlan* plan,
-                                         std::string const& collectionName,
-                                         std::string const& attributeName,
-                                         aql::AstNode* condition,
-                                         bool onlyEdgeIndexes,
-                                         TRI_edge_direction_e direction) {
+void BaseOptions::injectLookupInfoInList(
+    std::vector<LookupInfo>& list, aql::ExecutionPlan* plan,
+    std::string const& collectionName, std::string const& attributeName,
+    aql::AstNode* condition, bool onlyEdgeIndexes,
+    TRI_edge_direction_e direction, std::optional<uint64_t> depth) {
   TRI_ASSERT(
       (direction == TRI_EDGE_IN && attributeName == StaticStrings::ToString) ||
       (direction == TRI_EDGE_OUT &&
@@ -395,9 +417,15 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   // actual value does not matter much. 1000 has historically worked fine.
   constexpr size_t itemsInCollection = 1000;
 
+  // use most specific index hint here
+  auto indexHint =
+      hint().getFromNested(direction == TRI_EDGE_IN ? "inbound" : "outbound",
+                           coll->name(), depth.value_or(IndexHint::BaseDepth));
+
+  auto& trx = plan->getAst()->query().trxForOptimization();
   bool res = aql::utils::getBestIndexHandleForFilterCondition(
-      *coll, info.indexCondition, _tmpVar, itemsInCollection, aql::IndexHint(),
-      info.idxHandles[0], onlyEdgeIndexes);
+      trx, *coll, info.indexCondition, _tmpVar, itemsInCollection, indexHint,
+      info.idxHandles[0], ReadOwnWrites::no, onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -473,11 +501,15 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 }
 
 void BaseOptions::setCollectionToShard(
-    std::unordered_map<std::string, std::string> const& in) {
+    std::unordered_map<std::string, ShardID> const& in) {
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {
-    _collectionToShard.emplace(key, std::vector{value});
+    ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
+        alloc = {_query.resourceMonitor()};
+    auto myVec = MonitoredShardIDVector{alloc};
+    myVec.emplace_back(value);
+    _collectionToShard.emplace(key, std::move(myVec));
   }
 }
 
@@ -531,8 +563,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
 }
 
 void BaseOptions::initializeIndexConditions(
-    aql::Ast* ast,
-    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Ast* ast, aql::VarInfoMap const& varInfo,
     aql::Variable const* indexVariable) {
   for (auto& it : _baseLookupInfos) {
     it.initializeNonConstExpressions(ast, varInfo, indexVariable);
@@ -587,11 +618,6 @@ void BaseOptions::activateCache(
       CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
 }
 
-void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
-  TRI_ASSERT(_cache == nullptr);
-  _cache = std::move(testCache);
-}
-
 arangodb::aql::FixedVarExpressionContext& BaseOptions::getExpressionCtx() {
   return _expressionCtx;
 }
@@ -610,11 +636,33 @@ void BaseOptions::isQueryKilledCallback() const {
 }
 
 void BaseOptions::setVertexProjections(Projections projections) {
-  _vertexProjections = std::move(projections);
+  if (!getVertexProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getVertexProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
+  try {
+    resourceMonitor().increaseMemoryUsage(projections.size() *
+                                          sizeof(aql::Projections::Projection));
+    _vertexProjections = std::move(projections);
+  } catch (...) {
+    _vertexProjections.clear();
+    throw;
+  }
 }
 
 void BaseOptions::setEdgeProjections(Projections projections) {
-  _edgeProjections = std::move(projections);
+  if (!getEdgeProjections().empty()) {
+    resourceMonitor().decreaseMemoryUsage(getEdgeProjections().size() *
+                                          sizeof(aql::Projections::Projection));
+  }
+  try {
+    resourceMonitor().increaseMemoryUsage(projections.size() *
+                                          sizeof(aql::Projections::Projection));
+    _edgeProjections = std::move(projections);
+  } catch (...) {
+    _edgeProjections.clear();
+    throw;
+  }
 }
 
 void BaseOptions::setMaxProjections(size_t projections) noexcept {
@@ -636,7 +684,6 @@ Projections const& BaseOptions::getEdgeProjections() const {
 void BaseOptions::toVelocyPackBase(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("parallelism", VPackValue(_parallelism));
-  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
   builder.add("produceVertices", VPackValue(_produceVertices));
   builder.add(StaticStrings::MaxProjections, VPackValue(getMaxProjections()));
 
@@ -647,6 +694,8 @@ void BaseOptions::toVelocyPackBase(VPackBuilder& builder) const {
   if (!_edgeProjections.empty()) {
     _edgeProjections.toVelocyPack(builder, "edgeProjections");
   }
+
+  builder.add(StaticStrings::UseCache, VPackValue(_useCache));
 }
 
 void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
@@ -664,9 +713,43 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
   setMaxProjections(VPackHelper::getNumericValue<size_t>(
       info, StaticStrings::MaxProjections,
       DocumentProducingNode::kMaxProjections));
-  _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
-  _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
 
-  _refactor = basics::VelocyPackHelper::getBooleanValue(
-      info, StaticStrings::GraphRefactorFlag, false);
+  {
+    if (!getVertexProjections().empty()) {
+      resourceMonitor().decreaseMemoryUsage(
+          getVertexProjections().size() * sizeof(aql::Projections::Projection));
+      _vertexProjections.clear();
+    }
+
+    _vertexProjections = Projections::fromVelocyPack(
+        _query.ast(), info, "vertexProjections", resourceMonitor());
+    try {
+      resourceMonitor().increaseMemoryUsage(
+          getVertexProjections().size() * sizeof(aql::Projections::Projection));
+    } catch (...) {
+      _vertexProjections.clear();
+      throw;
+    }
+  }
+
+  {
+    if (!getEdgeProjections().empty()) {
+      resourceMonitor().decreaseMemoryUsage(
+          getEdgeProjections().size() * sizeof(aql::Projections::Projection));
+      _edgeProjections.clear();
+    }
+    _edgeProjections = Projections::fromVelocyPack(
+        _query.ast(), info, "edgeProjections", resourceMonitor());
+    try {
+      resourceMonitor().increaseMemoryUsage(
+          getEdgeProjections().size() * sizeof(aql::Projections::Projection));
+    } catch (...) {
+      _edgeProjections.clear();
+      throw;
+    }
+  }
 }
+
+aql::IndexHint const& BaseOptions::hint() const { return _hint; }
+
+void BaseOptions::setHint(aql::IndexHint hint) { _hint = std::move(hint); }

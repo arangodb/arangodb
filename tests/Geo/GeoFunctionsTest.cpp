@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -427,7 +427,7 @@ TEST_F(GeoEqualsPolygonTest,
 
 TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .Do([&](ErrorCode code, char const* msg) -> void {
+      .Do([&](ErrorCode code, std::string_view) -> void {
         ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -455,7 +455,7 @@ TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
 
 TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .Do([&](ErrorCode code, char const* msg) -> void {
+      .Do([&](ErrorCode code, std::string_view) -> void {
         ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -618,7 +618,7 @@ struct GeoEqualsMixedTypeTest : public GeoEqualsTest {
 
 TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .Do([&](ErrorCode code, char const* msg) -> void {
+      .Do([&](ErrorCode code, std::string_view) -> void {
         ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -659,7 +659,7 @@ TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
 
 TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .Do([&](ErrorCode code, char const* msg) -> void {
+      .Do([&](ErrorCode code, std::string_view) -> void {
         ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
@@ -730,7 +730,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
@@ -749,7 +749,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
     containers::SmallVector<AqlValue, 4> params = {
@@ -769,7 +769,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
@@ -791,7 +791,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
@@ -938,6 +938,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, std::string_view) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
+
     containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
@@ -961,6 +966,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, std::string_view) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
+
     containers::SmallVector<AqlValue, 7> params{
         AqlValue{rhs->slice()},
         AqlValue{lhs->slice()},
@@ -984,6 +994,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, std::string_view) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
+
     containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
@@ -1007,6 +1022,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, std::string_view) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
+
     containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
@@ -1072,6 +1092,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, std::string_view) -> void {
+          ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
+        });
+
     containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
@@ -1128,7 +1153,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
@@ -1156,7 +1181,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1187,7 +1212,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1214,7 +1239,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1245,7 +1270,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1272,7 +1297,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1299,7 +1324,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1326,7 +1351,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
@@ -1353,7 +1378,7 @@ TEST(GeoInRangeTest, test) {
 
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
+        .Do([&](ErrorCode code, std::string_view) -> void {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 

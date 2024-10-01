@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,9 +23,16 @@
 
 #pragma once
 
+#include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 namespace arangodb {
+struct ResourceMonitor;
+
+namespace futures {
+template<class T>
+class Future;
+}
 namespace replication2::replicated_state::document {
 struct DocumentLeaderState;
 }
@@ -33,7 +40,8 @@ class RocksDBTransactionMethods;
 class ReplicatedRocksDBTransactionState;
 
 class ReplicatedRocksDBTransactionCollection final
-    : public RocksDBTransactionCollection {
+    : public RocksDBTransactionCollection,
+      public IRocksDBTransactionCallback {
  public:
   ReplicatedRocksDBTransactionCollection(ReplicatedRocksDBTransactionState* trx,
                                          DataSourceId cid,
@@ -48,7 +56,8 @@ class ReplicatedRocksDBTransactionCollection final
     return _rocksMethods.get();
   }
 
-  void beginQuery(bool isModificationQuery);
+  void beginQuery(std::shared_ptr<ResourceMonitor> resourceMonitor,
+                  bool isModificationQuery);
   void endQuery(bool isModificationQuery) noexcept;
 
   /// @returns tick of last operation in a transaction
@@ -57,9 +66,16 @@ class ReplicatedRocksDBTransactionCollection final
   TRI_voc_tick_t lastOperationTick() const noexcept;
 
   /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const;
+  uint64_t numCommits() const noexcept;
+
+  /// @brief number intermediate commits
+  uint64_t numIntermediateCommits() const noexcept;
+
+  futures::Future<Result> performIntermediateCommitIfRequired();
 
   uint64_t numOperations() const noexcept;
+
+  uint64_t numPrimitiveOperations() const noexcept;
 
   bool ensureSnapshot();
 
@@ -68,6 +84,11 @@ class ReplicatedRocksDBTransactionCollection final
 
  protected:
   auto ensureCollection() -> Result override;
+
+  // IRocksDBTransactionCallback methods
+  rocksdb::SequenceNumber prepare() override;
+  void cleanup() override;
+  void commit(rocksdb::SequenceNumber lastWritten) override;
 
  private:
   void maybeDisableIndexing();

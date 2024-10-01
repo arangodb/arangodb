@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,24 +26,29 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 
 #include <algorithm>
 #include <vector>
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
                            std::string const& jobId, std::string const& creator,
                            std::string const& database,
                            std::string const& collection,
-                           std::string const& shard, std::string const& from)
+                           std::string const& shard, std::string const& from,
+                           bool addsFollower)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _collection(collection),
       _shard(shard),
-      _from(from) {}
+      _from(from),
+      _addsFollower(addsFollower) {}
 
 FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
                            JOB_STATUS status, std::string const& jobId)
@@ -53,11 +58,15 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
   auto tmp_database = _snapshot.hasAsString(path + "database");
   auto tmp_collection = _snapshot.hasAsString(path + "collection");
   auto tmp_from = _snapshot.hasAsString(path + "fromServer");
+  auto tmp_addsFollower = _snapshot.hasAsBool(path + "addsFollower");
 
   // set only if already started (test to prevent warning)
   if (_snapshot.has(path + "toServer")) {
     auto tmp_to = _snapshot.hasAsString(path + "toServer");
     _to = tmp_to.value();
+  }
+  if (tmp_addsFollower) {
+    _addsFollower = tmp_addsFollower.value();
   }
 
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
@@ -90,7 +99,8 @@ void FailedLeader::rollback() {
   // Create new plan servers (exchange _to and _from)
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto planned = _snapshot.hasAsSlice(planPath).value();
+  auto plannedBuilder = _snapshot.hasAsBuilder(planPath).value();
+  auto planned = plannedBuilder.slice();
   std::shared_ptr<Builder> payload = nullptr;
 
   if (_status == PENDING) {  // Only payload if pending. Otherwise just fail.
@@ -100,7 +110,7 @@ void FailedLeader::rollback() {
         VPackArrayBuilder r(&rb);
         for (auto const i : VPackArrayIterator(planned)) {
           TRI_ASSERT(i.isString());
-          auto istr = i.copyString();
+          auto istr = i.stringView();
           if (istr == _from) {
             rb.add(VPackValue(_to));
           } else if (istr == _to) {
@@ -141,7 +151,7 @@ void FailedLeader::rollback() {
 bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   using namespace std::chrono;
   LOG_TOPIC("46046", INFO, Logger::SUPERVISION)
-      << "Create failedLeader for " + _shard + " from " + _from;
+      << "Create failedLeader for " << _shard << " from " << _from;
 
   if (b == nullptr) {
     _jb = std::make_shared<Builder>();
@@ -162,6 +172,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
     _jb->add("fromServer", VPackValue(_from));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));
+    _jb->add("addsFollower", VPackValue(_addsFollower));
   }
 
   if (b == nullptr) {
@@ -200,32 +211,35 @@ bool FailedLeader::start(bool& aborts) {
   }
 
   LOG_TOPIC("0ced0", INFO, Logger::SUPERVISION)
-      << "Start failedLeader for " + _shard + " from " + _from + " to " + _to;
+      << "Start failedLeader for " << _shard << " from " << _from << " to "
+      << _to;
 
   using namespace std::chrono;
 
   // Current servers vector
   std::string curPath =
       curColPrefix + _database + "/" + _collection + "/" + _shard;
-  auto current = _snapshot.hasAsSlice(curPath + "/servers").value();
+  auto currentBuilder = _snapshot.get(curPath + "/servers")->toBuilder();
+  auto current = currentBuilder.slice();
 
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto planned = _snapshot.hasAsSlice(planPath).value();
+  auto plannedBuilder = _snapshot.get(planPath)->toBuilder();
+  auto planned = plannedBuilder.slice();
 
   // Get todo entry
   Builder todo;
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& jobIdNode = _snapshot.get(toDoPrefix + _jobId);
       if (jobIdNode) {
-        jobIdNode->get().toBuilder(todo);
+        jobIdNode->toBuilder(todo);
       } else {
         LOG_TOPIC("96395", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -244,7 +258,7 @@ bool FailedLeader::start(bool& aborts) {
     // should never happen as well, but if it happens, this situation will
     // repair itself by diverging replicationFactor.
     if (s != _from && s != _to && !s.empty() && s[0] != '_') {
-      planv.push_back(s);
+      planv.push_back(std::move(s));
     }
   }
 
@@ -257,7 +271,7 @@ bool FailedLeader::start(bool& aborts) {
     if (s.isString()) {
       std::string id = s.copyString();
       if (failoverCands.find(id) == failoverCands.end()) {
-        excludes.push_back(s.copyString());
+        excludes.push_back(std::move(id));
       }
     }
   }
@@ -266,9 +280,11 @@ bool FailedLeader::start(bool& aborts) {
   }
 
   // Additional follower, if applicable
-  auto additionalFollower = randomIdleAvailableServer(_snapshot, excludes);
-  if (!additionalFollower.empty()) {
-    planv.push_back(additionalFollower);
+  if (_addsFollower) {
+    auto additionalFollower = randomIdleAvailableServer(_snapshot, excludes);
+    if (!additionalFollower.empty()) {
+      planv.push_back(additionalFollower);
+    }
   }
 
   // Transactions
@@ -290,7 +306,7 @@ bool FailedLeader::start(bool& aborts) {
                       VPackValue(timepointToString(system_clock::now())));
           pending.add("toServer", VPackValue(_to));  // toServer
           for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
-            pending.add(obj.key.copyString(), obj.value);
+            pending.add(obj.key.stringView(), obj.value);
           }
         }
         addRemoveJobFromSomewhere(pending, "ToDo", _jobId);
@@ -304,7 +320,7 @@ bool FailedLeader::start(bool& aborts) {
           // others to remove.
           for (auto const& i : VPackArrayIterator(current)) {
             std::string s = i.copyString();
-            if (s.size() > 0 && s[0] == '_') {
+            if (s.starts_with('_')) {
               s = s.substr(1);
             }
             // We need to make sure to only pick servers from the plan as
@@ -340,11 +356,15 @@ bool FailedLeader::start(bool& aborts) {
       {
         VPackObjectBuilder preconditions(&pending);
         // Failed condition persists
-        addPreconditionServerHealth(pending, _from, "FAILED");
+        addPreconditionServerHealth(pending, _from,
+                                    Supervision::HEALTH_STATUS_FAILED);
         // Destination server still in good condition
-        addPreconditionServerHealth(pending, _to, "GOOD");
+        addPreconditionServerHealth(pending, _to,
+                                    Supervision::HEALTH_STATUS_GOOD);
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
+        // All clones still exist
+        addPreconditionClonesStillExist(pending, _database, shardsLikeMe);
         // Check that Current/servers and failoverCandidates are still as
         // we inspected them:
         doForAllShards(
@@ -356,9 +376,10 @@ bool FailedLeader::start(bool& aborts) {
               // "failoverCandidates":
               std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
               foCandsPath += StaticStrings::FailoverCandidates;
-              auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+              auto foCands = this->_snapshot.hasAsBuilder(foCandsPath);
               if (foCands) {
-                addPreconditionUnchanged(pending, foCandsPath, *foCands);
+                addPreconditionUnchanged(pending, foCandsPath,
+                                         foCands->slice());
               }
             });
         // Destination server should not be blocked by another job
@@ -410,7 +431,8 @@ bool FailedLeader::start(bool& aborts) {
     // Still failing _from?
     auto slice = result.get(std::vector<std::string>(
         {agencyPrefix, "Supervision", "Health", _from, "Status"}));
-    if (slice.isString() && slice.copyString() == "GOOD") {
+    if (slice.isString() &&
+        slice.stringView() == Supervision::HEALTH_STATUS_GOOD) {
       finish("", _shard, false, "Server " + _from + " no longer failing.");
       return false;
     }
@@ -418,7 +440,8 @@ bool FailedLeader::start(bool& aborts) {
     // Still healthy _to?
     slice = result.get(std::vector<std::string>(
         {agencyPrefix, "Supervision", "Health", _to, "Status"}));
-    if (slice.isString() && slice.copyString() != "GOOD") {
+    if (slice.isString() &&
+        slice.stringView() != Supervision::HEALTH_STATUS_GOOD) {
       LOG_TOPIC("7e2ef", INFO, Logger::SUPERVISION)
           << "Will not failover from " << _from << " to " << _to
           << " as target server is no longer in good condition. Will retry.";
@@ -440,7 +463,7 @@ bool FailedLeader::start(bool& aborts) {
     if (!slice.isNone()) {
       LOG_TOPIC("aff11", INFO, Logger::SUPERVISION)
           << "Destination server " << _to << " meanwhile is blocked by job "
-          << slice.copyString();
+          << slice.stringView();
     }
 
     // This shard blocked by other job?
@@ -449,7 +472,7 @@ bool FailedLeader::start(bool& aborts) {
     if (!slice.isNone()) {
       LOG_TOPIC("71bb2", INFO, Logger::SUPERVISION)
           << "Shard  " << _shard << " meanwhile is blocked by job "
-          << slice.copyString();
+          << slice.stringView();
     }
   }
 
@@ -474,16 +497,17 @@ JOB_STATUS FailedLeader::status() {
   }
 
   std::string toServerHealth = checkServerHealth(_snapshot, _to);
-  if (toServerHealth == "FAILED" || toServerHealth == "UNCLEAR") {
+  if (toServerHealth == Supervision::HEALTH_STATUS_FAILED ||
+      toServerHealth == Supervision::HEALTH_STATUS_UNCLEAR) {
     finish("", _shard, false, "_to server not health");
     return FAILED;
   }
 
   std::string database, shard;
-  auto const& job = _snapshot.hasAsNode(pendingPrefix + _jobId);
+  auto const& job = _snapshot.get(pendingPrefix + _jobId);
   if (job) {
-    auto tmp_database = job->get().hasAsString("database");
-    auto tmp_shard = job->get().hasAsString("shard");
+    auto tmp_database = job->hasAsString("database");
+    auto tmp_shard = job->hasAsString("shard");
     if (tmp_database && tmp_shard) {
       database = tmp_database.value();
       shard = tmp_shard.value();
@@ -498,14 +522,14 @@ JOB_STATUS FailedLeader::status() {
   for (auto const& clone : clones(_snapshot, _database, _collection, _shard)) {
     auto sub = database + "/" + clone.collection;
     auto plan_slice =
-        _snapshot.hasAsSlice(planColPrefix + sub + "/shards/" + clone.shard);
-    auto cur_slice = _snapshot.hasAsSlice(curColPrefix + sub + "/" +
-                                          clone.shard + "/servers");
+        _snapshot.hasAsBuilder(planColPrefix + sub + "/shards/" + clone.shard);
+    auto cur_slice = _snapshot.hasAsBuilder(curColPrefix + sub + "/" +
+                                            clone.shard + "/servers");
     if (plan_slice && cur_slice &&
-        !basics::VelocyPackHelper::equal(plan_slice.value()[0],
-                                         cur_slice.value()[0], false)) {
+        !basics::VelocyPackHelper::equal(plan_slice->slice()[0],
+                                         cur_slice->slice()[0], false)) {
       LOG_TOPIC("0d8ca", DEBUG, Logger::SUPERVISION)
-          << "FailedLeader waiting for " << sub + "/" + shard;
+          << "FailedLeader waiting for " << sub << "/" << shard;
       break;
     }
     done = true;
@@ -514,8 +538,8 @@ JOB_STATUS FailedLeader::status() {
   if (done) {
     if (finish("", shard)) {
       LOG_TOPIC("1ead6", INFO, Logger::SUPERVISION)
-          << "Finished failedLeader for " + _shard + " from " + _from + " to " +
-                 _to;
+          << "Finished failedLeader for " << _shard << " from " << _from
+          << " to " << _to;
       return FINISHED;
     }
   }

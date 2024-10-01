@@ -3,18 +3,16 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +22,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -501,6 +499,27 @@ function updating_userSuite () {
       assertEqual(doc.parsedBody['user'], "users-1");
       assertFalse(doc.parsedBody['active']);
       assertEqual(doc.parsedBody['extra'], { "foo": true });
+    },
+
+    test_update_existing_user__nested_extra: function() {
+      let body = { "user" : "users-1", "passwd" : "fox", "active" : true, "extra" : { "foo" : {"a": 1}, "bar": 1 } };
+      arango.POST_RAW(api, body);
+
+      let doc;
+      // update;
+      body = { "extra" : { "foo" : {"b": 2}, "bar": 2 } };
+      doc = arango.PATCH_RAW(api + "/users-1", body) ;
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+
+      doc = arango.GET_RAW(api + "/users-1");
+      assertEqual(doc.code, 200);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertEqual(doc.parsedBody['user'], "users-1");
+      assertTrue(doc.parsedBody['active']);
+      assertEqual(doc.parsedBody['extra'], { "foo": {"a": 1, "b": 2}, "bar": 2 });
     }
   };
 }

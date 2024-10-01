@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,11 +39,15 @@ struct Options;
 class ClusterTransactionState final : public TransactionState {
  public:
   ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                          transaction::Options const& options);
-  ~ClusterTransactionState() override = default;
+                          transaction::Options const& options,
+                          transaction::OperationOrigin operationOrigin);
+  ~ClusterTransactionState();
+
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
 
   /// @brief begin a transaction
-  [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
+  [[nodiscard]] futures::Future<Result> beginTransaction(
+      transaction::Hints hints) override;
 
   /// @brief commit a transaction
   [[nodiscard]] futures::Future<Result> commitTransaction(
@@ -52,19 +56,36 @@ class ClusterTransactionState final : public TransactionState {
   /// @brief abort a transaction
   [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
 
-  [[nodiscard]] Result performIntermediateCommitIfRequired(
+  Result triggerIntermediateCommit() override;
+
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId cid) override;
 
-  /// @brief return number of commits, including intermediate commits
-  [[nodiscard]] uint64_t numCommits() const override;
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept override {
+    return 0;
+  }
 
-  [[nodiscard]] bool hasFailedOperations() const override { return false; }
+  /// @brief return number of commits, including intermediate commits
+  [[nodiscard]] uint64_t numCommits() const noexcept override;
+
+  [[nodiscard]] uint64_t numIntermediateCommits() const noexcept override;
+
+  [[nodiscard]] bool hasFailedOperations() const noexcept override {
+    return false;
+  }
+
+  void addIntermediateCommits(uint64_t value) override {
+    _numIntermediateCommits += value;
+  }
 
   [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override;
 
  protected:
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) override;
+
+ private:
+  uint64_t _numIntermediateCommits;
 };
 
 }  // namespace arangodb

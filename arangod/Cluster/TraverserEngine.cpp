@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,23 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraverserEngine.h"
-#include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
-#include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
@@ -46,22 +44,20 @@
 #include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
 #endif
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-static const std::string OPTIONS = "options";
-static const std::string INACCESSIBLE = "inaccessible";
 static const std::string SHARDS = "shards";
-static const std::string EDGES = "edges";
 static const std::string TYPE = "type";
-static const std::string VARIABLES = "variables";
-static const std::string VERTICES = "vertices";
 
 #ifndef USE_ENTERPRISE
-/*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(
+/*static*/ std::unique_ptr<BaseEngine> BaseEngine::buildEngine(
     TRI_vocbase_t& vocbase, aql::QueryContext& query, VPackSlice info) {
-  VPackSlice type = info.get(std::vector<std::string>({OPTIONS, TYPE}));
+  VPackSlice type = info.get(std::initializer_list<std::string_view>(
+      {StaticStrings::GraphOptions, TYPE}));
 
   if (!type.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -82,36 +78,40 @@ static const std::string VERTICES = "vertices";
 
 BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
                        VPackSlice info)
-    : _engineId(TRI_NewTickServer()), _query(query) {
+    : _engineId(TRI_NewTickServer()),
+      _query(query),
+      _vertexShards{_query.resourceMonitor()} {
   VPackSlice shardsSlice = info.get(SHARDS);
 
-  if (shardsSlice.isNone() || !shardsSlice.isObject()) {
+  if (!shardsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The body requires a " + SHARDS + " attribute.");
+        absl::StrCat("The body requires a ", SHARDS, " attribute."));
   }
 
-  VPackSlice edgesSlice = shardsSlice.get(EDGES);
+  VPackSlice edgesSlice = shardsSlice.get(StaticStrings::GraphQueryEdges);
 
-  if (edgesSlice.isNone() || !edgesSlice.isArray()) {
+  if (!edgesSlice.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The " + SHARDS + " object requires an " + EDGES + " attribute.");
+        absl::StrCat("The ", SHARDS, " object requires an ",
+                     StaticStrings::GraphQueryEdges, " attribute."));
   }
 
-  VPackSlice vertexSlice = shardsSlice.get(VERTICES);
+  VPackSlice vertexSlice = shardsSlice.get(StaticStrings::GraphQueryVertices);
 
-  if (vertexSlice.isNone() || !vertexSlice.isObject()) {
+  if (!vertexSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The " + SHARDS + " object requires a " + VERTICES + " attribute.");
+        absl::StrCat("The ", SHARDS, " object requires a ",
+                     StaticStrings::GraphQueryVertices, " attribute."));
   }
 
   // Add all Edge shards to the transaction
   TRI_ASSERT(edgesSlice.isArray());
-  for (VPackSlice const shardList : VPackArrayIterator(edgesSlice)) {
+  for (auto shardList : VPackArrayIterator(edgesSlice)) {
     TRI_ASSERT(shardList.isArray());
-    for (VPackSlice const shard : VPackArrayIterator(shardList)) {
+    for (auto shard : VPackArrayIterator(shardList)) {
       TRI_ASSERT(shard.isString());
       _query.collections().add(shard.copyString(), AccessMode::Type::READ,
                                aql::Collection::Hint::Shard);
@@ -120,31 +120,35 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
 
   // Add all Vertex shards to the transaction
   TRI_ASSERT(vertexSlice.isObject());
-  for (auto const& collection : VPackObjectIterator(vertexSlice)) {
-    std::vector<std::string> shards;
+  for (auto collection : VPackObjectIterator(vertexSlice)) {
+    ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
+        alloc = {_query.resourceMonitor()};
+    MonitoredShardIDVector shards{alloc};
     TRI_ASSERT(collection.value.isArray());
-    for (VPackSlice const shard : VPackArrayIterator(collection.value)) {
+    for (auto shard : VPackArrayIterator(collection.value)) {
       TRI_ASSERT(shard.isString());
-      std::string name = shard.copyString();
-      _query.collections().add(name, AccessMode::Type::READ,
+      auto shardString = shard.copyString();
+      auto maybeShardID = ShardID::shardIdFromString(shardString);
+      _query.collections().add(shardString, AccessMode::Type::READ,
                                aql::Collection::Hint::Shard);
-      shards.emplace_back(std::move(name));
+      TRI_ASSERT(maybeShardID.ok())
+          << "Parsed a list of shards contianing an invalid name: "
+          << shardString;
+      shards.emplace_back(std::move(maybeShardID.get()));
     }
-    _vertexShards.try_emplace(collection.key.copyString(), std::move(shards));
+    _vertexShards.emplace(collection.key.copyString(), std::move(shards));
   }
 
 #ifdef USE_ENTERPRISE
   if (_query.queryOptions().transactionOptions.skipInaccessibleCollections) {
     _trx = std::make_unique<transaction::IgnoreNoAccessMethods>(
         _query.newTrxContext(), _query.queryOptions().transactionOptions);
-  } else {
+  }
+#endif
+  if (_trx == nullptr) {
     _trx = std::make_unique<transaction::Methods>(
         _query.newTrxContext(), _query.queryOptions().transactionOptions);
   }
-#else
-  _trx = std::make_unique<transaction::Methods>(
-      _query.newTrxContext(), _query.queryOptions().transactionOptions);
-#endif
 }
 
 BaseEngine::~BaseEngine() = default;
@@ -172,44 +176,46 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_GRAPH_INVALID_EDGE,
-          "edge contains invalid value " + std::string(id));
+          absl::StrCat("edge contains invalid value ", id));
     }
     std::string shardName = std::string(id.substr(0, pos));
     auto shards = _vertexShards.find(shardName);
     if (shards == _vertexShards.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                     "collection not known to traversal: '" +
-                                         shardName + "'. please add 'WITH " +
-                                         shardName +
-                                         "' as the first line in your AQL");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+          absl::StrCat("collection not known to traversal: '", shardName,
+                       "'. please add 'WITH ", shardName,
+                       "' as the first line in your AQL"));
       // The collection is not known here!
       // Maybe handle differently
     }
 
-    if (shouldProduceVertices) {
-      std::string_view vertex = id.substr(pos + 1);
-      for (std::string const& shard : shards->second) {
-        Result res = _trx->documentFastPathLocal(
-            shard, vertex, [&](LocalDocumentId const&, VPackSlice doc) {
-              // FOUND. short circuit.
-              read++;
-              builder.add(v);
-              if (!options().getVertexProjections().empty()) {
-                VPackObjectBuilder guard(&builder);
-                options().getVertexProjections().toVelocyPackFromDocument(
-                    builder, doc, _trx.get());
-              } else {
-                builder.add(doc);
-              }
-              return true;
-            });
-        if (res.ok()) {
-          break;
-        }
-        if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-          // We are in a very bad condition here...
-          THROW_ARANGO_EXCEPTION(res);
-        }
+    if (!shouldProduceVertices) {
+      return;
+    }
+    std::string_view vertex = id.substr(pos + 1);
+    auto cb = [&](LocalDocumentId, aql::DocumentData&&, VPackSlice doc) {
+      // FOUND. short circuit.
+      read++;
+      builder.add(v);
+      if (!options().getVertexProjections().empty()) {
+        VPackObjectBuilder guard(&builder);
+        options().getVertexProjections().toVelocyPackFromDocument(builder, doc,
+                                                                  _trx.get());
+      } else {
+        builder.add(doc);
+      }
+      return true;
+    };
+    for (auto const& shard : shards->second) {
+      Result res = _trx->documentFastPathLocal(std::string{shard}, vertex, cb)
+                       .waitAndGet();
+      if (res.ok()) {
+        break;
+      }
+      if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        // We are in a very bad condition here...
+        THROW_ARANGO_EXCEPTION(res);
       }
     }
   };
@@ -217,7 +223,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
   builder.openObject();
 
   if (nestedOutput) {
-    builder.add(VPackValue("vertices"));
+    builder.add(VPackValue(StaticStrings::GraphQueryVertices));
 
     if (vertex.isArray()) {
       builder.openArray(true);
@@ -259,17 +265,19 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
                                                   uint64_t currentDepth) {
   graph::EdgeCursor* cursor = nullptr;
   if (_opts->hasSpecificCursorForDepth(currentDepth)) {
-    if (_depthSpecificCursors.find(currentDepth) ==
-        _depthSpecificCursors.end()) {
-      _depthSpecificCursors.emplace(currentDepth,
-                                    _opts->buildCursor(currentDepth));
+    auto it = _depthSpecificCursors.find(currentDepth);
+    if (it == _depthSpecificCursors.end()) {
+      it = _depthSpecificCursors
+               .emplace(currentDepth, _opts->buildCursor(currentDepth))
+               .first;
     }
-    cursor = _depthSpecificCursors.find(currentDepth)->second.get();
+    TRI_ASSERT(it != _depthSpecificCursors.end());
+    cursor = it->second.get();
   } else {
     if (_generalCursor == nullptr) {
       _generalCursor = _opts->buildCursor(currentDepth);
-      TRI_ASSERT(_generalCursor != nullptr);
     }
+    TRI_ASSERT(_generalCursor != nullptr);
     cursor = _generalCursor.get();
   }
   TRI_ASSERT(cursor != nullptr);
@@ -309,7 +317,7 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
 
   TRI_ASSERT(vertex.isString() || vertex.isArray());
   builder.openObject();
-  builder.add(VPackValue("edges"));
+  builder.add(VPackValue(StaticStrings::GraphQueryEdges));
   builder.openArray(true);
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
@@ -352,7 +360,7 @@ graph::BaseOptions const& BaseTraverserEngine::options() const {
 void BaseTraverserEngine::injectVariables(VPackSlice variableSlice) {
   if (variableSlice.isArray()) {
     _opts->clearVariableValues();
-    for (auto&& pair : VPackArrayIterator(variableSlice)) {
+    for (auto pair : VPackArrayIterator(variableSlice)) {
       if ((!pair.isArray()) || pair.length() != 2) {
         // Invalid communication. Skip
         TRI_ASSERT(false);
@@ -377,19 +385,21 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
                                        aql::QueryContext& query,
                                        arangodb::velocypack::Slice info)
     : BaseEngine(vocbase, query, info) {
-  VPackSlice optsSlice = info.get(OPTIONS);
+  VPackSlice optsSlice = info.get(StaticStrings::GraphOptions);
   if (optsSlice.isNone() || !optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The body requires an " + OPTIONS + " attribute.");
+        absl::StrCat("The body requires an ", StaticStrings::GraphOptions,
+                     " attribute."));
   }
   VPackSlice shardsSlice = info.get(SHARDS);
-  VPackSlice edgesSlice = shardsSlice.get(EDGES);
+  VPackSlice edgesSlice = shardsSlice.get(StaticStrings::GraphQueryEdges);
   VPackSlice type = optsSlice.get(TYPE);
   if (!type.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The " + OPTIONS + " require a " + TYPE + " attribute.");
+        absl::StrCat("The ", StaticStrings::GraphOptions, " require a ", TYPE,
+                     " attribute."));
   }
   TRI_ASSERT(type.isEqualString("shortestPath"));
   _opts = std::make_unique<ShortestPathOptions>(_query, optsSlice, edgesSlice);
@@ -407,7 +417,8 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
   TRI_ASSERT(vertex.isString() || vertex.isArray());
 
   builder.openObject();
-  builder.add("edges", VPackValue(VPackValueType::Array));
+  builder.add(StaticStrings::GraphQueryEdges,
+              VPackValue(VPackValueType::Array));
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
       if (!v.isString()) {
@@ -450,7 +461,7 @@ void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward,
   cursor->rearm(v, 0);
 
   cursor->readAll(
-      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
+      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorId*/) {
         if (edge.isString()) {
           edge = _opts->cache()->lookupToken(eid);
         }
@@ -471,19 +482,21 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
                                  aql::QueryContext& query,
                                  arangodb::velocypack::Slice info)
     : BaseTraverserEngine(vocbase, query, info) {
-  VPackSlice optsSlice = info.get(OPTIONS);
+  VPackSlice optsSlice = info.get(StaticStrings::GraphOptions);
   if (!optsSlice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The body requires an " + OPTIONS + " attribute.");
+        absl::StrCat("The body requires an ", StaticStrings::GraphOptions,
+                     " attribute."));
   }
   VPackSlice shardsSlice = info.get(SHARDS);
-  VPackSlice edgesSlice = shardsSlice.get(EDGES);
+  VPackSlice edgesSlice = shardsSlice.get(StaticStrings::GraphQueryEdges);
   VPackSlice type = optsSlice.get(TYPE);
   if (!type.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "The " + OPTIONS + " require a " + TYPE + " attribute.");
+        absl::StrCat("The ", StaticStrings::GraphOptions, " require a ", TYPE,
+                     " attribute."));
   }
   TRI_ASSERT(type.isEqualString("traversal"));
   _opts = std::make_unique<TraverserOptions>(_query, optsSlice, edgesSlice);

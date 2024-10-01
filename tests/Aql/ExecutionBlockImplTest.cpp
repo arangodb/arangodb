@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,23 +26,23 @@
 
 #include "gtest/gtest.h"
 
-#include "AqlItemBlockHelper.h"
+#include "Aql/AqlItemBlockHelper.h"
+#include "Aql/Executor/TestEmptyExecutorHelper.h"
+#include "Aql/Executor/TestLambdaExecutor.h"
+#include "Aql/WaitingExecutionBlockMock.h"
 #include "Mocks/Servers.h"
-#include "TestEmptyExecutorHelper.h"
-#include "TestLambdaExecutor.h"
-#include "WaitingExecutionBlockMock.h"
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/ConstFetcher.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/IdExecutor.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
+#include "Aql/Executor/IdExecutor.h"
+#include "Aql/Executor/SubqueryStartExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/SubqueryStartExecutor.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
@@ -1472,7 +1472,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       skipAsserter.gotCalled(call);
 
       size_t skipped = 0;
-      while (inputRange.hasDataRow() && call.shouldSkip()) {
+      while (inputRange.hasDataRow() && call.needSkipMore()) {
         auto const& [state, input] = inputRange.nextDataRow();
         EXPECT_TRUE(input.isInitialized());
         skipped++;
@@ -1570,7 +1570,7 @@ class ExecutionBlockImplExecuteIntegrationTest
 
     for (size_t i = 0; i < offset; ++i) {
       // The first have been skipped
-      expectedIt++;
+      ++expectedIt;
     }
     size_t limit = (std::min)(call.getLimit(),
                               static_cast<size_t>(expected.length()) - offset);
@@ -1584,7 +1584,7 @@ class ExecutionBlockImplExecuteIntegrationTest
             << "Expected: " << expectedIt.value().toJson()
             << " got: " << got.toJson() << " in row " << i << " and register "
             << testReg.value();
-        expectedIt++;
+        ++expectedIt;
       }
     } else {
       EXPECT_EQ(limit, 0);
@@ -1857,7 +1857,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
       -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
     skipState.gotCalled(call);
     size_t skipped = 0;
-    while (inputRange.hasDataRow() && call.shouldSkip()) {
+    while (inputRange.hasDataRow() && call.needSkipMore()) {
       auto const& [state, input] = inputRange.nextDataRow();
       EXPECT_TRUE(input.isInitialized());
       skipped++;
@@ -2084,7 +2084,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
         EXPECT_EQ(state, ExecutionState::HASMORE);
       }
 
-      it++;
+      ++it;
     }
   }
 }  // namespace aql
@@ -2439,7 +2439,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
         // Write one Row here
         AqlValue v(AqlValueHintInt{2});
         AqlValueGuard guard(v, true);
-        output.moveValueInto(depth1Reg, row, guard);
+        output.moveValueInto(depth1Reg, row, &guard);
         output.advanceRow();
       }
       if (val == 6) {
@@ -2447,13 +2447,13 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
         {
           AqlValue v(AqlValueHintInt{4});
           AqlValueGuard guard(v, true);
-          output.moveValueInto(depth1Reg, row, guard);
+          output.moveValueInto(depth1Reg, row, &guard);
           output.advanceRow();
         }
         {
           AqlValue v(AqlValueHintInt{5});
           AqlValueGuard guard(v, true);
-          output.moveValueInto(depth1Reg, row, guard);
+          output.moveValueInto(depth1Reg, row, &guard);
           output.advanceRow();
         }
       }
@@ -2487,7 +2487,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
         // Write one Row here
         AqlValue v(AqlValueHintInt{1});
         AqlValueGuard guard(v, true);
-        output.moveValueInto(outReg, row, guard);
+        output.moveValueInto(outReg, row, &guard);
         output.advanceRow();
       }
       // drop all other dataRows

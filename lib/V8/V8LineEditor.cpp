@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,16 +21,19 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <stddef.h>
 #include <cstdint>
+#include <mutex>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
 #include "V8LineEditor.h"
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
@@ -50,7 +53,7 @@
 using namespace arangodb;
 
 namespace {
-static arangodb::Mutex singletonMutex;
+static std::mutex singletonMutex;
 static arangodb::V8LineEditor* singleton = nullptr;
 }  // namespace
 
@@ -62,44 +65,9 @@ static arangodb::V8LineEditor* singleton = nullptr;
 /// @brief signal handler for CTRL-C
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-
-static bool SignalHandler(DWORD eventType) {
-  switch (eventType) {
-    case CTRL_BREAK_EVENT:
-    case CTRL_C_EVENT:
-    case CTRL_CLOSE_EVENT:
-    case CTRL_LOGOFF_EVENT:
-    case CTRL_SHUTDOWN_EVENT: {
-      // get the instance of the console
-      MUTEX_LOCKER(mutex, ::singletonMutex);
-      auto instance = ::singleton;
-
-      if (instance != nullptr) {
-        if (instance->isExecutingCommand()) {
-          v8::Isolate* isolate = instance->isolate();
-
-          if (!isolate->IsExecutionTerminating()) {
-            isolate->TerminateExecution();
-          }
-        }
-
-        instance->signal();
-      }
-
-      return true;
-    }
-    default: {
-      return true;
-    }
-  }
-}
-
-#else
-
 static void SignalHandler(int /*signal*/) {
   // get the instance of the console
-  MUTEX_LOCKER(mutex, ::singletonMutex);
+  std::lock_guard mutex{::singletonMutex};
   auto instance = ::singleton;
 
   if (instance != nullptr) {
@@ -114,8 +82,6 @@ static void SignalHandler(int /*signal*/) {
     instance->signal();
   }
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8Completer
@@ -293,6 +259,7 @@ class V8Completer : public Completer {
 
     // locate global object or sub-object
     v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    TRI_ASSERT(isolate != nullptr);
 
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
     v8::Handle<v8::Object> current = context->Global();
@@ -421,7 +388,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
   // register global instance
 
   {
-    MUTEX_LOCKER(mutex, ::singletonMutex);
+    std::lock_guard mutex{::singletonMutex};
     TRI_ASSERT(::singleton == nullptr);
     ::singleton = this;
   }
@@ -429,16 +396,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
   // create shell
   _shell = ShellBase::buildShell(history, new V8Completer());
 
-// handle control-c
-#ifdef _WIN32
-  int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE)SignalHandler, true);
-
-  if (res == 0) {
-    LOG_TOPIC("f87ea", ERR, arangodb::Logger::FIXME)
-        << "unable to install signal handler";
-  }
-
-#else
+  // handle control-c
   struct sigaction sa;
   sa.sa_flags = 0;
   sigfillset(&sa.sa_mask);
@@ -450,7 +408,6 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
     LOG_TOPIC("d7234", ERR, arangodb::Logger::FIXME)
         << "unable to install signal handler";
   }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -459,7 +416,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
 
 V8LineEditor::~V8LineEditor() {
   // unregister global instance
-  MUTEX_LOCKER(mutex, ::singletonMutex);
+  std::lock_guard mutex{::singletonMutex};
   TRI_ASSERT(::singleton != nullptr);
   ::singleton = nullptr;
 }

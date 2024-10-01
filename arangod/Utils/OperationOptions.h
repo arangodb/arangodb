@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,11 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Utils/ExecContext.h"
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <iosfwd>
+#endif
 
 #include <string>
 #include <string_view>
@@ -56,20 +59,29 @@ enum class ReadOwnWrites : bool {
   yes,
 };
 
-/// @brief: mode to signal how operation should behave
+// mode to signal how operation should behave
 enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 
-// a struct for keeping document modification operations in transactions
+enum class RefillIndexCaches : uint8_t {
+  // use configured default behavior of system
+  kDefault,
+  // refill index caches
+  kRefill,
+  // don't refill index cache
+  kDontRefill
+};
+
 #if defined(__GNUC__) && \
     (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 
+// a struct for keeping document modification operations in transactions
 struct OperationOptions {
   /// @brief behavior when inserting a document by _key using INSERT with
   /// overwrite when the target document already exists
-  enum class OverwriteMode {
+  enum class OverwriteMode : uint8_t {
     Unknown,   // undefined/not set
     Conflict,  // fail with unique constraint violation
     Replace,   // replace the target document
@@ -80,28 +92,26 @@ struct OperationOptions {
   OperationOptions() = default;
   explicit OperationOptions(ExecContext const&);
 
-// The following code does not work with VisualStudi 2019's `cl`
-// Lets keep it for debugging on linux.
-#ifndef _WIN32
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   friend std::ostream& operator<<(std::ostream& os,
                                   OperationOptions const& ops);
 #endif
 
-  bool isOverwriteModeSet() const {
+  bool isOverwriteModeSet() const noexcept {
     return (overwriteMode != OverwriteMode::Unknown);
   }
 
-  bool isOverwriteModeUpdateReplace() const {
+  bool isOverwriteModeUpdateReplace() const noexcept {
     return (overwriteMode == OverwriteMode::Update ||
             overwriteMode == OverwriteMode::Replace);
   }
 
   /// @brief stringifies the overwrite mode
-  static char const* stringifyOverwriteMode(
-      OperationOptions::OverwriteMode mode);
+  static std::string_view stringifyOverwriteMode(
+      OperationOptions::OverwriteMode mode) noexcept;
 
   /// @brief determine the overwrite mode from the string value
-  static OverwriteMode determineOverwriteMode(std::string_view value);
+  static OverwriteMode determineOverwriteMode(std::string_view value) noexcept;
 
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
@@ -109,11 +119,18 @@ struct OperationOptions {
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
 
+  // name of attribute that contains a per-document version number (optional)
+  std::string versionAttribute;
+
   IndexOperationMode indexOperationMode = IndexOperationMode::normal;
 
   // INSERT ... OPTIONS { overwrite: true } behavior:
   // - replace an existing document, update an existing document, or do nothing
   OverwriteMode overwriteMode = OverwriteMode::Unknown;
+
+  // automatically refill in-memory cache entries after inserts/updates/replaces
+  // for all indexes that have an in-memory cache attached
+  RefillIndexCaches refillIndexCaches = RefillIndexCaches::kDefault;
 
   // wait until the operation has been synced
   bool waitForSync = false;
@@ -169,12 +186,12 @@ struct OperationOptions {
   // index.
   bool canDisableIndexing = true;
 
-  /// whether or not reading from followers is allowed in a read/only
-  /// transaction. Note that it is a property of the transaction if reading
-  /// from followers is allowed. However, we need the flag here as an
-  /// operation option to hand it in to
-  /// `RestVocbaseBaseHandler::createTransaction`, which either continues
-  /// using a transaction or creates a new one.
+  // whether or not reading from followers is allowed in a read/only
+  // transaction. Note that it is a property of the transaction if reading
+  // from followers is allowed. However, we need the flag here as an
+  // operation option to hand it in to
+  // `RestVocbaseBaseHandler::createTransaction`, which either continues
+  // using a transaction or creates a new one.
   bool allowDirtyReads = false;
 
   // get associated execution context
@@ -184,7 +201,9 @@ struct OperationOptions {
   ExecContext const* _context = nullptr;
 };
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 std::ostream& operator<<(std::ostream& os, OperationOptions const& ops);
+#endif
 
 #if defined(__GNUC__) && \
     (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))

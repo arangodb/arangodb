@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,10 +33,11 @@
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/PersistedLog.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Mocks/ReplicatedStateMetricsMock.h"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -51,6 +53,7 @@ struct FollowerSnapshotTest
     using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
     using CoreType = test::TestCoreType;
     using CoreParameterType = void;
+    using CleanupHandlerType = void;
   };
 
   std::shared_ptr<State::FactoryType> factory =
@@ -59,6 +62,8 @@ struct FollowerSnapshotTest
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
   std::shared_ptr<ReplicatedStateMetrics> _metrics =
       std::make_shared<ReplicatedStateMetricsMock>("foo");
+  std::shared_ptr<test::MockStatePersistorInterface> _persistor =
+      std::make_shared<test::MockStatePersistorInterface>();
 };
 
 using FollowerSnapshotDeathTest = FollowerSnapshotTest;
@@ -78,7 +83,7 @@ TEST_F(FollowerSnapshotDeathTest, basic_follower_manager_test) {
   auto manager = std::make_shared<FollowerStateManager<State>>(
       loggerCtx, nullptr, follower, std::move(core),
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory,
-      _metrics);
+      _metrics, _persistor);
   manager->run();
   {
     auto status = *manager->getStatus().asFollowerStatus();
@@ -189,7 +194,7 @@ TEST_F(FollowerSnapshotTest, follower_resign_before_leadership_acked) {
   auto manager = std::make_shared<FollowerStateManager<State>>(
       loggerCtx, nullptr, follower, std::move(core),
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory,
-      _metrics);
+      _metrics, _persistor);
   manager->run();
   {
     auto status = *manager->getStatus().asFollowerStatus();
@@ -222,7 +227,7 @@ TEST_F(FollowerSnapshotTest,
                        .error = std::nullopt}));
   auto manager = std::make_shared<FollowerStateManager<State>>(
       loggerCtx, nullptr, follower, std::move(core), std::move(token), factory,
-      _metrics);
+      _metrics, _persistor);
   manager->run();
   {
     auto status = *manager->getStatus().asFollowerStatus();

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,26 +23,27 @@
 
 #pragma once
 
+#include "Basics/AttributeNameParser.h"
+#include "Basics/Result.h"
+#include "Geo/GeoParams.h"
+
 #include <s2/s2cell_id.h>
 #include <s2/s2latlng.h>
 
-#include "Basics/Result.h"
-#include "Geo/GeoParams.h"
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
 struct AstNode;
 struct Variable;
 }  // namespace aql
-namespace basics {
-struct AttributeName;
-}
 namespace velocypack {
 class Slice;
 }
 
 namespace geo {
-struct Coordinate;
 struct QueryParams;
 class ShapeContainer;
 }  // namespace geo
@@ -66,18 +67,18 @@ struct Index {
 
  protected:
   /// @brief Initialize coverParams
-  Index(velocypack::Slice const&,
+  Index(velocypack::Slice info,
         std::vector<std::vector<basics::AttributeName>> const&);
 
  public:
   /// @brief Parse document and return cells for indexing
-  Result indexCells(velocypack::Slice const& doc, std::vector<S2CellId>& cells,
+  Result indexCells(velocypack::Slice doc, std::vector<S2CellId>& cells,
                     S2Point& centroid) const;
 
-  Result shape(velocypack::Slice const& doc, geo::ShapeContainer& shape) const;
+  Result shape(velocypack::Slice doc, geo::ShapeContainer& shape) const;
 
   /// @brief Parse AQL condition into query parameters
-  /// Public to allow usage by legacy geo indexes
+  /// Public to allow usage by legacy geo indexes.
   static void parseCondition(aql::AstNode const* node,
                              aql::Variable const* reference,
                              geo::QueryParams& params, bool legacy);

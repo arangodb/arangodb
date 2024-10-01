@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,7 +26,6 @@
 #include <ostream>
 #include <string>
 
-#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
@@ -40,14 +39,12 @@ namespace arangodb {
 
 class Endpoint {
  public:
-  enum class TransportType { HTTP, VST };
   enum class EndpointType { SERVER, CLIENT };
   enum class EncryptionType { NONE = 0, SSL };
   enum class DomainType { UNKNOWN = 0, UNIX, IPV4, IPV6, SRV };
 
  protected:
-  Endpoint(DomainType, EndpointType, TransportType, EncryptionType,
-           std::string const&, int);
+  Endpoint(DomainType, EndpointType, EncryptionType, std::string const&, int);
 
  public:
   virtual ~Endpoint() = default;
@@ -58,11 +55,10 @@ class Endpoint {
   static Endpoint* serverFactory(std::string const&, int, bool reuseAddress);
   static Endpoint* clientFactory(std::string const&);
   static Endpoint* factory(EndpointType type, std::string const&, int, bool);
-  static std::string defaultEndpoint(TransportType);
+  static std::string defaultEndpoint();
 
  public:
   bool operator==(Endpoint const&) const;
-  TransportType transport() const { return _transport; }
   EndpointType type() const { return _type; }
   EncryptionType encryption() const { return _encryption; }
   std::string specification() const { return _specification; }
@@ -90,7 +86,6 @@ class Endpoint {
  protected:
   DomainType _domainType;
   EndpointType _type;
-  TransportType _transport;
   EncryptionType _encryption;
   std::string _specification;
   int _listenBacklog;
@@ -98,9 +93,9 @@ class Endpoint {
   bool _connected;
   TRI_socket_t _socket;
 };
-}  // namespace arangodb
 
-std::ostream& operator<<(std::ostream&, arangodb::Endpoint::TransportType);
-std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EndpointType);
-std::ostream& operator<<(std::ostream&, arangodb::Endpoint::EncryptionType);
-std::ostream& operator<<(std::ostream&, arangodb::Endpoint::DomainType);
+std::ostream& operator<<(std::ostream&, Endpoint::EndpointType);
+std::ostream& operator<<(std::ostream&, Endpoint::EncryptionType);
+std::ostream& operator<<(std::ostream&, Endpoint::DomainType);
+
+}  // namespace arangodb

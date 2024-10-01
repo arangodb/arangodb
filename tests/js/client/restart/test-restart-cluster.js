@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false */
 /* global getOptions, assertTrue, assertEqual, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for security-related server options
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
 const _ = require('lodash');
@@ -52,10 +49,10 @@ function testSuite() {
       if (res.status === 200 || res.status === 401 || res.status === 403) {
         break;
       }
-      console.warn("waiting for server response from url " + baseurl);
+      console.warn(`waiting for server response from url ${baseurl} - got ${JSON.stringify(res)}`);
       require('internal').sleep(0.5);
     }
-    return res.status;
+    return res;
   };
 
   let checkAvailability = function (servers, expectedCode) {
@@ -94,7 +91,7 @@ function testSuite() {
         "server.authentication": "false"
       });
       let aliveStatus = waitForAlive(30, coordinator.url, {});
-      assertEqual(200, aliveStatus);
+      assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
     },
 
     testRestartCoordinatorNormal : function() {
@@ -143,7 +140,7 @@ function testSuite() {
 
         // we expect this to run into a timeout
         let aliveStatus = waitForAlive(20, coordinator.url, {});
-        assertEqual(200, aliveStatus);
+        assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
       } finally {
         // make db servers available again
         coordinator.suspended = false; 
@@ -151,7 +148,7 @@ function testSuite() {
         
         // check that the coordinator is usable again
         let aliveStatus = waitForAlive(20, coordinator.url, {});
-        assertEqual(200, aliveStatus);
+        assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
       }
     },
     
@@ -188,7 +185,7 @@ function testSuite() {
         }, 'HS256');
     
         let aliveStatus = waitForAlive(30, coordinator.url, { auth: { bearer: jwt } });
-        assertEqual(401, aliveStatus);
+        assertEqual(401, aliveStatus.status, JSON.stringify(aliveStatus));
       } finally {
         // make db servers available again
         coordinator.suspended = false; 
@@ -228,7 +225,7 @@ function testSuite() {
     
         let aliveStatus = waitForAlive(30, coordinator.url, { auth: { bearer: jwt } });
         // note: this should actually work, but currently doesn't TODO
-        assertTrue([500, 503].indexOf(aliveStatus) !== -1, aliveStatus);
+        assertTrue([500, 503].indexOf(aliveStatus.status) !== -1, JSON.stringify(aliveStatus));
       } finally {
         // make db servers available again
         coordinator.suspended = false; 

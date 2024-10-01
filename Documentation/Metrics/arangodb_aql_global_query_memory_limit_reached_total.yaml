@@ -15,5 +15,5 @@ description: |
   Total number of times the global query memory limit threshold was reached.
   This can happen if all running AQL queries in total try to use more memory than
   configured via the `--query.global-memory-limit` startup option.
-  Every time this counter will increase, an AQL query will have aborted with a
+  Every time this counter increases, an AQL query aborted with a
   "resource limit exceeded" error.

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,6 @@
 
 #include "Collection.h"
 
-#include <velocypack/Iterator.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -33,9 +31,13 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+
+#include <absl/strings/str_cat.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -82,7 +84,7 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
 }
 
 /// @brief upgrade the access type to exclusive
-void Collection::setExclusiveAccess() {
+void Collection::setExclusiveAccess() noexcept {
   TRI_ASSERT(AccessMode::isWriteOrExclusive(_accessType));
   _accessType = AccessMode::Type::EXCLUSIVE;
 }
@@ -104,50 +106,22 @@ size_t Collection::count(transaction::Methods* trx,
   return static_cast<size_t>(res.slice().getUInt());
 }
 
-std::unordered_set<std::string> Collection::responsibleServers() const {
-  std::unordered_set<std::string> result;
-  auto& clusterInfo =
-      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-
-  auto shardIds = this->shardIds();
-  for (auto const& it : *shardIds) {
-    auto servers = clusterInfo.getResponsibleServer(it);
-    result.emplace((*servers)[0]);
-  }
-  return result;
-}
-
-size_t Collection::responsibleServers(
-    std::unordered_set<std::string>& result) const {
-  auto& clusterInfo =
-      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-
-  size_t n = 0;
-  auto shardIds = this->shardIds();
-  for (auto const& it : *shardIds) {
-    auto servers = clusterInfo.getResponsibleServer(it);
-    result.emplace((*servers)[0]);
-    ++n;
-  }
-  return n;
-}
-
-std::string const& Collection::distributeShardsLike() const {
+std::string Collection::distributeShardsLike() const {
   return getCollection()->distributeShardsLike();
 }
 
 /// @brief returns the shard ids of a collection
-std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
+std::shared_ptr<std::vector<ShardID> const> Collection::shardIds() const {
   auto& clusterInfo =
       _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   auto coll = getCollection();
   if (coll->isSmart() && coll->type() == TRI_COL_TYPE_EDGE) {
     auto names = coll->realNamesForRead();
-    auto res = std::make_shared<std::vector<std::string>>();
+    auto res = std::make_shared<std::vector<ShardID>>();
     for (auto const& n : names) {
       auto collectionInfo = clusterInfo.getCollection(_vocbase->name(), n);
       auto list = clusterInfo.getShardList(
-          arangodb::basics::StringUtils::itoa(collectionInfo->id().id()));
+          basics::StringUtils::itoa(collectionInfo->id().id()));
       for (auto const& x : *list) {
         res->push_back(x);
       }
@@ -155,13 +129,12 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     return res;
   }
 
-  return clusterInfo.getShardList(
-      arangodb::basics::StringUtils::itoa(id().id()));
+  return clusterInfo.getShardList(basics::StringUtils::itoa(id().id()));
 }
 
 /// @brief returns the filtered list of shard ids of a collection
-std::shared_ptr<std::vector<std::string>> Collection::shardIds(
-    std::unordered_set<std::string> const& includedShards) const {
+std::shared_ptr<std::vector<ShardID> const> Collection::shardIds(
+    std::unordered_set<ShardID> const& includedShards) const {
   // use the simple method first
   auto copy = shardIds();
 
@@ -171,14 +144,12 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds(
   }
 
   // copy first as we will modify the result
-  auto result = std::make_shared<std::vector<std::string>>();
+  auto result = std::make_shared<std::vector<ShardID>>(*copy);
 
-  // post-filter the result
-  for (auto const& it : *copy) {
-    if (includedShards.find(it) == includedShards.end()) {
-      continue;
-    }
-    result->emplace_back(it);
+  if (!includedShards.empty()) {
+    std::erase_if(*result, [&includedShards](auto const& s) {
+      return !includedShards.contains(s);
+    });
   }
 
   return result;
@@ -222,15 +193,19 @@ std::string const& Collection::smartJoinAttribute() const {
   return getCollection()->smartJoinAttribute();
 }
 
-TRI_vocbase_t* Collection::vocbase() const { return _vocbase; }
+TRI_vocbase_t* Collection::vocbase() const noexcept { return _vocbase; }
 
-AccessMode::Type Collection::accessType() const { return _accessType; }
+AccessMode::Type Collection::accessType() const noexcept { return _accessType; }
 
-void Collection::accessType(AccessMode::Type type) { _accessType = type; }
+void Collection::accessType(AccessMode::Type type) noexcept {
+  _accessType = type;
+}
 
-bool Collection::isReadWrite() const { return _isReadWrite; }
+bool Collection::isReadWrite() const noexcept { return _isReadWrite; }
 
-void Collection::isReadWrite(bool isReadWrite) { _isReadWrite = isReadWrite; }
+void Collection::isReadWrite(bool isReadWrite) noexcept {
+  _isReadWrite = isReadWrite;
+}
 
 std::string const& Collection::name() const {
   if (!_currentShard.empty()) {
@@ -259,10 +234,10 @@ std::shared_ptr<arangodb::Index> Collection::indexByIdentifier(
   auto idx = this->getCollection()->lookupIndex(iid);
 
   if (!idx) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                   "Could not find index '" + idxId +
-                                       "' in collection '" + this->name() +
-                                       "'.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+        absl::StrCat("Could not find index '", idxId, "' in collection '",
+                     this->name(), "'."));
   }
 
   return idx;
@@ -273,10 +248,11 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
 
   // update selectivity estimates if they were expired
   if (ServerState::instance()->isCoordinator()) {
-    coll->clusterIndexEstimates(true);
+    coll->getPhysical()->clusterIndexEstimates(true,
+                                               /*tid*/ TransactionId::none());
   }
 
-  std::vector<std::shared_ptr<Index>> indexes = coll->getIndexes();
+  auto indexes = coll->getPhysical()->getReadyIndexes();
   indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
                                [](std::shared_ptr<Index> const& x) {
                                  return x->isHidden();
@@ -302,7 +278,7 @@ void Collection::checkCollection() const {
   if (_collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
-            ": " + _name);
+        absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
+                     ": ", _name));
   }
 }

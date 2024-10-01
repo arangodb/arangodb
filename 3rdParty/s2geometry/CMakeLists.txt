@@ -1,8 +1,7 @@
 add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function)
 add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function)
 
-set(ARANGO_S2GEOMETRY_VERSION "0e7b146") # 0e7b146184fbf119e60ceaf176c2b580c9d2cef4
-set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
+set(ARANGO_S2GEOMETRY_VERSION "master") # 254c13666f65f35f5343d34dfbc749e1fb7772ca
 
 set(PYTHON_INCLUDE_DIR "")
 set(GTEST_ROOT "")
@@ -17,7 +16,7 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "Build examples" FORCE)
 set(INSTALL_HEADERS OFF CACHE BOOL "Install headers" FORCE)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${ARANGO_S2GEOMETRY_VERSION} EXCLUDE_FROM_ALL)
+add_subdirectory(${ARANGO_S2GEOMETRY_VERSION})
 
 # result
 list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/s2geometry/${ARANGO_S2GEOMETRY_VERSION}")

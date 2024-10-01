@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,15 +22,17 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "v8-dispatcher.h"
 
 #include <velocypack/Builder.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -42,25 +44,28 @@
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Methods/Tasks.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <string>
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          private helper
-// functions
-// -----------------------------------------------------------------------------
+namespace {
+constexpr std::string_view moduleName("Foxx queues management");
+}
 
 static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
@@ -358,7 +363,8 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextSuperuserScope exscope;
-  auto ctx = transaction::V8Context::Create(*vocbase, true);
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(*vocbase, origin, true);
   SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
                                   AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
@@ -409,7 +415,8 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextSuperuserScope exscope;
-  auto ctx = transaction::V8Context::Create(*vocbase, true);
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  auto ctx = transaction::V8Context::create(*vocbase, origin, true);
   SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);

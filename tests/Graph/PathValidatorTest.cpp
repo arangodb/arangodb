@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -97,7 +98,7 @@ class PathValidatorTest : public ::testing::Test {
   // Expression Parts
   arangodb::transaction::Methods _trx{_query->newTrxContext()};
   aql::Ast* _ast{_query->ast()};
-  aql::Variable _tmpVar{"tmp", 0, false};
+  aql::Variable _tmpVar{"tmp", 0, false, _resourceMonitor};
   aql::AstNode* _varNode{::InitializeReference(*_ast, _tmpVar)};
 
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
@@ -231,7 +232,7 @@ TYPED_TEST(PathValidatorTest,
   // The next 3 steps are good to take.
   for (size_t i = 0; i < 3; ++i) {
     auto neighbors = this->expandPath(s);
-    ASSERT_EQ(neighbors.size(), 1)
+    ASSERT_EQ(neighbors.size(), 1U)
         << "Not enough connections after step " << s.getVertexIdentifier();
     s = neighbors.at(0);
     auto res = validator.validatePath(s);
@@ -242,7 +243,7 @@ TYPED_TEST(PathValidatorTest,
   // Now we move to the duplicate vertex
   {
     auto neighbors = this->expandPath(s);
-    ASSERT_EQ(neighbors.size(), 1);
+    ASSERT_EQ(neighbors.size(), 1U);
     s = neighbors.at(0);
     auto res = validator.validatePath(s);
 
@@ -274,7 +275,7 @@ TYPED_TEST(PathValidatorTest,
   // The next 3 steps are good to take.
   for (size_t i = 0; i < 3; ++i) {
     auto neighbors = this->expandPath(s);
-    ASSERT_EQ(neighbors.size(), 1)
+    ASSERT_EQ(neighbors.size(), 1U)
         << "Not enough connections after step " << s.getVertexIdentifier();
     s = neighbors.at(0);
     auto res = validator.validatePath(s);
@@ -285,7 +286,7 @@ TYPED_TEST(PathValidatorTest,
   // Now we move to the duplicate vertex
   {
     auto neighbors = this->expandPath(s);
-    ASSERT_EQ(neighbors.size(), 1);
+    ASSERT_EQ(neighbors.size(), 1U);
     s = neighbors.at(0);
     auto res = validator.validatePath(s);
 
@@ -317,7 +318,7 @@ TYPED_TEST(PathValidatorTest,
   // The next 3 steps are good to take.
   for (size_t i = 0; i < 3; ++i) {
     auto neighbors = this->expandPath(s);
-    ASSERT_EQ(neighbors.size(), 1)
+    ASSERT_EQ(neighbors.size(), 1U)
         << "Not enough connections after step " << s.getVertexIdentifier();
     s = neighbors.at(0);
     auto res = validator.validatePath(s);
@@ -328,7 +329,7 @@ TYPED_TEST(PathValidatorTest,
   // Now we move to the duplicate vertex
   {
     auto neighbors = this->expandPath(s);
-    ASSERT_EQ(neighbors.size(), 1);
+    ASSERT_EQ(neighbors.size(), 1U);
     s = neighbors.at(0);
     auto res = validator.validatePath(s);
 
@@ -362,7 +363,7 @@ TYPED_TEST(PathValidatorTest,
 
   auto branch = this->expandPath(s);
   // 1 and 4, we do not care on the ordering.
-  ASSERT_EQ(branch.size(), 2);
+  ASSERT_EQ(branch.size(), 2U);
   {
     {
       // Test the branch vertex itself
@@ -374,7 +375,7 @@ TYPED_TEST(PathValidatorTest,
     // The first branch is good until the end
     for (size_t i = 0; i < 2; ++i) {
       auto neighbors = this->expandPath(s);
-      ASSERT_EQ(neighbors.size(), 1)
+      ASSERT_EQ(neighbors.size(), 1U)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);
       auto res = validator.validatePath(s);
@@ -393,7 +394,7 @@ TYPED_TEST(PathValidatorTest,
     }
     for (size_t i = 0; i < 1; ++i) {
       auto neighbors = this->expandPath(s);
-      ASSERT_EQ(neighbors.size(), 1)
+      ASSERT_EQ(neighbors.size(), 1U)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);
       auto res = validator.validatePath(s);
@@ -404,7 +405,7 @@ TYPED_TEST(PathValidatorTest,
     // Now we move to the duplicate vertex
     {
       auto neighbors = this->expandPath(s);
-      ASSERT_EQ(neighbors.size(), 1);
+      ASSERT_EQ(neighbors.size(), 1U);
       s = neighbors.at(0);
       auto res = validator.validatePath(s);
 
@@ -443,7 +444,7 @@ TYPED_TEST(PathValidatorTest,
   // 1 and 4, we do need to care on the ordering, this is right now guaranteed.
   // If this test fails at any point in time, we can add some code here that
   // ensures that we first visit Vertex 1, then Vertex 4
-  ASSERT_EQ(branch.size(), 2);
+  ASSERT_EQ(branch.size(), 2U);
   {
     // The first branch is good until the end
     {
@@ -455,7 +456,7 @@ TYPED_TEST(PathValidatorTest,
     }
     for (size_t i = 0; i < 2; ++i) {
       auto neighbors = this->expandPath(s);
-      ASSERT_EQ(neighbors.size(), 1)
+      ASSERT_EQ(neighbors.size(), 1U)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);
       auto res = validator.validatePath(s);
@@ -474,7 +475,7 @@ TYPED_TEST(PathValidatorTest,
     }
     for (size_t i = 0; i < 1; ++i) {
       auto neighbors = this->expandPath(s);
-      ASSERT_EQ(neighbors.size(), 1)
+      ASSERT_EQ(neighbors.size(), 1U)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);
       auto res = validator.validatePath(s);
@@ -485,7 +486,7 @@ TYPED_TEST(PathValidatorTest,
     // Now we move to the duplicate vertex
     {
       auto neighbors = this->expandPath(s);
-      ASSERT_EQ(neighbors.size(), 1);
+      ASSERT_EQ(neighbors.size(), 1U);
       s = neighbors.at(0);
       auto res = validator.validatePath(s);
 
@@ -520,12 +521,12 @@ TYPED_TEST(PathValidatorTest,
   }
 
   auto branch = this->expandPath(s);
-  ASSERT_EQ(branch.size(), 1);
+  ASSERT_EQ(branch.size(), 1U);
   {
     // until the first 2 it's safe
     for (size_t i = 0; i < 2; ++i) {
       auto neighbors = this->expandPath(s);
-      ASSERT_EQ(neighbors.size(), 1)
+      ASSERT_EQ(neighbors.size(), 1U)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);  //  s == 1, s == 2
       auto res = validator.validatePath(s);
@@ -536,7 +537,7 @@ TYPED_TEST(PathValidatorTest,
     // extend to the second 1; pruning and filtering
     // depends only on VertexUniqueness, the edge (2,1) is new
     auto neighbors = this->expandPath(s);  // {1}
-    ASSERT_EQ(neighbors.size(), 1)
+    ASSERT_EQ(neighbors.size(), 1U)
         << "Not enough connections after step " << s.getVertexIdentifier();
     s = neighbors.at(0);  // s == 1 (second time)
     auto res = validator.validatePath(s);
@@ -550,7 +551,7 @@ TYPED_TEST(PathValidatorTest,
       // extend to the second 2, the edge repeats
       neighbors = this->expandPath(s);  // {2} (second time)
       s = neighbors.at(0);              // 2
-      ASSERT_EQ(neighbors.size(), 1)
+      ASSERT_EQ(neighbors.size(), 1U)
           << "Not enough connections after step " << s.getVertexIdentifier();
       res = validator.validatePath(s);
       if (this->getEdgeUniqueness() == EdgeUniquenessLevel::NONE) {
@@ -589,7 +590,7 @@ TYPED_TEST(PathValidatorTest,
   // 1 and 4, we do need to care on the ordering, this is right now guaranteed.
   // If this test fails at any point in time, we can add some code here that
   // ensures that we first visit Vertex 1, then Vertex 4
-  ASSERT_EQ(branch.size(), 2);
+  ASSERT_EQ(branch.size(), 2U);
   {
     // The first branch is good until the end
     {
@@ -601,7 +602,7 @@ TYPED_TEST(PathValidatorTest,
     }
     for (size_t i = 0; i < 2; ++i) {  // vertices 2 and 3
       auto neighbors = this->expandPath(s);
-      ASSERT_EQ(neighbors.size(), 1)
+      ASSERT_EQ(neighbors.size(), 1U)
           << "Not enough connections after step " << s.getVertexIdentifier();
       s = neighbors.at(0);
       auto res = validator.validatePath(s);
@@ -621,7 +622,7 @@ TYPED_TEST(PathValidatorTest,
       // extend to vertex 2
       auto neighbors = this->expandPath(s);  // {2}
       res = validator.validatePath(s);
-      ASSERT_EQ(neighbors.size(), 1)
+      ASSERT_EQ(neighbors.size(), 1U)
           << "Not enough connections after step " << s.getVertexIdentifier();
       if (this->getVertexUniqueness() == VertexUniquenessLevel::GLOBAL) {
         EXPECT_TRUE(res.isFiltered());
@@ -631,7 +632,7 @@ TYPED_TEST(PathValidatorTest,
         EXPECT_FALSE(res.isPruned());
         // extend to vertex 3
         neighbors = this->expandPath(s);
-        ASSERT_EQ(neighbors.size(), 1)
+        ASSERT_EQ(neighbors.size(), 1U)
             << "Not enough connections after step " << s.getVertexIdentifier();
         res = validator.validatePath(s);
         if (this->getEdgeUniqueness() == EdgeUniquenessLevel::NONE ||
@@ -677,13 +678,60 @@ TYPED_TEST(PathValidatorTest, it_should_test_an_all_vertices_condition) {
 
     // Testing condition on level 1 (not start)
     auto neighbors = this->expandPath(s);
-    ASSERT_EQ(neighbors.size(), 1);
+    ASSERT_EQ(neighbors.size(), 1U);
     s = neighbors.at(0);
     {
       // Testing x._key == "1" with `{_key: "1"} => Should succeed
       auto res = validator.validatePath(s);
       EXPECT_FALSE(res.isFiltered());
       EXPECT_FALSE(res.isPruned());
+    }
+  }
+}
+
+TYPED_TEST(PathValidatorTest, it_should_test_an_all_edges_condition) {
+  this->addEdgesOfPath({0, 1, 2});
+  std::string keyToMatch = "1";
+
+  auto expression = this->conditionKeyMatches(keyToMatch);
+
+  auto& opts = this->options();
+
+  opts.setAllEdgesExpression(std::move(expression));
+
+  auto validator = this->testee();
+  {
+    // Testing x._key == "1" with `{_key: "1"} => Should succeed
+    // but only because the edge condition is ignored (as there is no edge in
+    // the step ...)
+    Step s = this->startPath(1);
+    auto e = s.getEdge();
+    auto res = validator.validatePath(s);
+    EXPECT_FALSE(res.isFiltered());
+    EXPECT_FALSE(res.isPruned());
+  }
+
+  // start a new path, so reset the uniqueness checks
+  validator.reset();
+
+  {
+    // Testing x._key == "1" with `{_key: "0"} => Should fail
+    Step s = this->startPath(0);
+    {
+      auto res = validator.validatePath(s);
+      EXPECT_FALSE(res.isFiltered());
+      EXPECT_FALSE(res.isPruned());
+    }
+
+    // Testing condition on level 1 (not start)
+    auto neighbors = this->expandPath(s);
+    ASSERT_EQ(neighbors.size(), 1U);
+    s = neighbors.at(0);
+    {
+      // Testing x._key == "1" with `{_key: "1"} => Should succeed
+      auto res = validator.validatePath(s);
+      EXPECT_TRUE(res.isFiltered());
+      EXPECT_TRUE(res.isPruned());
     }
   }
 }

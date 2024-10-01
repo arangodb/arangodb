@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,12 +30,14 @@
 #include "Endpoint/Endpoint.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include <chrono>
+#include <string_view>
 
+#include <absl/strings/str_cat.h>
 #include <fuerte/helper.h>
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 
@@ -48,6 +50,11 @@ using namespace std::chrono_literals;
 using clock = std::chrono::steady_clock;
 using RequestType = arangodb::AsyncAgencyComm::RequestType;
 
+constexpr std::string_view AGENCY_URL_READ = "/_api/agency/read";
+constexpr std::string_view AGENCY_URL_WRITE = "/_api/agency/write";
+constexpr std::string_view AGENCY_URL_POLL = "/_api/agency/poll";
+constexpr std::string_view AGENCY_URL_TRANSIENT = "/_api/agency/transient";
+
 struct RequestMeta {
   network::Timeout timeout;
   fuerte::RestVerb method;
@@ -59,6 +66,7 @@ struct RequestMeta {
   clock::time_point startTime;
   uint64_t requestId;
   bool skipScheduler;
+  bool sendHLCHeader;
   unsigned tries;
 
   [[nodiscard]] bool isRetryOnNoResponse() const {
@@ -97,16 +105,16 @@ auto agencyAsyncWaitTime(RequestMeta const& meta) {
                       clock::now());
 }
 
-std::string extractEndpointFromUrl(std::string const& location) {
+std::string extractEndpointFromUrl(std::string_view location) {
   std::string specification;
   size_t delim = std::string::npos;
 
-  if (location.compare(0, 7, "http://", 7) == 0) {
-    specification = "http+tcp://" + location.substr(7);
-    delim = specification.find_first_of('/', 12);
-  } else if (location.compare(0, 8, "https://", 8) == 0) {
-    specification = "http+ssl://" + location.substr(8);
-    delim = specification.find_first_of('/', 13);
+  if (location.starts_with("http://")) {
+    specification = absl::StrCat("http+tcp://", location.substr(7));
+    delim = specification.find('/', 12);
+  } else if (location.starts_with("https://")) {
+    specification = absl::StrCat("http+ssl://", location.substr(8));
+    delim = specification.find('/', 13);
   }
 
   // invalid location header
@@ -128,14 +136,14 @@ void redirectOrError(AsyncAgencyCommManager& man, std::string const& endpoint,
   }
 }
 
-auto agencyAsyncWait(RequestMeta const& meta, clock::duration d)
-    -> futures::Future<futures::Unit> {
+auto agencyAsyncWait(std::string_view name, RequestMeta const& meta,
+                     clock::duration d) -> futures::Future<futures::Unit> {
   if (d == clock::duration::zero()) {
     return futures::makeFuture();
   }
 
   if (!meta.skipScheduler) {
-    return SchedulerFeature::SCHEDULER->delay(d);
+    return SchedulerFeature::SCHEDULER->delay(name, d);
   }
 
   std::this_thread::sleep_for(d);
@@ -175,7 +183,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
       << "ms"
       << " timeout: " << meta.timeout.count() << "s";
 
-  auto future = agencyAsyncWait(meta, waitTime);
+  auto future = agencyAsyncWait("agency-async-inquiry", meta, waitTime);
   return std::move(future).thenValue([meta = std::move(meta), &man,
                                       body = std::move(body)](auto) mutable {
     // build inquire request
@@ -194,6 +202,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
     network::RequestOptions opts;
     opts.timeout = meta.timeout;
     opts.skipScheduler = meta.skipScheduler;
+    // never compress requests to the agency, so that we do not spend too much
+    // CPU on compression/decompression. some agent instances run with a very
+    // low number of cores (even fractions of physical cores), so we cannot
+    // waste too much CPU resources there.
+    opts.allowCompression = false;
 
     auto future = network::sendRequest(man.pool(), endpoint, meta.method,
                                        "/_api/agency/inquire", std::move(query),
@@ -245,11 +258,6 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
         case Error::QueueCapacityExceeded:
           // retry the request after a timeout
           return agencyAsyncInquiry(man, std::move(meta), std::move(body));
-
-        case Error::VstUnauthorized:
-          // unrecoverable error
-          return futures::makeFuture(
-              AsyncAgencyCommResult{result.error, result.stealResponse()});
       }
 
       ADB_UNREACHABLE;
@@ -287,7 +295,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
       << " timeout: " << meta.timeout.count() << "s";
 
   // after a possible small delay (if required)
-  return agencyAsyncWait(meta, waitTime)
+  return agencyAsyncWait("agency-async-send", meta, waitTime)
       .thenValue([meta = std::move(meta), &man,
                   body = std::move(body)](auto) mutable {
         // acquire the current endpoint
@@ -295,6 +303,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
         network::RequestOptions opts;
         opts.timeout = meta.timeout;
         opts.skipScheduler = meta.skipScheduler;
+        opts.sendHLCHeader = meta.sendHLCHeader;
+        opts.handleContentEncoding = true;
+        // never compress requests to the agency, so that we do not spend too
+        // much CPU on compression/decompression. some agent instances run with
+        // a very low number of cores (even fractions of physical cores), so we
+        // cannot waste too much CPU resources there.
+        opts.allowCompression = false;
         opts.parameters = meta.params;
 
         auto requestId = meta.requestId;
@@ -407,12 +422,6 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
                                            std::move(result.request())
                                                .moveBuffer());  // retry always
                 }
-
-                case Error::VstUnauthorized: {
-                  // unrecoverable error
-                  return futures::makeFuture(AsyncAgencyCommResult{
-                      result.error, result.stealResponse()});
-                }
               }
 
               ADB_UNREACHABLE;
@@ -431,38 +440,50 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 
 namespace arangodb {
 
-AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& url,
-    network::Timeout timeout, RequestType type, uint64_t index) const {
-  std::vector<ClientId> clientIds;
-  return sendWithFailover(method, url + "?index=" + std::to_string(index),
-                          timeout, type, std::move(clientIds),
-                          VPackBuffer<uint8_t>{});
+futures::Future<consensus::index_t> AsyncAgencyComm::getCurrentCommitIndex()
+    const {
+  auto future = sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config",
+                                 120s, RequestType::READ, {});
+  return std::move(future).thenValue([](AsyncAgencyCommResult&& response) {
+    if (auto result = response.asResult(); result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
+    }
+
+    auto slice = response.slice();
+    return slice.get("commitIndex").extract<consensus::index_t>();
+  });
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& url,
+    arangodb::fuerte::RestVerb method, std::string_view url,
+    network::Timeout timeout, RequestType type, uint64_t index) const {
+  return sendWithFailover(method, absl::StrCat(url, "?index=", index), timeout,
+                          type, /*clientIds*/ {}, VPackBuffer<uint8_t>{});
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
+    arangodb::fuerte::RestVerb method, std::string_view url,
     network::Timeout timeout, RequestType type,
     velocypack::Buffer<uint8_t>&& body) const {
-  std::vector<ClientId> clientIds;
-  return sendWithFailover(method, url, timeout, type, std::move(clientIds),
+  return sendWithFailover(method, url, timeout, type, /*clientIds*/ {},
                           std::move(body));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& urlIn,
+    arangodb::fuerte::RestVerb method, std::string_view urlIn,
     network::Timeout timeout, RequestType type, std::vector<ClientId> clientIds,
     velocypack::Buffer<uint8_t>&& body) const {
   uint64_t requestId = _manager.nextRequestId();
 
+  network::Headers headers;
   fuerte::StringMap params;
   std::string url = fuerte::extractPathParameters(urlIn, params);
   return agencyAsyncSend(
              _manager,
              RequestMeta({timeout, method, type, url, std::move(clientIds),
-                          network::Headers{}, std::move(params), clock::now(),
-                          requestId,
-                          _skipScheduler || _manager.getSkipScheduler(), 0}),
+                          headers, std::move(params), clock::now(), requestId,
+                          _skipScheduler || _manager.getSkipScheduler(),
+                          /*sendHLCHeader*/ true, 0}),
              std::move(body))
       .then([requestId](futures::Try<AsyncAgencyCommResult>&& e) {
         if (e.hasException()) {
@@ -471,7 +492,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
               << "] had exception during request";
           try {
             e.throwIfFailed();
-          } catch (const std::exception& e) {
+          } catch (std::exception const& e) {
             LOG_TOPIC("aac8c", DEBUG, Logger::AGENCYCOMM)
                 << "sendWithFailover [" << requestId
                 << "] message: " << e.what();
@@ -484,7 +505,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    arangodb::fuerte::RestVerb method, std::string const& url,
+    arangodb::fuerte::RestVerb method, std::string_view url,
     network::Timeout timeout, RequestType type, std::vector<ClientId> clientIds,
     AgencyTransaction const& trx) const {
   VPackBuffer<uint8_t> body;
@@ -554,10 +575,6 @@ ArangodServer& AsyncAgencyCommManager::server() { return _server; }
 
 AsyncAgencyCommManager::AsyncAgencyCommManager(ArangodServer& server)
     : _server(server) {}
-
-const char* AGENCY_URL_READ = "/_api/agency/read";
-const char* AGENCY_URL_WRITE = "/_api/agency/write";
-const char* AGENCY_URL_POLL = "/_api/agency/poll";
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(
     std::string const& path, std::optional<network::Timeout> timeout) const {
@@ -659,6 +676,39 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(
   }
 
   return sendWriteTransaction(timeout, std::move(transaction));
+}
+
+AsyncAgencyComm::FutureResult AsyncAgencyComm::setTransientValue(
+    std::string const& key, velocypack::Slice const& slice,
+    SetTransientOptions const& opts) {
+  VPackBuffer<uint8_t> transaction;
+  {
+    VPackBuilder trxBuilder(transaction);
+    VPackArrayBuilder env(&trxBuilder);
+    {
+      VPackArrayBuilder trx(&trxBuilder);
+      {
+        VPackObjectBuilder ops(&trxBuilder);
+        {
+          VPackObjectBuilder op(&trxBuilder, key);
+          trxBuilder.add("op", VPackValue("set"));
+          trxBuilder.add("new", slice);
+        }
+      }
+    }
+  }
+
+  RequestMeta meta;
+  meta.requestId = _manager.nextRequestId();
+  meta.method = RestVerb::Post;
+  meta.type = RequestType::CUSTOM;
+  meta.url = AGENCY_URL_TRANSIENT;
+  meta.timeout = opts.timeout;
+  meta.skipScheduler = opts.skipScheduler;
+  meta.sendHLCHeader = opts.sendHLCHeader;
+  meta.startTime = clock::now();
+  meta.tries = 0;
+  return agencyAsyncSend(_manager, std::move(meta), std::move(transaction));
 }
 
 std::unique_ptr<AsyncAgencyCommManager> AsyncAgencyCommManager::INSTANCE =

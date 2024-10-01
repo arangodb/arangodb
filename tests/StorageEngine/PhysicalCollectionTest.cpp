@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,16 +40,18 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/BatchOptions.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -75,19 +77,19 @@ class PhysicalCollectionTest
     features.emplace_back(
         server.addFeature<
             arangodb::AuthenticationFeature>());  // required for VocbaseContext
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>());
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(server.addFeature<DatabaseFeature>());
+    auto& selector = server.addFeature<EngineSelectorFeature>();
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
-    features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>());
-    features.emplace_back(
-        server.addFeature<arangodb::QueryRegistryFeature>());  // required for
-                                                               // TRI_vocbase_t
-
-#if USE_ENTERPRISE
-    features.emplace_back(server.addFeature<arangodb::LdapFeature>());
-#endif
+    features.emplace_back(server.addFeature<metrics::MetricsFeature>(
+        LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
+        LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+            nullptr),
+        LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
+    features.emplace_back(server.addFeature<QueryRegistryFeature>(
+        server.template getFeature<
+            metrics::MetricsFeature>()));  // required for TRI_vocbase_t
 
     for (auto& f : features) {
       f.get().prepare();
@@ -95,8 +97,7 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        nullptr);
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
 
     for (auto& f : features) {
       f.get().unprepare();
@@ -109,8 +110,7 @@ class PhysicalCollectionTest
 // -----------------------------------------------------------------------------
 
 TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server));
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
@@ -128,10 +128,11 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
 
   arangodb::transaction::BatchOptions batchOptions;
   auto trx = std::make_shared<arangodb::transaction::Methods>(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::transaction::Options());
   Result res = transaction::helpers::newObjectForInsert(
-      *trx, *collection, doc->slice(), revisionId, builder, options,
+      *trx, *collection, "dummy", doc->slice(), revisionId, builder, options,
       batchOptions);
   EXPECT_TRUE(res.ok());
   EXPECT_TRUE(revisionId.isSet());
@@ -140,17 +141,18 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
 
   EXPECT_TRUE(slice.hasKey("_key"));
   EXPECT_TRUE(slice.get("_key").isString());
+  EXPECT_EQ("dummy", slice.get("_key").stringView());
   EXPECT_TRUE(slice.hasKey("_id"));
   EXPECT_TRUE(slice.get("_id").isCustom());
   EXPECT_TRUE(slice.hasKey("_rev"));
   EXPECT_TRUE(slice.get("_rev").isString());
 
   EXPECT_TRUE(slice.get("doc1").isString());
-  EXPECT_EQ("test1", slice.get("doc1").copyString());
+  EXPECT_EQ("test1", slice.get("doc1").stringView());
   EXPECT_TRUE(slice.get("doc100").isString());
-  EXPECT_EQ("test2", slice.get("doc100").copyString());
+  EXPECT_EQ("test2", slice.get("doc100").stringView());
   EXPECT_TRUE(slice.get("doc2").isString());
-  EXPECT_EQ("test3", slice.get("doc2").copyString());
+  EXPECT_EQ("test3", slice.get("doc2").stringView());
 
   EXPECT_TRUE(slice.hasKey("z"));
   EXPECT_TRUE(slice.get("z").isNumber());
@@ -242,8 +244,7 @@ class MockIndex : public Index {
 };
 
 TEST_F(PhysicalCollectionTest, test_index_ordeing) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server));
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
   std::vector<std::vector<arangodb::basics::AttributeName>> dummyFields;

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,13 +23,15 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <numeric>
+#include <string>
+#include <vector>
 
-#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/FixedVarExpressionContext.h"
-#include "Containers/FlatHashMap.h"
 #include "Aql/PruneExpressionEvaluator.h"
+#include "Containers/FlatHashMap.h"
 #include "Transaction/Methods.h"
 
 namespace arangodb {
@@ -44,13 +46,12 @@ class InputAqlItemRow;
 namespace graph {
 class PathValidatorOptions {
  public:
-  PathValidatorOptions(
-      aql::Variable const* tmpVar,
-      arangodb::aql::FixedVarExpressionContext& expressionContext);
-  PathValidatorOptions(
-      aql::Variable const* tmpVar,
-      arangodb::aql::FixedVarExpressionContext& expressionContext,
-      bool isDisjoint, bool isSatelliteLeader);
+  PathValidatorOptions(aql::Variable const* tmpVar,
+                       aql::FixedVarExpressionContext& expressionContext);
+  PathValidatorOptions(aql::Variable const* tmpVar,
+                       aql::FixedVarExpressionContext& expressionContext,
+                       bool isDisjoint, bool isSatelliteLeader,
+                       bool enabledClusterOneShardRule);
   ~PathValidatorOptions() = default;
   PathValidatorOptions(PathValidatorOptions&&) = default;
   PathValidatorOptions(PathValidatorOptions const&) = default;
@@ -61,6 +62,11 @@ class PathValidatorOptions {
    * path.
    */
   void setAllVerticesExpression(std::unique_ptr<aql::Expression> expression);
+
+  /**
+   * @brief Set the expression that needs to hold true ALL edges on a path.
+   */
+  void setAllEdgesExpression(std::unique_ptr<aql::Expression> expression);
 
   /**
    * @brief Set the expression that needs to hold true for the vertex on the
@@ -106,15 +112,16 @@ class PathValidatorOptions {
    * set during the processing of all DataRows (InputAqlItemRow) from within the
    * specific Executor.
    */
-  void setPruneContext(arangodb::aql::InputAqlItemRow& inputRow);
-  void setPostFilterContext(arangodb::aql::InputAqlItemRow& inputRow);
+  void setPruneContext(aql::InputAqlItemRow& inputRow);
+  void setPostFilterContext(aql::InputAqlItemRow& inputRow);
 
   /**
    * @brief Get the Expression a vertex needs to hold if defined on the given
    * depth. It may return a nullptr if all vertices are valid.
-   * Caller does NOT take responsibilty. Do not delete this pointer.
+   * Caller does NOT take responsibility. Do not delete this pointer.
    */
   aql::Expression* getVertexExpression(uint64_t depth) const;
+  aql::Expression* getEdgeExpression() const;
 
   void addAllowedVertexCollection(std::string const& collectionName);
 
@@ -128,7 +135,6 @@ class PathValidatorOptions {
   aql::FixedVarExpressionContext& getExpressionContext();
 
   // @brief If a graph is asked for the first vertex and that is filtered
-  // it can be removed for 3.9 => nextVersion.
   void setBfsResultHasToIncludeFirstVertex() {
     _bfsResultHasToIncludeFirstVertex = true;
   }
@@ -139,10 +145,14 @@ class PathValidatorOptions {
 
   bool isDisjoint() const { return _isDisjoint; }
   bool isSatelliteLeader() const { return _isSatelliteLeader; }
+  bool isClusterOneShardRuleEnabled() const {
+    return _enabledClusterOneShardRule;
+  }
 
  private:
   // Vertex expression section
   std::shared_ptr<aql::Expression> _allVerticesExpression;
+  std::shared_ptr<aql::Expression> _allEdgesExpression;
   containers::FlatHashMap<uint64_t, std::shared_ptr<aql::Expression>>
       _vertexExpressionOnDepth;
   std::vector<std::string> _allowedVertexCollections;
@@ -153,10 +163,11 @@ class PathValidatorOptions {
   std::shared_ptr<aql::PruneExpressionEvaluator> _postFilterEvaluator;
 
   aql::Variable const* _tmpVar;
-  arangodb::aql::FixedVarExpressionContext& _expressionCtx;
+  aql::FixedVarExpressionContext& _expressionCtx;
 
   bool _isDisjoint;
   bool _isSatelliteLeader;
+  bool _enabledClusterOneShardRule;
 };
 }  // namespace graph
 }  // namespace arangodb

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,16 +25,18 @@
 
 #include "Mocks/Servers.h"
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.cpp"
 #include "Aql/VarUsageFinder.cpp"
 #include "Aql/VarUsageFinder.h"
 #include "Aql/types.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
 
 #include <optional>
-#include <unordered_set>
+#include <string_view>
 #include <vector>
 
 using namespace arangodb;
@@ -44,17 +46,13 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+struct ExecutionNodeMock;
+
 struct PlanMiniMock {
   PlanMiniMock(ExecutionNode::NodeType expectedType)
       : _expectedType(expectedType) {}
 
-  auto increaseCounter(ExecutionNode::NodeType type) {
-    // This is no longer true for subqueries because reasons, i.e. subqueries
-    // are planned multiple times
-    // TODO: refactor subquery planning?
-    // EXPECT_FALSE(_called) << "Only count every node once per run";
-    EXPECT_EQ(_expectedType, type) << "Count the correct type";
-  }
+  auto increaseCounter(ExecutionNodeMock const& type);
 
   ExecutionNode::NodeType _expectedType;
 };
@@ -85,7 +83,7 @@ struct ExecutionNodeMock {
     return ExecutionNode::alwaysCopiesRows(getType());
   }
 
-  auto getType() -> ExecutionNode::NodeType { return _type; }
+  auto getType() const noexcept -> ExecutionNode::NodeType { return _type; }
 
   auto getVarsUsedLater() -> VarSet const& { return _usedLaterStack.back(); }
 
@@ -125,7 +123,7 @@ struct ExecutionNodeMock {
     _regsToClear = std::move(toClear);
   }
 
-  auto getTypeString() const -> std::string const& {
+  auto getTypeString() const -> std::string_view {
     return ExecutionNode::getTypeString(_type);
   }
 
@@ -195,6 +193,14 @@ struct ExecutionNodeMock {
   ExecutionNodeMock* _dependency = nullptr;
 };
 
+auto PlanMiniMock::increaseCounter(ExecutionNodeMock const& type) {
+  // This is no longer true for subqueries because reasons, i.e. subqueries
+  // are planned multiple times
+  // TODO: refactor subquery planning?
+  // EXPECT_FALSE(_called) << "Only count every node once per run";
+  EXPECT_EQ(_expectedType, type.getType()) << "Count the correct type";
+}
+
 auto ExecutionNodeMock::getVarsValid() const -> VarSet const& {
   return _varsValidStack.back();
 }
@@ -205,6 +211,8 @@ auto ExecutionNodeMock::getVarsValidStack() const -> VarSetStack const& {
 class RegisterPlanTest : public ::testing::Test {
  protected:
   RegisterPlanTest() {}
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   auto walk(std::vector<ExecutionNodeMock>& nodes)
       -> std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> {
@@ -228,7 +236,7 @@ class RegisterPlanTest : public ::testing::Test {
     std::array<Variable*, amount> ptrs{};
     for (size_t i = 0; i < amount; ++i) {
       vars.emplace_back("var" + arangodb::basics::StringUtils::itoa(i),
-                        static_cast<VariableId>(i), false);
+                        static_cast<VariableId>(i), false, resourceMonitor);
       ptrs[i] = &vars[i];
     }
 

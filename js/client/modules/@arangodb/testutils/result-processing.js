@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,7 +33,9 @@ const internal = require('internal');
 const inspect = internal.inspect;
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const cu = require('@arangodb/testutils/crash-utils');
+const { getNumSanitizerReports } = require('@arangodb/testutils/san-file-handler');
 const AsciiTable = require('ascii-table');
 const yaml = require('js-yaml');
 const _ = require('lodash');
@@ -47,9 +49,12 @@ const RESET = internal.COLORS.COLOR_RESET;
 const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 const internalMembers = [
+  'crashreport',
   'code',
+  'exitCode',
   'error',
   'status',
+  'skipped',
   'duration',
   'failed',
   'total',
@@ -230,7 +235,9 @@ function saveToJunitXML(options, results) {
       }[c] + ';';
     });
   }
-
+  function stripAnsiColors(s) {
+    return s.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+  }
   function buildXml () {
     let xml = ['<?xml version="1.0" encoding="UTF-8"?>\n'];
 
@@ -267,68 +274,78 @@ function saveToJunitXML(options, results) {
     testRunName: '',
     seenTestCases: false,
   };
-  let prefix = (options.cluster ? 'CL_' : '') + 'RX_';
+  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
+
+  const addOptionalDuration = (elem, test) => {
+    if (test.hasOwnProperty('duration') && test.duration !== undefined) {
+      // time is in seconds
+      elem['time'] =  test.duration / 1000;
+    }
+    return elem;
+  };
+
   iterateTestResults(options, results, xmlState, {
     testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
     testSuite: function(options, state, testSuite, testSuiteName) {
-      let total = 0;
+      const total = testSuite.hasOwnProperty('total') ? testSuite.total : 0;
+      const failed = testSuite.hasOwnProperty('failed') ? testSuite.failed : 0;
       state.seenTestCases = false;
       state.xml = buildXml();
-      state.xmlName = prefix + state.testRunName + '_' + makePathGeneric(testSuiteName).join('_');
-      if (testSuite.hasOwnProperty('total')) {
-        total = testSuite.total;
+      state.xmlName = prefix + state.testRunName + '__' + makePathGeneric(testSuiteName).join('_');
+      let errors = 0;
+      if (!testSuite.status && testSuite.hasOwnProperty('message')) {
+        errors = 1;
       }
-
-      state.xml.elem('testsuite', {
-        errors: 0,
-        failures: testSuite.failed,
+      let elm = {
+        errors: errors,
+        failures: failed,
         tests: total,
         name: state.xmlName,
-        time: 0 + testSuite.duration
-      });
-      
+      };
+      state.xml.elem('testsuite', addOptionalDuration(elm, testSuite));
     },
     testCase: function(options, state, testCase, testCaseName) {
       const success = (testCase.status === true);
 
-      state.xml.elem('testcase', {
-        name: prefix + testCaseName,
-        time: 0 + testCase.duration
-      }, success);      
+      state.xml.elem('testcase', addOptionalDuration({ name: prefix + testCaseName }, testCase), success);      
 
       state.seenTestCases = true;
       if (!success) {
         state.xml.elem('failure');
-        state.xml.text('<![CDATA[' + testCase.message + ']]>\n');
+        let msg;
+        if (testCase.hasOwnProperty('message')) {
+          msg = stripAnsiColors(testCase.message);
+        } else {
+          msg = stripAnsiColors(`testcase ${testCaseName} doesn't have a message! ${JSON.stringify(testCase)}`);
+        }
+        state.xml.text('<![CDATA[' + msg  + ']]>\n');
         state.xml.elem('/failure');
         state.xml.elem('/testcase');
       }
     },
     endTestSuite: function(options, state, testSuite, testSuiteName) {
-      if (!state.seenTestCases) {
-        if (testSuite.failed === 0) {
-          state.xml.elem('testcase', {
-            name: 'all_tests_in_' + state.xmlName,
-            time: 0 + testSuite.duration
-          }, true);
-        } else {
-          state.xml.elem('testcase', {
-            name: 'all_tests_in_' + state.xmlName,
-            failures: testSuite.failuresFound,
-            time: 0 + testSuite.duration
-          }, true);
-        }
+      if (testSuite.hasOwnProperty('skipped') && testSuite.skipped) {
+        state.xml.elem('testcase', {
+          name:  state.xmlName,
+            time: 0.0
+        }, false);
+        state.xml.elem('skipped/', true);
+        state.xml.elem('/testcase');
+      } else if (!state.seenTestCases) {
+        const elem = addOptionalDuration({ name: 'all_tests_in_' + state.xmlName }, testSuite);
+        if (testSuite.failed !== 0 && testSuite.failed !== undefined) {
+          elem['failures'] = testSuite.failed;
+        } 
+        state.xml.elem('testcase', elem, true);
       }
       state.xml.elem('/testsuite');
+      let fn;
       try {
-        fs.write(fs.join(options.testOutputDirectory,
-                         'UNITTEST_RESULT_' + state.xmlName + '.xml'),
-                 state.xml.join(''));
+        fn = fs.join(options.testXmlOutputDirectory,
+                         'UNITTEST_RESULT_' + state.xmlName + '.xml');
+        fs.write(fn, state.xml.join(''));
       } catch (x) {
-        print("Failed to write ` " +
-              fs.join(options.testOutputDirectory,
-                      'UNITTEST_RESULT_' + state.xmlName + '.xml') +
-              '`! - ' + x.message);
+        print(`Failed to write '${fn}'! - ${x.message}`);
         throw(x);
       }
 
@@ -345,6 +362,7 @@ function unitTestPrettyPrintResults (options, results) {
   let onlyFailedMessages = '';
   let failedMessages = '';
   let SuccessMessages = '';
+  let SkipMessages = '';
   let failedSuiteCount = 0;
   let failedTestsCount = 0;
   let successCases = {};
@@ -354,6 +372,7 @@ function unitTestPrettyPrintResults (options, results) {
   let bucketName = "";
   let testRunStatistics = "";
   let isSuccess = true;
+  let isSkipped = false;
   let suiteSuccess = true;
 
   if (options.testBuckets) {
@@ -421,7 +440,8 @@ function unitTestPrettyPrintResults (options, results) {
 
           let details = successCases[name];
           if (details.skipped) {
-            SuccessMessages += YELLOW + '    [SKIPPED] ' + name + RESET + '\n';
+            let msg = ': ' + successCases[name].message;
+            SkipMessages += YELLOW + '    [SKIPPED] ' + name + msg + RESET + '\n';
           } else {
             SuccessMessages += GREEN + '    [SUCCESS] ' + name + RESET + '\n';
           }
@@ -511,15 +531,22 @@ function unitTestPrettyPrintResults (options, results) {
     onlyFailedMessages += failText + '\n';
     failText = RED + failText + RESET;
   }
+  if (getNumSanitizerReports() > 0) { 
+    failText += YELLOW + `\n\n+++ ${getNumSanitizerReports()} sanitizer report(s) found! +++\n` + RESET;
+  }
   if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText === options.testFailureText) {
     // write more verbose failures to the testFailureText file
     onlyFailedMessages += '\n\n' + cu.GDB_OUTPUT;
+  }
+  if (!options.extremeVerbosity) {
+    SkipMessages = '';
   }
   print(`
 ${YELLOW}================================================================================'
 TEST RESULTS
 ================================================================================${RESET}
 ${SuccessMessages}
+${SkipMessages}
 ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}${failText}`);
 
   onlyFailedMessages;
@@ -991,8 +1018,29 @@ function writeDefaultReports(options, testSuites) {
   }
   fs.write(fs.join(options.testOutputDirectory, testFailureText),
            "Incomplete testrun with these testsuites: '" + testSuites +
-           "'\nand these options: " + JSON.stringify(options) + "\n");
+           "'\nand these options: " + JSON.stringify(options, null, 2) + "\n" + cu.GDB_OUTPUT);
 
+}
+
+function processCrashReport(result) {
+  if (cu.GDB_OUTPUT !== '') {
+    result['crashreport'] = cu.GDB_OUTPUT;
+    result['crash'] = {
+      crash_report: {
+        status: false,
+        failed: 1,
+        all: {
+          status: false,
+          failed: 1,
+          message: (result.crashed ? "SUT crashed: \n": "SUT was aborted: \n") + cu.GDB_OUTPUT
+        }
+      },
+      status: false,
+      failed: 1,
+    };
+    result.status = false;
+    result.crashed = true;
+  }
 }
 
 function writeReports(options, results) {
@@ -1059,14 +1107,46 @@ function getFailedTestCases(options) {
   }
 }
 
+function getGTestResults(fileName, defaultResults) {
+  let results = defaultResults;
+  if (!fs.exists(fileName)) {
+    defaultResults.failed += 1;
+    print(RED + "No testresult file found at: " + fileName + RESET);
+    return defaultResults;
+  }
+  let gTestResults = JSON.parse(fs.read(fileName));
+  results.failed = gTestResults.failures + gTestResults.errors;
+  results.status = (gTestResults.errors === 0) && (gTestResults.failures === 0);
+  gTestResults.testsuites.forEach(function (testSuite) {
+    results[testSuite.name] = {
+      failed: testSuite.failures + testSuite.errors,
+      status: (testSuite.failures + testSuite.errors) === 0,
+      duration: parseFloat(testSuite.time) * 1000 // gtest writes sec, internally we have ms
+    };
+    if (testSuite.failures !== 0) {
+      const message = testSuite.testsuite.flatMap(
+        suite => {
+          if (suite.hasOwnProperty('failures')) {
+            return suite.failures.map(fail => fail.failure).join("\n");
+          }
+          return [];
+        }).join("\n");
+      results[testSuite.name].message = message;
+    }
+  });
+  return results;
+}
+
 exports.gatherStatus = gatherStatus;
 exports.gatherFailed = gatherFailed;
 exports.yamlDumpResults = yamlDumpResults;
 exports.addFailRunsMessage = addFailRunsMessage;
+exports.processCrashReport = processCrashReport;
 exports.dumpAllResults = dumpAllResults;
 exports.writeDefaultReports = writeDefaultReports;
 exports.writeReports = writeReports;
 exports.getFailedTestCases = getFailedTestCases;
+exports.getGTestResults = getGTestResults;
 
 exports.analyze = {
   unitTestPrettyPrintResults: unitTestPrettyPrintResults,
@@ -1076,4 +1156,23 @@ exports.analyze = {
   locateShortServerLife: locateShortServerLife,
   locateLongSetupTeardown: locateLongSetupTeardown,
   yaml: yamlDumpResults
+};
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  tu.CopyIntoObject(optionsDefaults, {
+    'testOutputDirectory': 'out',
+    'testXmlOutputDirectory': 'outXml',
+    'writeXmlReport': false,
+    'testFailureText': 'testfailures.txt',
+    'crashAnalysisText': 'testfailures.txt',
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    ' Test result reporting Options:',
+    '   - `testFailureText`: filename of the testsummary file',
+    '   - `crashAnalysisText`: output of debugger in case of crash',
+    '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
+    '   - `writeXmlReport`:  Write junit xml report files',
+    '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `out`',
+    ''
+  ]);
 };

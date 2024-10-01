@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,10 +38,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <cmath>
-
-#ifdef _WIN32
-#undef near
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -333,7 +329,7 @@ class QueryPointAroundTest : public ::testing::Test {
   void checkResult(S2Point const& origin,
                    std::vector<LocalDocumentId> const& result) {
     double lastRad = 0;
-    for (LocalDocumentId const& rev : result) {
+    for (LocalDocumentId rev : result) {
       // check sort order
       S2LatLng const& cords = docs.at(rev);
       double rad = origin.Angle(cords.ToPoint());
@@ -341,7 +337,7 @@ class QueryPointAroundTest : public ::testing::Test {
       lastRad = rad;
     }
     ASSERT_NE(lastRad, 0);
-  };
+  }
 };
 
 TEST_F(QueryPointAroundTest, southpole_1) {
@@ -420,7 +416,7 @@ class QueryPointsContainedInTest : public ::testing::Test {
     ASSERT_EQ(result.size(), expected.size());
 
     std::vector<std::pair<double, double>> latLngResult;
-    for (LocalDocumentId const& rev : result) {
+    for (LocalDocumentId rev : result) {
       // check sort order
       S2LatLng const& cords = docs.at(rev);
       latLngResult.emplace_back(cords.lat().degrees(), cords.lng().degrees());
@@ -436,14 +432,15 @@ class QueryPointsContainedInTest : public ::testing::Test {
       ASSERT_TRUE(diff < 0.00001);
       it2++;
     }
-  };
+  }
 };
 
 TEST_F(QueryPointsContainedInTest, polygon) {
   auto polygon = createBuilder(R"=({"type": "Polygon", "coordinates":
                                  [[[-11.5, 23.5], [-6, 26], [-10.5, 26.1], [-11.5, 23.5]]]})=");
 
-  geo::geojson::parsePolygon(polygon->slice(), params.filterShape, false);
+  auto r = geo::json::parseRegion(polygon->slice(), params.filterShape, false);
+  ASSERT_TRUE(r.ok()) << r.errorMessage();
   params.filterShape.updateBounds(params);
 
   AscIterator near(std::move(params));
@@ -460,7 +457,8 @@ TEST_F(QueryPointsContainedInTest, polygon) {
 TEST_F(QueryPointsContainedInTest, rectangle) {
   auto rect = createBuilder(
       R"=({"type": "Polygon", "coordinates":[[[0,0],[1.5,0],[1.5,1.5],[0,1.5],[0,0]]]})=");
-  geo::geojson::parsePolygon(rect->slice(), params.filterShape, false);
+  auto r = geo::json::parseRegion(rect->slice(), params.filterShape, false);
+  ASSERT_TRUE(r.ok()) << r.errorMessage();
   ASSERT_EQ(params.filterShape.type(), geo::ShapeContainer::Type::S2_POLYGON);
   params.filterShape.updateBounds(params);
 

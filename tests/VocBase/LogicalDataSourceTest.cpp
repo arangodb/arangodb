@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,7 +48,7 @@ class LogicalViewImpl : public arangodb::LogicalView {
 
   LogicalViewImpl(TRI_vocbase_t& vocbase,
                   arangodb::velocypack::Slice const& definition)
-      : LogicalView(*this, vocbase, definition) {}
+      : LogicalView(*this, vocbase, definition, false) {}
   arangodb::Result appendVPackImpl(arangodb::velocypack::Builder&,
                                    Serialization, bool) const override {
     return {};
@@ -87,9 +87,22 @@ class LogicalDataSourceTest : public ::testing::Test {
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // required for TRI_vocbase_t
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::QueryRegistryFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::StatisticsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::EngineSelectorFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::metrics::ClusterMetricsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+                nullptr)),
+        false);
+    features.emplace_back(
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ShardingFeature>(),
                           false);
 
@@ -128,8 +141,7 @@ class LogicalDataSourceTest : public ::testing::Test {
 TEST_F(LogicalDataSourceTest, test_category) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
@@ -140,8 +152,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
 
   // LogicalView
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server));
     auto json =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());
@@ -154,8 +165,7 @@ TEST_F(LogicalDataSourceTest, test_category) {
 TEST_F(LogicalDataSourceTest, test_construct) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testCollection\" }");
@@ -168,8 +178,7 @@ TEST_F(LogicalDataSourceTest, test_construct) {
 
   // LogicalView
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 1, \"planId\": 2, \"globallyUniqueId\": \"abc\", \"name\": "
         "\"testView\" }");
@@ -184,8 +193,7 @@ TEST_F(LogicalDataSourceTest, test_construct) {
 TEST_F(LogicalDataSourceTest, test_defaults) {
   // LogicalCollection
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server));
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     arangodb::LogicalCollection instance(vocbase, json->slice(), true);
@@ -197,8 +205,7 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
 
   // LogicalView
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server));
+    TRI_vocbase_t vocbase(testDBInfo(server));
     auto json =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     LogicalViewImpl instance(vocbase, json->slice());

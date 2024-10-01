@@ -13,14 +13,13 @@ $navbar-size: 150px;
   @extend %fixedbar;
   bottom: 0;
   float: left;
-  -webkit-font-smoothing: subpixel-antialiased;
   margin-bottom: 0;
   position: absolute;
   top: 0;
   width: $navbar-size;
 
   > .primary {
-    background-color: $c-bluegrey-dark;
+    background-color: var(--gray-950);
     float: left;
     height: 100%;
     width: $navbar-size;
@@ -41,9 +40,10 @@ $navbar-size: 150px;
 
   .arangodbLogo {
     height: auto;
-    margin-left: 3px;
+    margin-left: 4px;
     margin-top: 15px;
     width: $navbar-size - 6px;
+    display: block;
   }
 
   .arango-collection-select {
@@ -86,21 +86,25 @@ $navbar-size: 150px;
   }
 
   .shortcut {
-    bottom: 31px;
+    bottom: 35px;
     left: 13px;
     position: absolute;
+    margin-bottom: 10px;
+    width: 20px;
+    height: 20px;
 
     i {
       background-color: rgba(0, 0, 0, 0);
       border-radius: 20px;
       color: $c-white;
-      padding: {
-        bottom: 6px;
-        left: 4px;
-        right: 0;
-        top: 5px;
-      };
-      width: 20px;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      align-items: center;
+
+      &::before {
+        margin: auto;
+      }
     }
 
     i:hover {
@@ -133,6 +137,7 @@ $navbar-size: 150px;
       margin-right: 10px;
       padding: 0;
       width: 25px;
+      margin-bottom: 10px;
     }
 
     p:hover {
@@ -163,6 +168,11 @@ $navbar-size: 150px;
   @extend %pull-left;
   height: 60px;
   width: 100%;
+  line-height: 20px;
+
+  *, *::after, *::before {
+    box-sizing: border-box;
+  }
 
   .small {
     display: none;
@@ -170,11 +180,9 @@ $navbar-size: 150px;
 
   #communityLabel {
     color: $c-white;
-    font-family: Roboto,sans-serif;
-    font-size: 7pt;
-    -webkit-font-smoothing: auto;
-    font-weight: 100;
-    left: 38px;
+    font-size: 10px;
+    font-weight: 300;
+    left: 18px;
     letter-spacing: 1px;
     position: fixed;
     text-transform: uppercase;
@@ -183,10 +191,9 @@ $navbar-size: 150px;
 
   #enterpriseLabel {
     color: $c-white;
-    font-family: Roboto,sans-serif;
-    font-size: 7.3pt;
-    font-weight: 100;
-    left: 38px;
+    font-size: 10px;
+    font-weight: 300;
+    left: 18px;
     letter-spacing: 1px;
     position: fixed;
     text-transform: uppercase;
@@ -194,17 +201,16 @@ $navbar-size: 150px;
   }
 
   .version {
-    bottom: 33px;
+    bottom: 43px;
     color: rgba(255, 255, 255, .7);
     font-size: 11px;
     font-weight: 100;
     left: 0;
-    padding-bottom: 10px;
-    padding-left: 5px;
     position: absolute;
     text-align: center;
     text-transform: uppercase;
     width: 100%;
+    line-height: 20px;
 
     .out-of-date {
       color: $c-warning;
@@ -215,12 +221,8 @@ $navbar-size: 150px;
       }
     }
 
-    .up-to-date {
-      color: $c-positive;
-
-      .fa-exclamation-circle {
-        padding-left: 3px;
-      }
+    #currentVersion:not(.out-of-date) i {
+      display: none;
     }
 
     i {
@@ -244,8 +246,15 @@ $navbar-size: 150px;
   top: 0;
   width: $navbar-size;
 
+  *, *::after, *::before {
+    box-sizing: border-box;
+  }
+
   > li {
     line-height: 30px;
+    &:hover {
+      background-color: var(--gray-800);
+    }
   }
 
   li {
@@ -257,14 +266,14 @@ $navbar-size: 150px;
     }
 
     .fa {
-      opacity: .3;
-      padding-left: 5px;
-      padding-right: 15px;
+      opacity: 1;
+      margin-left: 5px;
+      margin-right: 15px;
       text-align: center;
       width: 10px;
 
       &.fa-heart {
-        color: rgb(255, 122, 122);
+        color: var(--red-400);
         opacity: 1;
       }
     }
@@ -293,28 +302,19 @@ $navbar-size: 150px;
     }
 
     &.navbar-spacer {
-      background-color: rgba(0, 0, 0, .2);
-      height: 2px;
+      background-color: var(--gray-700);
+      height: 1px;
       margin-bottom: 0;
       margin-top: 0;
     }
   }
 
-  .active {
-    border-left: 2px solid $c-active-green;
-
-    .tab {
-      color: $c-white;
-      margin-left: -2px;
-
-      .fa {
-        opacity: 1;
-      }
-    }
-  }
-
   > .active {
-    background-color: rgba(255, 255, 255, .2);
+    background-color: var(--gray-900);
+
+    &:hover {
+      background-color: var(--gray-900);
+    }
 
     a {
       opacity: 1;
@@ -351,17 +351,13 @@ $navbar-size: 150px;
 }
 
 .tab {
-  color: rgba(255, 255, 255, .8);
-  display: block;
-  font-size: 9pt;
-  font-weight: 100;
-  padding: {
-    bottom: 5px;
-    left: 5px;
-    right: 5px;
-    top: 5px;
-  }
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  color: white;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 0 8px;
+  height: 36px;
 
   &.userImg {
     padding-bottom: 5px;

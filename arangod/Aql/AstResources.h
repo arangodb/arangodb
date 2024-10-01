@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,7 +29,6 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/ShortStringStorage.h"
-#include "Basics/Common.h"
 #include "Basics/FixedSizeAllocator.h"
 
 namespace arangodb {
@@ -41,7 +40,6 @@ class Slice;
 
 namespace aql {
 class Ast;
-struct AstNode;
 
 class AstResources {
  public:
@@ -49,8 +47,11 @@ class AstResources {
   AstResources(AstResources const&) = delete;
   AstResources& operator=(AstResources const&) = delete;
 
-  explicit AstResources(arangodb::ResourceMonitor&);
+  explicit AstResources(ResourceMonitor&);
   ~AstResources();
+
+  // track number of child nodes of AstNodes. note: can throw!
+  void reserveChildNodes(AstNode* node, size_t n);
 
   // frees all data
   void clear() noexcept;
@@ -59,18 +60,20 @@ class AstResources {
   // re-allocations)
   void clearMost() noexcept;
 
-  // create and register an AstNode
+  // create and register an AstNode. note: can throw!
   AstNode* registerNode(AstNodeType type);
 
-  // create and register an AstNode
-  AstNode* registerNode(Ast*, arangodb::velocypack::Slice slice);
+  // create and register an AstNode. note: can throw!
+  AstNode* registerNode(Ast*, velocypack::Slice slice);
 
   // register a string
-  /// the string is freed when the query is destroyed
+  // the string is freed when the query is destroyed.
+  // note: can throw!
   char* registerString(char const* p, size_t length);
 
   // register a string
-  /// the string is freed when the query is destroyed
+  // the string is freed when the query is destroyed.
+  // note: can throw!
   char* registerString(std::string_view value) {
     return registerString(value.data(), value.size());
   }
@@ -81,6 +84,9 @@ class AstResources {
 
   // return the memory usage for a block of strings
   constexpr static size_t memoryUsageForStringBlock() { return sizeof(char*); }
+
+  // return the memory usage for an AstNode child node pointer
+  constexpr static size_t memoryUsageForChildNode() { return sizeof(AstNode*); }
 
   // return the minimum capacity for long strings container
   constexpr static size_t kMinCapacityForLongStrings = 8;
@@ -98,7 +104,7 @@ class AstResources {
   char* registerLongString(char* copy, size_t length);
 
   // resource monitor used for tracking allocations/deallocations
-  arangodb::ResourceMonitor& _resourceMonitor;
+  ResourceMonitor& _resourceMonitor;
 
   // all nodes created in the AST - will be used for freeing them later
   FixedSizeAllocator<AstNode> _nodes;
@@ -112,6 +118,9 @@ class AstResources {
   // short string storage. uses less memory allocations for short
   /// strings
   ShortStringStorage _shortStringStorage;
+
+  // number of child node pointers (for which memory was allocated)
+  size_t _childNodes;
 };
 
 }  // namespace aql

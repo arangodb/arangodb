@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "GeneralCommTask.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StringUtils.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogContext.h"
@@ -36,10 +37,9 @@ using namespace arangodb::rest;
 
 template<SocketType T>
 GeneralCommTask<T>::GeneralCommTask(GeneralServer& server, ConnectionInfo info,
-                                    std::unique_ptr<AsioSocket<T>> socket)
+                                    std::shared_ptr<AsioSocket<T>> socket)
     : CommTask(server, std::move(info)),
       _protocol(std::move(socket)),
-      _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
       _reading(false),
       _writing(false),
       _stopped(false) {
@@ -62,7 +62,11 @@ void GeneralCommTask<T>::stop() {
 template<SocketType T>
 void GeneralCommTask<T>::close(asio_ns::error_code const& ec) {
   _stopped.store(true, std::memory_order_release);
-  if (ec && ec != asio_ns::error::misc_errors::eof) {
+  if (ec && (ec != asio_ns::error::misc_errors::eof &&
+             ec != asio_ns::ssl::error::stream_truncated)) {
+    // stream_truncated will occur when a peer closes an SSL/TLS connection
+    // without performing a proper connection shutdown. unfortunately that
+    // can happen at any time, and we have no control over it.
     LOG_TOPIC("2b6b3", WARN, arangodb::Logger::REQUESTS)
         << "asio IO error: '" << ec.message() << "'";
   }
@@ -140,8 +144,57 @@ void GeneralCommTask<T>::asyncReadSome() try {
   close();
 }
 
+template<SocketType T>
+void GeneralCommTask<T>::logRequestHeaders(
+    std::string_view protocol,
+    std::unordered_map<std::string, std::string> const& headers) const {
+  std::string headersForLogging = basics::StringUtils::headersToString(headers);
+  LOG_TOPIC("b9e77", TRACE, Logger::REQUESTS)
+      << "\"" << protocol << "-request-headers\",\"" << (void*)this << "\",\""
+      << headersForLogging << "\"";
+}
+
+template<SocketType T>
+void GeneralCommTask<T>::logRequestBody(std::string_view protocol,
+                                        arangodb::rest::ContentType contentType,
+                                        std::string_view body,
+                                        bool isResponse) const {
+  std::string bodyForLogging;
+  if (contentType != ContentType::VPACK) {
+    bodyForLogging = basics::StringUtils::escapeUnicode(body);
+  } else {
+    try {
+      velocypack::Slice s{reinterpret_cast<uint8_t const*>(body.data())};
+      if (!s.isNone()) {
+        // "none" can happen if the content-type is neither JSON nor vpack
+        bodyForLogging = basics::StringUtils::escapeUnicode(s.toJson());
+      }
+    } catch (...) {
+      // cannot stringify request body
+    }
+
+    if (bodyForLogging.empty() && !body.empty()) {
+      bodyForLogging = "potential binary data";
+    }
+  }
+
+  LOG_TOPIC("8f554", TRACE, Logger::REQUESTS)
+      << "\"" << protocol << (isResponse ? "-response" : "-request")
+      << "-body\",\"" << (void*)this << "\",\""
+      << rest::contentTypeToString(contentType) << "\",\"" << body.size()
+      << "\",\"" << bodyForLogging << "\"";
+}
+
+template<SocketType T>
+void GeneralCommTask<T>::logResponseHeaders(
+    std::string_view protocol,
+    std::unordered_map<std::string, std::string> const& headers) const {
+  std::string headersForLogging = basics::StringUtils::headersToString(headers);
+  LOG_TOPIC("8f553", TRACE, Logger::REQUESTS)
+      << "\"" << protocol << "-response-headers\",\"" << (void*)this << "\",\""
+      << headersForLogging << "\"";
+}
+
 template class arangodb::rest::GeneralCommTask<SocketType::Tcp>;
 template class arangodb::rest::GeneralCommTask<SocketType::Ssl>;
-#ifndef _WIN32
 template class arangodb::rest::GeneralCommTask<SocketType::Unix>;
-#endif

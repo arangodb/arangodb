@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,60 +18,64 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 
-#include "Basics/Exceptions.h"
-#include "Basics/voc-errors.h"
-
-#include <memory>
-
-namespace arangodb::replication2::replicated_log {
-struct LogUnconfiguredParticipant;
-}
+#include "Basics/Guarded.h"
 
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
 struct UnconfiguredStateManager
-    : ReplicatedState<S>::IStateManager,
-      std::enable_shared_from_this<UnconfiguredStateManager<S>> {
-  using Factory = typename ReplicatedStateTraits<S>::FactoryType;
-  using EntryType = typename ReplicatedStateTraits<S>::EntryType;
-  using FollowerType = typename ReplicatedStateTraits<S>::FollowerType;
-  using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
+    : std::enable_shared_from_this<UnconfiguredStateManager<S>> {
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
-
-  using WaitForAppliedQueue =
-      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
-  using WaitForAppliedPromise =
-      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
-
-  UnconfiguredStateManager(
-      std::shared_ptr<ReplicatedState<S>> const& parent,
-      std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
-          unconfiguredParticipant,
-      std::unique_ptr<CoreType> core,
-      std::unique_ptr<ReplicatedStateToken> token) noexcept;
-
-  void run() noexcept override;
-
-  [[nodiscard]] auto getStatus() const -> StateStatus override;
-
+  explicit UnconfiguredStateManager(LoggerContext loggerContext,
+                                    std::unique_ptr<CoreType>) noexcept;
   [[nodiscard]] auto resign() && noexcept
-      -> std::tuple<std::unique_ptr<CoreType>,
-                    std::unique_ptr<ReplicatedStateToken>,
-                    DeferredAction> override;
+      -> std::pair<std::unique_ptr<CoreType>,
+                   std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>>;
+  [[nodiscard]] auto getInternalStatus() const -> Status::Unconfigured;
 
  private:
-  std::weak_ptr<ReplicatedState<S>> _parent;
-  std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
-      _unconfiguredParticipant;
-  std::unique_ptr<CoreType> _core;
-  std::unique_ptr<ReplicatedStateToken> _token;
+  LoggerContext const _loggerContext;
+  struct GuardedData {
+    [[nodiscard]] auto resign() && noexcept -> std::unique_ptr<CoreType>;
+
+    std::unique_ptr<CoreType> _core;
+  };
+  Guarded<GuardedData> _guardedData;
 };
+
+template<typename S>
+UnconfiguredStateManager<S>::UnconfiguredStateManager(
+    LoggerContext loggerContext, std::unique_ptr<CoreType> core) noexcept
+    : _loggerContext(std::move(loggerContext)),
+      _guardedData{GuardedData{._core = std::move(core)}} {}
+
+template<typename S>
+auto UnconfiguredStateManager<S>::resign() && noexcept
+    -> std::pair<std::unique_ptr<CoreType>,
+                 std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
+  auto guard = _guardedData.getLockedGuard();
+  return {std::move(guard.get()).resign(), nullptr};
+}
+
+template<typename S>
+auto UnconfiguredStateManager<S>::getInternalStatus() const
+    -> Status::Unconfigured {
+  return {};
+}
+
+template<typename S>
+auto UnconfiguredStateManager<S>::GuardedData::resign() && noexcept
+    -> std::unique_ptr<CoreType> {
+  return std::move(_core);
+}
+
 }  // namespace arangodb::replication2::replicated_state

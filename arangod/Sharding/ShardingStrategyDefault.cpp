@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,18 +25,20 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
 #endif
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -51,8 +53,8 @@ void preventUseOnSmartEdgeCollection(LogicalCollection const* collection,
   if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("sharding strategy ") + strategyName +
-            " cannot be used for smart edge collections");
+        absl::StrCat("sharding strategy ", strategyName,
+                     " cannot be used for SmartGraph edge collections"));
   }
 }
 
@@ -133,10 +135,10 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
 
 template<bool returnNullSlice>
 uint64_t hashByAttributesImpl(VPackSlice slice,
-                              std::vector<std::string> const& attributes,
+                              std::span<std::string const> attributes,
                               bool docComplete, ErrorCode& error,
                               std::string_view key) {
-  uint64_t hashval = TRI_FnvHashBlockInitial();
+  uint64_t hashval = kFnvHashBlockInitial;
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
 
@@ -220,15 +222,16 @@ std::string const ShardingStrategyHash::NAME("hash");
 ShardingStrategyNone::ShardingStrategyNone() : ShardingStrategy() {
   if (ServerState::instance()->isCoordinator()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER, std::string("sharding strategy ") + NAME +
-                                     " cannot be used for sharded collections");
+        TRI_ERROR_BAD_PARAMETER,
+        absl::StrCat("sharding strategy ", NAME,
+                     " cannot be used for sharded collections"));
   }
 }
 
 /// calling getResponsibleShard on this class will always throw an exception
-ErrorCode ShardingStrategyNone::getResponsibleShard(
-    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
-    bool& usesDefaultShardKeys, std::string_view const& key) {
+ResultT<ShardID> ShardingStrategyNone::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete,
+    bool& usesDefaultShardKeys, std::string_view key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "unexpected invocation of ShardingStrategyNone");
 }
@@ -243,20 +246,20 @@ ShardingStrategyOnlyInEnterprise::ShardingStrategyOnlyInEnterprise(
 
 /// @brief will always throw an exception telling the user the selected sharding
 /// is only available in the Enterprise Edition
-ErrorCode ShardingStrategyOnlyInEnterprise::getResponsibleShard(
-    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
-    bool& usesDefaultShardKeys, std::string_view const& key) {
+ResultT<ShardID> ShardingStrategyOnlyInEnterprise::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete,
+    bool& usesDefaultShardKeys, std::string_view key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ONLY_ENTERPRISE,
-      std::string("sharding strategy '") + _name +
-          "' is only available in the Enterprise Edition of ArangoDB");
+      absl::StrCat(
+          "sharding strategy '", _name,
+          "' is only available in the Enterprise Edition of ArangoDB"));
 }
 
 /// @brief base class for hash-based sharding
 ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
     : ShardingStrategy(),
       _sharding(sharding),
-      _shards(),
       _usesDefaultShardKeys(false),
       _shardsSet(false) {
   auto shardKeys = _sharding->shardKeys();
@@ -274,65 +277,70 @@ ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
   }
 }
 
-ErrorCode ShardingStrategyHashBase::getResponsibleShard(
-    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
-    bool& usesDefaultShardKeys, std::string_view const& key) {
-  static constexpr char const* magicPhrase =
-      "Foxx you have stolen the goose, give she back again!";
-  static constexpr size_t magicLength = 52;
-
-  determineShards();
-  TRI_ASSERT(!_shards.empty());
+ResultT<ShardID> ShardingStrategyHashBase::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete,
+    bool& usesDefaultShardKeys, std::string_view key) {
+  auto const shards = determineShards();
+  TRI_ASSERT(!shards.empty());
 
   TRI_ASSERT(!_sharding->shardKeys().empty());
 
-  auto res = TRI_ERROR_NO_ERROR;
   usesDefaultShardKeys = _usesDefaultShardKeys;
-  // calls virtual "hashByAttributes" function
-
+  // calls virtual "hashByAttributes" function.
+  // note: we even need to call this in case we only have a single shard,
+  // because hashByAttributes can set `res` to an error
+  ErrorCode res = TRI_ERROR_NO_ERROR;
   uint64_t hashval =
       hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
-  // To improve our hash function result:
-  hashval = TRI_FnvHashBlock(hashval, magicPhrase, magicLength);
-  shardID = _shards[hashval % _shards.size()];
-  return res;
+  if (res != TRI_ERROR_NO_ERROR) {
+    return Result{res};
+  }
+
+  if (shards.size() == 1) {
+    // only a single shard. this is easy. avoid modulo computation for
+    // this simple case
+    return shards[0];
+  } else {
+    static constexpr char const* magicPhrase =
+        "Foxx you have stolen the goose, give she back again!";
+    static constexpr size_t magicLength = 52;
+
+    // To improve our hash function result:
+    hashval = FnvHashBlock(hashval, magicPhrase, magicLength);
+    return shards[hashval % shards.size()];
+  }
 }
 
-void ShardingStrategyHashBase::determineShards() {
-  if (_shardsSet) {
-    TRI_ASSERT(!_shards.empty());
-    return;
+std::span<ShardID const> ShardingStrategyHashBase::determineShards() {
+  if (!_shardsSet.load(std::memory_order_acquire)) {
+    std::lock_guard lock{_shardsSetMutex};
+    if (_shardsSet.load(std::memory_order_relaxed)) {
+      return _shards;
+    }
+
+    // determine all available shards (which will stay const afterwards)
+    auto& ci = _sharding->collection()
+                   ->vocbase()
+                   .server()
+                   .getFeature<ClusterFeature>()
+                   .clusterInfo();
+    auto shards =
+        ci.getShardList(std::to_string(_sharding->collection()->id().id()));
+
+    if (shards->empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid shard count");
+    }
+
+    _shards = *shards;
+    _shardsSet.store(true, std::memory_order_release);
   }
-
-  MUTEX_LOCKER(mutex, _shardsSetMutex);
-  if (_shardsSet) {
-    TRI_ASSERT(!_shards.empty());
-    return;
-  }
-
-  // determine all available shards (which will stay const afterwards)
-  auto& ci = _sharding->collection()
-                 ->vocbase()
-                 .server()
-                 .getFeature<ClusterFeature>()
-                 .clusterInfo();
-  auto shards =
-      ci.getShardList(std::to_string(_sharding->collection()->id().id()));
-
-  _shards = *shards;
-
-  if (_shards.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "invalid shard count");
-  }
-
-  TRI_ASSERT(!_shards.empty());
-  _shardsSet = true;
+  return _shards;
 }
 
 uint64_t ShardingStrategyHashBase::hashByAttributes(
-    VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, ErrorCode& error, std::string_view const& key) {
+    VPackSlice slice, std::span<std::string const> attributes, bool docComplete,
+    ErrorCode& error, std::string_view key) {
   return ::hashByAttributesImpl<false>(slice, attributes, docComplete, error,
                                        key);
 }
@@ -365,14 +373,11 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(
   TRI_ASSERT(!shardKeys.empty());
 
   if (shardKeys.size() == 1) {
-    _usesDefaultShardKeys =
-        (shardKeys[0] == StaticStrings::KeyString ||
-         (shardKeys[0][0] == ':' &&
-          shardKeys[0].compare(1, shardKeys[0].size() - 1,
-                               StaticStrings::KeyString) == 0) ||
-         (shardKeys[0].back() == ':' &&
-          shardKeys[0].compare(0, shardKeys[0].size() - 1,
-                               StaticStrings::KeyString) == 0));
+    TRI_ASSERT(!shardKeys[0].empty());
+
+    _usesDefaultShardKeys = shardKeys[0] == StaticStrings::KeyString ||
+                            shardKeys[0] == StaticStrings::PrefixOfKeyString ||
+                            shardKeys[0] == StaticStrings::PostfixOfKeyString;
   }
 }
 
@@ -381,8 +386,8 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(
 /// we leave the differences in place, because making any changes here
 /// will affect the data distribution, which we want to avoid
 uint64_t ShardingStrategyEnterpriseBase::hashByAttributes(
-    VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, ErrorCode& error, std::string_view const& key) {
+    VPackSlice slice, std::span<std::string const> attributes, bool docComplete,
+    ErrorCode& error, std::string_view key) {
   return ::hashByAttributesImpl<true>(slice, attributes, docComplete, error,
                                       key);
 }
@@ -406,14 +411,11 @@ ShardingStrategyHash::ShardingStrategyHash(ShardingInfo* sharding)
   TRI_ASSERT(!shardKeys.empty());
 
   if (shardKeys.size() == 1) {
-    _usesDefaultShardKeys =
-        (shardKeys[0] == StaticStrings::KeyString ||
-         (shardKeys[0][0] == ':' &&
-          shardKeys[0].compare(1, shardKeys[0].size() - 1,
-                               StaticStrings::KeyString) == 0) ||
-         (shardKeys[0].back() == ':' &&
-          shardKeys[0].compare(0, shardKeys[0].size() - 1,
-                               StaticStrings::KeyString) == 0));
+    TRI_ASSERT(!shardKeys[0].empty());
+
+    _usesDefaultShardKeys = shardKeys[0] == StaticStrings::KeyString ||
+                            shardKeys[0] == StaticStrings::PrefixOfKeyString ||
+                            shardKeys[0] == StaticStrings::PostfixOfKeyString;
   }
 
   ::preventUseOnSmartEdgeCollection(_sharding->collection(), NAME);

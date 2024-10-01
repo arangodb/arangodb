@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,6 +51,7 @@ const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -82,16 +83,9 @@ function driver (options) {
       if (this.options.cluster) {
         topology = 'CLUSTER';
         matchTopology = /^CLUSTER/;
-      } else if (this.options.activefailover) {
-        topology = 'ACTIVE_FAILOVER';
-        matchTopology = /^ACTIVE_FAILOVER/;
       } else {
         topology = 'SINGLE_SERVER';
         matchTopology = /^SINGLE_SERVER/;
-      }
-      let enterprise = 'false';
-      if (global.ARANGODB_CLIENT_VERSION(true).hasOwnProperty('enterprise-version')) {
-        enterprise = 'true';
       }
       let m = this.instanceManager.url.split(host_re);
       
@@ -104,7 +98,7 @@ function driver (options) {
         '--auth', false,
         '--username', 'root',
         '--password', '',
-        enterprise?'--enterprise':'--no-enterprise',
+        (isEnterprise())? '--enterprise' : '--no-enterprise',
         '--deployment-mode', topology
         
       ];
@@ -167,11 +161,11 @@ function driver (options) {
 }
 
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   opts.driverScript = 'run_tests.sh';
   opts.driverScriptInterpreter = '/bin/bash';
   testFns['driver'] = driver;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

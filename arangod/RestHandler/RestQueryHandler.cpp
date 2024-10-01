@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,14 +27,27 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Aql/QueryRegistry.h"
+#include "Auth/TokenCache.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/Methods/Queries.h"
 #include "VocBase/vocbase.h"
+
+#include <fuerte/jwt.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -59,6 +72,8 @@ RestStatus RestQueryHandler::execute() {
       auto const& suffixes = _request->suffixes();
       if (suffixes.size() == 1 && suffixes[0] == "rules") {
         handleAvailableOptimizerRules();
+      } else if (suffixes.size() == 1 && suffixes[0] == "registry") {
+        dumpQueryRegistry();
       } else {
         readQuery();
       }
@@ -78,6 +93,99 @@ RestStatus RestQueryHandler::execute() {
   return RestStatus::DONE;
 }
 
+void RestQueryHandler::dumpQueryRegistry() {
+  if (!ExecContext::current().isSuperuser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return;
+  }
+
+  bool const fanout = ServerState::instance()->isCoordinator() &&
+                      !_request->parsedValue("local", false);
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("queries", VPackValue(VPackValueType::Array));
+
+  if (fanout) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+
+    NetworkFeature const& nf = _vocbase.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::vector<network::FutureRes> futures;
+    auto auth = AuthenticationFeature::instance();
+
+    network::RequestOptions options;
+    options.database = _vocbase.name();
+    options.timeout = network::Timeout(30.0);
+    options.param("local", "true");
+
+    VPackBuffer<uint8_t> body;
+
+    auto servers = ci.getCurrentDBServers();
+
+    for (auto const& server : servers) {
+      if (server == ServerState::instance()->getId()) {
+        // ourselves!
+        continue;
+      }
+
+      network::Headers headers;
+      if (auth != nullptr && auth->isActive()) {
+        auto const& username = ExecContext::current().user();
+
+        if (!username.empty()) {
+          headers.try_emplace(
+              StaticStrings::Authorization,
+              "bearer " + fuerte::jwt::generateUserToken(
+                              auth->tokenCache().jwtSecret(), username));
+        } else {
+          headers.try_emplace(StaticStrings::Authorization,
+                              "bearer " + auth->tokenCache().jwtToken());
+        }
+      }
+
+      auto f = network::sendRequestRetry(
+          pool, "server:" + server, fuerte::RestVerb::Get,
+          "/_api/query/registry", body, options, std::move(headers));
+      futures.emplace_back(std::move(f));
+    }
+
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).waitAndGet();
+      for (auto const& it : responses) {
+        if (!it.hasValue()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+        }
+        auto& res = it.get();
+        if (res.statusCode() == fuerte::StatusOK) {
+          VPackSlice slice = res.slice();
+          if (slice.isObject()) {
+            slice = slice.get("queries");
+            if (slice.isArray()) {
+              builder.add(VPackArrayIterator(slice));
+            }
+          }
+        }
+      }
+    }
+  } else {
+    auto* queryRegistry = QueryRegistryFeature::registry();
+    if (queryRegistry != nullptr) {
+      queryRegistry->toVelocyPack(builder);
+    }
+  }
+
+  builder.close();  // "queries" array
+  builder.close();  // object
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
+}
+
 void RestQueryHandler::handleAvailableOptimizerRules() {
   VPackBuilder builder;
   builder.openArray();
@@ -85,6 +193,7 @@ void RestQueryHandler::handleAvailableOptimizerRules() {
   for (auto const& optimizerRule : optimizerRules) {
     builder.openObject();
     builder.add("name", VPackValue(optimizerRule.name));
+    builder.add("description", VPackValue(optimizerRule.description));
     builder.add(velocypack::Value("flags"));
     builder.openObject();
     builder.add("hidden", VPackValue(optimizerRule.isHidden()));
@@ -314,11 +423,13 @@ void RestQueryHandler::parseQuery() {
     return;
   }
 
-  std::string const queryString =
+  std::string queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  auto query = Query::create(transaction::StandaloneContext::Create(_vocbase),
-                             QueryString(queryString), nullptr);
+  auto origin = transaction::OperationOriginAQL{"parsing AQL query"};
+  auto query =
+      Query::create(transaction::StandaloneContext::create(_vocbase, origin),
+                    QueryString(std::move(queryString)), nullptr);
   auto parseResult = query->parse();
 
   if (parseResult.result.fail()) {
@@ -334,13 +445,13 @@ void RestQueryHandler::parseQuery() {
     result.add("parsed", VPackValue(true));
 
     result.add("collections", VPackValue(VPackValueType::Array));
-    for (const auto& it : parseResult.collectionNames) {
+    for (auto const& it : parseResult.collectionNames) {
       result.add(VPackValue(it));
     }
     result.close();  // collections
 
     result.add("bindVars", VPackValue(VPackValueType::Array));
-    for (const auto& it : parseResult.bindParameters) {
+    for (auto const& it : parseResult.bindParameters) {
       result.add(VPackValue(it));
     }
     result.close();  // bindVars
@@ -349,6 +460,8 @@ void RestQueryHandler::parseQuery() {
 
     if (parseResult.extra && parseResult.extra->slice().hasKey("warnings")) {
       result.add("warnings", parseResult.extra->slice().get("warnings"));
+    } else {
+      result.add("warnings", VPackSlice::emptyArraySlice());
     }
   }
 
@@ -374,8 +487,13 @@ ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
       uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
       if (sourceServer != ServerState::instance()->getShortId()) {
         auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-        return {
-            std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+        auto coordinatorId = ci.getCoordinatorByShortID(sourceServer);
+        if (coordinatorId.empty()) {
+          return ResultT<std::pair<std::string, bool>>::error(
+              TRI_ERROR_QUERY_NOT_FOUND,
+              "cannot find target server for query id");
+        }
+        return {std::make_pair(std::move(coordinatorId), false)};
       }
     }
   }

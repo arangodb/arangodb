@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,23 +25,27 @@
 
 #include "Aql/AqlValue.h"
 #include "Basics/ErrorCode.h"
-
-#include <velocypack/Sink.h>
-
 #include "Containers/SmallVector.h"
 
 #include <span>
+#include <string_view>
 
 namespace arangodb {
 class Result;
+
 namespace transaction {
 class Methods;
 }
 
-namespace aql {
+namespace velocypack {
+class Slice;
+}
 
+namespace aql {
 struct AstNode;
 class ExpressionContext;
+
+namespace functions {
 
 using VPackFunctionParameters = containers::SmallVector<AqlValue, 4>;
 using VPackFunctionParametersView = std::span<AqlValue const>;
@@ -51,26 +55,37 @@ typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
                                            VPackFunctionParametersView);
 
 void registerError(ExpressionContext* expressionContext,
-                   char const* functionName, ErrorCode code);
+                   std::string_view functionName, ErrorCode code);
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, ErrorCode code);
+                     std::string_view functionName, ErrorCode code);
 void registerWarning(ExpressionContext* expressionContext,
-                     char const* functionName, Result const& rr);
+                     std::string_view functionName, Result const& rr);
 void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
-                                    char const* functionName);
+                                    std::string_view functionName);
 
 // Returns zero-terminated function name from the given FCALL node.
-std::string_view getFunctionName(const AstNode& node) noexcept;
+std::string_view getFunctionName(AstNode const& node) noexcept;
+
+bool getBooleanParameter(VPackFunctionParametersView parameters,
+                         size_t startParameter, bool defaultValue);
 
 AqlValue const& extractFunctionParameterValue(
     VPackFunctionParametersView parameters, size_t position);
 
-namespace functions {
+AqlValue numberValue(double value, bool nullify);
+
+std::string extractCollectionName(transaction::Methods* trx,
+                                  VPackFunctionParametersView parameters,
+                                  size_t position);
+
+template<typename T>
+void appendAsString(velocypack::Options const& vopts, T& buffer,
+                    AqlValue const& value);
 
 /// @brief helper function. not callable as a "normal" AQL function
-void Stringify(velocypack::Options const* vopts,
-               arangodb::velocypack::StringSink& buffer,
-               arangodb::velocypack::Slice const& slice);
+template<typename T>
+void stringify(velocypack::Options const* vopts, T& buffer,
+               arangodb::velocypack::Slice slice);
 
 AqlValue IsNull(arangodb::aql::ExpressionContext*, AstNode const&,
                 VPackFunctionParametersView);
@@ -122,6 +137,8 @@ AqlValue Upper(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
 AqlValue Substring(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
+AqlValue SubstringBytes(arangodb::aql::ExpressionContext*, AstNode const&,
+                        VPackFunctionParametersView);
 AqlValue Substitute(arangodb::aql::ExpressionContext*, AstNode const&,
                     VPackFunctionParametersView);
 AqlValue Left(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -150,6 +167,10 @@ AqlValue ToBase64(arangodb::aql::ExpressionContext*, AstNode const&,
                   VPackFunctionParametersView);
 AqlValue ToHex(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
+AqlValue ToChar(arangodb::aql::ExpressionContext*, AstNode const&,
+                VPackFunctionParametersView);
+AqlValue Repeat(arangodb::aql::ExpressionContext*, AstNode const&,
+                VPackFunctionParametersView);
 AqlValue EncodeURIComponent(arangodb::aql::ExpressionContext*, AstNode const&,
                             VPackFunctionParametersView);
 AqlValue Uuid(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -209,6 +230,8 @@ AqlValue DateDayOfYear(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParametersView);
 AqlValue DateIsoWeek(arangodb::aql::ExpressionContext*, AstNode const&,
                      VPackFunctionParametersView);
+AqlValue DateIsoWeekYear(arangodb::aql::ExpressionContext*, AstNode const&,
+                         VPackFunctionParametersView);
 AqlValue DateLeapYear(arangodb::aql::ExpressionContext*, AstNode const&,
                       VPackFunctionParametersView);
 AqlValue DateQuarter(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -312,6 +335,8 @@ AqlValue Md5(arangodb::aql::ExpressionContext*, AstNode const&,
              VPackFunctionParametersView);
 AqlValue Sha1(arangodb::aql::ExpressionContext*, AstNode const&,
               VPackFunctionParametersView);
+AqlValue Sha256(arangodb::aql::ExpressionContext*, AstNode const&,
+                VPackFunctionParametersView);
 AqlValue Sha512(arangodb::aql::ExpressionContext*, AstNode const&,
                 VPackFunctionParametersView);
 AqlValue Crc32(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -374,11 +399,17 @@ AqlValue Flatten(arangodb::aql::ExpressionContext*, AstNode const&,
                  VPackFunctionParametersView);
 AqlValue Zip(arangodb::aql::ExpressionContext*, AstNode const&,
              VPackFunctionParametersView);
+AqlValue Entries(arangodb::aql::ExpressionContext*, AstNode const&,
+                 VPackFunctionParametersView);
 AqlValue JsonStringify(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParametersView);
 AqlValue JsonParse(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
 AqlValue ParseIdentifier(arangodb::aql::ExpressionContext*, AstNode const&,
+                         VPackFunctionParametersView);
+AqlValue ParseKey(arangodb::aql::ExpressionContext*, AstNode const&,
+                  VPackFunctionParametersView);
+AqlValue ParseCollection(arangodb::aql::ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView);
 AqlValue Slice(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
@@ -488,8 +519,6 @@ AqlValue CollectionCount(arangodb::aql::ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView);
 AqlValue VarianceSample(arangodb::aql::ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView);
-AqlValue PregelResult(arangodb::aql::ExpressionContext*, AstNode const&,
-                      VPackFunctionParametersView);
 AqlValue VariancePopulation(arangodb::aql::ExpressionContext*, AstNode const&,
                             VPackFunctionParametersView);
 AqlValue StdDevSample(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -529,9 +558,6 @@ AqlValue SchemaGet(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
 AqlValue SchemaValidate(arangodb::aql::ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView);
-
-AqlValue CallGreenspun(arangodb::aql::ExpressionContext*, AstNode const&,
-                       VPackFunctionParametersView);
 
 AqlValue MakeDistributeInput(arangodb::aql::ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView);

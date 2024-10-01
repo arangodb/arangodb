@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,6 +35,7 @@
 #include "Basics/ResourceUsage.h"
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace futures {
 template<typename T>
@@ -62,7 +63,6 @@ class SingleServerProvider {
   using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
 
- public:
   SingleServerProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                        arangodb::ResourceMonitor& resourceMonitor);
   SingleServerProvider(SingleServerProvider const&) = delete;
@@ -112,8 +112,9 @@ class SingleServerProvider {
   void addEdgeToLookupMap(typename Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
 
-  void destroyEngines(){};
+  void destroyEngines() {}
 
+  [[nodiscard]] ResourceMonitor& monitor();
   [[nodiscard]] transaction::Methods* trx();
   [[nodiscard]] TRI_vocbase_t const& vocbase() const;
 
@@ -136,7 +137,7 @@ class SingleServerProvider {
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> buildCursor(
       arangodb::aql::FixedVarExpressionContext& expressionContext);
 
- private:
+  ResourceMonitor& _monitor;
   // Unique_ptr to have this class movable, and to keep reference of trx()
   // alive - Note: _trx must be first here because it is used in _cursor
   std::unique_ptr<arangodb::transaction::Methods> _trx;

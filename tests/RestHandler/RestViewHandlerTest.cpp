@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +21,6 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/DownCast.h"
 
 #include "gtest/gtest.h"
 
@@ -35,16 +34,14 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
+#include "Basics/DownCast.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 namespace {
 struct TestView : public arangodb::LogicalView {
@@ -58,7 +55,7 @@ struct TestView : public arangodb::LogicalView {
 
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(*this, vocbase, definition) {}
+      : arangodb::LogicalView(*this, vocbase, definition, false) {}
   arangodb::Result appendVPackImpl(arangodb::velocypack::Builder& build,
                                    Serialization, bool) const override {
     build.add("properties", _properties.slice());
@@ -90,14 +87,15 @@ struct ViewFactory : public arangodb::ViewFactory {
                                   arangodb::velocypack::Slice definition,
                                   bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
-    view = vocbase.createView(definition);
+    view = vocbase.createView(definition, isUserRequest);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -123,8 +121,7 @@ class RestViewHandlerTest
 TEST_F(RestViewHandlerTest, test_auth) {
   // test create
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -144,11 +141,13 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -190,9 +189,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // not authorized (RO user)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -225,9 +222,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // authorzed (RW user)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -252,9 +247,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
@@ -268,11 +262,13 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -315,9 +311,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -352,9 +346,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -377,9 +369,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
@@ -397,11 +388,13 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -446,9 +439,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -485,9 +476,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -532,9 +521,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -563,9 +550,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
@@ -583,11 +569,13 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -630,9 +618,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -667,9 +653,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -714,9 +698,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -850,9 +832,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
@@ -866,11 +847,13 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -912,9 +895,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -958,9 +939,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1040,9 +1019,8 @@ TEST_F(RestViewHandlerTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
@@ -1057,11 +1035,13 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -1102,9 +1082,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // not authorized (failed detailed toVelocyPack(...))
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1148,9 +1126,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1232,11 +1208,10 @@ TEST_F(RestViewHandlerTest, test_auth) {
         "{ \"name\": \"testView1\", \"type\": \"testViewType\" }");
     auto createView2Json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView2\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView1 = vocbase.createView(createView1Json->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView1 = vocbase.createView(createView1Json->slice(), false);
     ASSERT_FALSE(!logicalView1);
-    auto logicalView2 = vocbase.createView(createView2Json->slice());
+    auto logicalView2 = vocbase.createView(createView2Json->slice(), false);
     ASSERT_FALSE(!logicalView2);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
@@ -1249,11 +1224,13 @@ TEST_F(RestViewHandlerTest, test_auth) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -1295,9 +1272,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1350,9 +1325,7 @@ TEST_F(RestViewHandlerTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(

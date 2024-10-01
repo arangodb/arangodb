@@ -35,9 +35,12 @@ static inline int hex2int(char ch, int errorValue = 0) {
   return errorValue;
 }
 
-void urlEncode(std::string& out, char const* src, size_t len) {
-  static char hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
-                              '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+void urlEncode(std::string& out, std::string_view str) {
+  static constexpr char hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                                        '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+  
+  char const* src = str.data();
+  size_t len = str.size();
 
   if (len >= (SIZE_MAX - 1) / 3) {
     throw std::overflow_error("out of memory");
@@ -67,7 +70,10 @@ void urlEncode(std::string& out, char const* src, size_t len) {
   }
 }
 
-void urlDecode(std::string& out, char const* src, size_t len) {
+void urlDecode(std::string& out, std::string_view str) {
+  char const* src = str.data();
+  size_t len = str.size();
+  
   // reserve enough room so we do not need to re-alloc
   out.reserve(out.size() + len + 16);
 

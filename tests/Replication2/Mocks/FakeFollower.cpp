@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +28,6 @@
 #include "Basics/voc-errors.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 
@@ -35,29 +35,8 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::test;
 
-auto FakeFollower::release(arangodb::replication2::LogIndex doneWithIdx)
-    -> arangodb::Result {
-  guarded.getLockedGuard()->doneWithIdx = doneWithIdx;
-  return {};  // return ok
-}
-
-auto FakeFollower::getLeader() const noexcept
-    -> std::optional<ParticipantId> const& {
-  return leaderId;
-}
-
 auto FakeFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return id;
-}
-
-auto FakeFollower::getCommitIndex() const noexcept -> LogIndex {
-  return guarded.getLockedGuard()->commitIndex;
-}
-
-auto FakeFollower::resign() && -> std::tuple<
-    std::unique_ptr<replicated_log::LogCore>, DeferredAction> {
-  resign();
-  return std::make_tuple(nullptr, DeferredAction{});
 }
 
 FakeFollower::FakeFollower(ParticipantId id,
@@ -76,6 +55,8 @@ auto FakeFollower::getStatus() const -> replicated_log::LogStatus {
       .leader = leaderId,
       .term = term,
       .lowestIndexToKeep = LogIndex{0},
+      .compactionStatus = {},
+      .snapshotAvailable = {},
   }};
 }
 
@@ -85,23 +66,20 @@ auto FakeFollower::getQuickStatus() const -> replicated_log::QuickLogStatus {
   return replicated_log::QuickLogStatus{
       .role = replicated_log::ParticipantRole::kFollower,
       .term = term,
-      .local = {{
-          .spearHead = guard->log.getLastTermIndexPair(),
-          .commitIndex = guard->commitIndex,
-          .firstIndex = guard->log.getFirstIndex(),
-      }},
+      .local =
+          {
+              .spearHead = guard->log.getLastTermIndexPair(),
+              .commitIndex = guard->commitIndex,
+              .firstIndex = guard->log.getFirstIndex(),
+          },
       .leadershipEstablished = guard->commitIndex > kBaseIndex,
   };
-}
-
-auto FakeFollower::waitForLeaderAcked() -> WaitForFuture {
-  return waitForLeaderAckedQueue.waitFor({});
 }
 
 auto FakeFollower::addEntry(LogPayload payload) -> LogIndex {
   auto index = guarded.doUnderLock([&](GuardedFollowerData& data) {
     auto index = data.log.getNextIndex();
-    auto memtry = InMemoryLogEntry(PersistingLogEntry(term, index, payload));
+    auto memtry = InMemoryLogEntry(LogEntry(term, index, payload));
     data.log.appendInPlace(LoggerContext(Logger::REPLICATION2),
                            std::move(memtry));
     return index;
@@ -125,14 +103,10 @@ auto FakeFollower::waitFor(LogIndex index) -> WaitForFuture {
 auto FakeFollower::waitForIterator(LogIndex index)
     -> replicated_log::ILogParticipant::WaitForIteratorFuture {
   return waitFor(index).thenValue(
-      [this, index](auto&&) -> std::unique_ptr<LogRangeIterator> {
+      [this, index](auto&&) -> std::unique_ptr<LogViewRangeIterator> {
         auto guard = guarded.getLockedGuard();
         return guard->log.getIteratorRange(index, guard->commitIndex + 1);
       });
-}
-
-auto FakeFollower::waitForResign() -> futures::Future<futures::Unit> {
-  return waitForResignQueue.addWaitFor();
 }
 
 void FakeFollower::updateCommitIndex(LogIndex index) {
@@ -143,13 +117,20 @@ void FakeFollower::updateCommitIndex(LogIndex index) {
 void FakeFollower::resign() & {
   auto const exPtr =
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED));
   waitForQueue.resolveAll(futures::Try<replicated_log::WaitForResult>(exPtr));
   waitForLeaderAckedQueue.resolveAll(
       futures::Try<replicated_log::WaitForResult>(exPtr));
   waitForResignQueue.resolveAll();
 }
 
-replicated_log::InMemoryLog FakeFollower::copyInMemoryLog() const {
+auto FakeFollower::getInternalLogIterator(std::optional<LogRange> bounds) const
+    -> std::unique_ptr<LogIterator> {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto FakeFollower::resign() && -> std::tuple<
+    std::unique_ptr<storage::IStorageEngineMethods>,
+    std::unique_ptr<replicated_log::IReplicatedStateHandle>, DeferredAction> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,7 @@
 #pragma once
 
 #include "Aql/AstNode.h"
-#include "Aql/Query.h"
+#include "Aql/QueryResult.h"
 #include "Basics/StaticStrings.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
@@ -56,6 +56,7 @@ class Isolate;  // forward declaration
 
 namespace arangodb {
 
+class IndexId;
 class DatabasePathFeature;  // forward declaration
 
 namespace application_features {
@@ -63,8 +64,10 @@ class ApplicationServer;
 }
 
 namespace aql {
+class Query;
+class ExecutionPlan;
 class ExpressionContext;
-}
+}  // namespace aql
 
 namespace iresearch {
 class ByExpression;
@@ -108,6 +111,10 @@ arangodb::aql::QueryResult executeQuery(
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& optionsString = "{}");
 
+void checkQuery(TRI_vocbase_t& vocbase,
+                std::span<const velocypack::Slice> expected,
+                std::string const& query);
+
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
@@ -134,7 +141,7 @@ void expectEqualSlices_(const velocypack::Slice& lhs,
 }  // namespace tests
 }  // namespace arangodb
 
-namespace iresearch {
+namespace irs {
 std::string to_string(irs::filter const& f);
 }
 
@@ -181,7 +188,7 @@ void assertFilter(
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
         arangodb::iresearch::FilterOptimization::NONE,
-    bool searchQuery = true, bool oldMangling = true);
+    bool searchQuery = true, bool oldMangling = true, bool hasNested = false);
 
 void assertFilterSuccess(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -191,7 +198,7 @@ void assertFilterSuccess(
     std::string const& refName = "d",
     arangodb::iresearch::FilterOptimization filterOptimization =
         arangodb::iresearch::FilterOptimization::NONE,
-    bool searchQuery = true, bool oldMangling = true);
+    bool searchQuery = true, bool oldMangling = true, bool hasNested = false);
 
 void assertFilterFail(
     TRI_vocbase_t& vocbase, std::string const& queryString,
@@ -229,7 +236,8 @@ inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
 VPackBuilder getInvertedIndexPropertiesSlice(
     arangodb::IndexId iid, std::vector<std::string> const& fields,
     std::vector<std::vector<std::string>> const* storedFields = nullptr,
-    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr);
+    std::vector<std::pair<std::string, bool>> const* sortedFields = nullptr,
+    std::string_view name = "");
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::ArangodServer& server,
                                         std::string const& name, uint64_t id);

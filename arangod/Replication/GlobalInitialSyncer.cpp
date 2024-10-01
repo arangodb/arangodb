@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -330,13 +330,12 @@ Result GlobalInitialSyncer::updateServerInventory(
 
       for (auto const& collection : toDrop) {
         try {
-          auto res = vocbase->dropCollection(collection->id(), false, -1.0)
-                         .errorNumber();
+          auto res = vocbase->dropCollection(collection->id(), false);
 
-          if (res != TRI_ERROR_NO_ERROR) {
+          if (res.fail()) {
             LOG_TOPIC("f04bb", ERR, Logger::REPLICATION)
                 << "unable to drop collection " << collection->name() << ": "
-                << TRI_errno_string(res);
+                << res.errorMessage();
           }
         } catch (...) {
           LOG_TOPIC("69fc4", ERR, Logger::REPLICATION)

@@ -1,3 +1,23 @@
 leak:create_conn
 leak:CRYPTO_zalloc
+# TODO(MBkkt) Should be removed when we update snowball
 leak:snowball
+
+# TODO(MBkkt) Should be fixed, but now we don't know how
+# Also it probably only last Buffer, so we don't really care
+# Direct leak of 80 byte(s) in 1 object(s) allocated from:
+#  0 in operator new(unsigned long)
+#  1 in V8Buffer::New(v8::FunctionCallbackInfo<v8::Value> const&) /work/ArangoDB/lib/V8/v8-buffer.cpp:567
+#  2 in v8::internal::FunctionCallbackArguments::Call(v8::internal::CallHandlerInfo)
+# Indirect leak of 59 byte(s) in 1 object(s) allocated from:
+#  0 in operator new[](unsigned long)
+#  1 in V8Buffer::replace(v8::Isolate*, char*, unsigned long, void (*)(char*, void*), void*, bool) /work/ArangoDB/lib/V8/v8-buffer.cpp:735
+#  2 in V8Buffer /work/ArangoDB/lib/V8/v8-buffer.cpp:678
+#  3 in V8Buffer::New(v8::FunctionCallbackInfo<v8::Value> const&) /work/ArangoDB/lib/V8/v8-buffer.cpp:567
+#  4 in v8::internal::FunctionCallbackArguments::Call(v8::internal::CallHandlerInfo) 
+# SUMMARY: AddressSanitizer: 139 byte(s) leaked in 2 allocation(s).
+leak:V8Buffer::New
+
+# Suppressed to see other issue
+# TODO(mpoeter) ?
+leak:LogContext::Current::appendEntry

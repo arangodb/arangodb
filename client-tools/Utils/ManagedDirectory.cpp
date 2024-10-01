@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,10 +32,11 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/voc-errors.h"
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 
@@ -104,14 +105,15 @@ inline void closeFile(int& fd, arangodb::Result& status) {
 bool isWritable(int fd, int flags, std::string const& path,
                 arangodb::Result& status) {
   if (::flagNotSet(flags, O_WRONLY)) {
-    status = {
-        TRI_ERROR_CANNOT_WRITE_FILE,
-        "attempted to write to file " + path + " opened in read-only mode!"};
+    status = {TRI_ERROR_CANNOT_WRITE_FILE,
+              absl::StrCat("attempted to write to file ", path,
+                           " opened in read-only mode!")};
     return false;
   }
   if (fd < 0) {
     status = {TRI_ERROR_CANNOT_WRITE_FILE,
-              "attempted to write to file " + path + " which is not open"};
+              absl::StrCat("attempted to write to file ", path,
+                           " which is not open")};
     return false;
   }
   return status.ok();
@@ -121,14 +123,15 @@ bool isWritable(int fd, int flags, std::string const& path,
 bool isReadable(int fd, int flags, std::string const& path,
                 arangodb::Result& status) {
   if (::flagIsSet(flags, O_WRONLY)) {
-    status = {
-        TRI_ERROR_CANNOT_READ_FILE,
-        "attempted to read from file " + path + " opened in write-only mode!"};
+    status = {TRI_ERROR_CANNOT_READ_FILE,
+              absl::StrCat("attempted to read from file ", path,
+                           " opened in write-only mode!")};
     return false;
   }
   if (fd < 0) {
     status = {TRI_ERROR_CANNOT_READ_FILE,
-              "attempted to read from file " + path + " which is not open"};
+              absl::StrCat("attempted to read from file ", path,
+                           " which is not open")};
     return false;
   }
   return status.ok();
@@ -172,7 +175,7 @@ inline void rawWrite(int fd, char const* data, size_t length,
                      arangodb::Result& status, std::string const& path,
                      int flags) {
   while (length > 0) {
-    ssize_t written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
+    auto written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
     if (written < 0) {
       status = ::genericError(path, flags);
       break;
@@ -217,9 +220,10 @@ arangodb::Result readEncryptionFile(
 
   if (type != newType) {
     return {TRI_ERROR_BAD_PARAMETER,
-            std::string("encryption type in existing ENCRYPTION file '") +
-                filename + "' (" + type +
-                ") does not match requested encryption type (" + newType + ")"};
+            absl::StrCat("encryption type in existing ENCRYPTION file '",
+                         filename, "' (", type,
+                         ") does not match requested encryption type (",
+                         newType, ")")};
   }
   return {};
 }
@@ -264,18 +268,36 @@ ManagedDirectory::ManagedDirectory(EncryptionFeature* encryption,
     // path exists, but is a file, not a directory
     if (!isDirectory) {
       _status.reset(TRI_ERROR_FILE_EXISTS,
-                    std::string("the specified path '") + _path +
-                        "' already exists as a non-directory file");
+                    absl::StrCat("the specified path '", _path,
+                                 "' already exists as a non-directory file"));
       return;
     }
 
     std::vector<std::string> files(TRI_FilesDirectory(_path.c_str()));
     if (!files.empty()) {
+      if (files.size() == 1 && files[0] == EncryptionFilename) {
+        // ignore ENCRYPTION File here.
+        // The ENCRYPTION file is created directly after we create the
+        // directory. Only afterwards the tools are creating their specific
+        // output files.
+        // Now when invoking a command such as
+        //   arangoexport --collection test --output-directory export
+        // this will first create the output directory `export`, and then
+        // write the ENCRYPTION file into it. Then arangoexport will try
+        // to export data for collection "test".
+        // if collection "test" does not exist, it will error out and we
+        // will be left with the directory and the ENCRYPTION file only.
+        // invoking the same arangoexport command again will then fail
+        // because the directory is not empty (because of the ENCRYPTION
+        // file). thus we are ignoring it here on purpose if the directory
+        // ONLY contains the ENCRYPTION file.
+        files.pop_back();
+      }
       // directory exists, has files, and we aren't allowed to overwrite
-      if (requireEmpty) {
+      if (requireEmpty && !files.empty()) {
         _status.reset(TRI_ERROR_CANNOT_OVERWRITE_FILE,
-                      std::string("the specified path '") + _path +
-                          "' is a non-empty directory");
+                      absl::StrCat("the specified path '", _path,
+                                   "' is a non-empty directory"));
         return;
       }
 
@@ -297,8 +319,8 @@ ManagedDirectory::ManagedDirectory(EncryptionFeature* encryption,
         if (res == TRI_ERROR_SYS_ERROR) {
           res = TRI_ERROR_CANNOT_CREATE_DIRECTORY;
         }
-        _status.reset(res, "unable to create output directory '" + _path +
-                               "': " + errorMessage);
+        _status.reset(res, absl::StrCat("unable to create output directory '",
+                                        _path, "': ", errorMessage));
         return;
       }
       // fall through to write encryption file
@@ -352,15 +374,14 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
 
   if (!_status.fail()) {  // directory is in a bad state?
     try {
-      bool gzFlag = filename.size() > 3 &&
-                    (0 == filename.substr(filename.size() - 3).compare(".gz"));
+      bool gzFlag = filename.ends_with(".gz");
       file = std::make_unique<File>(
           *this, filename, (ManagedDirectory::DefaultReadFlags ^ flags),
           gzFlag);
     } catch (...) {
-      _status.reset(
-          TRI_ERROR_CANNOT_READ_FILE,
-          "error opening file " + ::filePath(*this, filename) + " for reading");
+      _status.reset(TRI_ERROR_CANNOT_READ_FILE,
+                    absl::StrCat("error opening file ",
+                                 ::filePath(*this, filename), " for reading"));
       file.reset();
     }
   }
@@ -410,7 +431,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
         TRI_UnlinkFile(path.c_str());
       } else {
         _status.reset(TRI_ERROR_CANNOT_WRITE_FILE,
-                      "file " + path + " already exists");
+                      absl::StrCat("file ", path, " already exists"));
         return {nullptr};
       }
     }
@@ -432,8 +453,9 @@ void ManagedDirectory::spitFile(std::string const& filename,
     _status = ::genericError(filename, O_WRONLY);
   } else if (file->status().fail()) {
     _status = file->status();
+  } else {
+    file->spit(content);
   }
-  file->spit(content);
 }
 
 std::string ManagedDirectory::slurpFile(std::string const& filename) {
@@ -516,7 +538,7 @@ ManagedDirectory::File::File(ManagedDirectory const& directory, int fd,
 }
 
 ManagedDirectory::File::~File() {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
   try {
     if (_gzfd >= 0) {
       gzclose(_gzFile);
@@ -558,7 +580,7 @@ Result const& ManagedDirectory::File::status() const { return _status; }
 std::string const& ManagedDirectory::File::path() const { return _path; }
 
 void ManagedDirectory::File::write(char const* data, size_t length) {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
   writeNoLock(data, length);
 }
 
@@ -589,7 +611,7 @@ void ManagedDirectory::File::writeNoLock(char const* data, size_t length) {
 }
 
 TRI_read_return_t ManagedDirectory::File::read(char* buffer, size_t length) {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
   return readNoLock(buffer, length);
 }
 
@@ -619,7 +641,7 @@ TRI_read_return_t ManagedDirectory::File::readNoLock(char* buffer,
 }
 
 std::string ManagedDirectory::File::slurp() {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
 
   std::string content;
   if (::isReadable(_fd, _flags, _path, _status)) {
@@ -638,7 +660,7 @@ std::string ManagedDirectory::File::slurp() {
 }
 
 void ManagedDirectory::File::spit(std::string const& content) {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
 
   if (!::isWritable(_fd, _flags, _path, _status)) {
     return;
@@ -661,7 +683,7 @@ void ManagedDirectory::File::spit(std::string const& content) {
 }
 
 Result const& ManagedDirectory::File::close() {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
 
   if (_gzfd >= 0) {
     gzclose(_gzFile);
@@ -676,7 +698,7 @@ Result const& ManagedDirectory::File::close() {
 }
 
 std::int64_t ManagedDirectory::File::offset() const {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
 
   std::int64_t fileBytesRead = -1;
 
@@ -690,7 +712,7 @@ std::int64_t ManagedDirectory::File::offset() const {
 }
 
 void ManagedDirectory::File::skip(size_t count) {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
 
   // TODO is there a better implementation than just read count bytes?
   // how does this work with gzip?

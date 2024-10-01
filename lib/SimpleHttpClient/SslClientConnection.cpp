@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,11 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <errno.h>
-#include <string.h>
+#include <cerrno>
+#include <chrono>
+#include <cstring>
 #include <string>
+#include <string_view>
 
-#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
@@ -33,6 +34,7 @@
 #include <WinSock2.h>
 #endif
 
+#include <fcntl.h>
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>
 #ifndef OPENSSL_VERSION_NUMBER
@@ -59,15 +61,7 @@
 
 #undef TRACE_SSL_CONNECTIONS
 
-#ifdef _WIN32
-#define STR_ERROR()                                                  \
-  windowsErrorBuf;                                                   \
-  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0, \
-                windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
-  errno = GetLastError();
-#else
 #define STR_ERROR() strerror(errno)
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -76,7 +70,7 @@ using namespace arangodb::httpclient;
 namespace {
 
 #ifdef TRACE_SSL_CONNECTIONS
-static char const* tlsTypeName(int type) {
+static std::string_view tlsTypeName(int type) {
   switch (type) {
 #ifdef SSL3_RT_HEADER
     case SSL3_RT_HEADER:
@@ -90,6 +84,8 @@ static char const* tlsTypeName(int type) {
       return "TLS handshake";
     case SSL3_RT_APPLICATION_DATA:
       return "TLS app data";
+    case SSL3_RT_INNER_CONTENT_TYPE:
+      return "TLS inner content type";
     default:
       return "TLS Unknown";
   }
@@ -160,7 +156,7 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
   // enable this for tracing SSL connections
   if (sslVersion) {
     sslVersion >>= 8; /* check the upper 8 bits only below */
-    char const* tlsRtName;
+    std::string_view tlsRtName;
     if (sslVersion == SSL3_VERSION_MAJOR && contentType)
       tlsRtName = tlsTypeName(contentType);
     else
@@ -188,7 +184,10 @@ SslClientConnection::SslClientConnection(
                               connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
-      _sslProtocol(sslProtocol) {
+      _sslProtocol(sslProtocol),
+      _socketFlags(0),
+      _verifyDepth(10),
+      _verifyCertificates(false) {
   init(sslProtocol);
 }
 
@@ -200,7 +199,9 @@ SslClientConnection::SslClientConnection(
                               connectRetries),
       _ssl(nullptr),
       _ctx(nullptr),
-      _sslProtocol(sslProtocol) {
+      _sslProtocol(sslProtocol),
+      _socketFlags(0),
+      _verifyCertificates(false) {
   init(sslProtocol);
 }
 
@@ -245,30 +246,16 @@ void SslClientConnection::init(uint64_t sslProtocol) {
       break;
 
     case TLS_V1:
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
       meth = TLS_client_method();
-#else
-      meth = TLSv1_method();
-#endif
       break;
 
     case TLS_V12:
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
       meth = TLS_client_method();
-#else
-      meth = TLSv1_2_method();
-#endif
       break;
 
-      // TLS 1.3, only supported from OpenSSL 1.1.1 onwards
-
-      // openssl version number format is
-      // MNNFFPPS: major minor fix patch status
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13:
       meth = TLS_client_method();
       break;
-#endif
 
     case TLS_GENERIC:
       meth = TLS_client_method();
@@ -276,17 +263,12 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 
     case SSL_UNKNOWN:
     default:
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
       // The actual protocol version used will be negotiated to the highest
       // version mutually supported by the client and the server. The supported
       // protocols are SSLv3, TLSv1, TLSv1.1 and TLSv1.2. Applications should
       // use these methods, and avoid the version-specific methods described
       // below.
       meth = TLS_method();
-#else
-      // default to TLS 1.2
-      meth = TLSv1_2_method();
-#endif
       break;
   }
 
@@ -328,11 +310,24 @@ bool SslClientConnection::connectSocket() {
     return false;
   }
 
+  if (_isSocketNonBlocking) {
+    if (!setSocketToNonBlocking()) {
+      _isConnected = false;
+      disconnectSocket();
+      return false;
+    }
+  }
+
   _isConnected = true;
 
   _ssl = SSL_new(_ctx);
 
   if (_ssl == nullptr) {
+    if (_isSocketNonBlocking) {
+      // we don't care about the return value here because we were already
+      // unsuccessful in the connection attempt
+      cleanUpSocketFlags();
+    }
     _errorDetails = "failed to create ssl context";
     disconnectSocket();
     _isConnected = false;
@@ -342,9 +337,7 @@ bool SslClientConnection::connectSocket() {
   switch (SslProtocol(_sslProtocol)) {
     case TLS_V1:
     case TLS_V12:
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13:
-#endif
     case TLS_GENERIC:
     default:
       SSL_set_tlsext_host_name(_ssl, _endpoint->host().c_str());
@@ -353,6 +346,11 @@ bool SslClientConnection::connectSocket() {
   SSL_set_connect_state(_ssl);
 
   if (SSL_set_fd(_ssl, (int)TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
+    if (_isSocketNonBlocking) {
+      // we don't care about the return value here because we were already
+      // unsuccessful in the connection attempt
+      cleanUpSocketFlags();
+    }
     _errorDetails = std::string("SSL: failed to create context ") +
                     ERR_error_string(ERR_get_error(), nullptr);
     disconnectSocket();
@@ -360,27 +358,66 @@ bool SslClientConnection::connectSocket() {
     return false;
   }
 
-  SSL_set_verify(_ssl, SSL_VERIFY_NONE, nullptr);
+  if (_verifyCertificates) {
+    SSL_set_verify(_ssl, SSL_VERIFY_PEER, nullptr);
+    SSL_set_verify_depth(_ssl, _verifyDepth);
+
+    SSL_CTX_set_default_verify_paths(_ctx);
+    SSL_CTX_set_default_verify_dir(_ctx);
+  } else {
+    SSL_set_verify(_ssl, SSL_VERIFY_NONE, nullptr);
+  }
 
   ERR_clear_error();
 
-  int ret = SSL_connect(_ssl);
+  int ret = -1;
+  int errorDetail = -1;
+
+  if (_isSocketNonBlocking) {
+    auto start = std::chrono::steady_clock::now();
+    while ((ret = SSL_connect(_ssl)) == -1) {
+      errorDetail = SSL_get_error(_ssl, ret);
+      if (_isInterrupted) {
+        break;
+      }
+      auto end = std::chrono::steady_clock::now();
+      if ((errorDetail != SSL_ERROR_WANT_READ &&
+           errorDetail != SSL_ERROR_WANT_WRITE) ||
+          std::chrono::duration_cast<std::chrono::seconds>(end - start)
+                  .count() >= _connectTimeout) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+  } else {
+    if ((ret = SSL_connect(_ssl)) == -1) {
+      errorDetail = SSL_get_error(_ssl, ret);
+    }
+  }
+
+  if (_isSocketNonBlocking) {
+    if (!cleanUpSocketFlags()) {
+      disconnectSocket();
+      _isConnected = false;
+      return false;
+    }
+  }
 
   if (ret != 1) {
     _errorDetails.append("SSL: during SSL_connect: ");
 
-    int errorDetail;
     long certError;
 
-    errorDetail = SSL_get_error(_ssl, ret);
-    if ((errorDetail == SSL_ERROR_WANT_READ) ||
-        (errorDetail == SSL_ERROR_WANT_WRITE)) {
+    if (!_isSocketNonBlocking && ((errorDetail == SSL_ERROR_WANT_READ) ||
+                                  (errorDetail == SSL_ERROR_WANT_WRITE))) {
       return true;
     }
 
     /* Gets the earliest error code from the
        thread's error queue and removes the entry. */
     unsigned long lastError = ERR_get_error();
+
+    _errorDetails.append(ERR_error_string(lastError, nullptr)).append(" - ");
 
     if (errorDetail == SSL_ERROR_SYSCALL && lastError == 0) {
       if (ret == 0) {
@@ -458,9 +495,6 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
                                                 size_t* bytesWritten) {
   TRI_ASSERT(bytesWritten != nullptr);
 
-#ifdef _WIN32
-  char windowsErrorBuf[256];
-#endif
   *bytesWritten = 0;
 
   if (_ssl == nullptr) {
@@ -519,10 +553,6 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
 
 bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
                                                bool& connectionClosed) {
-#ifdef _WIN32
-  char windowsErrorBuf[256];
-#endif
-
   connectionClosed = true;
   if (_ssl == nullptr) {
     return false;
@@ -610,4 +640,30 @@ bool SslClientConnection::readable() {
   }
 
   return false;
+}
+
+bool SslClientConnection::setSocketToNonBlocking() {
+  _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
+  if (_socketFlags == -1) {
+    _errorDetails = "Socket file descriptor read returned with error " +
+                    std::to_string(errno);
+    return false;
+  }
+  if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags | O_NONBLOCK) == -1) {
+    _errorDetails = "Attempt to create non-blocking socket generated error " +
+                    std::to_string(errno);
+    return false;
+  }
+  return true;
+}
+
+bool SslClientConnection::cleanUpSocketFlags() {
+  TRI_ASSERT(_isSocketNonBlocking);
+  if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK) ==
+      -1) {
+    _errorDetails = "Attempt to make socket blocking generated error " +
+                    std::to_string(errno);
+    return false;
+  }
+  return true;
 }

@@ -1,19 +1,16 @@
 /* jshint globalstrict:false, strict:false, unused:false */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief test the graph class
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +18,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Lucas Dohmen
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
@@ -40,7 +37,7 @@ function main (args) {
     e,
     pathes,
     console = require('console'),
-    Helper = require('test-helper').Helper,
+    helper = require('test-helper').helper,
     caching = false;
 
   if (args[2] === 'true') {
@@ -71,7 +68,7 @@ function main (args) {
 
   console.log('Importing');
 
-  Helper.process(base_path + 'generated_edges.csv', function (row) {
+  helper.process(base_path + 'generated_edges.csv', function (row) {
     v1 = graph.getOrAddVertex(row[1]);
     v2 = graph.getOrAddVertex(row[2]);
     e = graph.addEdge(v1, v2);
@@ -89,7 +86,7 @@ function main (args) {
   };
 
   while (true) {
-    Helper.process(base_path + 'generated_testcases.csv', processor);
+    helper.process(base_path + 'generated_testcases.csv', processor);
     console.log('Round Finished');
   }
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,6 +46,10 @@
 /// USE OR OTHER DEALINGS IN THE SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "v8-buffer.h"
 
 #include <v8-profiler.h>
@@ -53,6 +57,14 @@
 #include "Basics/debugging.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+
+/// @brief shortcut for current v8 globals and scope
+#define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                            \
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(             \
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT)); \
+  v8::HandleScope scope(isolate);                                   \
+  do {                                                              \
+  } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief safety overhead for buffer allocations
@@ -272,7 +284,7 @@ static bool ContainsNonAscii(char const* src, size_t len) {
     return ContainsNonAsciiSlow(src, len);
   }
 
-  const unsigned bytes_per_word = ARANGODB_BITS / (8 * sizeof(char));
+  const unsigned bytes_per_word = 64 / (8 * sizeof(char));
   const unsigned align_mask = bytes_per_word - 1;
   const unsigned unaligned = reinterpret_cast<uintptr_t>(src) & align_mask;
 
@@ -287,13 +299,8 @@ static bool ContainsNonAscii(char const* src, size_t len) {
     len -= n;
   }
 
-#if ARANGODB_BITS == 64
   typedef uint64_t word;
   uint64_t const mask = 0x8080808080808080ll;
-#else
-  typedef uint32_t word;
-  const uint32_t mask = 0x80808080l;
-#endif
 
   const word* srcw = reinterpret_cast<const word*>(src);
 
@@ -334,7 +341,7 @@ static void ForceAscii(char const* src, char* dst, size_t len) {
     return;
   }
 
-  const unsigned bytes_per_word = ARANGODB_BITS / (8 * sizeof(char));
+  const unsigned bytes_per_word = 64 / (8 * sizeof(char));
   const unsigned align_mask = bytes_per_word - 1;
   const unsigned src_unalign = reinterpret_cast<uintptr_t>(src) & align_mask;
   const unsigned dst_unalign = reinterpret_cast<uintptr_t>(dst) & align_mask;
@@ -352,13 +359,8 @@ static void ForceAscii(char const* src, char* dst, size_t len) {
     }
   }
 
-#if ARANGODB_BITS == 64
   typedef uint64_t word;
   uint64_t const mask = ~0x8080808080808080ll;
-#else
-  typedef uint32_t word;
-  const uint32_t mask = ~0x80808080l;
-#endif
 
   const word* srcw = reinterpret_cast<const word*>(src);
   word* dstw = reinterpret_cast<word*>(dst);
@@ -399,9 +401,9 @@ static unsigned hex2bin(char c) {
 /// Returns number of bytes written.
 ////////////////////////////////////////////////////////////////////////////////
 
-static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
-                           v8::Handle<v8::Value> val,
-                           TRI_V8_encoding_t encoding) {
+static std::ptrdiff_t DecodeWrite(v8::Isolate* isolate, char* buf,
+                                  size_t buflen, v8::Handle<v8::Value> val,
+                                  TRI_V8_encoding_t encoding) {
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
@@ -422,7 +424,7 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
     size_t size = V8Buffer::length(isolate, val.As<v8::Object>());
     size_t len = size < buflen ? size : buflen;
     memcpy(buf, data, len);
-    return (ssize_t)len;
+    return static_cast<std::ptrdiff_t>(len);
   }
 
   v8::Local<v8::String> str;
@@ -443,13 +445,13 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
   if (encoding == UTF8) {
     str->WriteUtf8(isolate, buf, (int)buflen, NULL,
                    v8::String::HINT_MANY_WRITES_EXPECTED);
-    return (ssize_t)buflen;
+    return static_cast<std::ptrdiff_t>(buflen);
   }
 
   if (encoding == ASCII) {
     str->WriteOneByte(isolate, reinterpret_cast<uint8_t*>(buf), 0, (int)buflen,
                       v8::String::HINT_MANY_WRITES_EXPECTED);
-    return (ssize_t)buflen;
+    return static_cast<std::ptrdiff_t>(buflen);
   }
 
   // THIS IS AWFUL!!! FIXME
@@ -467,7 +469,7 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
 
   delete[] twobytebuf;
 
-  return (ssize_t)buflen;
+  return static_cast<std::ptrdiff_t>(buflen);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -669,9 +671,9 @@ V8Buffer::~V8Buffer() { replace(_isolate, NULL, 0, NULL, NULL, true); }
 V8Buffer::V8Buffer(v8::Isolate* isolate, v8::Handle<v8::Object> wrapper,
                    size_t length)
     : V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID>(
-          isolate, this, nullptr, wrapper),  // TODO: warning C4355: 'this' :
-                                             // used in base member initializer
-                                             // list
+          isolate, this, wrapper),  // TODO: warning C4355: 'this' :
+                                    // used in base member initializer
+                                    // list
       _length(0),
       _data(nullptr),
       _callback(nullptr) {
@@ -1317,9 +1319,9 @@ static void JS_BinaryWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   max_length = MIN(length, MIN(buffer->_length - offset, max_length));
 
-  ssize_t written = DecodeWrite(isolate, p, max_length, s, BINARY);
+  auto written = DecodeWrite(isolate, p, max_length, s, BINARY);
 
-  TRI_V8_RETURN(v8::Integer::New(isolate, (int32_t)written));
+  TRI_V8_RETURN(v8::Integer::New(isolate, static_cast<int32_t>(written)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

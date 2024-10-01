@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,6 +35,7 @@
 #include "Aql/RestAqlHandler.h"
 #include "Network/NetworkFeature.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
@@ -108,7 +110,8 @@ void MockGraph::storeVertexData(
     std::unordered_set<VertexDef, hashVertexDef> const& vertexData) const {
   arangodb::OperationOptions options;
   arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, transaction::OperationOriginTestCase{}),
       vertexShardName, arangodb::AccessMode::Type::WRITE);
   EXPECT_TRUE((trx.begin().ok()));
 
@@ -131,8 +134,9 @@ void MockGraph::storeEdgeData(TRI_vocbase_t& vocbase,
                               std::vector<EdgeDef> const& edgeData) const {
   arangodb::OperationOptions options;
   arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase), edgeShardName,
-      arangodb::AccessMode::Type::WRITE);
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, transaction::OperationOriginTestCase{}),
+      edgeShardName, arangodb::AccessMode::Type::WRITE);
   EXPECT_TRUE((trx.begin().ok()));
   size_t added = 0;
   velocypack::Builder b;

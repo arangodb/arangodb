@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 
 #include "Basics/application-exit.h"
 #include "Basics/error.h"
+#include "Basics/FileUtils.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -42,6 +43,8 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
@@ -64,25 +67,58 @@ PrivilegeFeature::PrivilegeFeature(Server& server)
 
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 #ifdef ARANGODB_HAVE_SETUID
-  options->addOption(
-      "--uid", "switch to user-id after reading config files",
-      new StringParameter(&_uid),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption(
+          "--uid",
+          "Switch to this user ID after reading the configuration files.",
+          new StringParameter(&_uid),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(The name (identity) of the user to run the
+server as.
+
+If you don't specify this option, the server does not attempt to change its UID,
+so that the UID used by the server is the same as the UID of the user who
+started the server.
+
+If you specify this option, the server changes its UID after opening ports and
+reading configuration files, but before accepting connections or opening other
+files (such as recovery files). This is useful if the server must be started
+with raised privileges (in certain environments) but security considerations
+require that these privileges are dropped once the server has started work.
+
+**Note**: You cannot use this option to bypass operating system security.
+In general, this option (and the related `--gid`) can lower privileges but not
+raise them.)");
 
   options->addOption(
-      "--server.uid", "switch to user-id after reading config files",
+      "--server.uid",
+      "Switch to this user ID after reading configuration files.",
       new StringParameter(&_uid),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif
 
 #ifdef ARANGODB_HAVE_SETGID
-  options->addOption(
-      "--gid", "switch to group-id after reading config files",
-      new StringParameter(&_gid),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--gid",
+                  "Switch to this group ID after reading configuration files.",
+                  new StringParameter(&_gid),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(The name (identity) of the group to run the
+server as.
+
+If you don't specify this option, the server does not attempt to change its GID,
+so that the GID the server runs as is the primary group of the user who started
+the server.
+
+If you specify this option, the server changes its GID after opening ports and
+reading configuration files, but before accepting connections or opening other
+files (such as recovery files).)");
 
   options->addOption(
-      "--server.gid", "switch to group-id after reading config files",
+      "--server.gid",
+      "Switch to this group ID after reading configuration files.",
       new StringParameter(&_gid),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 #endif
@@ -95,13 +131,14 @@ void PrivilegeFeature::extractPrivileges() {
   if (_gid.empty()) {
     _numericGid = getgid();
   } else {
-    int gidNumber = TRI_Int32String(_gid.c_str());
+    bool valid = false;
+    int gidNumber = NumberUtils::atoi_positive<int>(
+        _gid.data(), _gid.data() + _gid.size(), valid);
 
-    if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
+    if (valid && gidNumber >= 0) {
 #ifdef ARANGODB_HAVE_GETGRGID
-      group* g = getgrgid(gidNumber);
-
-      if (g == nullptr) {
+      std::optional<gid_t> gid = FileUtils::findGroup(_gid);
+      if (!gid) {
         LOG_TOPIC("3d53b", FATAL, arangodb::Logger::FIXME)
             << "unknown numeric gid '" << _gid << "'";
         FATAL_ERROR_EXIT();
@@ -109,11 +146,9 @@ void PrivilegeFeature::extractPrivileges() {
 #endif
     } else {
 #ifdef ARANGODB_HAVE_GETGRNAM
-      std::string name = _gid;
-      group* g = getgrnam(name.c_str());
-
-      if (g != nullptr) {
-        gidNumber = g->gr_gid;
+      std::optional<gid_t> gid = FileUtils::findGroup(_gid);
+      if (gid) {
+        gidNumber = gid.value();
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("20096", FATAL, arangodb::Logger::FIXME)
@@ -136,13 +171,14 @@ void PrivilegeFeature::extractPrivileges() {
   if (_uid.empty()) {
     _numericUid = getuid();
   } else {
-    int uidNumber = TRI_Int32String(_uid.c_str());
+    bool valid = false;
+    int uidNumber = NumberUtils::atoi_positive<int>(
+        _uid.data(), _uid.data() + _uid.size(), valid);
 
-    if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+    if (valid) {
 #ifdef ARANGODB_HAVE_GETPWUID
-      passwd* p = getpwuid(uidNumber);
-
-      if (p == nullptr) {
+      std::optional<uid_t> uid = FileUtils::findUser(_uid);
+      if (!uid) {
         LOG_TOPIC("09f8d", FATAL, arangodb::Logger::FIXME)
             << "unknown numeric uid '" << _uid << "'";
         FATAL_ERROR_EXIT();
@@ -150,11 +186,9 @@ void PrivilegeFeature::extractPrivileges() {
 #endif
     } else {
 #ifdef ARANGODB_HAVE_GETPWNAM
-      std::string name = _uid;
-      passwd* p = getpwnam(name.c_str());
-
-      if (p != nullptr) {
-        uidNumber = p->pw_uid;
+      std::optional<uid_t> uid = FileUtils::findUser(_uid);
+      if (uid) {
+        uidNumber = uid.value();
       } else {
         LOG_TOPIC("d54b7", FATAL, arangodb::Logger::FIXME)
             << "cannot convert username '" << _uid << "' to numeric uid";
@@ -177,10 +211,10 @@ void PrivilegeFeature::dropPrivilegesPermanently() {
     defined(ARANGODB_HAVE_SETUID)
   // clear all supplementary groups
   if (!_gid.empty() && !_uid.empty()) {
-    struct passwd* pwent = getpwuid(_numericUid);
+    std::optional<std::string> name = FileUtils::findUserName(_numericUid);
 
-    if (pwent != nullptr) {
-      initgroups(pwent->pw_name, _numericGid);
+    if (name) {
+      FileUtils::initGroups(name.value(), _numericGid);
     }
   }
 #endif

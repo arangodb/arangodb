@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,29 +25,27 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
 #include <thread>
 
 /// @brief construct locker with file and line information
-#define READ_LOCKER(obj, lock)                                                 \
-  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+#define READ_LOCKER(obj, lock)      \
+  arangodb::basics::ReadLocker obj( \
+      &lock, arangodb::basics::LockerType::BLOCKING, true)
 
-#define READ_LOCKER_EVENTUAL(obj, lock)                                        \
-  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
+#define READ_LOCKER_EVENTUAL(obj, lock) \
+  arangodb::basics::ReadLocker obj(     \
+      &lock, arangodb::basics::LockerType::EVENTUAL, true)
 
-#define TRY_READ_LOCKER(obj, lock)                                             \
-  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
+#define TRY_READ_LOCKER(obj, lock)                                           \
+  arangodb::basics::ReadLocker obj(&lock, arangodb::basics::LockerType::TRY, \
+                                   true)
 
-#define CONDITIONAL_READ_LOCKER(obj, lock, condition)                          \
-  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__,    \
-      __LINE__)
+#define CONDITIONAL_READ_LOCKER(obj, lock, condition) \
+  arangodb::basics::ReadLocker obj(                   \
+      &lock, arangodb::basics::LockerType::BLOCKING, (condition))
 
 namespace arangodb::basics {
 
@@ -58,12 +56,18 @@ template<class LockType>
 class ReadLocker {
   ReadLocker(ReadLocker const&) = delete;
   ReadLocker& operator=(ReadLocker const&) = delete;
+  ReadLocker& operator=(ReadLocker&& other) = delete;
 
  public:
   /// @brief acquires a read-lock
   /// The constructor acquires a read lock, the destructor unlocks the lock.
   ReadLocker(LockType* readWriteLock, LockerType type, bool condition,
-             char const* file, int line) noexcept
+             SourceLocation location = SourceLocation::current()) noexcept
+      : ReadLocker(readWriteLock, type, condition, location.file_name(),
+                   location.line()) {}
+  [[deprecated("Use SourceLocation instead")]] ReadLocker(
+      LockType* readWriteLock, LockerType type, bool condition,
+      char const* file, int line) noexcept
       : _readWriteLock(readWriteLock),
         _file(file),
         _line(line),
@@ -79,6 +83,15 @@ class ReadLocker {
         _isLocked = tryLock();
       }
     }
+  }
+
+  ReadLocker(ReadLocker&& other) noexcept
+      : _readWriteLock(other._readWriteLock),
+        _file(other._file),
+        _line(other._line),
+        _isLocked(other._isLocked) {
+    // make only ourselves responsible for unlocking
+    other.steal();
   }
 
   /// @brief releases the read-lock
@@ -133,6 +146,8 @@ class ReadLocker {
     return false;
   }
 
+  LockType* getLock() const noexcept { return _readWriteLock; }
+
  private:
   /// @brief the read-write lock
   LockType* _readWriteLock;
@@ -146,5 +161,11 @@ class ReadLocker {
   /// @brief whether or not we acquired the lock
   bool _isLocked;
 };
+
+template<class LockType>
+ReadLocker(LockType*, LockerType, bool, char const*, int)
+    -> ReadLocker<LockType>;
+template<class LockType>
+ReadLocker(LockType*, LockerType, bool, SourceLocation) -> ReadLocker<LockType>;
 
 }  // namespace arangodb::basics

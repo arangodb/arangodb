@@ -1,27 +1,28 @@
 /* jshint strict: false */
 /* global: arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Lars Maier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 let arangosh = require('@arangodb/arangosh');
 
@@ -139,9 +140,34 @@ ArangoReplicatedLog.prototype.release = function(index) {
   arangosh.checkRequestResult(requestResult);
 };
 
+ArangoReplicatedLog.prototype.compact = function() {
+  let requestResult = this._database._connection.POST(this._baseurl() + `/compact`, {});
+  arangosh.checkRequestResult(requestResult);
+};
+
+/**
+ * @returns {{
+ *       index: number,
+ *       result: {
+ *         commitIndex: number,
+ *         quorum: {
+ *           index: number,
+ *           term: number,
+ *           quorum: [string],
+ *         },
+ *       },
+ *   }}
+ */
 ArangoReplicatedLog.prototype.insert = function (payload, {waitForSync = false, dontWaitForCommit = false} = {}) {
   let str = JSON.stringify(payload);
   let requestResult = this._database._connection.POST(this._baseurl() + `/insert?waitForSync=${waitForSync}&dontWaitForCommit=${dontWaitForCommit}`, str);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+};
+
+ArangoReplicatedLog.prototype.ping = function (message) {
+  let str = JSON.stringify({message});
+  let requestResult = this._database._connection.POST(this._baseurl() + `/ping`, str);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };

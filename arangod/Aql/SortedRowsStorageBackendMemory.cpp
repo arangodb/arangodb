@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,9 +25,9 @@
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/Executor/SortExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
@@ -47,8 +47,8 @@ class OurLessThan {
               std::vector<SortRegister> const& sortRegisters) noexcept
       : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
-  bool operator()(AqlItemMatrix::RowIndex const& a,
-                  AqlItemMatrix::RowIndex const& b) const {
+  bool operator()(SortedRowsStorageBackendMemory::RowIndex const& a,
+                  SortedRowsStorageBackendMemory::RowIndex const& b) const {
     auto const& left = _input[a.first].get();
     auto const& right = _input[b.first].get();
     for (auto const& reg : _sortRegisters) {
@@ -102,13 +102,13 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
 
   ResourceUsageScope guard(_infos.getResourceMonitor());
 
-
   if (_rowIndexes.capacity() < _rowIndexes.size() + numDataRows) {
-    size_t newCapacity = std::max(_rowIndexes.capacity() * 2, _rowIndexes.size() + numDataRows);
+    size_t newCapacity =
+        std::max(_rowIndexes.capacity() * 2, _rowIndexes.size() + numDataRows);
 
     // may throw
     guard.increase((newCapacity - _rowIndexes.capacity()) *
-                   sizeof(AqlItemMatrix::RowIndex));
+                   sizeof(SortedRowsStorageBackendMemory::RowIndex));
 
     _rowIndexes.reserve(newCapacity);
   }
@@ -208,7 +208,7 @@ void SortedRowsStorageBackendMemory::doSorting() {
 }
 
 size_t SortedRowsStorageBackendMemory::currentMemoryUsage() const noexcept {
-  return _rowIndexes.capacity() * sizeof(AqlItemMatrix::RowIndex);
+  return _rowIndexes.capacity() * sizeof(RowIndex);
 }
 
 }  // namespace arangodb::aql

@@ -23,7 +23,7 @@ function record_hash(n, name)
 function gen_rule_name(name, \
 		       n)
 {
-  # Use a simple memonic: the first two letters.
+  # Use a simple mnemonic: the first two letters.
   n = substr(name, 1, 2)
   record_hash(n, name)
   # printf "# %s = %s\n", n, name
@@ -150,10 +150,19 @@ function prehash_rule_names( \
   }
 }
 
+function make_line(n, field, \
+		   f, r)
+{
+  r = field[1]
+  for (f = 2; f <= n; f++)
+    r = r " " field[f]
+  return r
+}
+
 # Process the input line LINE and save it for later output.
 
 function process_input_line(line, \
-			    field, end, i, n, startdef, \
+			    f, field, end, n, outline, r, \
 			    linkline, ruleline, zoneline)
 {
   # Remove comments, normalize spaces, and append a space to each line.
@@ -190,8 +199,10 @@ function process_input_line(line, \
   }
 
   # Abbreviate "max", "min", "only" and month names.
-  gsub(/ max /, " ma ", line)
-  gsub(/ min /, " mi ", line)
+  # Although "max" and "min" can both be abbreviated to just "m",
+  # the longer forms "ma" and "mi" are needed with zic 2023d and earlier.
+  gsub(/ max /, dataform == "vanguard" ? " m " : " ma ", line)
+  gsub(/ min /, dataform == "vanguard" ? " m " : " mi ", line)
   gsub(/ only /, " o ", line)
   gsub(/ Jan /, " Ja ", line)
   gsub(/ Feb /, " F ", line)
@@ -218,46 +229,103 @@ function process_input_line(line, \
 
   n = split(line, field)
 
-  # Abbreviate rule names.
-  i = zoneline ? 4 : linkline ? 0 : 2
-  if (i && field[i] ~ /^[^-+0-9]/) {
-    if (!rule[field[i]])
-      rule[field[i]] = gen_rule_name(field[i])
-    field[i] = rule[field[i]]
+  # Record which rule names are used, and generate their abbreviations.
+  f = zoneline ? 4 : linkline || ruleline ? 0 : 2
+  r = field[f]
+  if (r ~ /^[^-+0-9]/) {
+    rule_used[r] = 1
   }
 
-  # If this zone supersedes an earlier one, delete the earlier one
-  # from the saved output lines.
-  startdef = ""
   if (zoneline)
     zonename = startdef = field[2]
   else if (linkline)
     zonename = startdef = field[3]
   else if (ruleline)
     zonename = ""
-  if (startdef) {
-    i = zonedef[startdef]
-    if (i) {
-      do
-	output_line[i - 1] = ""
-      while (output_line[i++] ~ /^[-+0-9]/);
+
+  # Save the information for later output.
+  outline = make_line(n, field)
+  if (ruleline)
+    rule_output_line[nrule_out++] = outline
+  else if (linkline) {
+    # In vanguard format with Gawk, links are output sorted by destination.
+    if (dataform == "vanguard" && PROCINFO["version"])
+      linkdef[zonename] = field[2]
+    else
+      link_output_line[nlink_out++] = outline
+  }else
+    zonedef[zonename] = (zoneline ? "" : zonedef[zonename] "\n") outline
+}
+
+function omit_unused_rules( \
+			   i, field)
+{
+  for (i = 0; i < nrule_out; i++) {
+    split(rule_output_line[i], field)
+    if (!rule_used[field[2]])
+      rule_output_line[i] = ""
+  }
+}
+
+function abbreviate_rule_names( \
+			       abbr, f, field, i, n, newdef, newline, r, \
+			       zoneline, zonelines, zonename)
+{
+  for (i = 0; i < nrule_out; i++) {
+    n = split(rule_output_line[i], field)
+    if (n) {
+      r = field[2]
+      if (r ~ /^[^-+0-9]/) {
+	abbr = rule[r]
+	if (!abbr) {
+	  rule[r] = abbr = gen_rule_name(r)
+	}
+	field[2] = abbr
+	rule_output_line[i] = make_line(n, field)
+      }
     }
   }
-  zonedef[zonename] = nout + 1
-
-  # Save the line for later output.
-  line = field[1]
-  for (i = 2; i <= n; i++)
-    line = line " " field[i]
-  output_line[nout++] = line
+  for (zonename in zonedef) {
+    zonelines = split(zonedef[zonename], zoneline, /\n/)
+    newdef = ""
+    for (i = 1; i <= zonelines; i++) {
+      newline = zoneline[i]
+      n = split(newline, field)
+      f = i == 1 ? 4 : 2
+      r = rule[field[f]]
+      if (r) {
+	field[f] = r
+	newline = make_line(n, field)
+      }
+      newdef = (newdef ? newdef "\n" : "") newline
+    }
+    zonedef[zonename] = newdef
+  }
 }
 
 function output_saved_lines( \
-			    i)
+			    i, zonename)
 {
-  for (i = 0; i < nout; i++)
-    if (output_line[i])
-      print output_line[i]
+  for (i = 0; i < nrule_out; i++)
+    if (rule_output_line[i])
+      print rule_output_line[i]
+
+  # When using gawk, output zones sorted by name.
+  # This makes the output a bit more compressible.
+  PROCINFO["sorted_in"] = "@ind_str_asc"
+  for (zonename in zonedef)
+    print zonedef[zonename]
+
+  if (nlink_out)
+    for (i = 0; i < nlink_out; i++)
+      print link_output_line[i]
+  else {
+    # When using gawk, output links sorted by destination.
+    # This also helps compressibility a bit.
+    PROCINFO["sorted_in"] = "@val_type_asc"
+    for (zonename in linkdef)
+      printf "L %s %s\n", linkdef[zonename], zonename
+  }
 }
 
 BEGIN {
@@ -314,5 +382,7 @@ BEGIN {
 }
 
 END {
+  omit_unused_rules()
+  abbreviate_rule_names()
   output_saved_lines()
 }

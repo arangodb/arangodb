@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Expression.h"
+#include "Aql/LazyConditions.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Parser.h"
@@ -36,7 +37,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Hints.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/Status.h"
 #include "Utils/CollectionNameResolver.h"
@@ -54,9 +54,10 @@ namespace {
 /// statuses to keep ASSERT happy
 class CalculationTransactionState final : public arangodb::TransactionState {
  public:
-  explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
+  explicit CalculationTransactionState(TRI_vocbase_t& vocbase,
+                                       transaction::OperationOrigin trxType)
       : TransactionState(vocbase, arangodb::TransactionId(0),
-                         arangodb::transaction::Options()) {
+                         arangodb::transaction::Options(), trxType) {
     updateStatus(arangodb::transaction::Status::RUNNING);  // always running to
                                                            // make ASSERTS happy
   }
@@ -68,18 +69,23 @@ class CalculationTransactionState final : public arangodb::TransactionState {
                                                     // make ASSERTS happy
     }
   }
+
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
+
   /// @brief begin a transaction
-  [[nodiscard]] arangodb::Result beginTransaction(
+  [[nodiscard]] futures::Future<Result> beginTransaction(
       arangodb::transaction::Hints) override {
-    return {};
+    return Result{};
   }
 
   /// @brief commit a transaction
   [[nodiscard]] futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods*) override {
+    applyBeforeCommitCallbacks();
     updateStatus(
         arangodb::transaction::Status::COMMITTED);  // simulate state changes to
                                                     // make ASSERTS happy
+    applyAfterCommitCallbacks();
     return Result{};
   }
 
@@ -92,16 +98,38 @@ class CalculationTransactionState final : public arangodb::TransactionState {
     return {};
   }
 
-  [[nodiscard]] arangodb::Result performIntermediateCommitIfRequired(
-      arangodb::DataSourceId collectionId) override {
-    // Analyzers do not write. so do nothing
-    return {};
+  Result triggerIntermediateCommit() override {
+    ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                              "CalculationTransactionState";
+    return Result{TRI_ERROR_INTERNAL};
   }
 
-  [[nodiscard]] bool hasFailedOperations() const override { return false; }
+  [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
+      arangodb::DataSourceId collectionId) override {
+    // Analyzers do not write. so do nothing
+    return Result{};
+  }
+
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept override {
+    return 0;
+  }
+
+  [[nodiscard]] bool hasFailedOperations() const noexcept override {
+    return false;
+  }
 
   /// @brief number of commits, including intermediate commits
-  [[nodiscard]] uint64_t numCommits() const override { return 0; }
+  [[nodiscard]] uint64_t numCommits() const noexcept override { return 0; }
+
+  /// @brief number of intermediate commits
+  [[nodiscard]] uint64_t numIntermediateCommits() const noexcept override {
+    return 0;
+  }
+
+  void addIntermediateCommits(uint64_t /*value*/) override {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
   [[nodiscard]] TRI_voc_tick_t lastOperationTick() const noexcept override {
     return 0;
@@ -118,40 +146,42 @@ class CalculationTransactionState final : public arangodb::TransactionState {
 /// @brief Dummy transaction context which just gives dummy state
 struct CalculationTransactionContext final
     : public arangodb::transaction::SmartContext {
-  explicit CalculationTransactionContext(TRI_vocbase_t& vocbase)
+  explicit CalculationTransactionContext(
+      TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin)
       : SmartContext(vocbase,
                      arangodb::transaction::Context::makeTransactionId(),
-                     nullptr),
-        _state(vocbase) {}
+                     nullptr, operationOrigin),
+        _calculationTransactionState(vocbase, operationOrigin) {}
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<arangodb::TransactionState> acquireState(
       arangodb::transaction::Options const& options,
       bool& responsibleForCommit) override {
-    return std::shared_ptr<arangodb::TransactionState>(
-        std::shared_ptr<arangodb::TransactionState>(), &_state);
+    return {std::shared_ptr<arangodb::TransactionState>(),
+            &_calculationTransactionState};
   }
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override {}
 
   std::shared_ptr<Context> clone() const override {
-    TRI_ASSERT(FALSE);
+    TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
         "CalculationTransactionContext cloning is not implemented");
   }
 
  private:
-  CalculationTransactionState _state;
+  CalculationTransactionState _calculationTransactionState;
 };
 
 class CalculationQueryContext final : public arangodb::aql::QueryContext {
  public:
-  explicit CalculationQueryContext(TRI_vocbase_t& vocbase)
-      : QueryContext(vocbase),
+  explicit CalculationQueryContext(TRI_vocbase_t& vocbase,
+                                   transaction::OperationOrigin operationOrigin)
+      : QueryContext(vocbase, operationOrigin),
         _resolver(vocbase),
-        _transactionContext(vocbase) {
+        _transactionContext(vocbase, operationOrigin) {
     _ast = std::make_unique<Ast>(*this, NON_CONST_PARAMETERS);
     _trx = AqlTransaction::create(newTrxContext(), _collections,
                                   _queryOptions.transactionOptions,
@@ -159,7 +189,10 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
     _trx->addHint(arangodb::transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
     _trx->addHint(arangodb::transaction::Hints::Hint::
                       SINGLE_OPERATION);  // to avoid taking db snapshot
-    _trx->begin();
+    auto res = _trx->begin();
+    if (res.fail()) {
+      throw basics::Exception(std::move(res));
+    }
   }
 
   arangodb::aql::QueryOptions const& queryOptions() const override {
@@ -208,11 +241,11 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 
   bool isAsyncQuery() const noexcept override { return false; }
 
-  void enterV8Context() override {
+  void enterV8Executor() override {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
-        "CalculationQueryContext entering V8 context is not implemented");
+        "CalculationQueryContext: entering V8 executor is not implemented");
   }
 
  private:
@@ -227,21 +260,28 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
 namespace arangodb::aql {
 
 std::unique_ptr<QueryContext> StandaloneCalculation::buildQueryContext(
-    TRI_vocbase_t& vocbase) {
-  return std::make_unique<::CalculationQueryContext>(vocbase);
+    TRI_vocbase_t& vocbase, transaction::OperationOrigin operationOrigin) {
+  return std::make_unique<::CalculationQueryContext>(vocbase, operationOrigin);
 }
 
-Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
-                                            std::string_view queryString,
-                                            std::string_view parameterName,
-                                            std::string_view errorContext,
-                                            bool isComputedValue) {
+Result StandaloneCalculation::validateQuery(
+    TRI_vocbase_t& vocbase, std::string_view queryString,
+    std::string_view parameterName, std::string_view errorContext,
+    transaction::OperationOrigin operationOrigin, bool isComputedValue) {
   try {
-    CalculationQueryContext queryContext(vocbase);
+    CalculationQueryContext queryContext(vocbase, operationOrigin);
     auto ast = queryContext.ast();
     TRI_ASSERT(ast);
     auto qs = arangodb::aql::QueryString(queryString);
     Parser parser(queryContext, *ast, qs);
+    if (isComputedValue) {
+      // force the condition of the ternary operator (condition ? truePart :
+      // falsePart) to be always inlined and not be extracted into its own LET
+      // node. if we don't set this boolean flag here, then a ternary operator
+      // could create additional LET nodes, which is not supported inside
+      // computed values.
+      parser.lazyConditions().pushForceInline();
+    }
     parser.parse();
     ast->validateAndOptimize(
         queryContext.trxForOptimization(),
@@ -252,7 +292,7 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
 
     // Forbid all V8 related stuff as it is not available on DBServers where
     // analyzers run.
-    if (ast->willUseV8()) {
+    if (astRoot->willUseV8()) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("V8 usage is forbidden", errorContext)};
     }

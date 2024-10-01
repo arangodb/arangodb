@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,7 +35,6 @@
 
 namespace arangodb::signals {
 
-#ifndef _WIN32
 /// @brief find out what impact a signal will have to the process we send it.
 SignalType signalType(int signal) noexcept {
   // Some platforms don't have these. To keep our table clean
@@ -119,13 +118,10 @@ SignalType signalType(int signal) noexcept {
     default:
       return SignalType::user;
   }
-  return SignalType::term;
 }
-#endif
 
 /// @brief whether or not the signal is deadly
 bool isDeadly(int signal) noexcept {
-#ifndef _WIN32
   switch (signalType(signal)) {
     case SignalType::term:
       return true;
@@ -142,7 +138,6 @@ bool isDeadly(int signal) noexcept {
     case SignalType::user:  // user signals aren't supposed to be deadly.
       return false;
   }
-#endif
   // well windows... always deadly.
   return true;
 }
@@ -212,6 +207,205 @@ std::string_view name(int signal) noexcept {
     default:
       return "unknown";
   }
+}
+
+std::string_view subtypeName(int signal, int subCode) noexcept {
+  // the following meanings are taken from /usr/include/asm-generic/siginfo.h
+  switch (signal) {
+    case SIGILL: {
+      switch (subCode) {
+#ifdef ILL_ILLOPC
+        case ILL_ILLOPC:
+          return "ILL_ILLOPC: illegal opcode";
+#endif
+#ifdef ILL_ILLOPN
+        case ILL_ILLOPN:
+          return "ILL_ILLOPN: illegal operand";
+#endif
+#ifdef ILL_ILLADR
+        case ILL_ILLADR:
+          return "ILL_ILLADR: illegal addressing mode";
+#endif
+#ifdef ILL_ILLTRP
+        case ILL_ILLTRP:
+          return "ILL_ILLTRP: illegal trap";
+#endif
+#ifdef ILL_PRVOPC
+        case ILL_PRVOPC:
+          return "ILL_PRVOPC: privileged opcode";
+#endif
+#ifdef ILL_PRVREG
+        case ILL_PRVREG:
+          return "ILL_PRVREG: privileged register";
+#endif
+#ifdef ILL_COPROC
+        case ILL_COPROC:
+          return "ILL_COPROC: coprocessor error";
+#endif
+#ifdef ILL_BADSTK
+        case ILL_BADSTK:
+          return "ILL_BADSTK: internal stack error";
+#endif
+#ifdef ILL_BADIADDR
+        case ILL_BADIADDR:
+          return "ILL_BADIADDR: unimplemented instruction address";
+#endif
+        default:
+          break;
+      }
+      break;
+    }
+    case SIGFPE: {
+      switch (subCode) {
+#ifdef FPE_INTDIV
+        case FPE_INTDIV:
+          return "FPE_INTDIV: integer divide by zero";
+#endif
+#ifdef FPE_INTOVF
+        case FPE_INTOVF:
+          return "FPE_INTOVF: integer overflow";
+#endif
+#ifdef FPE_FLTDIV
+        case FPE_FLTDIV:
+          return "FPE_FLTDIV: floating point divide by zero";
+#endif
+#ifdef FPE_FLTOVF
+        case FPE_FLTOVF:
+          return "FPE_FLTOVF: floating point overflow";
+#endif
+#ifdef FPE_FLTUND
+        case FPE_FLTUND:
+          return "FPE_FLTUND: floating point underflow";
+#endif
+#ifdef FPE_FLTRES
+        case FPE_FLTRES:
+          return "FPE_FLTRES: floating point inexact result";
+#endif
+#ifdef FPE_FLTINV
+        case FPE_FLTINV:
+          return "FPE_FLTINV: floating point invalid operation";
+#endif
+#ifdef FPE_FLTSUB
+        case FPE_FLTSUB:
+          return "FPE_FLTSUB: subscript out of range";
+#endif
+#ifdef FPE_FLTUNK
+        case FPE_FLTUNK:
+          return "FPE_FLTUNK: undiagnosed floating-point exception";
+#endif
+#ifdef FPE_CONDTRAP
+        case FPE_CONDTRAP:
+          return "FPE_CONDTRAP: trap on condition";
+#endif
+        default:
+          break;
+      }
+      break;
+    }
+    case SIGSEGV: {
+      switch (subCode) {
+#ifdef SEGV_MAPERR
+        case SEGV_MAPERR:
+          return "SEGV_MAPERR: address not mapped to object";
+#endif
+#ifdef SEGV_ACCERR
+        case SEGV_ACCERR:
+          return "SEGV_ACCERR: invalid permissions for mapped object";
+#endif
+#ifdef SEGV_PKUERR
+        case SEGV_PKUERR:
+          return "SEGV_PKUERR: failed protection key checks";
+#endif
+#ifdef SEGV_ACCADI
+        case SEGV_ACCADI:
+          return "SEGV_ACCADI: ADI not enabled for mapped object";
+#endif
+#ifdef SEGV_ADIDERR
+        case SEGV_ADIDERR:
+          return "SEGV_ADIDERR: Disrupting MCD error";
+#endif
+#ifdef SEGV_ADIPERR
+        case SEGV_ADIPERR:
+          return "SEGV_ADIPERR: Precise MCD exception";
+#endif
+#ifdef SEGV_MTEAERR
+        case SEGV_MTEAERR:
+          return "SEGV_MTEAERR: Asynchronous ARM MTE error";
+#endif
+#ifdef SEGV_MTESERR
+        case SEGV_MTESERR:
+          return "SEGV_MTESERR: Synchronous ARM MTE exception";
+#endif
+        default:
+          break;
+      }
+      break;
+    }
+    case SIGBUS: {
+      switch (subCode) {
+#ifdef BUS_ADRALN
+        case BUS_ADRALN:
+          return "BUS_ADRALN: invalid address alignment";
+#endif
+#ifdef BUS_ADRERR
+        case BUS_ADRERR:
+          return "BUS_ADRERR: non-existent physical address";
+#endif
+#ifdef BUS_OBJERR
+        case BUS_OBJERR:
+          return "BUS_OBJERR: object specific hardware error";
+#endif
+#ifdef BUS_MCEERR_AR
+        case BUS_MCEERR_AR:
+          return "BUS_MCEERR_AR: hardware memory error consumed on a machine "
+                 "check";
+#endif
+#ifdef BUS_MCEERR_AO
+        case BUS_MCEERR_AO:
+          return "BUS_MCEERR_AO: hardware memory error "
+                 "detected in process but not consumed";
+#endif
+        default:
+          break;
+      }
+      break;
+    }
+    case SIGTRAP: {
+      switch (subCode) {
+#ifdef TRAP_BRKPT
+        case TRAP_BRKPT:
+          return "TRAP_BRKPT: process breakpoint";
+#endif
+#ifdef TRAP_TRACE
+        case TRAP_TRACE:
+          return "TRAP_TRACE: process trace trap";
+#endif
+#ifdef TRAP_BRANCH
+        case TRAP_BRANCH:
+          return "TRAP_BRANCH: process taken branch trap";
+#endif
+#ifdef TRAP_HWBKPT
+        case TRAP_HWBKPT:
+          return "TRAP_HWBKPT: hardware breakpoint/watchpoint";
+#endif
+#ifdef TRAP_UNK
+        case TRAP_UNK:
+          return "TRAP_UNK: undiagnosed trap";
+#endif
+#ifdef TRAP_PERF
+        case TRAP_PERF:
+          return "TRAP_PERF: perf event with sigtrap=1";
+#endif
+        default:
+          break;
+      }
+      break;
+    }
+
+    default:
+      break;
+  }
+  return "unknown";
 }
 
 std::atomic<bool> isServer = true;

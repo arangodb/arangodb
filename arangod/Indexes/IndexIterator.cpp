@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -90,6 +90,17 @@ bool IndexIterator::rearmImpl(arangodb::aql::AstNode const*,
                               std::string{typeName()} + ")");
 }
 
+/// @brief default implementation for rearm
+/// specialized index iterators can implement this method with some
+/// sensible behavior
+bool IndexIterator::rearmImpl(velocypack::Slice, IndexIteratorOptions const&) {
+  TRI_ASSERT(canRearm());
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, std::string("requested rearming from an index "
+                                      "iterator that does not support it (") +
+                              std::string{typeName()} + ")");
+}
+
 /// @brief default implementation for nextImpl
 bool IndexIterator::nextImpl(LocalDocumentIdCallback const&,
                              uint64_t /*limit*/) {
@@ -102,9 +113,11 @@ bool IndexIterator::nextImpl(LocalDocumentIdCallback const&,
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb,
                                      uint64_t limit) {
   return nextImpl(
-      [this, &cb](LocalDocumentId const& token) {
+      [this, &cb](LocalDocumentId token) {
         return _collection->getPhysical()
-            ->read(_trx, token, cb, _readOwnWrites)
+            ->lookup(_trx, token, cb,
+                     {.readOwnWrites = static_cast<bool>(_readOwnWrites),
+                      .countBytes = true})
             .ok();
       },
       limit);
@@ -123,110 +136,39 @@ bool IndexIterator::nextCoveringImpl(CoveringCallback const&,
 
 /// @brief default implementation for skip
 void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
-  // Skip the first count-many entries
-  nextImpl(
-      [&skipped](LocalDocumentId const&) {
-        ++skipped;
-        return true;
-      },
-      count);
+  // Skip the first count-many entries.
+  // It is possible that `nextImpl` does not actually move `count` steps
+  // forward, however, it will then say so by returning `true` for "there
+  // is more to get"! In this case, we need to check, if we have already
+  // skipped the requested count, and if not, try again (with a potentially
+  // reduced count):
+  uint64_t skippedInitial = skipped;
+  do {
+    TRI_ASSERT(skipped >= skippedInitial && skipped - skippedInitial <= count);
+    if (!nextImpl(
+            [&skipped](LocalDocumentId) {
+              ++skipped;
+              return true;
+            },
+            count - (skipped - skippedInitial))) {
+      return;
+    }
+  } while (skipped - skippedInitial < count);
 }
 
-/// @brief Get the next elements
-///        If one iterator is exhausted, the next one is used.
-///        If callback is called less than limit many times
-///        all iterators are exhausted
-bool MultiIndexIterator::nextImpl(LocalDocumentIdCallback const& callback,
-                                  uint64_t limit) {
-  auto cb = [&limit, &callback](LocalDocumentId const& token) {
-    if (callback(token)) {
-      --limit;
-      return true;
-    }
-    return false;
-  };
-  while (limit > 0) {
-    if (_current == nullptr) {
-      return false;
-    }
-    if (!_current->nextImpl(cb, limit)) {
-      _currentIdx++;
-      if (_currentIdx >= _iterators.size()) {
-        _current = nullptr;
-        return false;
+std::ostream& arangodb::operator<<(std::ostream& os,
+                                   IndexIteratorCoveringData const& covering) {
+  if (covering.isArray()) {
+    os << "[";
+    for (std::size_t k = 0; k < covering.length(); k++) {
+      if (k != 0) {
+        os << ", ";
       }
-      _current = _iterators.at(_currentIdx).get();
+      os << covering.at(k).toJson();
     }
+    os << "]";
+  } else {
+    os << covering.value().toJson();
   }
-  return true;
-}
-
-/// @brief Get the next elements
-///        If one iterator is exhausted, the next one is used.
-///        If callback is called less than limit many times
-///        all iterators are exhausted
-bool MultiIndexIterator::nextDocumentImpl(DocumentCallback const& callback,
-                                          uint64_t limit) {
-  auto cb = [&limit, &callback](LocalDocumentId const& token,
-                                arangodb::velocypack::Slice slice) {
-    if (callback(token, slice)) {
-      --limit;
-      return true;
-    }
-    return false;
-  };
-  while (limit > 0) {
-    if (_current == nullptr) {
-      return false;
-    }
-    if (!_current->nextDocumentImpl(cb, limit)) {
-      _currentIdx++;
-      if (_currentIdx >= _iterators.size()) {
-        _current = nullptr;
-        return false;
-      }
-      _current = _iterators[_currentIdx].get();
-    }
-  }
-  return true;
-}
-
-/// @brief Get the next elements
-///        If one iterator is exhausted, the next one is used.
-///        If callback is called less than limit many times
-///        all iterators are exhausted
-bool MultiIndexIterator::nextCoveringImpl(CoveringCallback const& callback,
-                                          uint64_t limit) {
-  auto cb = [&limit, &callback](LocalDocumentId const& token,
-                                IndexIteratorCoveringData& data) {
-    if (callback(token, data)) {
-      --limit;
-      return true;
-    }
-    return false;
-  };
-  while (limit > 0) {
-    if (_current == nullptr) {
-      return false;
-    }
-    if (!_current->nextCoveringImpl(cb, limit)) {
-      _currentIdx++;
-      if (_currentIdx >= _iterators.size()) {
-        _current = nullptr;
-        return false;
-      }
-      _current = _iterators[_currentIdx].get();
-    }
-  }
-  return true;
-}
-
-/// @brief Reset the cursor
-///        This will reset ALL internal iterators and start all over again
-void MultiIndexIterator::resetImpl() {
-  _current = _iterators[0].get();
-  _currentIdx = 0;
-  for (auto& it : _iterators) {
-    it->resetImpl();
-  }
+  return os;
 }

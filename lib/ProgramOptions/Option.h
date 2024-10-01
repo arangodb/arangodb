@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,12 +23,11 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-#include "ProgramOptions/Parameters.h"
-
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace arangodb {
@@ -57,13 +56,6 @@ enum class Flags : uint16_t {
                    // target host configuration
   FlushOnFirst = 32,  // when we first see this parameter, we will flush the
                       // contents of its default value before setting it.
-  // operating systems
-  OsLinux = 64,     // option can be used on Linux
-  OsWindows = 128,  // option can be used on Windows
-  OsMac = 256,      // option can be used on MacOS
-
-  OsAll = OsLinux | OsWindows |
-          OsMac,  // option can be used on all OSes (linux + win + mac)
 
   // components
   OnCoordinator = 512,  // option can be used on coordinator
@@ -77,9 +69,8 @@ enum class Flags : uint16_t {
   OnAll = OnCluster | OnSingle,  // option can be used everywhere
 
   // defaults
-  Default = OsAll | OnAll,  // default options
+  Default = OnAll,  // default options
 
-  DefaultNoOs = Default & ~OsAll,  // default, but not specifying any OSes
   DefaultNoComponents =
       Default & ~OnAll,  // default, but not specifying any components
 
@@ -123,13 +114,9 @@ struct Option {
   Option(Option&& other) = default;
   Option& operator=(Option&& other) = default;
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder,
-                    bool detailed) const;
+  void toVelocyPack(velocypack::Builder& builder, bool detailed) const;
 
-  bool hasFlag(Flags flag) const {
-    return (static_cast<std::underlying_type<Flags>::type>(flag) & flags) ==
-           static_cast<std::underlying_type<Flags>::type>(flag);
-  }
+  bool hasFlag(Flags flag) const;
 
   // format a version string
   std::string toVersionString(uint32_t version) const;
@@ -137,27 +124,27 @@ struct Option {
   // format multiple version strings, comma-separated
   std::string toVersionString(std::vector<uint32_t> const& version) const;
 
+  // provide a detailed explanation of an option
+  Option& setLongDescription(std::string_view longDesc) noexcept;
+
   // specifies in which version the option was introduced. version numbers
   // should be specified such as 30402 (version 3.4.2)
   // a version number of 0 means "unknown"
-  Option& setIntroducedIn(uint32_t version) {
-    introducedInVersions.push_back(version);
-    return *this;
-  }
+  Option& setIntroducedIn(uint32_t version);
 
   // specifies in which version the option was deprecated. version numbers
   // should be specified such as 30402 (version 3.4.2)
   // a version number of 0 means "unknown"
-  Option& setDeprecatedIn(uint32_t version) {
-    deprecatedInVersions.push_back(version);
-    return *this;
-  }
+  Option& setDeprecatedIn(uint32_t version);
+
+  // returns whether or not a long description was set
+  bool hasLongDescription() const noexcept;
 
   // returns whether or not we know in which version(s) an option was added
-  bool hasIntroducedIn() const { return !introducedInVersions.empty(); }
+  bool hasIntroducedIn() const noexcept;
 
   // returns whether or not we know in which version(s) an option was added
-  bool hasDeprecatedIn() const { return !deprecatedInVersions.empty(); }
+  bool hasDeprecatedIn() const noexcept;
 
   // returns the version in which the option was introduced as a proper
   // version string - if the version is unknown this will return "-"
@@ -168,24 +155,17 @@ struct Option {
   std::string deprecatedInString() const;
 
   // get display name for the option
-  std::string displayName() const { return "--" + fullName(); }
+  std::string displayName() const;
 
   // get full name for the option
-  std::string fullName() const {
-    if (section.empty()) {
-      return name;
-    }
-    return section + '.' + name;
-  }
+  std::string fullName() const;
 
   // print help for an option
   // the special search string "." will show help for all sections, even if
   // hidden
   void printHelp(std::string const& search, size_t tw, size_t ow, bool) const;
 
-  std::string nameWithType() const {
-    return displayName() + " " + parameter->typeDescription();
-  }
+  std::string nameWithType() const;
 
   // determine the width of an option help string
   size_t optionsWidth() const;
@@ -210,6 +190,7 @@ struct Option {
   std::string section;
   std::string name;
   std::string description;
+  std::string_view longDescription;
   std::string shorthand;
   std::unique_ptr<Parameter> parameter;
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,40 +26,25 @@
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ bool IdentityAnalyzer::normalize(irs::string_ref /*args*/,
-                                            std::string& out) {
+bool IdentityAnalyzer::normalize(std::string_view /*args*/, std::string& out) {
   out.resize(VPackSlice::emptyObjectSlice().byteSize());
   std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
   return true;
 }
 
-/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(
-    irs::string_ref /*args*/) {
+irs::analysis::analyzer::ptr IdentityAnalyzer::make(std::string_view /*args*/) {
   return std::make_unique<IdentityAnalyzer>();
 }
 
-/*static*/ bool IdentityAnalyzer::normalize_json(irs::string_ref /*args*/,
-                                                 std::string& out) {
+bool IdentityAnalyzer::normalize_json(std::string_view /*args*/,
+                                      std::string& out) {
   out = "{}";
   return true;
 }
 
-/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make_json(
-    irs::string_ref /*args*/) {
+irs::analysis::analyzer::ptr IdentityAnalyzer::make_json(
+    std::string_view /*args*/) {
   return std::make_unique<IdentityAnalyzer>();
-}
-
-IdentityAnalyzer::IdentityAnalyzer() noexcept
-    : irs::analysis::analyzer(irs::type<IdentityAnalyzer>::get()),
-      _empty(true) {}
-
-irs::attribute* IdentityAnalyzer::get_mutable(
-    irs::type_info::type_id type) noexcept {
-  if (type == irs::type<irs::increment>::id()) {
-    return &_inc;
-  }
-
-  return type == irs::type<irs::term_attribute>::id() ? &_term : nullptr;
 }
 
 }  // namespace iresearch

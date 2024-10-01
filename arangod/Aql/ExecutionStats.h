@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,11 +24,10 @@
 #pragma once
 
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/ExecutionNodeStats.h"
 
 #include <cstdint>
 #include <map>
-
-#include "Aql/ExecutionNodeStats.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -52,6 +51,9 @@ struct ExecutionStats {
   /// @brief sets the peak memory usage from the outside
   void setPeakMemoryUsage(size_t value);
 
+  /// @brief set the number of intermediate commits
+  void setIntermediateCommits(uint64_t value);
+
   /// @brief sumarize two sets of ExecutionStats
   void add(ExecutionStats const& summand);
   void addNode(aql::ExecutionNodeId id, ExecutionNodeStats const&);
@@ -70,6 +72,13 @@ struct ExecutionStats {
 
   /// @brief number of ignored write operations (ignored due to errors)
   uint64_t writesIgnored = 0;
+
+  /// @brief number of real document document lookups
+  uint64_t documentLookups = 0;
+
+  /// @brief number of seeks done by RocksDB iterators. Currently only populated
+  /// in JoinExecutor.
+  uint64_t seeks = 0;
 
   /// @brief number of documents scanned (full-collection scan)
   uint64_t scannedFull = 0;
@@ -109,6 +118,9 @@ struct ExecutionStats {
 
   /// @brief peak memory usage of the query
   size_t peakMemoryUsage = 0;
+
+  /// @brief number of commits that happened for the query
+  uint64_t intermediateCommits = 0;
 
  private:
   /// @brief Node aliases, source => target.

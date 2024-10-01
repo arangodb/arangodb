@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,28 +32,26 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 void QueryExpressionContext::registerWarning(ErrorCode errorCode,
-                                             char const* msg) {
+                                             std::string_view msg) {
   _query.warnings().registerWarning(errorCode, msg);
 }
 
 void QueryExpressionContext::registerError(ErrorCode errorCode,
-                                           char const* msg) {
+                                           std::string_view msg) {
   _query.warnings().registerError(errorCode, msg);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length,
-                                                      caseInsensitive);
+icu_64_64::RegexMatcher* QueryExpressionContext::buildRegexMatcher(
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(
-    char const* ptr, size_t length, bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length,
-                                                     caseInsensitive);
+icu_64_64::RegexMatcher* QueryExpressionContext::buildLikeMatcher(
+    std::string_view expr, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
+icu_64_64::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
     AqlValue splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
@@ -61,7 +59,7 @@ icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
 }
 
 arangodb::ValidatorBase* QueryExpressionContext::buildValidator(
-    arangodb::velocypack::Slice const& params) {
+    arangodb::velocypack::Slice params) {
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 

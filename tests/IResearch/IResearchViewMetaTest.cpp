@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -79,6 +79,10 @@ TEST_F(IResearchViewMetaTest, test_defaults) {
   EXPECT_TRUE(64 == meta._writebufferIdle);
   EXPECT_TRUE(32 * (size_t(1) << 20) == meta._writebufferSizeMax);
   EXPECT_TRUE(meta._primarySort.empty());
+#ifdef USE_ENTERPRISE
+  EXPECT_FALSE(meta._pkCache);
+  EXPECT_FALSE(meta._sortCache);
+#endif
 }
 
 TEST_F(IResearchViewMetaTest, test_inheritDefaults) {
@@ -96,7 +100,7 @@ TEST_F(IResearchViewMetaTest, test_inheritDefaults) {
   defaults._consolidationIntervalMsec = 456;
   defaults._consolidationPolicy =
       arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy(
-          irs::index_writer::consolidation_policy_t(),
+          irs::ConsolidationPolicy{},
           std::move(*arangodb::velocypack::Parser::fromJson(
               "{ \"type\": \"tier\", \"threshold\": 0.11 }")));
   defaults._writebufferActive = 10;
@@ -458,6 +462,25 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
     EXPECT_EQ("storedValues[1]", errorField);
   }
 
+#ifdef USE_ENTERPRISE
+  {
+    std::string errorField;
+    auto json =
+        arangodb::velocypack::Parser::fromJson("{\"primarySortCache\":1}");
+    EXPECT_TRUE(metaState.init(json->slice(), errorField));
+    EXPECT_FALSE(meta.init(json->slice(), errorField));
+    EXPECT_EQ("primarySortCache", errorField);
+  }
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{\"primaryKeyCache\":{\"a\":1}}");
+    EXPECT_TRUE(metaState.init(json->slice(), errorField));
+    EXPECT_FALSE(meta.init(json->slice(), errorField));
+    EXPECT_EQ("primaryKeyCache", errorField);
+  }
+#endif
+
   // .............................................................................
   // test valid value
   // .............................................................................
@@ -552,6 +575,24 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
       EXPECT_TRUE(true == meta._primarySort.direction(3));
     }
   }
+#ifdef USE_ENTERPRISE
+  {
+    std::string errorField;
+    auto json =
+        arangodb::velocypack::Parser::fromJson("{\"primaryKeyCache\":true}");
+    EXPECT_TRUE(meta.init(json->slice(), errorField));
+    EXPECT_TRUE(meta._pkCache);
+    EXPECT_FALSE(meta._sortCache);
+  }
+  {
+    std::string errorField;
+    auto json =
+        arangodb::velocypack::Parser::fromJson("{\"primarySortCache\":true}");
+    EXPECT_TRUE(meta.init(json->slice(), errorField));
+    EXPECT_TRUE(meta._sortCache);
+    EXPECT_FALSE(meta._pkCache);
+  }
+#endif
 }
 
 TEST_F(IResearchViewMetaTest, test_writeDefaults) {
@@ -567,10 +608,15 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
   builder.close();
 
   auto slice = builder.slice();
-
+#ifdef USE_ENTERPRISE
+  EXPECT_EQ(13, slice.length());
+  tmpSlice = slice.get("optimizeTopK");
+  EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
   EXPECT_EQ(12, slice.length());
+#endif
   tmpSlice = slice.get("collections");
-  EXPECT_TRUE((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
+  EXPECT_TRUE(tmpSlice.isEmptyArray());
   tmpSlice = slice.get("cleanupIntervalStep");
   EXPECT_TRUE((true == tmpSlice.isNumber<size_t>() &&
                2 == tmpSlice.getNumber<size_t>()));
@@ -629,9 +675,13 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
     meta._consolidationIntervalMsec = 0;
     meta._consolidationPolicy =
         arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy(
-            irs::index_writer::consolidation_policy_t(),
+            irs::ConsolidationPolicy{},
             std::move(*arangodb::velocypack::Parser::fromJson(
                 "{ \"type\": \"bytes_accum\", \"threshold\": 0.2 }")));
+
+#ifdef USE_ENTERPRISE
+    meta._pkCache = true;
+#endif
 
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -657,6 +707,12 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
     tmpSlice2 = tmpSlice.get("type");
     EXPECT_TRUE((tmpSlice2.isString() &&
                  std::string("bytes_accum") == tmpSlice2.copyString()));
+
+#ifdef USE_ENTERPRISE
+    tmpSlice = slice.get("primaryKeyCache");
+    EXPECT_TRUE(tmpSlice.isBool() && tmpSlice.getBool());
+    EXPECT_FALSE(slice.hasKey("primarySortCache"));
+#endif
   }
 
   arangodb::iresearch::IResearchViewMeta meta;
@@ -671,7 +727,7 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   meta._consolidationIntervalMsec = 456;
   meta._consolidationPolicy =
       arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy(
-          irs::index_writer::consolidation_policy_t(),
+          irs::ConsolidationPolicy{},
           std::move(*arangodb::velocypack::Parser::fromJson(
               "{ \"type\": \"tier\", \"threshold\": 0.11 }")));
   meta._version = 42;
@@ -697,6 +753,10 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   meta._storedValues.fromVelocyPack(storedValuesJSON->slice(), error);
   EXPECT_TRUE(error.empty());
 
+#ifdef USE_ENTERPRISE
+  meta._sortCache = true;
+#endif
+
   std::unordered_set<arangodb::DataSourceId> expectedCollections = {
       arangodb::DataSourceId{42}, arangodb::DataSourceId{52},
       arangodb::DataSourceId{62}};
@@ -711,7 +771,13 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
 
   auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+  EXPECT_EQ(14, slice.length());
+  tmpSlice = slice.get("optimizeTopK");
+  EXPECT_TRUE(tmpSlice.isEmptyArray());
+#else
   EXPECT_EQ(12, slice.length());
+#endif
   tmpSlice = slice.get("collections");
   EXPECT_TRUE((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
@@ -785,6 +851,11 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
       "{\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}]");
   EXPECT_TRUE(arangodb::basics::VelocyPackHelper::equal(
       expectedStoredValue->slice(), tmpSlice, true));
+#ifdef USE_ENTERPRISE
+  tmpSlice = slice.get("primarySortCache");
+  EXPECT_TRUE(tmpSlice.isBool() && tmpSlice.getBool());
+  EXPECT_FALSE(slice.hasKey("primaryKeyCache"));
+#endif
 }
 
 TEST_F(IResearchViewMetaTest, test_readMaskAll) {
@@ -827,6 +898,10 @@ TEST_F(IResearchViewMetaTest, test_readMaskAll) {
   EXPECT_TRUE(mask._primarySort);
   EXPECT_TRUE(mask._storedValues);
   EXPECT_TRUE(mask._primarySortCompression);
+#ifdef USE_ENTERPRISE
+  EXPECT_FALSE(mask._pkCache);
+  EXPECT_FALSE(mask._sortCache);
+#endif
 }
 
 TEST_F(IResearchViewMetaTest, test_readMaskNone) {
@@ -854,6 +929,10 @@ TEST_F(IResearchViewMetaTest, test_readMaskNone) {
   EXPECT_FALSE(mask._primarySort);
   EXPECT_FALSE(mask._storedValues);
   EXPECT_FALSE(mask._primarySortCompression);
+#ifdef USE_ENTERPRISE
+  EXPECT_FALSE(mask._pkCache);
+  EXPECT_FALSE(mask._sortCache);
+#endif
 }
 
 TEST_F(IResearchViewMetaTest, test_writeMaskAll) {
@@ -870,7 +949,12 @@ TEST_F(IResearchViewMetaTest, test_writeMaskAll) {
 
   auto slice = builder.slice();
 
+#ifdef USE_ENTERPRISE
+  EXPECT_EQ(13, slice.length());
+  EXPECT_TRUE(slice.hasKey("optimizeTopK"));
+#else
   EXPECT_EQ(12, slice.length());
+#endif
   EXPECT_TRUE(slice.hasKey("collections"));
   EXPECT_TRUE(slice.hasKey("cleanupIntervalStep"));
   EXPECT_TRUE(slice.hasKey("commitIntervalMsec"));
@@ -884,6 +968,10 @@ TEST_F(IResearchViewMetaTest, test_writeMaskAll) {
   EXPECT_TRUE(slice.hasKey("primarySort"));
   EXPECT_TRUE(slice.hasKey("storedValues"));
   EXPECT_TRUE(slice.hasKey("primarySortCompression"));
+#ifdef USE_ENTERPRISE
+  EXPECT_FALSE(slice.hasKey("primarySortCache"));
+  EXPECT_FALSE(slice.hasKey("primaryKeyCache"));
+#endif
 }
 
 TEST_F(IResearchViewMetaTest, test_writeMaskNone) {

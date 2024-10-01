@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,6 +52,7 @@ struct MyHelperState {
   using FollowerType = EmptyFollowerType<MyHelperState>;
   using CoreType = MyCoreType;
   using CoreParameterType = void;
+  using CleanupHandlerType = void;
 };
 
 struct MyHelperLeaderState : IReplicatedLeaderState<MyHelperState> {
@@ -84,7 +86,8 @@ struct MyHelperFactory {
   explicit MyHelperFactory(ReplicatedStateRecoveryTest& test) : test(test) {}
   auto constructLeader(std::unique_ptr<MyCoreType> core)
       -> std::shared_ptr<MyHelperLeaderState>;
-  auto constructFollower(std::unique_ptr<MyCoreType> core)
+  auto constructFollower(std::unique_ptr<MyCoreType> core,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<EmptyFollowerType<MyHelperState>> {
     return std::make_shared<EmptyFollowerType<MyHelperState>>(std::move(core));
   }
@@ -97,7 +100,8 @@ struct MyHelperFactory {
 
 }  // namespace arangodb::replication2::test
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 struct ReplicatedStateRecoveryTest : test::ReplicatedLogTest {
   ReplicatedStateRecoveryTest() {
@@ -107,6 +111,8 @@ struct ReplicatedStateRecoveryTest : test::ReplicatedLogTest {
   std::shared_ptr<MyHelperLeaderState> leaderState;
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
+  std::shared_ptr<MockStatePersistorInterface> statePersistor =
+      std::make_shared<MockStatePersistorInterface>();
 };
 
 auto MyHelperFactory::constructLeader(std::unique_ptr<MyCoreType> core)
@@ -133,7 +139,8 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery) {
   leader->triggerAsyncReplication();
   auto replicatedState =
       std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
-          feature->createReplicatedState("my-state", leaderLog));
+          feature->createReplicatedState("my-state", dbName, leaderLog,
+                                         statePersistor));
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 
@@ -211,7 +218,8 @@ TEST_F(ReplicatedStateRecoveryTest, trigger_recovery_error_DeathTest) {
   leader->triggerAsyncReplication();
   auto replicatedState =
       std::dynamic_pointer_cast<ReplicatedState<MyHelperState>>(
-          feature->createReplicatedState("my-state", leaderLog));
+          feature->createReplicatedState("my-state", dbName, leaderLog,
+                                         statePersistor));
   ASSERT_NE(replicatedState, nullptr);
   ASSERT_EQ(leaderState, nullptr);
 

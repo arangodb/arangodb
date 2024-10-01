@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchQueryCommon.h"
+
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::tests {
 namespace {
@@ -50,8 +52,9 @@ class QueryInRange : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -68,7 +71,7 @@ class QueryInRange : public QueryTest {
       auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_TRUE(collection);
 
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view{testResourceDir};
       resource /= std::string_view{"simple_sequential.json"};
 
@@ -80,8 +83,9 @@ class QueryInRange : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (velocypack::ArrayIterator it{slice}; it.valid(); ++it) {
@@ -847,12 +851,12 @@ class QueryInRange : public QueryTest {
 
 class QueryInRangeView : public QueryInRange {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 };
 
 class QueryInRangeSearch : public QueryInRange {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryInRangeView, Test) {

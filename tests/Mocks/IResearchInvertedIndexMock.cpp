@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,18 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchInvertedIndexMock.h"
-#include "IResearch/IResearchDataStore.h"
 
-namespace arangodb {
-namespace iresearch {
+#include "Basics/StaticStrings.h"
+#include "IResearch/IResearchDataStore.h"
+#include "VocBase/LogicalCollection.h"
+
+namespace arangodb::iresearch {
 
 IResearchInvertedIndexMock::IResearchInvertedIndexMock(
     IndexId iid, arangodb::LogicalCollection& collection,
-    const std::string& idxName,
+    std::string const& idxName,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse)
-    : Index(iid, collection, idxName, attributes, unique, sparse),
-      IResearchInvertedIndex(iid, collection) {}
+    : Index{iid, collection, idxName, attributes, unique, sparse},
+      IResearchInvertedIndex{collection.vocbase().server(), collection} {}
 
 void IResearchInvertedIndexMock::toVelocyPack(
     velocypack::Builder& builder,
@@ -41,9 +43,9 @@ void IResearchInvertedIndexMock::toVelocyPack(
   auto const forPersistence =
       Index::hasFlag(flags, Index::Serialize::Internals);
   VPackObjectBuilder objectBuilder(&builder);
-  IResearchInvertedIndex::toVelocyPack(
-      IResearchDataStore::collection().vocbase().server(),
-      &IResearchDataStore::collection().vocbase(), builder, forPersistence);
+  IResearchInvertedIndex::toVelocyPack(collection().vocbase().server(),
+                                       &collection().vocbase(), builder,
+                                       forPersistence);
 
   builder.add(arangodb::StaticStrings::IndexId,
               arangodb::velocypack::Value(std::to_string(_iid.id())));
@@ -53,6 +55,12 @@ void IResearchInvertedIndexMock::toVelocyPack(
               arangodb::velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
+
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
+  }
 }
 
 Index::IndexType IResearchInvertedIndexMock::type() const {
@@ -80,9 +88,7 @@ bool IResearchInvertedIndexMock::hasSelectivityEstimate() const {
   return false;
 }
 
-bool IResearchInvertedIndexMock::inProgress() const {
-  return IResearchInvertedIndex::inProgress();
-}
+bool IResearchInvertedIndexMock::inProgress() const { return false; }
 
 bool IResearchInvertedIndexMock::covers(
     arangodb::aql::Projections& projections) const {
@@ -93,18 +99,13 @@ Result IResearchInvertedIndexMock::drop() { return deleteDataStore(); }
 
 void IResearchInvertedIndexMock::load() {}
 
-void IResearchInvertedIndexMock::afterTruncate(TRI_voc_tick_t tick,
-                                               transaction::Methods* trx) {
-  return IResearchDataStore::afterTruncate(tick, trx);
-}
-
 std::unique_ptr<IndexIterator> IResearchInvertedIndexMock::iteratorForCondition(
-    transaction::Methods* trx, aql::AstNode const* node,
-    aql::Variable const* reference, IndexIteratorOptions const& opts,
-    ReadOwnWrites readOwnWrites, int mutableConditionIdx) {
+    ResourceMonitor& monitor, transaction::Methods* trx,
+    aql::AstNode const* node, aql::Variable const* reference,
+    IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+    int mutableConditionIdx) {
   return IResearchInvertedIndex::iteratorForCondition(
-      &IResearchDataStore::collection(), trx, node, reference, opts,
-      mutableConditionIdx);
+      monitor, &collection(), trx, node, reference, opts, mutableConditionIdx);
 }
 
 Index::SortCosts IResearchInvertedIndexMock::supportsSortCondition(
@@ -115,17 +116,18 @@ Index::SortCosts IResearchInvertedIndexMock::supportsSortCondition(
 }
 
 Index::FilterCosts IResearchInvertedIndexMock::supportsFilterCondition(
+    transaction::Methods& trx,
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
   return IResearchInvertedIndex::supportsFilterCondition(
-      IResearchDataStore::id(), _fields, allIndexes, node, reference,
-      itemsInIndex);
+      trx, id(), _fields, allIndexes, node, reference, itemsInIndex);
 }
 
 aql::AstNode* IResearchInvertedIndexMock::specializeCondition(
-    aql::AstNode* node, aql::Variable const* reference) const {
-  return IResearchInvertedIndex::specializeCondition(node, reference);
+    transaction::Methods& trx, aql::AstNode* node,
+    aql::Variable const* reference) const {
+  return IResearchInvertedIndex::specializeCondition(trx, node, reference);
 }
 
 Result IResearchInvertedIndexMock::insert(transaction::Methods& trx,
@@ -142,24 +144,13 @@ AnalyzerPool::ptr IResearchInvertedIndexMock::findAnalyzer(
   return IResearchInvertedIndex::findAnalyzer(analyzer);
 }
 
-void IResearchInvertedIndexMock::toVelocyPackFigures(
-    velocypack::Builder& builder) const {
-  IResearchInvertedIndex::toVelocyPackStats(builder);
-}
-
 void IResearchInvertedIndexMock::unload() { shutdownDataStore(); }
 
 void IResearchInvertedIndexMock::invalidateQueryCache(TRI_vocbase_t* vocbase) {
   return IResearchInvertedIndex::invalidateQueryCache(vocbase);
 }
 
-irs::comparer const* IResearchInvertedIndexMock::getComparator()
-    const noexcept {
-  return IResearchInvertedIndex::getComparator();
-}
-
 std::function<irs::directory_attributes()>
     IResearchInvertedIndexMock::InitCallback;
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

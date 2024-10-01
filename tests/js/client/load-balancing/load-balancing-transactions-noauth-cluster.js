@@ -1,28 +1,29 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, assertNotUndefined, require*/
+/* global assertTrue, assertFalse, assertEqual, assertNotUndefined, assertMatch */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -32,6 +33,7 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const url = require('url');
 const _ = require("lodash");
+const errors = require('internal').errors;
 const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
 const servers = getCoordinatorEndpoints();
@@ -94,6 +96,16 @@ function TransactionsSuite () {
         db[cn].save({i});
       }
 
+      // note: the wait time here is arbitrary. some wait time is
+      // necessary because we are creating the database and collection
+      // via one coordinator, but we will be querying it from a different
+      // coordinator in this test.
+      // the 2 seconds should normally be enough for the second coordinator
+      // to catch up and acknowledge the new database and collections.
+      // if we don't wait enough here, it is not guaranteed that the 
+      // second coordinator is already aware of the new database or
+      // collections, which can make the tests in here fail with spurious
+      // "database not found" or "collection or view not found" errors.
       require("internal").wait(2);
     },
 
@@ -231,6 +243,42 @@ function TransactionsSuite () {
         
         result = sendRequest('GET', url, {}, {}, true);
         assertNotInList(result.body.transactions, trx1);
+      } finally {
+        sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, {}, true);
+      }
+    },
+    
+    testCreateAndCommitUseWrongId: function() {
+      const obj = { collections: { read: cn } };
+
+      let url = "/_api/transaction";
+      let result = sendRequest('POST', url + "/begin", obj, {}, true);
+
+      assertEqual(result.status, 201);
+      assertNotUndefined(result.body.result.id);
+
+      let trx1 = result.body.result;
+
+      try {
+        // commit
+        result = sendRequest('PUT', url + "/" + encodeURIComponent("12345" + trx1.id), {}, {}, true);
+        assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
+
+        // commit on different coord
+        result = sendRequest('PUT', url + "/" + encodeURIComponent("12345" + trx1.id), {}, {}, false);
+        assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
+        
+        // abort
+        result = sendRequest('DELETE', url + "/" + encodeURIComponent("12345" + trx1.id), {}, {}, true);
+        assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
+
+        // abort on different coord
+        result = sendRequest('DELETE', url + "/" + encodeURIComponent("12345" + trx1.id), {}, {}, false);
+        assertEqual(errors.ERROR_TRANSACTION_NOT_FOUND.code, result.body.errorNum);
+        assertMatch(/cannot find target server/, result.body.errorMessage);
       } finally {
         sendRequest('DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, {}, true);
       }

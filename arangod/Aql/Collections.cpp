@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,21 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Collections.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Collection.h"
 #include "Basics/Exceptions.h"
-#include "VocBase/AccessMode.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-Collections::Collections(TRI_vocbase_t* vocbase)
-    : _vocbase(vocbase), _collections() {}
+Collections::Collections(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 
 Collections::~Collections() = default;
 
-Collection* Collections::get(std::string_view const name) const {
+Collection* Collections::get(std::string_view name) const {
   auto it = _collections.find(name);
 
   if (it != _collections.end()) {
@@ -49,12 +50,15 @@ Collection* Collections::get(std::string_view const name) const {
 Collection* Collections::add(std::string const& name,
                              AccessMode::Type accessType,
                              Collection::Hint hint) {
-  // check if collection already is in our map
   TRI_ASSERT(!name.empty());
+
+  // check if collection already is in our map
   auto it = _collections.find(name);
 
   if (it == _collections.end()) {
-    if (_collections.size() >= MaxCollections) {
+    if (_collections.size() >= _vocbase->server()
+                                   .getFeature<QueryRegistryFeature>()
+                                   .maxCollectionsPerQuery()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS);
     }
 
@@ -77,6 +81,7 @@ Collection* Collections::add(std::string const& name,
     }
   }
 
+  TRI_ASSERT((*it).second != nullptr);
   return (*it).second.get();
 }
 
@@ -96,9 +101,15 @@ std::vector<std::string> Collections::collectionNames() const {
 
 bool Collections::empty() const { return _collections.empty(); }
 
-void Collections::toVelocyPack(velocypack::Builder& builder) const {
+void Collections::toVelocyPack(
+    velocypack::Builder& builder,
+    std::function<bool(std::string const&, Collection const&)> const& filter)
+    const {
   builder.openArray();
   for (auto const& c : _collections) {
+    if (!filter(c.first, *c.second)) {
+      continue;
+    }
     builder.openObject();
     builder.add("name", VPackValue(c.first));
     builder.add("type",

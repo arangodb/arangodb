@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,23 +36,32 @@ PathValidatorOptions::PathValidatorOptions(
       _tmpVar(tmpVar),
       _expressionCtx(expressionContext),
       _isDisjoint(false),
-      _isSatelliteLeader(false) {}
+      _isSatelliteLeader(false),
+      _enabledClusterOneShardRule(false) {}
 
 PathValidatorOptions::PathValidatorOptions(
     aql::Variable const* tmpVar,
     arangodb::aql::FixedVarExpressionContext& expressionContext,
-    bool isDisjoint, bool isSatelliteLeader)
+    bool isDisjoint, bool isSatelliteLeader, bool enabledClusterOneShardRule)
     : _allowedVertexCollections{},
       _tmpVar(tmpVar),
       _expressionCtx(expressionContext),
       _isDisjoint(isDisjoint),
-      _isSatelliteLeader(isSatelliteLeader) {}
+      _isSatelliteLeader(isSatelliteLeader),
+      _enabledClusterOneShardRule(enabledClusterOneShardRule) {}
 
 void PathValidatorOptions::setAllVerticesExpression(
     std::unique_ptr<aql::Expression> expression) {
   // All edge expression should not be set before
   TRI_ASSERT(_allVerticesExpression == nullptr);
   _allVerticesExpression = std::move(expression);
+}
+
+void PathValidatorOptions::setAllEdgesExpression(
+    std::unique_ptr<aql::Expression> expression) {
+  // All edge expression should not be set before
+  TRI_ASSERT(_allEdgesExpression == nullptr);
+  _allEdgesExpression = std::move(expression);
 }
 
 void PathValidatorOptions::setPruneEvaluator(
@@ -113,6 +122,10 @@ aql::Expression* PathValidatorOptions::getVertexExpression(
   }
 
   return _allVerticesExpression.get();
+}
+
+aql::Expression* PathValidatorOptions::getEdgeExpression() const {
+  return _allEdgesExpression.get();
 }
 
 void PathValidatorOptions::unpreparePruneContext() {

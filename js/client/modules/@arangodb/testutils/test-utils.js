@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,19 +28,11 @@
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
-const pu = require('@arangodb/testutils/process-utils');
-const yaml = require('js-yaml');
 
-const toArgv = require('internal').toArgv;
-const time = require('internal').time;
-const sleep = require('internal').sleep;
-const download = require('internal').download;
 const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
-const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
-const userManager = require("@arangodb/users");
-const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -69,6 +61,29 @@ function diffArray (arr1, arr2) {
       return val;
     }
   });
+}
+
+
+function CopyIntoObject(objectTarget, objectSource) {
+  for (var attrname in objectSource) {
+    if (objectTarget.hasOwnProperty(attrname)) {
+      throw new Error(`'${attrname}' already present with value '${objectTarget[attrname]}' trying to set '${objectSource[attrname]}'`);
+    }
+    objectTarget[attrname] = objectSource[attrname];
+  }
+}
+function CopyIntoList(listTarget, listSource) {
+  for (var i=0; i < listSource.length; i++) {
+    let val = listSource[i].split('`');
+    if (val.length === 3) {
+      listTarget.forEach( line => {
+        if (line.search('`' + val[1] + '`') !== -1) {
+          throw new Error(`This attribute '${val[1]}' is already documented: '${line}' vs. new: '${listSource[i]}'`);
+        }
+      });
+    }
+    listTarget.push(listSource[i]);
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -124,11 +139,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
       );
       return found;
     }
-  }
-
-  if ((testname.indexOf('-novst') !== -1) && options.vst) {
-    whichFilter.filter = 'skip when invoked with vst';
-    return false;
   }
 
   if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {
@@ -187,13 +197,48 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-noasan') !== -1) && global.ARANGODB_CLIENT_VERSION(true).asan === 'true') {
-    whichFilter.filter = 'skip when built with asan';
+  if ((testname.indexOf('-noinstr') !== -1) && (options.isInstrumented)) {
+    whichFilter.filter = 'skip when built with an instrumented build';
+    return false;
+  }
+
+  if ((testname.indexOf('-noinstr_or_noncluster') !== -1) && (options.isInstrumented && options.cluster)) {
+    whichFilter.filter = 'skip when built with an instrumented build and running in cluster mode';
+    return false;
+  }
+
+  if ((testname.indexOf('-fp') !== -1) && (!options.haveFailAt)) {
+    whichFilter.filter = 'skip when built without failurepoints';
+    return false;
+  }
+
+  if ((testname.indexOf('-r2') !== -1) && (options.replicationVersion !== 2)) {
+    whichFilter.filter = 'skip when running without replication 2';
+    return false;
+  }
+
+  if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
+    whichFilter.filter = 'skip when built with asan or tsan';
+    return false;
+  }
+
+  if ((testname.indexOf('-nocov') !== -1) && (options.isCov)) {
+    whichFilter.filter = 'skip when built with coverage';
     return false;
   }
 
   if (options.failed) {
     return options.failed.hasOwnProperty(testname);
+  }
+
+  if (options.skipN !== false) {
+    if (options.skipN > 0) {
+      options.skipN -= 1;
+    }
+    if (options.skipN > 0) {
+      whichFilter.filter = `skipN: last test skip ${options.skipN}.`;
+      return false;
+    }
   }
   return true;
 }
@@ -216,6 +261,10 @@ function splitBuckets (options, cases) {
   let n = options.testBuckets.split('/');
   let r = parseInt(n[0]);
   let s = parseInt(n[1]);
+
+  if (cases.length < r) {
+    throw `We only have ${m} test cases, cannot split them into ${r} buckets`;
+  }
 
   if (r < 1) {
     r = 1;
@@ -246,19 +295,22 @@ function splitBuckets (options, cases) {
 function doOnePathInner (path) {
   return _.filter(fs.list(makePathUnix(path)),
                   function (p) {
-                    return (p.substr(-3) === '.js') || (p.substr(-3) === '.rb');;
+                    return p.endsWith('.js');
                   })
     .map(function (x) {
       return fs.join(makePathUnix(path), x);
     }).sort();
 }
 
-function scanTestPaths (paths, options) {
+function scanTestPaths (paths, options, fun) {
   // add Enterprise Edition tests
-  if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
+  if (isEnterprise()) {
     paths = paths.concat(paths.map(function(p) {
       return 'enterprise/' + p;
     }));
+  }
+  if (fun === undefined) {
+    fun = function() {return true;};
   }
 
   let allTestCases = [];
@@ -270,6 +322,10 @@ function scanTestPaths (paths, options) {
   let allFiltered = [];
   let filteredTestCases = _.filter(allTestCases,
                                    function (p) {
+                                     if (!fun(p)) {
+                                       allFiltered.push(p + " Filtered by: custom filter");
+                                       return false;
+                                     }
                                      let whichFilter = {};
                                      let rc = filterTestcaseByOptions(p, options, whichFilter);
                                      if (!rc) {
@@ -282,279 +338,58 @@ function scanTestPaths (paths, options) {
     return [];
   }
 
-  return allTestCases;
+  return filteredTestCases;
 }
 
 
-function getTestCode(file, options, instanceManager) {
-  let filter;
-  if (options.testCase) {
-    filter = JSON.stringify(options.testCase);
-  } else if (options.failed) {
-    let failed = options.failed[file] || options.failed;
-    filter = JSON.stringify(Object.keys(failed));
-  }
-
-  let runTest;
-  if (file.indexOf('-spec') === -1) {
-    filter = filter || '"undefined"';
-    runTest = 'const runTest = require("jsunity").runTest;\n';
-
-  } else {
-    filter = filter || '';
-    runTest = 'const runTest = require("@arangodb/mocha-runner");\n';
-  }
-  return 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n' + runTest +
-         'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
-}
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs a remote unittest file using /_admin/execute
-// //////////////////////////////////////////////////////////////////////////////
-
-class runOnArangodRunner extends testRunnerBase{
-  constructor(options, testname, ...optionalArgs) {
-    super(options, testname, ...optionalArgs);
-    this.info = "onRemoteArangod";
-  }
-  runOneTest(file) {
-    try {
-      let testCode = getTestCode(file, this.options, this.instanceManager);
-      let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
-      httpOptions.method = 'POST';
-
-      httpOptions.timeout = this.options.oneTestTimeout;
-      if (this.options.isAsan) {
-        httpOptions.timeout *= 2;
-      }
-      if (this.options.valgrind) {
-        httpOptions.timeout *= 2;
-      }
-
-      httpOptions.returnBodyOnError = true;
-      const reply = download(this.instanceManager.url + '/_admin/execute?returnAsJSON=true',
-                             testCode,
-                             httpOptions);
-      if (!reply.error && reply.code === 200) {
-        return JSON.parse(reply.body);
-      } else {
-        if ((reply.code === 500) &&
-            reply.hasOwnProperty('message') &&
-            (
-              (reply.message.search('Request timeout reached') >= 0 ) ||
-                (reply.message.search('timeout during read') >= 0 ) ||
-                (reply.message.search('Connection closed by remote') >= 0 )
-            )) {
-          print(RED + Date() + " request timeout reached (" + reply.message +
-                "), aborting test execution" + RESET);
-          return {
-            status: false,
-            message: reply.message,
-            forceTerminate: true
-          };
-        } else if (reply.hasOwnProperty('body')) {
-          return {
-            status: false,
-            message: reply.body
-          };
-        } else {
-          return {
-            status: false,
-            message: yaml.safeDump(reply)
-          };
-        }
-      }
-    } catch (ex) {
-      return {
-        status: false,
-        message: ex.message || String(ex),
-        stack: ex.stack
-      };
-    }
-  }
-}
-
-function readTestResult(path, rc, testCase) {
-  const jsonFN = fs.join(path, 'testresult.json');
-  let buf;
-  try {
-    buf = fs.read(jsonFN);
-    fs.remove(jsonFN);
-  } catch (x) {
-    let msg = 'readTestResult: failed to read ' + jsonFN + " - " + x;
-    print(RED + msg + RESET);
-    rc.message += " - " + msg;
-    rc.status = false;
-    return rc;
-  }
-
-  let result;
-  try {
-    result = JSON.parse(buf);
-  } catch (x) {
-    let msg = 'readTestResult: failed to parse ' + jsonFN + "'" + buf + "' - " + x;
-    print(RED + msg + RESET);
-    rc.message += " - " + msg;
-    rc.status = false;
-    return rc;
-  }
-
-  if (Array.isArray(result)) {
-    if (result.length === 0) {
-      // spec-files - don't have parseable results.
-      rc.failed = rc.status ? 0 : 1;
-      return rc;
-    } else if ((result.length >= 1) &&
-               (typeof result[0] === 'object') &&
-               result[0].hasOwnProperty('status')) {
-      return result[0];
-    } else {
-      rc.failed = rc.status ? 0 : 1;
-      rc.message = "don't know howto handle '" + buf + "'";
-      return rc;
-    }
-  } else if (_.isObject(result)) {
-    if ((testCase !== undefined) && result.hasOwnProperty(testCase)) {
-      return result[testCase];
-    } else {
-      return result;
-    }
-  } else {
-    rc.failed = rc.status ? 0 : 1;
-    rc.message = "readTestResult: don't know howto handle '" + buf + "'";
-    return rc;
-  }
-}
-
-function writeTestResult(path, data) {
-  const jsonFN = fs.join(path, 'testresult.json');
-  fs.write(jsonFN, JSON.stringify(data));
-}
-
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs a local unittest file using arangosh
-// //////////////////////////////////////////////////////////////////////////////
-
-class runInArangoshRunner extends testRunnerBase{
-  constructor(options, testname, ...optionalArgs) {
-    super(options, testname, ...optionalArgs);
-    this.info = "forkedArangosh";
-  }
-  getEndpoint() {
-    return this.instanceManager.findEndpoint();
-  }
-  runOneTest(file) {
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
-    let args = pu.makeArgs.arangosh(this.options);
-    args['server.endpoint'] = this.getEndpoint();
-
-    args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
-
-    args['javascript.unit-test-filter'] = this.options.testCase;
-
-    if (this.options.forceJson) {
-      args['server.force-json'] = true;
-    }
-
-    if (!this.options.verbose) {
-      args['log.level'] = 'warning';
-    }
-
-    if (this.addArgs !== undefined) {
-      args = Object.assign(args, this.addArgs);
-    }
-    // TODO require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager);
-    let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
-    return readTestResult(this.instanceManager.rootDir, rc, args['javascript.unit-tests']);
-  }
-}
-
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs a local unittest file in the current arangosh
-// //////////////////////////////////////////////////////////////////////////////
-
-class runLocalInArangoshRunner extends testRunnerBase{
-  constructor(options, testname, ...optionalArgs) {
-    super(options, testname, ...optionalArgs);
-    this.info = "localArangosh";
-  }
-  runOneTest(file) {
-    let endpoint = arango.getEndpoint();
-    if (this.options.vst || this.options.http2) {
-      let newEndpoint = this.instanceManager.findEndpoint();
-      if (endpoint !== newEndpoint) {
-        print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
-        arango.reconnect(newEndpoint, '_system', 'root', '');
-      }
-    }
-
-    let testCode = getTestCode(file, this.options, this.instanceManager);
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
-    let testFunc;
-    try {
-      eval('testFunc = function () {\n' + testCode + "}");
-    } catch (ex) {
-      print(RED + 'test failed to parse:');
-      print(ex);
-      print(RESET);
-      return {
-        status: false,
-        message: "test doesn't parse! '" + file + "' - " + ex.message || String(ex),
-        stack: ex.stack
-      };
-    }
-
-    try {
-      SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 1000);
-      let result = testFunc();
-      let timeout = SetGlobalExecutionDeadlineTo(0.0);
-      if (timeout) {
-        return {
-          timeout: true,
-          forceTerminate: true,
-          status: false,
-          message: "test ran into timeout. Original test status: " + JSON.stringify(result),
-        };
-      }
-      if (result === undefined) {
-        return {
-          timeout: true,
-          status: false,
-          message: "test didn't return any result at all!"
-        };
-      }
-      return result;
-    } catch (ex) {
-      let timeout = SetGlobalExecutionDeadlineTo(0.0);
-      print(RED + 'test has thrown: ' + (timeout? "because of timeout in execution":""));
-      print(ex, ex.stack);
-      print(RESET);
-      return {
-        timeout: timeout,
-        forceTerminate: true,
-        status: false,
-        message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
-        stack: ex.stack
-      };
-    }
-  }
-}
 
 exports.testServerAuthInfo = testServerAuthInfo;
 exports.testClientJwtAuthInfo = testClientJwtAuthInfo;
 
-exports.runOnArangodRunner = runOnArangodRunner;
-exports.runInArangoshRunner = runInArangoshRunner;
-exports.runLocalInArangoshRunner = runLocalInArangoshRunner;
 
 exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
-exports.readTestResult = readTestResult;
-exports.writeTestResult = writeTestResult;
 exports.filterTestcaseByOptions = filterTestcaseByOptions;
 exports.splitBuckets = splitBuckets;
 exports.doOnePathInner = doOnePathInner;
 exports.scanTestPaths = scanTestPaths;
 exports.diffArray = diffArray;
 exports.pathForTesting = pathForTesting;
+exports.CopyIntoObject = CopyIntoObject;
+exports.CopyIntoList = CopyIntoList;
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  CopyIntoObject(optionsDefaults, {
+    'skipMemoryIntense': false,
+    'skipNightly': true,
+    'skipNondeterministic': false,
+    'skipGrey': false,
+    'skipN': false,
+    'onlyGrey': false,
+    'onlyNightly': false,
+    'skipTimeCritical': false,
+    'arangosearch':true,
+    'test': undefined,
+    'testCase': undefined,
+    'testBuckets': undefined,
+  });
+
+  CopyIntoList(optionsDocumentation, [
+    ' Testcase filtering:',
+    '   - `skipMemoryIntense`: tests using lots of resources will be skipped.',
+    '   - `skipNightly`: omit the nightly tests',
+    '   - `skipRanges`: if set to true the ranges tests are skipped',
+    '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
+    '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
+    '   - `skipGrey`: if set, grey tests are skipped.',
+    '   - `skipN`: skip the first N tests of the suite',
+    '   - `onlyGrey`: if set, only grey tests are executed.',
+    '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
+    '   - `test`: path to single test to execute for "single" test target, ',
+    '             or pattern to filter for other suites',
+    '   - `testCase`: filter a jsunity testsuite for one special test case',
+    '   - `onlyNightly`: execute only the nightly tests',
+    '   - `testBuckets`: split tests in to buckets and execute on, for example',
+    '       10/2 will split into 10 buckets and execute the third bucket.',
+    ''
+  ]);
+};

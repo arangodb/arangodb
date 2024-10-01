@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,11 +25,12 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterTransactionCollection.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -40,6 +41,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -47,8 +49,11 @@ using namespace arangodb;
 /// @brief transaction type
 ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {
+    transaction::Options const& options,
+    transaction::OperationOrigin operationOrigin)
+    : TransactionState(vocbase, tid, options, operationOrigin),
+      _numIntermediateCommits(0) {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before
   // transaction is started and during validateAndOptimize some simple
@@ -60,13 +65,14 @@ ClusterTransactionState::ClusterTransactionState(
                               .getQueryAnalyzersRevision(vocbase.name()));
 }
 
+ClusterTransactionState::~ClusterTransactionState() = default;
+
 /// @brief start a transaction
-Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
+futures::Future<Result> ClusterTransactionState::beginTransaction(
+    transaction::Hints hints) {
   LOG_TRX("03dec", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
-  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
-             !AccessMode::isWriteOrExclusive(_type));
   TRI_ASSERT(_status == transaction::Status::CREATED);
 
   // set hints
@@ -81,9 +87,9 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsAborted;
   });
 
-  Result res = useCollections();
+  Result res = co_await useCollections();
   if (res.fail()) {  // something is wrong
-    return res;
+    co_return res;
   }
 
   // all valid
@@ -98,18 +104,22 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     ++stats._transactionsStarted;
   }
 
-  transaction::ManagerFeature::manager()->registerTransaction(
-      id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
-  setRegistered();
-  if (AccessMode::isWriteOrExclusive(this->_type) &&
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+
+  _counterGuard = mgr->registerTransaction(id(), isReadOnlyTransaction(),
+                                           isFollowerTransaction());
+
+  if (AccessMode::isWriteOrExclusive(_type) &&
       hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    // cppcheck-suppress ignoredReturnValue
     TRI_ASSERT(isCoordinator());
 
     ClusterTrxMethods::SortedServersSet leaders{};
     allCollections([&](TransactionCollection& c) {
       auto shardIds = c.collection()->shardIds();
       for (auto const& pair : *shardIds) {
-        std::vector<arangodb::ShardID> const& servers = pair.second;
+        std::vector<arangodb::ServerID> const& servers = pair.second;
         if (!servers.empty()) {
           leaders.emplace(servers[0]);
         }
@@ -120,22 +130,24 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     // if there is only one server we may defer the lazy locking
     // until the first actual operation (should save one request)
     if (leaders.size() > 1) {
-      res = ClusterTrxMethods::beginTransactionOnLeaders(
-                *this, leaders, transaction::MethodsApi::Synchronous)
-                .get();
+      res = co_await ClusterTrxMethods::beginTransactionOnLeaders(
+          shared_from_this(), std::move(leaders),
+          transaction::MethodsApi::Asynchronous);
       if (res.fail()) {  // something is wrong
-        return res;
+        co_return res;
       }
     }
   }
 
   cleanup.cancel();
-  return res;
+  co_return res;
 }
 
 /// @brief commit a transaction
 futures::Future<Result> ClusterTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
+  TRI_ASSERT(_beforeCommitCallbacks.empty());
+  TRI_ASSERT(_afterCommitCallbacks.empty());
   LOG_TRX("927c0", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
@@ -169,17 +181,32 @@ Result ClusterTransactionState::abortTransaction(
   return {};
 }
 
-Result ClusterTransactionState::performIntermediateCommitIfRequired(
-    DataSourceId cid) {
+arangodb::Result ClusterTransactionState::triggerIntermediateCommit() {
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "ClusterTransactionState";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
+}
+
+futures::Future<Result>
+ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unexpected intermediate commit");
 }
 
 /// @brief return number of commits
-uint64_t ClusterTransactionState::numCommits() const {
+uint64_t ClusterTransactionState::numCommits() const noexcept {
   // there are no intermediate commits for a cluster transaction, so we can
   // return 1 for a committed transaction and 0 otherwise
   return _status == transaction::Status::COMMITTED ? 1 : 0;
+}
+
+uint64_t ClusterTransactionState::numIntermediateCommits() const noexcept {
+  // the return value here is hard-coded to 0, so never rely on it.
+  // the only place that currently reports the number of intermediate commits
+  // is the statistics gathering part of an AQL query. that will however
+  // collect the individual numIntermediateCommits results from DB servers,
+  // and not from here.
+  return _numIntermediateCommits;
 }
 
 TRI_voc_tick_t ClusterTransactionState::lastOperationTick() const noexcept {

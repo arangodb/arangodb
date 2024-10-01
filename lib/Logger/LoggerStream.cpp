@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,15 +33,15 @@
 namespace arangodb {
 
 LoggerStreamBase::LoggerStreamBase(bool enabled)
-    : _topicId(LogTopic::MAX_LOG_TOPICS),
+    : _topicId(LogTopic::GLOBAL_LOG_TOPIC),
       _level(LogLevel::DEFAULT),
       _line(0),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _enabled(enabled),
 #endif
-      _logid(nullptr),
-      _file(nullptr),
-      _function(nullptr) {
+      _logid(),
+      _file(),
+      _function() {
 }
 
 LoggerStreamBase::LoggerStreamBase() : LoggerStreamBase(true) {}
@@ -56,63 +56,12 @@ LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
   return *this;
 }
 
-// print a hex representation of the binary data
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::BINARY const& binary) noexcept {
-  try {
-    uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
-    uint8_t const* end = ptr + binary.size;
-
-    while (ptr < end) {
-      uint8_t n = *ptr;
-
-      uint8_t n1 = n >> 4;
-      uint8_t n2 = n & 0x0F;
-
-      _out << "\\x"
-           << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
-           << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
-      ++ptr;
-    }
-  } catch (...) {
-    // ignore any errors here. logging should not have side effects
-  }
-
-  return *this;
-}
-
-// print a character array
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::CHARS const& data) noexcept {
-  try {
-    _out.write(data.data, data.size);
-  } catch (...) {
-    // ignore any errors here. logging should not have side effects
-  }
-
-  return *this;
-}
-
-LoggerStreamBase& LoggerStreamBase::operator<<(
-    Logger::RANGE const& range) noexcept {
-  try {
-    _out << range.baseAddress << " - "
-         << static_cast<void const*>(
-                static_cast<char const*>(range.baseAddress) + range.size)
-         << " (" << range.size << " bytes)";
-  } catch (...) {
-    // ignore any errors here. logging should not have side effects
-  }
-
-  return *this;
-}
-
 LoggerStreamBase& LoggerStreamBase::operator<<(
     Logger::FIXED const& value) noexcept {
   try {
     std::ostringstream tmp;
     tmp << std::setprecision(value._precision) << std::fixed << value._value;
-    _out << tmp.str();
+    _out << tmp.view();
   } catch (...) {
     // ignore any errors here. logging should not have side effects
   }
@@ -160,14 +109,13 @@ LoggerStream::~LoggerStream() {
 #endif
 
   try {
-    // TODO: with c++20, we can get a view on the stream's underlying buffer,
-    // without copying it
-    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.str());
+    // get a view on the stream's underlying buffer, without copying it
+    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.view());
   } catch (...) {
     try {
       // logging the error may fail as well, and we should never throw in the
       // dtor
-      std::cerr << "failed to log: " << _out.str() << std::endl;
+      std::cerr << "failed to log: " << _out.view() << std::endl;
     } catch (...) {
     }
   }

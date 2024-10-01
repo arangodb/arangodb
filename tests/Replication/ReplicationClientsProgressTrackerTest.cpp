@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/SyncerId.h"
 #include "VocBase/Identifiers/ServerId.h"
 
@@ -42,7 +43,7 @@ namespace replication {
 class ReplicationClientsProgressTrackerTest_SingleClient
     : public ::testing::TestWithParam<std::pair<SyncerId, ServerId>> {
  protected:
-  ReplicationClientsProgressTracker testee{};
+  ReplicationClientsProgressTracker testee{nullptr};
   SyncerId syncerId{};
   ServerId clientId{};
 
@@ -260,7 +261,7 @@ INSTANTIATE_TEST_CASE_P(ReplicationClientsProgressTrackerTest_SingleClient,
 class ReplicationClientsProgressTrackerTest_MultiClient
     : public ::testing::Test {
  protected:
-  ReplicationClientsProgressTracker testee{};
+  ReplicationClientsProgressTracker testee{nullptr};
 
   double const ttl = 7200;
 

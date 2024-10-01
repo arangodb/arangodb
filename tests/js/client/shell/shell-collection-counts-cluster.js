@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen : 4000 */
 /* global arango, assertTrue, assertFalse, assertEqual, assertNotEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for inventory
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 const jsunity = require('jsunity');
@@ -60,10 +57,12 @@ function BaseTestConfig () {
   
   return {
     testFailureOnLeaderNoManagedTrx : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 200; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(200, c.count());
       assertEqual(200, c.toArray().length);
 
@@ -82,8 +81,6 @@ function BaseTestConfig () {
       // will call leaseManagedTrx and get the nullptr back
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60); 
-
       // wait until we have an in-sync follower
       let tries = 0;
       while (tries++ < 120) {
@@ -94,8 +91,9 @@ function BaseTestConfig () {
             break;
           }
         } else if (tries === 20) {
-          // wait several seconds so we can be sure the
+          // wait several seconds so we can be sure the failure point was triggered.
           clearFailurePoints([]);
+          waitForShardsInSync(cn, undefined, 1); 
         }
         require("internal").sleep(0.5);
       }
@@ -124,10 +122,12 @@ function BaseTestConfig () {
     },
 
     testWrongCountOnLeaderFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -151,7 +151,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -209,7 +209,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -247,10 +247,12 @@ function BaseTestConfig () {
     },
     
     testRandomCountOnLeaderFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -274,7 +276,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -342,7 +344,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -384,10 +386,12 @@ function BaseTestConfig () {
         // we need at least 3 DB servers
         return;
       }
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -395,7 +399,7 @@ function BaseTestConfig () {
       let shard = Object.keys(shardInfo)[0];
       let leader = shardInfo[shard][0];
       let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
-
+      
       // set a failure point to get the counts wrong on the leader
       let result = request({ method: "PUT", url: leaderUrl + "/_admin/debug/failat/RocksDBCommitCounts", body: {} });
       assertEqual(200, result.status);
@@ -407,10 +411,10 @@ function BaseTestConfig () {
       assertNotEqual(200, c.count());
       assertEqual(200, c.toArray().length);
       clearFailurePoints([]);
-
+      
       c.properties({ replicationFactor: 3 });
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 2); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -425,7 +429,7 @@ function BaseTestConfig () {
       assertEqual(3, servers.length);
       assertEqual(200, c.count());
       assertEqual(200, c.toArray().length);
-
+      
       tries = 0;
       let total;
       while (tries++ < 120) {
@@ -435,7 +439,7 @@ function BaseTestConfig () {
             return;
           }
           let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
+          assertEqual(200, result.status, { shard, server, servers, result: result.json });
           total += result.json.count;
         });
         if (total === 3 * 200) {
@@ -472,7 +476,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 3 });
 
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 2); 
       
       // wait until we have an in-sync follower
       let tries = 0;
@@ -545,7 +549,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 3 });
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 2); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -582,10 +586,12 @@ function BaseTestConfig () {
     },
     
     testWrongCountOnFollowerFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1, syncByRevision: false, usesRevisionsAsDocumentIds: false }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1, syncByRevision: false, usesRevisionsAsDocumentIds: false });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -601,7 +607,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -638,10 +644,12 @@ function BaseTestConfig () {
     },
     
     testRandomCountOnFollowerFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -657,7 +665,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -702,12 +710,13 @@ function BaseTestConfig () {
       assertEqual(2, shardInfo[shard].length);
       let leader = shardInfo[shard][0];
       let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
-
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
       
       // wait until we have an in-sync follower
       let tries = 0;
@@ -734,7 +743,7 @@ function BaseTestConfig () {
       
       clearFailurePoints([]);
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -790,7 +799,7 @@ function BaseTestConfig () {
         c.insert({ _key: "test" + i }); 
       }
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
       
       // wait until we have an in-sync follower
       let tries = 0;
@@ -813,7 +822,7 @@ function BaseTestConfig () {
       
       clearFailurePoints([]);
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -871,7 +880,7 @@ function BaseTestConfig () {
         c.insert({ _key: "test" + i }); 
       }
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
       
       // wait until we have an in-sync follower
       let tries = 0;
@@ -895,7 +904,7 @@ function BaseTestConfig () {
       
       clearFailurePoints([]);
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -935,7 +944,7 @@ function BaseTestConfig () {
       }
       assertEqual(2 * 101, total);
     },
-    
+   
     testWrongCountOnFollowerIncrementalSyncManyFailures : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 }); 
 
@@ -956,7 +965,7 @@ function BaseTestConfig () {
         c.insert({ _key: "test" + i }); 
       }
       
-      waitForShardsInSync(cn, 60); 
+      waitForShardsInSync(cn, undefined, 1); 
       
       // wait until we have an in-sync follower
       let tries = 0;
@@ -974,7 +983,6 @@ function BaseTestConfig () {
       assertEqual(200, result.status);
       assertEqual(0, result.json.count);
       
-      let rebuildFailuresBefore = getMetric(followerUrl, "arangodb_sync_rebuilds_total");
       let checksumFailuresBefore = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
       
       // set a failure point on the leader to drop the follower
@@ -993,22 +1001,35 @@ function BaseTestConfig () {
 
       assertEqual(101, c.toArray().length);
       assertEqual(101, c.count());
-    
+   
+      let cleanup = () => {
+        let result = request({ method: "DELETE", url: followerUrl + "/_admin/debug/failat/SynchronizeShard%3A%3AwrongChecksum" });
+        assertEqual(200, result.status);
+        result = request({ method: "DELETE", url: followerUrl + "/_admin/debug/failat/disableCountAdjustment" });
+        assertEqual(200, result.status);
+      };
+
       tries = 0;
-      let rebuildFailuresAfter;
-      let checksumFailuresAfter;
-      while (tries++ < 120) {
-        rebuildFailuresAfter = getMetric(followerUrl, "arangodb_sync_rebuilds_total");
-        checksumFailuresAfter = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
+      try {
+        let checksumFailuresAfter;
+        while (tries++ < 120) {
+          checksumFailuresAfter = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
 
-        if (rebuildFailuresAfter > rebuildFailuresBefore) {
-          break;
+          if (checksumFailuresAfter > checksumFailuresBefore) {
+            break;
+          }
+
+          if (tries === 15) {
+            cleanup();
+          }
+
+          require("internal").sleep(0.25);
         }
-        require("internal").sleep(0.25);
+          
+        assertTrue(checksumFailuresAfter > checksumFailuresBefore);
+      } finally {
+        cleanup();
       }
-
-      assertTrue(rebuildFailuresAfter > rebuildFailuresBefore);
-      assertTrue(checksumFailuresAfter > checksumFailuresBefore);
 
       // follower count must be ok now
       tries = 0;
@@ -1069,7 +1090,8 @@ function collectionCountsSuiteNewFormat () {
 }
 
 let res = request({ method: "GET", url: getCoordinators()[0].url + "/_admin/debug/failat" });
-if (res.body === "true") {
+// these tests only make sense with the old replication protocol
+if (res.body === "true" && db._properties().replicationVersion !== "2") {
   jsunity.run(collectionCountsSuiteOldFormat);
   jsunity.run(collectionCountsSuiteNewFormat);
 }

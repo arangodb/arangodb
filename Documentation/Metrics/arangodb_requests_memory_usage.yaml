@@ -1,0 +1,19 @@
+name: arangodb_requests_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Memory consumed by incoming, queued, and currently processed requests.
+unit: bytes
+type: gauge
+category: Statistics
+complexity: high
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Measures the amount of memory currently allocated for incoming, queued,
+  and currently processed requests. The memory usage includes the size of
+  the request headers and the request bodies.
+  This includes the memory usage of requests that are currently queued
+  in the server's scheduler queue and that are waiting to be processed.

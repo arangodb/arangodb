@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,6 +47,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AqlHelper.h"
@@ -67,12 +69,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/Methods/Collections.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
 #endif
+#include "VocBase/Methods/Collections.h"
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
@@ -87,6 +87,8 @@ class IResearchFilterArrayIntervalTest
                                             arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
  private:
   TRI_vocbase_t* _vocbase;
@@ -106,7 +108,7 @@ class IResearchFilterArrayIntervalTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -122,7 +124,7 @@ class IResearchFilterArrayIntervalTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -142,8 +144,8 @@ class IResearchFilterArrayIntervalTest
         unused);
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")
-            ->slice());  // cache analyzer
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -151,9 +153,10 @@ class IResearchFilterArrayIntervalTest
 
 namespace {
 // Auxilary check lambdas. Need them to check by_range part of expected filter
-auto checkLess = [](auto& filter, irs::bytes_ref term, irs::string_ref field) {
-  ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
-  auto& actual = dynamic_cast<irs::by_range const&>(*filter);
+auto checkLess = [](auto& filter, irs::bytes_view term,
+                    std::string_view field) {
+  ASSERT_EQ(irs::type<irs::by_range>::id(), (*filter)->type());
+  auto& actual = dynamic_cast<irs::by_range const&>(**filter);
   irs::by_range expected;
   *expected.mutable_field() = field;
   expected.mutable_options()->range.min = term;
@@ -161,10 +164,10 @@ auto checkLess = [](auto& filter, irs::bytes_ref term, irs::string_ref field) {
   EXPECT_EQ(expected, actual);
 };
 
-auto checkLessEqual = [](auto& filter, irs::bytes_ref term,
-                         irs::string_ref field) {
-  ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
-  auto& actual = dynamic_cast<irs::by_range const&>(*filter);
+auto checkLessEqual = [](auto& filter, irs::bytes_view term,
+                         std::string_view field) {
+  ASSERT_EQ(irs::type<irs::by_range>::id(), (*filter)->type());
+  auto& actual = dynamic_cast<irs::by_range const&>(**filter);
   irs::by_range expected;
   *expected.mutable_field() = field;
   expected.mutable_options()->range.min = term;
@@ -172,10 +175,10 @@ auto checkLessEqual = [](auto& filter, irs::bytes_ref term,
   EXPECT_EQ(expected, actual);
 };
 
-auto checkGreaterEqual = [](auto& filter, irs::bytes_ref term,
-                            irs::string_ref field) {
-  ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
-  auto& actual = dynamic_cast<irs::by_range const&>(*filter);
+auto checkGreaterEqual = [](auto& filter, irs::bytes_view term,
+                            std::string_view field) {
+  ASSERT_EQ(irs::type<irs::by_range>::id(), (*filter)->type());
+  auto& actual = dynamic_cast<irs::by_range const&>(**filter);
   irs::by_range expected;
   *expected.mutable_field() = field;
   expected.mutable_options()->range.max = term;
@@ -183,10 +186,10 @@ auto checkGreaterEqual = [](auto& filter, irs::bytes_ref term,
   EXPECT_EQ(expected, actual);
 };
 
-auto checkGreater = [](auto& filter, irs::bytes_ref term,
-                       irs::string_ref field) {
-  ASSERT_EQ(irs::type<irs::by_range>::id(), filter->type());
-  auto& actual = dynamic_cast<irs::by_range const&>(*filter);
+auto checkGreater = [](auto& filter, irs::bytes_view term,
+                       std::string_view field) {
+  ASSERT_EQ(irs::type<irs::by_range>::id(), (*filter)->type());
+  auto& actual = dynamic_cast<irs::by_range const&>(**filter);
   irs::by_range expected;
   *expected.mutable_field() = field;
   expected.mutable_options()->range.max = term;
@@ -197,16 +200,16 @@ auto checkGreater = [](auto& filter, irs::bytes_ref term,
 // Auxilary check lambdas. Need them to check root part of expected filter
 auto checkAny = [](irs::Or& actual, irs::score_t boost) {
   EXPECT_EQ(1, actual.size());
-  EXPECT_EQ(irs::type<irs::Or>::id(), actual.begin()->type());
-  auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
+  EXPECT_EQ(irs::type<irs::Or>::id(), (*actual.begin())->type());
+  auto& root = dynamic_cast<const irs::Or&>(**actual.begin());
   EXPECT_EQ(3, root.size());
   EXPECT_EQ(boost, root.boost());
   return root.begin();
 };
 auto checkAll = [](irs::Or& actual, irs::score_t boost) {
   EXPECT_EQ(1, actual.size());
-  EXPECT_EQ(irs::type<irs::And>::id(), actual.begin()->type());
-  auto& root = dynamic_cast<const irs::And&>(*actual.begin());
+  EXPECT_EQ(irs::type<irs::And>::id(), (*actual.begin())->type());
+  auto& root = dynamic_cast<const irs::And&>(**actual.begin());
   EXPECT_EQ(3, root.size());
   EXPECT_EQ(boost, root.boost());
   return root.begin();
@@ -214,20 +217,19 @@ auto checkAll = [](irs::Or& actual, irs::score_t boost) {
 auto checkNone = [](irs::Or& actual, irs::score_t boost) {
   // none for now is like All but with inverted interval check
   EXPECT_EQ(1, actual.size());
-  EXPECT_EQ(irs::type<irs::And>::id(), actual.begin()->type());
-  auto& root = dynamic_cast<const irs::And&>(*actual.begin());
+  EXPECT_EQ(irs::type<irs::And>::id(), (*actual.begin())->type());
+  auto& root = dynamic_cast<const irs::And&>(**actual.begin());
   EXPECT_EQ(3, root.size());
   EXPECT_EQ(boost, root.boost());
   return root.begin();
 };
 
-using iterator =
-    irs::ptr_iterator<std::vector<irs::filter::ptr>::const_iterator>;
+using iterator = std::vector<irs::filter::ptr>::const_iterator;
 
 std::vector<std::pair<
     std::string, std::pair<std::function<iterator(irs::Or&, irs::score_t)>,
-                           std::function<void(iterator&, irs::bytes_ref const&,
-                                              irs::string_ref const&)>>>>
+                           std::function<void(iterator&, irs::bytes_view const&,
+                                              std::string_view const&)>>>>
     intervalOperations = {{"ANY >", {checkAny, checkGreater}},
                           {"ANY >=", {checkAny, checkGreaterEqual}},
                           {"ANY <", {checkAny, checkLess}},
@@ -241,9 +243,9 @@ std::vector<std::pair<
                           {"NONE <", {checkNone, checkGreaterEqual}},
                           {"NONE <=", {checkNone, checkGreater}}};
 
-std::string buildQueryString(const irs::string_ref queryPrefix,
-                             const irs::string_ref operation,
-                             const irs::string_ref querySuffix) {
+std::string buildQueryString(const std::string_view queryPrefix,
+                             const std::string_view operation,
+                             const std::string_view querySuffix) {
   return std::string(queryPrefix)
       .append(" ")
       .append(operation)
@@ -265,17 +267,17 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       auto subFiltersIterator = operation.second.first(actual, 1);
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
+          irs::ViewCast<irs::byte_type>(std::string_view("1")),
           mangleStringIdentity("a"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("2")),
+          irs::ViewCast<irs::byte_type>(std::string_view("2")),
           mangleStringIdentity("a"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("3")),
+          irs::ViewCast<irs::byte_type>(std::string_view("3")),
           mangleStringIdentity("a"));
       ++subFiltersIterator;
     }
@@ -294,17 +296,17 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       auto subFiltersIterator = operation.second.first(actual, 2.5);
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
+          irs::ViewCast<irs::byte_type>(std::string_view("1")),
           mangleString("a.b.c[412].e.f", "test_analyzer"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("2")),
+          irs::ViewCast<irs::byte_type>(std::string_view("2")),
           mangleString("a.b.c[412].e.f", "test_analyzer"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("3")),
+          irs::ViewCast<irs::byte_type>(std::string_view("3")),
           mangleString("a.b.c[412].e.f", "test_analyzer"));
       ++subFiltersIterator;
     }
@@ -322,19 +324,18 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       auto subFiltersIterator = operation.second.first(actual, 1.5);
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
+          irs::ViewCast<irs::byte_type>(std::string_view("1")),
           mangleString("quick.brown.fox", "test_analyzer"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()),
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()),
           mangleNull("quick.brown.fox"));
       ++subFiltersIterator;
-      operation.second.second(
-          subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::ref_cast<irs::byte_type>(
-              irs::boolean_token_stream::value_true())),
-          mangleBool("quick.brown.fox"));
+      operation.second.second(subFiltersIterator,
+                              irs::ViewCast<irs::byte_type>(
+                                  irs::boolean_token_stream::value_true()),
+                              mangleBool("quick.brown.fox"));
       ++subFiltersIterator;
     }
   }
@@ -352,10 +353,10 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       irs::numeric_token_stream stream;
       stream.reset(2.);
       ASSERT_EQ(irs::type<irs::by_granular_range>::id(),
-                subFiltersIterator->type());
+                (*subFiltersIterator)->type());
       {
         auto& by_range_actual =
-            dynamic_cast<irs::by_granular_range const&>(*subFiltersIterator);
+            dynamic_cast<irs::by_granular_range const&>(**subFiltersIterator);
         irs::by_granular_range expected;
         *expected.mutable_field() = mangleNumeric("quick.brown.fox");
 
@@ -390,14 +391,13 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()),
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()),
           mangleNull("quick.brown.fox"));
       ++subFiltersIterator;
-      operation.second.second(
-          subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::ref_cast<irs::byte_type>(
-              irs::boolean_token_stream::value_false())),
-          mangleBool("quick.brown.fox"));
+      operation.second.second(subFiltersIterator,
+                              irs::ViewCast<irs::byte_type>(
+                                  irs::boolean_token_stream::value_false()),
+                              mangleBool("quick.brown.fox"));
       ++subFiltersIterator;
     }
   }
@@ -430,17 +430,17 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
 
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
+          irs::ViewCast<irs::byte_type>(std::string_view("1")),
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("2")),
+          irs::ViewCast<irs::byte_type>(std::string_view("2")),
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("3")),
+          irs::ViewCast<irs::byte_type>(std::string_view("3")),
           mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"));
       ++subFiltersIterator;
     }
@@ -530,7 +530,8 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       SCOPED_TRACE(testing::Message("Query:") << queryString);
 
       arangodb::aql::Variable var("c", 0,
-                                  /*isFullDocumentFromCollection*/ false);
+                                  /*isFullDocumentFromCollection*/ false,
+                                  resourceMonitor);
       arangodb::aql::AqlValue value(arangodb::aql::AqlValue("2"));
       arangodb::aql::AqlValueGuard guard(value, true);
       ExpressionContextMock ctx;
@@ -541,17 +542,17 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
 
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
+          irs::ViewCast<irs::byte_type>(std::string_view("1")),
           mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("2")),
+          irs::ViewCast<irs::byte_type>(std::string_view("2")),
           mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("3")),
+          irs::ViewCast<irs::byte_type>(std::string_view("3")),
           mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
     }
@@ -579,17 +580,17 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
 
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
+          irs::ViewCast<irs::byte_type>(std::string_view("1")),
           mangleString("a.b.c.e.f", "test_analyzer"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("2")),
+          irs::ViewCast<irs::byte_type>(std::string_view("2")),
           mangleString("a.b.c.e.f", "test_analyzer"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("3")),
+          irs::ViewCast<irs::byte_type>(std::string_view("3")),
           mangleString("a.b.c.e.f", "test_analyzer"));
       ++subFiltersIterator;
     }
@@ -606,18 +607,18 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       auto subFiltersIterator = operation.second.first(actual, 1);
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
+          irs::ViewCast<irs::byte_type>(std::string_view("1")),
           mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
       EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                subFiltersIterator->type());
+                (*subFiltersIterator)->type());
       EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                             &*subFiltersIterator));
+                             subFiltersIterator->get()));
 
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("3")),
+          irs::ViewCast<irs::byte_type>(std::string_view("3")),
           mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
     }
@@ -634,18 +635,18 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       auto subFiltersIterator = operation.second.first(actual, 1);
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
+          irs::ViewCast<irs::byte_type>(std::string_view("1")),
           mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
       EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                subFiltersIterator->type());
+                (*subFiltersIterator)->type());
       EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                             &*subFiltersIterator));
+                             subFiltersIterator->get()));
 
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("3")),
+          irs::ViewCast<irs::byte_type>(std::string_view("3")),
           mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
     }
@@ -662,19 +663,19 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       auto subFiltersIterator = operation.second.first(actual, 1);
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
+          irs::ViewCast<irs::byte_type>(std::string_view("1")),
           mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
       EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                subFiltersIterator->type());
+                (*subFiltersIterator)->type());
       EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                             &*subFiltersIterator));
+                             subFiltersIterator->get()));
 
       ++subFiltersIterator;
       EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                subFiltersIterator->type());
+                (*subFiltersIterator)->type());
       EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                             &*subFiltersIterator));
+                             subFiltersIterator->get()));
     }
   }
   // self-referenced value
@@ -689,18 +690,18 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       auto subFiltersIterator = operation.second.first(actual, 1);
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("1")),
+          irs::ViewCast<irs::byte_type>(std::string_view("1")),
           mangleStringIdentity("a.b.c.e.f"));
       ++subFiltersIterator;
       EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(),
-                subFiltersIterator->type());
+                (*subFiltersIterator)->type());
       EXPECT_NE(nullptr, dynamic_cast<arangodb::iresearch::ByExpression const*>(
-                             &*subFiltersIterator));
+                             subFiltersIterator->get()));
 
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("3")),
+          irs::ViewCast<irs::byte_type>(std::string_view("3")),
           mangleStringIdentity("a.b.c.e.f"));
     }
   }
@@ -725,18 +726,17 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
 
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::string_ref("str2")),
+          irs::ViewCast<irs::byte_type>(std::string_view("str2")),
           mangleString("a.b.c.e.f", "test_analyzer"));
       ++subFiltersIterator;
-      operation.second.second(
-          subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::ref_cast<irs::byte_type>(
-              irs::boolean_token_stream::value_false())),
-          mangleBool("a.b.c.e.f"));
+      operation.second.second(subFiltersIterator,
+                              irs::ViewCast<irs::byte_type>(
+                                  irs::boolean_token_stream::value_false()),
+                              mangleBool("a.b.c.e.f"));
       ++subFiltersIterator;
       operation.second.second(
           subFiltersIterator,
-          irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()),
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()),
           mangleNull("a.b.c.e.f"));
       ++subFiltersIterator;
     }
@@ -815,7 +815,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       SCOPED_TRACE(testing::Message("Query") << queryString);
       irs::Or expected;
       if (operation.first.find("ANY") != std::string::npos) {
-        expected.add<irs::empty>();
+        expected.add<irs::Empty>();
       } else {
         expected.add<irs::all>();
       }

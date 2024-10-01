@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,12 +21,26 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/AstResources.h"
+#include "Aql/Query.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FixedSizeAllocator.h"
+#include "Basics/Result.h"
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
+#include "Transaction/OperationOrigin.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
+#include "VocBase/VocbaseInfo.h"
+#include "VocBase/vocbase.h"
 
 #include "gtest/gtest.h"
+#include "Mocks/Servers.h"
 
-#include "Basics/FixedSizeAllocator.h"
-#include "Aql/AstNode.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
 
 using namespace arangodb;
 
@@ -36,6 +50,7 @@ TEST(FixedSizeAllocatorTest, test_Int) {
   EXPECT_EQ(0, allocator.numUsed());
   EXPECT_EQ(0, allocator.usedBlocks());
 
+  allocator.ensureCapacity();
   int* p = allocator.allocate(24);
 
   // first allocation should be aligned to a cache line
@@ -45,6 +60,7 @@ TEST(FixedSizeAllocatorTest, test_Int) {
   EXPECT_EQ(1, allocator.numUsed());
   EXPECT_EQ(1, allocator.usedBlocks());
 
+  allocator.ensureCapacity();
   p = allocator.allocate(42);
 
   EXPECT_EQ(42, *p);
@@ -52,6 +68,7 @@ TEST(FixedSizeAllocatorTest, test_Int) {
   EXPECT_EQ(2, allocator.numUsed());
   EXPECT_EQ(1, allocator.usedBlocks());
 
+  allocator.ensureCapacity();
   p = allocator.allocate(23);
 
   EXPECT_EQ(23, *p);
@@ -71,6 +88,7 @@ TEST(FixedSizeAllocatorTest, test_UInt64) {
   EXPECT_EQ(0, allocator.numUsed());
   EXPECT_EQ(0, allocator.usedBlocks());
 
+  allocator.ensureCapacity();
   uint64_t* p = allocator.allocate(24);
 
   // first allocation should be aligned to a cache line
@@ -80,6 +98,7 @@ TEST(FixedSizeAllocatorTest, test_UInt64) {
   EXPECT_EQ(1, allocator.numUsed());
   EXPECT_EQ(1, allocator.usedBlocks());
 
+  allocator.ensureCapacity();
   p = allocator.allocate(42);
 
   EXPECT_EQ(42, *p);
@@ -87,6 +106,7 @@ TEST(FixedSizeAllocatorTest, test_UInt64) {
   EXPECT_EQ(2, allocator.numUsed());
   EXPECT_EQ(1, allocator.usedBlocks());
 
+  allocator.ensureCapacity();
   p = allocator.allocate(23);
 
   EXPECT_EQ(23, *p);
@@ -102,6 +122,7 @@ TEST(FixedSizeAllocatorTest, test_UInt64) {
 
 TEST(FixedSizeAllocatorTest, test_Struct) {
   struct Testee {
+    Testee() = default;
     Testee(std::string abc, std::string def) : abc(abc), def(def) {}
 
     std::string abc;
@@ -113,6 +134,7 @@ TEST(FixedSizeAllocatorTest, test_Struct) {
   EXPECT_EQ(0, allocator.numUsed());
   EXPECT_EQ(0, allocator.usedBlocks());
 
+  allocator.ensureCapacity();
   Testee* p = allocator.allocate("foo", "bar");
 
   // first allocation should be aligned to a cache line
@@ -123,6 +145,7 @@ TEST(FixedSizeAllocatorTest, test_Struct) {
   EXPECT_EQ(1, allocator.numUsed());
   EXPECT_EQ(1, allocator.usedBlocks());
 
+  allocator.ensureCapacity();
   p = allocator.allocate("foobar", "baz");
   EXPECT_EQ(0, (uintptr_t(p) % alignof(Testee)));
   EXPECT_EQ("foobar", p->abc);
@@ -143,6 +166,7 @@ TEST(FixedSizeAllocatorTest, test_MassAllocation) {
   EXPECT_EQ(0, allocator.usedBlocks());
 
   for (size_t i = 0; i < 10 * 1000; ++i) {
+    allocator.ensureCapacity();
     std::string* p = allocator.allocate("test" + std::to_string(i));
 
     EXPECT_EQ("test" + std::to_string(i), *p);
@@ -169,6 +193,7 @@ TEST(FixedSizeAllocatorTest, test_Clear) {
       numItemsLeft = FixedSizeAllocator<uint64_t>::capacityForBlock(usedBlocks);
       ++usedBlocks;
     }
+    allocator.ensureCapacity();
     uint64_t* p = allocator.allocate(i);
     --numItemsLeft;
 
@@ -182,6 +207,7 @@ TEST(FixedSizeAllocatorTest, test_Clear) {
   EXPECT_EQ(0, allocator.numUsed());
   EXPECT_EQ(0, allocator.usedBlocks());
 
+  allocator.ensureCapacity();
   uint64_t* p = allocator.allocate(42);
   EXPECT_EQ(42, *p);
   EXPECT_EQ(1, allocator.numUsed());
@@ -201,6 +227,7 @@ TEST(FixedSizeAllocatorTest, test_ClearMost) {
       numItemsLeft = FixedSizeAllocator<uint64_t>::capacityForBlock(usedBlocks);
       ++usedBlocks;
     }
+    allocator.ensureCapacity();
     uint64_t* p = allocator.allocate(i);
     --numItemsLeft;
 
@@ -214,8 +241,56 @@ TEST(FixedSizeAllocatorTest, test_ClearMost) {
   EXPECT_EQ(0, allocator.numUsed());
   EXPECT_EQ(1, allocator.usedBlocks());
 
+  allocator.ensureCapacity();
   uint64_t* p = allocator.allocate(42);
   EXPECT_EQ(42, *p);
   EXPECT_EQ(1, allocator.numUsed());
   EXPECT_EQ(1, allocator.usedBlocks());
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST(FixedSizeAllocatorTest, test_AstNodesRollbackDuringCreation) {
+  // recursive AstNode structure. the AstNode ctor will throw
+  // when it encounters the node with the "throw!" string value,
+  // if the failure point is set.
+  constexpr std::string_view data(R"(
+{"type":"array","typeID":41,"subNodes":[{"type":"value","typeID":40,"value":1,"vTypeID":2},{"type":"array","typeID":41,"subNodes":[{"type":"value","typeID":40,"value":2,"vTypeID":2},{"type":"array","typeID":41,"subNodes":[{"type":"value","typeID":40,"value":3,"vTypeID":2},{"type":"array","typeID":41,"subNodes":[{"type":"value","typeID":40,"value":"throw!","vTypeID":4}]}]}]}]}
+  )");
+
+  // whatever query string will do here.
+  constexpr std::string_view queryString("RETURN null");
+
+  // create a query object so we have an AST object to mess with
+  arangodb::tests::mocks::MockAqlServer server(true);
+  arangodb::CreateDatabaseInfo testDBInfo(server.server(),
+                                          arangodb::ExecContext::current());
+  testDBInfo.load("testVocbase", 2);
+  TRI_vocbase_t vocbase(std::move(testDBInfo));
+  auto query = arangodb::aql::Query::create(
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
+      arangodb::aql::QueryString(queryString), nullptr);
+  query->initForTests();
+
+  auto builder = velocypack::Parser::fromJson(data);
+
+  // registration of AstNodes should work fine without failure points
+  query->ast()->resources().registerNode(query->ast(), builder->slice());
+
+  // set a failure point that throws in the AstNode ctor when
+  // it encounters an AstNode with a string value "throw!"
+  TRI_AddFailurePointDebugging("AstNode::throwOnAllocation");
+
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+
+  Result res = basics::catchToResult([&]() -> Result {
+    // we expect this to throw a TRI_ERROR_DEBUG exception
+    // because of the failure point
+    query->ast()->resources().registerNode(query->ast(), builder->slice());
+    return {};
+  });
+
+  EXPECT_EQ(TRI_ERROR_DEBUG, res.errorNumber());
+  // we also expect implicitly that the heap was not corrupted
+}
+#endif

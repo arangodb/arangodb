@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,19 +31,20 @@
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-NetworkAttachedFollower::NetworkAttachedFollower(network::ConnectionPool* pool,
-                                                 ParticipantId id,
-                                                 DatabaseID database,
-                                                 LogId logId)
+NetworkAttachedFollower::NetworkAttachedFollower(
+    network::ConnectionPool* pool, ParticipantId id, DatabaseID database,
+    LogId logId, std::shared_ptr<ReplicatedLogGlobalSettings const> options)
     : pool(pool),
       id(std::move(id)),
       database(std::move(database)),
-      logId(logId) {}
+      logId(logId),
+      options(std::move(options)) {}
 
 auto NetworkAttachedFollower::getParticipantId() const noexcept
     -> ParticipantId const& {
@@ -53,6 +54,7 @@ auto NetworkAttachedFollower::getParticipantId() const noexcept
 auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
     -> futures::Future<AppendEntriesResult> {
   VPackBufferUInt8 buffer;
+  buffer.reserve(options->defaultThresholdNetworkBatchSize);
   {
     VPackBuilder builder(buffer);
     request.toVelocyPack(builder);
@@ -75,4 +77,39 @@ auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
         return AppendEntriesResult::fromVelocyPack(
             result.slice().get("result"));
       });
+}
+
+NetworkLeaderCommunicator::NetworkLeaderCommunicator(
+    network::ConnectionPool* pool, ParticipantId leader, DatabaseID database,
+    LogId logId)
+    : pool(pool),
+      leader(std::move(leader)),
+      database(std::move(database)),
+      logId(logId) {}
+
+auto NetworkLeaderCommunicator::getParticipantId() const noexcept
+    -> ParticipantId const& {
+  return leader;
+}
+
+auto NetworkLeaderCommunicator::reportSnapshotAvailable(MessageId mid) noexcept
+    -> futures::Future<Result> {
+  auto path =
+      basics::StringUtils::joinT("/", StaticStrings::ApiLogInternal, logId,
+                                 StaticStrings::ApiUpdateSnapshotStatus);
+  network::RequestOptions opts;
+  opts.database = database;
+  opts.parameters["follower"] = ServerState::instance()->getId();
+  auto payload = velocypack::Buffer<uint8_t>();
+  {
+    auto const message = SnapshotAvailableReport{.messageId = mid};
+    auto builder = velocypack::Builder(payload);
+    velocypack::serialize(builder, message);
+  }
+  auto f = network::sendRequest(pool, "server:" + leader,
+                                arangodb::fuerte::RestVerb::Post, path,
+                                std::move(payload), opts);
+
+  return std::move(f).thenValue(
+      [](network::Response result) { return result.combinedResult(); });
 }

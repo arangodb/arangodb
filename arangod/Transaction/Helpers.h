@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include <string_view>
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -32,23 +32,28 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+
 class CollectionNameResolver;
 class LogicalCollection;
 struct OperationOptions;
 
 namespace velocypack {
+
 class Builder;
 class Slice;
-}  // namespace velocypack
 
+}  // namespace velocypack
 namespace transaction {
+
 struct BatchOptions;
 class Context;
 class Methods;
 
 namespace helpers {
 /// @brief extract the _key attribute from a slice
-std::string_view extractKeyPart(VPackSlice);
+std::string_view extractKeyPart(velocypack::Slice slice, bool& keyPresent);
+
+std::string_view extractKeyPart(velocypack::Slice slice);
 
 /** @brief Given a string, returns the substring after the first '/' or
  *          the whole string if it contains no '/'.
@@ -96,8 +101,8 @@ VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
 OperationResult buildCountResult(
     OperationOptions const& options,
-    std::vector<std::pair<std::string, uint64_t>> const& count,
-    transaction::CountType type, uint64_t& total);
+    std::vector<std::pair<std::string, uint64_t>> const& count, CountType type,
+    uint64_t& total);
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
@@ -108,10 +113,10 @@ std::string makeIdFromParts(CollectionNameResolver const* resolver,
 
 /// @brief new object for insert, value must have _key set correctly.
 Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
-                          velocypack::Slice value, RevisionId& revisionId,
-                          velocypack::Builder& builder,
+                          std::string_view key, velocypack::Slice value,
+                          RevisionId& revisionId, velocypack::Builder& builder,
                           OperationOptions const& options,
-                          transaction::BatchOptions& batchOptions);
+                          BatchOptions& batchOptions);
 
 /// @brief merge two objects for update
 Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
@@ -121,15 +126,16 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
                              RevisionId& revisionId,
                              velocypack::Builder& builder,
                              OperationOptions const& options,
-                             transaction::BatchOptions& batchOptions);
+                             BatchOptions& batchOptions);
 
 /// @brief new object for replace
 Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
                            velocypack::Slice oldValue,
-                           velocypack::Slice newValue, RevisionId& revisionId,
-                           velocypack::Builder& builder,
+                           velocypack::Slice newValue, bool isNoOpReplace,
+                           RevisionId previousRevisionId,
+                           RevisionId& revisionId, velocypack::Builder& builder,
                            OperationOptions const& options,
-                           transaction::BatchOptions& batchOptions);
+                           BatchOptions& batchOptions);
 
 bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames);
 
@@ -139,8 +145,17 @@ bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames);
 class StringLeaser {
  public:
   explicit StringLeaser(Methods*);
-  explicit StringLeaser(transaction::Context*);
+  explicit StringLeaser(Context*);
   ~StringLeaser();
+
+  auto release() {
+    return std::unique_ptr<std::string>{std::exchange(_string, nullptr)};
+  }
+  void acquire(std::unique_ptr<std::string> r) {
+    TRI_ASSERT(_string == nullptr);
+    _string = r.release();
+  }
+
   std::string* string() const { return _string; }
   std::string* operator->() const { return _string; }
   std::string& operator*() { return *_string; }
@@ -148,39 +163,37 @@ class StringLeaser {
   std::string* get() const { return _string; }
 
  private:
-  transaction::Context* _transactionContext;
+  Context* _transactionContext;
   std::string* _string;
 };
 
 class BuilderLeaser {
  public:
-  explicit BuilderLeaser(transaction::Context*);
-  explicit BuilderLeaser(transaction::Methods*);
+  explicit BuilderLeaser(Context*);
+  explicit BuilderLeaser(Methods*);
+
+  BuilderLeaser(BuilderLeaser const&) = delete;
+  BuilderLeaser& operator=(BuilderLeaser const&) = delete;
+  BuilderLeaser& operator=(BuilderLeaser&&) = delete;
+
+  BuilderLeaser(BuilderLeaser&& source)
+      : _transactionContext(source._transactionContext),
+        _builder(source.steal()) {}
+
   ~BuilderLeaser();
-  inline arangodb::velocypack::Builder* builder() const noexcept {
-    return _builder;
-  }
-  inline arangodb::velocypack::Builder* operator->() const noexcept {
-    return _builder;
-  }
-  inline arangodb::velocypack::Builder& operator*() noexcept {
-    return *_builder;
-  }
-  inline arangodb::velocypack::Builder& operator*() const noexcept {
-    return *_builder;
-  }
-  inline arangodb::velocypack::Builder* get() const noexcept {
-    return _builder;
-  }
-  inline arangodb::velocypack::Builder* steal() {
-    arangodb::velocypack::Builder* res = _builder;
-    _builder = nullptr;
-    return res;
-  }
+
+  velocypack::Builder* builder() const noexcept { return _builder; }
+  velocypack::Builder* operator->() const noexcept { return _builder; }
+  velocypack::Builder& operator*() noexcept { return *_builder; }
+  velocypack::Builder& operator*() const noexcept { return *_builder; }
+  velocypack::Builder* get() const noexcept { return _builder; }
+  velocypack::Builder* steal() { return std::exchange(_builder, nullptr); }
+
+  void clear();
 
  private:
-  transaction::Context* _transactionContext;
-  arangodb::velocypack::Builder* _builder;
+  Context* _transactionContext;
+  velocypack::Builder* _builder;
 };
 
 }  // namespace transaction

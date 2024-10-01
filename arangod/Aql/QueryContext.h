@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,17 +24,19 @@
 #pragma once
 
 #include "Aql/Collections.h"
-#include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryOptions.h"
-#include "Aql/QueryString.h"
 #include "Aql/QueryWarnings.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/voc-types.h"
-#include <velocypack/Builder.h>
+
+#include <atomic>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
 struct TRI_vocbase_t;
 
@@ -48,7 +50,7 @@ class Methods;
 }  // namespace transaction
 
 namespace velocypack {
-class Builder;
+struct Options;
 }
 
 namespace graph {
@@ -66,16 +68,29 @@ class QueryContext {
   QueryContext& operator=(QueryContext const&) = delete;
 
  public:
-  explicit QueryContext(TRI_vocbase_t& vocbase, QueryId id = 0);
+  explicit QueryContext(TRI_vocbase_t& vocbase,
+                        transaction::OperationOrigin operationOrigin,
+                        QueryId id = 0);
 
   virtual ~QueryContext();
 
-  arangodb::ResourceMonitor& resourceMonitor() noexcept {
+  ResourceMonitor& resourceMonitor() noexcept { return *_resourceMonitor; }
+
+  ResourceMonitor const& resourceMonitor() const noexcept {
+    return *_resourceMonitor;
+  }
+  std::shared_ptr<ResourceMonitor> resourceMonitorAsSharedPtr() noexcept {
+    return _resourceMonitor;
+  }
+  std::shared_ptr<ResourceMonitor const> resourceMonitorAsSharedPtr()
+      const noexcept {
     return _resourceMonitor;
   }
 
   /// @brief get the vocbase
-  inline TRI_vocbase_t& vocbase() const { return _vocbase; }
+  TRI_vocbase_t& vocbase() const noexcept;
+
+  transaction::OperationOrigin operationOrigin() const noexcept;
 
   Collections& collections();
   Collections const& collections() const;
@@ -87,7 +102,10 @@ class QueryContext {
   virtual std::string const& user() const;
 
   /// warnings access is thread safe
-  QueryWarnings& warnings() { return _warnings; }
+  QueryWarnings& warnings();
+
+  /// warnings access is thread safe
+  QueryWarnings const& warnings() const;
 
   /// @brief look up a graph in the _graphs collection
   ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
@@ -95,13 +113,19 @@ class QueryContext {
   /// @brief note that the query uses the DataSource
   void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
 
-  QueryExecutionState::ValueType state() const { return _execState; }
+  QueryExecutionState::ValueType state() const noexcept { return _execState; }
 
-  TRI_voc_tick_t id() const { return _queryId; }
+  TRI_voc_tick_t id() const noexcept { return _queryId; }
 
   aql::Ast* ast();
 
-  void incHttpRequests(unsigned i) {
+  /// @brief Acquire a lock_guard on the mutex to serialize concurrent snippet
+  /// execution
+  std::lock_guard<std::mutex> acquireLockGuard() {
+    return std::lock_guard{_mutex};
+  }
+
+  void incHttpRequests(unsigned i) noexcept {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
   }
 
@@ -134,11 +158,11 @@ class QueryContext {
   virtual double getLockTimeout() const noexcept = 0;
   virtual void setLockTimeout(double timeout) = 0;
 
-  virtual void enterV8Context();
+  virtual void enterV8Executor();
 
-  virtual void exitV8Context() {}
+  virtual void exitV8Executor() {}
 
-  virtual bool hasEnteredV8Context() const { return false; }
+  virtual bool hasEnteredV8Executor() const { return false; }
 
   // base overhead for each query. the number used here is somewhat arbitrary.
   // it is just that all the basics data structures of a query are not totally
@@ -148,7 +172,7 @@ class QueryContext {
 
  protected:
   /// @brief current resources and limits used by query
-  arangodb::ResourceMonitor _resourceMonitor;
+  std::shared_ptr<ResourceMonitor> _resourceMonitor;
 
   TRI_voc_tick_t const _queryId;
 
@@ -173,11 +197,20 @@ class QueryContext {
   /// messages)
   std::atomic<QueryExecutionState::ValueType> _execState;
 
+  transaction::OperationOrigin const _operationOrigin;
+
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
   std::unique_ptr<Ast> _ast;
 
+  /// @brief number of HTTP requests executed by the query
   std::atomic<unsigned> _numRequests;
+
+  /// @brief this mutex is used to serialize execution of potentially concurrent
+  /// snippets as a result of using parallel gather.
+  /// In the future we might want to consider using an rwlock instead so that
+  /// read-only snippets can actually run concurrently.
+  std::mutex _mutex;
 };
 
 }  // namespace aql

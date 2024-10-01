@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,6 +32,7 @@
 #include "../Mocks/Servers.h"
 
 #include "Aql/Query.h"
+#include "Aql/Variable.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
@@ -68,7 +70,7 @@ class AllShortestPathsFinderTest
   arangodb::ResourceMonitor resourceMonitor{global};
 
   // PathValidatorOptions parts (used for API not under test here)
-  aql::Variable _tmpVar{"tmp", 0, false};
+  aql::Variable _tmpVar{"tmp", 0, false, resourceMonitor};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
 
   arangodb::transaction::Methods _trx{_query->newTrxContext()};
@@ -144,8 +146,10 @@ class AllShortestPathsFinderTest
   }
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> AllShortestPathsFinder {
-    arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
-    options.setStopAtFirstDepth(true);
+    arangodb::graph::PathType::Type pathType =
+        arangodb::graph::PathType::Type::AllShortestPaths;
+    arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
+                                                       pathType};
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return AllShortestPathsFinder{
         MockGraphProvider(
@@ -283,7 +287,7 @@ TEST_P(AllShortestPathsFinderTest, no_path_exists) {
   }
   {
     aql::TraversalStats stats = finder.stealStats();
-    EXPECT_EQ(stats.getScannedIndex(), 0);
+    EXPECT_EQ(stats.getScannedIndex(), 0U);
   }
 }
 
@@ -367,7 +371,7 @@ TEST_P(AllShortestPathsFinderTest, shortcut_paths) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 11);
+    EXPECT_EQ(stats.getScannedIndex(), 11U);
   }
 }
 
@@ -407,7 +411,7 @@ TEST_P(AllShortestPathsFinderTest, hexagon_path) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 4);
+    EXPECT_EQ(stats.getScannedIndex(), 4U);
   }
 }
 
@@ -447,7 +451,7 @@ TEST_P(AllShortestPathsFinderTest, binary_tree) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 11);
+    EXPECT_EQ(stats.getScannedIndex(), 11U);
   }
 }
 
@@ -487,7 +491,7 @@ TEST_P(AllShortestPathsFinderTest, binary_trees_connected) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 7);
+    EXPECT_EQ(stats.getScannedIndex(), 7U);
   }
 }
 
@@ -579,7 +583,7 @@ TEST_P(AllShortestPathsFinderTest, grid_paths) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 42);
+    EXPECT_EQ(stats.getScannedIndex(), 42U);
   }
 }
 
@@ -629,7 +633,7 @@ TEST_P(AllShortestPathsFinderTest, multiple_edges_between_pair) {
   {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup both vertices, and the edge
-    EXPECT_EQ(stats.getScannedIndex(), 6);
+    EXPECT_EQ(stats.getScannedIndex(), 6U);
   }
 }
 

@@ -1,7 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, $, window, arangoHelper, moment, nv, d3, prettyBytes */
-/* global document, frontendConfig, Dygraph, _,templateEngine */
+/* global nv, frontendConfig, templateEngine */
 
 (function () {
   'use strict';
@@ -250,7 +247,7 @@
         if (v < 0) {
           tempColor = '#d05448';
         } else {
-          tempColor = '#77DB99';
+          tempColor = 'var(--green-600)';
           p = '+';
         }
         if (self.history.hasOwnProperty(self.server) &&
@@ -1157,18 +1154,22 @@
     template: templateEngine.createTemplate('dashboardView.ejs'),
 
     checkEnabledStatistics: function () {
-      if (!frontendConfig.statisticsEnabled || frontendConfig.db !== '_system') {
+      if (frontendConfig.statisticsEnabled && frontendConfig.db !== '_system') {
         $(this.el).html('');
         if (this.server) {
           $(this.el).append(
-            '<div style="color: red">Server statistics (' + this.server + ') are disabled.</div>'
+            '<div style="color: red">Server statistics for node (' + this.server + ') are disabled in this database. Log into "_system" database to show statistics.</div>'
           );
         } else {
           $(this.el).append(
-            '<div style="color: red">Server statistics are disabled.</div>'
+            '<div style="color: red">Server statistics are disabled in this database. Log into "_system" database to show statistics.</div>'
           );
         }
-        return false;
+      } else if (!frontendConfig.statisticsEnabled) {
+        $(this.el).html('');
+        $(this.el).append(
+          '<div style="color: red">Server statistics are currently disabled. They can be enabled with startup option "--server.statistics".</div>'
+        );
       } else {
         return true;
       }

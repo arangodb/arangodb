@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "ImportFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
@@ -34,12 +35,17 @@
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportHelper.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utils/ClientManager.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 #include <iostream>
 #include <regex>
 
@@ -51,20 +57,16 @@ namespace arangodb {
 
 ImportFeature::ImportFeature(Server& server, int* result)
     : ArangoImportFeature{server, *this},
-      _filename(""),
       _useBackslash(false),
       _convert(true),
       _autoChunkSize(false),
       _chunkSize(1024 * 1024 * 8),
       _threadCount(2),
-      _collectionName(""),
-      _fromCollectionPrefix(""),
-      _toCollectionPrefix(""),
       _overwriteCollectionPrefix(false),
       _createCollection(false),
       _createDatabase(false),
       _createCollectionType("document"),
-      _typeImport("json"),
+      _typeImport("auto"),
       _overwrite(false),
       _quote("\""),
       _separator(""),
@@ -72,6 +74,7 @@ ImportFeature::ImportFeature(Server& server, int* result)
       _ignoreMissing(false),
       _onDuplicateAction("error"),
       _rowsToSkip(0),
+      _maxErrors(20),
       _result(result),
       _skipValidation(false),
       _latencyStats(false) {
@@ -81,48 +84,52 @@ ImportFeature::ImportFeature(Server& server, int* result)
                           static_cast<uint32_t>(NumberOfCores::getValue()));
 }
 
+ImportFeature::~ImportFeature() = default;
+
 void ImportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption("--file", "File name (\"-\" for stdin).",
+  options->addOption("--file", "The file to import (\"-\" for stdin).",
                      new StringParameter(&_filename));
 
-  options
-      ->addOption("--auto-rate-limit",
-                  "adjust the data loading rate automatically, starting at "
-                  "--batch-size bytes per thread per second",
-                  new BooleanParameter(&_autoChunkSize))
-      .setIntroducedIn(30711);
+  options->addOption("--auto-rate-limit",
+                     "Adjust the data loading rate automatically, starting at "
+                     "`--batch-size` bytes per thread per second.",
+                     new BooleanParameter(&_autoChunkSize));
 
-  options->addOption(
-      "--backslash-escape",
-      "Use backslash as the escape character for quotes, used for CSV.",
-      new BooleanParameter(&_useBackslash));
+  options->addOption("--backslash-escape",
+                     "Use backslash as the escape character for quotes. Used "
+                     "for CSV and TSV imports.",
+                     new BooleanParameter(&_useBackslash));
 
   options->addOption("--batch-size",
-                     "size for individual data batches (in bytes)",
+                     "The size for individual data batches (in bytes).",
                      new UInt64Parameter(&_chunkSize));
 
   options->addOption(
-      "--threads", "Number of parallel import threads",
+      "--threads", "Number of parallel import threads.",
       new UInt32Parameter(&_threadCount),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--collection", "collection name",
+  options->addOption("--collection",
+                     "The name of the collection to import into.",
                      new StringParameter(&_collectionName));
 
-  options->addOption("--from-collection-prefix",
-                     "The collection name prefix that will be prepended to all "
-                     "values in `_from`.",
-                     new StringParameter(&_fromCollectionPrefix));
+  options->addOption(
+      "--from-collection-prefix",
+      "The collection name prefix to prepend to all values in the "
+      "`_from` attribute.",
+      new StringParameter(&_fromCollectionPrefix));
 
   options->addOption(
       "--to-collection-prefix",
-      "_to collection name prefix (will be prepended to all values in '_to')",
+      "The collection name prefix to prepend to all values in the "
+      "`_to` attribute.",
       new StringParameter(&_toCollectionPrefix));
 
   options->addOption("--overwrite-collection-prefix",
-                     "only useful with '--from/--to-collection-prefix', if the "
-                     "value is already prefixed, overwrite the prefix.",
+                     "If the collection name is already prefixed, overwrite "
+                     "the prefix. Only useful in combination with "
+                     "`--from-collection-prefix` / `--to-collection-prefix`.",
                      new BooleanParameter(&_overwriteCollectionPrefix));
 
   options->addOption("--create-collection",
@@ -130,19 +137,35 @@ void ImportFeature::collectOptions(
                      new BooleanParameter(&_createCollection));
 
   options->addOption("--create-database",
-                     "create the target database if it does not exist",
+                     "Create the target database if it does not exist.",
                      new BooleanParameter(&_createDatabase));
 
   options
       ->addOption("--headers-file",
-                  "filename to read CSV or TSV headers from. if specified will "
-                  "not try to read headers from regular input file",
+                  "The file to read the CSV or TSV header from. If specified, "
+                  "no header is expected in the regular input file.",
                   new StringParameter(&_headersFile))
       .setIntroducedIn(30800);
 
-  options->addOption("--skip-lines",
-                     "Number of lines to skip for formats (CSV and TSV only).",
-                     new UInt64Parameter(&_rowsToSkip));
+  options->addOption(
+      "--skip-lines",
+      "The number of lines to skip of the input file (CSV and TSV only).",
+      new UInt64Parameter(&_rowsToSkip));
+
+  options
+      ->addOption(
+          "--max-errors",
+          "The maxium number of errors after which the import will stop.",
+          new UInt64Parameter(&_maxErrors))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(The maximum number of errors after which the
+import is stopped. 
+
+Note that this is not an exact limit for the number of errors.
+arangoimport will send data to the server in batches, and likely also in parallel. 
+The server will process these in-flight batches regardless of the maximum number
+of errors configured here. arangoimport will however stop processing more input
+data once the server reported at least this many errors back.)");
 
   options->addOption(
       "--convert",
@@ -153,14 +176,14 @@ void ImportFeature::collectOptions(
 
   options->addOption("--translate",
                      "Translate an attribute name using the syntax "
-                     "`\"from=to\"`. For CSV and TSV only. ",
+                     "\"from=to\". For CSV and TSV only.",
                      new VectorParameter<StringParameter>(&_translations));
 
   options
       ->addOption(
           "--datatype",
           "Force a specific datatype for an attribute "
-          "(null/boolean/number/string) using the syntax `\"attribute=type\"`. "
+          "(null/boolean/number/string) using the syntax \"attribute=type\". "
           "For CSV and TSV only. Takes precedence over `--convert`.",
           new VectorParameter<StringParameter>(&_datatypes))
       .setIntroducedIn(30900);
@@ -174,39 +197,40 @@ void ImportFeature::collectOptions(
   std::vector<std::string> typesVector(types.begin(), types.end());
   std::string typesJoined = StringUtils::join(typesVector, " or ");
 
-  options->addOption(
-      "--create-collection-type",
-      "type of collection if collection is created (" + typesJoined + ")",
-      new DiscreteValuesParameter<StringParameter>(&_createCollectionType,
-                                                   types));
+  options->addOption("--create-collection-type",
+                     "The type of the collection if it needs to be created (" +
+                         typesJoined + ").",
+                     new DiscreteValuesParameter<StringParameter>(
+                         &_createCollectionType, types));
 
   std::unordered_set<std::string> imports = {"csv", "tsv", "json", "jsonl",
                                              "auto"};
 
   options->addOption(
-      "--type", "type of import file",
+      "--type", "The format of import file.",
       new DiscreteValuesParameter<StringParameter>(&_typeImport, imports));
 
   options->addOption(
       "--overwrite",
-      "overwrite collection if it exists (WARNING: this will remove any data "
-      "from the collection)",
+      "Overwrite the collection if it exists. WARNING: This removes any data "
+      "from the collection!",
       new BooleanParameter(&_overwrite));
 
-  options->addOption("--quote", "Quote character(s), used for CSV.",
+  options->addOption("--quote", "Quote character(s). Used for CSV and TSV.",
                      new StringParameter(&_quote));
 
   options->addOption(
       "--separator",
-      "field separator, used for csv and tsv. "
-      "Defaults to a comma (csv) or a tabulation character (tsv)",
+      "The field separator. Used for CSV and TSV imports. "
+      "Defaults to a comma (CSV) or a tabulation character (TSV).",
       new StringParameter(&_separator),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--progress", "show progress",
+  options->addOption("--progress", "Show the progress.",
                      new BooleanParameter(&_progress));
 
-  options->addOption("--ignore-missing", "Ignore missing columns in CSV input.",
+  options->addOption("--ignore-missing",
+                     "Ignore missing columns in CSV and TSV input.",
                      new BooleanParameter(&_ignoreMissing));
 
   std::unordered_set<std::string> actions = {"error", "update", "replace",
@@ -215,7 +239,7 @@ void ImportFeature::collectOptions(
   std::string actionsJoined = StringUtils::join(actionsVector, ", ");
 
   options->addOption("--on-duplicate",
-                     "action to perform when a unique key constraint "
+                     "The action to perform when a unique key constraint "
                      "violation occurs. Possible values: " +
                          actionsJoined,
                      new DiscreteValuesParameter<StringParameter>(
@@ -223,21 +247,20 @@ void ImportFeature::collectOptions(
 
   options
       ->addOption("--merge-attributes",
-                  "merge attributes into new document attribute (e.g. "
-                  "mergedAttribute=[someAttribute]-[otherAttribute]) (CSV and "
-                  "TSV only)",
+                  "Merge attributes into new document attribute (e.g. "
+                  "\"mergedAttribute=[someAttribute]-[otherAttribute]\") "
+                  "(CSV and TSV only)",
                   new VectorParameter<StringParameter>(&_mergeAttributes))
       .setIntroducedIn(30901);
 
   options->addOption(
-      "--latency", "show 10 second latency statistics (values in microseconds)",
+      "--latency",
+      "Show 10 second latency statistics (values in microseconds).",
       new BooleanParameter(&_latencyStats));
 
-  options
-      ->addOption("--skip-validation",
-                  "skips document validation during import",
-                  new BooleanParameter(&_skipValidation))
-      .setIntroducedIn(30700);
+  options->addOption("--skip-validation",
+                     "Skip document schema validation during import.",
+                     new BooleanParameter(&_skipValidation));
 }
 
 void ImportFeature::validateOptions(
@@ -260,14 +283,14 @@ void ImportFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_chunkSize > arangodb::import::ImportHelper::MaxBatchSize) {
+  if (_chunkSize > arangodb::import::ImportHelper::kMaxBatchSize) {
     // it's not sensible to raise the batch size beyond this value
     // because the server has a built-in limit for the batch size too
     // and will reject bigger HTTP request bodies
     LOG_TOPIC("e6d71", WARN, arangodb::Logger::FIXME)
         << "capping --batch-size value to "
-        << arangodb::import::ImportHelper::MaxBatchSize;
-    _chunkSize = arangodb::import::ImportHelper::MaxBatchSize;
+        << arangodb::import::ImportHelper::kMaxBatchSize;
+    _chunkSize = arangodb::import::ImportHelper::kMaxBatchSize;
   }
 
   if (_threadCount < 1) {
@@ -325,6 +348,8 @@ void ImportFeature::validateOptions(
   }
 }
 
+void ImportFeature::prepare() { logLGPLNotice(); }
+
 void ImportFeature::start() {
   ClientFeature& client =
       server().getFeature<HttpEndpointProvider, ClientFeature>();
@@ -364,17 +389,17 @@ void ImportFeature::start() {
       if (extension == "json" || extension == "jsonl" || extension == "csv" ||
           extension == "tsv") {
         _typeImport = extension;
-      } else {
-        LOG_TOPIC("cb067", FATAL, arangodb::Logger::FIXME)
-            << "Unsupported file extension '" << extension << "'";
-        FATAL_ERROR_EXIT();
+        LOG_TOPIC("4271d", INFO, arangodb::Logger::FIXME)
+            << "Aauto-detected file type '" << _typeImport
+            << "' from filename '" << _filename << "'";
       }
-    } else {
-      LOG_TOPIC("0ee99", WARN, arangodb::Logger::FIXME)
-          << "Unable to auto-detect file type from filename '" << _filename
-          << "'. using filetype 'json'";
-      _typeImport = "json";
     }
+  }
+  if (_typeImport == "auto") {
+    LOG_TOPIC("0ee99", WARN, arangodb::Logger::FIXME)
+        << "Unable to auto-detect file type from filename '" << _filename
+        << "'. using filetype 'json'";
+    _typeImport = "json";
   }
 
   try {
@@ -384,11 +409,6 @@ void ImportFeature::start() {
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
-
-  _httpClient->params().setLocationRewriter(static_cast<void*>(&client),
-                                            &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client.username(),
-                                            client.password());
 
   // must stay here in order to establish the connection
 
@@ -494,9 +514,11 @@ void ImportFeature::start() {
   }
 
   SimpleHttpClientParams params = _httpClient->params();
+  params.setCompressRequestThreshold(
+      client.compressTransfer() ? client.compressRequestThreshold() : 0);
   arangodb::import::ImportHelper ih(encryption, client, client.endpoint(),
                                     params, _chunkSize, _threadCount,
-                                    _autoChunkSize);
+                                    _maxErrors, _autoChunkSize);
 
   // create colletion
   if (_createCollection) {
@@ -667,7 +689,7 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
                                            std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
-  builder.add("name", VPackValue(normalizeUtf8ToNFC(name)));
+  builder.add("name", VPackValue(name));
   builder.add("users", VPackValue(VPackValueType::Array));
   builder.openObject();
   builder.add("username", VPackValue(client.username()));
@@ -695,14 +717,15 @@ ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client,
   if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
       returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
     // invalid authorization
-    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                                 false);
+    _httpClient->setErrorMessage(
+        ClientManager::getHttpErrorMessage(response.get()).errorMessage(),
+        false);
     return TRI_ERROR_FORBIDDEN;
   }
 
   // any other error
-  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
-                               false);
+  _httpClient->setErrorMessage(
+      ClientManager::getHttpErrorMessage(response.get()).errorMessage(), false);
   return TRI_ERROR_INTERNAL;
 }
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,10 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // test setup
-#include "gtest/gtest.h"
+#include "RestServer/arangod.h"
 #include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
+
+#include "Aql/OptimizerRulesFeature.h"
+#include "Cluster/ClusterFeature.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "IResearch/common.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
+#include "Random/RandomGenerator.h"
+#include "RestServer/AqlFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/ManagerFeature.h"
 #include "GraphTestTools.h"
 
@@ -45,8 +58,15 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       arangodb::RandomGenerator::RandomType::MERSENNE);
 
   // setup required application features
-  features.emplace_back(server.addFeature<arangodb::metrics::MetricsFeature>(),
-                        false);
+  features.emplace_back(
+      server.addFeature<arangodb::metrics::MetricsFeature>(
+          LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+          LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+          LazyApplicationFeatureReference<EngineSelectorFeature>(server),
+          LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+              nullptr),
+          LazyApplicationFeatureReference<ClusterFeature>(nullptr)),
+      false);
   features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                         false);
   features.emplace_back(
@@ -55,10 +75,13 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(),
                         false);
   server.getFeature<EngineSelectorFeature>().setEngineTesting(&engine);
-  features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                        false);  // must be first
+  features.emplace_back(
+      server.addFeature<arangodb::QueryRegistryFeature>(
+          server.template getFeature<arangodb::metrics::MetricsFeature>()),
+      false);  // must be first
   system = std::make_unique<TRI_vocbase_t>(
-      TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
+      systemDBInfo(server),
+      server.getFeature<DatabaseFeature>().versionTracker(), true);
   features.emplace_back(
       server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
       false);  // required for IResearchAnalyzerFeature
@@ -100,45 +123,38 @@ GraphTestSetup::~GraphTestSetup() {
   }
 }
 
-bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
-               std::vector<std::string> vertices,
-               std::vector<std::pair<std::string, std::string>> edges,
-               std::string& msgs) {
-  bool res = true;
-
-  if (result.length() != vertices.size()) return false;
-
-  for (size_t i = 0; i < result.length(); i++) {
-    AqlValue vert = result.vertexToAqlValue(spo->cache(), i);
-    AqlValueGuard guard{vert, true};
-    if (!vert.slice()
-             .get(StaticStrings::KeyString)
-             .isEqualString(vertices.at(i))) {
-      msgs += "expected vertex " + vertices.at(i) + " but found " +
-              vert.slice().get(StaticStrings::KeyString).toString() + "\n";
-      res = false;
+std::shared_ptr<Index> MockIndexHelpers::getEdgeIndexHandle(
+    TRI_vocbase_t& vocbase, std::string const& edgeCollectionName) {
+  std::shared_ptr<arangodb::LogicalCollection> coll =
+      vocbase.lookupCollection(edgeCollectionName);
+  TRI_ASSERT(coll != nullptr);    // no edge collection of this name
+  TRI_ASSERT(coll->type() == 3);  // Is not an edge collection
+  for (auto const& idx : coll->getPhysical()->getAllIndexes()) {
+    if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      return idx;
     }
   }
+  TRI_ASSERT(false);  // Index not found
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
 
-  // First edge is by convention null
-  EXPECT_TRUE(result.edgeToAqlValue(spo->cache(), 0).isNull(true));
-  for (size_t i = 1; i < result.length(); i++) {
-    AqlValue edge = result.edgeToAqlValue(spo->cache(), i);
-    AqlValueGuard guard{edge, true};
-    if (!edge.slice()
-             .get(StaticStrings::FromString)
-             .isEqualString(edges.at(i).first) ||
-        !edge.slice()
-             .get(StaticStrings::ToString)
-             .isEqualString(edges.at(i).second)) {
-      msgs += "expected edge " + edges.at(i).first + " -> " +
-              edges.at(i).second + " but found " +
-              edge.slice().get(StaticStrings::FromString).toString() + " -> " +
-              edge.slice().get(StaticStrings::ToString).toString() + "\n";
-      res = false;
-    }
-  }
-  return res;
+arangodb::aql::AstNode* MockIndexHelpers::buildCondition(
+    aql::Query& query, aql::Variable const* tmpVar,
+    TRI_edge_direction_e direction) {
+  TRI_ASSERT(direction == TRI_EDGE_OUT || direction == TRI_EDGE_IN);
+  auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query.plan());
+  auto ast = plan->getAst();
+  auto condition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+  AstNode* tmpId1 = ast->createNodeReference(tmpVar);
+  AstNode* tmpId2 = ast->createNodeValueMutableString("", 0);
+
+  auto const* access = ast->createNodeAttributeAccess(
+      tmpId1, direction == TRI_EDGE_OUT ? StaticStrings::FromString
+                                        : StaticStrings::ToString);
+  auto const* cond = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                   access, tmpId2);
+  condition->addMember(cond);
+  return condition;
 }
 
 }  // namespace graph

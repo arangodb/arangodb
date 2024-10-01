@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,7 +44,12 @@ InitialSyncer::~InitialSyncer() {
 
   try {
     if (!_state.isChildSyncer) {
-      _batch.finish(_state.connection, _progress, _state.syncerId);
+      // we cannot pass _progress here because it refers to
+      // some properties of the derived class (DatabaseInitialSyncer).
+      // instead we create our own progress info object here
+      // that does nothing.
+      replutils::ProgressInfo progress([](std::string const&) {});
+      _batch.finish(_state.connection, progress, _state.syncerId);
     }
   } catch (...) {
   }
@@ -68,8 +73,8 @@ void InitialSyncer::startRecurringBatchExtension() {
 
   std::weak_ptr<Syncer> self(shared_from_this());
   _batchPingTimer = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::SERVER_REPLICATION, std::chrono::seconds(secs),
-      [self](bool cancelled) {
+      "replication-batch-ping", RequestLane::SERVER_REPLICATION,
+      std::chrono::seconds(secs), [self](bool cancelled) {
         if (!cancelled) {
           auto syncer = self.lock();
           if (syncer) {

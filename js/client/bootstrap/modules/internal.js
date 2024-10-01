@@ -1,35 +1,33 @@
 /* jshint -W051:true */
 /* eslint-disable */
+/* global arango */
 ;(function () {
   'use strict'
   /* eslint-enable */
 
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief module "internal"
-  // /
-  // / @file
-  // /
-  // / DISCLAIMER
-  // /
-  // / Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-  // /
-  // / Licensed under the Apache License, Version 2.0 (the "License")
-  // / you may not use this file except in compliance with the License.
-  // / You may obtain a copy of the License at
-  // /
-  // /     http://www.apache.org/licenses/LICENSE-2.0
-  // /
-  // / Unless required by applicable law or agreed to in writing, software
-  // / distributed under the License is distributed on an "AS IS" BASIS,
-  // / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  // / See the License for the specific language governing permissions and
-  // / limitations under the License.
-  // /
-  // / Copyright holder is triAGENS GmbH, Cologne, Germany
-  // /
-  // / @author Dr. Frank Celler
-  // / @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
-  // //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
   var exports = require('internal');
 
@@ -65,6 +63,33 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief monitor a subprocess
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ADD_TO_PID_MONITORING) {
+    exports.addPidToMonitor = global.SYS_ADD_TO_PID_MONITORING;
+    delete global.SYS_ADD_TO_PID_MONITORING;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief unmonitor a sub process
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_REMOVE_FROM_PID_MONITORING) {
+    exports.removePidFromMonitor = global.SYS_REMOVE_FROM_PID_MONITORING;
+    delete global.SYS_REMOVE_FROM_PID_MONITORING;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief why did the abort trigger?
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_GET_DEADLINE_STRING) {
+    exports.getDeadlineReasonString = global.SYS_GET_DEADLINE_STRING;
+    delete global.GET_DEADLINE_STRING;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief write-ahead log functionality
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -86,75 +111,6 @@
     transactions: function () {
       return exports.arango.GET('/_admin/wal/transactions', null);
     }
-  };
-  
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief client side failpoints functionality
-  // //////////////////////////////////////////////////////////////////////////////
-  function endpointToURL(endpoint) {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-  
-  exports.debugClearFailAt = function(failAt) {
-    const request = require('@arangodb/request');
-    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
-    instanceInfo.arangods.forEach((a) => {
-      let res = request.delete({
-        url: endpointToURL(a.endpoint) + '/_admin/debug/failat' + (failAt === undefined ? '' : '/' + failAt),
-        body: ""});
-      if (res.status !== 200) {
-        throw "Error removing failure point";
-      }
-    });
-  };
-
-  // On server side the API with failurePointName is called removeFailAt
-  exports.debugRemoveFailAt = exports.debugClearFailAt;
-  
-  exports.debugSetFailAt = function(failAt) {
-    const request = require('@arangodb/request');
-    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
-    instanceInfo.arangods.forEach((a) => {
-      let res = request.put({
-        url: endpointToURL(a.endpoint) + '/_admin/debug/failat/' + failAt,
-        body: ""});
-      if (res.status !== 200) {
-        throw "Error setting failure point";
-      }
-    });
-  };
-  
-  exports.debugTerminate = function() {
-    // NOOP. Terminate should be executed
-    // by tests framework not by client
-  };
-  
-  exports.debugTerminateInstance = function(endpoint) {
-    const request = require('@arangodb/request');
-    let res = request.put({
-      url: endpointToURL(endpoint) + '/_admin/debug/crash',
-      body: ""
-    });
-  };
-  
-  exports.debugCanUseFailAt = function() {
-    const request = require('@arangodb/request');
-    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
-    let res = request.get({
-      url: endpointToURL(instanceInfo.arangods[0].endpoint) + '/_admin/debug/failat',
-      body: ""
-    });
-    if (res.status !== 200) {
-      return false;
-    }
-    return res.body === "true";
   };
   
   // //////////////////////////////////////////////////////////////////////////////

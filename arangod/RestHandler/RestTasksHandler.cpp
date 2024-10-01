@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,7 @@
 #include "RestTasksHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -34,8 +34,10 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "VocBase/Methods/Tasks.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb::basics;
@@ -234,25 +236,31 @@ void RestTasksHandler::registerTask(bool byId) {
   try {
     JavaScriptSecurityContext securityContext =
         JavaScriptSecurityContext::createRestrictedContext();
-    V8ContextGuard guard(&_vocbase, securityContext);
+    V8ExecutorGuard guard(&_vocbase, securityContext);
 
-    v8::Isolate* isolate = guard.isolate();
-    v8::HandleScope scope(isolate);
-    auto context = TRI_IGETC;
-    v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
+    Result res = guard.runInContext([&](v8::Isolate* isolate) -> Result {
+      v8::HandleScope scope(isolate);
 
-    if (bv8->Get(context, TRI_V8_ASCII_STRING(isolate, "command"))
-            .FromMaybe(v8::Handle<v8::Value>())
-            ->IsFunction()) {
-      // need to add ( and ) around function because call will otherwise break
-      command = "(" + cmdSlice.copyString() + ")(params)";
-    } else {
-      command = cmdSlice.copyString();
-    }
+      v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+      v8::Handle<v8::Object> bv8 =
+          TRI_VPackToV8(isolate, body).As<v8::Object>();
 
-    if (!Task::tryCompile(server(), isolate, command)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                    "cannot compile command");
+      if (bv8->Get(context, TRI_V8_ASCII_STRING(isolate, "command"))
+              .FromMaybe(v8::Handle<v8::Value>())
+              ->IsFunction()) {
+        // need to add ( and ) around function because call will otherwise break
+        command = absl::StrCat("(", cmdSlice.stringView(), ")(params)");
+      } else {
+        command = cmdSlice.copyString();
+      }
+
+      if (!Task::tryCompile(server(), isolate, command)) {
+        return {TRI_ERROR_BAD_PARAMETER, "cannot compile command"};
+      }
+      return {};
+    });
+    if (res.fail()) {
+      generateError(res);
       return;
     }
   } catch (arangodb::basics::Exception const& ex) {
@@ -269,7 +277,7 @@ void RestTasksHandler::registerTask(bool byId) {
   // extract the parameters
   auto parameters = std::make_shared<VPackBuilder>(body.get("params"));
 
-  command = "(function (params) { " + command + " } )(params);";
+  command = absl::StrCat("(function (params) { ", command, " } )(params);");
 
   auto res = TRI_ERROR_NO_ERROR;
   std::shared_ptr<Task> task =

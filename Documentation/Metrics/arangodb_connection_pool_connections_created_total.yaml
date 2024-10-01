@@ -17,6 +17,6 @@ description: |
   `ClusterComm`.
 threshold: |
   Because of idle timeouts, the total number of connections ever created
-  will grow. However, under high load, most connections should usually
+  grows. However, under high load, most connections should usually
   be reused and a fast growth of this number can indicate underlying
   connectivity issues.

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 
 #include <memory>
 #include <utils/type_id.hpp>
+#include <unordered_set>
 
 #include "Basics/Result.h"
 #include "IResearch/IResearchCommon.h"
@@ -34,24 +35,29 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
+#endif
+
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 
 class LogicalCollection;
 class LogicalView;
 
+namespace application_features {
+
+class ApplicationServer;
+
+}  // namespace application_features
 namespace velocypack {
 
 class Slice;
 class Builder;
 
 }  // namespace velocypack
-
 namespace iresearch {
 
-class IResearchLink;  // forward declaration
+class IResearchLink;
 struct IResearchLinkMeta;
 class IResearchViewSort;
 class IResearchViewStoredValues;
@@ -69,7 +75,7 @@ struct IResearchLinkHelper {
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
   static bool equal(ArangodServer& server, velocypack::Slice lhs,
-                    velocypack::Slice rhs, irs::string_ref dbname);
+                    velocypack::Slice rhs, std::string_view dbname);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
@@ -96,8 +102,11 @@ struct IResearchLinkHelper {
       IResearchViewSort const* primarySort = nullptr,
       irs::type_info::type_id const* primarySortCompression = nullptr,
       IResearchViewStoredValues const* storedValues = nullptr,
-      velocypack::Slice idSlice = velocypack::Slice(),
-      irs::string_ref collectionName = irs::string_ref::NIL);
+#ifdef USE_ENTERPRISE
+      IResearchOptimizeTopK const* optimizeTopK = nullptr,
+      bool const* pkCache = nullptr, bool const* sortCache = nullptr,
+#endif
+      velocypack::Slice idSlice = {}, std::string_view collectionName = {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief validate the link specifications for:
@@ -122,16 +131,16 @@ struct IResearchLinkHelper {
   /// @param view the view to associate created links with
   /// @param links the link modification definitions, null link == link removal
   /// @param stale links to remove if there is no creation definition in 'links'
-  /// @param linkVersion link version for creation if not set in a definition
+  /// @param defaultVersion link version for creation if not set in a definition
   //////////////////////////////////////////////////////////////////////////////
-  static Result updateLinks(std::unordered_set<DataSourceId>& modified,
-                            LogicalView& view, velocypack::Slice links,
-                            LinkVersion defaultVersion,
-                            std::unordered_set<DataSourceId> const& stale = {});
+  static Result updateLinks(
+      containers::FlatHashSet<DataSourceId>& modified, LogicalView& view,
+      velocypack::Slice links, LinkVersion defaultVersion,
+      containers::FlatHashSet<DataSourceId> const& stale = {});
 
  private:
   IResearchLinkHelper() = delete;
-};  // IResearchLinkHelper
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

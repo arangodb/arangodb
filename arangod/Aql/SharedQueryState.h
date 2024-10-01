@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,7 @@
 #include "RestServer/arangod.h"
 
 namespace arangodb {
+class Scheduler;
 namespace application_features {
 class ApplicationServer;
 }
@@ -38,12 +39,15 @@ namespace aql {
 class SharedQueryState final
     : public std::enable_shared_from_this<SharedQueryState> {
  public:
-  SharedQueryState(SharedQueryState const&) = delete;
+  SharedQueryState(SharedQueryState const&);
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  explicit SharedQueryState(ArangodServer& server);
+  SharedQueryState(ArangodServer& server);
+  SharedQueryState(ArangodServer& server, Scheduler* scheduler);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
+
+  void setMaxTasks(unsigned maxTasks) { _maxTasks = maxTasks; }
 
   void invalidate();
 
@@ -94,8 +98,6 @@ class SharedQueryState final
 
   void resetWakeupHandler();
 
-  void resetNumWakeups();
-
   /// execute a task in parallel if capacity is there
   template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
@@ -108,13 +110,17 @@ class SharedQueryState final
     bool queued =
         queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
           if (self->_valid) {
+            bool triggerWakeUp = true;
             try {
-              cb(true);
+              triggerWakeUp = cb(true);
             } catch (...) {
+              TRI_ASSERT(false);
             }
             std::unique_lock<std::mutex> guard(self->_mutex);
             self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
-            self->notifyWaiter(guard);
+            if (triggerWakeUp) {
+              self->notifyWaiter(guard);
+            }
           } else {  // need to wakeup everybody
             std::unique_lock<std::mutex> guard(self->_mutex);
             self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
@@ -130,6 +136,10 @@ class SharedQueryState final
     return queued;
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  bool noTasksRunning() const noexcept { return _numTasks.load() == 0; }
+#endif
+
  private:
   /// execute the _continueCallback. must hold _mutex
   void notifyWaiter(std::unique_lock<std::mutex>& guard);
@@ -139,18 +149,23 @@ class SharedQueryState final
 
  private:
   ArangodServer& _server;
+  Scheduler* _scheduler;
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 
   /// @brief a callback function which is used to implement continueAfterPause.
   /// Typically, the RestHandler using the Query object will put a closure
   /// in here, which continueAfterPause simply calls.
-  std::function<bool()> _wakeupCb;
+  std::function<bool()> _wakeupCallback;
 
   unsigned _numWakeups;  // number of times
-  unsigned _cbVersion;   // increased once callstack is done
+  // The callbackVersion is used to identify callbacks that are associated with
+  // a specific RestHandler. Every time a new callback is set, the version is
+  // updated. That allows us to identify wakeups that are associated with a
+  // callback who's RestHandler has already finished.
+  unsigned _callbackVersion;
 
-  const unsigned _maxTasks;
+  unsigned _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };

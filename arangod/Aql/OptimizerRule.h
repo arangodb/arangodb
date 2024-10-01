@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,13 +23,10 @@
 
 #pragma once
 
-#include <type_traits>
 #include <memory>
+#include <type_traits>
 
-#include "Basics/Common.h"
-
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 class ExecutionPlan;
 class Optimizer;
 struct OptimizerRule;
@@ -58,34 +55,39 @@ struct OptimizerRule {
 
   /// @brief helper for building flags
   template<typename... Args>
-  static std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
+  static constexpr std::underlying_type<Flags>::type makeFlags(
+      Flags flag, Args... args) noexcept {
     return static_cast<std::underlying_type<Flags>::type>(flag) +
            makeFlags(args...);
   }
 
-  static std::underlying_type<Flags>::type makeFlags() {
+  static constexpr std::underlying_type<Flags>::type makeFlags() noexcept {
     return static_cast<std::underlying_type<Flags>::type>(Flags::Default);
   }
 
   /// @brief check a flag for the rule
-  bool hasFlag(Flags flag) const {
+  constexpr bool hasFlag(Flags flag) const noexcept {
     return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) !=
             0);
   }
 
-  bool canBeDisabled() const { return hasFlag(Flags::CanBeDisabled); }
+  bool canBeDisabled() const noexcept { return hasFlag(Flags::CanBeDisabled); }
 
-  bool isClusterOnly() const { return hasFlag(Flags::ClusterOnly); }
+  bool isClusterOnly() const noexcept { return hasFlag(Flags::ClusterOnly); }
 
-  bool isHidden() const { return hasFlag(Flags::Hidden); }
+  bool isHidden() const noexcept { return hasFlag(Flags::Hidden); }
 
-  bool canCreateAdditionalPlans() const {
+  bool canCreateAdditionalPlans() const noexcept {
     return hasFlag(Flags::CanCreateAdditionalPlans);
   }
 
-  bool isDisabledByDefault() const { return hasFlag(Flags::DisabledByDefault); }
+  bool isDisabledByDefault() const noexcept {
+    return hasFlag(Flags::DisabledByDefault);
+  }
 
-  bool isEnterpriseOnly() const { return hasFlag(Flags::EnterpriseOnly); }
+  bool isEnterpriseOnly() const noexcept {
+    return hasFlag(Flags::EnterpriseOnly);
+  }
 
   /// @brief optimizer rules
   enum RuleLevel : int {
@@ -100,6 +102,11 @@ struct OptimizerRule {
     replaceNearWithinFulltext,
 
     inlineSubqueriesRule,
+
+    replaceLikeWithRange,
+
+    // replace iteration over an ENTRIES array with an object iteration
+    replaceEntriesWithObjectIteration,
 
     /// simplify some conditions in CalculationNodes
     simplifyConditionsRule,
@@ -143,6 +150,9 @@ struct OptimizerRule {
 
     interchangeAdjacentEnumerationsRule,
 
+    // replace attribute accesses that are equal due to a filter statement
+    // with the same value. This might enable other optimizations later on.
+
     // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
     // ======================================================
 
@@ -153,6 +163,8 @@ struct OptimizerRule {
     // move filters up the dependency chain (to make result sets as small
     // as possible as early as possible)
     moveFiltersUpRule2,
+
+    replaceEqualAttributeAccesses,
 
     /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
     // remove filters from the query that are not necessary at all
@@ -200,8 +212,18 @@ struct OptimizerRule {
     // sort values used in IN comparisons of remaining filters
     sortInValuesRule,
 
+    // Replaces the last element of the path on traversals, by direct output.
+    replaceLastAccessOnGraphPathRule,
+
     // merge filters into graph traversals
     optimizeTraversalsRule,
+
+    // put path filters into enumerate paths
+    optimizeEnumeratePathsFilterRule,
+
+    // optimize K_PATHS
+    optimizePathsRule,
+
     // remove redundant filters statements
     removeFiltersCoveredByTraversal,
 
@@ -221,6 +243,9 @@ struct OptimizerRule {
     // when we have single document operations, fill in special cluster
     // handling.
     substituteSingleDocumentOperations,
+
+    // special cluster handling for multiple operations (babies)
+    substituteMultipleDocumentOperations,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
@@ -252,10 +277,6 @@ struct OptimizerRule {
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule,
 
-    // FIXME order-???
-    // make operations on sharded IResearch views use scatter / gather / remote
-    scatterIResearchViewInClusterRule,
-
 #ifdef USE_ENTERPRISE
     // move traversal on SatelliteGraph to db server and add scatter / gather /
     // remote
@@ -271,6 +292,13 @@ struct OptimizerRule {
     // remove multiple remote <-> distribute snippets if we are able
     // to combine multiple in only one
     removeDistributeNodesRule,
+#endif
+
+#ifdef USE_ENTERPRISE
+    // move OffsetInfoMaterialize in between
+    // scatter(remote) <-> gather(remote) so they're
+    // distributed to the cluster nodes.
+    distributeOffsetInfoToClusterRule,
 #endif
 
     // move FilterNodes & Calculation nodes in between
@@ -315,17 +343,11 @@ struct OptimizerRule {
     restrictToSingleShardRule,
 
     // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized
-    // count
-    // operation
+    // count operation
     optimizeCountRule,
 
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
-
-    // allows execution nodes to asynchronously prefetch the next batch from
-    // their
-    // upstream node.
-    asyncPrefetch,
 
     // reduce a sorted gather to an unsorted gather if only a single shard is
     // affected
@@ -341,23 +363,62 @@ struct OptimizerRule {
     // for arango search view
     lateDocumentMaterializationArangoSearchRule,
 
-#ifdef USE_ENTERPRISE
-    // FIXME(gnusi): when to execute?
-    // handle OFFSET_INFO functions calls
-    hanldeOffsetInfoFunc,
-#endif
-
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
     // needs to take into account query distribution across cluster nodes
     // for index
     lateDocumentMaterializationRule,
 
+    // push limit from node limit into an index node
+    // this must be before `batchMaterializeDocumentsRule` because
+    // we expect either calculation node or sort and limit node in succession,
+    // and this rule adds a materialization node in between which messes up
+    // with detection.
+    // this must be also after `optimizeProjectionsRule` because we want
+    // calculation node so we can access the attribute path of the sort
+    // attribute, otherwise that is optimized away as an anonymous variable
+    pushLimitIntoIndexRule,
+
+    // batch materialization rule
+    batchMaterializeDocumentsRule,
+
+#ifdef USE_ENTERPRISE
+    lateMaterialiationOffsetInfoRule,
+#endif
+
+    // replace adjacent index nodes with a join node if the indexes qualify
+    // for it.
+    joinIndexNodesRule,
+
+    pushDownLateMaterialization,
+
+    // introduce a new out variable for late materialization blocks
+    materializeIntoSeparateVariable,
+    // remove unnecessary projections & store projection attributes in
+    // individual registers. must be executed after the joinIndexNodesRule,
+    // otherwise the projections handling of JoinNodes will be incorrect.
+    optimizeProjectionsRule,
+
+    // final cleanup, after projections
+    removeUnnecessaryCalculationsRule4,
+
+    // allows execution nodes to asynchronously prefetch the next batch from
+    // their upstream node.
+    asyncPrefetchRule,
+
+    // Better to be last, because it doesn't change plan and
+    // rely on no one will change search condition after this rule
+    immutableSearchConditionRule,
+
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.
     spliceSubqueriesRule
   };
+
+  static_assert(lateDocumentMaterializationRule < optimizeProjectionsRule);
+  static_assert(joinIndexNodesRule < optimizeProjectionsRule);
+  static_assert(optimizeProjectionsRule < removeUnnecessaryCalculationsRule4);
 
 #ifdef USE_ENTERPRISE
   static_assert(clusterOneShardRule < distributeInClusterRule);
@@ -389,11 +450,17 @@ struct OptimizerRule {
   RuleFunction func;
   RuleLevel level;
   std::underlying_type<Flags>::type flags;
+  std::string_view description;
 
   OptimizerRule() = delete;
   OptimizerRule(std::string_view name, RuleFunction const& ruleFunc,
-                RuleLevel level, std::underlying_type<Flags>::type flags)
-      : name(name), func(ruleFunc), level(level), flags(flags) {}
+                RuleLevel level, std::underlying_type<Flags>::type flags,
+                std::string_view description)
+      : name(name),
+        func(ruleFunc),
+        level(level),
+        flags(flags),
+        description(description) {}
 
   OptimizerRule(OptimizerRule&& other) = default;
   OptimizerRule& operator=(OptimizerRule&& other) = default;
@@ -410,5 +477,4 @@ struct OptimizerRule {
   }
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

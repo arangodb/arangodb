@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <csignal>
 #include <set>
 #include <string>
 #include <string_view>
@@ -32,13 +33,11 @@
 
 #include "debugging.h"
 
-#include "Basics/CrashHandler.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
-#include "Logger/LogAppender.h"
+#include "CrashHandler/CrashHandler.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
 #include <velocypack/Builder.h>
@@ -86,9 +85,6 @@ void TRI_TerminateDebugging(std::string_view message) {
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wterminate"
-#elif _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4297)
 #endif
 
     auto f = []() noexcept {
@@ -101,19 +97,13 @@ void TRI_TerminateDebugging(std::string_view message) {
 #pragma clang diagnostic pop
 #elif defined(__GNUC__)
 #pragma GCC diagnostic pop
-#elif _MSC_VER
-#pragma warning(pop)
 #endif
     // we will get here at least with ASan/UBSan.
     std::terminate();
   } else if (message == "CRASH-HANDLER-TEST-SEGFAULT") {
-    std::unique_ptr<int> x;
     // intentionally crashes the program!
-    // cppcheck-suppress *
-    int a = *x;
-    // cppcheck-suppress *
-    *x = 2;
-    TRI_ASSERT(a == 1);
+    // If we instead try to dereference a nullptr, macOS might do SIGABRT
+    raise(SIGSEGV);
   } else if (message == "CRASH-HANDLER-TEST-ASSERT") {
     int a = 1;
     // intentionally crashes the program!
@@ -206,10 +196,3 @@ template<>
 char const conpar<false>::open = '[';
 template<>
 char const conpar<false>::close = ']';
-
-thread_local std::ostringstream
-    arangodb::debug::AssertionLogger::assertionStringStream;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-thread_local arangodb::debug::AssertionConditionalStream
-    arangodb::debug::AssertionConditionalLogger::assertionStringStream;
-#endif

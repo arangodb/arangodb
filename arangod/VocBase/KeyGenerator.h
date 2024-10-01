@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,13 +23,13 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
 #include <array>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace arangodb {
 class KeyGenerator;
@@ -50,8 +50,10 @@ struct KeyGeneratorHelper {
   // greatest possible key
   static std::string const highestKey;
 
-  static std::string encodePadded(uint64_t value);
+  static std::vector<std::string> generatorNames();
+
   static uint64_t decodePadded(char const* p, size_t length) noexcept;
+  static std::string encodePadded(uint64_t value);
 
   /// @brief validate a key
   static bool validateKey(char const* key, size_t len) noexcept;
@@ -62,7 +64,7 @@ struct KeyGeneratorHelper {
 
   /// @brief create a key generator based on the options specified
   static std::unique_ptr<KeyGenerator> createKeyGenerator(
-      LogicalCollection const& collection, arangodb::velocypack::Slice);
+      LogicalCollection const& collection, velocypack::Slice);
 
   static std::unique_ptr<KeyGenerator> createEnterpriseKeyGenerator(
       std::unique_ptr<KeyGenerator> generator);
@@ -111,7 +113,11 @@ class KeyGenerator {
   virtual void track(std::string_view key) noexcept = 0;
 
   /// @brief build a VelocyPack representation of the generator in the builder
-  virtual void toVelocyPack(arangodb::velocypack::Builder&) const;
+  virtual void toVelocyPack(velocypack::Builder&) const;
+
+  /// @brief initialize key generator state, reading data/state from the
+  /// state object. state is guaranteed to be a velocypack object
+  virtual void initState(velocypack::Slice state);
 
   bool allowUserKeys() const noexcept { return _allowUserKeys; }
 
@@ -162,7 +168,7 @@ class KeyGeneratorWrapper : public KeyGenerator {
   void track(std::string_view key) noexcept override { _wrapped->track(key); }
 
   /// @brief build a VelocyPack representation of the generator in the builder
-  void toVelocyPack(arangodb::velocypack::Builder& result) const override {
+  void toVelocyPack(velocypack::Builder& result) const override {
     _wrapped->toVelocyPack(result);
   }
 

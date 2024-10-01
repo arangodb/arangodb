@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,8 +48,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 
-using namespace arangodb;
-using namespace arangodb::graph;
+namespace arangodb::graph {
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -89,7 +88,8 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   _depth = 0;
   _queue.clear();
   _shell.clear();
-  _interior.reset();  // PathStore
+  _interior.reset();   // PathStore
+  _validator.reset();  // Needed to reset uniqueness maps
 
   // Provider - Must be last one to be cleared(!)
   clearProvider();
@@ -181,9 +181,9 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   if (!looseEnds.empty()) {
     // Will throw all network errors here
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
-    futureEnds.get();
+    futureEnds.waitAndGet();
     // Notes for the future:
-    // Vertices are now fetched. Thnink about other less-blocking and batch-wise
+    // Vertices are now fetched. Think about other less-blocking and batch-wise
     // fetching (e.g. re-fetch at some later point).
     // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in
     // fetch as fetched. This works, but we might create a batch limit here in
@@ -205,7 +205,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
 
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
+    auto&& preparedEnds = futureEnds.waitAndGet();
 
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.hasProcessableElement());
@@ -213,22 +213,34 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
   auto step = _queue.pop();
   auto previous = _interior.append(step);
+
   _provider.expand(step, previous, [&](Step n) -> void {
-    ValidationResult res = _validator.validatePath(n);
+    {
+      // To be able to run validatePath and check condition on vertices and
+      // edges, knowledge of all documents is required.
+      //
+      // This means that in some cases we are now overfetching, and that problem
+      // needs to be addressed.
+      if (!n.isProcessable()) {
+        auto futureEnds = _provider.fetch({&n});
+        futureEnds.waitAndGet();
+      }
+    }
+    auto valid = _validator.validatePath(n);
 
     // Check if other Ball knows this Vertex.
     // Include it in results.
-    if ((getDepth() + other.getDepth() >= _minDepth) && !res.isFiltered()) {
+    if ((getDepth() + other.getDepth() >= _minDepth) && !valid.isFiltered()) {
       // One side of the path is checked, the other side is unclear:
       // We need to combine the test of both sides.
 
-      // For GLOBAL: We ignore otherValidator, On FIRST match: Add this match as
-      // result, clear both sides. => This will give the shortest path.
-      // TODO: Check if the GLOBAL holds true for weightedEdges
+      // For GLOBAL: We ignore otherValidator, On FIRST match: Add this
+      // match as result, clear both sides. => This will give the shortest
+      // path.
+
       other.matchResultsInShell(n, results, _validator);
     }
-    if (!res.isPruned()) {
-      // Add the step to our shell
+    if (!valid.isPruned()) {
       _shell.emplace(std::move(n));
     }
   });
@@ -332,6 +344,9 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   // 2.) Remove both Balls (order here is not important)
   _left.clear();
   _right.clear();
+
+  // 3.) Remove finished state
+  setAlgorithmUnfinished();
 }
 
 /**
@@ -344,7 +359,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::isDone() const {
-  return _results.empty() && searchDone();
+  return (_results.empty() && searchDone()) || isAlgorithmFinished();
 }
 
 /**
@@ -406,7 +421,24 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _right.buildPath(rightVertex, _resultPath);
       TRI_ASSERT(!_resultPath.isEmpty());
       _results.pop_back();
-      _resultPath.toVelocyPack(result);
+      if (_options.getPathType() == PathType::Type::KShortestPaths ||
+          _emitWeight) {
+        // Add weight attribute to edges
+        _resultPath.toVelocyPack(
+            result, PathResult<ProviderType, Step>::WeightType::AMOUNT_EDGES);
+      } else {
+        _resultPath.toVelocyPack(result);
+      }
+
+      // At this state we've produced a valid path result. In case we're using
+      // the path type "ShortestPath", the algorithm is finished. We need
+      // to store this information.
+      if (_options.onlyProduceOnePath()) {
+        // TODO: Think about putting this into searchMoreResults();
+        TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
+        setAlgorithmFinished();
+      }
+
       return true;
     }
   }
@@ -444,6 +476,27 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   fetchResults();
 }
 
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::setAlgorithmFinished() {
+  _algorithmFinished = true;
+}
+
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::setAlgorithmUnfinished() {
+  _algorithmFinished = false;
+}
+
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidator>
+bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::isAlgorithmFinished() const {
+  return _algorithmFinished;
+}
+
 /**
  * @brief Skip the next Path, like getNextPath, but does not return the path.
  *
@@ -461,6 +514,16 @@ bool TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     while (!_results.empty()) {
       // just drop one result for skipping
       _results.pop_back();
+
+      // At this state we've produced a valid path result. In case we're using
+      // the path type "ShortestPath", the algorithm is finished. We need
+      // to store this information.
+      if (_options.onlyProduceOnePath()) {
+        // TODO: Think about putting this into searchMoreResults();
+        TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
+        setAlgorithmFinished();
+      }
+
       return true;
     }
   }
@@ -485,7 +548,8 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::searchDone() const -> bool {
   return _left.noPathLeft() || _right.noPathLeft() ||
-         _left.getDepth() + _right.getDepth() > _baselineDepth;
+         (_left.getDepth() + _right.getDepth() > _baselineDepth) ||
+         isAlgorithmFinished();
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -508,50 +572,164 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   return stats;
 }
 
+//
+// The `TwoSidedEnumerator` template is currently used in the following
+// template instantiations:
+//
+// Name                           Queue   Store   Prov    Valid
+//
+// # ShortestPath:
+// ShortestPath (single)          Fi      No      Si      Va<Gl,Pa>
+// ShortestPath (cluster)         Fi      No      Cl      Va<Gl,Pa>
+// TracedShortestPath (single)    Tr<Fi>  Tr      Tr<Si>  Va<Tr,Gl,Pa>
+// TracedShortestPath (cluster)   Tr<Fi>  Tr      Tr<Cl>  Va<Tr,Gl,Pa>
+//
+// # ShortestPath for Yen:
+// ShortestPath (yen, single)     Fi      No      Si      Ta<Va<Gl,Pa>>
+// ShortestPath (yen, cluster)    Fi      No      Cl      Ta<Va<Gl,Pa>>
+// TracedShortestPath (yen, sing) Tr<Fi>  Tr      Tr<Si>  Ta<Va<Tr,Gl,Pa>>>
+// TracedShortestPath (yen, clus) Tr<Fi>  Tr      Tr<Cl>  Ta<Va<Tr,Gl,Pa>>>
+//
+// # K-Shortest-Paths (legacy):
+// KShortestPath (single)         Fi      No      Si      Va<Pa,Pa>
+// KShortestPath (cluster)        Fi      No      Cl      Va<Pa,Pa>
+// TracedKShortestPath (single)   Tr<Fi>  Tr      Tr<Si>  Va<Tr,Pa,Pa>
+// TracedKShortestPath (cluster)  Tr<Fi>  Tr      Tr<Cl>  Va<Tr,Pa,Pa>
+//
+// # AllShortestPaths (legacy):
+// AllShortestPath (single)       Fi      No      Si      Va<Pa,Pa>
+// AllShortestPath (cluster)      Fi      No      Cl      Va<Pa,Pa>
+// TracedAllShortestPath (single) Tr<Fi>  Tr      Tr<Si>  Va<Tr,Pa,Pa>
+// TracedAllShortestPath (clust)  Tr<Fi>  Tr      Tr<Cl>  Va<Tr,Pa,Pa>
+// # (see K-Shortest-Paths (legacy), this is all contained there already)
+//
+// # KPaths (legacy):
+// KPaths (single)                Fi      No      Si      Va<Pa,Pa>
+// KPaths (cluster)               Fi      No      Cl      Va<Pa,Pa>
+// TracedKPaths (single)          Tr<Fi>  Tr      Tr<Si>  Va<Tr,Pa,Pa>
+// TracedKPaths (cluster)         Tr<Fi>  Tr      Tr<Cl>  Va<Tr,Pa,Pa>
+// # see K-Shortest-Paths (legacy), this is all contained there already)
+//
+//
+// Where:
+//   Si/Cl    Single or Cluster provider
+//   No/Tr    Non-traced or traced
+//   Fi/We    Fifo-Queue or WeightedQueue (prio)
+//   Va/Ta    Path validator or Taboo validator (wrapping normal)
+//   No/Pa/Gl For validator: no uniqueness vs. path uniq. vs. global uniq.
+//
+// Therefore, we need the following explicit template instantiations:
+
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
+using SingleProvider = SingleServerProvider<SingleServerProviderStep>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<SingleServerProviderStep>,
-    ::arangodb::graph::PathStore<SingleServerProviderStep>,
-    SingleServerProvider<SingleServerProviderStep>,
-    ::arangodb::graph::PathValidator<
-        SingleServerProvider<SingleServerProviderStep>,
-        PathStore<SingleServerProviderStep>, VertexUniquenessLevel::PATH,
-        EdgeUniquenessLevel::PATH>>;
+// TwoSidedEnumeratorWithProvider<SingleProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<SingleServerProviderStep>, PathStore<SingleServerProviderStep>,
+    SingleProvider,
+    PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<SingleServerProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-    ::arangodb::graph::ProviderTracer<
-        SingleServerProvider<SingleServerProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<
-            SingleServerProvider<SingleServerProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+// ShortestPathEnumerator<SingleProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<SingleServerProviderStep>, PathStore<SingleServerProviderStep>,
+    SingleProvider,
+    PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+
+// ShortestPathEnumeratorForYen<SingleProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<SingleServerProviderStep>, PathStore<SingleServerProviderStep>,
+    SingleProvider,
+    PathValidatorTabooWrapper<PathValidator<
+        SingleProvider, PathStore<SingleServerProviderStep>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+
+// TracedTwoSidedEnumeratorWithProvider<SingleProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<SingleServerProviderStep>>,
+    PathStoreTracer<PathStore<SingleServerProviderStep>>,
+    ProviderTracer<SingleProvider>,
+    PathValidatorTracer<
+        PathValidator<ProviderTracer<SingleProvider>,
+                      PathStoreTracer<PathStore<SingleServerProviderStep>>,
+                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+
+// TracedShortestPathEnumerator<SingleProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<SingleServerProviderStep>>,
+    PathStoreTracer<PathStore<SingleServerProviderStep>>,
+    ProviderTracer<SingleProvider>,
+    PathValidatorTracer<PathValidator<
+        ProviderTracer<SingleProvider>,
+        PathStoreTracer<PathStore<SingleServerProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+
+// TracedShortestPathEnumeratorForYen<SingleProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<SingleServerProviderStep>>,
+    PathStoreTracer<PathStore<SingleServerProviderStep>>,
+    ProviderTracer<SingleProvider>,
+    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
+        ProviderTracer<SingleProvider>,
+        PathStoreTracer<PathStore<SingleServerProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
 
 /* ClusterProvider Section */
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>,
-    ::arangodb::graph::PathStore<ClusterProviderStep>,
-    ClusterProvider<ClusterProviderStep>,
-    ::arangodb::graph::PathValidator<
-        ClusterProvider<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+using ClustProvider = ClusterProvider<ClusterProviderStep>;
 
-template class ::arangodb::graph::TwoSidedEnumerator<
-    ::arangodb::graph::QueueTracer<
-        ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProviderStep>>,
-    ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<ClusterProviderStep>>,
-    ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-    ::arangodb::graph::PathValidator<
-        ::arangodb::graph::ProviderTracer<ClusterProvider<ClusterProviderStep>>,
-        ::arangodb::graph::PathStoreTracer<
-            ::arangodb::graph::PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+// TwoSidedEnumeratorWithProvider<ClustProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    ClustProvider,
+    PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+// ShortestPathEnumerator<ClustProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    ClustProvider,
+    PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
+                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+
+// ShortestPathEnumeratorForYen<ClustProvider>:
+template class TwoSidedEnumerator<
+    FifoQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
+    ClustProvider,
+    PathValidatorTabooWrapper<PathValidator<
+        ClustProvider, PathStore<ClusterProviderStep>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+
+// TracedTwoSidedEnumeratorWithProvider<ClustProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ClusterProviderStep>>,
+    ProviderTracer<ClustProvider>,
+    PathValidatorTracer<
+        PathValidator<ProviderTracer<ClustProvider>,
+                      PathStoreTracer<PathStore<ClusterProviderStep>>,
+                      VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
+
+// TracedShortestPathEnumerator<ClustProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ClusterProviderStep>>,
+    ProviderTracer<ClustProvider>,
+    PathValidatorTracer<PathValidator<
+        ProviderTracer<ClustProvider>,
+        PathStoreTracer<PathStore<ClusterProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+
+// TracedShortestPathEnumeratorForYen<ClustProvider>:
+template class TwoSidedEnumerator<
+    QueueTracer<FifoQueue<ClusterProviderStep>>,
+    PathStoreTracer<PathStore<ClusterProviderStep>>,
+    ProviderTracer<ClustProvider>,
+    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
+        ProviderTracer<ClustProvider>,
+        PathStoreTracer<PathStore<ClusterProviderStep>>,
+        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
+
+}  // namespace arangodb::graph

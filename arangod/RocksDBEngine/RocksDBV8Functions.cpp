@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -34,6 +35,7 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBReplicationContextGuard.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -57,20 +59,22 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
 
   bool waitForSync = false;
-  bool waitForCollector = false;
+  bool flushColumnFamilies = false;
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
       v8::Handle<v8::Object> obj =
           args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-      if (TRI_HasProperty(context, isolate, obj, "waitForSync")) {
+      if (TRI_HasProperty(context, isolate, obj,
+                          StaticStrings::WaitForSyncString)) {
         waitForSync = TRI_ObjectToBoolean(
             isolate,
-            obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForSync"))
+            obj->Get(context, TRI_V8_ASCII_STD_STRING(
+                                  isolate, StaticStrings::WaitForSyncString))
                 .FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "waitForCollector")) {
-        waitForCollector = TRI_ObjectToBoolean(
+        flushColumnFamilies = TRI_ObjectToBoolean(
             isolate,
             obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForCollector"))
                 .FromMaybe(v8::Local<v8::Value>()));
@@ -79,14 +83,14 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
 
       if (args.Length() > 1) {
-        waitForCollector = TRI_ObjectToBoolean(isolate, args[1]);
+        flushColumnFamilies = TRI_ObjectToBoolean(isolate, args[1]);
       }
     }
   }
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
   v8g->server().getFeature<EngineSelectorFeature>().engine().flushWal(
-      waitForSync, waitForCollector);
+      waitForSync, flushColumnFamilies);
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
@@ -154,7 +158,7 @@ static void JS_RecalculateCounts(
   auto* physical = toRocksDBCollection(*collection);
 
   v8::Handle<v8::Value> result = v8::Number::New(
-      isolate, static_cast<double>(physical->recalculateCounts()));
+      isolate, static_cast<double>(physical->recalculateCounts().waitAndGet()));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -205,18 +209,10 @@ static void JS_WaitForEstimatorSync(
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);
 
-  // release all unused ticks from flush feature
-  v8g->server().getFeature<FlushFeature>().releaseUnusedTicks();
-
-  // force-flush
-  RocksDBEngine& engine =
-      v8g->server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
-  engine.settingsManager()->sync(/*force*/ true);
-
   v8g->server()
       .getFeature<EngineSelectorFeature>()
       .engine()
-      .waitForEstimatorSync(std::chrono::seconds(10));
+      .waitForEstimatorSync();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -286,23 +282,20 @@ static void JS_CollectionRevisionTreeVerification(
     RocksDBEngine& engine =
         server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
     RocksDBReplicationManager* manager = engine.replicationManager();
-    double ttl = 3600;
-    // the "17" is a magic number. we just need any client id to proceed.
-    RocksDBReplicationContext* ctx =
-        manager->createContext(engine, ttl, SyncerId{17}, ServerId{17}, "");
-    if (ctx == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL(
-          "Could not create RocksDBReplicationContext");
-    }
-    RocksDBReplicationContextGuard guard(manager, ctx);
+    // the 600 and 17 are magic numbers here. we can put in any ttl and any
+    // client id to proceed. the context created here is thrown away
+    // immediately afterwards anyway.
+    auto ctx = manager->createContext(engine, /*ttl*/ 600, SyncerId{17},
+                                      ServerId{17}, "");
+    TRI_ASSERT(ctx);
     try {
       auto* physical = toRocksDBCollection(*collection);
       auto batchId = ctx->id();
-      storedTree = physical->revisionTree(batchId);
+      storedTree = physical->revisionTree(ctx->snapshotTick());
       computedTree = physical->computeRevisionTree(batchId);
-      ctx->setDeleted();
+      ctx.setDeleted();
     } catch (...) {
-      ctx->setDeleted();
+      ctx.setDeleted();
       throw;
     }
   }
@@ -350,7 +343,7 @@ static void JS_CollectionRevisionTreeRebuild(
   }
 
   auto* physical = toRocksDBCollection(*collection);
-  Result result = physical->rebuildRevisionTree();
+  Result result = physical->rebuildRevisionTree().waitAndGet();
 
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(result.errorNumber(), result.errorMessage());
@@ -378,7 +371,7 @@ static void JS_CollectionRevisionTreeSummary(
 
   auto* physical = toRocksDBCollection(*collection);
   VPackBuilder builder;
-  physical->revisionTreeSummary(builder, fromCollection);
+  physical->revisionTreeSummary(builder, fromCollection).waitAndGet();
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
@@ -408,10 +401,11 @@ static void JS_CollectionRevisionTreePendingUpdates(
 #endif
 
 void RocksDBV8Functions::registerResources(RocksDBEngine& engine) {
-  ISOLATE;
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   v8::HandleScope scope(isolate);
 
-  TRI_GET_GLOBALS();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+      isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
 
   // patch ArangoCollection object
   v8::Handle<v8::ObjectTemplate> rt =

@@ -1,5 +1,4 @@
-/* jshint browser: true */
-/* global Backbone, $, window, ace, arangoHelper, CryptoJS, templateEngine, Joi, _ */
+/* global ace, templateEngine */
 (function () {
   'use strict';
 
@@ -385,6 +384,9 @@
             if (!err && result.error === false) {
               window.modalView.hide();
               window.App.navigate('services', {trigger: true});
+              window.arangoHelper.arangoNotification(
+                "Service deleted."
+              );
             }
           });
         }.bind(this))

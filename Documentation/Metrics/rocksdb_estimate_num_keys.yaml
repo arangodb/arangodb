@@ -11,6 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "rocksdb-estimate-num-keys".
+  This metric exhibits the RocksDB metric `rocksdb-estimate-num-keys`.
   It shows the estimated number of total keys in the active and unflushed
   immutable memtables and storage, summed over all column families.

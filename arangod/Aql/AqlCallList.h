@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,7 +26,6 @@
 #include "Aql/AqlCall.h"
 
 #include <optional>
-#include <vector>
 
 namespace arangodb::velocypack {
 class Builder;
@@ -50,14 +49,14 @@ class AqlCallList {
   friend bool operator==(AqlCallList const& left, AqlCallList const& right);
 
   friend auto operator<<(std::ostream& out,
-                         const arangodb::aql::AqlCallList& list)
+                         arangodb::aql::AqlCallList const& list)
       -> std::ostream&;
 
   /**
    * @brief Construct a new Aql Call List object
    *        This constructor will only allow a single call.
    *        As soon as this call is completed, there will be no next call.
-   *        Hance the executor needs to return.
+   *        Hence the executor needs to return.
    * @param call The call relevant for this subquery run.
    */
   explicit AqlCallList(AqlCall const& call);
@@ -95,7 +94,7 @@ class AqlCallList {
    *
    * @return AqlCall The next call
    */
-  [[nodiscard]] auto peekNextCall() const -> AqlCall const&;
+  [[nodiscard]] auto peekNextCall() const noexcept -> AqlCall const&;
 
   /**
    * @brief Test if there are more calls available in the list.
@@ -143,12 +142,10 @@ class AqlCallList {
 
  private:
   /**
-   * @brief A list of specific calls for subqueries.
-   *        Right now we have only implemented variants where there is
-   *        at most one call in this list. But the code is actually ready for
-   *        any number of calls here.
+   * @brief An optional specific call for subqueries.
    */
-  std::vector<AqlCall> _specificCalls{};
+  std::optional<AqlCall> _specificCall{};
+
   std::optional<AqlCall> _defaultCall{std::nullopt};
 };
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +25,7 @@
 
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
+#include <absl/cleanup/cleanup.h>
 #include <rocksdb/db.h>
 #include <rocksdb/status.h>
 
@@ -107,6 +108,40 @@ rocksdb::Status RocksDBReadOnlyBaseMethods::Delete(
 rocksdb::Status RocksDBReadOnlyBaseMethods::SingleDelete(
     rocksdb::ColumnFamilyHandle*, RocksDBKey const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
+}
+
+rocksdb::Status arangodb::RocksDBReadOnlyBaseMethods::SingleGet(
+    rocksdb::Snapshot const* snapshot, rocksdb::ColumnFamilyHandle& family,
+    rocksdb::Slice const& key, rocksdb::PinnableSlice& value) {
+  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
+    _readOptions.snapshot = was;
+  };
+  _readOptions.snapshot = snapshot;
+
+  return _db->Get(_readOptions, &family, key, &value);
+}
+
+void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
+                                          rocksdb::ColumnFamilyHandle& family,
+                                          size_t count,
+                                          rocksdb::Slice const* keys,
+                                          rocksdb::PinnableSlice* values,
+                                          rocksdb::Status* statuses) {
+  // make a copy of the ReadOptions, as we are going to modify the snapshot
+  ReadOptions ro = _readOptions;
+  ro.snapshot = snapshot;
+
+  // Timestamps and multiple ColumnFamilies are not necessary for us
+  _db->MultiGet(ro, &family, count, keys, values, statuses, false);
+}
+
+void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
+                                          size_t count,
+                                          rocksdb::Slice const* keys,
+                                          rocksdb::PinnableSlice* values,
+                                          rocksdb::Status* statuses,
+                                          ReadOwnWrites) {
+  _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
 }
 
 void RocksDBReadOnlyBaseMethods::PutLogData(rocksdb::Slice const& blob) {

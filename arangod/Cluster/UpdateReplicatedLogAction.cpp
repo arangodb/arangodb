@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,10 +23,11 @@
 
 #include <optional>
 
+#include <absl/strings/escaping.h>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/FailureOracleFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "Inspection/VPack.h"
@@ -35,44 +36,20 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
-#include "Replication2/ReplicatedLog/NetworkAttachedFollower.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "RestServer/DatabaseFeature.h"
 #include "UpdateReplicatedLogAction.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::replication2;
 
-namespace {
-struct LogActionContextMaintenance : algorithms::LogActionContext {
-  LogActionContextMaintenance(TRI_vocbase_t& vocbase,
-                              network::ConnectionPool* pool)
-      : vocbase(vocbase), pool(pool) {}
-
-  auto dropReplicatedLog(LogId id) -> arangodb::Result override {
-    return vocbase.dropReplicatedLog(id);
-  }
-  auto ensureReplicatedLog(LogId id)
-      -> std::shared_ptr<replicated_log::ReplicatedLog> override {
-    return vocbase.ensureReplicatedLog(id, std::nullopt);
-  }
-  auto buildAbstractFollowerImpl(LogId id, ParticipantId participantId)
-      -> std::shared_ptr<replicated_log::AbstractFollower> override {
-    return std::make_shared<replicated_log::NetworkAttachedFollower>(
-        pool, std::move(participantId), vocbase.name(), id);
-  }
-
-  TRI_vocbase_t& vocbase;
-  network::ConnectionPool* pool;
-};
-}  // namespace
-
 bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto spec = std::invoke([&]() -> std::optional<agency::LogPlanSpecification> {
-    auto buffer =
-        StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
+    std::string buffer;
+    absl::Base64Unescape(_description.get(REPLICATED_LOG_SPEC), &buffer);
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
     if (!slice.isNone()) {
       return velocypack::deserialize<agency::LogPlanSpecification>(slice);
@@ -82,44 +59,56 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   });
 
   auto logId = LogId{StringUtils::uint64(_description.get(REPLICATED_LOG_ID))};
-  auto serverId = ServerState::instance()->getId();
-  auto rebootId = ServerState::instance()->getRebootId();
-
-  network::ConnectionPool* pool =
-      _feature.server().getFeature<NetworkFeature>().pool();
 
   auto const& database = _description.get(DATABASE);
   auto& df = _feature.server().getFeature<DatabaseFeature>();
-  DatabaseGuard guard(df, database);
-  auto ctx = LogActionContextMaintenance{guard.database(), pool};
-  auto failureOracle = _feature.server()
-                           .getFeature<cluster::FailureOracleFeature>()
-                           .getFailureOracle();
-  auto result = replication2::algorithms::updateReplicatedLog(
-      ctx, serverId, rebootId, logId,
-      spec.has_value() ? &spec.value() : nullptr, std::move(failureOracle));
-  std::move(result).thenFinal([desc = _description, logId, &feature = _feature](
-                                  futures::Try<Result>&& tryResult) noexcept {
-    try {
-      auto const& result = tryResult.get();
-      if (result.fail()) {
-        LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
-            << "failed to modify replicated log " << desc.get(DATABASE) << '/'
-            << logId << "; " << result.errorMessage();
+
+  auto result = basics::catchToResult([&] {
+    DatabaseGuard guard(df, database);
+
+    if (spec.has_value()) {
+      ADB_PROD_ASSERT(spec->currentTerm.has_value())
+          << database << "/" << logId << " missing term";
+      if (auto state = guard->getReplicatedStateById(logId); state.fail()) {
+        auto& impl = spec->properties.implementation;
+        VPackSlice parameter = impl.parameters ? impl.parameters->slice()
+                                               : VPackSlice::noneSlice();
+        if (auto res = guard->createReplicatedState(logId, impl.type, parameter)
+                           .result();
+            res.fail()) {
+          return res;
+        }
       }
-      feature.addDirty(desc.get(DATABASE));
-    } catch (
-        replication2::replicated_log::ParticipantResignedException const& e) {
-      LOG_TOPIC("4e010", DEBUG, Logger::REPLICATION2)
-          << "participant resigned during update of replicated log "
-          << desc.get(DATABASE) << '/' << logId << "; " << e.what();
-    } catch (std::exception const& e) {
-      LOG_TOPIC("f824f", ERR, Logger::REPLICATION2)
-          << "exception during update of replicated log " << desc.get(DATABASE)
-          << '/' << logId << "; " << e.what();
+
+      return guard->updateReplicatedState(logId, *spec->currentTerm,
+                                          spec->participantsConfig);
+    } else {
+      return guard->dropReplicatedState(logId);
     }
   });
 
+  if (result.fail()) {
+    // Any errors apart from "database not found" will be reported properly.
+    // If the database has been already dropped, the replicated log is gone
+    // anyway, so we can safely ignore the error. This may happen when someone
+    // drops the database while the maintenance worker is still updating the
+    // replicated log, which is a very rare case.
+    if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+      LOG_TOPIC("fe3d5", DEBUG, Logger::REPLICATION2)
+          << "Database of log " << _description.get(DATABASE) << '/' << logId
+          << " had been dropped before updating the replicated log. This "
+             "implies the replicated log has already been dropped.";
+      return false;
+    }
+
+    LOG_TOPIC("ba775", ERR, Logger::REPLICATION2)
+        << "failed to modify replicated log " << _description.get(DATABASE)
+        << '/' << logId << "; " << result.errorMessage();
+
+    this->result(result);
+  }
+
+  _feature.addDirty(database);
   return false;
 }
 

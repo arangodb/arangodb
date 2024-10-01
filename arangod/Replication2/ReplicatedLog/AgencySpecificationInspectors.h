@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,6 @@
 
 #include "AgencyLogSpecification.h"
 
-#include "Inspection/VPack.h"
 #include "Inspection/Transformers.h"
 
 namespace arangodb::replication2::agency {
@@ -35,19 +34,21 @@ auto constexpr CommittedParticipantsConfig =
 auto constexpr ParticipantsConfig = std::string_view{"participantsConfig"};
 auto constexpr BestTermIndex = std::string_view{"bestTermIndex"};
 auto constexpr ParticipantsRequired = std::string_view{"participantsRequired"};
-auto constexpr ParticipantsAvailable =
-    std::string_view{"participantsAvailable"};
+auto constexpr ParticipantsAttending =
+    std::string_view{"participantsAttending"};
+auto constexpr ParticipantsVoting = std::string_view{"participantsVoting"};
+auto constexpr AllParticipantsAttending =
+    std::string_view{"allParticipantsAttending"};
 auto constexpr Details = std::string_view{"details"};
 auto constexpr ElectibleLeaderSet = std::string_view{"electibleLeaderSet"};
-auto constexpr Election = std::string_view{"election"};
 auto constexpr Error = std::string_view{"error"};
-auto constexpr StatusMessage = std::string_view{"StatusMessage"};
 auto constexpr StatusReport = std::string_view{"StatusReport"};
 auto constexpr LeadershipEstablished =
     std::string_view{"leadershipEstablished"};
 auto constexpr CommitStatus = std::string_view{"commitStatus"};
 auto constexpr Supervision = std::string_view{"supervision"};
 auto constexpr Leader = std::string_view{"leader"};
+auto constexpr SafeRebootIds = std::string_view{"safeRebootIds"};
 auto constexpr TargetVersion = std::string_view{"targetVersion"};
 auto constexpr Version = std::string_view{"version"};
 auto constexpr Actions = std::string_view{"actions"};
@@ -56,14 +57,13 @@ auto constexpr MaxActionsTraceLength =
 auto constexpr Code = std::string_view{"code"};
 auto constexpr Message = std::string_view{"message"};
 auto constexpr LastTimeModified = std::string_view{"lastTimeModified"};
-auto constexpr Participant = std::string_view{"participant"};
 auto constexpr Owner = std::string_view{"owner"};
 auto constexpr AssumedWriteConcern = std::string_view{"assumedWriteConcern"};
 auto constexpr AssumedWaitForSync = std::string_view{"assumedWaitForSync"};
 }  // namespace static_strings
 
 template<class Inspector>
-auto inspect(Inspector& f, LogPlanTermSpecification::Leader& x) {
+auto inspect(Inspector& f, ServerInstanceReference& x) {
   return f.object(x).fields(f.field(StaticStrings::ServerId, x.serverId),
                             f.field(StaticStrings::RebootId, x.rebootId));
 }
@@ -80,13 +80,17 @@ auto inspect(Inspector& f, LogPlanSpecification& x) {
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::CurrentTerm, x.currentTerm),
       f.field(static_strings::Owner, x.owner),
+      f.field("properties", x.properties),
       f.field(static_strings::ParticipantsConfig, x.participantsConfig));
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentLocalState& x) {
   return f.object(x).fields(f.field(StaticStrings::Term, x.term),
-                            f.field(StaticStrings::Spearhead, x.spearhead));
+                            f.field(StaticStrings::Spearhead, x.spearhead),
+                            f.field("state", x.state),
+                            f.field("snapshotAvailable", x.snapshotAvailable),
+                            f.field("rebootId", x.rebootId));
 }
 
 template<typename Enum>
@@ -131,7 +135,10 @@ auto inspect(Inspector& f, LogCurrentSupervisionElection& x) {
       f.field(StaticStrings::Term, x.term),
       f.field(static_strings::BestTermIndex, x.bestTermIndex),
       f.field(static_strings::ParticipantsRequired, x.participantsRequired),
-      f.field(static_strings::ParticipantsAvailable, x.participantsAvailable),
+      f.field(static_strings::ParticipantsAttending, x.participantsAttending),
+      f.field(static_strings::ParticipantsVoting, x.participantsVoting),
+      f.field(static_strings::AllParticipantsAttending,
+              x.allParticipantsAttending),
       f.field(static_strings::Details, x.detail),
       f.field(static_strings::ElectibleLeaderSet, x.electibleLeaderSet));
 }
@@ -143,6 +150,12 @@ auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderInvalid& x) {
 
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderExcluded& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f,
+             LogCurrentSupervision::TargetLeaderSnapshotMissing& x) {
   return f.object(x).fields();
 }
 
@@ -210,6 +223,8 @@ auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
               LogCurrentSupervision::TargetLeaderInvalid::code),
           insp::type<LogCurrentSupervision::TargetLeaderExcluded>(
               LogCurrentSupervision::TargetLeaderExcluded::code),
+          insp::type<LogCurrentSupervision::TargetLeaderSnapshotMissing>(
+              LogCurrentSupervision::TargetLeaderSnapshotMissing::code),
           insp::type<LogCurrentSupervision::TargetLeaderFailed>(
               LogCurrentSupervision::TargetLeaderFailed::code),
           insp::type<LogCurrentSupervision::TargetNotEnoughParticipants>(
@@ -272,6 +287,8 @@ auto inspect(Inspector& f, LogCurrent& x) {
           .fallback(std::unordered_map<ParticipantId, LogCurrentLocalState>{}),
       f.field(static_strings::Supervision, x.supervision),
       f.field(static_strings::Leader, x.leader),
+      f.field(static_strings::SafeRebootIds, x.safeRebootIds)
+          .fallback(std::unordered_map<ParticipantId, RebootId>{}),
       f.field(static_strings::Actions, x.actions)
           .fallback(std::vector<LogCurrent::ActionDummy>{}));
 }
@@ -288,6 +305,7 @@ auto inspect(Inspector& f, LogTarget& x) {
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::Participants, x.participants)
           .fallback(ParticipantsFlagsMap{}),
+      f.field(StaticStrings::Properties, x.properties),
       f.field(StaticStrings::Config, x.config),
       f.field(StaticStrings::Leader, x.leader),
       f.field(static_strings::Version, x.version),

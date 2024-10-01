@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "RestServer/arangod.h"
@@ -32,15 +30,15 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
-
-// TODO do we need to add some sort of coordinator?
-// builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
 
 struct DBUser {
   DBUser() = default;
@@ -77,32 +75,29 @@ struct DBUser {
 class CreateDatabaseInfo {
  public:
   CreateDatabaseInfo(ArangodServer&, ExecContext const&);
-  Result load(std::string const& name, uint64_t id);
+  Result load(std::string_view name, uint64_t id);
 
-  Result load(std::string const& name, VPackSlice const& options,
-              VPackSlice const& users = VPackSlice::emptyArraySlice());
+  Result load(std::string_view name, VPackSlice options,
+              VPackSlice users = VPackSlice::emptyArraySlice());
 
-  Result load(std::string const& name, uint64_t id, VPackSlice const& options,
-              VPackSlice const& users);
-
-  Result load(VPackSlice const& options, VPackSlice const& users);
+  Result load(VPackSlice options, VPackSlice users);
 
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;
   void UsersToVelocyPack(VPackBuilder& builder) const;
 
   ArangodServer& server() const;
 
-  uint64_t getId() const {
-    TRI_ASSERT(_valid);
-    TRI_ASSERT(_validId);
-    return _id;
-  }
+  uint64_t getId() const;
 
-  bool valid() const { return _valid; }
+  void validateNames(bool value) noexcept { _validateNames = value; }
 
-  bool validId() const { return _validId; }
+  void strictValidation(bool value) noexcept { _strictValidation = value; }
 
-  // shold be created with vaild id
+  bool valid() const noexcept { return _valid; }
+
+  bool validId() const noexcept { return _validId; }
+
+  // shold be created with valid id
   void setId(uint64_t id) {
     _id = id;
     _validId = true;
@@ -122,26 +117,38 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_valid);
     return _writeConcern;
   }
+
   [[nodiscard]] replication::Version replicationVersion() const {
     TRI_ASSERT(_valid);
     return _replicationVersion;
   }
+
   std::string const& sharding() const {
     TRI_ASSERT(_valid);
     return _sharding;
   }
+
   void sharding(std::string const& sharding) { _sharding = sharding; }
 
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
+  void setSharding(std::string_view sharding);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ protected:
+  struct MockConstruct {
+  } constexpr static mockConstruct = {};
+  CreateDatabaseInfo(MockConstruct, ArangodServer& server,
+                     ExecContext const& execContext, std::string const& name,
+                     std::uint64_t id, replication::Version version);
+#endif
 
  private:
-  Result extractUsers(VPackSlice const& users);
-  Result extractOptions(VPackSlice const& options, bool extactId = true,
+  Result extractUsers(VPackSlice users);
+  Result extractOptions(VPackSlice options, bool extactId = true,
                         bool extractName = true);
   Result checkOptions();
 
- private:
   ArangodServer& _server;
   ExecContext const& _context;
 
@@ -155,19 +162,21 @@ class CreateDatabaseInfo {
   replication::Version _replicationVersion = replication::Version::ONE;
   ShardingPrototype _shardingPrototype = ShardingPrototype::Undefined;
 
+  bool _strictValidation = true;
+  bool _validateNames = true;
   bool _validId = false;
-  bool _valid =
-      false;  // required because TRI_ASSERT needs variable in Release mode.
+  bool _valid = false;
 };
 
 struct VocbaseOptions {
-  std::string sharding = "";
+  std::string sharding;
   std::uint32_t replicationFactor = 1;
   std::uint32_t writeConcern = 1;
   replication::Version replicationVersion = replication::Version::ONE;
 };
 
-VocbaseOptions getVocbaseOptions(ArangodServer&, velocypack::Slice);
+VocbaseOptions getVocbaseOptions(ArangodServer&, velocypack::Slice,
+                                 bool strictValidation);
 
 void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
                        std::uint32_t replicationFactor,

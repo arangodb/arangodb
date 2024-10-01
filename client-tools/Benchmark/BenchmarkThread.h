@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,9 +29,6 @@
 #include <vector>
 #include <shared_mutex>
 
-#include "Basics/Common.h"
-
-#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -77,9 +74,6 @@ class BenchmarkThread : public arangodb::Thread {
         _warningCount(0),
         _operationsCounter(operationsCounter),
         _client(client),
-        _databaseName(client.databaseName()),
-        _username(client.username()),
-        _password(client.password()),
         _keepAlive(keepAlive),
         _async(async),
         _useVelocyPack(true),
@@ -162,9 +156,6 @@ class BenchmarkThread : public arangodb::Thread {
       FATAL_ERROR_EXIT();
     }
 
-    _httpClient->params().setLocationRewriter(this, &rewriteLocation);
-
-    _httpClient->params().setUserNamePassword("/", _username, _password);
     _httpClient->params().setKeepAlive(_keepAlive);
 
     // test the connection
@@ -201,8 +192,8 @@ class BenchmarkThread : public arangodb::Thread {
     // wait for start condition to be broadcasted
     {
       // cppcheck-suppress redundantPointerOp
-      CONDITION_LOCKER(guard, (*_startCondition));
-      guard.wait();
+      std::unique_lock guard{_startCondition->mutex};
+      _startCondition->cv.wait(guard);
     }
 
     while (!isStopping()) {
@@ -233,27 +224,6 @@ class BenchmarkThread : public arangodb::Thread {
   }
 
  private:
-  /// @brief request location rewriter (injects database name)
-  static std::string rewriteLocation(void* data, std::string const& location) {
-    auto t = static_cast<arangobench::BenchmarkThread*>(data);
-
-    TRI_ASSERT(t != nullptr);
-
-    if (location.compare(0, 5, "/_db/") == 0) {
-      // location already contains /_db/
-      return location;
-    }
-
-    if (location[0] == '/') {
-      return std::string("/_db/" +
-                         basics::StringUtils::urlEncode(t->_databaseName) +
-                         location);
-    }
-    return std::string("/_db/" +
-                       basics::StringUtils::urlEncode(t->_databaseName) + "/" +
-                       location);
-  }
-
   /// @brief execute a single request
   void executeRequest() {
     size_t const threadCounter = _counter++;
@@ -351,15 +321,6 @@ class BenchmarkThread : public arangodb::Thread {
 
   /// @brief extra request headers
   std::unordered_map<std::string, std::string> _headers;
-
-  /// @brief database name
-  std::string const _databaseName;
-
-  /// @brief HTTP username
-  std::string const _username;
-
-  /// @brief HTTP password
-  std::string const _password;
 
   /// @brief use HTTP keep-alive
   bool _keepAlive;

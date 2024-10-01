@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -50,12 +50,6 @@ class LoggerStreamBase {
 
   LoggerStreamBase& operator<<(LogTopic const& topic) noexcept;
 
-  LoggerStreamBase& operator<<(Logger::BINARY const& binary) noexcept;
-
-  LoggerStreamBase& operator<<(Logger::CHARS const& chars) noexcept;
-
-  LoggerStreamBase& operator<<(Logger::RANGE const& range) noexcept;
-
   LoggerStreamBase& operator<<(Logger::FIXED const& duration) noexcept;
 
   LoggerStreamBase& operator<<(Logger::LINE const& line) noexcept;
@@ -84,9 +78,9 @@ class LoggerStreamBase {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool const _enabled;
 #endif
-  char const* _logid;
-  char const* _file;
-  char const* _function;
+  std::string_view _logid;
+  std::string_view _file;
+  std::string_view _function;
 };
 
 class LoggerStream : public LoggerStreamBase {

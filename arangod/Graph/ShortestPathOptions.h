@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,13 +42,6 @@ class EdgeCursor;
 
 struct ShortestPathOptions : public BaseOptions {
  public:
-  uint64_t minDepth;
-  uint64_t maxDepth;
-  std::string start;
-  std::string end;
-  bool bidirectional;
-  bool multiThreaded;
-
   explicit ShortestPathOptions(aql::QueryContext& query);
 
   ShortestPathOptions(aql::QueryContext& query,
@@ -58,7 +51,7 @@ struct ShortestPathOptions : public BaseOptions {
   ShortestPathOptions(aql::QueryContext& query,
                       arangodb::velocypack::Slice info,
                       arangodb::velocypack::Slice collections);
-  ~ShortestPathOptions() override;
+  ~ShortestPathOptions() override = default;
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
@@ -99,21 +92,35 @@ struct ShortestPathOptions : public BaseOptions {
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const) const;
 
-  template<typename ListType>
-  void fetchVerticesCoordinator(ListType const& vertexIds);
-
   auto estimateDepth() const noexcept -> uint64_t override;
+
+  auto setMinDepth(uint64_t minDepth) noexcept -> void;
+  auto getMinDepth() const noexcept -> uint64_t;
+
+  auto setMaxDepth(uint64_t maxDepth) noexcept -> void;
+  auto getMaxDepth() const noexcept -> uint64_t;
 
   auto setWeightAttribute(std::string attribute) -> void;
   auto getWeightAttribute() const& -> std::string;
+
   auto setDefaultWeight(double weight) -> void;
   auto getDefaultWeight() const -> double;
 
+  auto setAlgorithm(std::string attribute) -> void;
+  auto getAlgorithm() const& -> std::string;
+
  private:
-  /// @brief Lookup info to find all reverse edges.
-  std::vector<LookupInfo> _reverseLookupInfos;
+  /// These options come from the query's text
+  uint64_t _minDepth;
+  uint64_t _maxDepth;
   std::string _weightAttribute;
   double _defaultWeight;
+
+  /// @brief Lookup info to find all reverse edges.
+  std::vector<LookupInfo> _reverseLookupInfos;
+
+  /// Algorithm choice for k-shortest paths:
+  std::string _algorithm;
 };
 
 }  // namespace graph

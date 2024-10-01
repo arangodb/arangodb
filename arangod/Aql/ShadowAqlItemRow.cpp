@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,6 +33,7 @@ using namespace arangodb::aql;
 ShadowAqlItemRow::ShadowAqlItemRow(SharedAqlItemBlockPtr block,
                                    size_t baseIndex)
     : _block(std::move(block)), _baseIndex(baseIndex) {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(_baseIndex < _block->numRows());
   TRI_ASSERT(_block->isShadowRow(_baseIndex));
@@ -54,6 +55,7 @@ bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other,
 #endif
 
 AqlValue const& ShadowAqlItemRow::getValue(RegisterId registerId) const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(registerId.isRegularRegister());
   TRI_ASSERT(registerId < getNumRegisters());
@@ -61,18 +63,23 @@ AqlValue const& ShadowAqlItemRow::getValue(RegisterId registerId) const {
 }
 
 AqlValue ShadowAqlItemRow::stealAndEraseValue(RegisterId registerId) {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNumRegisters());
+  TRI_ASSERT(registerId < getNumRegisters())
+      << "registerId: " << registerId.value()
+      << " getNumRegisters(): " << getNumRegisters();
   // caller needs to take immediate ownership.
   return block().stealAndEraseValue(_baseIndex, registerId);
 }
 
 size_t ShadowAqlItemRow::getShadowDepthValue() const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isInitialized());
   return block().getShadowRowDepth(_baseIndex);
 }
 
 uint64_t ShadowAqlItemRow::getDepth() const {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isInitialized());
   return static_cast<uint64_t>(block().getShadowRowDepth(_baseIndex));
 }

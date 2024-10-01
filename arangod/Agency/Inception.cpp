@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,8 +25,6 @@
 
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
@@ -39,6 +37,7 @@
 #include <thread>
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 namespace {
 void handleGossipResponse(arangodb::network::Response const& r,
@@ -149,6 +148,11 @@ void Inception::gossip() {
   long waitInterval = 250000;
 
   network::RequestOptions reqOpts;
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
   reqOpts.timeout = network::Timeout(1);
 
   while (!this->isStopping() && !_agent.isStopping()) {
@@ -174,7 +178,7 @@ void Inception::gossip() {
     for (auto const& p : config.gossipPeers()) {
       if (p != config.endpoint()) {
         {
-          MUTEX_LOCKER(ackedLocker, _ackLock);
+          std::lock_guard ackedLocker{_ackLock};
           auto const& ackedPeer = _acked.find(p);
           if (ackedPeer != _acked.end() && ackedPeer->second >= version) {
             continue;
@@ -186,11 +190,11 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer,
-                             reqOpts)
-            .thenValue([=, this](network::Response r) {
-              ::handleGossipResponse(r, p, &_agent, version);
-            });
+        std::ignore = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
+                                           buffer, reqOpts)
+                          .thenValue([=, this](network::Response r) {
+                            ::handleGossipResponse(r, p, &_agent, version);
+                          });
       }
     }
 
@@ -204,7 +208,7 @@ void Inception::gossip() {
     for (auto const& pair : config.pool()) {
       if (pair.second != config.endpoint()) {
         {
-          MUTEX_LOCKER(ackedLocker, _ackLock);
+          std::lock_guard ackedLocker{_ackLock};
           if (_acked[pair.second] > version) {
             continue;
           }
@@ -217,11 +221,12 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts)
-            .thenValue([=, this](network::Response r) {
-              ::handleGossipResponse(r, pair.second, &_agent, version);
-            });
+        std::ignore =
+            network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
+                                 buffer, reqOpts)
+                .thenValue([=, this](network::Response r) {
+                  ::handleGossipResponse(r, pair.second, &_agent, version);
+                });
       }
     }
 
@@ -250,9 +255,10 @@ void Inception::gossip() {
 
     // don't panic just yet
     //  wait() is true on signal, false on timeout
-    CONDITION_LOCKER(guard, _cv);
+    std::unique_lock guard{_cv.mutex};
 
-    if (_cv.wait(waitInterval)) {
+    if (_cv.cv.wait_for(guard, std::chrono::microseconds{waitInterval}) ==
+        std::cv_status::no_timeout) {
       waitInterval = 250000;
     } else {
       if (waitInterval < 2500000) {  // 2.5s
@@ -290,6 +296,11 @@ bool Inception::restartingActiveAgent() {
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(2);
   reqOpts.skipScheduler = true;  // hack to speed up future.get()
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
 
   seconds const timeout(3600);
   long waitInterval(500000);
@@ -320,7 +331,7 @@ bool Inception::restartingActiveAgent() {
 
       auto comres = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
                                          greetBuffer, reqOpts)
-                        .get();
+                        .waitAndGet();
 
       if (comres.ok() && comres.statusCode() == fuerte::StatusOK) {
         VPackSlice const theirConfig = comres.slice();
@@ -354,7 +365,7 @@ bool Inception::restartingActiveAgent() {
 
         auto comres = network::sendRequest(cp, p.second, fuerte::RestVerb::Post,
                                            path, greetBuffer, reqOpts)
-                          .get();
+                          .waitAndGet();
 
         if (comres.combinedResult().ok()) {
           try {
@@ -388,7 +399,7 @@ bool Inception::restartingActiveAgent() {
                 comres = network::sendRequest(cp, theirLeaderEp,
                                               fuerte::RestVerb::Post, path,
                                               greetBuffer, reqOpts)
-                             .get();
+                             .waitAndGet();
 
                 // Failed to contact leader move on until we do. This way at
                 // least we inform everybody individually of the news.
@@ -398,18 +409,18 @@ bool Inception::restartingActiveAgent() {
                 theirConfig = comres.slice();
               }
               auto const& lcc = theirConfig.get("configuration");
-              auto agency = std::make_shared<Builder>();
+              velocypack::Builder agency;
               {
-                VPackObjectBuilder b(agency.get());
-                agency->add("term", theirConfig.get("term"));
-                agency->add("id", VPackValue(theirLeaderId));
-                agency->add("active", lcc.get("active"));
-                agency->add("pool", lcc.get("pool"));
-                agency->add("min ping", lcc.get("min ping"));
-                agency->add("max ping", lcc.get("max ping"));
-                agency->add("timeoutMult", lcc.get("timeoutMult"));
+                VPackObjectBuilder b(&agency);
+                agency.add("term", theirConfig.get("term"));
+                agency.add("id", VPackValue(theirLeaderId));
+                agency.add("active", lcc.get("active"));
+                agency.add("pool", lcc.get("pool"));
+                agency.add("min ping", lcc.get("min ping"));
+                agency.add("max ping", lcc.get("max ping"));
+                agency.add("timeoutMult", lcc.get("timeoutMult"));
               }
-              _agent.notify(agency);
+              _agent.notify(agency.slice());
               return true;
             }
 
@@ -461,7 +472,10 @@ bool Inception::restartingActiveAgent() {
             if (!this->isStopping()) {
               LOG_TOPIC("e971a", FATAL, Logger::AGENCY)
                   << "Assumed active RAFT peer has no active agency list: "
-                  << e.what() << ", administrative intervention needed.";
+                  << e.what()
+                  << ", administrative intervention needed. "
+                     "comres: "
+                  << comres.slice().toJson();
               FATAL_ERROR_EXIT();
             }
             return false;
@@ -481,8 +495,8 @@ bool Inception::restartingActiveAgent() {
       break;
     }
 
-    CONDITION_LOCKER(guard, _cv);
-    _cv.wait(waitInterval);
+    std::unique_lock guard{_cv.mutex};
+    _cv.cv.wait_for(guard, std::chrono::microseconds{waitInterval});
     if (waitInterval < 2500000) {  // 2.5s
       waitInterval *= 2;
     }
@@ -493,7 +507,7 @@ bool Inception::restartingActiveAgent() {
 
 void Inception::reportVersionForEp(std::string const& endpoint,
                                    size_t version) {
-  MUTEX_LOCKER(versionLocker, _ackLock);
+  std::lock_guard versionLocker{_ackLock};
   if (_acked[endpoint] < version) {
     _acked[endpoint] = version;
   }
@@ -547,12 +561,12 @@ void Inception::run() {
 // @brief Graceful shutdown
 void Inception::beginShutdown() {
   Thread::beginShutdown();
-  CONDITION_LOCKER(guard, _cv);
-  guard.broadcast();
+  std::lock_guard guard{_cv.mutex};
+  _cv.cv.notify_all();
 }
 
 // @brief Let external routines, like Agent::gossip(), signal our condition
 void Inception::signalConditionVar() {
-  CONDITION_LOCKER(guard, _cv);
-  guard.broadcast();
+  std::lock_guard guard{_cv.mutex};
+  _cv.cv.notify_all();
 }

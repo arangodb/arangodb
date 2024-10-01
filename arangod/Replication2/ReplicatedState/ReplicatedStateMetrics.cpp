@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -82,6 +82,9 @@ DECLARE_COUNTER(
 DECLARE_COUNTER(
     arangodb_replication2_replicated_state_apply_entries_errors_total,
     "Number of errors during an apply entries operation");
+
+DECLARE_GAUGE(arangodb_replication2_replicated_state_follower_apply_debt,
+              std::uint64_t, "Number of log entries that need to be applied");
 
 }  // namespace arangodb
 
@@ -164,7 +167,11 @@ ReplicatedStateMetrics::ReplicatedStateMetrics(MFP metricsFeature,
       replicatedStateNumberApplyEntriesErrors(
           createMetric<
               arangodb_replication2_replicated_state_apply_entries_errors_total,
-              mock>(metricsFeature, impl)) {}
+              mock>(metricsFeature, impl)),
+      replicatedStateApplyDebt(
+          createMetric<
+              arangodb_replication2_replicated_state_follower_apply_debt, mock>(
+              metricsFeature, impl)) {}
 
 template arangodb::replication2::replicated_state::ReplicatedStateMetrics::
     ReplicatedStateMetrics(arangodb::metrics::MetricsFeature*,

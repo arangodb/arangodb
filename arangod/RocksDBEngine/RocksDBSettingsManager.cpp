@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -39,7 +40,6 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
-#include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -109,10 +109,6 @@ void RocksDBSettingsManager::retrieveInitialValues() {
 
 // Thread-Safe force sync.
 ResultT<bool> RocksDBSettingsManager::sync(bool force) {
-  TRI_IF_FAILURE("RocksDBSettingsManagerSync") {
-    return ResultT<bool>::success(false);
-  }
-
   std::unique_lock lock{_syncingMutex, std::defer_lock};
 
   if (force) {
@@ -126,6 +122,10 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
 
   TRI_ASSERT(lock.owns_lock());
 
+  TRI_IF_FAILURE("RocksDBSettingsManagerSync") {
+    return ResultT<bool>::success(false);
+  }
+
   try {
     // need superuser scope to ensure we can sync all collections and keep seq
     // numbers in sync; background index creation will call this function as
@@ -138,15 +138,11 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     auto minSeqNr = maxSeqNr;
     TRI_ASSERT(minSeqNr > 0);
 
-    rocksdb::TransactionOptions opts;
-    opts.lock_timeout = 50;  // do not wait for locking keys
-
     rocksdb::WriteOptions wo;
     rocksdb::WriteBatch batch;
     _tmpBuilder.clear();  // recycle our builder
 
     auto& dbfeature = _engine.server().getFeature<arangodb::DatabaseFeature>();
-    TRI_ASSERT(!_engine.inRecovery());  // just don't
 
     bool didWork = false;
     auto mappings = _engine.collectionMappings();
@@ -157,15 +153,18 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     constexpr size_t scratchBufferSize = 128 * 1024;
     _scratch.reserve(scratchBufferSize);
 
-    for (auto const& pair : mappings) {
-      TRI_voc_tick_t dbid = pair.first;
-      DataSourceId cid = pair.second;
-      TRI_vocbase_t* vocbase = dbfeature.useDatabase(dbid);
+    for (auto const& triple : mappings) {
+      uint64_t objectId = std::get<0>(triple);
+      TRI_voc_tick_t dbid = std::get<1>(triple);
+      DataSourceId cid = std::get<2>(triple);
+
+      auto vocbase = dbfeature.useDatabase(dbid);
       if (!vocbase) {
+        _engine.removeCollectionMapping(objectId);
         continue;
       }
+
       TRI_ASSERT(!vocbase->isDangling());
-      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
       std::shared_ptr<LogicalCollection> coll;
       try {
@@ -174,16 +173,22 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
         // will fail if collection does not exist
       }
       // Collections which are marked as isAStub are not allowed to have
-      // physicalCollections. Therefore, we cannot continue serializing in that
+      // PhysicalCollections. Therefore, we cannot continue serializing in that
       // case.
-      if (!coll || coll->isAStub()) {
+      if (!coll) {
+        _engine.removeCollectionMapping(objectId);
         continue;
       }
       auto sg2 = arangodb::scopeGuard(
           [&]() noexcept { vocbase->releaseCollection(coll.get()); });
 
+      if (coll->isAStub()) {
+        continue;
+      }
+
       LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
-          << "syncing metadata for collection '" << coll->name() << "'";
+          << "syncing metadata for collection '" << vocbase->name() << "/"
+          << coll->name() << "', maxSeqNr: " << maxSeqNr;
 
       // clear our scratch buffers for this round
       _scratch.clear();
@@ -206,9 +211,23 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
 
       if (res.fail()) {
         LOG_TOPIC("afa17", WARN, Logger::ENGINES)
-            << "could not sync metadata for collection '" << coll->name()
-            << "'";
+            << "could not sync metadata for collection '" << vocbase->name()
+            << "/" << coll->name() << "'";
         return res;
+      }
+
+      // always log in TRACE mode
+      LOG_TOPIC("1d419", TRACE, Logger::ENGINES)
+          << "synced metadata for collection '" << vocbase->name() << "/"
+          << coll->name() << "', maxSeqNr: " << maxSeqNr
+          << ", minSeqNr: " << minSeqNr << ", appliedSeq: " << appliedSeq;
+
+      if (appliedSeq < minSeqNr) {
+        // in DEBUG mode only log _relevant_ information
+        LOG_TOPIC("31dc8", DEBUG, Logger::ENGINES)
+            << "synced metadata for collection '" << vocbase->name() << "/"
+            << coll->name() << "', maxSeqNr: " << maxSeqNr
+            << ", minSeqNr: " << minSeqNr << ", appliedSeq: " << appliedSeq;
       }
 
       minSeqNr = std::min(minSeqNr, appliedSeq);
@@ -229,7 +248,7 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
         << "about to store lastSync. previous value: " << lastSync
         << ", current value: " << minSeqNr;
 
-    if (minSeqNr < lastSync) {
+    if (minSeqNr < lastSync && !force) {
       if (minSeqNr != 0) {
         LOG_TOPIC("1038e", ERR, Logger::ENGINES)
             << "min tick is smaller than "

@@ -31,12 +31,14 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <optional>
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
+namespace arangodb {
+namespace fuerte {
+inline namespace v1 {
 const std::string fu_accept_key("accept");
 const std::string fu_authorization_key("authorization");
 const std::string fu_content_length_key("content-length");
@@ -45,13 +47,8 @@ const std::string fu_content_encoding_key("content-encoding");
 const std::string fu_keep_alive_key("keep-alive");
 
 struct MessageHeader {
-  /// arangodb message format version
-  short version() const { return _version; }
-  void setVersion(short v) { _version = v; }
-
- public:
   // Header metadata helpers#
-  template <typename K, typename V>
+  template<typename K, typename V>
   void addMeta(K&& key, V&& value) {
     if (fu_accept_key == key) {
       _acceptType = to_ContentType(value);
@@ -79,7 +76,13 @@ struct MessageHeader {
   }
   std::string const& metaByKey(std::string const& key, bool& found) const;
 
+  void removeMeta(std::string const& key) { _meta.erase(key); }
+
   ContentEncoding contentEncoding() const { return _contentEncoding; }
+  void contentEncoding(ContentEncoding encoding) noexcept {
+    _contentEncoding = encoding;
+  }
+
   // content type accessors
   ContentType contentType() const { return _contentType; }
   void contentType(ContentType type) { _contentType = type; }
@@ -88,8 +91,7 @@ struct MessageHeader {
   }
 
  protected:
-  StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
-  short _version;
+  StringMap _meta;     /// Header meta data (equivalent to HTTP headers)
   ContentType _contentType = ContentType::Unset;
   ContentType _acceptType = ContentType::VPack;
   ContentEncoding _contentEncoding = ContentEncoding::Identity;
@@ -108,7 +110,6 @@ struct RequestHeader final : public MessageHeader {
   /// HTTP method
   RestVerb restVerb = RestVerb::Illegal;
 
- public:
   // accept header accessors
   ContentType acceptType() const { return _acceptType; }
   void acceptType(ContentType type) { _acceptType = type; }
@@ -194,10 +195,11 @@ class Request final : public Message {
   /// @brief request header
   RequestHeader header;
 
-
   MessageType type() const override { return MessageType::Request; }
   MessageHeader const& messageHeader() const override { return header; }
-  void setFuzzReqHeader(std::string fuzzHeader) { _fuzzReqHeader = std::move(fuzzHeader); }
+  void setFuzzReqHeader(std::string fuzzHeader) {
+    _fuzzReqHeader = std::move(fuzzHeader);
+  }
   std::optional<std::string> getFuzzReqHeader() const { return _fuzzReqHeader; }
   bool getFuzzerReq() const noexcept { return _fuzzReqHeader.has_value(); }
 
@@ -223,6 +225,7 @@ class Request final : public Message {
   /// @brief get velocypack slices contained in request
   /// only valid iff the data was added via addVPack
   std::vector<velocypack::Slice> slices() const override;
+  velocypack::Buffer<uint8_t>& payloadForModification() { return _payload; }
   asio_ns::const_buffer payload() const override;
   std::size_t payloadSize() const override;
   velocypack::Buffer<uint8_t>&& moveBuffer() && { return std::move(_payload); }
@@ -232,10 +235,31 @@ class Request final : public Message {
   // set timeout
   void timeout(std::chrono::milliseconds timeout) { _timeout = timeout; }
 
+  // Sending time accounting:
+  void setTimeQueued() noexcept {
+    _timeQueued = std::chrono::steady_clock::now();
+  }
+  void setTimeAsyncWrite() noexcept {
+    _timeAsyncWrite = std::chrono::steady_clock::now();
+  }
+  void setTimeSent() noexcept { _timeSent = std::chrono::steady_clock::now(); }
+  std::chrono::steady_clock::time_point timeQueued() const noexcept {
+    return _timeQueued;
+  }
+  std::chrono::steady_clock::time_point timeAsyncWrite() const noexcept {
+    return _timeAsyncWrite;
+  }
+  std::chrono::steady_clock::time_point timeSent() const noexcept {
+    return _timeSent;
+  }
+
  private:
   velocypack::Buffer<uint8_t> _payload;
   std::chrono::milliseconds _timeout;
   std::optional<std::string> _fuzzReqHeader = std::nullopt;
+  std::chrono::steady_clock::time_point _timeQueued;
+  std::chrono::steady_clock::time_point _timeAsyncWrite;
+  std::chrono::steady_clock::time_point _timeSent;
 };
 
 // Response contains the message resulting from a request to a server.
@@ -300,5 +324,7 @@ class Response : public Message {
   velocypack::Buffer<uint8_t> _payload;
   std::size_t _payloadOffset;
 };
-}}}  // namespace arangodb::fuerte::v1
+}  // namespace v1
+}  // namespace fuerte
+}  // namespace arangodb
 #endif

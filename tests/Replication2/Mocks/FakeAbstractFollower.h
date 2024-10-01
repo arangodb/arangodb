@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,10 +25,8 @@
 
 #include "Basics/voc-errors.h"
 
-#include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/LogFollower.h"
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
 
 namespace arangodb::replication2::test {
 
@@ -38,7 +37,7 @@ namespace arangodb::replication2::test {
  * It only models an AbstractFollower. If you want to have full control,
  * consider using the FakeFollower.
  */
-struct FakeAbstractFollower : AbstractFollower {
+struct FakeAbstractFollower : replicated_log::AbstractFollower, IHasScheduler {
   explicit FakeAbstractFollower(ParticipantId id)
       : participantId(std::move(id)) {}
 
@@ -47,19 +46,40 @@ struct FakeAbstractFollower : AbstractFollower {
     return participantId;
   };
 
-  auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override {
+  auto appendEntries(replicated_log::AppendEntriesRequest request)
+      -> futures::Future<replicated_log::AppendEntriesResult> override {
     return requests.emplace_back(std::move(request)).promise.getFuture();
   }
 
-  void resolveRequest(AppendEntriesResult result) {
+  void resolveRequest(replicated_log::AppendEntriesResult result) {
     requests.front().promise.setValue(std::move(result));
     requests.pop_front();
   }
+  auto hasWork() const noexcept -> bool override {
+    return hasPendingRequests();
+  }
+  auto runAll() noexcept -> std::size_t override {
+    auto count = std::size_t{0};
+    while (hasPendingRequests()) {
+      ++count;
+      resolveWithOk();
+    }
+    return count;
+  }
 
   void resolveWithOk() {
-    resolveRequest(AppendEntriesResult{
-        LogTerm{4}, TRI_ERROR_NO_ERROR, {}, currentRequest().messageId});
+    resolveRequest(
+        replicated_log::AppendEntriesResult{currentRequest().leaderTerm,
+                                            TRI_ERROR_NO_ERROR,
+                                            {},
+                                            currentRequest().messageId,
+                                            snapshotStatus,
+                                            syncIndex});
+  }
+
+  void setSyncIndex(LogIndex index) {
+    TRI_ASSERT(index >= syncIndex);
+    syncIndex = index;
   }
 
   template<typename E>
@@ -68,7 +88,8 @@ struct FakeAbstractFollower : AbstractFollower {
     requests.pop_front();
   }
 
-  [[nodiscard]] auto currentRequest() const -> AppendEntriesRequest const& {
+  [[nodiscard]] auto currentRequest() const
+      -> replicated_log::AppendEntriesRequest const& {
     return requests.front().request;
   }
 
@@ -83,13 +104,15 @@ struct FakeAbstractFollower : AbstractFollower {
   }
 
   struct AsyncRequest {
-    explicit AsyncRequest(AppendEntriesRequest request)
+    explicit AsyncRequest(replicated_log::AppendEntriesRequest request)
         : request(std::move(request)) {}
-    AppendEntriesRequest request;
-    futures::Promise<AppendEntriesResult> promise;
+    replicated_log::AppendEntriesRequest request;
+    futures::Promise<replicated_log::AppendEntriesResult> promise;
   };
 
   std::deque<AsyncRequest> requests;
   ParticipantId participantId;
+  bool snapshotStatus{true};
+  LogIndex syncIndex = LogIndex{0};
 };
 }  // namespace arangodb::replication2::test

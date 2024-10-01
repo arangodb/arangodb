@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,23 +23,30 @@
 
 #pragma once
 
+#include "Aql/AttributeNamePath.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/VarInfoMap.h"
 #include "Aql/types.h"
+#include "Containers/FlatHashSet.h"
+#include "Utils/OperationOptions.h"
 
 #include <cstdint>
 #include <memory>
 #include <string_view>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
 class Index;
 
+namespace transaction {
+class Methods;
+}
+
 namespace aql {
 
 class Ast;
 struct AstNode;
-struct AttributeNamePath;
+class AttributeNamePath;
 struct Collection;
 class ExecutionNode;
 class IndexHint;
@@ -62,27 +69,29 @@ namespace utils {
 bool findProjections(ExecutionNode* n, Variable const* v,
                      std::string_view expectedAttribute,
                      bool excludeStartNodeFilterCondition,
-                     std::unordered_set<AttributeNamePath>& attributes);
+                     containers::FlatHashSet<AttributeNamePath>& attributes);
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the contents of  root  may be modified by this function if
 /// an index is picked!!
 std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
-    aql::Collection const& coll, arangodb::aql::Ast* ast,
-    arangodb::aql::AstNode* root, arangodb::aql::Variable const* reference,
+    transaction::Methods& trx, aql::Collection const& coll,
+    arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
+    arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint,
     std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
-    bool& isAllCoveredByIndex);
+    bool& isAllCoveredByIndex, ReadOwnWrites readOwnWrites);
 
 /// @brief Gets the best fitting index for an AQL condition.
 /// note: the contents of  node  may be modified by this function if
 /// an index is picked!!
 bool getBestIndexHandleForFilterCondition(
-    aql::Collection const& collection, arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference, size_t itemsInCollection,
-    aql::IndexHint const& hint, std::shared_ptr<Index>& usedIndex,
-    bool onlyEdgeIndexes = false);
+    transaction::Methods& trx, aql::Collection const& collection,
+    arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
+    size_t itemsInCollection, aql::IndexHint const& hint,
+    std::shared_ptr<Index>& usedIndex, ReadOwnWrites readOwnWrites,
+    bool onlyEdgeIndexes);
 
 /// @brief Gets the best fitting index for an AQL sort condition
 bool getIndexForSortCondition(aql::Collection const& coll,
@@ -93,9 +102,15 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t& coveredAttributes);
 
 NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
-    Ast* ast, std::unordered_map<VariableId, VarInfo> const& varInfo,
-    bool evaluateFCalls, bool sorted, AstNode const* condition,
-    Variable const* indexVariable);
+    Ast* ast, VarInfoMap const& varInfo, bool evaluateFCalls, Index* index,
+    AstNode const* condition, Variable const* indexVariable);
+
+arangodb::aql::Collection const* getCollection(
+    arangodb::aql::ExecutionNode const* node);
+
+Projections translateLMIndexVarsToProjections(
+    ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
+    transaction::Methods::IndexHandle index);
 
 }  // namespace utils
 }  // namespace aql

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,38 +27,36 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
+#include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
-#include "Rest/GeneralRequest.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Rest/GeneralRequest.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/StorageEngine.h"
 
 #include <memory>
-#include <set>
 #include <thread>
 
-#include <velocypack/Iterator.h>
+#include <absl/strings/str_cat.h>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -71,7 +69,7 @@ static void addEmptyVPackObject(std::string const& name,
 
 static std::string const writeURL{"/_api/agency/write"};
 
-const std::vector<std::string> AgencyTransaction::TypeUrl({"/read", "/write",
+std::vector<std::string> const AgencyTransaction::TypeUrl({"/read", "/write",
                                                            "/transact",
                                                            "/transient"});
 
@@ -89,6 +87,14 @@ AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t,
                                        VPackSlice const& s)
     : key(AgencyCommHelper::path(key)), type(t), empty(false), value(s) {}
 
+AgencyPrecondition::AgencyPrecondition(std::string const& key, Type t,
+                                       std::shared_ptr<VPackBuilder> b)
+    : key(AgencyCommHelper::path(key)),
+      type(t),
+      empty(false),
+      builder{std::move(b)},
+      value(builder->slice()) {}
+
 AgencyPrecondition::AgencyPrecondition(
     std::shared_ptr<cluster::paths::Path const> const& path, Type t,
     const velocypack::Slice& s)
@@ -97,6 +103,15 @@ AgencyPrecondition::AgencyPrecondition(
 AgencyPrecondition::AgencyPrecondition(
     std::shared_ptr<cluster::paths::Path const> const& path, Type t, bool e)
     : key(path->str()), type(t), empty(e) {}
+
+AgencyPrecondition::AgencyPrecondition(
+    std::shared_ptr<cluster::paths::Path const> const& path, Type t,
+    std::shared_ptr<VPackBuilder> b)
+    : key(path->str()),
+      type(t),
+      empty(false),
+      builder{std::move(b)},
+      value(builder->slice()) {}
 
 void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
   if (type != AgencyPrecondition::Type::NONE) {
@@ -333,7 +348,7 @@ std::string AgencyWriteTransaction::randomClientId() {
 
   auto ss = ServerState::instance();
   if (ss != nullptr && !ss->getId().empty()) {
-    return ss->getId() + ":" + uuid;
+    return absl::StrCat(ss->getId(), ":", uuid);
   }
   return uuid;
 }
@@ -361,7 +376,7 @@ void AgencyTransientTransaction::toVelocyPack(VPackBuilder& builder) const {
 bool AgencyTransientTransaction::validate(
     AgencyCommResult const& result) const {
   return (result.slice().isArray() && result.slice().length() > 0 &&
-          result.slice()[0].isBool() && result.slice()[0].getBool() == true);
+          result.slice()[0].isTrue());
 }
 
 // -----------------------------------------------------------------------------
@@ -476,45 +491,43 @@ std::string AgencyCommResult::errorDetails() const {
     return _message;
   }
 
-  return _message + " (" + errorMessage + ")";
+  return absl::StrCat(_message, " (", errorMessage, ")");
 }
 
 std::string AgencyCommResult::body() const {
   if (_vpack != nullptr) {
     return slice().toJson();
-  } else {
-    return "";
   }
+  return "";
 }
 
 Result AgencyCommResult::asResult() const {
   if (successful()) {
     return Result{};
-  } else {
-    auto const err = parseBodyError();
-    auto const errorCode = std::invoke([&]() -> ErrorCode {
-      if (err.first) {
-        return *err.first;
-      } else if (_statusCode != rest::ResponseCode{}) {
-        return ErrorCode{static_cast<int>(_statusCode)};
-      } else {
-        return TRI_ERROR_INTERNAL;
-      }
-    });
-    auto const errorMessage = std::invoke([&]() -> std::string_view {
-      if (err.second) {
-        return *err.second;
-      } else if (!_message.empty()) {
-        return _message;
-      } else if (!_connected) {
-        return "unable to connect to agency";
-      } else {
-        return TRI_errno_string(errorCode);
-      }
-    });
-
-    return Result(errorCode, errorMessage);
   }
+  auto err = parseBodyError();
+  auto errorCode = std::invoke([&]() -> ErrorCode {
+    if (err.first) {
+      return *err.first;
+    } else if (_statusCode != rest::ResponseCode{}) {
+      return ErrorCode{static_cast<int>(_statusCode)};
+    } else {
+      return TRI_ERROR_INTERNAL;
+    }
+  });
+  auto errorMessage = std::invoke([&]() -> std::string_view {
+    if (err.second) {
+      return *err.second;
+    } else if (!_message.empty()) {
+      return _message;
+    } else if (!_connected) {
+      return "unable to connect to agency";
+    } else {
+      return TRI_errno_string(errorCode);
+    }
+  });
+
+  return Result(errorCode, std::move(errorMessage));
 }
 
 void AgencyCommResult::clear() {
@@ -583,12 +596,11 @@ VPackBuilder AgencyCommResult::toVelocyPack() const {
   return builder;
 }
 
-namespace std {
-ostream& operator<<(ostream& out, AgencyCommResult const& a) {
+std::ostream& arangodb::operator<<(std::ostream& out,
+                                   AgencyCommResult const& a) {
   out << a.toVelocyPack().toJson();
   return out;
 }
-}  // namespace std
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 AgencyCommHelper
@@ -602,18 +614,16 @@ void AgencyCommHelper::initialize(std::string const& prefix) {
   PREFIX = prefix;
 }
 
-void AgencyCommHelper::shutdown() {}
-
 std::string const& AgencyCommHelper::path() noexcept { return PREFIX; }
 
 std::string AgencyCommHelper::path(std::string const& p1) {
-  return PREFIX + "/" + basics::StringUtils::trim(p1, "/");
+  return absl::StrCat(PREFIX, "/", basics::StringUtils::trim(p1, "/"));
 }
 
 std::string AgencyCommHelper::path(std::string const& p1,
                                    std::string const& p2) {
-  return PREFIX + "/" + basics::StringUtils::trim(p1, "/") + "/" +
-         basics::StringUtils::trim(p2, "/");
+  return absl::StrCat(PREFIX, "/", basics::StringUtils::trim(p1, "/"), "/",
+                      basics::StringUtils::trim(p2, "/"));
 }
 
 std::vector<std::string> AgencyCommHelper::slicePath(std::string const& p1) {
@@ -647,10 +657,20 @@ network::Timeout AgencyCommHelper::defaultTimeout() {
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
 AgencyComm::AgencyComm(ArangodServer& server)
+    : AgencyComm(server, server.getFeature<ClusterFeature>(),
+                 server.getFeature<EngineSelectorFeature>(),
+                 server.getFeature<DatabaseFeature>()) {}
+
+AgencyComm::AgencyComm(ApplicationServer& server,
+                       ClusterFeature& clusterFeature,
+                       EngineSelectorFeature& engineSelectorFeature,
+                       DatabaseFeature& databaseFeature)
     : _server(server),
+      _clusterFeature(clusterFeature),
+      _engineSelectorFeature(engineSelectorFeature),
+      _databaseFeature(databaseFeature),
       _agency_comm_request_time_ms(
-          _server.getFeature<arangodb::ClusterFeature>()
-              .agency_comm_request_time_ms()) {}
+          _clusterFeature.agency_comm_request_time_ms()) {}
 
 AgencyCommResult AgencyComm::sendServerState(double timeout) {
   // construct JSON value { "status": "...", "time": "...", "healthy": ... }
@@ -666,9 +686,8 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
 
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
-      arangodb::HealthData hd =
-          _server.getFeature<EngineSelectorFeature>().engine().healthCheck();
-      hd.toVelocyPack(builder);
+      arangodb::HealthData hd = _engineSelectorFeature.engine().healthCheck();
+      hd.toVelocyPack(builder, /*withDetails*/ false);
     }
 
     builder.close();
@@ -901,7 +920,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   uint64_t oldValue = 0;
 
   while (!writeResult.successful()) {
-    if (server().isStopping()) {
+    if (_server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
@@ -976,46 +995,6 @@ AgencyCommResult AgencyComm::unregisterCallback(std::string const& key,
   return sendTransactionWithFailover(transaction);
 }
 
-bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("READ"));
-  } catch (...) {
-    return false;
-  }
-  return lock(key, ttl, timeout, builder.slice());
-}
-
-bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("WRITE"));
-  } catch (...) {
-    return false;
-  }
-  return lock(key, ttl, timeout, builder.slice());
-}
-
-bool AgencyComm::unlockRead(std::string const& key, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("READ"));
-  } catch (...) {
-    return false;
-  }
-  return unlock(key, builder.slice(), timeout);
-}
-
-bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("WRITE"));
-  } catch (...) {
-    return false;
-  }
-  return unlock(key, builder.slice(), timeout);
-}
-
 AgencyCommResult AgencyComm::sendTransactionWithFailover(
     AgencyTransaction const& transaction, double timeout) {
   std::string url = AgencyComm::AGENCY_URL_PREFIX + transaction.path();
@@ -1065,8 +1044,6 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 
   return result;
 }
-
-ArangodServer& AgencyComm::server() { return _server; }
 
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM)
@@ -1255,7 +1232,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       result = comm.withSkipScheduler(true)
                    .sendWriteTransaction(std::chrono::duration<double>(timeout),
                                          std::move(buffer))
-                   .get();
+                   .waitAndGet();
     } else {
       LOG_TOPIC("4e44f", TRACE, Logger::AGENCYCOMM)
           << "sendWithFailover: "
@@ -1266,7 +1243,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
                                      std::chrono::duration<double>(timeout),
                                      AsyncAgencyComm::RequestType::READ,
                                      std::move(buffer))
-                   .get();
+                   .waitAndGet();
     }
   } else if (method == arangodb::rest::RequestType::GET) {
     LOG_TOPIC("4e448", TRACE, Logger::AGENCYCOMM)
@@ -1278,7 +1255,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
                                    std::chrono::duration<double>(timeout),
                                    AsyncAgencyComm::RequestType::CUSTOM,
                                    std::move(buffer))
-                 .get();
+                 .waitAndGet();
   } else {
     return AgencyCommResult{rest::ResponseCode::METHOD_NOT_ALLOWED,
                             "method not supported"};
@@ -1338,11 +1315,22 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("Databases"));
       {
         VPackObjectBuilder d(&builder);
-        builder.add(VPackValue("_system"));
+        builder.add(VPackValue(StaticStrings::SystemDatabase));
         {
           VPackObjectBuilder d2(&builder);
-          builder.add("name", VPackValue("_system"));
-          builder.add("id", VPackValue("1"));
+          builder.add(StaticStrings::DatabaseName,
+                      VPackValue(StaticStrings::SystemDatabase));
+          builder.add(StaticStrings::DatabaseId, VPackValue("1"));
+          builder.add(StaticStrings::ReplicationVersion,
+                      arangodb::replication::versionToString(
+                          _databaseFeature.defaultReplicationVersion()));
+          // We need to also take care of the `cluster.force-one-shard` option
+          // here. If set, the entire cluster is forced to be a OneShard
+          // deployment.
+          if (_clusterFeature.forceOneShard()) {
+            builder.add(StaticStrings::Sharding,
+                        VPackValue(StaticStrings::ShardingSingle));
+          }
         }
       }
       builder.add("Lock", VPackValue("UNLOCKED"));
@@ -1488,7 +1476,7 @@ bool AgencyComm::shouldInitializeStructure() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    ADB_UNREACHABLE;
   }
 
   return false;

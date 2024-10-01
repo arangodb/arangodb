@@ -260,7 +260,12 @@ static
 std::string
 get_download_folder()
 {
-    return expand_path("~/Downloads");
+    // We use a fixed branch here instead of ~, which would lead to
+    // path name expansion. This can break on static glibc builds when
+    // running on older Linux versions with nss-modules which do not match
+    // the glibc version with which we build. This path is overwritten
+    // later anyway, so it does not matter.
+    return expand_path("/home/arangodb/Downloads");
 }
 
 #    endif // !defined(INSTALL)
@@ -3462,6 +3467,10 @@ init_tzdb()
                 {
                     db->zones.back().add(line);
                 }
+                else if (word.size() > 0 && word[0] == '#')
+                {
+                    continue;
+                }                
                 else
                 {
                     std::cerr << line << '\n';

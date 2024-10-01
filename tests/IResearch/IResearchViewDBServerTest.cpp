@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,15 +26,18 @@
 
 #include "gtest/gtest.h"
 
-#include "../Mocks/Servers.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
+#include "Mocks/IResearchLinkMock.h"
+#include "Mocks/PhysicalCollectionMock.h"
+
 #include "Agency/Store.h"
-#include "AgencyMock.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/files.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -49,29 +52,16 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "common.h"
-#include "utils/utf8_path.hpp"
+#include <filesystem>
 #include "velocypack/Parser.h"
 
 #include "IResearch/MakeViewSnapshot.h"
-
-namespace {
-
-struct Link : public arangodb::iresearch::IResearchLink {
-  Link(arangodb::IndexId id, arangodb::LogicalCollection& col)
-      : IResearchLink(id, col) {
-    auto json = VPackParser::fromJson(R"({ "view": "42" })");
-    bool pathExists = false;
-    EXPECT_TRUE(init(json->slice(), pathExists).ok());
-    EXPECT_FALSE(pathExists);
-  }
-};
-
-}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -80,6 +70,8 @@ struct Link : public arangodb::iresearch::IResearchLink {
 class IResearchViewDBServerTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockDBServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   IResearchViewDBServerTest() : server("PRMR_0001") {}
 
@@ -88,11 +80,23 @@ class IResearchViewDBServerTest : public ::testing::Test {
     vocbase = server.createDatabase(name);
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ(name, vocbase->name());
-    ASSERT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, vocbase->type());
+  }
+
+  void initLink(arangodb::iresearch::IResearchLinkMock& link) {
+    auto json = VPackParser::fromJson(R"({ "view": "42" })");
+    bool pathExists = false;
+    EXPECT_TRUE(link.init(json->slice(), pathExists).ok());
+    EXPECT_FALSE(pathExists);
   }
 
   ~IResearchViewDBServerTest() = default;
 };
+
+#ifdef USE_ENTERPRISE
+static constexpr size_t kEnterpriseFields = 1;
+#else
+static constexpr size_t kEnterpriseFields = 0;
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -141,10 +145,12 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
 
     // ensure we have shard view in vocbase
     bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
+    auto index =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     static auto visitor = [](arangodb::DataSourceId,
@@ -183,10 +189,12 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
 
     // ensure we have shard view in vocbase
     bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
+    auto index =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     static auto visitor = [](arangodb::DataSourceId,
@@ -196,8 +204,9 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
                               *logicalCollection, *view)));
 
     auto before = PhysicalCollectionMock::before;
-    auto restore = irs::make_finally(
-        [&before]() noexcept { PhysicalCollectionMock::before = before; });
+    irs::Finally restore = [&before]() noexcept {
+      PhysicalCollectionMock::before = before;
+    };
     PhysicalCollectionMock::before = []() -> void { throw std::exception(); };
 
     EXPECT_FALSE(impl->drop().ok());
@@ -230,10 +239,11 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
 
   // ensure we have shard view in vocbase
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_FALSE(!index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_FALSE(!link);
 
   static auto visitor = [](arangodb::DataSourceId,
@@ -260,12 +270,13 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
 
   size_t beforeCount = 0;
   auto before = PhysicalCollectionMock::before;
-  auto restore = irs::make_finally(
-      [&before]() noexcept { PhysicalCollectionMock::before = before; });
+  irs::Finally restore = [&before]() noexcept {
+    PhysicalCollectionMock::before = before;
+  };
   PhysicalCollectionMock::before = [&beforeCount]() -> void { ++beforeCount; };
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-  createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+  createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
 
   auto logicalCollection = vocbase->createCollection(collectionJson->slice());
   ASSERT_FALSE(!logicalCollection);
@@ -310,10 +321,11 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
   EXPECT_NE(nullptr, impl);
 
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_FALSE(!index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_FALSE(!link);
 
   static auto visitor = [](arangodb::DataSourceId,
@@ -333,11 +345,10 @@ TEST_F(IResearchViewDBServerTest, test_make) {
         1;  // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -347,8 +358,9 @@ TEST_F(IResearchViewDBServerTest, test_make) {
     EXPECT_FALSE(view->deleted());
     EXPECT_EQ(viewId, view->id().id());
     EXPECT_EQ(impl->id(), view->planId());  // same as view ID
-    EXPECT_EQ(arangodb::iresearch::StaticStrings::ViewType, view->typeName());
-    EXPECT_EQ(arangodb::ViewType::kView, view->type());
+    EXPECT_EQ(arangodb::iresearch::StaticStrings::ViewArangoSearchType,
+              view->typeName());
+    EXPECT_EQ(arangodb::ViewType::kArangoSearch, view->type());
     EXPECT_EQ(&vocbase, &(view->vocbase()));
   }
 }
@@ -360,11 +372,10 @@ TEST_F(IResearchViewDBServerTest, test_open) {
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -382,28 +393,28 @@ TEST_F(IResearchViewDBServerTest, test_open) {
         ci.uniqid() +
         1);  // +1 because LogicalView creation will generate a new ID
     std::string dataPath =
-        (((irs::utf8_path() /= server.testFilesystemPath()) /=
+        (((std::filesystem::path() /= server.testFilesystemPath()) /=
           std::string("databases")) /= std::string("arangosearch-123"))
             .string();
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
     EXPECT_NE(nullptr, impl);
 
     // ensure we have shard view in vocbase
-    ::Link link(arangodb::IndexId{42}, *logicalCollection);
-
+    arangodb::iresearch::IResearchLinkMock link{arangodb::IndexId{42},
+                                                *logicalCollection};
+    initLink(link);
     auto asyncLinkPtr =
         std::make_shared<arangodb::iresearch::AsyncLinkHandle>(&link);
     auto visitor = [](arangodb::DataSourceId, arangodb::LogicalView::Indexes*) {
@@ -452,14 +463,17 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     ASSERT_FALSE(!viewImpl);
 
     bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
+    auto index =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
@@ -497,10 +511,12 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     ASSERT_FALSE(!viewImpl);
 
     bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
+    auto index =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
 
     // fill with test data
@@ -509,8 +525,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-          std::vector<std::string>{logicalCollection->name()}, EMPTY,
+          arangodb::transaction::StandaloneContext::create(
+              *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
           arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
@@ -525,7 +542,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
@@ -552,7 +570,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         "{ \"name\": \"testCollection\", \"id\":442 }");
 
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     std::vector<std::string> collections{logicalCollection->name()};
     EXPECT_TRUE(
@@ -567,13 +585,14 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     EXPECT_FALSE(!viewImpl);
     arangodb::Result res = logicalview->properties(links->slice(), true, true);
     EXPECT_TRUE(res.ok());
-    EXPECT_FALSE(logicalCollection->getIndexes().empty());
+    EXPECT_FALSE(logicalCollection->getPhysical()->getAllIndexes().empty());
 
     // fill with test data
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-          collections, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, collections, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       arangodb::OperationOptions options;
@@ -590,8 +609,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     arangodb::transaction::Options trxOptions;
 
     arangodb::transaction::Methods trx0(
-        arangodb::transaction::StandaloneContext::Create(*vocbase), collections,
-        EMPTY, EMPTY, trxOptions);
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        collections, EMPTY, EMPTY, trxOptions);
     EXPECT_TRUE(trx0.begin().ok());
     auto const cid0 = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links01, links02, links03;
@@ -619,8 +639,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     // add more data
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-          collections, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, collections, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       arangodb::OperationOptions options;
@@ -639,8 +660,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 
     // new reader sees new data
     arangodb::transaction::Methods trx1(
-        arangodb::transaction::StandaloneContext::Create(*vocbase), collections,
-        EMPTY, EMPTY, trxOptions);
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        collections, EMPTY, EMPTY, trxOptions);
     EXPECT_TRUE(trx1.begin().ok());
     auto const cid1 = logicalCollection->id();
     arangodb::iresearch::ViewSnapshot::Links links1;
@@ -666,7 +688,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         "{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } "
         "}");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_TRUE(
@@ -686,7 +708,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
 
-    arangodb::aql::Variable variable("testVariable", 0, false);
+    arangodb::aql::Variable variable("testVariable", 0, false, resourceMonitor);
 
     // test insert + query
     for (size_t i = 1; i < 200; ++i) {
@@ -695,8 +717,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         auto doc = arangodb::velocypack::Parser::fromJson(
             std::string("{ \"seq\": ") + std::to_string(i) + " }");
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-            std::vector<std::string>{logicalCollection->name()}, EMPTY,
+            arangodb::transaction::StandaloneContext::create(
+                *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
             options);
 
         EXPECT_TRUE(trx.begin().ok());
@@ -709,7 +732,8 @@ TEST_F(IResearchViewDBServerTest, test_query) {
       // query
       {
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(*vocbase),
+            arangodb::transaction::StandaloneContext::create(
+                *vocbase, arangodb::transaction::OperationOriginTestCase{}),
             std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
             arangodb::transaction::Options{});
         EXPECT_TRUE(trx.begin().ok());
@@ -739,13 +763,12 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
         "{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -757,8 +780,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -772,15 +796,18 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
                 builder.slice().get("name").copyString());
     }
 
-    ::Link link(arangodb::IndexId{42}, *logicalCollection);
+    arangodb::iresearch::IResearchLinkMock link{arangodb::IndexId{42},
+                                                *logicalCollection};
+    initLink(link);
     auto asyncLinkPtr = std::make_shared<
         arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
@@ -795,20 +822,21 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
         1);  // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
     EXPECT_NE(nullptr, impl);
 
     // ensure we have shard view in vocbase
-    ::Link link(arangodb::IndexId{42}, *logicalCollection);
+    arangodb::iresearch::IResearchLinkMock link{arangodb::IndexId{42},
+                                                *logicalCollection};
+    initLink(link);
     auto asyncLinkPtr = std::make_shared<
         arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());
@@ -817,8 +845,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -832,8 +861,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -850,11 +880,10 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
         "\"unusedValue\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -863,7 +892,9 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::List);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
     auto slice = builder.slice();
     EXPECT_EQ(4U, slice.length());
@@ -875,7 +906,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  std::string("testView") == slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
-                 arangodb::iresearch::StaticStrings::ViewType ==
+                 arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                      slice.get("type").copyString()));
   }
 
@@ -886,11 +917,10 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
         "\"unusedValue\", \"storedValues\":[[], [\"\"], [\"\"], { "
         "\"fields\":[\"test.t\"], \"compression\":\"none\"}, [\"a.a\", "
         "\"b.b\"]] }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -905,7 +935,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
             .ok());
     builder.close();
     auto slice = builder.slice();
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                  slice.get("globallyUniqueId").isString() &&
                  false == slice.get("globallyUniqueId").copyString().empty()));
@@ -914,7 +944,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  std::string("testView") == slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
-                 arangodb::iresearch::StaticStrings::ViewType ==
+                 arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                      slice.get("type").copyString()));
     auto expectedStoredValue = arangodb::velocypack::Parser::fromJson(
         "[{ \"fields\":[\"test.t\"], \"compression\":\"none\"}, "
@@ -930,11 +960,10 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
         "\"unusedValue\", \"storedValues\":[[], [\"\"], [\"\"], { "
         "\"fields\":[\"test.t\"], \"compression\":\"none\"}, [\"a.a\", "
         "\"b.b\"]] }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -949,7 +978,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                     .ok());
     builder.close();
     auto slice = builder.slice();
-    EXPECT_EQ(19, slice.length());
+    EXPECT_EQ(19 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
                 false == slice.get("deleted").getBoolean());
     EXPECT_TRUE(slice.hasKey("globallyUniqueId") &&
@@ -964,7 +993,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE(slice.hasKey("planId") && slice.get("planId").isString() &&
                 std::string("3") == slice.get("planId").copyString());
     EXPECT_TRUE(slice.hasKey("type") && slice.get("type").isString() &&
-                arangodb::iresearch::StaticStrings::ViewType ==
+                arangodb::iresearch::StaticStrings::ViewArangoSearchType ==
                     slice.get("type").copyString());
     EXPECT_TRUE(slice.hasKey("cleanupIntervalStep") &&
                 slice.get("cleanupIntervalStep").isNumber());
@@ -1023,10 +1052,11 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   ASSERT_NE(nullptr, viewImpl);
 
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_FALSE(!index);
   auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
   ASSERT_FALSE(!link);
 
   // add a single document to view (do not sync)
@@ -1035,8 +1065,9 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     arangodb::iresearch::IResearchLinkMeta meta;
     meta._includeAllFields = true;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase), EMPTY,
-        std::vector<std::string>{logicalCollection->name()}, EMPTY,
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(
@@ -1047,7 +1078,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   // no snapshot in TransactionState (force == false, waitForSync = false)
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
@@ -1067,7 +1099,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   // no snapshot in TransactionState (force == true, waitForSync = false)
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
@@ -1095,7 +1128,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     arangodb::transaction::Options opts;
     opts.waitForSync = true;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         opts);
     EXPECT_TRUE(trx.begin().ok());
@@ -1116,7 +1150,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   {
     arangodb::transaction::Options opts;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         opts);
     EXPECT_TRUE(trx.begin().ok());
@@ -1162,7 +1197,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, "
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_NE(nullptr, logicalCollection);
     EXPECT_TRUE(
@@ -1188,7 +1223,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1220,7 +1255,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1252,7 +1287,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1278,7 +1313,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(19, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("collections") &&
                    slice.get("collections").isArray() &&
                    1 == slice.get("collections").length()));
@@ -1302,7 +1337,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, "
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_NE(nullptr, logicalCollection);
@@ -1329,7 +1364,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1361,7 +1396,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1393,7 +1428,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1419,7 +1454,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(19, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("collections") &&
                    slice.get("collections").isArray() &&
                    1 == slice.get("collections").length()));
@@ -1446,7 +1481,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, "
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
     EXPECT_NE(nullptr, logicalCollection);
@@ -1461,10 +1496,12 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     EXPECT_NE(nullptr, impl);
 
     bool created;
-    auto index = logicalCollection->createIndex(linkJson->slice(), created);
+    auto index =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
     static auto visitor = [](arangodb::DataSourceId,
                              arangodb::LogicalView::Indexes*) { return false; };
@@ -1483,7 +1520,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1515,7 +1552,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1541,7 +1578,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1567,7 +1604,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(19, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("collections") &&
                    slice.get("collections").isArray() &&
                    1 == slice.get("collections").length()));
@@ -1596,7 +1633,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"collections\": [ 3, 4, 5 ], \"cleanupIntervalStep\": 24, "
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-    createTestDatabase(vocbase, "testDatabase" TOSTRING(__LINE__));
+    createTestDatabase(vocbase, "testDatabase" IRS_TO_STRING(__LINE__));
     ASSERT_NE(nullptr, vocbase);
     auto logicalCollection0 =
         vocbase->createCollection(collection0Json->slice());
@@ -1615,10 +1652,12 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     EXPECT_NE(nullptr, impl);
 
     bool created;
-    auto index = logicalCollection1->createIndex(linkJson->slice(), created);
+    auto index = logicalCollection1->createIndex(linkJson->slice(), created)
+                     .waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
+            index);
     ASSERT_FALSE(!link);
     static auto visitor = [](arangodb::DataSourceId,
                              arangodb::LogicalView::Indexes*) { return false; };
@@ -1637,7 +1676,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1669,7 +1708,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1695,7 +1734,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1721,7 +1760,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(19, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((
           slice.hasKey("collections") && slice.get("collections").isArray() &&
           2 == slice.get("collections").length()));  // list of links is not
@@ -1745,11 +1784,10 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
@@ -1771,20 +1809,21 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
         1);  // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_FALSE(!logicalCollection);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
-                     .instantiate(view, vocbase, json->slice())
+                     .instantiate(view, vocbase, json->slice(), false)
                      .ok()));
     EXPECT_FALSE(!view);
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
     EXPECT_NE(nullptr, impl);
 
     // ensure we have shard view in vocbase
-    ::Link link(arangodb::IndexId{42}, *logicalCollection);
+    arangodb::iresearch::IResearchLinkMock link{arangodb::IndexId{42},
+                                                *logicalCollection};
+    initLink(link);
     auto asyncLinkPtr = std::make_shared<
         arangodb::iresearch::IResearchLink::AsyncLinkPtr::element_type>(&link);
     EXPECT_TRUE(impl->link(asyncLinkPtr).ok());

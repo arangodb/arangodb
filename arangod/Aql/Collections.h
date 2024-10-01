@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,7 +52,6 @@ class Collections {
 
   ~Collections();
 
- public:
   Collection* get(std::string_view name) const;
 
   Collection* add(std::string const& name, AccessMode::Type accessType,
@@ -62,7 +61,9 @@ class Collections {
 
   bool empty() const;
 
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    std::function<bool(std::string const&,
+                                       Collection const&)> const& filter) const;
 
   void visit(std::function<bool(std::string const&, Collection&)> const&
                  visitor) const;
@@ -72,8 +73,6 @@ class Collections {
 
   std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>>
       _collections;
-
-  static size_t const MaxCollections = 2048;
 };
 }  // namespace aql
 }  // namespace arangodb

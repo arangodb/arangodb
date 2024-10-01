@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,7 +31,11 @@
 #include "Mocks/Servers.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -132,7 +136,8 @@ struct NetworkMethodsTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS,
                                             arangodb::LogLevel::FATAL> {
   NetworkMethodsTest() : server("CRDN_0001", false) {
-    server.addFeature<SchedulerFeature>(true);
+    server.addFeature<SchedulerFeature>(
+        true, server.template getFeature<arangodb::metrics::MetricsFeature>());
     server.startFeatures();
 
     pool = std::make_unique<DummyPool>(config());
@@ -159,7 +164,7 @@ struct NetworkMethodsTest
         network::sendRequestRetry(pool.get(), "tcp://example.org:80",
                                   fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-    network::Response res = std::move(f).get();
+    network::Response res = std::move(f).waitAndGet();
     assertIsPositiveResponse(res);
 
     // Now the connection is in the pool and is good
@@ -169,8 +174,9 @@ struct NetworkMethodsTest
 
  private:
   network::ConnectionPool::Config config() {
-    network::ConnectionPool::Config config(
-        server.getFeature<metrics::MetricsFeature>());
+    network::ConnectionPool::Config config;
+    config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+        server.getFeature<metrics::MetricsFeature>(), "mock-network");
     config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
     config.maxOpenConnections = 3;
@@ -203,7 +209,7 @@ TEST_F(NetworkMethodsTest, simple_request) {
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());
@@ -220,7 +226,7 @@ TEST_F(NetworkMethodsTest, request_failure) {
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::ConnectionClosed);
   ASSERT_FALSE(res.hasResponse());
@@ -240,7 +246,7 @@ TEST_F(NetworkMethodsTest, request_failure_on_status_not_acceptable) {
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());
@@ -257,7 +263,7 @@ TEST_F(NetworkMethodsTest, request_failure_on_timeout) {
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::RequestTimeout);
   ASSERT_FALSE(res.hasResponse());
@@ -275,7 +281,7 @@ TEST_F(NetworkMethodsTest, request_failure_on_shutdown) {
       network::sendRequestRetry(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());
@@ -296,7 +302,7 @@ TEST_F(NetworkMethodsTest, request_failure_on_connection_closed) {
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::ConnectionClosed);
   ASSERT_FALSE(res.hasResponse());
@@ -318,7 +324,7 @@ TEST_F(NetworkMethodsTest,
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  auto res = std::move(f).get();
+  auto res = std::move(f).waitAndGet();
   assertIsPositiveResponse(res);
 }
 
@@ -337,7 +343,7 @@ TEST_F(NetworkMethodsTest, request_automatic_retry_write_error_when_from_pool) {
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  auto res = std::move(f).get();
+  auto res = std::move(f).waitAndGet();
   assertIsPositiveResponse(res);
 }
 
@@ -370,15 +376,44 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   auto resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
-  auto status = f.wait_for(std::chrono::milliseconds(350));
-  ASSERT_EQ(futures::FutureStatus::Ready, status);
-
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());
   ASSERT_EQ(res.statusCode(), fuerte::StatusAccepted);
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST_F(NetworkMethodsTest, request_with_retry_and_networkfeature_failure1) {
+  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
+
+  TRI_AddFailurePointDebugging("NetworkFeature::retryRequestFail");
+
+  // Step 1: Provoke a connection error
+  pool->_conn->_err = fuerte::Error::CouldNotConnect;
+
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(3.0);
+
+  VPackBuffer<uint8_t> buffer;
+  auto f =
+      network::sendRequestRetry(pool.get(), "tcp://example.org:80",
+                                fuerte::RestVerb::Get, "/", buffer, reqOpts);
+
+  // the NetworkFeature should now schedule the retry, which will fail
+  // the default behaviour should be to retry after some time
+  while (!f.isReady()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  // Step 2: Now respond with no error
+  ASSERT_TRUE(f.isReady());
+  network::Response res = std::move(f).waitAndGet();
+  ASSERT_EQ(res.destination, "tcp://example.org:80");
+  ASSERT_EQ(res.error, fuerte::Error::ConnectionCanceled);
+  ASSERT_FALSE(res.hasResponse());
+}
+#endif
 
 TEST_F(NetworkMethodsTest, request_with_retry_after_421) {
   // Step 1: Provoke a 421 response
@@ -410,10 +445,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_421) {
   auto resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
-  auto status = f.wait_for(std::chrono::milliseconds(350));
-  ASSERT_EQ(futures::FutureStatus::Ready, status);
-
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());
@@ -449,10 +481,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_conn_canceled) {
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
   pool->_conn->_err = fuerte::Error::NoError;
 
-  auto status = f.wait_for(std::chrono::milliseconds(350));
-  ASSERT_EQ(futures::FutureStatus::Ready, status);
-
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());
@@ -496,10 +525,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
   resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
 
-  auto status = f.wait_for(std::chrono::milliseconds(350));
-  ASSERT_EQ(futures::FutureStatus::Ready, status);
-
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());
@@ -517,7 +543,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_failure) {
       network::sendRequestRetry(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::ConnectionClosed);
   ASSERT_FALSE(res.hasResponse());
@@ -539,7 +565,7 @@ TEST_F(NetworkMethodsTest,
       network::sendRequestRetry(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());
@@ -557,7 +583,7 @@ TEST_F(NetworkMethodsTest, request_with_retry_failure_on_timeout) {
       network::sendRequestRetry(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).waitAndGet();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::RequestTimeout);
   ASSERT_FALSE(res.hasResponse());
@@ -580,7 +606,7 @@ TEST_F(NetworkMethodsTest,
       network::sendRequestRetry(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  auto res = std::move(f).get();
+  auto res = std::move(f).waitAndGet();
   assertIsPositiveResponse(res);
 }
 
@@ -601,6 +627,6 @@ TEST_F(NetworkMethodsTest,
       network::sendRequestRetry(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  auto res = std::move(f).get();
+  auto res = std::move(f).waitAndGet();
   assertIsPositiveResponse(res);
 }
