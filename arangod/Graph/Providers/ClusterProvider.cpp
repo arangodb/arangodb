@@ -320,13 +320,15 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   // ksp.
   /* Needed for TRAVERSALS only - Begin */
   // But note that the field "depth" must be set to an integer in any case!
-  leased->add("depth", VPackValue(step->getDepth()));
-  if (_opts.expressionContext() != nullptr) {
-    leased->add(VPackValue("variables"));
-    leased->openArray();
-    _opts.expressionContext()->serializeAllVariables(trx()->vpackOptions(),
-                                                     *(leased.get()));
-    leased->close();
+  if (_opts.clearEdgeCacheOnClear()) {
+    leased->add("depth", VPackValue(step->getDepth()));
+    if (_opts.expressionContext() != nullptr) {
+      leased->add(VPackValue("variables"));
+      leased->openArray();
+      _opts.expressionContext()->serializeAllVariables(trx()->vpackOptions(),
+                                                       *(leased.get()));
+      leased->close();
+    }
   }
   /* Needed for TRAVERSALS only - End */
 
