@@ -343,11 +343,16 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
 
   leased->add(VPackValue("keys"));  // only key
   {
-    VPackArrayBuilder guard(leased.get());
+    if (batch.size() > 1) {
+      leased->openArray();
+    }
     for (auto* step : batch) {
       leased->add(VPackValue(step->getVertex().getID().toString()));
       LOG_TOPIC("fa7dc", TRACE, Logger::GRAPHS)
           << "<ClusterProvider> Expanding " << step->getVertex().getID();
+    }
+    if (batch.size() > 1) {
+      leased->close();
     }
   }
   leased->close();
