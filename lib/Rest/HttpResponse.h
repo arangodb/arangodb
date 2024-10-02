@@ -34,11 +34,8 @@
 #include <vector>
 
 namespace arangodb {
-class RestBatchHandler;
 
 class HttpResponse : public GeneralResponse {
-  friend class RestBatchHandler;  // TODO must be removed
-
  public:
   HttpResponse(ResponseCode code, uint64_t mid,
                std::unique_ptr<basics::StringBuffer> buffer,
