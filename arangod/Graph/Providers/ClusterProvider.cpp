@@ -308,12 +308,23 @@ void ClusterProvider<StepImpl>::destroyEngines() {
 template<class StepImpl>
 Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
     std::vector<Step*> const& batch) {
+  TRI_ASSERT(!batch.empty());  // not allowed, because it is unnecessary!
   if (_opts.depthSpecificLookup()) {
+    // We only allow one vertex in this case, because otherwise we run into
+    // the danger that they might be different depths, and the API in the
+    // traverser cannot handle this.
     TRI_ASSERT(batch.size() == 1);
   }
   auto const* engines = _opts.engines();
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
+  if (!_opts.depthSpecificLookup() && batch.size() != 1) {
+    // Ask for new API, in which we get a list of lists of edges rather
+    // than a flat list of edges. Note that if we deal with an old dbserver,
+    // which refuses to do this, we will error out below and fall back to
+    // the old method.
+    leased->add("style", VPackValue("listoflists"));
+  }
   leased->add("backward",
               VPackValue(_opts.isBackward()));  // [GraphRefactor] ksp only?
 
@@ -370,7 +381,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
   }
 
   std::unordered_map<VertexType, std::vector<std::pair<EdgeType, VertexType>>>
-      connectedEdges;
+      allConnectedEdges;
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.waitAndGet();
 
@@ -403,41 +414,52 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");
-    for (VPackSlice e : VPackArrayIterator(edges)) {
-      VPackSlice id = e.get(StaticStrings::IdString);
-      if (!id.isString()) {
-        // invalid id type
-        LOG_TOPIC("eb7cd", ERR, Logger::GRAPHS)
-            << "got invalid edge id type: " << id.typeName();
-        continue;
+    TRI_ASSERT(edges.isArray());
+    // Let's first check if we are dealing with an old dbserver:
+    if (!_opts.depthSpecificLookup() && batch.size() > 1) {
+      if (!(edges.length() == batch.size()) || !edges.at(0).isArray()) {
+        // We have an old dbserver, which does not support the new API.
+        // We have to fall back to the old method.
+        LOG_TOPIC("33321", WARN, Logger::GRAPHS)
+            << "Detected old dbserver, falling back to legacy API: "
+            << edges.toJson();
+        return TRI_ERROR_NOT_IMPLEMENTED;
       }
-
-      VertexType vertex;
-      if (_opts.isBackward()) {
-        vertex = VertexType{e.get(StaticStrings::ToString)};
-      } else {
-        vertex = VertexType{e.get(StaticStrings::FromString)};
+    }
+    for (size_t i = 0; i < batch.size(); ++i) {
+      VPackSlice innerEdges = edges;
+      if (!_opts.depthSpecificLookup() && batch.size() > 1) {
+        innerEdges = edges.at(i);
       }
-      LOG_TOPIC("f4b3b", TRACE, Logger::GRAPHS)
-          << "<ClusterProvider> Neighbor of " << vertex.toString() << " -> "
-          << id.toJson();
+      Step* step = batch[i];
+      VertexType const vertex = step->getVertex().getID();
+      auto& connectedEdges = allConnectedEdges[vertex];
 
-      auto [edge, needToCache] = _opts.getCache()->persistEdgeData(e);
-      if (needToCache) {
-        allCached = false;
-      }
+      for (VPackSlice e : VPackArrayIterator(innerEdges)) {
+        VPackSlice id = e.get(StaticStrings::IdString);
+        if (!id.isString()) {
+          // invalid id type
+          LOG_TOPIC("eb7cd", ERR, Logger::GRAPHS)
+              << "got invalid edge id type: " << id.typeName();
+          continue;
+        }
 
-      arangodb::velocypack::HashedStringRef edgeIdRef(
-          edge.get(StaticStrings::IdString));
+        LOG_TOPIC("f4b3b", TRACE, Logger::GRAPHS)
+            << "<ClusterProvider> Neighbor of " << vertex.toString() << " -> "
+            << id.toJson();
 
-      auto edgeToEmplace = std::make_pair(
-          edgeIdRef, VertexType{getEdgeDestination(edge, vertex)});
+        auto [edge, needToCache] = _opts.getCache()->persistEdgeData(e);
+        if (needToCache) {
+          allCached = false;
+        }
 
-      auto it = connectedEdges.find(vertex);
-      if (it == connectedEdges.end()) {
-        connectedEdges.emplace(vertex, std::vector{edgeToEmplace});
-      } else {
-        it->second.emplace_back(edgeToEmplace);
+        arangodb::velocypack::HashedStringRef edgeIdRef(
+            edge.get(StaticStrings::IdString));
+
+        auto edgeToEmplace = std::make_pair(
+            edgeIdRef, VertexType{getEdgeDestination(edge, vertex)});
+
+        connectedEdges.emplace_back(edgeToEmplace);
       }
     }
 
@@ -448,7 +470,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(
   // Note: This disables the ScopeGuard
   futures.clear();
 
-  for (auto const& pair : connectedEdges) {
+  for (auto const& pair : allConnectedEdges) {
     std::uint64_t memoryPerItem =
         costPerVertexOrEdgeType +
         (pair.second.size() * (costPerVertexOrEdgeType * 2));
@@ -497,41 +519,54 @@ auto ClusterProvider<StepImpl>::fetchEdges(
   // difficult. This is what is used in one-sided-traversals.
   // Therefore we distinguish here between this case and the other case
   // (for two-sided-traversals), in which we can fetch edges in batches:
-  if (_opts.depthSpecificLookup()) {
-    for (auto const& step : fetchedVertices) {
-      if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
-        std::vector<Step*> single{step};
-        auto res = fetchEdgesFromEngines(single);
-        _stats.incrHttpRequests(_opts.engines()->size());
-
-        if (res.fail()) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-      }
-      // else: We already fetched this vertex.
-
-      // mark a looseEnd as fetched as vertex fetch + edges fetch was a
-      // success
-      step->setEdgesFetched();
-    }
-  } else {
+  if (!_opts.depthSpecificLookup()) {
+    // Can do batches!
     std::vector<Step*> batch;
     batch.reserve(fetchedVertices.size());
     for (auto const& step : fetchedVertices) {
       if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
         batch.push_back(step);
       }
-      step->setEdgesFetched();
     }
+    auto setAllFetched = [&fetchedVertices]() {
+      for (auto const& step : fetchedVertices) {
+        step->setEdgesFetched();
+      }
+    };
 
-    if (!batch.empty()) {
-      auto res = fetchEdgesFromEngines(batch);
+    if (batch.empty()) {
+      setAllFetched();
+      return TRI_ERROR_NO_ERROR;
+    }
+    auto res = fetchEdgesFromEngines(batch);
+    _stats.incrHttpRequests(_opts.engines()->size());
+
+    if (res.ok()) {
+      setAllFetched();
+      return TRI_ERROR_NO_ERROR;
+    }
+    if (!res.is(TRI_ERROR_NOT_IMPLEMENTED)) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    // We allow a fallback to the slow path, if we have hit a dbserver, which
+    // does not support the batched edge fetch.
+  }
+
+  for (auto const& step : fetchedVertices) {
+    if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
+      std::vector<Step*> single{step};
+      auto res = fetchEdgesFromEngines(single);
       _stats.incrHttpRequests(_opts.engines()->size());
 
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
     }
+    // else: We already fetched this vertex.
+
+    // mark a looseEnd as fetched as vertex fetch + edges fetch was a
+    // success
+    step->setEdgesFetched();
   }
   return TRI_ERROR_NO_ERROR;
 }
