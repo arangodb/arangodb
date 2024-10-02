@@ -315,6 +315,29 @@ add_subdirectory(taocpp-json)
 add_subdirectory(json-schema-validation)
 
 ################################################################################
+## openmp
+################################################################################
+
+#if(NOT DEFINED LLVM_COMMON_CMAKE_UTILS)
+  #set(LLVM_COMMON_CMAKE_UTILS ${CMAKE_CURRENT_SOURCE_DIR}/llvm-project/cmake)
+#endif()
+
+#set(CMAKE_MODULE_PATH
+  #${CMAKE_CURRENT_SOURCE_DIR}/llvm-project/cmake/Modules
+  #${CMAKE_MODULE_PATH})
+
+#add_subdirectory(llvm-project)
+#add_subdirectory(llvm-project/llvm/cmake/modules)
+#add_subdirectory(llvm-project/llvm/include)
+#add_subdirectory(llvm-project/llvm)
+#add_subdirectory(llvm-project/clang)
+#add_subdirectory(llvm-project/openmp)
+#find_library(LIBCLANG_LIBRARY NAMES openmp)
+#add_subdirectory(llvm-project/llvm)
+#add_subdirectory(llvm-project/llvm/runtimes)
+#add_library(OpenMP STATIC)
+
+################################################################################
 ## faiss
 ################################################################################
 
