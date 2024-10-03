@@ -342,7 +342,7 @@ add_subdirectory(json-schema-validation)
 ################################################################################
 
 find_package(Threads REQUIRED)
-find_package(OpenMP REQUIRED)
+#find_package(OpenMP REQUIRED)
 find_package(ZLIB REQUIRED)
 
 set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
