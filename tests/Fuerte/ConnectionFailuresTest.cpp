@@ -64,8 +64,8 @@ static std::pair<int, int> runTimeoutTest(f::ConnectionBuilder& cbuilder,
 
   cbuilder.onFailure([&](f::Error errorCode, std::string const& errorMessage) {
     ASSERT_EQ(errorCode, f::Error::CouldNotConnect);
-    wg.done();
     ++failureCallbacksCalled;
+    wg.done();
   });
 
   for (int i = 0; i < n; ++i) {
