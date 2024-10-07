@@ -164,13 +164,17 @@ auto ThreadRegistry::garbage_collect_external() noexcept -> void {
   while (next != nullptr) {
     current = next;
     next = next->next_to_free;
-    if (metrics->ready_for_deletion_functions != nullptr) {
-      metrics->ready_for_deletion_functions->fetch_sub(1);
-    }
     if (current->previous != nullptr) {
+      if (metrics->ready_for_deletion_functions != nullptr) {
+        metrics->ready_for_deletion_functions->fetch_sub(1);
+      }
       remove(current);
       delete current;
     } else {
+      // if this is the head of the promise list, we cannot delete it because
+      // additional promises could have been added in the meantime
+      // (if these new promises would have been marked in the meantime, they
+      // would be in the new free list due to the exchange earlier)
       ADB_PROD_ASSERT(maybe_head_ptr == nullptr);
       maybe_head_ptr = current;
     }
