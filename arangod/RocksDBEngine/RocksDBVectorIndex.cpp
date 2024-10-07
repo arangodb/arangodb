@@ -298,7 +298,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   velocypack::Slice doc,
                                   OperationOptions const& options,
                                   bool performChecks) {
-#ifdef USE_ENTERPRISE
   TRI_ASSERT(_fields.size() == 1);
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, nullptr, nullptr, methods, _cf,
@@ -325,9 +324,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   flatIndex.add_with_ids(1, input.data(), &docId);
 
   return Result{};
-#else
-  return Result(TRI_ERROR_ONLY_ENTERPRISE);
-#endif
 }
 
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
@@ -383,12 +379,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& trx,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& options) {
-#ifdef USE_ENTERPRISE
-  // TODO Handle remove
-  return Result(TRI_ERROR_ONLY_ENTERPRISE);
-#else
-  return Result(TRI_ERROR_ONLY_ENTERPRISE);
-#endif
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 UserVectorIndexDefinition const&

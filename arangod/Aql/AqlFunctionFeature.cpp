@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
+#include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -590,12 +591,6 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::MakeDistributeGraphInput});
-#ifdef USE_ENTERPRISE
-  add({"SELECT_SMART_DISTRIBUTE_GRAPH_INPUT", ".,.",
-       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
-                           FF::CanRunOnDBServerCluster,
-                           FF::CanRunOnDBServerOneShard),
-       &functions::SelectSmartDistributeGraphInput});
   add({"APPROX_NEAR_COSINE", ".,.",
        Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
@@ -604,6 +599,12 @@ void AqlFunctionFeature::addMiscFunctions() {
        Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::ApproxNearL2});
+#ifdef USE_ENTERPRISE
+  add({"SELECT_SMART_DISTRIBUTE_GRAPH_INPUT", ".,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
+                           FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &functions::SelectSmartDistributeGraphInput});
 #endif
 
   // this is an internal function that is only here for testing. it cannot
