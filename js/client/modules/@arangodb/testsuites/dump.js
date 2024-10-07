@@ -928,7 +928,7 @@ function dumpMultiple (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){},[]);
 }
 
 function dumpNoEnvelope (options) {
@@ -948,7 +948,8 @@ function dumpNoEnvelope (options) {
     deactivateEnvelopes: true
   };
   _.defaults(dumpOptions, options);
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_no_envelope', tstFiles, function(){});
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_no_envelope', tstFiles, function(){}, []);
+
 }
 
 function dumpWithCrashes (options) {
