@@ -25,6 +25,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "ProgramOptions/Parameters.h"
 
 using namespace arangodb::async_registry;
 
@@ -46,6 +47,14 @@ DECLARE_COUNTER(
     arangodb_async_threads_total,
     "Total number of created threads that execute asynchronous functions");
 
+Feature::Feature(Server& server)
+    : ArangodFeature{server, *this},
+      metrics{create_metrics(
+          server.template getFeature<arangodb::metrics::MetricsFeature>())} {
+  registry.set_metrics(metrics);
+  // startsAfter<Bla, Server>();
+}
+
 auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<const Metrics> {
   return std::make_shared<Metrics>(
@@ -58,11 +67,11 @@ auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
 }
 
 struct Feature::PromiseCleanupThread {
-  PromiseCleanupThread()
-      : _thread([this](std::stop_token stoken) {
+  PromiseCleanupThread(size_t gc_timeout)
+      : _thread([gc_timeout, this](std::stop_token stoken) {
           while (not stoken.stop_requested()) {
             std::unique_lock guard(_mutex);
-            auto status = _cv.wait_for(guard, std::chrono::seconds{1});
+            auto status = _cv.wait_for(guard, std::chrono::seconds{gc_timeout});
             if (status == std::cv_status::timeout) {
               async_registry::registry.run_external_cleanup();
             }
@@ -80,8 +89,23 @@ struct Feature::PromiseCleanupThread {
 };
 
 void Feature::start() {
-  _cleanupThread = std::make_shared<PromiseCleanupThread>();
+  _cleanupThread = std::make_shared<PromiseCleanupThread>(_options.gc_timeout);
 }
+
 void Feature::stop() { _cleanupThread.reset(); }
+
+void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
+  options->addSection("async-registry", "Options for the async-registry");
+
+  options
+      ->addOption(
+          "--async-registry.cleanup-timeout",
+          "Timeout in seconds between async-registry garbage collection "
+          "swipes.",
+          new options::SizeTParameter(&_options.gc_timeout, /*base*/ 1,
+                                      /*minValue*/ 1))
+      .setLongDescription(
+          R"(Each thread that is involved in the async-registry needs to garbage collect its finished async function calls regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
+}
 
 Feature::~Feature() { registry.set_metrics(std::make_shared<Metrics>()); }
