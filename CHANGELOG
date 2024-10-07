@@ -1,6 +1,9 @@
 devel
 -----
 
+* Removed the deprecated Batch API (`/_api/batch`).
+  The arangobench `--batch-size` startup option is ignored now.
+
 * BTS-1950: geo index query stuck
   The geo index iterator got stuck when multiple coverings were requested
   multiple time. The corresponding flag was not resetted resulting in an

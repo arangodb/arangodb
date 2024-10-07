@@ -198,8 +198,6 @@ std::string const StaticStrings::AllowDirtyReads("x-arango-allow-dirty-read");
 std::string const StaticStrings::Async("x-arango-async");
 std::string const StaticStrings::AsyncId("x-arango-async-id");
 std::string const StaticStrings::Authorization("authorization");
-std::string const StaticStrings::BatchContentType(
-    "application/x-arango-batchpart");
 std::string const StaticStrings::CacheControl("cache-control");
 std::string const StaticStrings::Chunked("chunked");
 std::string const StaticStrings::Close("Close");
