@@ -485,9 +485,6 @@ class instanceManager {
     }
   }
 
-  nonfatalAssertSearch() {
-    this.expectAsserts = true;
-  }
   launchInstance() {
     if (this.options.hasOwnProperty('server')) {
       print("external server configured - not testing readyness! " + this.options.server);
