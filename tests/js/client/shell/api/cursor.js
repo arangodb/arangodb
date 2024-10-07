@@ -31,11 +31,11 @@
 const jsunity = require("jsunity");
 const internal = require('internal');
 const sleep = internal.sleep;
-let api = "/_api/cursor";
-let reId = /^\d+$/;
+const api = "/_api/cursor";
+const reId = /^\d+$/;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" : "application/x-velocypack";
-
+let IM = global.instanceManager;
 ////////////////////////////////////////////////////////////////////////////////;
 // error handling;
 ////////////////////////////////////////////////////////////////////////////////;
@@ -1156,7 +1156,7 @@ function dealing_with_cursorsSuite_checking_a_querySuite() {
 
     test_window_aggregate_no_arguments_query: function () {
       let cmd = "/_api/query";
-      let body = {"query": `FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1`};
+      let body = {"query": `FOR e IN [] WINDOW { preceding: 1 } AGGREGATE i = LENGTH() RETURN 1`};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
