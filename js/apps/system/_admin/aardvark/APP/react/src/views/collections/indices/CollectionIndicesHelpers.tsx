@@ -8,5 +8,6 @@ export const TYPE_TO_LABEL_MAP = {
   inverted: "Inverted",
   tier: "Tier",
   primary: "Primary",
-  edge: "Edge"
+  edge: "Edge",
+  arangosearch: "ArangoSearch"
 };

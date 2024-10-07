@@ -1,6 +1,6 @@
 import { DeleteIcon, LockIcon } from "@chakra-ui/icons";
 import { Box, IconButton, Tooltip } from "@chakra-ui/react";
-import { Index } from "arangojs/indexes";
+import { HiddenIndex } from "arangojs/indexes";
 import React from "react";
 import { useHistory } from "react-router-dom";
 import { encodeHelper } from "../../../../utils/encodeHelper";
@@ -10,7 +10,7 @@ import { DeleteIndexModal } from "../DeleteIndexModal";
 export function CollectionIndexActionButtons({
   collectionIndex
 }: {
-  collectionIndex: Index & { progress?: number };
+  collectionIndex: HiddenIndex;
 }) {
   const { readOnly } = useCollectionIndicesContext();
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);

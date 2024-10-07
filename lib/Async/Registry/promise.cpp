@@ -31,7 +31,7 @@ Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
                  std::source_location entry_point)
     : thread{registry->thread},
       entry_point{std::move(entry_point)},
-      registry{registry},
+      registry{std::move(registry)},
       next{next} {}
 
 auto Promise::mark_for_deletion() noexcept -> void {

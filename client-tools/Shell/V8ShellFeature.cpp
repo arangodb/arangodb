@@ -708,6 +708,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
         LOG_TOPIC("c254f", ERR, arangodb::Logger::FIXME) << exception;
         ok = false;
       }
+    } else {
       ok = TRI_ParseJavaScriptFile(_isolate, file.c_str());
     }
   }

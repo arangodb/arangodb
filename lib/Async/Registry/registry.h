@@ -68,8 +68,10 @@ struct Registry {
       return registries;
     }();
 
-    for (auto& registry : regs) {
-      registry->for_promise(function);
+    for (auto& registry_weak : regs) {
+      if (auto registry = registry_weak.lock()) {
+        registry->for_promise(function);
+      }
     }
   }
 
@@ -83,7 +85,7 @@ struct Registry {
   }
 
  private:
-  std::vector<ThreadRegistry*> registries;
+  std::vector<std::weak_ptr<ThreadRegistry>> registries;
   std::mutex mutex;
   std::shared_ptr<const Metrics> _metrics;
 };
