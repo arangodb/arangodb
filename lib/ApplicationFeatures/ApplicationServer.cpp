@@ -38,7 +38,6 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Async/Registry/registry_variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
@@ -214,7 +213,6 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _state.store(State::IN_WAIT, std::memory_order_release);
   reportServerProgress(State::IN_WAIT);
 
-  async_registry::get_thread_registry().garbage_collect();
   wait();
 
   // beginShutdown is called asynchronously ----------

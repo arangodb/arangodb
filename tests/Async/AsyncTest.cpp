@@ -81,7 +81,6 @@ struct ConcurrentNoWait {
             }
             handle.resume();
           }
-          arangodb::async_registry::get_thread_registry().garbage_collect();
         }) {}
 
   auto stop() -> void {
