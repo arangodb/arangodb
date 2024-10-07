@@ -66,7 +66,6 @@ fuerte priority=500 single suffix=http
 fuerte priority=500 single suffix=ssl-http -- --protocol ssl
 
 rta_makedata single
-rta_makedata single suffix=afo -- --activeFailover true
 
 
 # Cluster Tests
@@ -104,6 +103,8 @@ shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError 
 
 rta_makedata cluster 
 rta_makedata enterprise cluster name=rta_makedata_force_oneshard --  --forceOneShard true
+rta_makedata single suffix=afo --  --activefailover true --singles 3 
+
 # Common Tests
 
 importing,export name=import_export parallelity=5 size=small cluster -- --dumpAgencyOnError true
