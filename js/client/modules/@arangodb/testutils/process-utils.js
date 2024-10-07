@@ -40,6 +40,7 @@ const ArangoError = require('@arangodb').ArangoError;
 
 /* Functions: */
 const toArgv = internal.toArgv;
+const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;

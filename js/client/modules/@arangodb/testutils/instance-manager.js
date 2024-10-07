@@ -502,14 +502,15 @@ class instanceManager {
         arangod.startArango(_.cloneDeep(subenv));
         count += 1;
         this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
-      } else if (this.options.activefailover) {
+      });
+      if (this.options.activefailover) {
         if (this.urls !== []) {
           this.detectCurrentLeader();
         }
       }
       if (this.options.cluster) {
         this.checkClusterAlive();
-      });
+      }
       this.launchFinalize(startTime);
       return true;
     } catch (e) {
