@@ -46,7 +46,7 @@ class Feature final : public ArangodFeature {
 
  private:
   struct Options {
-    size_t gc_timeout;
+    size_t gc_timeout{1};
   };
   Options _options;
 
