@@ -95,7 +95,7 @@ function arangosh (options) {
 
   function runTest (section, title, command, expectedReturnCode, opts) {
     print('--------------------------------------------------------------------------------');
-    print(title);
+    print(`testcase ${section} - ${title}`);
     print('--------------------------------------------------------------------------------');
 
     let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
@@ -138,6 +138,7 @@ function arangosh (options) {
       print(ret[section]);
       print(rc);
       print('expect rc: ' + expectedReturnCode);
+      print(`status: ${JSON.stringify(ret[section])}`);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -166,7 +167,7 @@ function arangosh (options) {
     const deltaTime2 = time() - startTime;
     const failSuccess2 = (rc2.hasOwnProperty('exit') && rc2.exit === expectedReturnCode);
 
-    if (!failSuccess) {
+    if (!failSuccess2) {
       ret.failed += 1;
       ret[section].failed = 1;
       ret[section]['message'] =
@@ -177,14 +178,15 @@ function arangosh (options) {
     }
 
     ++ret[section]['total'];
-    ret[section]['status'] = failSuccess;
+    ret[section]['status'] = failSuccess2;
     ret[section]['duration'] = deltaTime;
-    print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
+    print((failSuccess2 ? GREEN : RED) + 'Status: ' + (failSuccess2 ? 'SUCCESS' : 'FAIL') + RESET);
     if (options.extremeVerbosity) {
       print(toArgv(args2));
       print(ret[section]);
       print(rc2);
       print('expect rc: ' + expectedReturnCode);
+      print(`status: ${JSON.stringify(ret[section])}`);
     }
     tmpMgr.destructor(ret[section]['status'] && options.cleanup);
   }
