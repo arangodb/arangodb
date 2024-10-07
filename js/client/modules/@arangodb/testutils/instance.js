@@ -565,7 +565,6 @@ class instance {
       print(`${RED}${Date()} failed to run arangod - ${x.message}\n${x.stack}${RESET}`);
       throw x;
     }
-  }
 
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
       if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
