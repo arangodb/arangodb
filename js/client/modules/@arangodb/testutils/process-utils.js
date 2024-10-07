@@ -37,11 +37,9 @@ const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
-const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
 const toArgv = internal.toArgv;
-const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;
@@ -472,10 +470,10 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       duration: deltaTime
     };
   } else if (res.status === 'TIMEOUT') {
-    print(Date() + 'Killing ' + cmd + ' - ' + JSON.stringify(args));
+    print(`${RED}${Date()} Killing ${cmd} - ${JSON.stringify(args)} after ${timeout}s${RESET}`);
     let resKill = killExternal(res.pid, abortSignal);
     if (coreCheck) {
-      print(Date() + " executeAndWait: Marking crashy because of timeout - " + JSON.stringify(instanceInfo));
+      print(`${Date()} executeAndWait: Marking crashy because of timeout - ${JSON.stringify(instanceInfo)}`);
       crashUtils.analyzeCrash(cmd,
                               instanceInfo,
                               options,
