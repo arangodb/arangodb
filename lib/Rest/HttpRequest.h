@@ -31,16 +31,12 @@
 #include <unordered_map>
 
 namespace arangodb {
-class RestBatchHandler;
-
 namespace velocypack {
 class Builder;
 struct Options;
 }  // namespace velocypack
 
 class HttpRequest final : public GeneralRequest {
-  friend class RestBatchHandler;  // TODO remove
-
   HttpRequest(HttpRequest&&) = delete;
 
  public:
@@ -76,6 +72,7 @@ class HttpRequest final : public GeneralRequest {
  private:
   void setCookie(std::string key, std::string value);
   /// used by RestBatchHandler (an API straight from hell)
+  // TODO: Can they be removed / cleaned up?
   void parseHeader(char* buffer, size_t length);
   void parseCookies(char const* buffer, size_t length);
   void setValues(char* buffer, char* end);

@@ -190,7 +190,6 @@ class StaticStrings {
   static std::string const Async;
   static std::string const AsyncId;
   static std::string const Authorization;
-  static std::string const BatchContentType;
   static std::string const CacheControl;
   static std::string const Chunked;
   static std::string const Close;

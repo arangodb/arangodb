@@ -1,6 +1,29 @@
 devel
 -----
 
+* Removed the deprecated Batch API (`/_api/batch`).
+  The arangobench `--batch-size` startup option is ignored now.
+
+* BTS-1950: geo index query stuck
+  The geo index iterator got stuck when multiple coverings were requested
+  multiple time. The corresponding flag was not resetted resulting in an
+  endless loop.
+
+* Allow to use `/_api/wal/tail` with VelocyPack response and change cluster
+  internal replication to use it. This has advantages in performance and 
+  can replicate any VelocyPack value faithfully.
+
+* Change dumping of VPack to JSON for large double values with absolute
+  value between 2^53 and 2^64. This ensures that dumps to JSON followed
+  by parsing of the JSON back to VPack retain the right numerical values.
+  This fixes a problem in arangodump/arangorestore as well as in replication.
+  Furthermore, JSON output from the API now shows numbers in this area
+  with their correct numerical value.
+
+* FE-465: handle HiddenIndex type & "fields" object in collection index page.
+
+* Updated ArangoDB Starter to v0.19.6.
+
 * Upgraded OpenSSL to 3.3.2.
 
 * In replication use vpack as transport format throughout, so that even
@@ -26,8 +49,6 @@ devel
   reality.
 
 * Rebuilt included rclone v1.62.2 with go1.22.6 and non-vulnerable dependencies.
-
-* Update ArangoDB Starter to v0.19.5.
 
 * Add native support for strict ranges for MDI.
 

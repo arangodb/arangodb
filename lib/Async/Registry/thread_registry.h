@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <source_location>
 #include <thread>
 #include "fmt/format.h"
 #include "fmt/std.h"
@@ -66,7 +67,8 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
      Can only be called on the owning thread, crashes
      otherwise.
    */
-  auto add(Promise* promise) noexcept -> void;
+  auto add_promise(std::source_location location =
+                       std::source_location::current()) noexcept -> Promise*;
 
   /**
      Executes a function on each promise in the registry that is not deleted yet
@@ -101,8 +103,7 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
    */
   auto garbage_collect() noexcept -> void;
 
-  const std::thread::id owning_thread = std::this_thread::get_id();
-  const std::string thread_name;
+  Thread thread;
 
  private:
   Registry* registry = nullptr;
@@ -123,12 +124,5 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
    */
   auto remove(Promise* promise) -> void;
 };
-
-template<typename Inspector>
-auto inspect(Inspector& f, ThreadRegistry& x) {
-  return f.object(x).fields(
-      f.field("thread_id", fmt::format("{}", x.owning_thread)),
-      f.field("thread_name", x.thread_name));
-}
 
 }  // namespace arangodb::async_registry

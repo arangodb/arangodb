@@ -61,9 +61,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief analyzer path
   static std::string const ANALYZER_PATH;
 
-  /// @brief batch path
-  static std::string const BATCH_PATH;
-
   /// @brief collection path
   static std::string const COLLECTION_PATH;
 
