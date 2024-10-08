@@ -112,11 +112,15 @@ exports.truncateFailure = function (collection) {
 
 function getInstanceInfo() {
   if (instanceInfo === null) {
-    instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    if (instanceInfo.arangods.length > 2) {
-      instanceInfo.arangods.forEach(arangod => {
-        arangod.id = fs.readFileSync(fs.join(arangod.dataDir, 'UUID')).toString();
-      });
+    if (global.hasOwnProperty('instanceManager')) {
+      instanceInfo = global.instanceManager;
+    } else {
+      instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+      if (instanceInfo.arangods.length > 2) {
+        instanceInfo.arangods.forEach(arangod => {
+          arangod.id = fs.readFileSync(fs.join(arangod.dataDir, 'UUID')).toString();
+        });
+      }
     }
   }
   return instanceInfo;

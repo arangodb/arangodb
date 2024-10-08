@@ -1295,7 +1295,16 @@ class instanceManager {
     }
 
     if (this.options.hasOwnProperty('server')) {
-      arango.reconnect(this.endpoint, '_system', 'root', '');
+      if (this.JWT) {
+        arango.reconnect(this.endpoint,
+                         '_system',
+                         'root',
+                         '',
+                         true,
+                         this.JWT);
+      } else {
+        arango.reconnect(this.endpoint, '_system', 'root', '');
+      }
       return true;
     }
 
@@ -1305,7 +1314,16 @@ class instanceManager {
         if (this.arangods[0].args.hasOwnProperty('database.password')) {
           passvoid = this.arangods[0].args['database.password'];
         }
-        arango.reconnect(this.endpoint, '_system', 'root', passvoid);
+        if (this.JWT) {
+          arango.reconnect(this.endpoint,
+                           '_system',
+                           'root',
+                           '',
+                           true,
+                           this.JWT);
+        } else {
+          arango.reconnect(this.endpoint, '_system', 'root', passvoid);
+        }
       } else {
         print("Don't have a frontend instance to connect to");
       }
