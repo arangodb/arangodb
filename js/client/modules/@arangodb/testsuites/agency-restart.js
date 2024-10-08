@@ -34,6 +34,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const trs = require('@arangodb/testutils/testrunners');
 const inst = require('@arangodb/testutils/instance');
+const { agencyMgr } = require('@arangodb/testutils/agency');
 const _ = require('lodash');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 
