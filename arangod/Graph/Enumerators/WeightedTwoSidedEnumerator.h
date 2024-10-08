@@ -252,6 +252,7 @@ class WeightedTwoSidedEnumerator {
     [[nodiscard]] auto peekQueue() const -> Step const&;
     [[nodiscard]] auto isQueueEmpty() const -> bool;
     [[nodiscard]] auto doneWithDepth() const -> bool;
+    [[nodiscard]] auto queueSize() const -> size_t { return _queue.size(); }
 
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;

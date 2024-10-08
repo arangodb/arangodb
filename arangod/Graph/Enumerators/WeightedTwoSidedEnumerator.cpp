@@ -45,21 +45,6 @@
 #include <velocypack/HashedStringRef.h>
 #include <limits>
 
-namespace {
-
-bool almostEqual(double x, double y) {
-  if (x == y) {
-    return true;
-  }
-
-  auto diff = std::abs(x - y);
-  auto norm =
-      std::min((std::abs(x) + std::abs(y)), std::numeric_limits<double>::max());
-  return diff < std::max(std::numeric_limits<double>::round_error(),
-                         std::numeric_limits<double>::epsilon() * norm);
-}
-}  // namespace
-
 namespace arangodb::graph {
 
 /*
@@ -702,11 +687,27 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
     if (!_candidatesStore.isEmpty()) {
       auto bestWeight = std::get<0>(_candidatesStore.peek());
-      // if the sum of the diameters of left and right search are
-      // bigger than the best candidate, there will not be a better
-      // candidate found.
+      // If the sum of the diameters of left and right search is
+      // at least as big as the best candidate, there will not be a better
+      // candidate found. This is because of the following: The "diameter"
+      // of a ball is the weight d of the next vertex to be expanded. This
+      // means that we already know that the shortest paths to that vertex
+      // have weight d. All vertices with a lower weight have already
+      // been expanded (and potentially some of weight d).
+      // Now assume that we have d1 and d2 as diameters of the left and
+      // right search, respectively. Assume that the next vertex to be
+      // expanded is left (wlog) and is called V, it has weight d1. Now
+      // assume that there is an edge E with weight e from V to a vertex W
+      // with weight w, so that d1 + e + w < d1 + d2, that is e + w < d2.
+      // Then first of all, w < d2, so that W has already been expanded.
+      // Therefore, we have considered the edge E before, but V was not
+      // yet expanded on the left, therefore, the right hand side must
+      // have put V on its queue. But if e+w < d2, then V must have been
+      // expanded on the right already, since the diameter of the right
+      // hand side is d2. But then we would not have expanded V on the
+      // left hand side in the first place, a contradiction.
       //
-      // A simple shortest path search is done *now* (and not
+      // In this case, a simple shortest path search is done *now* (and not
       // earlier!);
       //
       // It is *required* to continue search for a shortest path even
@@ -750,6 +751,38 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
             }
           }
         }
+      }
+
+      // In the case that we are only performing a simple shortest path
+      // search, there is another case, in which we are done: If one of
+      // the sides has finished in the sense that its queue is empty,
+      // and we have actually found some path, then we are done. Why is that?
+      // Assume wlog that the left side is finished and we have found a path.
+      // Then the left hand side has found everything that is reachable from
+      // the source, but it has not put vertices on its queue that the right
+      // hand side has already expanded. Now imagine that there is a path P
+      // which is shorter than the shortest path that we have already
+      // found. Let V be the last vertex on P that has been expanded
+      // by the left hand side and let E be the edge from V to the next
+      // vertex W on P. Then the left hand side has considered E, at the
+      // time, either W was already expanded by the right, in which case
+      // P would have been found, or else, the left hand side would have
+      // put W on its queue. Since we assumed that the left hand side did
+      // not expand W, the right hand side must have expanded W, before
+      // the left hand side got to W in its queue (which it did, since its
+      // queue is now empty). But then the right hand side would have
+      // considered the edge E from W and would have found V and thus P.
+      // In any case, this is a contradiction.
+      if (_options.getPathType() == PathType::Type::ShortestPath &&
+          (_left.isQueueEmpty() || _right.isQueueEmpty()) &&
+          !_candidatesStore.isEmpty()) {
+        // Note that we might have already found a path with the above
+        // criteria, so we should then not report a second one:
+        if (_results.empty()) {
+          CalculatedCandidate candidate = _candidatesStore.pop();
+          _results.emplace_back(std::move(candidate));
+        }
+        setAlgorithmFinished();
       }
     }
   }
@@ -887,23 +920,27 @@ WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     return BallSearchLocation::LEFT;
   }
 
-  // From here both _left and _right are guaranteed to not be empty.
-  if (almostEqual(_left.peekQueue().getWeight(), _left.getDiameter())) {
+  // Here is the argument for the following final decision: If the search
+  // happens to be "asymmetric" in the sense that one side has a lot more
+  // work to do (which can easily happen with directed edges), then we
+  // have better chances to complete the search if we put more emphasis
+  // on the "cheaper" side. This is likely the one which has a shorter
+  // queue. And even if the queue is only shorter temporarily, then this
+  // will change over time as we expand more and more vertices on that
+  // side. If the search is symmetric, we expect to have approximately
+  // equal queue lengths by always expanding the shorter one. This is because
+  // most graphs "expand" around their vertices. And even if we happen to
+  // finish off one side first by this choice, this does not matter in the
+  // grand scheme of things.
+  // Note that we had before an approach in which we always expanded the
+  // side which has so far achieved the smaller diameter and this turned
+  // out to be a very bad idea, since we often neglected to finish the
+  // cheap side and concentrated on the expensive side, spending a lot of
+  // cycles and time in the process.
+  if (_left.queueSize() <= _right.queueSize()) {
     return BallSearchLocation::LEFT;
   }
-
-  if (almostEqual(_right.peekQueue().getWeight(), _right.getDiameter())) {
-    return BallSearchLocation::RIGHT;
-  }
-
-  if (_left.getDiameter() <= _right.getDiameter()) {
-    return BallSearchLocation::LEFT;
-  } else {
-    return BallSearchLocation::RIGHT;
-  }
-
-  // Default
-  return BallSearchLocation::FINISH;
+  return BallSearchLocation::RIGHT;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
