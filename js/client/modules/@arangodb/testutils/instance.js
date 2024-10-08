@@ -380,7 +380,7 @@ class instance {
       output.push('-'); // make sure we always have a stdout appender
     } else if (this.options.noStartStopLogs) {
       // set the stdout appender to error only
-      output.push('-;all=error');
+      // output.push('-;all=error');
       let logs = ['crash=info'];
       if (this.args['log.level'] !== undefined) {
         if (Array.isArray(this.args['log.level'])) {
@@ -444,7 +444,7 @@ class instance {
       this.args = Object.assign(this.args, {
         'cluster.my-role': 'SINGLE',
         'cluster.my-address': this.args['server.endpoint'],
-        'cluster.agency-endpoint': this.agencyConfig.agencyEndpoint,
+        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint,
         'replication.active-failover': true
       });
     }
