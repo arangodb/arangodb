@@ -1,6 +1,8 @@
 devel
 -----
 
+* Bind variables for TTL deletions should not be moved when now reused.
+
 * Removed the deprecated Batch API (`/_api/batch`).
   The arangobench `--batch-size` startup option is ignored now.
 
