@@ -1,9 +1,7 @@
 devel
 -----
 
-* FE-446: add missing primaryKeyCache, primarySort cache, fields cache and
-  storedValues cache options for inverted indexes and missing primaryKeyCache,
-  primarySortCache, links cache and storedValues cache options for arangosearch
+* FE-446: add missing caching options for inverted indexes and arangosearch
   views.
 
 * Removed the deprecated Batch API (`/_api/batch`).
