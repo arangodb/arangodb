@@ -203,60 +203,64 @@ function enumeratePathsFilter() {
       assertRuleDoesNotFire(query);
     },
     testFiresWithNesting: function() {
-      const query = `
-        FOR path2 IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/22" GRAPH "${graphName}"  
-          FOR path IN ANY K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-            FILTER path.vertices[* RETURN CURRENT.colour == "green"] ALL == false
-            FILTER path2.edges[* RETURN CURRENT.colour == "red"] ALL == true
-            RETURN [path2, path]`;
-      assertRuleFires(query);
-      assertSameResults(query);
+      for (let o of ['', ', algorithm: "yen"']) {
+        const query = `
+          FOR path2 IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/22" GRAPH "${graphName}"  
+            FOR path IN ANY K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+              FILTER path.vertices[* RETURN CURRENT.colour == "green"] ALL == false
+              FILTER path2.edges[* RETURN CURRENT.colour == "red"] ALL == true
+              RETURN [path2, path]`;
+        assertRuleFires(query);
+        assertSameResults(query);
+      }
     },
     testExpectedPathFound: function() {
-      const unrestrictedQuery = `
-        FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}"
-            LIMIT 1
-            RETURN path`;
-      const ru = db._query(unrestrictedQuery).toArray();
-      assertEqual(ru.length, 1, "expecting precisely one result"); 
-      const shortPath = getVerticesAndEdgesFromPath(ru[0]);
-      assertEqual(shortPath.vertices.length, 4);
+      for (let o of ['', ' OPTIONS { algorithm: "yen" } ']) {
+        const unrestrictedQuery = `
+          FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}" ${o}
+              LIMIT 1
+              RETURN path`;
+        const ru = db._query(unrestrictedQuery).toArray();
+        assertEqual(ru.length, 1, "expecting precisely one result"); 
+        const shortPath = getVerticesAndEdgesFromPath(ru[0]);
+        assertEqual(shortPath.vertices.length, 4);
 
-      const restrictedQuery = `
-        FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}"
-            FILTER path.edges[* RETURN CURRENT.colour == "green"] ALL == true
-            LIMIT 1
-            RETURN path`;
+        const restrictedQuery = `
+          FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}" ${o}
+              FILTER path.edges[* RETURN CURRENT.colour == "green"] ALL == true
+              LIMIT 1
+              RETURN path`;
 
-      assertRuleFires(restrictedQuery);
-      const rr = db._query(restrictedQuery).toArray();
-      assertEqual(rr.length, 1, "expecting precisely one result");
-      const longPath = getVerticesAndEdgesFromPath(rr[0]);
-      assertEqual(longPath.vertices.length, 5, `found path ${JSON.stringify(longPath)}`);
-      
-      const restrictedQuery2 = `
-        FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}"
-            FILTER path.edges[* RETURN CURRENT.colour] ALL == "green"
-            LIMIT 1
-            RETURN path`;
+        assertRuleFires(restrictedQuery);
+        const rr = db._query(restrictedQuery).toArray();
+        assertEqual(rr.length, 1, "expecting precisely one result");
+        const longPath = getVerticesAndEdgesFromPath(rr[0]);
+        assertEqual(longPath.vertices.length, 5, `found path ${JSON.stringify(longPath)}`);
+        
+        const restrictedQuery2 = `
+          FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}" ${o}
+              FILTER path.edges[* RETURN CURRENT.colour] ALL == "green"
+              LIMIT 1
+              RETURN path`;
 
-      assertRuleFires(restrictedQuery2);
-      const rr2 = db._query(restrictedQuery2).toArray();
-      assertEqual(rr2.length, 1, "expecting precisely one result");
-      const longPath2 = getVerticesAndEdgesFromPath(rr2[0]);
-      assertEqual(longPath2.vertices.length, 5, `found path ${JSON.stringify(longPath)}`);
-      
-      const restrictedQuery3 = `
-        FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}"
-            FILTER path.edges[*].colour ALL == "green"
-            LIMIT 1
-            RETURN path`;
+        assertRuleFires(restrictedQuery2);
+        const rr2 = db._query(restrictedQuery2).toArray();
+        assertEqual(rr2.length, 1, "expecting precisely one result");
+        const longPath2 = getVerticesAndEdgesFromPath(rr2[0]);
+        assertEqual(longPath2.vertices.length, 5, `found path ${JSON.stringify(longPath)}`);
+        
+        const restrictedQuery3 = `
+          FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}" ${o}
+              FILTER path.edges[*].colour ALL == "green"
+              LIMIT 1
+              RETURN path`;
 
-      assertRuleFires(restrictedQuery3);
-      const rr3 = db._query(restrictedQuery3).toArray();
-      assertEqual(rr3.length, 1, "expecting precisely one result");
-      const longPath3 = getVerticesAndEdgesFromPath(rr3[0]);
-      assertEqual(longPath3.vertices.length, 5, `found path ${JSON.stringify(longPath)}`);
+        assertRuleFires(restrictedQuery3);
+        const rr3 = db._query(restrictedQuery3).toArray();
+        assertEqual(rr3.length, 1, "expecting precisely one result");
+        const longPath3 = getVerticesAndEdgesFromPath(rr3[0]);
+        assertEqual(longPath3.vertices.length, 5, `found path ${JSON.stringify(longPath)}`);
+      }
     },
   };
 

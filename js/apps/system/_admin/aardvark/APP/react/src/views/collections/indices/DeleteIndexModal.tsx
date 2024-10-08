@@ -1,5 +1,5 @@
 import { Button, Stack } from "@chakra-ui/react";
-import { Index } from "arangojs/indexes";
+import { HiddenIndex, Index } from "arangojs/indexes";
 import React from "react";
 import {
   Modal,
@@ -15,7 +15,7 @@ export const DeleteIndexModal = ({
   onClose,
   onSuccess
 }: {
-  foundCollectionIndex: Index;
+  foundCollectionIndex: HiddenIndex;
   onClose: () => void;
   onSuccess: () => void;
 }) => {
@@ -24,12 +24,11 @@ export const DeleteIndexModal = ({
   const onDelete = async () => {
     onDeleteIndex({ id: foundCollectionIndex.id, onSuccess });
   };
+  const name = (foundCollectionIndex as Index).name || foundCollectionIndex.id;
   return (
     <Modal isOpen onClose={onClose}>
       <ModalHeader>Delete Index</ModalHeader>
-      <ModalBody>
-        Are you sure you want to delete {foundCollectionIndex.name}?
-      </ModalBody>
+      <ModalBody>Are you sure you want to delete {name}?</ModalBody>
       <ModalFooter>
         <Stack direction="row">
           <Button colorScheme="gray" onClick={() => onClose()}>

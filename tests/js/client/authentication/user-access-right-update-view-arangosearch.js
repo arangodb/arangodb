@@ -38,6 +38,7 @@ const helper = require('@arangodb/testutils/user-helper');
 const errors = require('@arangodb').errors;
 const db = require('@arangodb').db;
 const arango = require('internal').arango;
+let connectionHandle = arango.getConnectionHandle();
 
 const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
@@ -506,4 +507,7 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
 
 }
 
-return jsunity.done();
+let ret = jsunity.done();
+arango.connectHandle(connectionHandle);
+db._useDatabase('_system');
+return ret;

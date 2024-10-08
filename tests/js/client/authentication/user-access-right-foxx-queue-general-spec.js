@@ -37,6 +37,7 @@ const request = require('@arangodb/request');
 
 const arangodb = require('@arangodb');
 const arango = require('@arangodb').arango;
+let connectionHandle = arango.getConnectionHandle();
 const aql = arangodb.aql;
 const db = internal.db;
 
@@ -148,4 +149,9 @@ describe('Foxx service', () => {
     return false;
   };
 
+});
+after(() => {
+  arango.connectHandle(connectionHandle);
+  db._drop('UnitTestCollection');
+  db._useDatabase('_system');
 });

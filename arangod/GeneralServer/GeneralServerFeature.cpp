@@ -34,6 +34,7 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
+#include "AsyncRegistryServer/RestHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -75,7 +76,6 @@
 #endif
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
-#include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCompactHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
@@ -651,9 +651,6 @@ void GeneralServerFeature::defineRemainingHandlers(
           iresearch::RestAnalyzerHandler>::createNoData  // handler
   );
 
-  f.addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
-                     RestHandlerCreator<RestBatchHandler>::createNoData);
-
   auto queryRegistry = QueryRegistryFeature::registry();
   f.addPrefixHandler(
       RestVocbaseBaseHandler::CURSOR_PATH,
@@ -754,6 +751,10 @@ void GeneralServerFeature::defineRemainingHandlers(
         RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
   }
 #endif
+
+  f.addPrefixHandler(
+      "/_api/async_registry",
+      RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_api/dump",

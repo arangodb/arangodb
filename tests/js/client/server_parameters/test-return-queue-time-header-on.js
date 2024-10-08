@@ -35,7 +35,9 @@ const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const internal = require('internal');
 const isCluster = internal.isCluster();
-const { getEndpointsByType, debugCanUseFailAt, debugSetFailAt, debugClearFailAt } = require('@arangodb/test-helper');
+const { getEndpointsByType } = require('@arangodb/test-helper');
+let IM = global.instanceManager;
+let { instanceRole } = require('@arangodb/testutils/instance');
 
 function testSuite() {  
   const header = "x-arango-queue-time-seconds";
@@ -78,19 +80,14 @@ function testSuite() {
   return {
     setUpAll: function() {
       if (isCluster) {
-        endpoints = getEndpointsByType('coordinator');
+        IM.debugSetFailAt("Scheduler::alwaysSetDequeueTime", instanceRole.coordinator);
       } else {
-        endpoints = getEndpointsByType('single');
-      }
-      if (endpoints.length && debugCanUseFailAt(endpoints[0])) {
-        endpoints.forEach((ep) => debugSetFailAt(ep, "Scheduler::alwaysSetDequeueTime"));
+        IM.debugSetFailAt("Scheduler::alwaysSetDequeueTime", instanceRole.single);
       }
     },
 
     tearDownAll: function() {
-      if (endpoints.length && debugCanUseFailAt(endpoints[0])) {
-        endpoints.forEach((ep) => debugClearFailAt(ep));
-      }
+      IM.debugClearFailAt();
     },
 
     setUp: function() {

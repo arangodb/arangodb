@@ -105,11 +105,18 @@ ClusterProvider<StepImpl>::ClusterProvider(
 
 template<class StepImpl>
 ClusterProvider<StepImpl>::~ClusterProvider() {
-  clear();
+  clearWithForce();  // Make sure we actually free all memory in the edge cache!
 }
 
 template<class StepImpl>
 void ClusterProvider<StepImpl>::clear() {
+  if (_opts.clearEdgeCacheOnClear()) {
+    clearWithForce();
+  }
+}
+
+template<class StepImpl>
+void ClusterProvider<StepImpl>::clearWithForce() {
   for (auto const& entry : _vertexConnectedEdges) {
     _resourceMonitor->decreaseMemoryUsage(
         costPerVertexOrEdgeType +
@@ -312,6 +319,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   // [GraphRefactor] TODO: Differentiate between algorithms -> traversal vs.
   // ksp.
   /* Needed for TRAVERSALS only - Begin */
+  // But note that the field "depth" must be set to an integer in any case!
   leased->add("depth", VPackValue(step->getDepth()));
   if (_opts.expressionContext() != nullptr) {
     leased->add(VPackValue("variables"));

@@ -180,8 +180,7 @@ struct FutureSharedLock {
 
     void unlock() {
       std::lock_guard lock(_mutex);
-      TRI_ASSERT(_lockCount > 0);
-      if (--_lockCount == 0 && !_queue.empty()) {
+      if (_lockCount > 0 && --_lockCount == 0 && !_queue.empty()) {
         // we were the last lock holder -> schedule the next node
         auto& node = _queue.back();
         _lockCount = 1;

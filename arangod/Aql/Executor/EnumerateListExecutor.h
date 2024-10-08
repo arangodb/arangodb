@@ -58,7 +58,8 @@ class EnumerateListExecutorInfos {
  public:
   EnumerateListExecutorInfos(
       RegisterId inputRegister, const std::vector<RegisterId>&& outputRegisters,
-      QueryContext& query, Expression* filter, VariableId outputVariableId,
+      QueryContext& query, Expression* filter,
+      std::vector<const Variable*>&& outputVariables,
       std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs,
       EnumerateListNode::Mode mode = EnumerateListNode::Mode::kEnumerateArray);
 
@@ -70,7 +71,7 @@ class EnumerateListExecutorInfos {
   QueryContext& getQuery() const noexcept;
   RegisterId getInputRegister() const noexcept;
   const std::vector<RegisterId>& getOutputRegister() const noexcept;
-  VariableId getOutputVariableId() const noexcept;
+  std::vector<const Variable*> const& getOutputVariables() const noexcept;
   bool hasFilter() const noexcept;
   Expression* getFilter() const noexcept;
   std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegs()
@@ -85,7 +86,7 @@ class EnumerateListExecutorInfos {
   // getInputRegisters() and getOutputRegisters().
   RegisterId const _inputRegister;
   std::vector<RegisterId> const _outputRegisters;
-  VariableId const _outputVariableId;
+  std::vector<const Variable*> _outputVariables;
   Expression* _filter;
   // Input variable and register pairs required for the filter
   std::vector<std::pair<VariableId, RegisterId>> _varsToRegs;
@@ -218,7 +219,10 @@ class EnumerateListObjectExecutor {
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos,
                        bool& mustDestroy);
 
-  bool checkFilter(AqlValue const& currentValue);
+  bool checkFilter(AqlValue const& currentK, AqlValue const& currentV);
+
+  std::tuple<AqlValue, AqlValue> keyValueExtractor(
+      velocypack::ObjectIteratorPair innerValue);
 
   EnumerateListExecutorInfos& _infos;
   transaction::Methods _trx;

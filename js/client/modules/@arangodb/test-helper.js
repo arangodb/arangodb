@@ -40,6 +40,7 @@ const {
 const fs = require('fs');
 const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
+const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
 const arangosh = require('@arangodb/arangosh');
 const pu = require('@arangodb/testutils/process-utils');
@@ -59,28 +60,24 @@ exports.typeName = typeName;
 exports.isEqual = isEqual;
 exports.compareStringIds = compareStringIds;
 
-let instanceInfo = null;
+let instanceManager = null;
 const tmpDirMngr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 
 exports.flushInstanceInfo = () => {
-  instanceInfo = null;
+  instanceManager = null;
 };
 
-function getInstanceInfo() {
-  if (global.hasOwnProperty('instanceManger')) {
-    return global.instanceManger;
+exports.getInstanceInfo = function() {
+  if (global.hasOwnProperty('instanceManager')) {
+    return global.instanceManager;
   }
-  if (instanceInfo === null) {
-    instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    if (instanceInfo.arangods.length > 2) {
-      instanceInfo.arangods.forEach(arangod => {
-        arangod.id = fs.readFileSync(fs.join(arangod.dataDir, 'UUID')).toString();
-      });
-    }
+  if (instanceManager === null) {
+    instanceManager = new im.instanceManager('tcp', {dummy: true}, "", "/tmp/");
+    instanceManager.setFromStructure(JSON.parse(internal.env.INSTANCEINFO));
   }
-  return instanceInfo;
-}
+  return instanceManager;
+};
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
@@ -120,7 +117,7 @@ exports.debugSetFailAt = function (endpoint, failAt) {
     reconnectRetry(endpoint, db._name(), "root", "");
     let res = arango.PUT_RAW('/_admin/debug/failat/' + failAt, {});
     if (res.parsedBody !== true) {
-      throw `Error setting failure point on ${endpoint}: "${res}"`;
+      throw `Error setting failure point ${failAt} on ${endpoint}: "${JSON.stringify(res)}"`;
     }
     return true;
   } finally {
@@ -169,24 +166,6 @@ exports.debugClearFailAt = function (endpoint) {
   } finally {
     reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
-};
-
-exports.debugGetFailurePoints = function (endpoint) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let haveFailAt = arango.GET("/_admin/debug/failat") === true;
-    if (haveFailAt) {
-      let res = arango.GET_RAW('/_admin/debug/failat/all');
-      if (res.code !== 200) {
-        throw "Error checking failure points = " + JSON.stringify(res);
-      }
-      return res.parsedBody;
-    }
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
-  }
-  return [];
 };
 
 exports.getChecksum = function (endpoint, name) {
@@ -572,8 +551,7 @@ exports.getCtrlCoordinators = function() {
 };
 
 exports.getServers = function (role) {
-  const instanceInfo = getInstanceInfo();
-  let ret = instanceInfo.arangods.filter(inst => inst.instanceRole === role);
+  let ret = exports.getInstanceInfo().arangods.filter(arangod => arangod.isRole(role));
   if (ret.length === 0) {
     throw new Error("No instance matched the type " + role);
   }
@@ -591,27 +569,27 @@ exports.getAgents = function () {
 };
 
 exports.getServerById = function (id) {
-  const instanceInfo = getInstanceInfo();
+  const instanceInfo = exports.getInstanceInfo();
   return instanceInfo.arangods.find((d) => (d.id === id));
 };
 
 exports.getServersByType = function (type) {
   const isType = (d) => (d.instanceRole.toLowerCase() === type);
-  const instanceInfo = getInstanceInfo();
+  const instanceInfo = exports.getInstanceInfo();
   return instanceInfo.arangods.filter(isType);
 };
 
 exports.getEndpointById = function (id) {
   const toEndpoint = (d) => (d.endpoint);
 
-  const instanceInfo = getInstanceInfo();
+  const instanceInfo = exports.getInstanceInfo();
   const instance = instanceInfo.arangods.find(d => d.id === id);
   return endpointToURL(toEndpoint(instance));
 };
 
 exports.getUrlById = function (id) {
   const toUrl = (d) => (d.url);
-  const instanceInfo = getInstanceInfo();
+  const instanceInfo = exports.getInstanceInfo();
   return instanceInfo.arangods.filter((d) => (d.id === id))
     .map(toUrl)[0];
 };
@@ -620,7 +598,7 @@ exports.getEndpointsByType = function (type) {
   const isType = (d) => (d.instanceRole.toLowerCase() === type);
   const toEndpoint = (d) => (d.endpoint);
 
-  const instanceInfo = getInstanceInfo();
+  const instanceInfo = exports.getInstanceInfo();
   return instanceInfo.arangods.filter(isType)
     .map(toEndpoint)
     .map(endpointToURL);
@@ -924,7 +902,7 @@ exports.insertManyDocumentsIntoCollection
     if (!done) {
       while (l.length < batchSize) {
         let d = maker(counter); 
-        if (d === null || d === false) {
+        if (d === null || d === false || d === undefined) {
           done = true;
           break;
         }

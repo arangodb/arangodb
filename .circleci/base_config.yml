@@ -8,9 +8,12 @@ parameters:
   enterprise-commit:
     type: string
     default: ""
+  use-minimal-debug-info:
+    type: boolean
+    default: true
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:6"
+    default: "arangodb/ubuntubuildarangodb-devel:7"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-5b6113b7
@@ -35,7 +38,7 @@ parameters:
     default: ""
   ui:
     type: string
-    default: "off"
+    default: "on"
   ui-deployment:
     type: string
     default: ""
@@ -306,6 +309,10 @@ jobs:
       - run:
           name: Configure
           command: |
+            MINIMAL_DEBUGINFO="OFF"
+            if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
+              MINIMAL_DEBUGINFO="ON"
+            fi
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
@@ -314,6 +321,7 @@ jobs:
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
+              -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
               -DCMAKE_INSTALL_PREFIX=/
       - run:
           name: Build
@@ -520,7 +528,7 @@ jobs:
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
-              --extraArgs " << parameters.extraArgs >>"
+              --extraArgs ' << parameters.extraArgs >>'
       - run:
           name: Copy test results
           when: always

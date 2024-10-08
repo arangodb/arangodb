@@ -1198,6 +1198,93 @@ const IndexJoinTestSuite = function () {
       }
     },
 
+    testUniqueStreamProperty: function () {
+      const A = createCollection("A", ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["y", "z", "x"], unique: true});
+      fillCollection("A", attributeGenerator(100, {x: x => x, y: x => x, z: x => x}));
+      const C = createCollection("C", ["z"]);
+      C.ensureIndex({type: "persistent", fields: ["y", "z", "x"], unique: true});
+      fillCollection("C", attributeGenerator(100, {x: x => x, y: x => x, z: x => x}));
+      const B = createCollection("B", ["x"]);
+      B.ensureIndex({type: "persistent", fields: ["x"], unique: true});
+      fillCollection("B", singleAttributeGenerator(100, "x", x => x));
+
+      {
+        const query = `
+        FOR a IN A
+          FOR b in B
+            FILTER a.z == 12 && a.y == 12 && b.x == a.x
+            RETURN [a, b]
+      `;
+
+        const plan = db._createStatement({query}).explain().plan;
+        const nodes = plan.nodes.map(x => x.type);
+
+        assertEqual(nodes.indexOf("JoinNode"), 1);
+        const join = plan.nodes[1];
+        assertEqual(join.type, "JoinNode");
+
+        assertEqual(join.indexInfos.length, 2);
+        assertTrue(join.indexInfos[0].isUniqueStream);
+        assertTrue(join.indexInfos[1].isUniqueStream);
+
+        const result = db._createStatement(query).execute().toArray();
+        assertEqual(result.length, 1);
+        const [a, b] = result[0];
+        assertEqual(a.z, 12);
+        assertEqual(b.x, 12);
+      }
+
+      {
+        const query = `
+        FOR a IN C
+          FOR b in B
+            FILTER a.y == 12 && b.x == a.z
+            RETURN [a, b]
+      `;
+
+        const plan = db._createStatement({query}).explain().plan;
+        const nodes = plan.nodes.map(x => x.type);
+
+        assertEqual(nodes.indexOf("JoinNode"), 1);
+        const join = plan.nodes[1];
+        assertEqual(join.type, "JoinNode");
+
+        assertEqual(join.indexInfos.length, 2);
+        assertNotEqual(join.indexInfos[0].isUniqueStream, true);
+        assertTrue(join.indexInfos[1].isUniqueStream);
+
+        const result = db._createStatement(query).execute().toArray();
+        assertEqual(result.length, 1);
+        const [a, b] = result[0];
+        assertEqual(a.z, 12);
+        assertEqual(b.x, 12);
+      }
+
+      {
+        const query = `
+        FOR a IN C
+          FOR b in B
+            FILTER a.y == "DOES NOT EXIST" && b.x == a.z
+            RETURN [a, b]
+      `;
+
+        const plan = db._createStatement({query}).explain().plan;
+        const nodes = plan.nodes.map(x => x.type);
+
+        assertEqual(nodes.indexOf("JoinNode"), 1);
+        const join = plan.nodes[1];
+        assertEqual(join.type, "JoinNode");
+
+        assertEqual(join.indexInfos.length, 2);
+        assertNotEqual(join.indexInfos[0].isUniqueStream, true);
+        assertTrue(join.indexInfos[1].isUniqueStream);
+
+        const result = db._createStatement(query).execute().toArray();
+        assertEqual(result.length, 0);
+      }
+    }
+
   };
 };
 

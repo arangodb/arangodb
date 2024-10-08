@@ -602,6 +602,11 @@ function checking_a_documentSuite () {
       doc = arango.HEAD_RAW(cmd, hdr);
 
       assertEqual(doc.code, 412);
+      hdr = { "if-match": "nonMatching" };
+      doc = arango.HEAD_RAW(cmd, hdr);
+
+      assertEqual(doc.body, undefined);
+      assertEqual(doc.code, 412);
     },
 
     test_use_empty_array_for_documents_read: function () {
