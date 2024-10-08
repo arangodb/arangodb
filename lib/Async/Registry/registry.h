@@ -84,6 +84,22 @@ struct Registry {
     _metrics = metrics;
   }
 
+  /**
+     Runs an external clean up.
+   */
+  void run_external_cleanup() noexcept {
+    auto regs = [&] {
+      auto guard = std::lock_guard(mutex);
+      return registries;
+    }();
+
+    for (auto& registry_weak : regs) {
+      if (auto registry = registry_weak.lock()) {
+        registry->garbage_collect_external();
+      }
+    }
+  }
+
  private:
   std::vector<std::weak_ptr<ThreadRegistry>> registries;
   std::mutex mutex;

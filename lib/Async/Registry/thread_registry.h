@@ -103,7 +103,16 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
    */
   auto garbage_collect() noexcept -> void;
 
-  Thread thread;
+  /**
+     Runs external garbage collection.
+
+     This can be called from a different thread. Cannot delete the head of the
+     promise list, calling this will therefore result in at least one
+     ready-for-deletion promise.
+   */
+  auto garbage_collect_external() noexcept -> void;
+
+  Thread const thread;
 
  private:
   Registry* registry = nullptr;
