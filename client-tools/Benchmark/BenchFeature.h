@@ -65,7 +65,6 @@ class BenchFeature final : public ArangoBenchFeature {
   bool async() const { return _async; }
   uint64_t threadCount() const { return _threadCount; }
   uint64_t operations() const { return _operations; }
-  uint64_t batchSize() const { return _batchSize; }
   bool createCollection() const { return _createCollection; }
   bool keepAlive() const { return _keepAlive; }
   std::string const& collection() const { return _collection; }
@@ -106,7 +105,6 @@ class BenchFeature final : public ArangoBenchFeature {
   uint64_t _threadCount;
   uint64_t _operations;
   uint64_t _realOperations;
-  uint64_t _batchSize;
   uint64_t _duration;
   std::string _collection;
   std::string _testCase;

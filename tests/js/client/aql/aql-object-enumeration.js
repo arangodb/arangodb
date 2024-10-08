@@ -353,6 +353,65 @@ function enumerateObjectTestSuite() {
   };
 }
 
+function enumerateObjectLimitTestSuite() {
+
+  const database = "ObjectEnumLimitDB";
+  const collection = "c";
+  const numDocuments = 100;
+  const keysString = "abcdefghijklmnopqrstuvwxyz";
+
+  const totalPairs = [];
+  for (let k = 0; k < numDocuments; k++) {
+    for (const c of keysString) {
+      totalPairs.push([c, k]);
+    }
+  }
+
+  let testSuite = {
+    setUpAll: function () {
+      db._createDatabase(database);
+      db._useDatabase(database);
+
+      db._create(collection);
+
+      const docs = [];
+      for (let k = 0; k < numDocuments; k++) {
+        const doc = Object.fromEntries(Array.from(keysString, (c) => [c, k]));
+        docs.push({_key: `D${k}`, obj: doc});
+      }
+      db[collection].save(docs);
+    },
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(database);
+    }
+  };
+
+  const offsets = [0, 1, 5, 12, 78, 300, 345, 1003];
+  const counts = [1, 5, 80, 501, 1005, 2000, 6000];
+
+  for (const offset of offsets) {
+    for (const count of counts) {
+
+      testSuite[`testObjectEnumLimit_${offset}_${count}`] = function () {
+        const query = `
+          FOR doc IN ${collection}
+            FOR [k, v] IN ENTRIES(doc.obj)
+              LIMIT ${offset}, ${count}
+              RETURN [k, v]
+        `;
+
+        const actualResult = db._query(query).toArray();
+        const expectedResult = totalPairs.slice(offset, offset + count);
+        assertEqual(actualResult, expectedResult);
+      };
+    }
+  }
+
+  return testSuite;
+}
+
 jsunity.run(enumerateObjectTestSuite);
+jsunity.run(enumerateObjectLimitTestSuite);
 
 return jsunity.done();

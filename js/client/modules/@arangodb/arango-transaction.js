@@ -196,18 +196,24 @@ ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, opt
   if (!this.running()) {
     throwNotRunning();
   }
-  if (typeof query !== 'string' || query === undefined || query === '') {
-    throw 'need a valid query string';
-  }
-  if (options === undefined && cursorOptions !== undefined) {
-    options = cursorOptions;
-  }
-
   let body = {
     query: query,
     count: (cursorOptions && cursorOptions.count) || false,
     bindVars: bindVars || undefined,
   };
+  if (query && typeof query === 'object' && typeof query.toAQL !== 'function') {
+    body.query = query.query;
+    body.options = query.cursorOptions || undefined;
+    body.bindVars = query.bindVars || undefined;
+  }
+  else {
+    if (typeof query !== 'string' || query === undefined || query === '') {
+    throw 'need a valid query string';
+    }
+    if (options === undefined && cursorOptions !== undefined) {
+      options = cursorOptions;
+    }
+  }
 
   if (cursorOptions && cursorOptions.batchSize) {
     body.batchSize = cursorOptions.batchSize;

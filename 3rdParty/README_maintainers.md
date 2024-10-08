@@ -149,6 +149,12 @@ There is also a yet-unmerged branch "feature/rocksdb-latest" in that repo that
 includes the latest version of RocksDB for a future potential upgrade.
 It is based on RocksDB 9.5 as of the time of this writing (July 2024).
 
+Here is a bug fix, which we did first in our RocksDB fork:
+  https://github.com/arangodb/rocksdb/pull/7
+
+There is a corresponding PR in the main repository:
+  https://github.com/facebook/rocksdb/pull/12983
+
 ## s2geometry
 
 Just update code and directory name (commit hash) and apply patch
