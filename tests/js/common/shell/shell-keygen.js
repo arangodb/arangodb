@@ -37,6 +37,7 @@ const cluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const internal = require("internal");
 const isServer = typeof internal.arango === 'undefined';
+let IM = global.instanceManager;
 
 let graphs = require("@arangodb/general-graph");
 if (isEnterprise) {
@@ -58,8 +59,7 @@ if (isServer) {
     // eslint-disable-next-line no-native-reassign
     arango = internal.arango;
   }
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  endpoints = instanceInfo.endpoints;
+  endpoints = IM.endpoints;
 } else {
   // e.g. shell client environment (http)
   endpoints = [arango.getEndpoint()];
