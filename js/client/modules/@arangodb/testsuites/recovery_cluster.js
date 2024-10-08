@@ -302,7 +302,7 @@ function recovery (options) {
       params.options.disableMonitor = localOptions.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.temp_path, {
+        trs.writeTestResult(params.temp_path, {
           failed: 1,
           status: false, 
           message: "unable to run recovery test " + test,
