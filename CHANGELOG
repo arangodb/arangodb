@@ -1,8 +1,10 @@
 devel
 -----
 
-* FE-446: add missing primaryKeyCache, primarySortCache and storedValues cache
-  options for arangosearch views and inverted indexes.
+* FE-446: add missing primaryKeyCache, primarySort cache, fields cache and
+  storedValues cache options for inverted indexes and missing primaryKeyCache,
+  primarySortCache, links cache and storedValues cache options for arangosearch
+  views.
 
 * Removed the deprecated Batch API (`/_api/batch`).
   The arangobench `--batch-size` startup option is ignored now.
