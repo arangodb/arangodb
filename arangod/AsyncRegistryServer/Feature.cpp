@@ -83,9 +83,9 @@ struct Feature::PromiseCleanupThread {
     _cv.notify_one();
   }
 
-  std::jthread _thread;
   std::mutex _mutex;
   std::condition_variable _cv;
+  std::jthread _thread;
 };
 
 void Feature::start() {
