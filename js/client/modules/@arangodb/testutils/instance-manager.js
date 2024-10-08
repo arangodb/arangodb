@@ -375,6 +375,7 @@ class instanceManager {
         return true;
       }
       this._getMemLayout();
+      this.options.agency = this.options.agency || this.options.activefailover;
       if (this.options.agency) {
         for (let count = 0;
              count < this.agencyMgr.agencySize;
@@ -458,7 +459,7 @@ class instanceManager {
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.failover + "_" + count),
                                              this.restKeyFile,
-                                             this.agencyConfig,
+                                             this.agencyMgr,
                                              this.tmpDir,
                                              this.memlayout[instanceRole.failover]));
         this.urls.push(this.arangods[this.arangods.length -1].url);
@@ -561,6 +562,71 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
   // //////////////////////////////////////////////////////////////////////////////
 
+  detectCurrentLeader() {
+    let opts = {
+      method: 'POST',
+      jwt: crypto.jwtEncode(this.arangods[0].args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
+      headers: {'content-type': 'application/json' }
+    };
+    let count = 60;
+    while ((count > 0) && (this.agencyMgr.agencyInstances[0].pid !== null)) {
+      let reply = download(this.agencyMgr.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
+
+      if (!reply.error && reply.code === 200) {
+        let res = JSON.parse(reply.body);
+        print("Response ====> " + reply.body);
+        if (res[0].hasOwnProperty('arango') && res[0].arango.Plan.AsyncReplication.hasOwnProperty('Leader')){
+          let leader = res[0].arango.Plan.AsyncReplication.Leader;
+          if (leader) {
+            break;
+          }
+        }
+        count --;
+        if (count === 0) {
+          throw new Error("Leader is not selected");
+        }
+        sleep(0.5);
+      }
+    }
+    this.leader = null;
+    while (this.leader === null) {
+      this.urls.forEach(url => {
+        this.arangods.forEach(arangod => {
+          if ((arangod.url === url && arangod.pid === null)) {
+            throw new Error("detectCurrentleader: instance we attempt to query not alive");
+          }});
+        opts['method'] = 'GET';
+        let reply = download(url + '/_api/cluster/endpoints', '', opts);
+        if (reply.code === 200) {
+          let res;
+          try {
+            res = JSON.parse(reply.body);
+          }
+          catch (x) {
+            throw new Error("Failed to parse endpoints reply: " + JSON.stringify(reply));
+          }
+          let leaderEndpoint = res.endpoints[0].endpoint;
+          let leaderInstance;
+          this.arangods.forEach(d => {
+            if (d.endpoint === leaderEndpoint) {
+              leaderInstance = d;
+            }
+          });
+          this.leader = leaderInstance;
+          this.url = leaderInstance.url;
+          this.endpoint = leaderInstance.endpoint;
+        }
+        if (this.options.extremeVerbosity) {
+          print(url + " not a leader " + JSON.stringify(reply));
+        }
+      });
+      sleep(0.5);
+    }
+    if (this.options.extremeVerbosity) {
+      print("detected leader: " + this.leader.name);
+    }
+    return this.leader;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief waits for garbage collection using /_admin/execute

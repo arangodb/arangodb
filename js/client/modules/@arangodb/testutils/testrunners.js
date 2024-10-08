@@ -321,7 +321,6 @@ class shellv8Runner extends runLocalInArangoshRunner {
     let res = {failed: 0, status: true};
     let filtered = {};
     let rootDir = fs.join(fs.getTempPath(), 'shellv8Runner');
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     this.instanceManager = {
       rootDir: rootDir,
       endpoint: 'tcp://127.0.0.1:8888',
