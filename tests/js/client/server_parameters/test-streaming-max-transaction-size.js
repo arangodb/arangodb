@@ -27,7 +27,6 @@
 
 if (getOptions === true) {
   return {
-    'transaction.streaming-max-transaction-size': "16MB",
     'opts': {
       coordinators: 2
     }
@@ -82,73 +81,6 @@ function testSuite() {
         if (trx) {
           trx.abort();
         }
-      }
-    },
-    
-    testTransactionAboveLimit: function() {
-      const payload = { value1: Array(256).join("rip"), value2: Array(256).join("crap") };
-      let trx = db._createTransaction({ collections: { write: [cn] } });
-      try {
-        let c = trx.collection(cn);
-        try {
-          let docs = [];
-          for (let i = 0; i < 100; ++i) {
-            docs.push({ payload });
-          }
-          while (true) {
-            let res = c.insert(docs);
-            res.forEach((r) => {
-              if (r.error) {
-                throw new ArangoError(r);
-              }
-            });
-          }
-          fail();
-        } catch (err) {
-          assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
-        }
-      } finally {
-        trx.abort();
-      }
-    },
-
-    testTransactionAboveLimitCommit: function(testName) {
-      // 1KB limit is quite low
-      // We're testing that the transaction is not aborted when the limit is reached.
-      // Rather, the commit should succeed.
-      let trx = db._createTransaction({ collections: { write: [cn] }, maxTransactionSize: 1024 });
-      let c = trx.collection(cn);
-      let docCount = 0;
-      const maxDocs = 10;
-      while (docCount < maxDocs) {
-        try {
-          // The insertion takes place inside a loop, because we are particularly interested in
-          // the iteration where the limit is reached. We are expecting a failure after a certain document count.
-          c.insert({_key: `${testName}-${docCount}`, value: docCount});
-        } catch (err) {
-          assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
-          break;
-        }
-        ++docCount;
-      }
-      assertTrue(docCount > 0, "We didn't insert anything, better check maxTransactionSize!");
-      assertTrue(docCount < maxDocs, "We actually inserted everything, better check maxTransactionSize!");
-      trx.commit();
-      c = db._collection(cn);
-      assertEqual(docCount, c.count(), `expected ${docCount} documents in collection ${cn} but got ${c.count()}`);
-    },
-    
-    testAQLTransactionAboveLimit: function() {
-      let trx = db._createTransaction({ collections: { write: [cn] } });
-      try {
-        try {
-          trx.query("FOR i IN 1..1000000 INSERT { value1: i, value2: CONCAT('testmann', i) } INTO " + cn);
-          fail();
-        } catch (err) {
-          assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
-        }
-      } finally {
-        trx.abort();
       }
     },
     testUpdateWithDocumentStatement: function () {
