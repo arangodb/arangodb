@@ -1,7 +1,7 @@
 devel
 -----
 
-* Speed up shortest path computations by choosing more dilligently which
+* Speed up shortest path computations by choosing more diligently which
   side to expand next. This brings back 3.10 performance.
 
 * Removed the deprecated Batch API (`/_api/batch`).
