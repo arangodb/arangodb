@@ -108,6 +108,13 @@ void FileDescriptorsFeature::prepare() {
   _fileDescriptorsLimit.store(current.soft, std::memory_order_relaxed);
 }
 
+uint64_t FileDescriptorsFeature::current() const noexcept {
+  return _fileDescriptorsCurrent.load(std::memory_order_relaxed);
+}
+uint64_t FileDescriptorsFeature::limit() const noexcept {
+  return _fileDescriptorsLimit.load(std::memory_order_relaxed);
+}
+
 void FileDescriptorsFeature::countOpenFiles() {
   try {
     size_t numFiles = FileUtils::countFiles("/proc/self/fd");
