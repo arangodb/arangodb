@@ -402,6 +402,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
             // every time we do a potential TTL index purge
             options.skipAudit = true;
 
+            TRI_ASSERT(bindVars->slice().hasKey("@collection"));
             auto query = aql::Query::create(
                 transaction::StandaloneContext::create(*vocbase, origin),
                 aql::QueryString(::lookupQuery), bindVars, options);
