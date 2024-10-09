@@ -45,6 +45,21 @@
 #include <velocypack/HashedStringRef.h>
 #include <limits>
 
+namespace {
+
+bool almostEqual(double x, double y) {
+  if (x == y) {
+    return true;
+  }
+
+  auto diff = std::abs(x - y);
+  auto norm =
+      std::min((std::abs(x) + std::abs(y)), std::numeric_limits<double>::max());
+  return diff < std::max(std::numeric_limits<double>::round_error(),
+                         std::numeric_limits<double>::epsilon() * norm);
+}
+}  // namespace
+
 namespace arangodb::graph {
 
 /*
@@ -932,12 +947,33 @@ WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   // most graphs "expand" around their vertices. And even if we happen to
   // finish off one side first by this choice, this does not matter in the
   // grand scheme of things.
-  // Note that we had before an approach in which we always expanded the
-  // side which has so far achieved the smaller diameter and this turned
-  // out to be a very bad idea, since we often neglected to finish the
-  // cheap side and concentrated on the expensive side, spending a lot of
-  // cycles and time in the process.
-  if (_left.queueSize() <= _right.queueSize()) {
+  // Unfortunately, this does not work if we are enumerating all paths
+  // (for the legacy k-shortest-path or for k-paths). In this case, we
+  // have to always expanded the side which has so far achieved the
+  // smaller diameter, since otherwise we cannot guarantee that the paths
+  // come out in ascending weight order.
+  // Note that this latter approach turned out to be a very bad idea
+  // for plain shortest paths, since we often neglected to finish the
+  // cheap side and concentrated on the expensive side, spending a lot
+  // of cycles and time in the process.
+  // Therefore, we have to add the complexity to distinguish cases.
+  if (_options.getPathType() == PathType::Type::ShortestPath) {
+    if (_left.queueSize() <= _right.queueSize()) {
+      return BallSearchLocation::LEFT;
+    }
+    return BallSearchLocation::RIGHT;
+  }
+
+  // Only for legacy k-shortest-path, all shortest paths, and k-paths:
+  if (almostEqual(_left.peekQueue().getWeight(), _left.getDiameter())) {
+    return BallSearchLocation::LEFT;
+  }
+
+  if (almostEqual(_right.peekQueue().getWeight(), _right.getDiameter())) {
+    return BallSearchLocation::RIGHT;
+  }
+
+  if (_left.getDiameter() <= _right.getDiameter()) {
     return BallSearchLocation::LEFT;
   }
   return BallSearchLocation::RIGHT;
