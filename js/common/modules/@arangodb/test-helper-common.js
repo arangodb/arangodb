@@ -198,7 +198,6 @@ exports.helper = {
 };
 
 exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace, blacklist = []) {
-  print(blacklist)
   for (let testcase in deriveFrom) {
     let targetTestCase = testcase + namespace;
     if (testcase === "setUp" ||
