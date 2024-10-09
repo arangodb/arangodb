@@ -139,15 +139,6 @@ function BaseTestSuite(targetUser) {
   };
 
   return {
-    setUpAll : function () {
-      // set this failure point so that metrics updates are pushed immediately
-      internal.debugSetFailAt("alwaysPublishShardMetrics");
-    },
-      
-    tearDownAll : function () {
-      internal.debugRemoveFailAt("alwaysPublishShardMetrics");
-    },
-
     testDoesNotPolluteNormalMetricsAPI : function () {
       const cn = getUniqueCollectionName();
 
@@ -1798,6 +1789,8 @@ function TestUser1Suite() {
 
   let suite = {
     setUpAll: function () {
+      // set this failure point so that metrics updates are pushed immediately
+      internal.debugSetFailAt("alwaysPublishShardMetrics");
       users.save(user, "");
       users.grantDatabase(user, '_system', 'rw');
 
@@ -1810,6 +1803,7 @@ function TestUser1Suite() {
     },
 
     tearDownAll: function () {
+      internal.debugRemoveFailAt("alwaysPublishShardMetrics");
       arango.reconnect(endpoint, '_system', oldUser, '');
 
       db._useDatabase("_system");
@@ -1834,6 +1828,8 @@ function TestUser2Suite() {
 
   let suite = {
     setUpAll: function () {
+      // set this failure point so that metrics updates are pushed immediately
+      internal.debugSetFailAt("alwaysPublishShardMetrics");
       users.save(user, "");
       users.grantDatabase(user, '_system', 'rw');
 
@@ -1846,6 +1842,7 @@ function TestUser2Suite() {
     },
 
     tearDownAll: function () {
+      internal.debugRemoveFailAt("alwaysPublishShardMetrics");
       arango.reconnect(endpoint, '_system', oldUser, '');
 
       db._useDatabase("_system");
