@@ -272,45 +272,45 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   auto tmp = _queue.pop();
 
   // if the other side has explored this vertex, don't add it again
-  if (!other.hasBeenVisited(tmp)) {
-    auto posPrevious = _interior.append(std::move(tmp));
-    auto& step = _interior.getStepReference(posPrevious);
-
-    TRI_ASSERT(step.getWeight() >= _diameter);
-    _diameter = step.getWeight();
-    ValidationResult res = _validator.validatePath(step);
-
-    if (!res.isFiltered()) {
-      _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
-    }
-
-    if (!res.isPruned()) {
-      _provider.expand(step, posPrevious, [&](Step n) -> void {
-        // TODO: maybe the pathStore could be asked whether a vertex has been
-        // visited?
-        if (other.hasBeenVisited(n)) {
-          // Need to validate this step, too:
-          ValidationResult res =
-              _validator.validatePathWithoutGlobalVertexUniqueness(n);
-          // Note that we must not fully enforce uniqueness here for the
-          // following reason: If vertex uniqueness is set to global,
-          // then we would burn that vertex (which belongs to the
-          // other side!), so that we can no longer reach it with a
-          // different path, which might have a smaller weight.
-          if (!(res.isFiltered() || res.isPruned())) {
-            _haveSeenOtherSide = true;
-            other.matchResultsInShell(n, candidates, _validator);
-          }
-        } else {
-          // If the other side has already visited the vertex, we do not
-          // have to put it on our queue. But if not, we must look at it
-          // later:
-          _queue.append(std::move(n));
-        }
-      });
-    }
-  } else {
+  if (other.hasBeenVisited(tmp)) {
     _haveSeenOtherSide = true;
+  }
+
+  auto posPrevious = _interior.append(std::move(tmp));
+  auto& step = _interior.getStepReference(posPrevious);
+
+  TRI_ASSERT(step.getWeight() >= _diameter);
+  _diameter = step.getWeight();
+  ValidationResult res = _validator.validatePath(step);
+
+  if (!res.isFiltered()) {
+    _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
+  }
+
+  if (!res.isPruned()) {
+    _provider.expand(step, posPrevious, [&](Step n) -> void {
+      // TODO: maybe the pathStore could be asked whether a vertex has been
+      // visited?
+      if (other.hasBeenVisited(n)) {
+        // Need to validate this step, too:
+        ValidationResult res =
+            _validator.validatePathWithoutGlobalVertexUniqueness(n);
+        // Note that we must not fully enforce uniqueness here for the
+        // following reason: If vertex uniqueness is set to global,
+        // then we would burn that vertex (which belongs to the
+        // other side!), so that we can no longer reach it with a
+        // different path, which might have a smaller weight.
+        if (!(res.isFiltered() || res.isPruned())) {
+          _haveSeenOtherSide = true;
+          other.matchResultsInShell(n, candidates, _validator);
+        }
+      } else {
+        // If the other side has already visited the vertex, we do not
+        // have to put it on our queue. But if not, we must look at it
+        // later:
+        _queue.append(std::move(n));
+      }
+    });
   }
 }
 
