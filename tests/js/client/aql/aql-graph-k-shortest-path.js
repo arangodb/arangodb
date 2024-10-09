@@ -606,7 +606,6 @@ function kAttributeWeightShortestPathRegressionSuite() {
            RETURN p`).toArray();
       assertEqual(res.length, 3);
       assertEqual(res.map((x) => x.weight), [19, 19, 21], res);
-      require("internal").wait(3600);
     },
   };
 
