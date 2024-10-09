@@ -4,6 +4,9 @@ devel
 * Speed up shortest path computations by choosing more diligently which
   side to expand next. This brings back 3.10 performance.
 
+* Fixed a bug in (non-Yen) k-shortest-paths which could overlook some
+  paths.
+
 * Bind variables for TTL deletions should not be moved when now reused.
 
 * Removed the deprecated Batch API (`/_api/batch`).
