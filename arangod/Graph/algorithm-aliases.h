@@ -26,6 +26,7 @@
 #include "Graph/Enumerators/OneSidedEnumerator.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/Enumerators/WeightedTwoSidedEnumerator.h"
+#include "Graph/Enumerators/WeightedShortestPathEnumerator.h"
 #include "Graph/Enumerators/YenEnumerator.h"
 
 #include "Graph/Queues/FifoQueue.h"
@@ -86,7 +87,7 @@ using ShortestPathEnumerator = TwoSidedEnumerator<
                   VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
 
 template<class Provider>
-using WeightedShortestPathEnumerator = WeightedTwoSidedEnumerator<
+using WeightedShortestPathEnumeratorAlias = WeightedShortestPathEnumerator<
     WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
     Provider,
     PathValidator<Provider, PathStore<typename Provider::Step>,
@@ -104,14 +105,15 @@ using TracedShortestPathEnumerator = TwoSidedEnumerator<
         VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
 template<class Provider>
-using TracedWeightedShortestPathEnumerator = WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<typename Provider::Step>>,
-    PathStoreTracer<PathStore<typename Provider::Step>>,
-    ProviderTracer<Provider>,
-    PathValidatorTracer<PathValidator<
-        ProviderTracer<Provider>,
+using TracedWeightedShortestPathEnumeratorAlias =
+    WeightedShortestPathEnumerator<
+        QueueTracer<WeightedQueue<typename Provider::Step>>,
         PathStoreTracer<PathStore<typename Provider::Step>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+        ProviderTracer<Provider>,
+        PathValidatorTracer<PathValidator<
+            ProviderTracer<Provider>,
+            PathStoreTracer<PathStore<typename Provider::Step>>,
+            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
 // SHORTEST_PATH for Yen:
 template<class Provider>
@@ -123,12 +125,13 @@ using ShortestPathEnumeratorForYen = TwoSidedEnumerator<
         VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
 template<class Provider>
-using WeightedShortestPathEnumeratorForYen = WeightedTwoSidedEnumerator<
-    WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
-    Provider,
-    PathValidatorTabooWrapper<PathValidator<
-        Provider, PathStore<typename Provider::Step>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+using WeightedShortestPathEnumeratorForYenAlias =
+    WeightedShortestPathEnumerator<
+        WeightedQueue<typename Provider::Step>,
+        PathStore<typename Provider::Step>, Provider,
+        PathValidatorTabooWrapper<PathValidator<
+            Provider, PathStore<typename Provider::Step>,
+            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
 
 // SHORTEST_PATH for Yen with tracing:
 
@@ -143,14 +146,15 @@ using TracedShortestPathEnumeratorForYen = TwoSidedEnumerator<
         VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
 
 template<class Provider>
-using TracedWeightedShortestPathEnumeratorForYen = WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<typename Provider::Step>>,
-    PathStoreTracer<PathStore<typename Provider::Step>>,
-    ProviderTracer<Provider>,
-    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
-        ProviderTracer<Provider>,
+using TracedWeightedShortestPathEnumeratorForYenAlias =
+    WeightedShortestPathEnumerator<
+        QueueTracer<WeightedQueue<typename Provider::Step>>,
         PathStoreTracer<PathStore<typename Provider::Step>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
+        ProviderTracer<Provider>,
+        PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
+            ProviderTracer<Provider>,
+            PathStoreTracer<PathStore<typename Provider::Step>>,
+            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
 
 // K_PATH implementation
 template<class Provider>
@@ -189,14 +193,14 @@ using TracedYenEnumeratorWithProvider =
 // Yen's algorithm implementation with weights:
 template<class Provider>
 using WeightedYenEnumeratorWithProvider =
-    YenEnumerator<Provider, WeightedShortestPathEnumeratorForYen<Provider>,
+    YenEnumerator<Provider, WeightedShortestPathEnumeratorForYenAlias<Provider>,
                   true /* IsWeighted */>;
 
 // Yen's algorithm implementation with weights using tracing:
 template<class Provider>
 using TracedWeightedYenEnumeratorWithProvider =
     YenEnumerator<ProviderTracer<Provider>,
-                  TracedWeightedShortestPathEnumeratorForYen<Provider>,
+                  TracedWeightedShortestPathEnumeratorForYenAlias<Provider>,
                   true /* IsWeighted */>;
 
 // WEIGHTED_K_SHORTEST_PATHS implementation
