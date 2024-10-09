@@ -244,6 +244,37 @@ const createGraph = () => {
   // * 121 on loop
 };
 
+const createGraph2 = () => {
+  gm._create(graphName, [ gm._relation(e1Name, vName, vName) ], [],
+    {
+      numberOfShards: 9
+    }
+  );
+
+  const vertices = [];
+  const es = [];
+  vertices.push({_key:"S"});
+  vertices.push({_key:"V"});
+  vertices.push({_key:"W"});
+  vertices.push({_key:"U"});
+  es.push({_from:`${vName}/S`,_to:`${vName}/W`,weight:9});
+  es.push({_from:`${vName}/S`,_to:`${vName}/V`,weight:10});
+  es.push({_from:`${vName}/W`,_to:`${vName}/Z`,weight:10});
+  es.push({_from:`${vName}/V`,_to:`${vName}/Z`,weight:9});
+  es.push({_from:`${vName}/V`,_to:`${vName}/W`,weight:1});
+
+  // S ------- 9 ------> W 
+  // |                 -/|
+  // |         /-------/||
+  // 10       1         10 
+  // |  -----/           |
+  // v /                 v
+  // V ------- 9 ------> Z
+
+  db[vName].save(vertices);
+  db[e1Name].save(es);
+};
+
 function kConstantWeightShortestPathTestSuite() {
   return {
     setUpAll: function () {
@@ -548,7 +579,35 @@ function kAttributeWeightShortestPathTestSuite() {
         isPathValid(result[2], 3, 99, true);
         isPathValid(result[3], 6, 121, true);
       }
-    }
+    },
+  };
+}
+
+function kAttributeWeightShortestPathRegressionSuite() {
+  return {
+    setUpAll: function () {
+      tearDownAll();
+      createGraph2();
+    },
+    tearDownAll,
+
+    testWeightRegressionOverlookedPaths: function () {
+      let res = db._query(
+        `FOR p IN OUTBOUND K_SHORTEST_PATHS "${vName}/S" TO "${vName}/Z" 
+           GRAPH ${graphName}
+           OPTIONS { weightAttribute: "weight"}
+           RETURN p`).toArray();
+      assertEqual(res.length, 3);
+      assertEqual(res.map((x) => x.weight), [19, 19, 21], res);
+      res = db._query(
+        `FOR p IN OUTBOUND K_SHORTEST_PATHS "${vName}/S" TO "${vName}/Z" 
+           GRAPH ${graphName} 
+           OPTIONS { weightAttribute: "weight", algorithm: "yen"}
+           RETURN p`).toArray();
+      assertEqual(res.length, 3);
+      assertEqual(res.map((x) => x.weight), [19, 19, 21], res);
+      require("internal").wait(3600);
+    },
   };
 
 }
@@ -665,6 +724,7 @@ jsunity.run(kShortestPathsSyntaxTestSuite);
 jsunity.run(kConstantWeightShortestPathTestSuite);
 jsunity.run(kAttributeWeightShortestPathTestSuite);
 jsunity.run(kShortestPathsErrorTestSuite);
+jsunity.run(kAttributeWeightShortestPathRegressionSuite);
 
 
 return jsunity.done();
