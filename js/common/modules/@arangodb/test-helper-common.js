@@ -88,7 +88,13 @@ exports.transactionFailure = function (trx, errorCode, errorMessage, crashOnSucc
       (ex.errorNum === errorCode) && // check for right error code
       (!errorMessage || (ex.message === errorMessage))) { // optional errorMessage
       if (crashOnSuccess) {
-        internal.debugTerminate('crashing server');
+        if (global.hasOwnProperty('instanceManager')) {
+          global.instanceManager.debugTerminate();
+        } else if (internal.hasOwnProperty('debugTerminate')) {
+          internal.debugTerminate('crashing server');
+        } else {
+          throw new Error('instance manager not found!');
+        }
       }
       return 0;
     }
@@ -102,25 +108,30 @@ exports.truncateFailure = function (collection) {
     collection.truncate();
     return 1;
   } catch (ex) {
-    if (!ex instanceof arangodb.ArangoError ||
+    if (!(ex instanceof arangodb.ArangoError) ||
       ex.errorNum !== internal.errors.ERROR_DEBUG.code) {
       throw ex;
     }
   }
-  internal.debugTerminate('crashing server');
+  if (global.hasOwnProperty('instanceManager')) {
+    global.instanceManager.debugTerminate();
+  } else if (internal.hasOwnProperty('debugTerminate')) {
+    internal.debugTerminate('crashing server');
+  } else {
+    throw new Error('instance manager not found!');
+  }
 };
 
 function getInstanceInfo() {
+  if (global.hasOwnProperty('instanceManager')) {
+    instanceInfo = global.instanceManager;
+  }
   if (instanceInfo === null) {
-    if (global.hasOwnProperty('instanceManager')) {
-      instanceInfo = global.instanceManager;
-    } else {
-      instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-      if (instanceInfo.arangods.length > 2) {
-        instanceInfo.arangods.forEach(arangod => {
-          arangod.id = fs.readFileSync(fs.join(arangod.dataDir, 'UUID')).toString();
-        });
-      }
+    instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+    if (instanceInfo.arangods.length > 2) {
+      instanceInfo.arangods.forEach(arangod => {
+        arangod.id = fs.readFileSync(fs.join(arangod.dataDir, 'UUID')).toString();
+      });
     }
   }
   return instanceInfo;
@@ -187,6 +198,7 @@ exports.helper = {
 };
 
 exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace, blacklist = []) {
+  print(blacklist)
   for (let testcase in deriveFrom) {
     let targetTestCase = testcase + namespace;
     if (testcase === "setUp" ||
