@@ -46,6 +46,7 @@
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EnvironmentFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -512,10 +513,13 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
       server.getFeature<metrics::MetricsFeature>().serverStatistics();
   result.add(keys["processUptime"], VPackValue(serverInfo.uptime()));
 
+  FileDescriptorsFeature& fd = server.getFeature<FileDescriptorsFeature>();
   ProcessInfo info = TRI_ProcessInfoSelf();
   result.add(keys["nThreads"], VPackValue(info._numberThreads));
   result.add(keys["virtualSize"], VPackValue(info._virtualSize));
   result.add(keys["residentSetSize"], VPackValue(info._residentSize));
+  result.add("fileDescrtors", VPackValue(fd.current()));
+  result.add("fileDescrtorsLimit", VPackValue(fd.limit()));
   result.close();  // processStats
 
   CpuUsageFeature& cpuUsage = server.getFeature<CpuUsageFeature>();
