@@ -165,8 +165,7 @@
   };
   
   exports.debugTerminate = function() {
-    // NOOP. Terminate should be executed
-    // by tests framework not by client
+    //throw('not implemented');
   };
   
   exports.debugTerminateInstance = function(endpoint) {

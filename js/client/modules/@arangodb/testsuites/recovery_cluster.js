@@ -166,6 +166,7 @@ function runArangodRecovery (params, useEncryption) {
       };
     }
   } else {
+    params.instanceManager.debugTerminate();
     print(BLUE + "Restarting cluster " + RESET);
     params.instanceManager.reStartInstance();
     let tryCount = 10;
@@ -191,7 +192,6 @@ function runArangodRecovery (params, useEncryption) {
       exitStatus: {},
       getStructure: function() { return {}; }
     };
-
     pu.executeAndWait(pu.ARANGOSH_BIN,
                       toArgv(agentArgs),
                       params.options,
