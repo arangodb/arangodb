@@ -106,28 +106,40 @@ class agencyMgr {
     return count > this.agencySize;
   }
   getAnyAgent(agent, path, method, body = null) {
-    let opts = {};
-    if (body === null) {
-      body = (method === 'POST') ? '[["/"]]' : '';
+    while(true) {
+      let opts = {};
+      if (body === null) {
+        body = (method === 'POST') ? '[["/"]]' : '';
+      }
+      if (agent.JWT) {
+        opts = pu.makeAuthorizationHeaders(agent.options, agent.args, agent.JWT);
+      } else {
+        let allArgs = [agent.args, agent.moreArgs];
+        allArgs.forEach(args => {
+          if (allArgs.hasOwnProperty('authOpts')) {
+            opts['jwt'] = crypto.jwtEncode(agent.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+          } else if (allArgs.hasOwnProperty('server.jwt-secret')) {
+            opts['jwt'] = crypto.jwtEncode(args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+          } else if (agent.jwtFiles) {
+            opts['jwt'] = crypto.jwtEncode(fs.read(agent.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+          }
+        });
+      }
+      opts['method'] = method;
+      opts['returnBodyOnError'] = true;
+      opts['followRedirects'] = false;
+      let ret = download(agent.url + path, body, opts);
+      if (ret.code !== 307 && ret.code !== 303) {
+        return ret;
+      }
+      try {
+        let newAgentUrl = ret.headers['location'];
+        agent = this.agencyInstances.filter(agent => { return newAgentUrl.search(agent.url) === 0;})[0];
+      } catch (ex) {
+        throw new Error(`couldn't find agent to redirect to ${JSON.stringify(ret)}`);
+      }
+      print(`following redirect to ${agent.name}`);
     }
-    if (agent.JWT) {
-      opts = pu.makeAuthorizationHeaders(agent.options, agent.args, agent.JWT);
-    } else {
-      let allArgs = [agent.args, agent.moreArgs];
-      allArgs.forEach(args => {
-        if (allArgs.hasOwnProperty('authOpts')) {
-          opts['jwt'] = crypto.jwtEncode(agent.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-        } else if (allArgs.hasOwnProperty('server.jwt-secret')) {
-          opts['jwt'] = crypto.jwtEncode(args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-        } else if (agent.jwtFiles) {
-          opts['jwt'] = crypto.jwtEncode(fs.read(agent.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-        }
-      });
-    }
-    opts['method'] = method;
-    opts['returnBodyOnError'] = true;
-    let ret = download(agent.url + path, body, opts);
-    return ret;
   }
   postAgency(operation, body = null) {
     let res = this.getAnyAgent(this.agencyInstances[0],
