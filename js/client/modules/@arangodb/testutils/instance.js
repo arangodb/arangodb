@@ -1525,7 +1525,7 @@ class instance {
         signals.push(22);
       }
       if (res.hasOwnProperty('signal') &&
-          signals.find(signal => { res.signal === signal;}).length ===0) {
+          signals.filter(signal => { return res.signal === signal;}).length ===0) {
         throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
       }
       return true;
