@@ -1521,7 +1521,8 @@ class instance {
       this.exitStatus = res;
       this.pid = null;
       if (res.hasOwnProperty('signal') &&
-          (res.signal !== 6)&&(res.signal !== 9)) {
+          (res.signal !== 6)&&(res.signal !== 9)&&
+          (res.signal !== 22)) { // 22 = windows sigabrt
         throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
       }
       return true;
