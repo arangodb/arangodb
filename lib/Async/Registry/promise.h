@@ -56,8 +56,13 @@ struct Promise {
   // identifies the promise list it belongs to
   std::shared_ptr<ThreadRegistry> registry;
   Promise* next = nullptr;
-  // only needed to remove an item
-  Promise* previous = nullptr;
+  // this needs to be an atomic because it is accessed during garbage collection
+  // which can happen in a different thread. This thread will load the value.
+  // Since there is only one transition, i.e. from nullptr to non-null ptr,
+  // any missed update will result in a pessimistic execution and not an error.
+  // More precise, the item might not be deleted, although it is not in head
+  // position and can be deleted. It will be deleted next round.
+  std::atomic<Promise*> previous = nullptr;
   // only needed to garbage collect promises
   Promise* next_to_free = nullptr;
 };
