@@ -1,3 +1,13 @@
+3.12.2.2 (2024-10-10)
+---------------------
+
+* Fix circleci setup w.r.t. enterprise branch.
+
+* Add file descriptors to telemetrics.
+
+* Bind variables for TTL deletions should not be moved when now reused.
+
+
 3.12.2.1 (2024-09-16)
 ---------------------
 
