@@ -1520,9 +1520,12 @@ class instance {
       // the test may have abortet by itself already, using SIG_ARBRT or SIG_KILL.
       this.exitStatus = res;
       this.pid = null;
+      let signals = [6, 9];
+      if (platform.substr(0, 3) === 'win') {
+        signals.push(22);
+      }
       if (res.hasOwnProperty('signal') &&
-          (res.signal !== 6)&&(res.signal !== 9)&&
-          (res.signal !== 22)) { // 22 = windows sigabrt
+          signals.find((signal) => res.signal === signal).length ===0)
         throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
       }
       return true;
