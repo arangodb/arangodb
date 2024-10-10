@@ -279,6 +279,6 @@ struct std::allocator_traits<arangodb::ResourceUsageAllocator<T, R>> {
   }
 
   static constexpr size_type max_size(const allocator_type&) noexcept {
-    return size_t(-1) / sizeof(value_type);
+    return std::numeric_limits<size_type>::max() / sizeof(value_type);
   }
 };
