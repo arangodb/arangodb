@@ -1523,6 +1523,7 @@ class instance {
       let signals = [6, 9];
       if (platform.substr(0, 3) === 'win') {
         signals.push(22);
+        signals.push(-1254); // agents exit by that - why?
       }
       if (res.hasOwnProperty('signal') &&
           signals.filter(signal => { return res.signal === signal;}).length ===0) {
