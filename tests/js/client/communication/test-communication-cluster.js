@@ -225,19 +225,19 @@ function GenericAqlSetupPathSuite(type) {
   const selectExclusiveQuery = () => {
     switch (type) {
       case "Plain":
-        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: ''}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: ''}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}`;
       case "Graph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key, b: [{c: [{d: 'a'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key, b: [{c: [{d: 'a'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}`;
       case "NamedGraph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key, b: [{c: [{d: 'b'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {value: t._key, b: [{c: [{d: 'b'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}`;
       case "View":
-        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}`;
       case "SearchAliasView":
-        return `db._query("FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}`;
       case "InvertedIndex":
-        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'd'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}`;
       case "Satellite":
-        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'v'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}")`;
+        return `FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'v'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: true}`;
       default:
         // Illegal Test
         assertEqual(true, false);
@@ -247,19 +247,19 @@ function GenericAqlSetupPathSuite(type) {
   const selectWriteQuery = () => {
     switch (type) {
       case "Plain":
-        return `db._query("FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}`;
       case "Graph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 's'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 's'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}`;
       case "NamedGraph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'f'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'f'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}`;
       case "View":
-        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}`;
       case "SearchAliasView":
-        return `db._query("FOR v IN ${searchAliasViewName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `FOR v IN ${searchAliasViewName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}`;
       case "InvertedIndex":
-        return `db._query("FOR v IN ${vertexName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `FOR v IN ${vertexName} OPTIONS {waitForSync: true} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'q'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}`;
       case "Satellite":
-        return `db._query("FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'm'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}")`;
+        return `FOR v IN ${vertexName} FOR x IN 1..${docsPerWrite} INSERT {b: [{c: [{d: 'm'}]}]} INTO ${twoShardColName} OPTIONS {exclusive: false}`;
         default:
         // Illegal Test
         assertEqual(true, false);
@@ -269,34 +269,42 @@ function GenericAqlSetupPathSuite(type) {
   const selectReadQuery = () => {
     switch (type) {
       case "Plain":
-        return `db._query("FOR x IN ${twoShardColName} RETURN x")`;
+        return `FOR x IN ${twoShardColName} RETURN x`;
       case "Graph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN ${twoShardColName} RETURN x")`;
+        return `FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v ${edgeName} FOR x IN ${twoShardColName} RETURN x`;
       case "NamedGraph":
-        return `db._query("FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN ${twoShardColName} RETURN x")`;
+        return `FOR v IN ${vertexName} FOR t IN 1 OUTBOUND v GRAPH ${graphName} FOR x IN ${twoShardColName} RETURN x`;
       case "View":
-        return `db._query("FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;
+        return `FOR v IN ${viewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x`;
       case "SearchAliasView":
-        return `db._query("FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;
+        return `FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x`;
       case "InvertedIndex":
-        return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;  
+        return `FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x`;  
       case "Satellite":
-        return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;
+        return `FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x`;
       default:
         // Illegal Test
         assertEqual(true, false);
     }
   };
 
-  const exclusiveQuery = selectExclusiveQuery();
-  const writeQuery = selectWriteQuery();
-  const readQuery = selectReadQuery();
+  const wrapQueryToJS = function (query) {
+    return `
+      console.log("starting query => ${query}");
+      console.log(db._query("${query}").toArray());
+     console.log("done.");
+   `;
+  };
+  const exclusiveQuery = wrapQueryToJS(selectExclusiveQuery());
+  const writeQuery = wrapQueryToJS(selectWriteQuery());
+  const readQuery = wrapQueryToJS(selectReadQuery());
   const jsWriteAction = `
     function() {
       const db = require("@arangodb").db;
       const col = db.${twoShardColName};
       for (let i = 0; i < ${docsPerWrite}; ++i) {
         col.save({b: [{c: [{d: i.toString()}]}]});
+        console.log("I: " + i);
       }
     }
   `;
@@ -347,9 +355,9 @@ function GenericAqlSetupPathSuite(type) {
         result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
       }
       if (result.code !== 200) {
-        print('apiExclusive failure:');
-        print(result);
-        print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+        console.log('apiExclusive failure:');
+        console.log(result);
+        console.log(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
       }
     } else {
       print(result.parsedBody);
@@ -368,12 +376,12 @@ function GenericAqlSetupPathSuite(type) {
         result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
       }
       if (result.code !== 200) {
-        print('apiWrite failure:');
-        print(result);
-        print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+        console.log('apiWrite failure:');
+        console.log(result);
+        console.log(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
       }
     } else {
-      print(result.parsedBody);
+      console.log(result.parsedBody);
     }
   `;
   const apiRead = `
@@ -389,12 +397,12 @@ function GenericAqlSetupPathSuite(type) {
         result = arango.PUT_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {});
       }
       if (result.code !== 200) {
-        print('apiRead failure:');
-        print(result);
-        print(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
+        console.log('apiRead failure:');
+        console.log(result);
+        console.log(arango.DELETE_RAW('/_api/transaction/' + encodeURIComponent(trx), {}, {}));
       }
     } else {
-      print(result.parsedBody);
+      console.log(result.parsedBody);
     }
   `;
 
@@ -403,7 +411,9 @@ function GenericAqlSetupPathSuite(type) {
     for (let i = 0; i < ${docsPerWrite}; ++i) {
       docs.push({b: [{c: [{d: i.toString()}]}]});
     }
+    console.log("saving documents");
     db["${twoShardColName}"].save(docs);
+    console.log("done");
   `;
 
   const singleRun = (tests) => {
@@ -679,16 +689,14 @@ function AqlSatelliteSetupPathSuite() {
 }
 
 // jsunity.run(CommunicationSuite);
-if (internal.isCluster()) {
-  jsunity.run(AqlSetupPathSuite);
-  jsunity.run(AqlGraphSetupPathSuite);
-  jsunity.run(AqlNamedGraphSetupPathSuite);
-  jsunity.run(AqlViewSetupPathSuite);
-  jsunity.run(AqlSearchAliasViewSetupPathSuite);
-  jsunity.run(AqlSearchInvertedIndexSetupPathSuite);
-  if (isEnterprise) {
-    jsunity.run(AqlSatelliteSetupPathSuite);
-  }
+jsunity.run(AqlSetupPathSuite);
+jsunity.run(AqlGraphSetupPathSuite);
+jsunity.run(AqlNamedGraphSetupPathSuite);
+jsunity.run(AqlViewSetupPathSuite);
+jsunity.run(AqlSearchAliasViewSetupPathSuite);
+jsunity.run(AqlSearchInvertedIndexSetupPathSuite);
+if (isEnterprise) {
+  jsunity.run(AqlSatelliteSetupPathSuite);
 }
 
 return jsunity.done();
