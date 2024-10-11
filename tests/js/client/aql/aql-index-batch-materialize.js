@@ -293,6 +293,46 @@ function IndexBatchMaterializeTestSuite() {
       assertTrue(nodes.indexOf('FilterNode') < nodes.indexOf('MaterializeNode'));
     },
 
+    testMaterializeFilterStoredValuesMaxProjections: function () {
+      {
+        const query = `
+        FOR doc IN ${collection} OPTIONS {maxProjections: 1}
+          FILTER doc.z == 5
+          LET b = doc.w * 2 + doc.z * 3
+          FILTER b < 5
+          RETURN [doc, b]
+      `;
+
+        const {materializeNode, indexNode, nodes} = expectOptimization(query);
+        assertEqual(normalize(indexNode.projections), []);
+        assertEqual(normalize(materializeNode.projections), []);
+
+        // expect `MATERIALIZE` not to be after `FILTER`
+        assertNotEqual(nodes.indexOf('FilterNode'), -1);
+        assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+        assertTrue(nodes.indexOf('FilterNode') > nodes.indexOf('MaterializeNode'));
+      }
+      // assert that it still works if enough projections are allowed
+      {
+        const query = `
+        FOR doc IN ${collection} OPTIONS {maxProjections: 3}
+          FILTER doc.z == 5
+          LET b = doc.w * 2 + doc.z * 3
+          FILTER b < 5
+          RETURN [doc, b]
+      `;
+
+        const {materializeNode, indexNode, nodes} = expectOptimization(query);
+        assertEqual(normalize(indexNode.projections), [["w"], ["z"]]);
+        assertEqual(normalize(materializeNode.projections), []);
+
+        // expect `MATERIALIZE` to be after `FILTER`
+        assertNotEqual(nodes.indexOf('FilterNode'), -1);
+        assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+        assertTrue(nodes.indexOf('FilterNode') < nodes.indexOf('MaterializeNode'));
+      }
+    },
+
     testMaterializeDoubleFilterStoredValues: function () {
       const query = `
         FOR d1 IN ${collection}
