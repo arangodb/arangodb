@@ -448,14 +448,14 @@ function joinBGShells (options, clients, waitFor, cn) {
   while (++tries < waitFor) {
     clients.forEach(function (client) {
       if (!client.done) {
-        let status = internal.statusExternal(client.client.pid);
-        if (status.status !== 'RUNNING') {
-          let success = client.client.sh.fetchSanFileAfterExit(client.client.pid);
-          IM.serverCrashedLocal |= success;
-          client.failed = success;
+        client.status = internal.statusExternal(client.client.pid);
+        if (client.status.status !== 'RUNNING') {
+          let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          IM.serverCrashedLocal |= failed;
+          client.failed = failed;
           client.done = true;
         }
-        if (status.status === 'TERMINATED' && status.exit === 0) {
+        if (client.status.status === 'TERMINATED' && client.status.exit === 0) {
           IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
           client.failed = false;
         }
