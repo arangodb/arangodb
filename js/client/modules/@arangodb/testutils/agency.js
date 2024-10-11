@@ -106,28 +106,40 @@ class agencyMgr {
     return count > this.agencySize;
   }
   getAnyAgent(agent, path, method, body = null) {
-    let opts = {};
-    if (body === null) {
-      body = (method === 'POST') ? '[["/"]]' : '';
+    while(true) {
+      let opts = {};
+      if (body === null) {
+        body = (method === 'POST') ? '[["/"]]' : '';
+      }
+      if (agent.JWT) {
+        opts = pu.makeAuthorizationHeaders(agent.options, agent.args, agent.JWT);
+      } else {
+        let allArgs = [agent.args, agent.moreArgs];
+        allArgs.forEach(args => {
+          if (allArgs.hasOwnProperty('authOpts')) {
+            opts['jwt'] = crypto.jwtEncode(agent.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+          } else if (allArgs.hasOwnProperty('server.jwt-secret')) {
+            opts['jwt'] = crypto.jwtEncode(args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+          } else if (agent.jwtFiles) {
+            opts['jwt'] = crypto.jwtEncode(fs.read(agent.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+          }
+        });
+      }
+      opts['method'] = method;
+      opts['returnBodyOnError'] = true;
+      opts['followRedirects'] = false;
+      let ret = download(agent.url + path, body, opts);
+      if (ret.code !== 307 && ret.code !== 303) {
+        return ret;
+      }
+      try {
+        let newAgentUrl = ret.headers['location'];
+        agent = this.agencyInstances.filter(agent => { return newAgentUrl.search(agent.url) === 0;})[0];
+      } catch (ex) {
+        throw new Error(`couldn't find agent to redirect to ${JSON.stringify(ret)}`);
+      }
+      print(`following redirect to ${agent.name}`);
     }
-    if (agent.JWT) {
-      opts = pu.makeAuthorizationHeaders(agent.options, agent.args, agent.JWT);
-    } else {
-      let allArgs = [agent.args, agent.moreArgs];
-      allArgs.forEach(args => {
-        if (allArgs.hasOwnProperty('authOpts')) {
-          opts['jwt'] = crypto.jwtEncode(agent.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-        } else if (allArgs.hasOwnProperty('server.jwt-secret')) {
-          opts['jwt'] = crypto.jwtEncode(args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-        } else if (agent.jwtFiles) {
-          opts['jwt'] = crypto.jwtEncode(fs.read(agent.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
-        }
-      });
-    }
-    opts['method'] = method;
-    opts['returnBodyOnError'] = true;
-    let ret = download(agent.url + path, body, opts);
-    return ret;
   }
   postAgency(operation, body = null) {
     let res = this.getAnyAgent(this.agencyInstances[0],
@@ -334,73 +346,6 @@ class agencyMgr {
       }
     }
   }
-
-  detectCurrentLeader() {
-    let opts = {
-      method: 'POST',
-      jwt: crypto.jwtEncode(this.agencyInstances[0].args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
-      headers: {'content-type': 'application/json' }
-    };
-    let count = 60;
-    while ((count > 0) && (this.agencyInstances[0].pid !== null)) {
-      let reply = download(this.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
-
-      if (!reply.error && reply.code === 200) {
-        let res = JSON.parse(reply.body);
-        print("Response ====> " + reply.body);
-        if (res[0].hasOwnProperty('arango') && res[0].arango.Plan.AsyncReplication.hasOwnProperty('Leader')){
-          let leader = res[0].arango.Plan.AsyncReplication.Leader;
-          if (leader) {
-            break;
-          }
-        }
-        count --;
-        if (count === 0) {
-          throw new Error("Leader is not selected");
-        }
-        sleep(0.5);
-      }
-    }
-    this.leader = null;
-    while (this.leader === null) {
-      this.urls.forEach(url => {
-        this.agencyInstances.forEach(arangod => {
-          if ((arangod.url === url && arangod.pid === null)) {
-            throw new Error("detectCurrentleader: instance we attempt to query not alive");
-          }});
-        opts['method'] = 'GET';
-        let reply = download(url + '/_api/cluster/endpoints', '', opts);
-        if (reply.code === 200) {
-          let res;
-          try {
-            res = JSON.parse(reply.body);
-          }
-          catch (x) {
-            throw new Error("Failed to parse endpoints reply: " + JSON.stringify(reply));
-          }
-          let leaderEndpoint = res.endpoints[0].endpoint;
-          let leaderInstance;
-          this.agencyInstances.forEach(d => {
-            if (d.endpoint === leaderEndpoint) {
-              leaderInstance = d;
-            }
-          });
-          this.leader = leaderInstance;
-          this.url = leaderInstance.url;
-          this.endpoint = leaderInstance.endpoint;
-        }
-        if (this.options.extremeVerbosity) {
-          print(url + " not a leader " + JSON.stringify(reply));
-        }
-      });
-      sleep(0.5);
-    }
-    if (this.options.extremeVerbosity) {
-      print("detected leader: " + this.leader.name);
-    }
-    return this.leader;
-  }
-
 }
 
 exports.registerOptions = function(optionsDefaults, optionsDocumentation, optionHandlers) {

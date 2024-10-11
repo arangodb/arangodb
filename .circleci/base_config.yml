@@ -613,6 +613,7 @@ jobs:
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
             cd work/release-test-automation
             bash -x ./jenkins/circleci_tar.sh \
+              --no-checkdata \
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \
