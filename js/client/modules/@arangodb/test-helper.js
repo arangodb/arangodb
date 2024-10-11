@@ -423,7 +423,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 
     // clear failure points
     debug("clearing all potential failure points");
-    exports.clearAllFailurePoints();
+    global.instanceManager.debugClearFailAt();
   
     debug("stopping all test clients");
     // broad cast stop signal
