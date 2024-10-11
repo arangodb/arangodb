@@ -302,7 +302,7 @@ class agencyMgr {
       print("no agency check this time.");
       return;
     }
-    let count = (isArm || this.options.isInstrumented) ? 75 : 25;
+    let count = (isArm || this.options.isInstrumented) ? 80 : 30;
     while (count > 0) {
       let haveConfig = 0;
       let haveLeader = 0;
