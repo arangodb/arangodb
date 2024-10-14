@@ -592,7 +592,9 @@ jobs:
         type: string
       browser:
         type: string
-      # TODO add more parameters
+      rta-branch:
+        type: string
+        default: "main"
     steps:
       - add_ssh_keys:
           fingerprints:
