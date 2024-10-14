@@ -81,6 +81,7 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                                                     center,
                                                                 size_t depth) {
   clear();
+  _center = center;
   auto firstStep = _provider.startVertex(center, depth);
   _queue.append(std::move(firstStep));
 }
@@ -272,7 +273,8 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
     _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
   }
 
-  if (!res.isPruned()) {
+  if (!res.isPruned() && step.getVertex().getID() != other.getCenter()) {
+    // We do not want to go further than the center of the other side!
     _provider.expand(step, posPrevious, [&](Step n) -> void {
       // TODO: maybe the pathStore could be asked whether a vertex has been
       // visited?
@@ -668,7 +670,7 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
       // expanded by the right hand side. Since w' < d1+d2, there is no
       // "gap" between the two sides: There cannot be a vertex on the path,
       // which is both at least d1 from the start and at least d2 from the
-      // target. It might even be that some vertex on the PATH has been
+      // target. It might even be that some vertex on the path P has been
       // expanded by both sides. In any case, there must be an edge on the
       // path, so that the source of the edge has been expanded by the
       // left hand side and the target of the edge has been expanded

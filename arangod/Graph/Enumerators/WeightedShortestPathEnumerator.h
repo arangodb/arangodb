@@ -274,13 +274,20 @@ class WeightedShortestPathEnumerator {
       _validator.setForbiddenEdges(std::move(forbidden));
     };
 
-   private : auto clearProvider() -> void;
+    auto getCenter() const noexcept -> VertexRef { return _center; }
+
+   private:
+    auto clearProvider() -> void;
+
    private:
     // TODO: Double check if we really need the monitor here. Currently unused.
     arangodb::ResourceMonitor& _resourceMonitor;
 
     // This stores all paths processed by this ball
     PathStoreType _interior;
+
+    // The center:
+    VertexRef _center;
 
     // The next elements to process
     QueueType _queue;
