@@ -400,14 +400,6 @@ class WeightedShortestPathEnumerator {
     return _resultPath;
   }
 
-  /**
-   * @brief Skip the next Path, like getNextPath, but does not return the path.
-   *
-   * @return true Found and skipped a path.
-   * @return false No path found.
-   */
-
-  bool skipPath();
   auto destroyEngines() -> void;
 
   /**

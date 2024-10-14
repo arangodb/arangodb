@@ -655,87 +655,46 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
       // have weight d. All vertices with a lower weight have already
       // been expanded (and potentially some of weight d).
       // Now assume that we have d1 and d2 as diameters of the left and
-      // right search, respectively. Assume that the next vertex to be
-      // expanded is left (wlog) and is called V, it has weight d1. Now
-      // assume that there is an edge E with weight e from V to a vertex W
-      // with weight w, so that d1 + e + w < d1 + d2, that is e + w < d2.
-      // Then first of all, w < d2, so that W has already been expanded.
-      // Therefore, we have considered the edge E before, but V was not
-      // yet expanded on the left, therefore, the right hand side must
-      // have put V on its queue. But if e+w < d2, then V must have been
-      // expanded on the right already, since the diameter of the right
-      // hand side is d2. But then we would not have expanded V on the
-      // left hand side in the first place, a contradiction.
-      //
-      // In this case, a simple shortest path search is done *now* (and not
-      // earlier!);
-      //
-      // It is *required* to continue search for a shortest path even
-      // after having found *some* path between the two searches:
-      // There might be improvements on the weight in paths that are
-      // found later. Improvements are impossible only if the sum of the
-      // diameters of the two searches is bigger or equal to the current
-      // best found path.
-      //
-      // For a K-SHORTEST-PATH search all candidates that have lower
-      // weight than the sum of the two diameters are valid shortest
-      // paths that must be returned.  K-SHORTEST-PATH search has to
-      // continue until the queues on both sides are empty
+      // right search, respectively, and we have found some path with
+      // weight w <= d1 + d2 and that was the best we have found so far.
+      // We claim that no shorter path will be found, so we can stop.
+      // Proof:
+      // Assume there is a shortest path P with weight w' < w. Then w' < d1+d2
+      // in particular. Since P is a shortest path, all weights on P are
+      // minimal possible. Then all vertices on P which are less than d1
+      // away from the start vertex have already been found and expanded
+      // by the left hand side. Likewise, all vertices on P which are less
+      // than d2 away from the target vertex have already been found and
+      // expanded by the right hand side. Since w' < d1+d2, there is no
+      // "gap" between the two sides: There cannot be a vertex on the path,
+      // which is both at least d1 from the start and at least d2 from the
+      // target. It might even be that some vertex on the PATH has been
+      // expanded by both sides. In any case, there must be an edge on the
+      // path, so that the source of the edge has been expanded by the
+      // left hand side and the target of the edge has been expanded
+      // by the right hand side. Then one of these expansions has to have
+      // happened first and the other must have seen this path,
+      // a contradiction!
+      // In this case, a simple shortest path search is done *now*.
 
       auto leftDiameter = _left.getDiameter();
       auto rightDiameter = _right.getDiameter();
       auto sumDiameter = leftDiameter + rightDiameter;
 
       if (sumDiameter >= bestWeight) {
-        while (!_candidatesStore.isEmpty() and
-               std::get<0>(_candidatesStore.peek()) < sumDiameter) {
-          bool foundShortestPath = false;
-          CalculatedCandidate potentialCandidate = _candidatesStore.pop();
-
-          if (_options.getPathType() == PathType::Type::KShortestPaths) {
-            foundShortestPath = _resultsCache.tryAddResult(potentialCandidate);
-          } else if (_options.getPathType() == PathType::Type::ShortestPath) {
-            // Performance optimization: We do not use the cache as we will
-            // always calculate only one path.
-            foundShortestPath = true;
-          }
-
-          if (foundShortestPath) {
-            _results.emplace_back(std::move(potentialCandidate));
-
-            if (_options.getPathType() == PathType::Type::ShortestPath) {
-              // Proven to be finished with the algorithm. Our last best score
-              // is the shortest path (quick exit).
-              setAlgorithmFinished();
-              break;
-            }
-          }
-        }
+        CalculatedCandidate bestCandidate = _candidatesStore.pop();
+        _results.emplace_back(std::move(bestCandidate));
+        setAlgorithmFinished();
       }
 
-      // In the case that we are only performing a simple shortest path
-      // search, there is another case, in which we are done: If one of
-      // the sides has finished in the sense that its queue is empty,
-      // and we have actually found some path, then we are done. Why is that?
-      // Assume wlog that the left side is finished and we have found a path.
-      // Then the left hand side has found everything that is reachable from
-      // the source, but it has not put vertices on its queue that the right
-      // hand side has already expanded. Now imagine that there is a path P
-      // which is shorter than the shortest path that we have already
-      // found. Let V be the last vertex on P that has been expanded
-      // by the left hand side and let E be the edge from V to the next
-      // vertex W on P. Then the left hand side has considered E, at the
-      // time, either W was already expanded by the right, in which case
-      // P would have been found, or else, the left hand side would have
-      // put W on its queue. Since we assumed that the left hand side did
-      // not expand W, the right hand side must have expanded W, before
-      // the left hand side got to W in its queue (which it did, since its
-      // queue is now empty). But then the right hand side would have
-      // considered the edge E from W and would have found V and thus P.
-      // In any case, this is a contradiction.
-      if (_options.getPathType() == PathType::Type::ShortestPath &&
-          (_left.isQueueEmpty() || _right.isQueueEmpty()) &&
-          !_candidatesStore.isEmpty()) {
+      // There is another case, in which we are done: If one of the
+      // sides has finished in the sense that its queue is empty, and we
+      // have actually found some path, then we are done. Why is that?
+      // Assume wlog that the left side is finished and we have found
+      // a path. Then the left hand side has found everything that is
+      // reachable from the source and has expanded it.
+      if ((_left.isQueueEmpty() || _right.isQueueEmpty()) &&
+          (!_results.empty() || !_candidatesStore.isEmpty())) {
         // Note that we might have already found a path with the above
         // criteria, so we should then not report a second one:
         if (_results.empty()) {
@@ -774,83 +733,6 @@ bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::isAlgorithmFinished()
     const {
   return _algorithmFinished;
-}
-
-/**
- * @brief Skip the next Path, like getNextPath, but does not return the path.
- *
- * @return true Found and skipped a path.
- * @return false No path found.
- */
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::skipPath() {
-  auto skipResult = [&]() {
-    /*
-     * Helper method to take care of stored results (in: _results)
-     */
-    if (!_results.empty()) {
-      if (_options.getPathType() == PathType::Type::ShortestPath) {
-        ADB_PROD_ASSERT(_results.size() == 1)
-            << "ShortestPath found more than one path. This is not allowed.";
-      }
-
-      // remove handled result
-      _results.pop_front();
-
-      return true;
-    } else {
-      return false;
-    }
-  };
-
-  auto skipKPathsCandidates = [&]() {
-    /*
-     * Helper method to take care of KPath related candidates
-     */
-    TRI_ASSERT(searchDone());
-    TRI_ASSERT(_options.getPathType() == PathType::Type::KShortestPaths);
-    if (!_candidatesStore.isEmpty()) {
-      while (!_candidatesStore.isEmpty()) {
-        CalculatedCandidate potentialCandidate = _candidatesStore.pop();
-
-        // only add if non-duplicate
-        bool foundNonDuplicatePath =
-            _resultsCache.tryAddResult(potentialCandidate);
-
-        if (foundNonDuplicatePath) {
-          // delete potentialCandidate;
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    return false;
-  };
-
-  while (!isDone()) {
-    if (!searchDone()) {
-      searchMoreResults();
-    }
-
-    if (skipResult()) {
-      // means we've found a valid path
-      if (_options.getPathType() == PathType::Type::ShortestPath) {
-        setAlgorithmFinished();
-      }
-
-      return true;
-    } else {
-      // Check candidates list
-      return skipKPathsCandidates();
-    }
-  }
-
-  return false;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,

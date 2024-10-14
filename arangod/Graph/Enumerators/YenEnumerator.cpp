@@ -60,7 +60,7 @@ YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::YenEnumerator(
       _totalMemoryUsageHere(0),
       _isDone(true),
       _isInitialized(false) {
-  // Yen's algorithm only ever uses the TwoSidedEnumerator here to find
+  // Yen's algorithm only ever uses the ShortestPathEnumerator here to find
   // exactly one shortest path:
   options.setOnlyProduceOnePath(true);
   options.setPathType(PathType::Type::ShortestPath);
