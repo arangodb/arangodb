@@ -45,6 +45,9 @@ parameters:
   ui-testsuites:
     type: string
     default: ""
+  rta-branch:
+    type:string
+    default: "main"
   c-compiler:
     type: string
     default: "clang"
@@ -602,7 +605,7 @@ jobs:
             mkdir work/release-test-automation
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
-            #git checkout circleci
+            git checkout circleci << pipeline.parameters.rta-branch >>
       - run:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
