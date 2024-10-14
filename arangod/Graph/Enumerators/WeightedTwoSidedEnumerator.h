@@ -59,10 +59,8 @@ struct TwoSidedEnumeratorOptions;
 template<class ProviderType, class Step>
 class PathResult;
 
-// This class `WeightedTwoSidedEnumerator` is used for k-shortest-path
-// searches, for all-shortest-path searches and for k-paths (finding all
-// paths from source to target), whenever the length is measured by an
-// edge weight.
+// This class `WeightedTwoSidedEnumerator` is used for legacy k-shortest-path
+// searches, whenever the length is measured by an edge weight.
 // It works by doing a Dijkstra-like graph traversal from both sides and
 // then matching findings. As work queue it uses a priority queue, always
 // processing the next unprocessed step according to the queue.
@@ -99,9 +97,8 @@ class PathResult;
 // combination is in use:
 //   vertex path uniqueness / edge path uniqueness
 // It is for finding all possible loopless paths and edge uniqueness
-// follows from vertex uniqueness. This is used for k-paths and the versions
-// of all-shortest-paths and k-shortest-paths which do not use Yen's
-// algorithm.
+// follows from vertex uniqueness. This is used for k-shortest-paths
+// which do not use Yen's algorithm.
 // Please note the following subtle issue: When enumerating paths (first
 // combination above), the item on the queue is a "Step" (which encodes
 // the path so far plus one more edge). In particular, there can and will

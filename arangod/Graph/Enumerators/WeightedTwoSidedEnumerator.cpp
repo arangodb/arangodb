@@ -418,7 +418,12 @@ WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _right{Direction::BACKWARD, std::move(backwardProvider), _options,
              std::move(validatorOptions), resourceMonitor},
       _resultsCache(_left, _right),
-      _resultPath{_left.provider(), _right.provider()} {}
+      _resultPath{_left.provider(), _right.provider()} {
+  // For now, we only support KShortestPaths searches, since we do not
+  // offer weighted AllShortestPaths searches anyway. This could be implemented
+  // here.
+  TRI_ASSERT(_options.getPathType() == PathType::Type::KShortestPaths);
+}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -462,10 +467,8 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::isDone() const {
-  if (_options.getPathType() == PathType::Type::KShortestPaths) {
-    if (!_candidatesStore.isEmpty()) {
-      return false;
-    }
+  if (!_candidatesStore.isEmpty()) {
+    return false;
   }
 
   return _results.empty() && searchDone();
@@ -542,8 +545,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _right.buildPath(rightVertex, _resultPath);
       TRI_ASSERT(!_resultPath.isEmpty());
 
-      if (_options.getPathType() == PathType::Type::KShortestPaths ||
-          _emitWeight) {
+      if (_emitWeight) {
         // Add weight attribute to edges
         _resultPath.toVelocyPack(
             result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
@@ -567,8 +569,7 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     _right.buildPath(rightVertex, _resultPath);
     TRI_ASSERT(!_resultPath.isEmpty());
 
-    if (_options.getPathType() == PathType::Type::KShortestPaths ||
-        _emitWeight) {
+    if (_emitWeight) {
       // Add weight attribute to edges
       _resultPath.toVelocyPack(
           result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
@@ -584,7 +585,6 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     TRI_ASSERT(searchDone());
     // ShortestPath not allowed because we cannot produce more than one
     // result in total.
-    TRI_ASSERT(_options.getPathType() != PathType::Type::ShortestPath);
 
     if (!_candidatesStore.isEmpty()) {
       while (!_candidatesStore.isEmpty()) {
@@ -616,16 +616,12 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         // At this state we've produced a valid path result. In case we're
         // using the path type "(Weighted)ShortestPath", the algorithm is
         // finished. We need to store this information.
-
-        TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
         setAlgorithmFinished();  // just quick exit marker
       }
       return true;
     } else {
       // Check candidates list
-      if (_options.getPathType() == PathType::Type::KShortestPaths) {
-        return checkCandidates();
-      }
+      return checkCandidates();
     }
   }
 
@@ -703,12 +699,26 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                std::get<0>(_candidatesStore.peek()) < sumDiameter) {
           CalculatedCandidate potentialCandidate = _candidatesStore.pop();
 
-          if (_options.getPathType() == PathType::Type::KShortestPaths) {
-            if (_resultsCache.tryAddResult(potentialCandidate)) {
-              _results.emplace_back(std::move(potentialCandidate));
-            }
+          if (_resultsCache.tryAddResult(potentialCandidate)) {
+            _results.emplace_back(std::move(potentialCandidate));
           }
         }
+      }
+      // There is another case, in which we are done: If one of the
+      // sides has finished in the sense that its queue is empty, and we
+      // have actually found some path, then we are done. Why is that?
+      // Assume wlog that the left side is finished and we have found
+      // a path. Then the left hand side has found everything that is
+      // reachable from the source and has expanded it.
+      if ((_left.isQueueEmpty() || _right.isQueueEmpty()) &&
+          (!_results.empty() || !_candidatesStore.isEmpty())) {
+        while (!_candidatesStore.isEmpty()) {
+          CalculatedCandidate candidate = _candidatesStore.pop();
+          if (_resultsCache.tryAddResult(candidate)) {
+            _results.emplace_back(std::move(candidate));
+          }
+        }
+        setAlgorithmFinished();
       }
     }
   }
@@ -771,7 +781,6 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
      * Helper method to take care of KPath related candidates
      */
     TRI_ASSERT(searchDone());
-    TRI_ASSERT(_options.getPathType() == PathType::Type::KShortestPaths);
     if (!_candidatesStore.isEmpty()) {
       while (!_candidatesStore.isEmpty()) {
         CalculatedCandidate potentialCandidate = _candidatesStore.pop();
