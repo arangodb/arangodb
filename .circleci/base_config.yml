@@ -46,7 +46,7 @@ parameters:
     type: string
     default: ""
   rta-branch:
-    type:string
+    type: string
     default: "main"
   c-compiler:
     type: string
