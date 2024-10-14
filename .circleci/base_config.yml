@@ -620,9 +620,15 @@ jobs:
               export LSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
               export UBSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
               export SAN_MODE=alubsan
+              cp /work/ArangoDB/ubsan_arangodb_suppressions.txt /work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
+              cp /work/ArangoDB/tsan_arangodb_suppressions.txt /work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
+              cp /work/ArangoDB/lsan_arangodb_suppressions.txt /work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
             elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
               export TSAN_OPTIONS="log_exe_name=true:log_path=/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
               export SAN_MODE=tsan
+              cp /work/ArangoDB/ubsan_arangodb_suppressions.txt /work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
+              cp /work/ArangoDB/tsan_arangodb_suppressions.txt /work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
+              cp /work/ArangoDB/lsan_arangodb_suppressions.txt /work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
             fi
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
             cd work/release-test-automation
