@@ -405,7 +405,7 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
     for deployment in deployments:
         for test_suite in ui_testsuites:
             jobs.append(
-                create_rta_test_job(build_config, build_jobs, deployment, test_suite, args.rta-branch)
+                create_rta_test_job(build_config, build_jobs, deployment, test_suite, args['rta-branch'])
             )
 
 
