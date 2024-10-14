@@ -59,8 +59,8 @@ struct TwoSidedEnumeratorOptions;
 template<class ProviderType, class Step>
 class PathResult;
 
-// This class `WeightedTwoSidedEnumerator` is used for legacy k-shortest-path
-// searches, whenever the length is measured by an edge weight.
+// This class `WeightedTwoSidedEnumerator` is used for shortest path searches,
+// whenever the // length is measured by an edge weight.
 // It works by doing a Dijkstra-like graph traversal from both sides and
 // then matching findings. As work queue it uses a priority queue, always
 // processing the next unprocessed step according to the queue.
@@ -83,32 +83,37 @@ class PathResult;
 //    if paths are valid. Various filtering conditions can be handed in,
 //    but the most important one is to specify the uniqueness conditions
 //    on edges and vertices. Again, there is a tracing wrapper.
-// A few words on uniqueness conditions are in order, since they are
-// specified in the PathValidator, but have very strong interferences with
-// the actual algorithm. For edges, there is either "no uniqueness"
-// or "path uniqueness" (which means no edge may appear more than once
-// on a single path), or "global uniqueness" (which means no edge may
-// appear more than once in the whole traversal. For vertices, there is
-// either "no uniqueness" or "path uniqueness" (no vertex may appear
-// more than once on a single path), or "global uniqueness", which says
-// that no vertex may occur more than once in the whole traversal.
-// The great variety is only used for normal graph traversals, and so in
-// particular not here in the `WeightedTwoSidedEnumerator`. Here, only one
-// combination is in use:
-//   vertex path uniqueness / edge path uniqueness
-// It is for finding all possible loopless paths and edge uniqueness
-// follows from vertex uniqueness. This is used for k-shortest-paths
-// which do not use Yen's algorithm.
+//    For this class, the vertex uniqueness condition must be GLOBAL and
+//    the edge uniqueness condition must be PATH.
 // Please note the following subtle issue: When enumerating paths (first
 // combination above), the item on the queue is a "Step" (which encodes
 // the path so far plus one more edge). In particular, there can and will
 // be multiple Steps on the queue, which have arrived at the same vertex
 // (with different edges or indeed different paths). This is necessary,
 // since we have to enumerate all possible paths.
+// Since we are only looking for a shortest path, we use global vertex
+// uniqueness. However, the implementation is slightly different from a
+// standard Dijkstra algorithm as can be found in the literature. Namely,
+// some vertex V can indeed be found in different ways, and in this case
+// multiple Steps to reach it will in this case be put on the queue. This
+// is to get the accounting of the weight of the different ways to reach
+// this vertex right. Therefore, we must not check the validity of the path
+// **when we explore a new step and put it on the queue**. Rather, we check
+// path validity only when we **visit** a step to explore all next steps!
+// That is, we have no "reduce weight" operation when we find a new path
+// to a vertex which has already been visited, but we administrate both
+// Steps (the shorter and the longer path), the shorter path's Step will
+// be earlier in the WeightedQueue and thus will be visited earlier.
+// The other Step will then be later in the queue and when we would otherwise
+// visit it, we will check validity of the path and will then not visit it,
+// since global vertex uniqueness is violated.
+// This could eventually be improved but for now we run with it.
+// Note that the path type in the TwoSidedEnumeratorOptions must always
+// be "ShortestPath" for this class here to work.
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidatorType>
-class WeightedTwoSidedEnumerator {
+class WeightedShortestPathEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access
 
@@ -281,7 +286,7 @@ class WeightedTwoSidedEnumerator {
     // This stores all paths processed by this ball
     PathStoreType _interior;
 
-    // Center:
+    // The center:
     VertexRef _center;
 
     // The next elements to process
@@ -323,19 +328,21 @@ class WeightedTwoSidedEnumerator {
   };
 
  public:
-  WeightedTwoSidedEnumerator(ProviderType&& forwardProvider,
-                             ProviderType&& backwardProvider,
-                             TwoSidedEnumeratorOptions&& options,
-                             PathValidatorOptions validatorOptions,
-                             arangodb::ResourceMonitor& resourceMonitor);
-  WeightedTwoSidedEnumerator(WeightedTwoSidedEnumerator const& other) = delete;
-  WeightedTwoSidedEnumerator& operator=(
-      WeightedTwoSidedEnumerator const& other) = delete;
-  WeightedTwoSidedEnumerator(WeightedTwoSidedEnumerator&& other) = delete;
-  WeightedTwoSidedEnumerator& operator=(WeightedTwoSidedEnumerator&& other) =
+  WeightedShortestPathEnumerator(ProviderType&& forwardProvider,
+                                 ProviderType&& backwardProvider,
+                                 TwoSidedEnumeratorOptions&& options,
+                                 PathValidatorOptions validatorOptions,
+                                 arangodb::ResourceMonitor& resourceMonitor);
+  WeightedShortestPathEnumerator(WeightedShortestPathEnumerator const& other) =
       delete;
+  WeightedShortestPathEnumerator& operator=(
+      WeightedShortestPathEnumerator const& other) = delete;
+  WeightedShortestPathEnumerator(WeightedShortestPathEnumerator&& other) =
+      delete;
+  WeightedShortestPathEnumerator& operator=(
+      WeightedShortestPathEnumerator&& other) = delete;
 
-  ~WeightedTwoSidedEnumerator();
+  ~WeightedShortestPathEnumerator();
 
   auto clear() -> void;
 
@@ -375,21 +382,13 @@ class WeightedTwoSidedEnumerator {
   bool getNextPath(arangodb::velocypack::Builder& result);
 
   // The reference returned by the following call is only valid until
-  // getNextPath is called again or until the WeightedTwoSidedEnumerator
+  // getNextPath is called again or until the WeightedShortestPathEnumerator
   // is destroyed or otherwise modified!
   PathResult<ProviderType, typename ProviderType::Step> const&
   getLastPathResult() const {
     return _resultPath;
   }
 
-  /**
-   * @brief Skip the next Path, like getNextPath, but does not return the path.
-   *
-   * @return true Found and skipped a path.
-   * @return false No path found.
-   */
-
-  bool skipPath();
   auto destroyEngines() -> void;
 
   /**
@@ -410,7 +409,7 @@ class WeightedTwoSidedEnumerator {
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
-  auto setEmitWeight(bool) -> void {}
+  auto setEmitWeight(bool flag) -> void { _emitWeight = flag; }
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;
@@ -448,6 +447,7 @@ class WeightedTwoSidedEnumerator {
   bool _resultsFetched{false};
   bool _algorithmFinished{false};
   bool _singleton{false};
+  bool _emitWeight{false};
 
   PathResult<ProviderType, Step> _resultPath;
 };

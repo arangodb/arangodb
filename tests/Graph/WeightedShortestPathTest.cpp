@@ -60,7 +60,7 @@ namespace graph {
 class WeightedShortestPathTest
     : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
   using WeightedShortestPathFinder =
-      WeightedShortestPathEnumerator<MockGraphProvider>;
+      WeightedShortestPathEnumeratorAlias<MockGraphProvider>;
 
   static constexpr size_t minDepth = 0;
   static constexpr size_t maxDepth = std::numeric_limits<size_t>::max();
@@ -435,7 +435,7 @@ TEST_P(WeightedShortestPathTest, shortest_path_A_F_outbound) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 4x vertices, 3x edges
-    EXPECT_EQ(stats.getScannedIndex(), 17U);
+    EXPECT_EQ(stats.getScannedIndex(), 16U);
   }
 
   {
@@ -484,7 +484,7 @@ TEST_P(WeightedShortestPathTest, shortest_path_A_F_inbound) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 4x vertices, 3x edges
-    EXPECT_EQ(stats.getScannedIndex(), 17U);
+    EXPECT_EQ(stats.getScannedIndex(), 16U);
   }
 
   {

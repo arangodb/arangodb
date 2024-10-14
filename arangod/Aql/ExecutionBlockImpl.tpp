@@ -195,11 +195,12 @@ using ShortestPathTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using WeightedShortestPath = arangodb::graph::WeightedShortestPathEnumerator<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
+using WeightedShortestPath =
+    arangodb::graph::WeightedShortestPathEnumeratorAlias<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
 using WeightedShortestPathTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumerator<
+    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
 
@@ -237,10 +238,10 @@ using ShortestPathClusterTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedShortestPathCluster =
-    arangodb::graph::WeightedShortestPathEnumerator<
+    arangodb::graph::WeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 using WeightedShortestPathClusterTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumerator<
+    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 namespace arangodb::aql {

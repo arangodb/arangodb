@@ -509,7 +509,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
-            if (opts->getAlgorithm() == StaticStrings::Yen) {
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
               return _makeExecutionBlockImpl<
                   YenEnumeratorWithProvider<Provider>, Provider,
                   SingleServerBaseProviderOptions>(
@@ -556,7 +556,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
-            if (opts->getAlgorithm() == StaticStrings::Yen) {
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
               return _makeExecutionBlockImpl<
                   WeightedYenEnumeratorWithProvider<Provider>, Provider,
                   SingleServerBaseProviderOptions>(
@@ -605,7 +605,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
-            if (opts->getAlgorithm() == StaticStrings::Yen) {
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
               return _makeExecutionBlockImpl<
                   TracedYenEnumeratorWithProvider<Provider>,
                   ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
@@ -652,7 +652,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
-            if (opts->getAlgorithm() == StaticStrings::Yen) {
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
               return _makeExecutionBlockImpl<
                   TracedWeightedYenEnumeratorWithProvider<Provider>,
                   ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
@@ -681,9 +681,11 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
                                                       opts->produceVertices());
     forwardProviderOptions.setClearEdgeCacheOnClear(false);
+    forwardProviderOptions.setDepthSpecificLookup(false);
     ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
                                                        opts->produceVertices());
     backwardProviderOptions.setClearEdgeCacheOnClear(false);
+    backwardProviderOptions.setDepthSpecificLookup(false);
     // A comment is in order here: For all cases covered here
     // (k-shortest-paths, all shortest paths, k-paths) we do not need to
     // filter edges when we fetch them from dbservers. As a consequence,
@@ -723,7 +725,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
-            if (opts->getAlgorithm() == StaticStrings::Yen) {
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
               return _makeExecutionBlockImpl<
                   YenEnumeratorWithProvider<ClusterProvider>, ClusterProvider,
                   ClusterBaseProviderOptions>(
@@ -770,7 +772,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
-            if (opts->getAlgorithm() == StaticStrings::Yen) {
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
               return _makeExecutionBlockImpl<
                   WeightedYenEnumeratorWithProvider<ClusterProvider>,
                   ClusterProvider, ClusterBaseProviderOptions>(
@@ -818,7 +820,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
-            if (opts->getAlgorithm() == StaticStrings::Yen) {
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
               return _makeExecutionBlockImpl<
                   TracedYenEnumeratorWithProvider<ClusterProvider>,
                   ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
@@ -865,7 +867,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
-            if (opts->getAlgorithm() == StaticStrings::Yen) {
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
               return _makeExecutionBlockImpl<
                   TracedWeightedYenEnumeratorWithProvider<ClusterProvider>,
                   ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(

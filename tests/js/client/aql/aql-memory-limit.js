@@ -238,7 +238,7 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
     },
     
     testKShortestPaths : function () {
-      for (let o of ['', ' OPTIONS { algorithm: "yen" }']) {
+      for (let o of ['', ' OPTIONS { algorithm: "legacy" }']) {
         const query = "WITH " + vn + " FOR p IN OUTBOUND K_SHORTEST_PATHS '" + vn + "/test0' TO '" + vn + "/test11' " + en + o + " RETURN p";
 
         if (isCluster) {
