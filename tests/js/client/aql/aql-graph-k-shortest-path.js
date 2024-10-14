@@ -256,7 +256,7 @@ const createGraph2 = () => {
   vertices.push({_key:"S"});
   vertices.push({_key:"V"});
   vertices.push({_key:"W"});
-  vertices.push({_key:"U"});
+  vertices.push({_key:"Z"});
   es.push({_from:`${vName}/S`,_to:`${vName}/W`,weight:9});
   es.push({_from:`${vName}/S`,_to:`${vName}/V`,weight:10});
   es.push({_from:`${vName}/W`,_to:`${vName}/Z`,weight:10});
