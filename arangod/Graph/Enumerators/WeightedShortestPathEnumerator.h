@@ -60,9 +60,7 @@ template<class ProviderType, class Step>
 class PathResult;
 
 // This class `WeightedTwoSidedEnumerator` is used for shortest path searches,
-// as well as for k-shortest-path searches, for all-shortest-path searches
-// and for k-paths (finding all paths from source to target), whenever the
-// length is measured by an edge weight.
+// whenever the // length is measured by an edge weight.
 // It works by doing a Dijkstra-like graph traversal from both sides and
 // then matching findings. As work queue it uses a priority queue, always
 // processing the next unprocessed step according to the queue.
@@ -85,34 +83,15 @@ class PathResult;
 //    if paths are valid. Various filtering conditions can be handed in,
 //    but the most important one is to specify the uniqueness conditions
 //    on edges and vertices. Again, there is a tracing wrapper.
-// A few words on uniqueness conditions are in order, since they are
-// specified in the PathValidator, but have very strong interferences with
-// the actual algorithm. For edges, there is either "no uniqueness"
-// or "path uniqueness" (which means no edge may appear more than once
-// on a single path), or "global uniqueness" (which means no edge may
-// appear more than once in the whole traversal. For vertices, there is
-// either "no uniqueness" or "path uniqueness" (no vertex may appear
-// more than once on a single path), or "global uniqueness", which says
-// that no vertex may occur more than once in the whole traversal.
-// The great variety is only used for normal graph traversals, and so in
-// particular not here in the `WeightedTwoSidedEnumerator`. Here, only two
-// combinations are in use:
-//   vertex path uniqueness / edge path uniqueness
-//   vertex global uniqueness / edge path uniqueness
-// The first is for finding all possible loopless paths and edge uniqueness
-// follows from vertex uniqueness. This is used for k-paths and the versions
-// of all-shortest-paths and k-shortest-paths which do not use Yen's
-// algorithm. The second combination is used for (two-sided) Dijkstra-type
-// computations, where we are only interested in the shortest path. This
-// is also what Yen's algorithm does, just computing various shortest paths
-// one after another.
+//    For this class, the vertex uniqueness condition must be GLOBAL and
+//    the edge uniqueness condition must be PATH.
 // Please note the following subtle issue: When enumerating paths (first
 // combination above), the item on the queue is a "Step" (which encodes
 // the path so far plus one more edge). In particular, there can and will
 // be multiple Steps on the queue, which have arrived at the same vertex
 // (with different edges or indeed different paths). This is necessary,
 // since we have to enumerate all possible paths.
-// When we are only looking for a shortest path, we use global vertex
+// Since we are only looking for a shortest path, we use global vertex
 // uniqueness. However, the implementation is slightly different from a
 // standard Dijkstra algorithm as can be found in the literature. Namely,
 // some vertex V can indeed be found in different ways, and in this case
@@ -128,6 +107,9 @@ class PathResult;
 // The other Step will then be later in the queue and when we would otherwise
 // visit it, we will check validity of the path and will then not visit it,
 // since global vertex uniqueness is violated.
+// This could eventually be improved but for now we run with it.
+// Note that the path type in the TwoSidedEnumeratorOptions must always
+// be "ShortestPath" for this class here to work.
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidatorType>
