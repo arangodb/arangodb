@@ -1064,7 +1064,7 @@ void ClusterFeature::shutdownHeartbeatThread() {
         LOG_TOPIC("d8a5b", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the heartbeat "
                "thread";
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE\
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         FATAL_ERROR_ABORT();
 #else
         FATAL_ERROR_EXIT();
@@ -1098,7 +1098,7 @@ void ClusterFeature::shutdownAgencyCache() {
       if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
         LOG_TOPIC("b5a8d", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the agency cache";
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE\
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         FATAL_ERROR_ABORT();
 #else
         FATAL_ERROR_EXIT();

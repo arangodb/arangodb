@@ -870,7 +870,7 @@ void HeartbeatThread::beginShutdown() {
         LOG_TOPIC("d8a5c", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the maintenance "
                "thread";
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE\
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         FATAL_ERROR_ABORT();
 #else
         FATAL_ERROR_EXIT();
