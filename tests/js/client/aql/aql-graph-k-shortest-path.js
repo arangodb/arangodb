@@ -284,7 +284,7 @@ function kConstantWeightShortestPathTestSuite() {
     tearDownAll,
 
     testPathsExistsLimit: function () {
-      for (let o of ['', 'OPTIONS { algorithm: "yen" }']) {
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
         const query = `
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" ${o}
             LIMIT 6
@@ -304,7 +304,7 @@ function kConstantWeightShortestPathTestSuite() {
     },
 
     testNoPathExistsLimit: function () {
-      for (let o of ['', 'OPTIONS { algorithm: "yen" }']) {
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
         const query = `
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${badTarget}" GRAPH "${graphName}" ${o}
             LIMIT 6
@@ -316,7 +316,7 @@ function kConstantWeightShortestPathTestSuite() {
     },
 
     testFewerPathsThanLimit: function () {
-      for (let o of ['', 'OPTIONS { algorithm: "yen" }']) {
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
         const query = `
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" ${o}
             LIMIT 1000
@@ -337,7 +337,7 @@ function kConstantWeightShortestPathTestSuite() {
     },
 
     testPathsExistsNoLimit: function () {
-      for (let o of ['', 'OPTIONS { algorithm: "yen" }']) {
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
         const query = `
           FOR source IN ${vName}
             FILTER source._id == "${source}"
@@ -361,7 +361,7 @@ function kConstantWeightShortestPathTestSuite() {
     },
 
     testNoPathsExistsNoLimit: function () {
-      for (let o of ['', 'OPTIONS { algorithm: "yen" }']) {
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
         const query = `
           FOR source IN ${vName}
             FILTER source._id == "${source}"
@@ -376,7 +376,7 @@ function kConstantWeightShortestPathTestSuite() {
     },
 
     testPathsSkip: function () {
-      for (let o of ['', 'OPTIONS { algorithm: "yen" }']) {
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
         const query = `
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" ${o}
             LIMIT 3, 3
@@ -397,7 +397,7 @@ function kConstantWeightShortestPathTestSuite() {
     },
 
     testPathsSkipMoreThanExists: function () {
-      for (let o of ['', 'OPTIONS { algorithm: "yen" }']) {
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
         const query = `
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" ${o}
             LIMIT 1000, 2
@@ -409,7 +409,7 @@ function kConstantWeightShortestPathTestSuite() {
     },
 
     testMultiDirections: function () {
-      for (let o of ['', 'OPTIONS { algorithm: "yen" }']) {
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
         const query = `
           WITH ${vName}
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" ${e1Name}, INBOUND ${e2Name} ${o}
@@ -439,7 +439,7 @@ function kAttributeWeightShortestPathTestSuite() {
     tearDownAll,
 
     testWeightPathsExistsLimit: function () {
-      for (let o of ['', ' ,algorithm: "yen"']) {
+      for (let o of ['', ' ,algorithm: "legacy"']) {
         const query = `
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
             LIMIT 6
@@ -459,7 +459,7 @@ function kAttributeWeightShortestPathTestSuite() {
     },
 
     testWeightNoPathExistsLimit: function () {
-      for (let o of ['', ' ,algorithm: "yen"']) {
+      for (let o of ['', ' ,algorithm: "legacy"']) {
         const query = `
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${badTarget}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
             LIMIT 6
@@ -471,7 +471,7 @@ function kAttributeWeightShortestPathTestSuite() {
     },
 
     testWeightFewerPathsThanLimit: function () {
-      for (let o of ['', ' ,algorithm: "yen"']) {
+      for (let o of ['', ' ,algorithm: "legacy"']) {
         const query = `
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
             LIMIT 1000
@@ -494,7 +494,7 @@ function kAttributeWeightShortestPathTestSuite() {
     },
 
     testWeightPathsExistsNoLimit: function () {
-      for (let o of ['', ' ,algorithm: "yen"']) {
+      for (let o of ['', ' ,algorithm: "legacy"']) {
         const query = `
           FOR source IN ${vName}
             FILTER source._id == "${source}"
@@ -520,7 +520,7 @@ function kAttributeWeightShortestPathTestSuite() {
     },
 
     testWeightNoPathsExistsNoLimit: function () {
-      for (let o of ['', ' ,algorithm: "yen"']) {
+      for (let o of ['', ' ,algorithm: "legacy"']) {
         const query = `
           FOR source IN ${vName}
             FILTER source._id == "${source}"
@@ -535,7 +535,7 @@ function kAttributeWeightShortestPathTestSuite() {
     },
 
     testWeightPathsSkip: function () {
-      for (let o of ['', ' ,algorithm: "yen"']) {
+      for (let o of ['', ' ,algorithm: "legacy"']) {
         const query = `
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
             LIMIT 3, 3
@@ -552,7 +552,7 @@ function kAttributeWeightShortestPathTestSuite() {
     },
 
     testWeightPathsSkipMoreThanExists: function () {
-      for (let o of ['', ' ,algorithm: "yen"']) {
+      for (let o of ['', ' ,algorithm: "legacy"']) {
         const query = `
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
             LIMIT 1000, 2
@@ -564,7 +564,7 @@ function kAttributeWeightShortestPathTestSuite() {
     },
 
     testWeightMultiDirections: function () {
-      for (let o of ['', ' ,algorithm: "yen"']) {
+      for (let o of ['', ' ,algorithm: "legacy"']) {
         const query = `
           WITH ${vName}
           FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" ${e1Name}, INBOUND ${e2Name} OPTIONS {weightAttribute: "weight" ${o}}
@@ -602,7 +602,7 @@ function kAttributeWeightShortestPathRegressionSuite() {
       res = db._query(
         `FOR p IN OUTBOUND K_SHORTEST_PATHS "${vName}/S" TO "${vName}/Z" 
            GRAPH ${graphName} 
-           OPTIONS { weightAttribute: "weight", algorithm: "yen"}
+           OPTIONS { weightAttribute: "weight", algorithm: "legacy"}
            RETURN p`).toArray();
       assertEqual(res.length, 3);
       assertEqual(res.map((x) => x.weight), [19, 19, 21], res);
