@@ -545,13 +545,9 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _right.buildPath(rightVertex, _resultPath);
       TRI_ASSERT(!_resultPath.isEmpty());
 
-      if (_emitWeight) {
-        // Add weight attribute to edges
-        _resultPath.toVelocyPack(
-            result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
-      } else {
-        _resultPath.toVelocyPack(result);
-      }
+      // Add weight attribute to edges
+      _resultPath.toVelocyPack(
+          result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
       // remove handled result
       _results.pop_front();
 
@@ -569,13 +565,9 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     _right.buildPath(rightVertex, _resultPath);
     TRI_ASSERT(!_resultPath.isEmpty());
 
-    if (_emitWeight) {
-      // Add weight attribute to edges
-      _resultPath.toVelocyPack(
-          result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
-    } else {
-      _resultPath.toVelocyPack(result);
-    }
+    // Add weight attribute to edges
+    _resultPath.toVelocyPack(
+        result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
   };
 
   auto checkCandidates = [&]() {

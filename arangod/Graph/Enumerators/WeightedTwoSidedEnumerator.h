@@ -410,7 +410,7 @@ class WeightedTwoSidedEnumerator {
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
-  auto setEmitWeight(bool flag) -> void { _emitWeight = flag; }
+  auto setEmitWeight(bool) -> void {}
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;
@@ -448,7 +448,6 @@ class WeightedTwoSidedEnumerator {
   bool _resultsFetched{false};
   bool _algorithmFinished{false};
   bool _singleton{false};
-  bool _emitWeight{false};
 
   PathResult<ProviderType, Step> _resultPath;
 };
