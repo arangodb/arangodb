@@ -66,7 +66,7 @@ function waitAfoInSync(IM) {
     let stateCount = 0;
     let list = state.clients.filter(clientState => {
       return clientState.lastServedTick >= tickbefore;
-    })
+    });
     if (list.length + 1 === IM.options.singles) {
       return;
     }
