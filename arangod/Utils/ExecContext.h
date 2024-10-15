@@ -134,6 +134,13 @@ class ExecContext : public RequestContext {
     return requested <= collectionAuthLevel(db, coll);
   }
 
+  static std::shared_ptr<ExecContext const> set(
+      std::shared_ptr<ExecContext const> ctx) {
+    auto tmp = CURRENT;
+    CURRENT = ctx;
+    return tmp;
+  }
+
 #ifdef USE_ENTERPRISE
   virtual std::string clientAddress() const { return ""; }
   virtual std::string requestUrl() const { return ""; }
