@@ -189,6 +189,7 @@ return false;`
         }
       }
       let tests = [];
+      let timeout = IM.options.isInstrumented ? 15 : 5;
       for(let count = 0; count < 2; count++) {
         tests.push([
           `TransactionInsertTest_${count}`,
@@ -218,8 +219,8 @@ myKeys.forEach(oneKey => {
   let tries = 0;
   while ((loopCount % stepWidth === 0) && (count % stepWidth !== 0)) {
     tries ++;
-    if (tries > 10) {
-      throw new Error("failed to get to the next step in 5s");
+    if (tries > ${timeout * 2}) {
+      throw new Error("failed to get to the next step in ${timeout}s");
     }
     require('internal').sleep(0.5);
     count = db[cn].count();
