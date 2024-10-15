@@ -1,12 +1,23 @@
 #include "Async/async.h"
+#include "Async/Registry/promise.h"
+#include "Async/Registry/registry_variable.h"
 #include "Async/Registry/registry.h"
 #include "Async/Registry/thread_registry.h"
+#include "Utils/ExecContext.h"
 
 #include <gtest/gtest.h>
+#include <coroutine>
 #include <thread>
 #include <deque>
 
 namespace {
+
+auto promise_count(arangodb::async_registry::ThreadRegistry& registry) -> uint {
+  uint promise_count = 0;
+  registry.for_promise(
+      [&](arangodb::async_registry::Promise* promise) { promise_count++; });
+  return promise_count;
+}
 
 struct WaitSlot {
   void resume() {
@@ -72,7 +83,6 @@ struct ConcurrentNoWait {
             }
             handle.resume();
           }
-          arangodb::coroutine::get_thread_registry().garbage_collect();
         }) {}
 
   auto stop() -> void {
@@ -136,9 +146,11 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
   void SetUp() override { InstanceCounterValue::instanceCounter = 0; }
 
   void TearDown() override {
-    arangodb::coroutine::get_thread_registry().garbage_collect();
+    arangodb::async_registry::get_thread_registry().garbage_collect();
     wait.stop();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              0);
   }
 
   WaitType wait;
@@ -342,59 +354,121 @@ TYPED_TEST(AsyncTest, multiple_suspension_points) {
   EXPECT_EQ(awaitable.await_resume(), 0);
 }
 
-TYPED_TEST(AsyncTest, promises_are_only_removed_after_garbage_collection) {
+TYPED_TEST(AsyncTest, coroutine_is_removed_before_registry_entry) {
   using ValueType = TypeParam::second_type;
 
   auto coro = []() -> async<ValueType> { co_return 12; };
 
   {
     coro().reset();
-
-    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              1);
   }
   {
     std::move(coro()).operator co_await().await_resume();
-
-    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              2);
   }
   {
     { coro(); }
 
-    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              3);
   }
 }
 
 auto foo() -> async<CopyOnlyValue> { co_return 1; }
 auto bar() -> async<CopyOnlyValue> { co_return 4; }
 auto baz() -> async<CopyOnlyValue> { co_return 2; }
-TEST(AsyncTest, promises_are_registered) {
+TEST(AsyncTest, promises_are_registered_in_global_registry) {
   auto coro_foo = foo();
+  EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()), 1);
 
   std::jthread([&]() {
     auto coro_bar = bar();
     auto coro_baz = baz();
 
     std::vector<std::string> names;
-    arangodb::async_registry::coroutine_registry.for_promise(
-        [&](arangodb::async_registry::PromiseInList* promise) {
-          names.push_back(promise->_where.function_name());
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::Promise* promise) {
+          names.push_back(promise->entry_point.function_name());
         });
     EXPECT_EQ(names.size(), 3);
     EXPECT_TRUE(names[0].find("foo") != std::string::npos);
     EXPECT_TRUE(names[1].find("baz") != std::string::npos);
     EXPECT_TRUE(names[2].find("bar") != std::string::npos);
+  }).join();
+}
 
-    coro_bar.reset();
-    coro_baz.reset();
-    arangodb::async_registry::get_thread_registry().garbage_collect();
-  });
+struct ExecContext_Waiting : public arangodb::ExecContext {
+  ExecContext_Waiting()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Waiting",
+                              "", arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_Calling : public arangodb::ExecContext {
+  ExecContext_Calling()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Calling",
+                              "", arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_Begin : public arangodb::ExecContext {
+  ExecContext_Begin()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Begin", "",
+                              arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_End : public arangodb::ExecContext {
+  ExecContext_End()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "End", "",
+                              arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+TYPED_TEST(AsyncTest, execution_context_is_local_to_coroutine) {
+  ExecContextScope exec(std::make_shared<ExecContext_Begin>());
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
 
-  coro_foo.reset();
-  arangodb::async_registry::get_thread_registry().garbage_collect();
+  auto waiting_coro = [&]() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    ExecContextScope exec(std::make_shared<ExecContext_Waiting>());
+    EXPECT_EQ(ExecContext::current().user(), "Waiting");
+    co_await this->wait;
+    EXPECT_EQ(ExecContext::current().user(), "Waiting");
+    co_return;
+  }();
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  auto trivial_coro = []() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    co_return;
+  }();
+
+  auto calling_coro = [&]() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    ExecContextScope exec(std::make_shared<ExecContext_Calling>());
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_await std::move(waiting_coro);
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_await std::move(trivial_coro);
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_return;
+  };
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  calling_coro();
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  ExecContextScope new_exec(std::make_shared<ExecContext_End>());
+  EXPECT_EQ(ExecContext::current().user(), "End");
+
+  this->wait.resume();
+  this->wait.await();
+  EXPECT_EQ(ExecContext::current().user(), "End");
 }

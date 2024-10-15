@@ -44,25 +44,37 @@ function dumpIntegrationSuite () {
       if (!fs.isFile(fs.join(dumpDir, structure))) {
         structure = cn + ".structure.json";
       }
+      if (!fs.isFile(fs.join(dumpDir, structure))) {
+        structure = prefix + ".structure.vpack";
+      }
+      if (!fs.isFile(fs.join(dumpDir, structure))) {
+        structure = cn + ".structure.vpack";
+      }
       let structureFile = fs.join(dumpDir, structure);
       assertTrue(fs.isFile(structureFile), "structure file does not exist: " + structureFile);
       assertNotEqual(-1, tree.indexOf(structure));
       data = JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)).toString());
       assertEqual(cn, data.parameters.name);
-     
-      let files = tree.filter((f) => f.startsWith(prefix) && f.match(/(\.\d+)?\.data\.json\.gz$/));
+      let files = tree.filter((f) => f.startsWith(prefix) && f.match(/(\.\d+)?\.data\.[jsonvpack]*\.gz$/));
       assertNotEqual(0, files.length, files);
       files.forEach((file) => {
-        data = fs.readGzip(fs.join(dumpDir, file)).toString().trim().split('\n');
-        assertEqual(10, data.length);
-        data.forEach(function(line) {
-          line = JSON.parse(line);
-          assertTrue(line.hasOwnProperty('_key'));
-          assertTrue(line.hasOwnProperty('_rev'));
-        });
+        if (file.search('vpack')>0) {
+          // TODO: VPACK_TO_V8 can't handle this
+          // data = fs.readGzip(fs.join(dumpDir, file));
+          // print(VPACK_TO_V8(data))
+          //print(data) // .toString().trim().split('\n');
+        } else {
+          data = fs.readGzip(fs.join(dumpDir, file)).toString().trim().split('\n');
+          assertEqual(10, data.length);
+          data.forEach(function(line) {
+            line = JSON.parse(line);
+            assertTrue(line.hasOwnProperty('_key'));
+            assertTrue(line.hasOwnProperty('_rev'));
+          });
+        }
       });
       
-      files = tree.filter((f) => f.startsWith(prefix) && f.match(/(\.\d+)?\.data\.json$/));
+      files = tree.filter((f) => f.startsWith(prefix) && f.match(/(\.\d+)?\.data\.j[jsonvpack]*$/));
       assertEqual(0, files.length, files);
     }
   };

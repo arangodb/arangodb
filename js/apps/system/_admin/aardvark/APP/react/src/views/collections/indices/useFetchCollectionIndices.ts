@@ -1,3 +1,4 @@
+import { HiddenIndex } from "arangojs/indexes";
 import useSWR from "swr";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
@@ -10,7 +11,7 @@ export const useFetchCollectionIndices = (collectionName: string) => {
     async () => {
       return db
         .collection(encodedCollectionName)
-        .indexes({ withStats: true, withHidden: true });
+        .indexes<HiddenIndex>({ withStats: true, withHidden: true });
     }
   );
   return { collectionIndices: data };

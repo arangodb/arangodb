@@ -1,5 +1,5 @@
 import { useDisclosure } from "@chakra-ui/react";
-import { Index } from "arangojs/indexes";
+import { HiddenIndex } from "arangojs/indexes";
 import React, { createContext, ReactNode, useContext, useState } from "react";
 import { useFetchCollectionFigures } from "../figures/useFetchCollectionFigures";
 import { CollectionIndex } from "./CollectionIndex.types";
@@ -10,7 +10,7 @@ import { useSetupNav } from "./useSetupNav";
 import { useSupportedIndexTypes } from "./useSupportedIndexTypes";
 
 type CollectionIndicesContextType = {
-  collectionIndices: Index[] | undefined;
+  collectionIndices: HiddenIndex[] | undefined;
   collectionName: string;
   collectionId: string;
   indexTypeOptions: {

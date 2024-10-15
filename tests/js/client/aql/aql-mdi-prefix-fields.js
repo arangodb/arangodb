@@ -280,6 +280,7 @@ function optimizerRuleMdiTraversal() {
   const edgeCollection = "e";
   const indexName = "myMdiIndex";
   const levelIndexName = "myMdiIndexLevel";
+  const sparseIndexName = "myMdiIndexSparse";
 
   return {
     setUpAll: function () {
@@ -306,6 +307,15 @@ function optimizerRuleMdiTraversal() {
         prefixFields: ["_from"],
         fieldValueTypes: 'double',
       });
+      db[edgeCollection].ensureIndex({
+        type: 'mdi-prefixed',
+        name: sparseIndexName,
+        fields: ["a", "b"],
+        storedValues: ["foo"],
+        prefixFields: ["_from"],
+        sparse: true,
+        fieldValueTypes: 'double',
+      });
       db._query(`
         for i in 0..99
           insert {_key: CONCAT("${vertexCollection}", i)} into ${vertexCollection}
@@ -313,9 +323,11 @@ function optimizerRuleMdiTraversal() {
             let x = RAND() * 10
             let y = RAND() * 10
             let w = RAND() * 10
+            let a = RAND() * 10
+            let b = RAND() * 10
             let from = CONCAT("${vertexCollection}/v", i)
             let to = CONCAT("${vertexCollection}/v", (j+1)%100)
-            insert {_from: from, _to: to, x, y, w} into ${edgeCollection}
+            insert {_from: from, _to: to, x, y, w, a, b} into ${edgeCollection}
       `);
 
       waitForEstimatorSync();
@@ -346,6 +358,31 @@ function optimizerRuleMdiTraversal() {
         assertEqual(["2"], Object.keys(node.indexes.levels), node.indexes);
         node.indexes.levels["2"].forEach(function (idx) {
           assertEqual(idx.name, levelIndexName, node.indexes);
+        });
+
+      });
+    },
+
+    testMdiTraversalSparse: function () {
+      const query = `
+        for v, e, p in 0..3 outbound "${vertexCollection}/v1" graph "${graph}"
+        options {bfs: true, uniqueVertices: "path"}
+          filter p.edges[*].a all >= 5 and p.edges[*].b all <= 7 and p.edges[*].b all != NULL
+          filter p.edges[2].w >= 5 and p.edges[2].y <= 8 and p.edges[2].y != NULL and p.edges[2].foo == "bar"
+          return p
+      `;
+
+      const res = db._createStatement(query).explain();
+      const traversalNodes = res.plan.nodes.filter(n => n.type === "TraversalNode");
+      db._explain(query);
+      traversalNodes.forEach(function (node) {
+        node.indexes.base.forEach(function (idx) {
+          assertEqual(idx.name, sparseIndexName, node.indexes);
+        });
+
+        assertEqual(["2"], Object.keys(node.indexes.levels), node.indexes);
+        node.indexes.levels["2"].forEach(function (idx) {
+          assertEqual(idx.name, sparseIndexName, node.indexes);
         });
 
       });

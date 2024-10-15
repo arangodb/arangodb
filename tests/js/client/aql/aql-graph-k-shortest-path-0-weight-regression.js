@@ -94,45 +94,51 @@ function kZeroWeightRegressionTest() {
     tearDownAll,
 
     testPathsExists: function () {
-      const query = `
-        FOR path IN ANY K_SHORTEST_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          RETURN path`;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 1);
-      const path = result[0];
-      assertEqual(path.vertices.map((v) => v._key), [ "0", "1", "2" ]);
-      assertEqual(path.edges.map((e) => [e._from, e._to]), [ [`${vName}/0`, `${vName}/1`],
-                                                             [`${vName}/1`, `${vName}/2`] ] );
-      assertEqual(path.weight, 1);
+      for (let o of ['', ', algorithm: "yen"']) {
+        const query = `
+          FOR path IN ANY K_SHORTEST_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+            RETURN path`;
+        const result = db._query(query).toArray();
+        assertEqual(result.length, 1);
+        const path = result[0];
+        assertEqual(path.vertices.map((v) => v._key), [ "0", "1", "2" ]);
+        assertEqual(path.edges.map((e) => [e._from, e._to]), [ [`${vName}/0`, `${vName}/1`],
+                                                               [`${vName}/1`, `${vName}/2`] ] );
+        assertEqual(path.weight, 1);
+      }
     },
 
     testPathsExists2: function () {
-      const query = `
-        FOR path IN ANY K_SHORTEST_PATHS "${vName}/4" TO "${vName}/7" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          RETURN path`;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 1);
-      const path = result[0];
-      assertEqual(path.vertices.map((v) => v._key), [ "4", "5", "6", "7" ]);
-      assertEqual(path.edges.map((e) => [e._from, e._to]), [ [`${vName}/4`, `${vName}/5`],
-                                                             [`${vName}/5`, `${vName}/6`],
-                                                             [`${vName}/6`, `${vName}/7`] ] );
-      assertEqual(path.weight, 3);
+      for (let o of ['', ', algorithm: "yen"']) {
+        const query = `
+          FOR path IN ANY K_SHORTEST_PATHS "${vName}/4" TO "${vName}/7" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+            RETURN path`;
+        const result = db._query(query).toArray();
+        assertEqual(result.length, 1);
+        const path = result[0];
+        assertEqual(path.vertices.map((v) => v._key), [ "4", "5", "6", "7" ]);
+        assertEqual(path.edges.map((e) => [e._from, e._to]), [ [`${vName}/4`, `${vName}/5`],
+                                                               [`${vName}/5`, `${vName}/6`],
+                                                               [`${vName}/6`, `${vName}/7`] ] );
+        assertEqual(path.weight, 3);
+      }
     },
 
     testPathsExists3: function () {
-      const query = `
-        FOR path IN ANY K_SHORTEST_PATHS "${vName}/8" TO "${vName}/18" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          RETURN path`;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 3); 
+      for (let o of ['', ', algorithm: "yen"']) {
+        const query = `
+          FOR path IN ANY K_SHORTEST_PATHS "${vName}/8" TO "${vName}/18" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+            RETURN path`;
+        const result = db._query(query).toArray();
+        assertEqual(result.length, 3); 
 
-      assertEqual(result[0].vertices.map((v) => v._key), [ "8", "9", "17", "18" ]);
-      assertEqual(result[0].weight, 0.5);
-      assertEqual(result[1].vertices.map((v) => v._key), [ "8", "9", "15", "16", "11", "12", "13", "14", "18" ]);
-      assertEqual(result[1].weight, 6.5);
-      assertEqual(result[2].vertices.map((v) => v._key), [ "8", "9", "10", "11", "12", "13", "14", "18" ]);
-      assertEqual(result[2].weight, 7);
+        assertEqual(result[0].vertices.map((v) => v._key), [ "8", "9", "17", "18" ]);
+        assertEqual(result[0].weight, 0.5);
+        assertEqual(result[1].vertices.map((v) => v._key), [ "8", "9", "15", "16", "11", "12", "13", "14", "18" ]);
+        assertEqual(result[1].weight, 6.5);
+        assertEqual(result[2].vertices.map((v) => v._key), [ "8", "9", "10", "11", "12", "13", "14", "18" ]);
+        assertEqual(result[2].weight, 7);
+      }
     },
 
 

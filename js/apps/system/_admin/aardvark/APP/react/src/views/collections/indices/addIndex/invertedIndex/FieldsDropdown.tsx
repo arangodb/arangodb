@@ -1,6 +1,7 @@
 import { CreatableMultiSelect, OptionType } from "@arangodb/ui";
 import { Box, FormLabel, Spacer } from "@chakra-ui/react";
 import { FieldArray, useField } from "formik";
+import { isArray } from "lodash";
 import React from "react";
 import { components, MultiValueGenericProps } from "react-select";
 import { FormFieldProps } from "../../../../../components/form/FormField";
@@ -41,16 +42,24 @@ const MultiValueLabel = (
     </Box>
   );
 };
-export const FieldsDropdown = ({ field }: { field: FormFieldProps }) => {
-  const [formikField] = useField<InvertedIndexValuesType[]>(field.name);
-  const { setCurrentFieldData } = useInvertedIndexContext();
-  const dropdownValue =
-    formikField.value?.map(data => {
+
+const getDropdownValue = (fieldValue: InvertedIndexValuesType[]) => {
+  if (fieldValue && isArray(fieldValue)) {
+    return fieldValue.map(data => {
       if (typeof data === "string") {
         return { label: data, value: data };
       }
       return { label: data.name || "", value: data.name || "" };
-    }) || [];
+    });
+  }
+  return [];
+};
+
+export const FieldsDropdown = ({ field }: { field: FormFieldProps }) => {
+  const [formikField] = useField<InvertedIndexValuesType[]>(field.name);
+  const { setCurrentFieldData } = useInvertedIndexContext();
+  const dropdownValue = getDropdownValue(formikField.value);
+
   return (
     <FieldArray name={field.name}>
       {({ push, remove }) => {

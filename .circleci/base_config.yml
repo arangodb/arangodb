@@ -13,7 +13,7 @@ parameters:
     default: true
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:6"
+    default: "arangodb/ubuntubuildarangodb-devel:7"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-5b6113b7
@@ -38,13 +38,16 @@ parameters:
     default: ""
   ui:
     type: string
-    default: "off"
+    default: "on"
   ui-deployment:
     type: string
     default: ""
   ui-testsuites:
     type: string
     default: ""
+  rta-branch:
+    type: string
+    default: "main"
   c-compiler:
     type: string
     default: "clang"
@@ -589,7 +592,9 @@ jobs:
         type: string
       browser:
         type: string
-      # TODO add more parameters
+      rta-branch:
+        type: string
+        default: "main"
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -602,7 +607,7 @@ jobs:
             mkdir work/release-test-automation
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
-            #git checkout circleci
+            git checkout << pipeline.parameters.rta-branch >>
       - run:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
@@ -610,9 +615,25 @@ jobs:
             pwd
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
+            if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
+              export ASAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
+              export LSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
+              export UBSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
+              export SAN_MODE=alubsan
+              cp work/ArangoDB/ubsan_arangodb_suppressions.txt work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
+              cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
+              cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
+            elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
+              export TSAN_OPTIONS="log_exe_name=true:log_path=/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
+              export SAN_MODE=tsan
+              cp work/ArangoDB/ubsan_arangodb_suppressions.txt work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
+              cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
+              cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
+            fi
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
             cd work/release-test-automation
             bash -x ./jenkins/circleci_tar.sh \
+              --no-checkdata \
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \
