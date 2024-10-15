@@ -166,6 +166,7 @@ function runArangodRecovery (params, useEncryption) {
       };
     }
   } else {
+    params.instanceManager.debugTerminate();
     print(BLUE + "Restarting cluster " + RESET);
     params.instanceManager.reStartInstance();
     let tryCount = 10;
@@ -191,7 +192,6 @@ function runArangodRecovery (params, useEncryption) {
       exitStatus: {},
       getStructure: function() { return {}; }
     };
-
     pu.executeAndWait(pu.ARANGOSH_BIN,
                       toArgv(agentArgs),
                       params.options,
@@ -302,7 +302,7 @@ function recovery (options) {
       params.options.disableMonitor = localOptions.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.temp_path, {
+        trs.writeTestResult(params.temp_path, {
           failed: 1,
           status: false, 
           message: "unable to run recovery test " + test,

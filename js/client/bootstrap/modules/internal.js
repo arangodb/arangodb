@@ -131,6 +131,9 @@
   
   exports.debugClearFailAt = function(failAt) {
     const request = require('@arangodb/request');
+    if (global.hasOwnProperty('instanceManager')) {
+      return global.instanceManager.debugClearFailAt(failAt);
+    }
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     instanceInfo.arangods.forEach((a) => {
       let res = request.delete({
@@ -147,6 +150,9 @@
   
   exports.debugSetFailAt = function(failAt) {
     const request = require('@arangodb/request');
+    if (global.hasOwnProperty('instanceManager')) {
+      return global.instanceManager.debugSetFailAt(failAt);
+    }
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     instanceInfo.arangods.forEach((a) => {
       let res = request.put({
@@ -159,8 +165,7 @@
   };
   
   exports.debugTerminate = function() {
-    // NOOP. Terminate should be executed
-    // by tests framework not by client
+    //throw('not implemented');
   };
   
   exports.debugTerminateInstance = function(endpoint) {
@@ -173,6 +178,9 @@
   
   exports.debugCanUseFailAt = function() {
     const request = require('@arangodb/request');
+    if (global.hasOwnProperty('instanceManager')) {
+      return global.instanceManager.debugCanUseFailAt();
+    }
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     let res = request.get({
       url: endpointToURL(instanceInfo.arangods[0].endpoint) + '/_admin/debug/failat',

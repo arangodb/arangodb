@@ -65,8 +65,9 @@ function getTestCode(file, options, instanceManager) {
   }
   let ret = '';
   if (instanceManager != null) {
-    ret = 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n';
+    ret = `global.instanceManager = ${JSON.stringify(instanceManager.getStructure())};require('@arangodb/test-helper').pimpInstanceManager();\n`;
   }
+  
   return ret + runTest + 'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
 
@@ -230,7 +231,6 @@ class runInArangoshRunner extends testRunnerBase {
     if (this.addArgs !== undefined) {
       args = Object.assign(args, this.addArgs);
     }
-    // TODO require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager);
     let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
     return readTestResult(this.instanceManager.rootDir, rc, args['javascript.unit-tests']);
   }
@@ -258,6 +258,7 @@ class runLocalInArangoshRunner extends testRunnerBase {
 
     let testCode = getTestCode(file, this.options, null);
     global.instanceManager = this.instanceManager;
+    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let testFunc;
     try {
       eval('testFunc = function () {\n' + testCode + "}");
@@ -367,3 +368,4 @@ exports.runLocalInArangoshRunner = runLocalInArangoshRunner;
 exports.shellv8Runner = shellv8Runner;
 exports.readTestResult = readTestResult;
 exports.writeTestResult = writeTestResult;
+exports.getTestCode = getTestCode;
