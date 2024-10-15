@@ -70,15 +70,16 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
           promise->_callerExecContext = ExecContext::currentAsShared();
           promise->isSuspended = false;
         }
-        ExecContext::set(promise->_myExecContext);
+        ExecContext::set(_myExecContext);
         return inner_awaitable.await_resume();
       }
       async_promise_base<T>* promise;
       inner_awaitable_type inner_awaitable;
+      std::shared_ptr<ExecContext const> _myExecContext;
     };
-    _myExecContext = ExecContext::currentAsShared();
     return awaitable{this,
-                     get_awaitable_object(std::forward<U>(other_awaitable))};
+                     get_awaitable_object(std::forward<U>(other_awaitable)),
+                     ExecContext::currentAsShared()};
   };
   void unhandled_exception() { _value.set_exception(std::current_exception()); }
   auto get_return_object() {
@@ -88,7 +89,6 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
 
   std::atomic<void*> _continuation = nullptr;
   expected<T> _value;
-  std::shared_ptr<ExecContext const> _myExecContext;
   std::shared_ptr<ExecContext const> _callerExecContext;
   bool isSuspended = false;
 };
