@@ -90,7 +90,7 @@ struct AddToAsyncRegistry {
   struct noop {
     void operator()(void*) {}
   };
-  std::unique_ptr<Promise, noop> promise = nullptr;
+  std::unique_ptr<Promise, noop> promise_in_registry = nullptr;
 };
 
 }  // namespace arangodb::async_registry
