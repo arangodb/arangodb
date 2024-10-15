@@ -139,7 +139,7 @@ function checkInSync(leader, servers, ignore) {
 
 function readAgencyValue(path) {
   print(Date() + "Querying agency... (", path, ")");
-  let res = global.instanceManager.getAgency("/_api/agency/read", 'POST', JSON.stringify([[path]]));
+  let res = global.instanceManager.agencyMgr.getAgency("/_api/agency/read", 'POST', JSON.stringify([[path]]));
   assertTrue(res.hasOwnProperty('code'), JSON.stringify(res));
   assertEqual(res.code, 200, JSON.stringify(res));
   return JSON.parse(arangosh.checkRequestResult(res.body));

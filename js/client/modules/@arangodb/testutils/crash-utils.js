@@ -663,7 +663,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       return;
     }
 
-    const knownPatterns = ["%s", "%d", "%e", "%E", "%g", "%h", "%i", "%I", "%s", "%t", "%u"];
+    const knownPatterns = ["%s", "%d", "%e", "%E", "%g", "%h", "%i", "%I", "%t", "%u"];
     const replaceKnownPatterns = (s) => {
       knownPatterns.forEach(p => {
         s = s.replace(p, "*");

@@ -55,6 +55,7 @@ class sanHandler {
     this.backup = {};
   }
   detectLogfiles(rootDir, tmpDir) {
+    this.tmpDir = tmpDir;
     if (this.enabled) {
       if (containsDoubleByte(rootDir)) {
         rootDir = tmpDir;
@@ -72,9 +73,8 @@ class sanHandler {
     }
   }
   getSanOptions() {
-    let subProcesEnv = [];
+    let subProcesEnv = [`TMPDIR=${this.tmpDir}`];
     if (this.enabled) {
-      print("Using sanOptions ", this.sanOptions);
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
         for (const [keyOne, valueOne] of Object.entries(value)) {
@@ -106,7 +106,6 @@ class sanHandler {
     let ret = false;
     let suffix = `.${this.binaryName}.${pid}`;
     for (const [key, value] of Object.entries(this.sanitizerLogPaths)) {
-      print("processing ", value);
       const { upstream, local } = value;
       let fn = `${local}${suffix}`;
       if (foundReportFiles.has(fn)) {
@@ -142,6 +141,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
   const isCoverage = versionHas('coverage');
   const isSan = versionHas('asan') || versionHas('tsan');
   const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
+  const haveFailAt = versionHas('failure-tests');
   tu.CopyIntoObject(optionsDefaults, {
     'isCov': isCoverage,
     'covOptions': {},
@@ -149,6 +149,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'isSan': isSan,
     'sanOptions': {},
     'isInstrumented': isInstrumented,
+    'haveFailAt': haveFailAt, // silent option - automatically set only.
     'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   });
 
@@ -193,14 +194,9 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
         }
       });
     }
-    if (options.isCov) {
-      if (process.env.hasOwnProperty(coverage_name)) {
-        options.covOptions[coverage_name] = process.env[coverage_name];
-        delete process.env[coverage_name];
-      } else {
-        print(process.env);
-        throw new Error("coverage binaries without coverage setup");
-      }
+    if (options.isCov && process.env.hasOwnProperty(coverage_name)) {
+      options.covOptions[coverage_name] = process.env[coverage_name];
+      delete process.env[coverage_name];
     }
   });
 };
