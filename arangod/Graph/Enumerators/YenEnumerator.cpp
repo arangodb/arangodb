@@ -173,17 +173,22 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
   if (_isDone) {
     return false;
   }
+  LOG_DEVEL << "YenEnumerator::getNextPath()";
   if (_shortestPaths.empty()) {
     // First find the shortest path using the _shortestPathEnumerator:
     _shortestPathEnumerator->reset(_source, _target);
+    LOG_DEVEL << "Shortest path from " << _source << " to " << _target;
     bool found = _shortestPathEnumerator->getNextPath(result);
+    LOG_DEVEL << "done.";
     if (!found) {
       _isDone = true;
       return false;
     }
     auto const& path = _shortestPathEnumerator->getLastPathResult();
-    _shortestPaths.emplace_back(toOwned(path));  // Copy the path with all
-                                                 // its referenced data!
+    auto owned = toOwned(path);
+    owned.setBranchPoint(0);
+    _shortestPaths.emplace_back(std::move(owned));  // Copy the path with all
+                                                    // its referenced data!
     // When we are called next, we will continue below!
     return true;
   }
@@ -194,8 +199,13 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
   // take the best candidate or have proven that no more shortest paths
   // exist.
   auto const& prevPath = _shortestPaths.back();
+  size_t branchingPoint = prevPath.getBranchPoint();
   auto const len = prevPath.getLength();
-  for (size_t prefixLen = 0; prefixLen < len; ++prefixLen) {
+  // We use Lawler's modification of Yen's algorithm here: We only have to
+  // use prefixes which start at or after the point where the previous
+  // path was branched off. See https://en.wikipedia.org/wiki/Yen%27s_algorithm
+  // under "Lawler's modification".
+  for (size_t prefixLen = branchingPoint; prefixLen < len; ++prefixLen) {
     auto spurVertex = prevPath.getVertex(prefixLen);
     // To avoid cycles, forbid all vertices before the spurVertex in the
     // previous path:
@@ -234,7 +244,15 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     _shortestPathEnumerator->setForbiddenEdges(std::move(forbiddenEdges));
 
     VPackBuilder temp;
-    if (_shortestPathEnumerator->getNextPath(temp)) {
+    LOG_DEVEL << "Another shortest path from " << spurVertex.getID() << " to "
+              << _target;
+    auto start = std::chrono::steady_clock::now();
+    bool found = _shortestPathEnumerator->getNextPath(temp);
+    LOG_DEVEL << "Finished in "
+              << std::chrono::duration_cast<std::chrono::microseconds>(
+                     std::chrono::steady_clock::now() - start)
+                     .count();
+    if (found) {
       PathResult<ProviderType, typename ProviderType::Step> const& path =
           _shortestPathEnumerator->getLastPathResult();
       auto newPath = std::make_unique<
@@ -271,6 +289,7 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
         auto copy = std::make_unique<
             PathResult<ProviderType, typename ProviderType::Step>>(
             toOwned(*newPath));
+        copy->setBranchPoint(prefixLen);
         size_t mem = copy->getMemoryUsage();
         _resourceMonitor.increaseMemoryUsage(mem);
         _totalMemoryUsageHere += mem;

@@ -84,6 +84,8 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   _center = center;
   auto firstStep = _provider.startVertex(center, depth);
   _queue.append(std::move(firstStep));
+  _queued = 1;
+  _expanded = 0;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -274,6 +276,7 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   }
 
   if (!res.isPruned() && step.getVertex().getID() != other.getCenter()) {
+    ++_expanded;
     // We do not want to go further than the center of the other side!
     _provider.expand(step, posPrevious, [&](Step n) -> void {
       // TODO: maybe the pathStore could be asked whether a vertex has been
@@ -296,6 +299,7 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
         // have to put it on our queue. But if not, we must look at it
         // later:
         _queue.append(std::move(n));
+        _queued++;
       }
     });
   }
@@ -598,6 +602,12 @@ bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
     return foundPath;
   };
 
+  auto report = [&]() {
+    LOG_DEVEL << "Left: expanded " << _left.getExpanded()
+              << " queued: " << _left.getQueued() << " Right: expanded "
+              << _right.getExpanded() << " queued: " << _right.getQueued();
+  };
+
   while (!isDone()) {
     if (!searchDone()) {
       searchMoreResults();
@@ -611,16 +621,19 @@ bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
       // finished. We need to store this information.
 
       setAlgorithmFinished();  // just quick exit marker
+      report();
       return true;
     } else {
       // Check candidates list
       if (checkShortestPathCandidates()) {
+        report();
         return true;
       };
     }
   }
 
   TRI_ASSERT(isDone());
+  report();
   return false;
 }
 
@@ -742,7 +755,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
 typename WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                         PathValidator>::BallSearchLocation
 WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                               PathValidator>::getBallToContinueSearch() const {
+                               PathValidator>::getBallToContinueSearch() {
   if (_left.isQueueEmpty() and _right.isQueueEmpty()) {
     return BallSearchLocation::FINISH;
   }
@@ -778,7 +791,10 @@ WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   // finish off one side first by this choice, this does not matter in the
   // grand scheme of things.
   TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
-  if (_left.queueSize() <= _right.queueSize()) {
+  LOG_DEVEL << "Pondering left/right: " << _left.queueSize() << " vs. "
+            << _right.queueSize() << " ==> "
+            << (_left.queueSize() < _right.queueSize() ? "LEFT" : "RIGHT");
+  if (_left.queueSize() < _right.queueSize()) {
     return BallSearchLocation::LEFT;
   }
   return BallSearchLocation::RIGHT;

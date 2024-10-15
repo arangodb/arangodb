@@ -276,6 +276,9 @@ class WeightedShortestPathEnumerator {
 
     auto getCenter() const noexcept -> VertexRef { return _center; }
 
+    auto getQueued() const noexcept -> size_t { return _queued; }
+    auto getExpanded() const noexcept -> size_t { return _expanded; }
+
    private:
     auto clearProvider() -> void;
 
@@ -291,6 +294,9 @@ class WeightedShortestPathEnumerator {
 
     // The next elements to process
     QueueType _queue;
+
+    size_t _queued = 0;
+    size_t _expanded = 0;
 
     ProviderType _provider;
 
@@ -424,7 +430,7 @@ class WeightedShortestPathEnumerator {
 
   // Check where we want to continue our search
   // (Left or right ball)
-  auto getBallToContinueSearch() const -> BallSearchLocation;
+  auto getBallToContinueSearch() -> BallSearchLocation;
 
   // In case we call this method, we know that we've already produced
   // enough results. This flag will be checked within the "isDone" method
