@@ -125,6 +125,8 @@ dump_maskings  enterprise size=medium -- --dumpAgencyOnError true
 dump_encrypted enterprise size=medium -- --dumpAgencyOnError true
 dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
 dump_mixed_single_cluster size=large -- --dumpAgencyOnError true
+dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true --dumpVPack true
+dump_mixed_single_cluster size=large -- --dumpAgencyOnError true --dumpVPack true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes single size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
 dump_with_crashes full cluster size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
