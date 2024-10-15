@@ -194,6 +194,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
         }
       });
     }
+    print(options.sanOptions);
     if (options.isCov && process.env.hasOwnProperty(coverage_name)) {
       options.covOptions[coverage_name] = process.env[coverage_name];
       delete process.env[coverage_name];

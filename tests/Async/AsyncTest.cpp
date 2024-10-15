@@ -3,8 +3,10 @@
 #include "Async/Registry/registry_variable.h"
 #include "Async/Registry/registry.h"
 #include "Async/Registry/thread_registry.h"
+#include "Utils/ExecContext.h"
 
 #include <gtest/gtest.h>
+#include <coroutine>
 #include <thread>
 #include <deque>
 
@@ -399,4 +401,74 @@ TEST(AsyncTest, promises_are_registered_in_global_registry) {
     EXPECT_TRUE(names[1].find("baz") != std::string::npos);
     EXPECT_TRUE(names[2].find("bar") != std::string::npos);
   }).join();
+}
+
+struct ExecContext_Waiting : public arangodb::ExecContext {
+  ExecContext_Waiting()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Waiting",
+                              "", arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_Calling : public arangodb::ExecContext {
+  ExecContext_Calling()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Calling",
+                              "", arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_Begin : public arangodb::ExecContext {
+  ExecContext_Begin()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Begin", "",
+                              arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_End : public arangodb::ExecContext {
+  ExecContext_End()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "End", "",
+                              arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+TYPED_TEST(AsyncTest, execution_context_is_local_to_coroutine) {
+  ExecContextScope exec(std::make_shared<ExecContext_Begin>());
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  auto waiting_coro = [&]() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    ExecContextScope exec(std::make_shared<ExecContext_Waiting>());
+    EXPECT_EQ(ExecContext::current().user(), "Waiting");
+    co_await this->wait;
+    EXPECT_EQ(ExecContext::current().user(), "Waiting");
+    co_return;
+  }();
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  auto trivial_coro = []() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    co_return;
+  }();
+
+  auto calling_coro = [&]() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    ExecContextScope exec(std::make_shared<ExecContext_Calling>());
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_await std::move(waiting_coro);
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_await std::move(trivial_coro);
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_return;
+  };
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  calling_coro();
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  ExecContextScope new_exec(std::make_shared<ExecContext_End>());
+  EXPECT_EQ(ExecContext::current().user(), "End");
+
+  this->wait.resume();
+  this->wait.await();
+  EXPECT_EQ(ExecContext::current().user(), "End");
 }
