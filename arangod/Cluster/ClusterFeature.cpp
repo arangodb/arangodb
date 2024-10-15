@@ -374,7 +374,7 @@ and provide advanced transactional guarantees.
       .setLongDescription(R"(The possible values for the option are:
 
 - `jwt-all`: requires a valid JWT for all accesses to `/_admin/cluster` and its
-  sub-routes. If you use this configuration, the **CLUSTER** and **NODES**
+  sub-routes. If you use this configuration, the **Cluster** and **Nodes**
   sections of the web interface are disabled, as they rely on the ability to
   read data from several cluster APIs.
 
