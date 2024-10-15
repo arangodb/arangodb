@@ -5778,7 +5778,11 @@ void ClusterInfo::waitForSyncersToStop() {
       LOG_TOPIC("b8a5d", FATAL, Logger::CLUSTER)
           << "exiting prematurely as we failed to end syncer threads in "
              "ClusterInfo";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      FATAL_ERROR_ABORT();
+#else
       FATAL_ERROR_EXIT();
+#endif
     }
   }
 
