@@ -452,37 +452,29 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
       continue;
     }
 
+    // Sanitize document
+    VPackValueLength const inputLength = documentSlice.byteSize();
+    VPackBuffer<uint8_t> tmpBuffer;
+    bool resolveExt =
+        basics::VelocyPackHelper::hasNonClientTypes(documentSlice);
+    if (resolveExt) {                  // resolve
+      tmpBuffer.reserve(inputLength);  // reserve space already
+      VPackBuilder builder(tmpBuffer, &vpackOptions);
+      basics::VelocyPackHelper::sanitizeNonClientTypes(
+          documentSlice, VPackSlice::noneSlice(), builder, vpackOptions);
+      documentSlice = VPackSlice(tmpBuffer.data());
+    }
+
     auto storedSlice = std::invoke([&]() -> VPackSlice {
       if (_options.projections) {
         projectionsBuilder.clear();
         {
           VPackObjectBuilder ob(&projectionsBuilder);
-
-          // First sanitize document
-          VPackValueLength const inputLength = documentSlice.byteSize();
-          VPackBuffer<uint8_t> tmpBuffer;
-          bool resolveExt =
-              basics::VelocyPackHelper::hasNonClientTypes(documentSlice);
-          if (resolveExt) {                  // resolve
-            tmpBuffer.reserve(inputLength);  // reserve space already
-            VPackBuilder builder(tmpBuffer, &vpackOptions);
-            basics::VelocyPackHelper::sanitizeNonClientTypes(
-                documentSlice, VPackSlice::noneSlice(), builder, vpackOptions);
-            documentSlice = VPackSlice(tmpBuffer.data());
-          }
-
           for (auto const& [projKey, path] : *_options.projections) {
             auto value = documentSlice.get(path);
-            if (path.size() == 1 && path[0] == "_id") {
-              auto id = _customTypeHandler->toString(value, &vpackOptions,
-                                                     documentSlice);
-              projectionsBuilder.add(projKey, VPackValue(id));
-            } else if (!value.isNone()) {
-              projectionsBuilder.add(projKey, value);
-            }
+            projectionsBuilder.add(projKey, value);
           }
         }
-
         return projectionsBuilder.slice();
       }
 
