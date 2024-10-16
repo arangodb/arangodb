@@ -66,8 +66,7 @@ WeightedShortestPathEnumerator<
       _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
       _graphOptions(options),
-      _diameter(-std::numeric_limits<double>::infinity()),
-      _haveSeenOtherSide(false) {}
+      _diameter(-std::numeric_limits<double>::infinity()) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -86,18 +85,17 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   _queue.append(std::move(firstStep));
   _queued = 1;
   _expanded = 0;
+  _foundVertices.emplace(center, VertexWeight(0.0));
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::Ball::clear() {
-  _visitedNodes.clear();
-
+  _foundVertices.clear();
   _queue.clear();
   _interior.reset();  // PathStore
   _diameter = -std::numeric_limits<double>::infinity();
-  _haveSeenOtherSide = false;
   _validator.reset();
 
   // Provider - Must be last one to be cleared(!)
@@ -206,10 +204,11 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto WeightedShortestPathEnumerator<
     QueueType, PathStoreType, ProviderType,
     PathValidator>::Ball::hasBeenVisited(Step const& step) -> bool {
-  if (_visitedNodes.contains(step.getVertex().getID())) {
-    return true;
+  auto it = _foundVertices.find(step.getVertex().getID());
+  if (it == _foundVertices.end()) {
+    return false;
   }
-  return false;
+  return it->second.expanded;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -259,11 +258,6 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
 
-  // if the other side has explored this vertex, don't add it again
-  if (other.hasBeenVisited(tmp)) {
-    _haveSeenOtherSide = true;
-  }
-
   auto posPrevious = _interior.append(std::move(tmp));
   auto& step = _interior.getStepReference(posPrevious);
 
@@ -271,17 +265,54 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   _diameter = step.getWeight();
   ValidationResult res = _validator.validatePath(step);
 
-  if (!res.isFiltered()) {
-    _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
-  }
-
   if (!res.isPruned() && step.getVertex().getID() != other.getCenter()) {
+    auto it = _foundVertices.find(step.getVertex().getID());
+    TRI_ASSERT(it != _foundVertices.end());
+    if (it->second.cancelled) {
+      // This happens if we have later found a shorter path to the vertex
+      // and have still not queued the cheaper Step, for example, because
+      // the other side has already expanded the vertex. This is a performance
+      // optimization.
+      return;
+    }
+    it->second.position = posPrevious;
+    it->second.expanded = true;
     ++_expanded;
     // We do not want to go further than the center of the other side!
     _provider.expand(step, posPrevious, [&](Step n) -> void {
-      // TODO: maybe the pathStore could be asked whether a vertex has been
-      // visited?
+      // We check for
+      if (_forbiddenVertices != nullptr &&
+          _forbiddenVertices->contains(n.getVertex().getID())) {
+        return;
+      }
+      if (_forbiddenEdges != nullptr &&
+          _forbiddenEdges->contains(n.getEdge().getID())) {
+        return;
+      }
+      auto reachedIt = _foundVertices.find(n.getVertex().getID());
+      bool needToQueue = true;
+      bool weightReduced = false;
+      if (reachedIt == _foundVertices.end()) {
+        reachedIt =
+            _foundVertices
+                .emplace(n.getVertex().getID(), VertexWeight(n.getWeight()))
+                .first;
+      } else if (reachedIt->second.weight > n.getWeight()) {
+        // Reduce the weight of the vertex, note that the old Step will
+        // still be queued with the higher weight, but we will queue it
+        // again below, so the one with the smaller weight will come first
+        // on the queue and will eventually be expanded.
+        reachedIt->second.weight = n.getWeight();
+        weightReduced = true;
+      } else {
+        // We have already reached this vertex with at most this weight.
+        needToQueue = false;
+      }
+
+      // Note that even if the other side has already expanded the vertex,
+      // we still potentially queue it and thus will later expand it.
       if (other.hasBeenVisited(n)) {
+        needToQueue = false;
         // Need to validate this step, too:
         ValidationResult res =
             _validator.validatePathWithoutGlobalVertexUniqueness(n);
@@ -291,15 +322,18 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
         // other side!), so that we can no longer reach it with a
         // different path, which might have a smaller weight.
         if (!(res.isFiltered() || res.isPruned())) {
-          _haveSeenOtherSide = true;
           other.matchResultsInShell(n, candidates, _validator);
         }
-      } else {
-        // If the other side has already visited the vertex, we do not
+      }
+      if (needToQueue) {
+        // If the other side has already expanded the vertex, we do not
         // have to put it on our queue. But if not, we must look at it
         // later:
         _queue.append(std::move(n));
         _queued++;
+        reachedIt->second.cancelled = false;  // Make sure we expand the vertex
+      } else if (weightReduced) {
+        reachedIt->second.cancelled = true;
       }
     });
   }
@@ -311,17 +345,15 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::Ball::
     matchResultsInShell(Step const& otherStep, CandidatesStore& candidates,
                         PathValidator const& otherSideValidator) -> void {
-  auto positions = _visitedNodes.at(otherStep.getVertex().getID());
+  auto it = _foundVertices.find(otherStep.getVertex().getID());
+  TRI_ASSERT(it != _foundVertices.end());
+  TRI_ASSERT(it->second.expanded);
+  auto position = it->second.position;
 
-  for (auto const& position : positions) {
-    auto ourStep = _interior.getStepReference(position);
+  auto ourStep = _interior.getStepReference(position);
 
-    auto res = _validator.validatePath(ourStep, otherSideValidator);
-    if (res.isFiltered() || res.isPruned()) {
-      // This validator e.g. checks for path uniqueness violations.
-      continue;
-    }
-
+  auto res = _validator.validatePath(ourStep, otherSideValidator);
+  if (!(res.isFiltered() || res.isPruned())) {
     double nextFullPathWeight = ourStep.getWeight() + otherStep.getWeight();
     if (_direction == FORWARD) {
       candidates.append(
@@ -644,6 +676,15 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   while (!searchDone()) {
     _resultsFetched = false;
 
+    auto report = [&]() {
+      LOG_DEVEL << "Left: expanded " << _left.getExpanded()
+                << " queued: " << _left.getQueued() << " Right: expanded "
+                << _right.getExpanded() << " queued: " << _right.getQueued()
+                << " Candidates: " << _candidatesStore.size()
+                << " Results: " << _results.size();
+    };
+    report();
+
     if (_singleton) {
       _left.validateSingletonPath(_candidatesStore);
       setAlgorithmFinished();
@@ -760,6 +801,10 @@ WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
     return BallSearchLocation::FINISH;
   }
 
+  LOG_DEVEL << "Pondering left/right: " << _left.queueSize() << " vs. "
+            << _right.queueSize() << " ==> "
+            << (_left.queueSize() < _right.queueSize() ? "LEFT" : "RIGHT");
+
   if (_left.getDiameter() < 0.0) {
     return BallSearchLocation::LEFT;
   }
@@ -791,9 +836,6 @@ WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   // finish off one side first by this choice, this does not matter in the
   // grand scheme of things.
   TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
-  LOG_DEVEL << "Pondering left/right: " << _left.queueSize() << " vs. "
-            << _right.queueSize() << " ==> "
-            << (_left.queueSize() < _right.queueSize() ? "LEFT" : "RIGHT");
   if (_left.queueSize() < _right.queueSize()) {
     return BallSearchLocation::LEFT;
   }
@@ -807,10 +849,10 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   if ((_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished()) {
     return true;
   }
-  if (_left.noPathLeft() && !_left.haveSeenOtherSide()) {
+  if (_left.noPathLeft() && _candidatesStore.isEmpty() && _results.empty()) {
     return true;
   }
-  if (_right.noPathLeft() && !_right.haveSeenOtherSide()) {
+  if (_right.noPathLeft() && _candidatesStore.isEmpty() && _results.empty()) {
     // Special case for singleton (source == target), in this case
     // we should indicate that there is something still coming. If
     // we have already delivered the singleton, then the algorithm
