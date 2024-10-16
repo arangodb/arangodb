@@ -427,6 +427,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   std::uint64_t batchSize = _options.batchSize;
 
   VPackBuilder projectionsBuilder;
+  VPackBuffer<uint8_t> sanitizationBuffer;
 
   for (it->Seek(lowerBound.string()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(ci.upper) < 0);
@@ -454,15 +455,15 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
 
     // Sanitize document
     VPackValueLength const inputLength = documentSlice.byteSize();
-    VPackBuffer<uint8_t> tmpBuffer;
-    bool resolveExt =
-        basics::VelocyPackHelper::hasNonClientTypes(documentSlice);
-    if (resolveExt) {                  // resolve
-      tmpBuffer.reserve(inputLength);  // reserve space already
-      VPackBuilder builder(tmpBuffer, &vpackOptions);
+    if (basics::VelocyPackHelper::hasNonClientTypes(documentSlice)) {
+      sanitizationBuffer.clear();
+      sanitizationBuffer.reserve(inputLength +
+                                 64);  // reserve more space since sanitization
+                                       // will make documentSlice bigger
+      VPackBuilder builder(sanitizationBuffer, &vpackOptions);
       basics::VelocyPackHelper::sanitizeNonClientTypes(
           documentSlice, VPackSlice::noneSlice(), builder, vpackOptions);
-      documentSlice = VPackSlice(tmpBuffer.data());
+      documentSlice = VPackSlice(sanitizationBuffer.data());
     }
 
     auto storedSlice = std::invoke([&]() -> VPackSlice {
