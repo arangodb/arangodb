@@ -388,8 +388,11 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       }
       crashUtils.stopProcdump(options, instanceInfo);
     } else {
-      print('Killing ' + cmd + ' - ' + JSON.stringify(args));
-      res = killExternal(res.pid);
+      res = statusExternal(instanceInfo.pid, true, timeout);
+      if (res.exitStatus.status === 'TIMEOUT') {
+        print('Killing ' + cmd + ' - ' + JSON.stringify(args));
+        res = killExternal(res.pid);
+      }
       instanceInfo.pid = res.pid;
       instanceInfo.exitStatus = res;
     }
