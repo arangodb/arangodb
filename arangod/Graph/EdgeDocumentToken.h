@@ -195,6 +195,14 @@ struct EdgeDocumentToken {
            (_data.document.cid.id() << 1);
   }
 
+  std::string toString() const {
+    if (ServerState::instance()->isCoordinator()) {
+      return arangodb::velocypack::Slice(vpack()).toString();
+    }
+    return std::to_string(_data.document.cid.id()) + ":" +
+           std::to_string(_data.document.localDocumentId.id());
+  }
+
  private:
   /// Identifying information for an edge documents valid on one server
   /// only used on a dbserver or single server

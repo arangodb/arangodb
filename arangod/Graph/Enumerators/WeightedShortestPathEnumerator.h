@@ -260,21 +260,20 @@ class WeightedShortestPathEnumerator {
 
     auto getDiameter() const noexcept -> double { return _diameter; }
 
-    auto haveSeenOtherSide() const noexcept -> bool {
-      return _haveSeenOtherSide;
-    }
-
     auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
         -> void requires HasForbidden<PathValidatorType> {
-      _validator.setForbiddenVertices(std::move(forbidden));
+      _forbiddenVertices = std::move(forbidden);
     };
 
     auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
         -> void requires HasForbidden<PathValidatorType> {
-      _validator.setForbiddenEdges(std::move(forbidden));
+      _forbiddenEdges = std::move(forbidden);
     };
 
     auto getCenter() const noexcept -> VertexRef { return _center; }
+
+    auto getQueued() const noexcept -> size_t { return _queued; }
+    auto getExpanded() const noexcept -> size_t { return _expanded; }
 
    private:
     auto clearProvider() -> void;
@@ -292,15 +291,34 @@ class WeightedShortestPathEnumerator {
     // The next elements to process
     QueueType _queue;
 
+    size_t _queued = 0;
+    size_t _expanded = 0;
+
     ProviderType _provider;
 
     PathValidatorType _validator;
-    containers::FlatHashMap<typename Step::VertexType, std::vector<size_t>>
-        _visitedNodes;
+    struct VertexWeight {
+      VertexWeight(double w)
+          : weight(w), position(0), expanded(false), cancelled(false) {}
+      double weight;
+      size_t position;  // this is only set once `expanded` is true
+                        // it refers to the position in _interior
+                        // once the vertex has been expanded.
+      bool expanded;    // This is set to true if a vertex has been expanded.
+      bool cancelled;   // This is set to true if a vertex has been found
+                        // with a lower weight than the current one and
+                        // yet no new Step has been queued for it. We can
+                        // then prevent further expansion of this vertex
+                        // without deleting its Step with the wrong
+                        // weight from the queue.
+    };
+    containers::FlatHashMap<typename Step::VertexType, VertexWeight>
+        _foundVertices;
     Direction _direction;
     GraphOptions _graphOptions;
     double _diameter = -std::numeric_limits<double>::infinity();
-    bool _haveSeenOtherSide;
+    std::shared_ptr<VertexSet> _forbiddenVertices;
+    std::shared_ptr<EdgeSet> _forbiddenEdges;
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
@@ -424,7 +442,7 @@ class WeightedShortestPathEnumerator {
 
   // Check where we want to continue our search
   // (Left or right ball)
-  auto getBallToContinueSearch() const -> BallSearchLocation;
+  auto getBallToContinueSearch() -> BallSearchLocation;
 
   // In case we call this method, we know that we've already produced
   // enough results. This flag will be checked within the "isDone" method
