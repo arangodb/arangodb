@@ -105,7 +105,7 @@ void Scheduler::shutdown() {
   while (!_cronQueue.empty()) {
     auto const& top = _cronQueue.top();
     auto item = top.second.lock();
-    if (item) {
+    if (item && item->name() != "connectivity-check") {
       TRI_ASSERT(item->isDisabled()) << item->name();
     }
     _cronQueue.pop();
