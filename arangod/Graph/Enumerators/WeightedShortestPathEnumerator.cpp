@@ -268,7 +268,7 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   if (!res.isPruned() && step.getVertex().getID() != other.getCenter()) {
     auto it = _foundVertices.find(step.getVertex().getID());
     TRI_ASSERT(it != _foundVertices.end());
-    if (it->second.expanded) {
+    if (it->second.cancelled) {
       // This happens if we have later found a shorter path to the vertex
       // and have still not queued the cheaper Step, for example, because
       // the other side has already expanded the vertex. This is a performance
@@ -331,9 +331,9 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
         // later:
         _queue.append(std::move(n));
         _queued++;
-        reachedIt->second.expanded = false;  // Make sure we expand the vertex
+        reachedIt->second.cancelled = false;  // Make sure we expand the vertex
       } else if (weightReduced) {
-        reachedIt->second.expanded = true;
+        reachedIt->second.cancelled = true;
       }
     });
   }
