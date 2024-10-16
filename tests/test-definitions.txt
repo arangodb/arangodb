@@ -112,8 +112,7 @@ server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError tru
 # Dump Tests
 dump cluster size=medium parallelity=5 -- --dumpAgencyOnError true
 dump single size=medium -- --dumpAgencyOnError true
-# BTS-1975: it is known to be broken in the cluster.
-# dump cluster suffix=_vpack size=medium parallelity=5 -- --dumpAgencyOnError true --dumpVPack true
+dump cluster suffix=_vpack size=medium parallelity=5 -- --dumpAgencyOnError true --dumpVPack true
 dump single suffix=_vpack size=medium -- --dumpAgencyOnError true --dumpVPack true
 # BTS-1852 enable after fix:
 # dump size=medium enterprise cluster name=dump_singleshard_cluster -- --forceOneShard true --cluster true --dumpAgencyOnError true
@@ -126,6 +125,8 @@ dump_maskings  enterprise size=medium -- --dumpAgencyOnError true
 dump_encrypted enterprise size=medium -- --dumpAgencyOnError true
 dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
 dump_mixed_single_cluster size=large -- --dumpAgencyOnError true
+dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true --dumpVPack true
+dump_mixed_single_cluster size=large -- --dumpAgencyOnError true --dumpVPack true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes single size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
 dump_with_crashes full cluster size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true

@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
-#include "Async/Registry/registry_variable.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/process-utils.h"
@@ -1182,8 +1181,6 @@ void StatisticsWorker::run() {
       LOG_TOPIC("9a4f9", WARN, Logger::STATISTICS)
           << "caught unknown exception in StatisticsWorker";
     }
-    async_registry::get_thread_registry().garbage_collect();
-
     std::unique_lock guard{_cv.mutex};
     _cv.cv.wait_for(guard, std::chrono::seconds{1});
   }

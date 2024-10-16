@@ -82,6 +82,9 @@ def parse_arguments():
         "--ui-deployments", type=str, help="which deployments [CL, SG, ...] to run"
     )
     parser.add_argument(
+        "--rta-branch", type=str, help="which branch for the ui tests to check out"
+    )
+    parser.add_argument(
         "--validate-only",
         help="validates the test definition file",
         action="store_true",
@@ -342,7 +345,7 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
     return {"run-linux-tests": job}
 
 
-def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement):
+def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement, rta_branch):
     edition = "ee" if build_config.enterprise else "ce"
     job = {
         "name": f"test-{filter_statement}-{edition}-{deployment_mode}-UI",
@@ -352,6 +355,7 @@ def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statem
         "enterprise": "EP" if build_config.enterprise else "C",
         "filterStatement": f"--ui-include-test-suite {filter_statement}",
         "requires": build_jobs,
+        "rta-branch": rta_branch,
     }
     return {"run-rta-tests": job}
 
@@ -401,7 +405,7 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
     for deployment in deployments:
         for test_suite in ui_testsuites:
             jobs.append(
-                create_rta_test_job(build_config, build_jobs, deployment, test_suite)
+                create_rta_test_job(build_config, build_jobs, deployment, test_suite, args.rta_branch)
             )
 
 

@@ -32,7 +32,6 @@
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Async/Registry/registry_variable.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -489,8 +488,6 @@ void SupervisedScheduler::runWorker() {
       LOG_TOPIC("d4121", ERR, Logger::THREADS)
           << "scheduler loop caught unknown exception";
     }
-
-    async_registry::get_thread_registry().garbage_collect();
 
     _jobsDone.fetch_add(1, std::memory_order_release);
   }

@@ -22,38 +22,31 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Async/Registry/registry_variable.h"
-#include "Async/Registry/Metrics.h"
-#include "RestServer/arangod.h"
+#include <coroutine>
+#include <utility>
 
-namespace arangodb::async_registry {
+namespace arangodb {
 
-class Feature final : public ArangodFeature {
- private:
-  static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
-      -> std::shared_ptr<const Metrics>;
-
- public:
-  static constexpr std::string_view name() { return "Coroutines"; }
-
-  Feature(Server& server);
-
-  ~Feature();
-
-  void start() override final;
-  void stop() override final;
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-
- private:
-  struct Options {
-    size_t gc_timeout{1};
-  };
-  Options _options;
-
-  std::shared_ptr<const Metrics> metrics;
-
-  struct PromiseCleanupThread;
-  std::shared_ptr<PromiseCleanupThread> _cleanupThread;
+template<typename T>
+concept HasOperatorCoAwait = requires(T t) {
+  operator co_await(std::forward<T>(t));
+};
+template<typename T>
+concept HasMemberOperatorCoAwait = requires(T t) {
+  std::forward<T>(t).operator co_await();
 };
 
-}  // namespace arangodb::async_registry
+template<typename T>
+auto get_awaitable_object(T&& t) -> T&& {
+  return std::forward<T>(t);
+}
+template<HasOperatorCoAwait T>
+auto get_awaitable_object(T&& t) {
+  return operator co_await(std::forward<T>(t));
+}
+template<HasMemberOperatorCoAwait T>
+auto get_awaitable_object(T&& t) {
+  return std::forward<T>(t).operator co_await();
+}
+
+}  // namespace arangodb
