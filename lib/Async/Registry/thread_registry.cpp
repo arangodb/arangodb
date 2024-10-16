@@ -194,7 +194,7 @@ auto ThreadRegistry::garbage_collect_external() noexcept -> void {
 
 auto ThreadRegistry::remove(Promise* promise) -> void {
   auto* next = promise->next;
-  auto* previous = promise->previous;
+  auto* previous = promise->previous.load();
   if (previous == nullptr) {  // promise is current head
     // (3) - this store synchronizes with the load in (2)
     promise_head.store(next, std::memory_order_release);
