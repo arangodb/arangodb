@@ -50,9 +50,11 @@ struct Promise {
   ~Promise() = default;
 
   auto mark_for_deletion() noexcept -> void;
+  auto id() -> void* { return this; }
 
   Thread thread;
   std::source_location entry_point;
+  void* waiter = nullptr;
   // identifies the promise list it belongs to
   std::shared_ptr<ThreadRegistry> registry;
   Promise* next = nullptr;
@@ -71,10 +73,11 @@ auto inspect(Inspector& f, Promise& x) {
   // perhaps just use for saving
   return f.object(x).fields(
       f.field("thread", x.thread),
-      f.field(
-          "source_location",
-          fmt::format("{}:{} {}", x.entry_point.file_name(),
-                      x.entry_point.line(), x.entry_point.function_name())));
+      f.field("source_location",
+              fmt::format("{}:{} {}", x.entry_point.file_name(),
+                          x.entry_point.line(), x.entry_point.function_name())),
+      f.field("id", reinterpret_cast<intptr_t>(x.id())),
+      f.field("waiter", reinterpret_cast<intptr_t>(x.waiter)));
 }
 
 struct AddToAsyncRegistry {
@@ -85,6 +88,11 @@ struct AddToAsyncRegistry {
   AddToAsyncRegistry(AddToAsyncRegistry&&) = delete;
   AddToAsyncRegistry& operator=(AddToAsyncRegistry&&) = delete;
   ~AddToAsyncRegistry();
+
+  auto set_promise_waiter(void* waiter) {
+    promise_in_registry->waiter = waiter;
+  }
+  auto id() -> void* { return promise_in_registry->id(); }
 
  private:
   struct noop {

@@ -77,6 +77,9 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
       inner_awaitable_type inner_awaitable;
       std::shared_ptr<ExecContext const> _myExecContext;
     };
+    if constexpr (CanSetPromiseWaiter<U>) {
+      co_awaited_expression.set_promise_waiter(this->id());
+    }
     return awaitable{
         this, get_awaitable_object(std::forward<U>(co_awaited_expression)),
         ExecContext::currentAsShared()};
@@ -155,6 +158,11 @@ struct async {
 
   bool valid() const noexcept { return _handle != nullptr; }
   operator bool() const noexcept { return valid(); }
+
+  auto set_promise_waiter(void* waiter) {
+    _handle.promise().set_promise_waiter(waiter);
+  }
+  auto id() -> void* { return _handle.promise()->id(); }
 
   ~async() { reset(); }
 
