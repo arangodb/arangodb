@@ -30,7 +30,7 @@ const functionsDocumentation = {
 };
 
 const internal = require('internal');
-
+const sleep = internal.sleep;
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const statusExternal = internal.statusExternal;
@@ -55,6 +55,26 @@ const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+
+const rp = require('@arangodb/replication');
+
+function waitAfoInSync(IM) {
+  let count = 0;
+  let tickbefore = rp.logger.state().state.lastUncommittedLogTick;
+  while (count < 500) {
+    let state = rp.logger.state();
+    let stateCount = 0;
+    let list = state.clients.filter(clientState => {
+      return clientState.lastServedTick >= tickbefore;
+    });
+    if (list.length + 1 === IM.options.singles) {
+      return;
+    }
+    count -=1;
+    sleep(0.5);
+  }
+  throw new Error("rta AFO didn't come in sync!");
+}
 
 const testPaths = {
   'rta_makedata': []
@@ -144,14 +164,17 @@ function makeDataWrapper (options) {
             stoppedDbServerInstance.waitForExit();
             moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
           }
-        } else if (this.options.activefailover &&  (count === 2)) {
-          oldLeader = this.instanceManager.leader;
-          print(`halting old leader ${oldLeader.name}`);
-          oldLeader.suspend();
-          require('internal').sleep(10);
-          let newLeader = this.instanceManager.detectCurrentLeader();
-          newLeader.connect();
-          oldLeader.resume();
+        } else if (this.options.activefailover) {
+          waitAfoInSync(this.instanceManager);
+          if (count === 2) {
+            oldLeader = this.instanceManager.leader;
+            print(`halting old leader ${oldLeader.name}`);
+            oldLeader.suspend();
+            sleep(10);
+            let newLeader = this.instanceManager.detectCurrentLeader();
+            newLeader.connect();
+            oldLeader.resume();
+          }
         }
         let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
