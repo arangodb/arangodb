@@ -366,7 +366,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   let sh;
   let res = {};
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    let tStart = Date();
     res = executeExternal(cmd, args, false);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
