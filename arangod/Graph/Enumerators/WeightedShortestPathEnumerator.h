@@ -298,14 +298,13 @@ class WeightedShortestPathEnumerator {
 
     PathValidatorType _validator;
     struct VertexWeight {
-      VertexWeight(double w)
-          : weight(w), position(0), expanded(false), cancelled(false) {}
+      VertexWeight(double w) : weight(w), position(0), expanded(false) {}
       double weight;
       size_t position;  // this is only set once `expanded` is true
                         // it refers to the position in _interior
                         // once the vertex has been expanded.
       bool expanded;    // This is set to true if a vertex has been expanded.
-      bool cancelled;   // This is set to true if a vertex has been found
+                        // This is set also to true if a vertex has been found
                         // with a lower weight than the current one and
                         // yet no new Step has been queued for it. We can
                         // then prevent further expansion of this vertex
