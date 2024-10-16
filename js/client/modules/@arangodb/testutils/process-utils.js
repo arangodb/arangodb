@@ -366,6 +366,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   let sh;
   let res = {};
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
+    let tStart = Date();
     res = executeExternal(cmd, args, false);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
@@ -388,8 +389,11 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       }
       crashUtils.stopProcdump(options, instanceInfo);
     } else {
-      print('Killing ' + cmd + ' - ' + JSON.stringify(args));
-      res = killExternal(res.pid);
+      res = statusExternal(instanceInfo.pid, true, timeout);
+      if (res.exitStatus.status === 'TIMEOUT') {
+        print('Killing ' + cmd + ' - ' + JSON.stringify(args));
+        res = killExternal(res.pid);
+      }
       instanceInfo.pid = res.pid;
       instanceInfo.exitStatus = res;
     }
