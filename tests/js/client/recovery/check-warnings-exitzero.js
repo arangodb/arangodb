@@ -95,6 +95,11 @@ function recoverySuite () {
           // experimental feature
           return false;
         }
+        if (line.match(/\[a1690\].*Scheduler/)) {
+          // intentionally ignore shutdown warning
+          // experimental feature
+          return false;
+        }
         return true;
       });
 

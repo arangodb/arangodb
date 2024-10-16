@@ -664,7 +664,10 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
       }
       return s.str();
     }();
-
+    ADB_PROD_ASSERT(i < _log.size())
+        << "log size: " << _log.size() << ", start: " << s << ", end: " << e
+        << ", cur: " << _cur << ", orig start: " << start
+        << ", orig end: " << end;
     entries.push_back(_log[i]);
   }
 
