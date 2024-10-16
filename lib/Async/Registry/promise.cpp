@@ -30,7 +30,8 @@ using namespace arangodb::async_registry;
 Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
                  std::source_location entry_point)
     : thread{registry->thread},
-      entry_point{std::move(entry_point)},
+      entry_point{entry_point.file_name(), entry_point.function_name(),
+                  entry_point.line()},
       registry{std::move(registry)},
       next{next} {}
 
