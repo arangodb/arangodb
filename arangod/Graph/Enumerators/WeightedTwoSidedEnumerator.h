@@ -410,8 +410,6 @@ class WeightedTwoSidedEnumerator {
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
-  auto setEmitWeight(bool) -> void {}
-
  private:
   [[nodiscard]] auto searchDone() const -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
