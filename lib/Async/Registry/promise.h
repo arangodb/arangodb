@@ -68,7 +68,7 @@ struct Promise {
 
   Thread thread;
 
-  SourceLocation entry_point;
+  SourceLocation source_location;
   std::atomic<void*> waiter = nullptr;
   // identifies the promise list it belongs to
   std::shared_ptr<ThreadRegistry> registry;
@@ -88,7 +88,8 @@ template<typename Inspector>
 auto inspect(Inspector& f, Promise& x) {
   if constexpr (!Inspector::isLoading) {  // only serialize
     return f.object(x).fields(
-        f.field("thread", x.thread), f.field("source_location", x.entry_point),
+        f.field("thread", x.thread),
+        f.field("source_location", x.source_location),
         f.field("id", reinterpret_cast<intptr_t>(x.id())),
         f.field("waiter", reinterpret_cast<intptr_t>(x.waiter.load())));
   }
@@ -108,7 +109,7 @@ struct AddToAsyncRegistry {
   }
   auto id() -> void* { return promise_in_registry->id(); }
   auto update_source_location(std::source_location loc) {
-    promise_in_registry->entry_point.line.store(loc.line());
+    promise_in_registry->source_location.line.store(loc.line());
   }
 
  private:

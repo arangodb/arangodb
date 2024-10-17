@@ -38,7 +38,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::Promise* promise) {
           count++;
-          EXPECT_EQ(promise->entry_point.line.load(), 34);
+          EXPECT_EQ(promise->source_location.line.load(), 34);
         });
     EXPECT_EQ(count, 1);
   }
@@ -56,7 +56,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::Promise* promise) {
           count++;
-          EXPECT_EQ(promise->entry_point.line.load(), 50);
+          EXPECT_EQ(promise->source_location.line.load(), 50);
         });
     EXPECT_EQ(count, 1);
     wait.resume();
@@ -65,7 +65,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::Promise* promise) {
           count++;
-          EXPECT_EQ(promise->entry_point.line.load(), 52);
+          EXPECT_EQ(promise->source_location.line.load(), 52);
         });
     EXPECT_EQ(count, 1);
   }
@@ -83,7 +83,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::Promise* promise) {
           count++;
-          EXPECT_EQ(promise->entry_point.line.load(), 77);
+          EXPECT_EQ(promise->source_location.line.load(), 77);
         });
     EXPECT_EQ(count, 1);
     wait.await();
@@ -92,7 +92,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::Promise* promise) {
           count++;
-          EXPECT_EQ(promise->entry_point.line.load(), 79);
+          EXPECT_EQ(promise->source_location.line.load(), 79);
         });
     EXPECT_EQ(count, 1);
   }

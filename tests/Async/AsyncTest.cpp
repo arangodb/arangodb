@@ -396,7 +396,7 @@ TYPED_TEST(AsyncTest, promises_are_registered_in_global_async_registry) {
     std::vector<std::string> names;
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::Promise* promise) {
-          names.push_back(promise->entry_point.function_name);
+          names.push_back(promise->source_location.function_name);
         });
     EXPECT_EQ(names.size(), 3);
     EXPECT_TRUE(names[0].find("foo") != std::string::npos);
@@ -497,11 +497,11 @@ TYPED_TEST(AsyncTest, async_promises_in_async_registry_know_their_waiter) {
   arangodb::async_registry::registry.for_promise(
       [&](arangodb::async_registry::Promise* promise) {
         count++;
-        if (promise->entry_point.function_name.find("awaited_fn") !=
+        if (promise->source_location.function_name.find("awaited_fn") !=
             std::string::npos) {
           awaited_promise = PromiseIds{true, promise->id(), promise->waiter};
         }
-        if (promise->entry_point.function_name.find("waiter_fn") !=
+        if (promise->source_location.function_name.find("waiter_fn") !=
             std::string::npos) {
           waiter_promise = PromiseIds{true, promise->id(), promise->waiter};
         }
