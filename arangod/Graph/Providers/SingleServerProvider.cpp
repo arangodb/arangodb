@@ -36,6 +36,7 @@
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
 
+#include <type_traits>
 #include <vector>
 
 using namespace arangodb;
@@ -123,10 +124,15 @@ auto SingleServerProvider<Step>::expand(
       << "<SingleServerProvider> Expanding " << vertex.getID();
 
   std::vector<ExpansionInfo>* neighbours;
+  std::vector<ExpansionInfo> newNeighbours;  // only used if not in cache
 
+  // If we are used on a single server, we can use the cache, if we are used
+  // with the SmartGraphStep, then we must not use the cache, since there
+  // might be a depth-dependent filter.
+  bool useCache = std::is_same<Step, SingleServerProviderStep>::value;
   // First check the cache:
   auto it = _vertexCache.find(vertex.getID());
-  if (it != _vertexCache.end()) {
+  if (it != _vertexCache.end() && useCache) {
     // We have already expanded this vertex, so we can just use the
     // cached result:
     neighbours = &it->second;
@@ -135,7 +141,6 @@ auto SingleServerProvider<Step>::expand(
     TRI_ASSERT(_cursor != nullptr);
     _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
     ++_rearmed;
-    std::vector<ExpansionInfo> newNeighbours;  // only used if not in cache
     _cursor->readAll(
         *this, _stats, step.getDepth(),
         [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
@@ -143,9 +148,13 @@ auto SingleServerProvider<Step>::expand(
           // Add to vector above:
           newNeighbours.emplace_back(std::move(eid), edge, cursorID);
         });
-    auto [it, inserted] =
-        _vertexCache.insert({vertex.getID(), std::move(newNeighbours)});
-    neighbours = &it->second;
+    if (useCache) {
+      auto [it, inserted] =
+          _vertexCache.insert({vertex.getID(), std::move(newNeighbours)});
+      neighbours = &it->second;
+    } else {
+      neighbours = &newNeighbours;
+    }
   }
 
   // Now do the work:
