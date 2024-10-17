@@ -40,6 +40,12 @@ std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
   auto metrics = std::make_unique<VocbaseMetrics>();
   metrics->shards_read_only_by_write_concern =
       createMetric(arangodb_vocbase_shards_read_only_by_write_concern{});
+  metrics->_metricsFeature = &mf;
 
   return metrics;
+}
+
+VocbaseMetrics::~VocbaseMetrics() {
+  // delete all metrics
+  _metricsFeature->remove(*shards_read_only_by_write_concern);
 }
