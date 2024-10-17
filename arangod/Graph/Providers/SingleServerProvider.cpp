@@ -88,6 +88,10 @@ SingleServerProvider<Step>::SingleServerProvider(
              _opts.getEdgeProjections(), _opts.produceVertices()),
       _stats{} {
   _cursor = buildCursor(opts.expressionContext());
+  if (!_opts.indexInformations().second.empty()) {
+    // If we have depth dependent filters, we must not use the cache
+    _useVertexCache = false;
+  }
 }
 
 template<class Step>
@@ -126,13 +130,10 @@ auto SingleServerProvider<Step>::expand(
   std::vector<ExpansionInfo>* neighbours;
   std::vector<ExpansionInfo> newNeighbours;  // only used if not in cache
 
-  // If we are used on a single server, we can use the cache, if we are used
-  // with the SmartGraphStep, then we must not use the cache, since there
-  // might be a depth-dependent filter.
-  bool useCache = std::is_same<Step, SingleServerProviderStep>::value;
   // First check the cache:
-  auto it = _vertexCache.find(vertex.getID());
-  if (it != _vertexCache.end() && useCache) {
+  auto it =
+      _useVertexCache ? _vertexCache.find(vertex.getID()) : _vertexCache.end();
+  if (it != _vertexCache.end()) {
     // We have already expanded this vertex, so we can just use the
     // cached result:
     neighbours = &it->second;
@@ -148,7 +149,7 @@ auto SingleServerProvider<Step>::expand(
           // Add to vector above:
           newNeighbours.emplace_back(std::move(eid), edge, cursorID);
         });
-    if (useCache) {
+    if (_useVertexCache) {
       size_t newMemoryUsage = newNeighbours.size() * sizeof(ExpansionInfo);
       for (auto const& neighbour : newNeighbours) {
         newMemoryUsage += neighbour.edgeData.size();

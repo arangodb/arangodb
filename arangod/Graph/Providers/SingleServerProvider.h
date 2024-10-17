@@ -171,6 +171,7 @@ class SingleServerProvider {
   SingleServerBaseProviderOptions _opts;
 
   RefactoredTraverserCache _cache;
+  bool _useVertexCache = true;
   FoundVertexCache _vertexCache;
   size_t _memoryUsageVertexCache = 0;
 
