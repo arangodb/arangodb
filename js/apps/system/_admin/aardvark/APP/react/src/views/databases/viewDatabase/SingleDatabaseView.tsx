@@ -5,6 +5,7 @@ import { useHistory, useRouteMatch } from "react-router-dom";
 import { DatabaseInfo } from "./DatabaseInfo";
 import { DeleteDatabaseModal } from "./DeleteDatabaseModal";
 import { useFetchDatabase } from "../useFetchDatabase";
+import { useNavbarHeight } from "../../useNavbarHeight";
 
 export const SingleDatabaseView = () => {
   const { params } = useRouteMatch<{ databaseName: string }>();
@@ -12,6 +13,7 @@ export const SingleDatabaseView = () => {
   const { database: currentDatabase } = useFetchDatabase(databaseName);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const history = useHistory();
+  const navbarHeight = useNavbarHeight();
   if (!currentDatabase) {
     return null;
   }
@@ -21,7 +23,7 @@ export const SingleDatabaseView = () => {
   const showDeleteButton = !isSystem && !isSameDb;
 
   return (
-    <Stack padding="6" width="100%" height="calc(100vh - 120px)">
+    <Stack padding="6" width="100%" height={`calc(100vh - ${navbarHeight}px)`}>
       <Flex direction="row" alignItems="center">
         <IconButton
           aria-label="Back"

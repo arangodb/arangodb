@@ -8,6 +8,7 @@ import { useCustomHashMatch } from "../../../utils/useCustomHashMatch";
 import { useAnalyzersContext } from "../AnalyzersContext";
 import { AnalyzerInfo } from "./AnalyzerInfo";
 import { DeleteAnalyzerModal } from "./DeleteAnalyzerModal";
+import { useNavbarHeight } from "../../useNavbarHeight";
 
 export const SingleAnalyzerView = () => {
   // need to use winodw.location.hash here instead of useRouteMatch because
@@ -18,6 +19,7 @@ export const SingleAnalyzerView = () => {
   const currentAnalyzer = analyzers?.find(a => a.name === decodedAnalyzerName);
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const history = useHistory();
+  const navbarHeight = useNavbarHeight();
   if (!currentAnalyzer) {
     return null;
   }
@@ -27,7 +29,7 @@ export const SingleAnalyzerView = () => {
   const showDeleteButton = !isBuiltIn && isSameDb;
 
   return (
-    <Stack padding="6" width="100%" height="calc(100vh - 120px)">
+    <Stack padding="6" width="100%" height={`calc(100vh - ${navbarHeight}px)`}>
       <Flex direction="row" alignItems="center">
         <IconButton
           aria-label="Back"

@@ -9,6 +9,7 @@ import { QueryContextProvider, useQueryContext } from "./QueryContextProvider";
 import { QueryFullGraphView } from "./queryGraph/QueryFullGraphView";
 import { RunningQueries } from "./runningQueries/RunningQueries";
 import { SlowQueryHistory } from "./slowQueries/SlowQueryHistory";
+import { useNavbarHeight } from "../useNavbarHeight";
 
 export const QueryViewWrap = () => {
   useDisableNavBar();
@@ -30,11 +31,6 @@ export const QueryViewWrap = () => {
   );
 };
 
-const useNavbarHeight = () => {
-  // get the height of the navbar from id #navbar2
-  const navbar = document.getElementById("navbar2");
-  return navbar ? navbar.clientHeight : 60;
-};
 const QueryViewWrapInner = () => {
   const { queryGraphResult } = useQueryContext();
   const navbarHeight = useNavbarHeight();
@@ -49,7 +45,7 @@ const QueryViewWrapInner = () => {
           <Tab>Running Queries</Tab>
           <Tab>Slow Query History</Tab>
         </TabList>
-        <TabPanels height="calc(100% - 60px)">
+        <TabPanels height="calc(100% - 40px)" overflow="auto">
           <TabPanel height="full">
             <QueryEditorPane />
           </TabPanel>

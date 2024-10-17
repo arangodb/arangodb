@@ -65,14 +65,14 @@ export const CollectionIndexDetails = () => {
       </Flex>
 
       <ModalBody>
-        <Stack width="100%" height="calc(100vh - 280px)">
+        <Stack width="100%" height="calc(100vh - 300px)">
           <IndexStats foundCollectionIndex={foundCollectionIndex} />
           <ControlledJSONEditor
             mode="code"
             value={foundCollectionIndex}
             htmlElementProps={{
               style: {
-                height: "calc(100%)",
+                height: "100%",
                 width: "100%"
               }
             }}

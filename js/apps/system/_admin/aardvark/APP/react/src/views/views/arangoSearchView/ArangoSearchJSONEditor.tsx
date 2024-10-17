@@ -36,7 +36,7 @@ export const ArangoSearchJSONEditor = () => {
         }}
         htmlElementProps={{
           style: {
-            height: "calc(100% - 80px)",
+            height: "100%",
             width: "100%"
           }
         }}
