@@ -558,6 +558,7 @@ void TRI_vocbase_t::shutdown() {
 
   _deadCollections = {};
   _collections = {};
+  collections.clear();
   _metrics->drop();
 }
 
