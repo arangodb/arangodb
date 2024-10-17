@@ -45,7 +45,7 @@ std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
   return metrics;
 }
 
-VocbaseMetrics::~VocbaseMetrics() {
+void VocbaseMetrics::drop() {
   // delete all metrics
   _metricsFeature->remove(*shards_read_only_by_write_concern);
 }

@@ -26,7 +26,7 @@ namespace arangodb {
 
 struct VocbaseMetrics {
   metrics::Gauge<uint64_t>* shards_read_only_by_write_concern{nullptr};
-  ~VocbaseMetrics();
+  void drop();
   static std::unique_ptr<VocbaseMetrics> create(metrics::MetricsFeature& mf,
                                                 std::string_view databaseName);
 
