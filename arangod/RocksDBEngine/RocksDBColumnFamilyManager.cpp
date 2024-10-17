@@ -34,22 +34,25 @@ namespace arangodb {
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_internalNames = {
-        "default",    "Documents",  "PrimaryIndex",  "EdgeIndex",
-        "VPackIndex", "GeoIndex",   "FulltextIndex", "ReplicatedLogs",
-        "ZkdIndex",   "MdiPrefixed"};  // We have to keep `ZkdIndex` cf name for
-                                       // backwards compatibility.
+        "default",    "Documents",   "PrimaryIndex",  "EdgeIndex",
+        "VPackIndex", "GeoIndex",    "FulltextIndex", "ReplicatedLogs",
+        "ZkdIndex",   "MdiPrefixed", "VectorIndex"};  // We have to keep
+                                                      // `ZkdIndex` cf name for
+                                                      // backwards
+                                                      // compatibility.
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_externalNames = {
-        "definitions", "documents", "primary",         "edge", "vpack",
-        "geo",         "fulltext",  "replicated-logs", "mdi",  "mdi-prefixed"};
+        "definitions", "documents",    "primary",  "edge",
+        "vpack",       "geo",          "fulltext", "replicated-logs",
+        "mdi",         "mdi-prefixed", "vector"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr, nullptr,
                                             nullptr, nullptr, nullptr, nullptr,
-                                            nullptr, nullptr};
+                                            nullptr, nullptr, nullptr};
 
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamilyManager::_defaultHandle =
     nullptr;

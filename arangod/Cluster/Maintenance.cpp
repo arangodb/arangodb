@@ -78,7 +78,7 @@ using namespace arangodb::basics::StringUtils;
 
 static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
 static std::unordered_set<std::string> const selectivityEstimates(
-    {SELECTIVITY_ESTIMATE});
+    {SELECTIVITY_ESTIMATE, "trainedData"});
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
 
