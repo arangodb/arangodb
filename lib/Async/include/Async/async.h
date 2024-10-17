@@ -55,9 +55,12 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
     return awaitable{this};
   }
   template<typename U>
-  auto await_transform(U&& co_awaited_expression) noexcept {
+  auto await_transform(
+      U&& co_awaited_expression,
+      std::source_location loc = std::source_location::current()) noexcept {
     using inner_awaitable_type =
         decltype(get_awaitable_object(std::forward<U>(co_awaited_expression)));
+
     struct awaitable {
       bool await_ready() { return inner_awaitable.await_ready(); }
       auto await_suspend(std::coroutine_handle<> handle) {
@@ -77,9 +80,13 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
       inner_awaitable_type inner_awaitable;
       std::shared_ptr<ExecContext const> _myExecContext;
     };
+
+    // update promises in registry
     if constexpr (CanSetPromiseWaiter<U>) {
       co_awaited_expression.set_promise_waiter(this->id());
     }
+    update_source_location(loc);
+
     return awaitable{
         this, get_awaitable_object(std::forward<U>(co_awaited_expression)),
         ExecContext::currentAsShared()};
@@ -101,7 +108,9 @@ struct async_promise : async_promise_base<T> {
   async_promise(std::source_location loc = std::source_location::current())
       : async_promise_base<T>(std::move(loc)) {}
   template<typename V = T>
-  void return_value(V&& v) {
+  void return_value(
+      V&& v, std::source_location loc = std::source_location::current()) {
+    async_registry::AddToAsyncRegistry::update_source_location(loc);
     async_promise_base<T>::_value.emplace(std::forward<V>(v));
   }
 };
@@ -110,7 +119,10 @@ template<>
 struct async_promise<void> : async_promise_base<void> {
   async_promise(std::source_location loc = std::source_location::current())
       : async_promise_base<void>(std::move(loc)) {}
-  void return_void() { async_promise_base<void>::_value.emplace(); }
+  void return_void(std::source_location loc = std::source_location::current()) {
+    async_registry::AddToAsyncRegistry::update_source_location(loc);
+    async_promise_base<void>::_value.emplace();
+  }
 };
 
 template<typename T>
