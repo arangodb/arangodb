@@ -59,6 +59,29 @@ namespace graph {
 // template<ProduceVertexData>
 template<class StepType>
 class SingleServerProvider {
+  //
+  // Caching functionality
+  //
+
+  // The information which we need for an expansion are these:
+  struct ExpansionInfo {
+    EdgeDocumentToken eid;
+    std::vector<uint8_t> edgeData;  // keeps allocation
+    size_t cursorId;
+    ExpansionInfo(EdgeDocumentToken eid, VPackSlice edge, size_t cursorId)
+        : eid(eid), cursorId(cursorId) {
+      edgeData.resize(edge.byteSize());
+      memcpy(edgeData.data(), edge.start(), edge.byteSize());
+    }
+    ExpansionInfo(ExpansionInfo const& other) = delete;
+    ExpansionInfo(ExpansionInfo&& other) = default;
+    VPackSlice edge() const noexcept { return VPackSlice(edgeData.data()); }
+  };
+
+  // Contains the data we found previously on expansion:
+  using FoundVertexCache =
+      containers::FlatHashMap<VertexType, std::vector<ExpansionInfo>>;
+
  public:
   using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
@@ -145,6 +168,7 @@ class SingleServerProvider {
   SingleServerBaseProviderOptions _opts;
 
   RefactoredTraverserCache _cache;
+  FoundVertexCache _vertexCache;
 
   arangodb::aql::TraversalStats _stats;
 

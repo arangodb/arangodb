@@ -118,39 +118,62 @@ auto SingleServerProvider<Step>::expand(
     std::function<void(Step)> const& callback) -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
-  TRI_ASSERT(_cursor != nullptr);
+
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
-  _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
-  ++_rearmed;
-  _cursor->readAll(
-      *this, _stats, step.getDepth(),
-      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
-        ++_readSomething;
-        VertexType id = _cache.persistString(([&]() -> auto{
-          if (edge.isString()) {
-            return VertexType(edge);
-          } else {
-            VertexType other(
-                transaction::helpers::extractFromFromDocument(edge));
-            if (other == vertex.getID()) {  // TODO: Check getId - discuss
-              other =
-                  VertexType(transaction::helpers::extractToFromDocument(edge));
-            }
-            return other;
-          }
-        })());
-        // TODO: Adjust log output
-        LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
-            << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> "
-            << id;
 
-        callback(Step{id, std::move(eid), previous, step.getDepth() + 1,
-                      _opts.weightEdge(step.getWeight(), edge), cursorID});
-        // TODO [GraphRefactor]: Why is cursorID set, but never used?
-        // Note: There is one implementation that used, it, but there is a high
-        // probability we do not need it anymore after refactoring is complete.
-      });
+  std::vector<ExpansionInfo>* neighbours;
+
+  // First check the cache:
+  auto it = _vertexCache.find(vertex.getID());
+  if (it != _vertexCache.end()) {
+    // We have already expanded this vertex, so we can just use the
+    // cached result:
+    neighbours = &it->second;
+  } else {
+    // We actually have to run the cursor:
+    TRI_ASSERT(_cursor != nullptr);
+    _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
+    ++_rearmed;
+    std::vector<ExpansionInfo> newNeighbours;  // only used if not in cache
+    _cursor->readAll(
+        *this, _stats, step.getDepth(),
+        [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
+          ++_readSomething;
+          // Add to vector above:
+          newNeighbours.emplace_back(std::move(eid), edge, cursorID);
+        });
+    auto [it, inserted] =
+        _vertexCache.insert({vertex.getID(), std::move(newNeighbours)});
+    neighbours = &it->second;
+  }
+
+  // Now do the work:
+  for (auto const& neighbour : *neighbours) {
+    VPackSlice edge = neighbour.edge();
+    VertexType id = _cache.persistString(([&]() -> auto {
+      if (edge.isString()) {
+        return VertexType(edge);
+      } else {
+        VertexType other(transaction::helpers::extractFromFromDocument(edge));
+        if (other == vertex.getID()) {  // TODO: Check getId - discuss
+          other = VertexType(transaction::helpers::extractToFromDocument(edge));
+        }
+        return other;
+      }
+    })());
+    LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
+        << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> "
+        << id;
+
+    EdgeDocumentToken edgeToken{neighbour.eid};
+    callback(Step{id, std::move(edgeToken), previous, step.getDepth() + 1,
+                  _opts.weightEdge(step.getWeight(), edge),
+                  neighbour.cursorId});
+    // TODO [GraphRefactor]: Why is cursorID set, but never used?
+    // Note: There is one implementation that used, it, but there is a high
+    // probability we do not need it anymore after refactoring is complete.
+  }
 }
 
 template<class Step>
@@ -166,6 +189,7 @@ auto SingleServerProvider<Step>::clear() -> void {
   // Clear the cache - this cache does contain StringRefs
   // We need to make sure that no one holds references to the cache (!)
   _cache.clear();
+  _vertexCache.clear();
   LOG_TOPIC("65261", TRACE, Logger::GRAPHS)
       << "Rearmed edge index cursor: " << _rearmed
       << " Read callback called: " << _readSomething;
