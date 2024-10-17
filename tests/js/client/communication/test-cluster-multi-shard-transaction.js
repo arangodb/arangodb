@@ -189,7 +189,7 @@ return false;`
         }
       }
       let tests = [];
-      let timeout = IM.options.isInstrumented ? 15 : 5;
+      let timeout = IM.options.isInstrumented ? 30 : 5;
       for(let count = 0; count < 2; count++) {
         tests.push([
           `TransactionInsertTest_${count}`,
