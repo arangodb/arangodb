@@ -1,8 +1,8 @@
+import { SingleSelectControl } from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
 import { useCollectionsList } from "./useCollectionsList";
 import { useInvertedIndexList } from "./useInvertedIndexList";
@@ -80,7 +80,7 @@ const CollectionIndexRow = ({
         <FormLabel htmlFor={`indexes.${index}.collection`}>
           Collection
         </FormLabel>
-        <SelectControl
+        <SingleSelectControl
           name={`indexes.${index}.collection`}
           selectProps={{
             isClearable,
@@ -90,7 +90,7 @@ const CollectionIndexRow = ({
       </Box>
       <Box>
         <FormLabel htmlFor={`indexes.${index}.index`}>Index</FormLabel>
-        <SelectControl
+        <SingleSelectControl
           name={`indexes.${index}.index`}
           selectProps={{
             isClearable,

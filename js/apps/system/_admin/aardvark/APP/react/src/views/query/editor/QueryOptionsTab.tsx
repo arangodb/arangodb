@@ -1,3 +1,4 @@
+import { MultiSelect, OptionType } from "@arangodb/ui";
 import {
   Accordion,
   AccordionButton,
@@ -14,8 +15,6 @@ import { ValidationError } from "jsoneditor-react";
 import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
-import MultiSelect from "../../../components/select/MultiSelect";
-import { OptionType } from "../../../components/select/SelectBase";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useQueryContext } from "../QueryContextProvider";
 

@@ -1,5 +1,5 @@
+import { InfoTooltip } from "@arangodb/ui";
 import React from "react";
-import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 
 export const IndexInfoTooltip = ({ label }: { label: string }) => {
   return (

@@ -1,3 +1,4 @@
+import { CreatableMultiSelectControl, InputControl } from "@arangodb/ui";
 import {
   AccordionButton,
   AccordionIcon,
@@ -7,8 +8,6 @@ import {
   FormLabel
 } from "@chakra-ui/react";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
-import { InputControl } from "../../../../components/form/InputControl";
 
 export const AdvancedAccordionItem = () => {
   return (

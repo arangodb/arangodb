@@ -1,8 +1,7 @@
+import { InputControl, SingleSelectControl } from "@arangodb/ui";
 import { Divider, Flex, Grid, Stack, Switch, Text } from "@chakra-ui/react";
 import { useField } from "formik";
 import React, { useEffect } from "react";
-import { InputControl } from "../../../components/form/InputControl";
-import { SelectControl } from "../../../components/form/SelectControl";
 import { ExternalLink } from "../../../components/link/ExternalLink";
 import { AnalyzerTypes } from "../Analyzer.types";
 import { useAnalyzersContext } from "../AnalyzersContext";
@@ -38,7 +37,7 @@ export const AddAnalyzerForm = ({
             label="Analyzer name"
           />
           <Flex alignItems="flex-end">
-            <SelectControl
+            <SingleSelectControl
               isDisabled={isDisabled}
               name="type"
               label="Analyzer type"

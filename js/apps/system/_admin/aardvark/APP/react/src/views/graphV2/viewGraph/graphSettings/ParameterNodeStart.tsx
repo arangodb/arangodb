@@ -1,7 +1,6 @@
+import { InfoTooltip, MultiSelect } from "@arangodb/ui";
 import { FormLabel } from "@chakra-ui/react";
 import React, { useState } from "react";
-import MultiSelect from "../../../../components/select/MultiSelect";
-import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useGraph } from "../GraphContext";
 import { useNodeStartOptions } from "./useNodeStartOptions";
 import { useSetupNodeStartValues } from "./useSetupNodeStartValues";

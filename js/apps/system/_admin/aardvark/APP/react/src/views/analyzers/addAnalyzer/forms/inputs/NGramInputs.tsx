@@ -1,6 +1,5 @@
+import { InputControl, SwitchControl } from "@arangodb/ui";
 import React from "react";
-import { InputControl } from "../../../../../components/form/InputControl";
-import { SwitchControl } from "../../../../../components/form/SwitchControl";
 import { useAnalyzersContext } from "../../../AnalyzersContext";
 
 export const NGramInputs = ({

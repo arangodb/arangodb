@@ -1,11 +1,10 @@
+import { OptionType, SingleSelect } from "@arangodb/ui";
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import { Box, Button, Spinner, Stack, Text } from "@chakra-ui/react";
 import { omit } from "lodash";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 import useSWRImmutable from "swr/immutable";
-import { OptionType } from "../../../components/select/SelectBase";
-import SingleSelect from "../../../components/select/SingleSelect";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { useEditViewContext } from "../editView/EditViewContext";

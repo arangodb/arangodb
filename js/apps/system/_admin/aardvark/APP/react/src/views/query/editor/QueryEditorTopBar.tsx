@@ -1,3 +1,4 @@
+import { SingleSelect } from "@arangodb/ui";
 import {
   Button,
   Flex,
@@ -10,7 +11,6 @@ import React from "react";
 import { MagicWand } from "styled-icons/boxicons-solid";
 import { Bug } from "styled-icons/fa-solid";
 import { ExternalLink } from "../../../components/link/ExternalLink";
-import SingleSelect from "../../../components/select/SingleSelect";
 import { useQueryContext } from "../QueryContextProvider";
 import { DebugPackageModal } from "./DebugPackageModal";
 import { QuerySpotlight } from "./QuerySpotlight";

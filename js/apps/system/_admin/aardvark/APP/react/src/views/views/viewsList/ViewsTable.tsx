@@ -1,10 +1,8 @@
+import { ReactTable, TableControl, useSortableReactTable } from "@arangodb/ui";
 import { Link, Spinner, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
 import { useHistory } from "react-router-dom";
-import { ReactTable } from "../../../components/table/ReactTable";
-import { TableControl } from "../../../components/table/TableControl";
-import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { createEncodedUrl } from "../../../utils/urlHelper";
 import { LockableViewDescription, useFetchViews } from "../useFetchViews";
 
@@ -66,10 +64,7 @@ export const ViewsTable = () => {
   const history = useHistory();
   return (
     <Stack>
-      <TableControl<LockableViewDescription>
-        table={tableInstance}
-        columns={TABLE_COLUMNS}
-      />
+      <TableControl<LockableViewDescription> table={tableInstance} />
       <ReactTable<LockableViewDescription>
         table={tableInstance}
         emptyStateMessage="No views found"

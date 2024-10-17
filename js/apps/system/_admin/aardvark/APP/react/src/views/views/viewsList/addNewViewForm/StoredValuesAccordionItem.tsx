@@ -1,3 +1,4 @@
+import { CreatableMultiSelectControl, SingleSelectControl } from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import {
   AccordionButton,
@@ -11,8 +12,6 @@ import {
 } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
-import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
 
 export const StoredValuesAccordionItem = () => {
@@ -74,7 +73,7 @@ const StoredValuesFields = () => {
                     <FormLabel htmlFor={`storedValues.${index}.compression`}>
                       Compression
                     </FormLabel>
-                    <SelectControl
+                    <SingleSelectControl
                       name={`storedValues.${index}.compression`}
                       selectProps={{
                         options: compressionOptions
