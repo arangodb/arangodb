@@ -72,8 +72,8 @@ export const LinksDetails = () => {
 
 const StoreIDValuesCheckbox = () => {
   const id = "storeValues";
-  const { setCurrentLinkValue, getCurrentLinkValue } = useLinkModifiers();
-  const isChecked = getCurrentLinkValue([id]) === "id" ? true : false;
+  const { setCurrentLinkValue, getCurrentLinkValueDefault } = useLinkModifiers();
+  const isChecked = getCurrentLinkValueDefault([id]) === "id" ? true : false;
   return (
     <HStack>
       <Checkbox
@@ -105,8 +105,8 @@ const CheckboxField = ({
   isDisabled?: boolean;
   onChange?: (value: boolean) => void;
 }) => {
-  const { setCurrentLinkValue, getCurrentLinkValue } = useLinkModifiers();
-  const isChecked = Boolean(getCurrentLinkValue([id]));
+  const { setCurrentLinkValue, getCurrentLinkValueDefault } = useLinkModifiers();
+  const isChecked = getCurrentLinkValueDefault([id]);
   return (
     <HStack>
       <Checkbox
