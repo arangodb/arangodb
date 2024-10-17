@@ -145,10 +145,12 @@ auto SingleServerProvider<Step>::expand(
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
   _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
+  ++_rearmed;
   _cursor->readAll(
       *this, _stats, step.getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
-        VertexType id = _cache.persistString(([&]() -> auto {
+        ++_readSomething;
+        VertexType id = _cache.persistString(([&]() -> auto{
           if (edge.isString()) {
             return VertexType(edge);
           } else {
@@ -187,6 +189,11 @@ auto SingleServerProvider<Step>::clear() -> void {
   // Clear the cache - this cache does contain StringRefs
   // We need to make sure that no one holds references to the cache (!)
   _cache.clear();
+  LOG_TOPIC("65261", TRACE, Logger::GRAPHS)
+      << "Rearmed edge index cursor: " << _rearmed
+      << " Read callback called: " << _readSomething;
+  _rearmed = 0;
+  _readSomething = 0;
 }
 
 template<class Step>

@@ -71,7 +71,10 @@ WeightedShortestPathEnumerator<
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                               PathValidator>::Ball::~Ball() = default;
+                               PathValidator>::Ball::~Ball() {
+  clear();
+  clearProvider();
+}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -97,9 +100,9 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   _interior.reset();  // PathStore
   _diameter = -std::numeric_limits<double>::infinity();
   _validator.reset();
-
-  // Provider - Must be last one to be cleared(!)
-  clearProvider();
+  // We do not clear the provider here, or else it would immediately
+  // clear all its caches. For repeated calls we want to retain the caches.
+  // The provider is only cleared in the destructor.
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
