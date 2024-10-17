@@ -545,9 +545,10 @@ bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   };
 
   auto report = [&]() {
-    LOG_DEVEL << "Left: expanded " << _left.getExpanded()
-              << " queued: " << _left.getQueued() << " Right: expanded "
-              << _right.getExpanded() << " queued: " << _right.getQueued();
+    LOG_TOPIC("47010", TRACE, Logger::GRAPHS)
+        << "Yen: Left: expanded " << _left.getExpanded()
+        << " queued: " << _left.getQueued() << " Right: expanded "
+        << _right.getExpanded() << " queued: " << _right.getQueued();
   };
 
   while (!isDone()) {
@@ -577,14 +578,6 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::searchMoreResults() {
   while (!searchDone()) {
     _resultsFetched = false;
-
-    auto report = [&]() {
-      LOG_DEVEL << "Left: expanded " << _left.getExpanded()
-                << " queued: " << _left.getQueued() << " Right: expanded "
-                << _right.getExpanded() << " queued: " << _right.getQueued()
-                << " have candidate: " << _bestPath.has_value();
-    };
-    report();
 
     if (_singleton) {
       _left.validateSingletonPath(_bestPath);
@@ -692,9 +685,10 @@ WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
     return BallSearchLocation::FINISH;
   }
 
-  LOG_DEVEL << "Pondering left/right: " << _left.queueSize() << " vs. "
-            << _right.queueSize() << " ==> "
-            << (_left.queueSize() < _right.queueSize() ? "LEFT" : "RIGHT");
+  LOG_TOPIC("47011", TRACE, Logger::GRAPHS)
+      << "Pondering left/right: " << _left.queueSize() << " vs. "
+      << _right.queueSize() << " ==> "
+      << (_left.queueSize() < _right.queueSize() ? "LEFT" : "RIGHT");
 
   if (_left.getDiameter() < 0.0) {
     return BallSearchLocation::LEFT;
