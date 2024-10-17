@@ -6,6 +6,7 @@ import { InputControl } from "../../../../../components/form/InputControl";
 import { SelectControl } from "../../../../../components/form/SelectControl";
 import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
+import { SwitchControl } from "../../../../../components/form/SwitchControl";
 
 export const InvertedIndexPrimarySort = ({
   field
@@ -62,6 +63,19 @@ const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
               { label: "None", value: "none" }
             ]
           }}
+        />
+        <Spacer />
+        <FormLabel htmlFor="primarySort.cache">Cache</FormLabel>
+        <SwitchControl
+          switchProps={{
+            isDisabled: field.isDisabled || !window.frontendConfig.isEnterprise
+          }}
+          name="primarySort.cache"
+          tooltip={
+            window.frontendConfig.isEnterprise
+            ? undefined
+            : "Primary sort column caching is available in Enterprise plans."
+          }
         />
         <Spacer />
       </Box>
