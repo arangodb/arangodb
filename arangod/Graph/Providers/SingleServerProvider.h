@@ -59,6 +59,29 @@ namespace graph {
 // template<ProduceVertexData>
 template<class StepType>
 class SingleServerProvider {
+  //
+  // Caching functionality
+  //
+
+  // The information which we need for an expansion are these:
+  struct ExpansionInfo {
+    EdgeDocumentToken eid;
+    std::vector<uint8_t> edgeData;  // keeps allocation
+    size_t cursorId;
+    ExpansionInfo(EdgeDocumentToken eid, VPackSlice edge, size_t cursorId)
+        : eid(eid), cursorId(cursorId) {
+      edgeData.resize(edge.byteSize());
+      memcpy(edgeData.data(), edge.start(), edge.byteSize());
+    }
+    ExpansionInfo(ExpansionInfo const& other) = delete;
+    ExpansionInfo(ExpansionInfo&& other) = default;
+    VPackSlice edge() const noexcept { return VPackSlice(edgeData.data()); }
+  };
+
+  // Contains the data we found previously on expansion:
+  using FoundVertexCache =
+      containers::FlatHashMap<VertexType, std::vector<ExpansionInfo>>;
+
  public:
   using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
@@ -67,7 +90,10 @@ class SingleServerProvider {
                        arangodb::ResourceMonitor& resourceMonitor);
   SingleServerProvider(SingleServerProvider const&) = delete;
   SingleServerProvider(SingleServerProvider&&) = default;
-  ~SingleServerProvider() = default;
+  ~SingleServerProvider() {
+    _monitor.decreaseMemoryUsage(_memoryUsageVertexCache);
+    _memoryUsageVertexCache = 0;
+  }
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
 
@@ -132,8 +158,6 @@ class SingleServerProvider {
   [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
-  void activateCache(bool enableDocumentCache);
-
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> buildCursor(
       arangodb::aql::FixedVarExpressionContext& expressionContext);
 
@@ -147,6 +171,9 @@ class SingleServerProvider {
   SingleServerBaseProviderOptions _opts;
 
   RefactoredTraverserCache _cache;
+  bool _useVertexCache = true;
+  FoundVertexCache _vertexCache;
+  size_t _memoryUsageVertexCache = 0;
 
   arangodb::aql::TraversalStats _stats;
 
