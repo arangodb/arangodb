@@ -54,7 +54,7 @@ struct Promise {
 
   Thread thread;
   std::source_location entry_point;
-  void* waiter = nullptr;
+  std::atomic<void*> waiter = nullptr;
   // identifies the promise list it belongs to
   std::shared_ptr<ThreadRegistry> registry;
   Promise* next = nullptr;
@@ -77,7 +77,7 @@ auto inspect(Inspector& f, Promise& x) {
               fmt::format("{}:{} {}", x.entry_point.file_name(),
                           x.entry_point.line(), x.entry_point.function_name())),
       f.field("id", reinterpret_cast<intptr_t>(x.id())),
-      f.field("waiter", reinterpret_cast<intptr_t>(x.waiter)));
+      f.field("waiter", reinterpret_cast<intptr_t>(x.waiter.load())));
 }
 
 struct AddToAsyncRegistry {
@@ -90,7 +90,7 @@ struct AddToAsyncRegistry {
   ~AddToAsyncRegistry();
 
   auto set_promise_waiter(void* waiter) {
-    promise_in_registry->waiter = waiter;
+    promise_in_registry->waiter.store(waiter);
   }
   auto id() -> void* { return promise_in_registry->id(); }
 
