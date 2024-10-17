@@ -5768,8 +5768,12 @@ void ClusterInfo::beginShutdown() {
 }
 
 void ClusterInfo::waitForSyncersToStop() {
-  _planSyncer->sendNews();
-  _curSyncer->sendNews();
+  if (_planSyncer) {
+    _planSyncer->sendNews();
+  }
+  if (_curSyncer) {
+    _curSyncer->sendNews();
+  }
   drainSyncers();
 
   auto start = std::chrono::steady_clock::now();
