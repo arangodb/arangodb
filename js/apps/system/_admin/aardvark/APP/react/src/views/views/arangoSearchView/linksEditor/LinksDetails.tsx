@@ -106,7 +106,7 @@ const CheckboxField = ({
   onChange?: (value: boolean) => void;
 }) => {
   const { setCurrentLinkValue, getCurrentLinkValue } = useLinkModifiers();
-  const isChecked = getCurrentLinkValue([id]);
+  const isChecked = Boolean(getCurrentLinkValue([id]));
   return (
     <HStack>
       <Checkbox
