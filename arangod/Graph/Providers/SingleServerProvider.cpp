@@ -149,6 +149,12 @@ auto SingleServerProvider<Step>::expand(
           newNeighbours.emplace_back(std::move(eid), edge, cursorID);
         });
     if (useCache) {
+      size_t newMemoryUsage = newNeighbours.size() * sizeof(ExpansionInfo);
+      for (auto const& neighbour : newNeighbours) {
+        newMemoryUsage += neighbour.edgeData.size();
+      }
+      _monitor.increaseMemoryUsage(newMemoryUsage);
+      _memoryUsageVertexCache += newMemoryUsage;
       auto [it, inserted] =
           _vertexCache.insert({vertex.getID(), std::move(newNeighbours)});
       neighbours = &it->second;
@@ -199,6 +205,9 @@ auto SingleServerProvider<Step>::clear() -> void {
   // We need to make sure that no one holds references to the cache (!)
   _cache.clear();
   _vertexCache.clear();
+  _monitor.decreaseMemoryUsage(_memoryUsageVertexCache);
+  _memoryUsageVertexCache = 0;
+
   LOG_TOPIC("65261", TRACE, Logger::GRAPHS)
       << "Rearmed edge index cursor: " << _rearmed
       << " Read callback called: " << _readSomething;

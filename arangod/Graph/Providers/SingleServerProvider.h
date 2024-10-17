@@ -90,7 +90,10 @@ class SingleServerProvider {
                        arangodb::ResourceMonitor& resourceMonitor);
   SingleServerProvider(SingleServerProvider const&) = delete;
   SingleServerProvider(SingleServerProvider&&) = default;
-  ~SingleServerProvider() = default;
+  ~SingleServerProvider() {
+    _monitor.decreaseMemoryUsage(_memoryUsageVertexCache);
+    _memoryUsageVertexCache = 0;
+  }
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
 
@@ -169,6 +172,7 @@ class SingleServerProvider {
 
   RefactoredTraverserCache _cache;
   FoundVertexCache _vertexCache;
+  size_t _memoryUsageVertexCache = 0;
 
   arangodb::aql::TraversalStats _stats;
 
