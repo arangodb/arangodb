@@ -427,6 +427,7 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
   std::uint64_t batchSize = _options.batchSize;
 
   VPackBuilder projectionsBuilder;
+  VPackBuffer<uint8_t> sanitizationBuffer;
 
   for (it->Seek(lowerBound.string()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(ci.upper) < 0);
@@ -452,28 +453,34 @@ void RocksDBDumpContext::handleWorkItem(WorkItem item) {
       continue;
     }
 
-    auto storedSlice = [&]() -> VPackSlice {
+    // Sanitize document
+    VPackValueLength const inputLength = documentSlice.byteSize();
+    if (basics::VelocyPackHelper::hasNonClientTypes(documentSlice)) {
+      sanitizationBuffer.clear();
+      sanitizationBuffer.reserve(inputLength +
+                                 64);  // reserve more space since sanitization
+                                       // will make documentSlice bigger
+      VPackBuilder builder(sanitizationBuffer, &vpackOptions);
+      basics::VelocyPackHelper::sanitizeNonClientTypes(
+          documentSlice, VPackSlice::noneSlice(), builder, vpackOptions);
+      documentSlice = VPackSlice(sanitizationBuffer.data());
+    }
+
+    auto storedSlice = std::invoke([&]() -> VPackSlice {
       if (_options.projections) {
         projectionsBuilder.clear();
         {
           VPackObjectBuilder ob(&projectionsBuilder);
           for (auto const& [projKey, path] : *_options.projections) {
             auto value = documentSlice.get(path);
-            if (path.size() == 1 && path[0] == "_id") {
-              auto id = _customTypeHandler->toString(value, &vpackOptions,
-                                                     documentSlice);
-              projectionsBuilder.add(projKey, VPackValue(id));
-            } else if (!value.isNone()) {
-              projectionsBuilder.add(projKey, value);
-            }
+            projectionsBuilder.add(projKey, value);
           }
         }
-
         return projectionsBuilder.slice();
       }
 
       return documentSlice;
-    }();
+    });
 
     batch->add(storedSlice);
     ++docsProduced;

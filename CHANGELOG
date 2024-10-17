@@ -4,6 +4,12 @@ devel
 * FE-446: add missing caching options for inverted indexes and arangosearch
   views.
 
+* BTS-1975: Fix the output of dumped data in VPack format.
+
+* Add file descriptors to tele metrics
+
+* Bind variables for TTL deletions should not be moved when now reused.
+
 * Removed the deprecated Batch API (`/_api/batch`).
   The arangobench `--batch-size` startup option is ignored now.
 

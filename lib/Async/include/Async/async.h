@@ -1,10 +1,12 @@
 #pragma once
 
 #include "Async/Registry/promise.h"
+#include "Async/coro-utils.h"
 #include "Async/expected.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Utils/ExecContext.h"
 
 #include <coroutine>
 #include <atomic>
@@ -26,7 +28,10 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
   async_promise_base(std::source_location loc)
       : async_registry::AddToAsyncRegistry{std::move(loc)} {}
 
-  std::suspend_never initial_suspend() noexcept { return {}; }
+  std::suspend_never initial_suspend() noexcept {
+    _callerExecContext = ExecContext::currentAsShared();
+    return {};
+  }
   auto final_suspend() noexcept {
     struct awaitable {
       bool await_ready() noexcept { return false; }
@@ -46,8 +51,36 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
       void await_resume() noexcept {}
       async_promise_base* _promise;
     };
+    ExecContext::set(_callerExecContext);
     return awaitable{this};
   }
+  template<typename U>
+  auto await_transform(U&& other_awaitable) noexcept {
+    using inner_awaitable_type =
+        decltype(get_awaitable_object(std::forward<U>(other_awaitable)));
+    struct awaitable {
+      bool await_ready() { return inner_awaitable.await_ready(); }
+      auto await_suspend(std::coroutine_handle<> handle) {
+        promise->isSuspended = true;
+        ExecContext::set(promise->_callerExecContext);
+        return inner_awaitable.await_suspend(handle);
+      }
+      auto await_resume() {
+        if (promise->isSuspended) {
+          promise->_callerExecContext = ExecContext::currentAsShared();
+          promise->isSuspended = false;
+        }
+        ExecContext::set(_myExecContext);
+        return inner_awaitable.await_resume();
+      }
+      async_promise_base<T>* promise;
+      inner_awaitable_type inner_awaitable;
+      std::shared_ptr<ExecContext const> _myExecContext;
+    };
+    return awaitable{this,
+                     get_awaitable_object(std::forward<U>(other_awaitable)),
+                     ExecContext::currentAsShared()};
+  };
   void unhandled_exception() { _value.set_exception(std::current_exception()); }
   auto get_return_object() {
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
@@ -56,6 +89,8 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
 
   std::atomic<void*> _continuation = nullptr;
   expected<T> _value;
+  std::shared_ptr<ExecContext const> _callerExecContext;
+  bool isSuspended = false;
 };
 
 template<typename T>
