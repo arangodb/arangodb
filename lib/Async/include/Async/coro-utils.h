@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <concepts>
 #include <coroutine>
 #include <utility>
 
@@ -48,5 +49,14 @@ template<HasMemberOperatorCoAwait T>
 auto get_awaitable_object(T&& t) {
   return std::forward<T>(t).operator co_await();
 }
+
+template<typename T>
+concept CanSetPromiseWaiter = requires(T t, void* waiter) {
+  t.set_promise_waiter(waiter);
+};
+template<typename T>
+concept HasId = requires(T t) {
+  { t.id() } -> std::convertible_to<void*>;
+};
 
 }  // namespace arangodb
