@@ -640,7 +640,11 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
       // have actually found some path, then we are done. Why is that?
       // Assume wlog that the left side is finished and we have found
       // a path. Then the left hand side has found everything that is
-      // reachable from the source and has expanded it.
+      // reachable from the source, unless it has already been expanded
+      // by the other side. The left hand side has expanded everything it
+      // has found. If the right hand side has expanded a vertex, it "knows"
+      // the distance of this vertex from the target and knows a shortest
+      // path. Therefore, we do not have to go there any more.
       if (_left.isQueueEmpty() || _right.isQueueEmpty()) {
         // Note that we might have already found a path with the above
         // criteria, so we should then not report a second one:
