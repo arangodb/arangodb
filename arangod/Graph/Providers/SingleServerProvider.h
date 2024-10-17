@@ -132,8 +132,6 @@ class SingleServerProvider {
   [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
-  void activateCache(bool enableDocumentCache);
-
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> buildCursor(
       arangodb::aql::FixedVarExpressionContext& expressionContext);
 

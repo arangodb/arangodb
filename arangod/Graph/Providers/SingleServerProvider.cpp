@@ -86,30 +86,7 @@ SingleServerProvider<Step>::SingleServerProvider(
              _opts.collectionToShardMap(), _opts.getVertexProjections(),
              _opts.getEdgeProjections(), _opts.produceVertices()),
       _stats{} {
-  // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need
-  // to do benchmarks if affordable) activateCache(false);
   _cursor = buildCursor(opts.expressionContext());
-}
-
-template<class Step>
-void SingleServerProvider<Step>::activateCache(bool enableDocumentCache) {
-  // Do not call this twice.
-  // TRI_ASSERT(_cache == nullptr);
-  // TODO: enableDocumentCache check + opts check + cacheManager check
-  /*
-  if (enableDocumentCache) {
-    auto cacheManager = CacheManagerFeature::MANAGER;
-    if (cacheManager != nullptr) {
-      // TODO CHECK: cacheManager functionality
-      //  std::shared_ptr<arangodb::cache::Cache> cache =
-  cacheManager->createCache(cache::CacheType::Plain); if (cache != nullptr) {
-        TraverserCache(query, options) return new TraverserCache(query,
-  std::move(cache));
-      }
-    }
-    // fallthrough intentional
-  }*/
-  //  _cache = new RefactoredTraverserCache(query());
 }
 
 template<class Step>
@@ -150,7 +127,7 @@ auto SingleServerProvider<Step>::expand(
       *this, _stats, step.getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
         ++_readSomething;
-        VertexType id = _cache.persistString(([&]() -> auto {
+        VertexType id = _cache.persistString(([&]() -> auto{
           if (edge.isString()) {
             return VertexType(edge);
           } else {
