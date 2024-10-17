@@ -1,6 +1,9 @@
 devel
 -----
 
+* Speed up shortest path further by using a neighbour cache in the 
+  SingleServerProvider.
+
 * Speed up shortest path computations by choosing more diligently which
   side to expand next. This brings back 3.10 performance.
 
