@@ -31,7 +31,7 @@ struct VocbaseMetrics {
                                                 std::string_view databaseName);
 
  private:
-  metrics::MetricsFeature* _metricsFeature;
+  metrics::MetricsFeature* _metricsFeature{nullptr};
 };
 
 }  // namespace arangodb
