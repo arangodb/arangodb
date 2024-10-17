@@ -34,12 +34,21 @@ std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
     if (!databaseName.empty()) {
       builder.addLabel("database", databaseName);
     }
-    return &mf.ensureMetric(std::move(builder));
+    return &mf.add(std::move(builder));
   };
 
   auto metrics = std::make_unique<VocbaseMetrics>();
   metrics->shards_read_only_by_write_concern =
       createMetric(arangodb_vocbase_shards_read_only_by_write_concern{});
+  metrics->_metricsFeature = &mf;
 
   return metrics;
+}
+
+void VocbaseMetrics::drop() {
+  // delete all metrics
+  if (_metricsFeature == nullptr) {
+    return;
+  }
+  _metricsFeature->remove(*shards_read_only_by_write_concern);
 }

@@ -106,6 +106,7 @@ class MetricsFeature final : public ApplicationFeature {
 
   Metric* get(MetricKeyView const& key) const;
   bool remove(Builder const& builder);
+  bool remove(Metric const& m);
 
   void toPrometheus(std::string& result, MetricsParts metricsParts,
                     CollectMode mode) const;
