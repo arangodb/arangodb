@@ -94,7 +94,7 @@ function kZeroWeightRegressionTest() {
     tearDownAll,
 
     testPathsExists: function () {
-      for (let o of ['', ', algorithm: "yen"']) {
+      for (let o of ['', ', algorithm: "legacy"']) {
         const query = `
           FOR path IN ANY K_SHORTEST_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
             RETURN path`;
@@ -109,7 +109,7 @@ function kZeroWeightRegressionTest() {
     },
 
     testPathsExists2: function () {
-      for (let o of ['', ', algorithm: "yen"']) {
+      for (let o of ['', ', algorithm: "legacy"']) {
         const query = `
           FOR path IN ANY K_SHORTEST_PATHS "${vName}/4" TO "${vName}/7" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
             RETURN path`;
@@ -125,7 +125,7 @@ function kZeroWeightRegressionTest() {
     },
 
     testPathsExists3: function () {
-      for (let o of ['', ', algorithm: "yen"']) {
+      for (let o of ['', ', algorithm: "legacy"']) {
         const query = `
           FOR path IN ANY K_SHORTEST_PATHS "${vName}/8" TO "${vName}/18" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
             RETURN path`;
