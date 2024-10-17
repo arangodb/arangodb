@@ -192,16 +192,16 @@ const StoredValuesAccordionItem = () => {
         {isStoredValuesEmpty ? (
           <Box padding="4">No fields set</Box>
         ) : (
-          <FieldsGrid>
+          <FieldsGrid alignItems="start">
             {storedValuesField.value?.map((item: any, index: number) => {
               return (
                 <React.Fragment key={index}>
-                  <Stack direction="row">
+                  <Stack direction="row" flexWrap="wrap">
                     {item.fields.map((field: any) => {
                       return <Tag key={field}>{field}</Tag>;
                     })}
                   </Stack>
-                  <Box>{item.compression}{item.cache && " (cached)"}</Box>
+                  <Box>compression: {item.compression}{item.cache && ", cached"}</Box>
                   <Spacer />
                 </React.Fragment>
               );
