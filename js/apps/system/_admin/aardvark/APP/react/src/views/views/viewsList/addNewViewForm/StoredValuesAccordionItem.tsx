@@ -92,6 +92,11 @@ const StoredValuesFields = () => {
                       switchProps={{
                         isDisabled: !window.frontendConfig.isEnterprise
                       }}
+                      tooltip={
+                        window.frontendConfig.isEnterprise
+                        ? undefined
+                        : "Field normalization value caching is available in Enterprise plans."
+                      }
                       name={`storedValues.${index}.cache`}
                     />
                   </Box>

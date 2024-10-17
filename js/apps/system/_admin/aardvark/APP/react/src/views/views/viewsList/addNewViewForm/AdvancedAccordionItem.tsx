@@ -35,6 +35,11 @@ const AdvancedFields = () => {
         switchProps={{
           isDisabled: !window.frontendConfig.isEnterprise
         }}
+        tooltip={
+          window.frontendConfig.isEnterprise
+          ? undefined
+          : "Field normalization value caching is available in Enterprise plans."
+        }
       />
       <FormLabel htmlFor="writebufferIdle">Write Buffer Idle</FormLabel>
       <InputControl inputProps={{

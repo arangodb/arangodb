@@ -71,6 +71,11 @@ const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
             isDisabled: field.isDisabled || !window.frontendConfig.isEnterprise
           }}
           name="primarySort.cache"
+          tooltip={
+            window.frontendConfig.isEnterprise
+            ? undefined
+            : "Primary sort column caching is available in Enterprise plans."
+          }
         />
         <Spacer />
       </Box>

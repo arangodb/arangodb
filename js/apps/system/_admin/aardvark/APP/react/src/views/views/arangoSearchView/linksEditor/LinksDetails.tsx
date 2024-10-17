@@ -51,7 +51,11 @@ export const LinksDetails = () => {
             id="cache"
             label="Cache"
             isDisabled={!window.frontendConfig.isEnterprise}
-            tooltip="Always cache field normalization values in memory."
+            tooltip={
+              window.frontendConfig.isEnterprise
+              ? "Always cache field normalization values in memory."
+              : "Field normalization value caching is available in Enterprise plans."
+            }
           />
           {!isFieldView && (
             <CheckboxField

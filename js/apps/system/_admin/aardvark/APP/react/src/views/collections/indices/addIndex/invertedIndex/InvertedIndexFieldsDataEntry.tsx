@@ -84,7 +84,9 @@ const SelectedFieldDetails = ({
               ...invertedIndexFieldsMap.fields,
               isRequired: false,
               isDisabled: !window.frontendConfig.isEnterprise,
-              tooltip: "Nested fields are available on Enterprise plans",
+              tooltip: window.frontendConfig.isEnterprise
+                ? undefined
+                : "Nested fields are available on Enterprise plans.",
               label: "Nested fields",
               name: `${fullPath}.nested`
             }}

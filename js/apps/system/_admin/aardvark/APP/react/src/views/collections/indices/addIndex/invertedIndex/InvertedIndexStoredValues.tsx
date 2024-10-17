@@ -88,6 +88,11 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                         isDisabled: !window.frontendConfig.isEnterprise
                       }}
                       name={`storedValues.${index}.cache`}
+                      tooltip={
+                        window.frontendConfig.isEnterprise
+                        ? undefined
+                        : "Field normalization value caching is available in Enterprise plans."
+                      }
                     />
                   </Box>
                   <IconButton

@@ -57,6 +57,11 @@ export const PrimarySortAccordionItem = () => {
             switchProps={{
               isDisabled: !window.frontendConfig.isEnterprise
             }}
+            tooltip={
+              window.frontendConfig.isEnterprise
+              ? undefined
+              : "Primary key column caching is available in Enterprise plans."
+            }
           />
         </Box>
       </AccordionPanel>
