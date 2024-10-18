@@ -117,6 +117,11 @@ RocksDBKeyBounds RocksDBKeyBounds::MdiVPackIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::MdiVPackIndexValue, indexId, false);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::VectorVPackIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::VectorVPackIndexValue, indexId,
+                          false);
+}
+
 /// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
                                                     VPackSlice left,
@@ -259,6 +264,9 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::UniqueMdiVPackIndexValue:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::MdiVPackIndex);
+    case RocksDBEntryType::VectorVPackIndexValue:
+      return RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::VectorIndex);
     case RocksDBEntryType::LogEntry:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs);
@@ -459,7 +467,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 
     case RocksDBEntryType::MdiIndexValue:
     case RocksDBEntryType::UniqueMdiIndexValue:
-      TRI_ASSERT(second == false) << "second not supported";
+    case RocksDBEntryType::VectorVPackIndexValue:
+      TRI_ASSERT(second == false) << "reverse not supported";
       _internals.reserve(2 * sizeof(uint64_t));
       uint64ToPersistent(_internals.buffer(), first);
       _internals.separate();

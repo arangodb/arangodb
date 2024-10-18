@@ -215,6 +215,11 @@ class IndexFactory {
       arangodb::velocypack::Slice definition,
       arangodb::velocypack::Builder& builder, bool create);
 
+  /// @brief enhances the json of a vector index
+  static Result enhanceJsonIndexVector(arangodb::velocypack::Slice definition,
+                                       arangodb::velocypack::Builder& builder,
+                                       bool create);
+
  protected:
   /// @brief clear internal factory/normalizer maps
   void clear();
