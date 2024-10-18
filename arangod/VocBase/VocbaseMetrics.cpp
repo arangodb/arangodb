@@ -40,7 +40,7 @@ std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
     // This voc instance is required to disambiguate metrics of multiple
     // instances of the same vocbase. This happens regularly on a coordinator
     // and causes a lot of problems when deleting metrics.
-    builder.addLabel("voc-instance", instance);
+    builder.addLabel("vocinstance", instance);
     return &mf.ensureMetric(std::move(builder));
   };
 
