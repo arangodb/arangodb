@@ -35,4 +35,3 @@
 [submodule "3rdParty/faiss"]
 	path = 3rdParty/faiss
 	url = https://github.com/arangodb/faiss.git
-  branch = remove-omp
