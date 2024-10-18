@@ -21,6 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+#include "Async/coro-utils.h"
 #if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 14000
 #include <experimental/coroutine>
 namespace std_coro = std::experimental;
@@ -215,6 +216,32 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
     auto unhandled_exception() noexcept {
       result.set_exception(std::current_exception());
     }
+
+    template<typename U>
+    auto await_transform(
+        U&& co_awaited_expression,
+        std::source_location loc = std::source_location::current()) noexcept {
+      using inner_awaitable_type = decltype(arangodb::get_awaitable_object(
+          std::forward<U>(co_awaited_expression)));
+
+      struct awaitable {
+        bool await_ready() { return inner_awaitable.await_ready(); }
+        auto await_suspend(std::coroutine_handle<> handle) {
+          return inner_awaitable.await_suspend(handle);
+        }
+        auto await_resume() { return inner_awaitable.await_resume(); }
+        inner_awaitable_type inner_awaitable;
+      };
+
+      // update promises in registry
+      if constexpr (arangodb::CanSetPromiseWaiter<U>) {
+        co_awaited_expression.set_promise_waiter(promise.id());
+      }
+      // update_source_location(loc);
+
+      return awaitable{arangodb::get_awaitable_object(
+          std::forward<U>(co_awaited_expression))};
+    }
   };
 };
 
@@ -265,6 +292,8 @@ struct std_coro::coroutine_traits<
     arangodb::futures::Promise<arangodb::futures::Unit> promise;
     arangodb::futures::Try<arangodb::futures::Unit> result;
 
+    promise_type(std::source_location loc = std::source_location::current())
+        : promise{std::move(loc)} {}
     auto initial_suspend() noexcept { return std_coro::suspend_never{}; }
     auto final_suspend() noexcept {
       // TODO use symmetric transfer here
@@ -293,6 +322,32 @@ struct std_coro::coroutine_traits<
 
     auto unhandled_exception() noexcept {
       result.set_exception(std::current_exception());
+    }
+
+    template<typename U>
+    auto await_transform(
+        U&& co_awaited_expression,
+        std::source_location loc = std::source_location::current()) noexcept {
+      using inner_awaitable_type = decltype(arangodb::get_awaitable_object(
+          std::forward<U>(co_awaited_expression)));
+
+      struct awaitable {
+        bool await_ready() { return inner_awaitable.await_ready(); }
+        auto await_suspend(std::coroutine_handle<> handle) {
+          return inner_awaitable.await_suspend(handle);
+        }
+        auto await_resume() { return inner_awaitable.await_resume(); }
+        inner_awaitable_type inner_awaitable;
+      };
+
+      // update promises in registry
+      if constexpr (arangodb::CanSetPromiseWaiter<U>) {
+        co_awaited_expression.set_promise_waiter(promise.id());
+      }
+      // update_source_location(loc);
+
+      return awaitable{arangodb::get_awaitable_object(
+          std::forward<U>(co_awaited_expression))};
     }
   };
 };

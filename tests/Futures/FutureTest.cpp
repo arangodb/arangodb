@@ -21,6 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Async/Registry/registry_variable.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 
@@ -829,4 +830,72 @@ TEST(FutureTest, basic_example_fpointer) {
   auto f2 = std::move(f).thenValue(&onThenHelperAddOne);
   p.setValue(42);
   ASSERT_TRUE(f2.waitAndGet() == 43);
+}
+
+namespace {
+auto foo() -> Future<int> {
+  Promise<int> p;
+  return p.getFuture();
+}
+auto promise_count(arangodb::async_registry::ThreadRegistry& registry) -> uint {
+  uint promise_count = 0;
+  registry.for_promise(
+      [&](arangodb::async_registry::Promise* promise) { promise_count++; });
+  return promise_count;
+}
+}  // namespace
+TEST(FutureTest, futures_are_registered_in_global_async_registry) {
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  {
+    auto x = foo();
+    std::vector<std::string> names;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::Promise* promise) {
+          names.push_back(promise->source_location.function_name);
+        });
+    EXPECT_EQ(names.size(), 1);
+    EXPECT_TRUE(names[0].find("foo") != std::string::npos);
+  }
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()), 0);
+}
+
+namespace {
+auto awaited_co() -> Future<Unit> { co_return; };
+auto waiter_co(Future<Unit>&& fn) -> Future<Unit> {
+  co_await std::move(fn);
+  co_return;
+};
+}  // namespace
+TEST(FutureTest,
+     future_coroutine_promises_in_async_registry_know_their_waiter) {
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  auto awaited_coro = awaited_co();
+  auto waiter_coro = waiter_co(std::move(awaited_coro));
+
+  struct PromiseIds {
+    bool set = false;
+    void* id;
+    void* waiter;
+  };
+  PromiseIds awaited_promise;
+  PromiseIds waiter_promise;
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::Promise* promise) {
+        count++;
+        if (promise->source_location.function_name.find("awaited_co") !=
+            std::string::npos) {
+          awaited_promise = PromiseIds{true, promise->id(), promise->waiter};
+        }
+        if (promise->source_location.function_name.find("waiter_co") !=
+            std::string::npos) {
+          waiter_promise = PromiseIds{true, promise->id(), promise->waiter};
+        }
+      });
+  EXPECT_EQ(count, 2);
+  EXPECT_TRUE(awaited_promise.set);
+  EXPECT_TRUE(waiter_promise.set);
+  EXPECT_EQ(awaited_promise.waiter, waiter_promise.id);
+  EXPECT_EQ(waiter_promise.waiter, nullptr);
 }
