@@ -45,8 +45,8 @@ auto inspect(Inspector& f, Thread& x) {
 }
 
 struct SourceLocation {
-  const std::string file_name;
-  const std::string function_name;
+  const std::string_view file_name;
+  const std::string_view function_name;
   std::atomic<std::uint_least32_t> line;
 };
 template<typename Inspector>

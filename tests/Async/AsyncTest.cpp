@@ -393,7 +393,7 @@ TYPED_TEST(AsyncTest, promises_are_registered_in_global_async_registry) {
     auto coro_bar = bar();
     auto coro_baz = baz();
 
-    std::vector<std::string> names;
+    std::vector<std::string_view> names;
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::Promise* promise) {
           names.push_back(promise->source_location.function_name);
