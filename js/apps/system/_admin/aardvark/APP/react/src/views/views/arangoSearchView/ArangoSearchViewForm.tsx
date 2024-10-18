@@ -137,6 +137,7 @@ const PrimarySortAccordionItem = () => {
   const [primarySortField] = useField<PrimarySortType[] | undefined>(
     "primarySort"
   );
+  const [primarySortCacheField] = useField("primarySortCache");
   const [primarySortCompressionField] = useField("primarySortCompression");
   const isPrimarySortEmpty =
     primarySortField.value?.length === 0 || !primarySortField.value;
@@ -145,7 +146,7 @@ const PrimarySortAccordionItem = () => {
     <AccordionItem>
       <AccordionButton>
         <Box flex="1" textAlign="left">
-          Primary Sort (compression: {primarySortCompressionField.value})
+          Primary Sort (compression: {primarySortCompressionField.value}{primarySortCacheField.value ? ", cached" : ""})
         </Box>
         <AccordionIcon />
       </AccordionButton>
@@ -191,16 +192,16 @@ const StoredValuesAccordionItem = () => {
         {isStoredValuesEmpty ? (
           <Box padding="4">No fields set</Box>
         ) : (
-          <FieldsGrid>
+          <FieldsGrid alignItems="start">
             {storedValuesField.value?.map((item: any, index: number) => {
               return (
                 <React.Fragment key={index}>
-                  <Stack direction="row">
+                  <Stack direction="row" flexWrap="wrap">
                     {item.fields.map((field: any) => {
                       return <Tag key={field}>{field}</Tag>;
                     })}
                   </Stack>
-                  <Box>{item.compression}</Box>
+                  <Box>compression: {item.compression}{item.cache && ", cached"}</Box>
                   <Spacer />
                 </React.Fragment>
               );

@@ -19,16 +19,6 @@ const typeOptions = [
     value: "search-alias"
   }
 ];
-const compressionOptions = [
-  {
-    label: "LZ4",
-    value: "lz4"
-  },
-  {
-    label: "None",
-    value: "none"
-  }
-];
 
 export const AddNewViewForm = () => {
   return (
@@ -54,17 +44,6 @@ const ViewTypeForm = () => {
   if (values.type === "arangosearch") {
     return (
       <Box marginTop="5">
-        <Box display={"grid"} gridTemplateColumns={"200px 1fr"} rowGap="5">
-          <FormLabel htmlFor="primarySortCompression">
-            Primary Sort Compression
-          </FormLabel>
-          <SelectControl
-            name="primarySortCompression"
-            selectProps={{
-              options: compressionOptions
-            }}
-          />
-        </Box>
         <Accordion
           borderColor={"gray.200"}
           borderRightWidth="1px solid"

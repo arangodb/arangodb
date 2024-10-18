@@ -164,6 +164,10 @@ const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
           compression: {
             type: "string",
             nullable: false
+          },
+          cache: {
+            type: "boolean",
+            nullable: true
           }
         },
         default: {

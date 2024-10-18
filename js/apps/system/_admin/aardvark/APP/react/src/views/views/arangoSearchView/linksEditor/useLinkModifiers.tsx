@@ -48,5 +48,16 @@ export const useLinkModifiers = () => {
   const getCurrentLinkValue = (id: string[]) => {
     return get(values.links, [currentLink, ...fieldPath, ...id]);
   };
-  return { setCurrentLinkValue, getCurrentLinkValue };
+  const getCurrentLinkValueDefault = (id: string[]) => {
+    const path = [currentLink, ...fieldPath];
+    while (path.length) {
+      const value = get(values.links, [...path, ...id]);
+      if (value !== undefined) {
+        return value;
+      }
+      path.pop();
+    }
+    return undefined;
+  };
+  return { setCurrentLinkValue, getCurrentLinkValue, getCurrentLinkValueDefault };
 };

@@ -143,6 +143,10 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
               type: "string",
               enum: ["lz4", "none"],
               default: "lz4"
+            },
+            cache: {
+              type: "boolean",
+              nullable: true
             }
           },
           required: ["fields", "compression"],
@@ -263,6 +267,14 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
           segmentsBytesFloor: 2097152
         },
         required: ["type"]
+      },
+      primaryKeyCache: {
+        type: "boolean",
+        nullable: true
+      },
+      primarySortCache: {
+        type: "boolean",
+        nullable: true
       }
     },
     required: ["id", "name", "type"],
