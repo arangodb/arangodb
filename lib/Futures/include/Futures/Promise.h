@@ -124,6 +124,9 @@ class Promise {
     return _state->set_promise_waiter(waiter);
   }
   auto id() -> void* { return _state->id(); }
+  auto update_source_location(std::source_location loc) {
+    _state->update_source_location(std::move(loc));
+  }
 
  private:
   explicit Promise(detail::SharedState<T>* state)

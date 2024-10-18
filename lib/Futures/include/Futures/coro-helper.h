@@ -208,8 +208,12 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
       result.emplace(t);
     }
 
-    auto return_value(T&& t) noexcept(std::is_nothrow_move_constructible_v<T>) {
+    auto return_value(
+        T&& t,
+        std::source_location loc = std::source_location::
+            current()) noexcept(std::is_nothrow_move_constructible_v<T>) {
       static_assert(std::is_move_constructible_v<T>);
+      promise.update_source_location(std::move(loc));
       result.emplace(std::move(t));
     }
 
@@ -237,7 +241,7 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
       if constexpr (arangodb::CanSetPromiseWaiter<U>) {
         co_awaited_expression.set_promise_waiter(promise.id());
       }
-      // update_source_location(loc);
+      promise.update_source_location(std::move(loc));
 
       return awaitable{arangodb::get_awaitable_object(
           std::forward<U>(co_awaited_expression))};
@@ -318,7 +322,11 @@ struct std_coro::coroutine_traits<
       return promise.getFuture();
     }
 
-    auto return_void() noexcept { result.emplace(); }
+    auto return_void(
+        std::source_location loc = std::source_location::current()) noexcept {
+      promise.update_source_location(std::move(loc));
+      result.emplace();
+    }
 
     auto unhandled_exception() noexcept {
       result.set_exception(std::current_exception());
@@ -344,7 +352,7 @@ struct std_coro::coroutine_traits<
       if constexpr (arangodb::CanSetPromiseWaiter<U>) {
         co_awaited_expression.set_promise_waiter(promise.id());
       }
-      // update_source_location(loc);
+      promise.update_source_location(std::move(loc));
 
       return awaitable{arangodb::get_awaitable_object(
           std::forward<U>(co_awaited_expression))};
