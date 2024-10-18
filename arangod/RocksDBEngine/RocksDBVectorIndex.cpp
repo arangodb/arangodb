@@ -50,17 +50,6 @@
 
 namespace arangodb {
 
-faiss::IndexIVFFlat createFaissIndex(auto&& quantitizer,
-                                     auto&& vectorDefinition) {
-  return std::visit(
-      [&](auto&& quant) {
-        return faiss::IndexIVFFlat(
-            &quant, vectorDefinition.dimensions, vectorDefinition.nLists,
-            metricToFaissMetric(vectorDefinition.metric));
-      },
-      quantitizer);
-}
-
 struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
                                LogicalCollection* collection,
@@ -84,16 +73,16 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
     _it->Seek(_rocksdbKey.string());
   }
 
-  virtual bool is_available() const override {
+  [[nodiscard]] bool is_available() const override {
     return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
   }
 
-  virtual void next() override { _it->Next(); }
+  void next() override { _it->Next(); }
 
-  virtual std::pair<faiss::idx_t, const uint8_t*> get_id_and_codes() override {
+  std::pair<faiss::idx_t, const uint8_t*> get_id_and_codes() override {
     auto const id = RocksDBKey::indexDocumentId(_it->key());
     TRI_ASSERT(_codeSize == _it->value().size());
-    auto value = reinterpret_cast<const uint8_t*>(_it->value().data());
+    const auto* value = reinterpret_cast<const uint8_t*>(_it->value().data());
     return {static_cast<faiss::idx_t>(id.id()), value};
   }
 
@@ -122,7 +111,7 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
     assert(status.ok());
   }
 
-  std::size_t list_size(std::size_t listNumber) const override {
+  [[nodiscard]] std::size_t list_size(std::size_t listNumber) const override {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
                                    "faiss list_size not supported");
   }
@@ -150,23 +139,33 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
 
       auto const value = RocksDBValue::VectorIndexValue(
           reinterpret_cast<const char*>(code + i * code_size), code_size);
-      _rocksDBMethods->PutUntracked(_cf, rocksdbKey, value.string());
+      auto status =
+          _rocksDBMethods->PutUntracked(_cf, rocksdbKey, value.string());
 
-      assert(status.ok());
+      TRI_ASSERT(status.ok());
     }
-    return 0;  // ignored
+    return 0;
   }
 
   void update_entries(std::size_t listNumber, std::size_t offset,
                       std::size_t n_entry, const faiss::idx_t* ids,
                       const std::uint8_t* code) override {
-    // TODO
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   void resize(std::size_t listNumber, std::size_t new_size) override {
-    // TODO
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+
+  void remove_id(size_t list_no, faiss::idx_t id) {
+    RocksDBKey rocksdbKey;
+    // Can we get away with saving LocalDocumentID in key, maybe we need to
+    // the use IdSelector in options during search
+    auto const docId = LocalDocumentId(id);
+    rocksdbKey.constructVectorIndexValue(_index->objectId(), list_no, docId);
+    auto status = _rocksDBMethods->Delete(_cf, rocksdbKey);
+
+    TRI_ASSERT(status.ok());
   }
 
   faiss::InvertedListsIterator* get_iterator(
@@ -182,6 +181,37 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
   RocksDBMethods* _rocksDBMethods;
   rocksdb::ColumnFamilyHandle* _cf;
 };
+
+struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
+  RocksDBIndexIVFFlat(Index* quantizer, size_t dimensions, size_t nLists,
+                      faiss::MetricType metricType)
+      : IndexIVFFlat(quantizer, dimensions, nLists, metricType) {}
+
+  void replace_invlists(RocksDBInvertedLists* invertedList) {
+    IndexIVFFlat::replace_invlists(invertedList, false);
+    rocksdbInvertedLists = invertedList;
+  }
+
+  void remove_id(const float* vector, const faiss::idx_t* id) {
+    faiss::idx_t listId{0};
+    quantizer->assign(1, vector, &listId);
+    rocksdbInvertedLists->remove_id(listId, *id);
+    ntotal -= 1;
+  }
+
+  RocksDBInvertedLists* rocksdbInvertedLists = nullptr;
+};
+
+RocksDBIndexIVFFlat createFaissIndex(auto&& quantitizer,
+                                     auto&& vectorDefinition) {
+  return std::visit(
+      [&](auto&& quant) {
+        return RocksDBIndexIVFFlat(
+            &quant, vectorDefinition.dimensions, vectorDefinition.nLists,
+            metricToFaissMetric(vectorDefinition.metric));
+      },
+      quantitizer);
+}
 
 faiss::MetricType metricToFaissMetric(const SimilarityMetric metric) {
   switch (metric) {
@@ -206,6 +236,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   if (auto data = info.get("trainedData"); !data.isNone()) {
     velocypack::deserialize(data, _trainedData.emplace());
   }
+  // TODO
   _trainingDataSize = _definition.nLists * 1000;
 
   _quantizer =
@@ -233,7 +264,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 }
 
 /// @brief Test if this index matches the definition
-bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
+bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& /*info*/) const {
   return false;
 }
 
@@ -261,7 +292,7 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, collection.get(), trx, rocksDBMethods, _cf,
                            _definition.nLists, flatIndex.code_size);
-  flatIndex.replace_invlists(&ril, false);
+  flatIndex.replace_invlists(&ril);
 
   std::vector<float> distances(topK * count);
   std::vector<faiss::idx_t> labels(topK * count);
@@ -302,7 +333,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, nullptr, nullptr, methods, _cf,
                            _definition.nLists, flatIndex.code_size);
-  flatIndex.replace_invlists(&ril, false);
+  flatIndex.replace_invlists(&ril);
 
   VPackSlice value = accessDocumentPath(doc, _fields[0]);
   std::vector<float> input;
@@ -332,7 +363,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, &_collection, nullptr, methods, _cf,
                            _definition.nLists, flatIndex.code_size);
-  flatIndex.replace_invlists(&ril, false);
+  flatIndex.replace_invlists(&ril);
 
   std::vector<float> trainingData;
   std::size_t counter{0};
