@@ -558,7 +558,6 @@ void TRI_vocbase_t::shutdown() {
 
   _deadCollections = {};
   _collections = {};
-  collections.clear();
 }
 
 std::vector<std::string> TRI_vocbase_t::collectionNames() const {
@@ -1349,7 +1348,13 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
   metrics::Gauge<uint64_t>* numberOfCursorsMetric = nullptr;
   metrics::Gauge<uint64_t>* memoryUsageMetric = nullptr;
 
-  _metrics = std::make_unique<VocbaseMetrics>();
+  if (_info.server().hasFeature<metrics::MetricsFeature>()) {
+    metrics::MetricsFeature& feature =
+        _info.server().getFeature<metrics::MetricsFeature>();
+    _metrics = VocbaseMetrics::create(feature, _info.getName());
+  } else {
+    _metrics = std::make_unique<VocbaseMetrics>();
+  }
 
   if (_info.server().hasFeature<QueryRegistryFeature>() && !isInternal) {
     QueryRegistryFeature& feature =
@@ -1418,14 +1423,6 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 }
 
 std::string TRI_vocbase_t::path() const { return _engine.databasePath(); }
-
-void TRI_vocbase_t::enableMetrics() {
-  if (_info.server().hasFeature<metrics::MetricsFeature>()) {
-    metrics::MetricsFeature& feature =
-        _info.server().getFeature<metrics::MetricsFeature>();
-    _metrics = VocbaseMetrics::create(feature, _info.getName());
-  }
-}
 
 bool TRI_vocbase_t::isOneShard() const {
   return _info.sharding() == StaticStrings::ShardingSingle;

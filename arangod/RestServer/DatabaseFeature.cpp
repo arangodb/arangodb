@@ -173,8 +173,6 @@ void DatabaseManagerThread::run() {
 
         iresearch::cleanupDatabase(*database);
 
-        database->metrics().drop();
-
         auto* queryRegistry = QueryRegistryFeature::registry();
 #ifdef USE_V8
         if (_dealer.isEnabled() || queryRegistry != nullptr) {
@@ -798,7 +796,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     res = _engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
-  vocbase->enableMetrics();
   result = vocbase.release();
 
   versionTracker().track("create database");
