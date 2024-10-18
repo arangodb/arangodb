@@ -559,7 +559,6 @@ void TRI_vocbase_t::shutdown() {
   _deadCollections = {};
   _collections = {};
   collections.clear();
-  _metrics->drop();
 }
 
 std::vector<std::string> TRI_vocbase_t::collectionNames() const {
