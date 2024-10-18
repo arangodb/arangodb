@@ -798,6 +798,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     res = _engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
+  vocbase->enableMetrics();
   result = vocbase.release();
 
   versionTracker().track("create database");

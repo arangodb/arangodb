@@ -206,6 +206,7 @@ struct TRI_vocbase_t {
   }
 
   arangodb::VocbaseMetrics const& metrics() const noexcept { return *_metrics; }
+  void enableMetrics();
 
   template<typename As>
   As& engine() const noexcept

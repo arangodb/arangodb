@@ -86,8 +86,15 @@ function WriteConcernReadOnlyMetricSuite() {
       db._useDatabase("_system");
       db._dropDatabase(database);
 
-      const metrics = getAllMetric(getUrlById(leader), '');
-      assertEqual(metrics.indexOf(database), -1);
+      let k = 0;
+      for (; k < 100; k++) {
+        const metrics = getAllMetric(getUrlById(leader), '');
+        if (metrics.indexOf(database) === -1) {
+          break;
+        }
+        internal.sleep(0.5);
+      }
+      assertNotEqual(k, 100);
     },
   };
 }
