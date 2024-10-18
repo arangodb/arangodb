@@ -380,10 +380,12 @@ TYPED_TEST(AsyncTest, coroutine_is_removed_before_registry_entry) {
   }
 }
 
-auto foo() -> async<CopyOnlyValue> { co_return 1; }
-auto bar() -> async<CopyOnlyValue> { co_return 4; }
-auto baz() -> async<CopyOnlyValue> { co_return 2; }
-TEST(AsyncTest, promises_are_registered_in_global_registry) {
+namespace {
+auto foo() -> async<void> { co_return; }
+auto bar() -> async<void> { co_return; }
+auto baz() -> async<void> { co_return; }
+}  // namespace
+TYPED_TEST(AsyncTest, promises_are_registered_in_global_async_registry) {
   auto coro_foo = foo();
   EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()), 1);
 
@@ -391,10 +393,10 @@ TEST(AsyncTest, promises_are_registered_in_global_registry) {
     auto coro_bar = bar();
     auto coro_baz = baz();
 
-    std::vector<std::string> names;
+    std::vector<std::string_view> names;
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::Promise* promise) {
-          names.push_back(promise->entry_point.function_name());
+          names.push_back(promise->source_location.function_name);
         });
     EXPECT_EQ(names.size(), 3);
     EXPECT_TRUE(names[0].find("foo") != std::string::npos);
@@ -472,3 +474,43 @@ TYPED_TEST(AsyncTest, execution_context_is_local_to_coroutine) {
   this->wait.await();
   EXPECT_EQ(ExecContext::current().user(), "End");
 }
+
+namespace {
+auto awaited_fn() -> async<void> { co_return; };
+auto waiter_fn(async<void>&& fn) -> async<void> {
+  co_await std::move(fn);
+  co_return;
+};
+}  // namespace
+TYPED_TEST(AsyncTest, async_promises_in_async_registry_know_their_waiter) {
+  auto awaited_coro = awaited_fn();
+  auto waiter_coro = waiter_fn(std::move(awaited_coro));
+
+  struct PromiseIds {
+    bool set = false;
+    void* id;
+    void* waiter;
+  };
+  PromiseIds awaited_promise;
+  PromiseIds waiter_promise;
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::Promise* promise) {
+        count++;
+        if (promise->source_location.function_name.find("awaited_fn") !=
+            std::string::npos) {
+          awaited_promise = PromiseIds{true, promise->id(), promise->waiter};
+        }
+        if (promise->source_location.function_name.find("waiter_fn") !=
+            std::string::npos) {
+          waiter_promise = PromiseIds{true, promise->id(), promise->waiter};
+        }
+      });
+  EXPECT_EQ(count, 2);
+  EXPECT_TRUE(awaited_promise.set);
+  EXPECT_TRUE(waiter_promise.set);
+  EXPECT_EQ(awaited_promise.waiter, waiter_promise.id);
+  EXPECT_EQ(waiter_promise.waiter, nullptr);
+}
+
+#include "AsyncTestLineNumbers.tpp"
