@@ -457,9 +457,9 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
             _buildOutputRegisters<WeightedShortestPath>();
         auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                  std::move(outputRegisters));
-        return makeExecutionBlockImpl<WeightedShortestPathEnumerator<Provider>,
-                                      Provider,
-                                      SingleServerBaseProviderOptions>(
+        return makeExecutionBlockImpl<
+            WeightedShortestPathEnumeratorAlias<Provider>, Provider,
+            SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, std::move(outputRegisterMapping), engine,
@@ -485,7 +485,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
         auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                  std::move(outputRegisters));
         return makeExecutionBlockImpl<
-            TracedWeightedShortestPathEnumerator<Provider>,
+            TracedWeightedShortestPathEnumeratorAlias<Provider>,
             ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
@@ -527,8 +527,8 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
         auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                  std::move(outputRegisters));
         return makeExecutionBlockImpl<
-            WeightedShortestPathEnumerator<ClusterProvider>, ClusterProvider,
-            ClusterBaseProviderOptions>(
+            WeightedShortestPathEnumeratorAlias<ClusterProvider>,
+            ClusterProvider, ClusterBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, std::move(outputRegisterMapping), engine,
@@ -554,7 +554,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
                                                  std::move(outputRegisters));
 
         return makeExecutionBlockImpl<
-            TracedWeightedShortestPathEnumerator<ClusterProvider>,
+            TracedWeightedShortestPathEnumeratorAlias<ClusterProvider>,
             ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,

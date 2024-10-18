@@ -149,6 +149,9 @@ class SingleServerProvider {
   RefactoredTraverserCache _cache;
 
   arangodb::aql::TraversalStats _stats;
+
+  size_t _rearmed = 0;
+  size_t _readSomething = 0;
 };
 }  // namespace graph
 }  // namespace arangodb

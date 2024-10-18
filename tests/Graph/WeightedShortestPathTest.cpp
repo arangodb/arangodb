@@ -60,7 +60,7 @@ namespace graph {
 class WeightedShortestPathTest
     : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
   using WeightedShortestPathFinder =
-      WeightedShortestPathEnumerator<MockGraphProvider>;
+      WeightedShortestPathEnumeratorAlias<MockGraphProvider>;
 
   static constexpr size_t minDepth = 0;
   static constexpr size_t maxDepth = std::numeric_limits<size_t>::max();
