@@ -90,7 +90,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
     return awaitable{
         this, get_awaitable_object(std::forward<U>(co_awaited_expression)),
         ExecContext::currentAsShared()};
-  };
+  }
   void unhandled_exception() { _value.set_exception(std::current_exception()); }
   auto get_return_object() {
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
