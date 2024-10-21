@@ -30,16 +30,31 @@ DECLARE_GAUGE(arangodb_vocbase_shards_read_only_by_write_concern, std::uint64_t,
 
 std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
     metrics::MetricsFeature& mf, std::string_view databaseName) {
+  auto metrics = std::make_unique<VocbaseMetrics>();
+  auto instance = std::to_string(reinterpret_cast<uint64_t>(metrics.get()));
+
   auto createMetric = [&](auto builder) {
     if (!databaseName.empty()) {
       builder.addLabel("database", databaseName);
     }
+    // This voc instance is required to disambiguate metrics of multiple
+    // instances of the same vocbase. This happens regularly on a coordinator
+    // and causes a lot of problems when deleting metrics.
+    builder.addLabel("vocinstance", instance);
     return &mf.ensureMetric(std::move(builder));
   };
 
-  auto metrics = std::make_unique<VocbaseMetrics>();
   metrics->shards_read_only_by_write_concern =
       createMetric(arangodb_vocbase_shards_read_only_by_write_concern{});
+  metrics->_metricsFeature = &mf;
 
   return metrics;
+}
+
+VocbaseMetrics::~VocbaseMetrics() {
+  // delete all metrics
+  if (_metricsFeature == nullptr) {
+    return;
+  }
+  _metricsFeature->remove(*shards_read_only_by_write_concern);
 }
