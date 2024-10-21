@@ -515,6 +515,7 @@ function cleanupBGShells (clients, cn) {
         if (status === 'RUNNING') {
           print(`${RED}${Date()} forcefully killing test client with pid ${client.client.pid} ${db['${cn}'].exists('stop')}\n${JSON.stringify(db['${cn}'].toArray())}`);
           internal.killExternal(client.client.pid, 9 /*SIGKILL*/);
+          client.status = internal.statusExternal(client.client.pid);
         }
       } catch (err) { }
     }
