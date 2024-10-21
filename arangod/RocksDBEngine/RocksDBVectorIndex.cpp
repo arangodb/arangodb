@@ -192,10 +192,10 @@ struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
     rocksdbInvertedLists = invertedList;
   }
 
-  void remove_id(const float* vector, const faiss::idx_t* id) {
+  void remove_id(std::vector<float>& vector, const faiss::idx_t docId) {
     faiss::idx_t listId{0};
-    quantizer->assign(1, vector, &listId);
-    rocksdbInvertedLists->remove_id(listId, *id);
+    quantizer->assign(1, vector.data(), &listId);
+    rocksdbInvertedLists->remove_id(listId, docId);
     ntotal -= 1;
   }
 
@@ -323,12 +323,12 @@ auto accessDocumentPath(VPackSlice doc,
 }
 
 /// @brief inserts a document into the index
-Result RocksDBVectorIndex::insert(transaction::Methods& trx,
+Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
                                   RocksDBMethods* methods,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
-                                  OperationOptions const& options,
-                                  bool performChecks) {
+                                  OperationOptions const& /*options*/,
+                                  bool /*performChecks*/) {
   TRI_ASSERT(_fields.size() == 1);
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, nullptr, nullptr, methods, _cf,
@@ -354,7 +354,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   }
   flatIndex.add_with_ids(1, input.data(), &docId);
 
-  return Result{};
+  return {};
 }
 
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
@@ -405,12 +405,37 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
 }
 
 /// @brief removes a document from the index
-Result RocksDBVectorIndex::remove(transaction::Methods& trx,
+Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   RocksDBMethods* methods,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
-                                  OperationOptions const& options) {
-  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+                                  OperationOptions const& /*options*/) {
+  TRI_ASSERT(_fields.size() == 1);
+  auto flatIndex = createFaissIndex(_quantizer, _definition);
+  RocksDBInvertedLists ril(this, nullptr, nullptr, methods, _cf,
+                           _definition.nLists, flatIndex.code_size);
+  flatIndex.replace_invlists(&ril);
+
+  VPackSlice value = accessDocumentPath(doc, _fields[0]);
+  std::vector<float> input;
+  input.reserve(_definition.dimensions);
+  if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
+    return {TRI_ERROR_BAD_PARAMETER, res.error()};
+  }
+  TRI_ASSERT(input.size() == static_cast<std::size_t>(_definition.dimensions));
+
+  if (input.size() != static_cast<std::size_t>(_definition.dimensions)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "input vector does not have correct dimensions"};
+  }
+
+  if (_definition.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(_definition.dimensions, 1, input.data());
+  }
+  auto const docId = static_cast<faiss::idx_t>(documentId.id());
+  flatIndex.remove_id(input, docId);
+
+  return {};
 }
 
 UserVectorIndexDefinition const&
