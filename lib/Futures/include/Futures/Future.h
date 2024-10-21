@@ -490,6 +490,11 @@ class [[nodiscard]] Future {
     return future;
   }
 
+  auto set_promise_waiter(void* waiter) {
+    return _state->set_promise_waiter(waiter);
+  }
+  auto id() -> void* { return _state->id(); }
+
  private:
   explicit Future(detail::EmptyConstructor) : _state(nullptr) {}
   explicit Future(detail::SharedState<T>* state) : _state(state) {}
