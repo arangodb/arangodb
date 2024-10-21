@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS_1792: Call `setLocale` earlier during startup to prevent crashes.
+
 * BTS-1975: Fix the output of dumped data in VPack format.
 
 * Add file descriptors to tele metrics
