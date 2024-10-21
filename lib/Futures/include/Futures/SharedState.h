@@ -51,7 +51,7 @@ namespace detail {
 ///   |                    ---> OnlyCallback ---                    |
 ///   +-------------------------------------------------------------+
 template<typename T>
-class SharedState : async_registry::AddToAsyncRegistry {
+class SharedState : public async_registry::AddToAsyncRegistry {
   enum class State : uint8_t {
     Start = 1 << 0,
     OnlyResult = 1 << 1,
