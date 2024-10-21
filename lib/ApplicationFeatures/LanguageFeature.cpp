@@ -248,9 +248,8 @@ void LanguageFeature::prepare() {
   ::setCollator(
       _langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage,
       _icuData.data(), _langType);
+  ::setLocale(_locale);
 }
-
-void LanguageFeature::start() { ::setLocale(_locale); }
 
 icu::Locale& LanguageFeature::getLocale() { return _locale; }
 

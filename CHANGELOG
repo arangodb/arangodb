@@ -1,6 +1,8 @@
 v3.11.12 (XXXX-XX-XX)
 ---------------------
 
+* BTS_1792: Call `setLocale` earlier during startup to prevent crashes.
+
 * Change dumping of VPack to JSON for large double values with absolute
   value between 2^53 and 2^64. This ensures that dumps to JSON followed
   by parsing of the JSON back to VPack retain the right numerical values.
