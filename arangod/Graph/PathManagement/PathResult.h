@@ -83,6 +83,11 @@ class PathResult {
   auto compare(PathResult<ProviderType, Step> const& other)
       -> std::strong_ordering;
 
+  auto getBranchPoint() const noexcept -> size_t { return _branchPoint; }
+  auto setBranchPoint(size_t branchPoint) noexcept -> void {
+    _branchPoint = branchPoint;
+  }
+
  private:
   std::vector<typename Step::Vertex> _vertices;
   std::vector<typename Step::Edge> _edges;
@@ -94,6 +99,7 @@ class PathResult {
   size_t _numVerticesFromSourceProvider;
   size_t _numEdgesFromSourceProvider;
   double _pathWeight;
+  size_t _branchPoint = 0;  // only used in Yen's algorithm
 
   // Provider for the beginning of the path (source)
   ProviderType& _sourceProvider;
