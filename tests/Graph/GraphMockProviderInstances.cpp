@@ -91,7 +91,7 @@ template class ::arangodb::graph::WeightedShortestPathEnumerator<
     WeightedQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>,
     MockGraphProvider,
     PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
 
 template class arangodb::graph::PathValidatorTracer<
     arangodb::graph::PathValidator<

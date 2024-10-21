@@ -20,6 +20,7 @@
 ///
 /// @author Michael Hackstein
 /// @author Heiko Kernbach
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WeightedShortestPathEnumerator.h"
@@ -268,9 +269,9 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
         needToQueue = false;
       }
 
-      // Note that even if the other side has already expanded the vertex,
-      // we still potentially queue it and thus will later expand it.
       if (other.hasBeenVisited(n)) {
+        // If the other side has already expanded the vertex, we do not need
+        // to queue it, since we do not have to expand it.
         needToQueue = false;
         // Need to validate this step, too:
         ValidationResult res =
@@ -347,55 +348,6 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
     -> ProviderType& {
   return _provider;
 }
-
-/*
- * Class: ResultCache (internally used in WeightedShortestPathEnumerator)
- */
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedShortestPathEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::ResultCache::ResultCache(Ball& left, Ball& right)
-    : _internalLeft(left), _internalRight(right), _internalResultsCache{} {}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                               PathValidator>::ResultCache::~ResultCache() =
-    default;
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::ResultCache::clear()
-    -> void {
-  _internalResultsCache.clear();
-};
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::ResultCache::
-    tryAddResult(CalculatedCandidate const& candidate) -> bool {
-  auto const& [weight, first, second] = candidate;
-  PathResult<ProviderType, typename ProviderType::Step> resultPathCandidate{
-      _internalLeft.provider(), _internalRight.provider()};
-
-  // generates left and right parts of the path and combines them
-  // then checks whether we do have a path duplicate or not.
-  _internalLeft.buildPath(first, resultPathCandidate);
-  _internalRight.buildPath(second, resultPathCandidate);
-  for (auto const& pathToCheck : _internalResultsCache) {
-    bool foundDuplicate =
-        resultPathCandidate.isEqualEdgeRepresentation(pathToCheck);
-    if (foundDuplicate) {
-      return false;
-    }
-  }
-  _internalResultsCache.push_back(std::move(resultPathCandidate));
-  return true;
-};
 
 /*
  * Class: WeightedShortestPathEnumerator
@@ -790,10 +742,10 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
 // TracedWShortestPath (cluster)   Tr<We>  Tr      Tr<Cl>  Va<Tr,Gl,Pa>
 //
 // # Weighted ShortestPath for Yen:
-// WShortestPath (yen, single)     We      No      Si      Ta<Va,Gl,Pa>
-// WShortestPath (yen, cluster)    We      No      Cl      Ta<Va,Gl,Pa>
-// TracedWShortestPath (yen, sin)  Tr<We>  Tr      Tr<Si>  Ta<Va<Tr,Gl,Pa>>
-// TracedWShortestPath (yen, clu)  Tr<We>  Tr      Tr<Cl>  Ta<Va<Tr,Gl,Pa>>
+// WShortestPath (yen, single)     We      No      Si      Va<No,No>
+// WShortestPath (yen, cluster)    We      No      Cl      Va<No,No>
+// TracedWShortestPath (yen, sin)  Tr<We>  Tr      Tr<Si>  Tr<Va<No,No>>
+// TracedWShortestPath (yen, clu)  Tr<We>  Tr      Tr<Cl>  Tr<Va<No,No>>
 //
 // Where:
 //   Si/Cl    Single or Cluster provider
@@ -812,35 +764,17 @@ template class WeightedShortestPathEnumerator<
     WeightedQueue<SingleServerProviderStep>,
     PathStore<SingleServerProviderStep>, SingleProvider,
     PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-// WeightedShortestPathEnumeratorForYen<SingleProvider>:
-template class WeightedShortestPathEnumerator<
-    WeightedQueue<SingleServerProviderStep>,
-    PathStore<SingleServerProviderStep>, SingleProvider,
-    PathValidatorTabooWrapper<PathValidator<
-        SingleProvider, PathStore<SingleServerProviderStep>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
 
 // TracedWeightedShortestPathEnumerator<SingleProvider>:
 template class WeightedShortestPathEnumerator<
     QueueTracer<WeightedQueue<SingleServerProviderStep>>,
     PathStoreTracer<PathStore<SingleServerProviderStep>>,
     ProviderTracer<SingleProvider>,
-    PathValidatorTracer<PathValidator<
-        ProviderTracer<SingleProvider>,
-        PathStoreTracer<PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
-// TracedWeightedShortestPathEnumeratorForYen<SingleProvider>:
-template class WeightedShortestPathEnumerator<
-    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    ProviderTracer<SingleProvider>,
-    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
-        ProviderTracer<SingleProvider>,
-        PathStoreTracer<PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
+    PathValidatorTracer<
+        PathValidator<ProviderTracer<SingleProvider>,
+                      PathStoreTracer<PathStore<SingleServerProviderStep>>,
+                      VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>>;
 
 /* ClusterProvider Section */
 
@@ -851,34 +785,16 @@ template class WeightedShortestPathEnumerator<
     WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
     ClustProvider,
     PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-// WeightedShortestPathEnumeratorForYen<ClustProvider>:
-template class WeightedShortestPathEnumerator<
-    WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-    ClustProvider,
-    PathValidatorTabooWrapper<PathValidator<
-        ClustProvider, PathStore<ClusterProviderStep>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
 
 // TracedWeightedShortestPathEnumerator<ClustProvider>:
 template class WeightedShortestPathEnumerator<
     QueueTracer<WeightedQueue<ClusterProviderStep>>,
     PathStoreTracer<PathStore<ClusterProviderStep>>,
     ProviderTracer<ClustProvider>,
-    PathValidatorTracer<PathValidator<
-        ProviderTracer<ClustProvider>,
-        PathStoreTracer<PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
-// TracedWeightedShortestPathEnumeratorForYen<ClustProvider>:
-template class WeightedShortestPathEnumerator<
-    QueueTracer<WeightedQueue<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    ProviderTracer<ClustProvider>,
-    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
-        ProviderTracer<ClustProvider>,
-        PathStoreTracer<PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
+    PathValidatorTracer<
+        PathValidator<ProviderTracer<ClustProvider>,
+                      PathStoreTracer<PathStore<ClusterProviderStep>>,
+                      VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>>;
 
 }  // namespace arangodb::graph

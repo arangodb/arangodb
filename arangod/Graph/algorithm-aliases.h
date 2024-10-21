@@ -91,7 +91,7 @@ using WeightedShortestPathEnumeratorAlias = WeightedShortestPathEnumerator<
     WeightedQueue<typename Provider::Step>, PathStore<typename Provider::Step>,
     Provider,
     PathValidator<Provider, PathStore<typename Provider::Step>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
+                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
 
 // SHORTEST_PATH implementation using Tracing
 template<class Provider>
@@ -113,7 +113,7 @@ using TracedWeightedShortestPathEnumeratorAlias =
         PathValidatorTracer<PathValidator<
             ProviderTracer<Provider>,
             PathStoreTracer<PathStore<typename Provider::Step>>,
-            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+            VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>>;
 
 // SHORTEST_PATH for Yen:
 template<class Provider>
@@ -129,9 +129,8 @@ using WeightedShortestPathEnumeratorForYenAlias =
     WeightedShortestPathEnumerator<
         WeightedQueue<typename Provider::Step>,
         PathStore<typename Provider::Step>, Provider,
-        PathValidatorTabooWrapper<PathValidator<
-            Provider, PathStore<typename Provider::Step>,
-            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+        PathValidator<Provider, PathStore<typename Provider::Step>,
+                      VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
 
 // SHORTEST_PATH for Yen with tracing:
 
@@ -151,10 +150,10 @@ using TracedWeightedShortestPathEnumeratorForYenAlias =
         QueueTracer<WeightedQueue<typename Provider::Step>>,
         PathStoreTracer<PathStore<typename Provider::Step>>,
         ProviderTracer<Provider>,
-        PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
+        PathValidatorTracer<PathValidator<
             ProviderTracer<Provider>,
             PathStoreTracer<PathStore<typename Provider::Step>>,
-            VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
+            VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>>;
 
 // K_PATH implementation
 template<class Provider>
