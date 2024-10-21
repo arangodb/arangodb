@@ -1,6 +1,14 @@
 devel
 -----
 
+* Speed up shortest path computations by choosing more diligently which
+  side to expand next. This brings back 3.10 performance.
+
+* Fixed a bug in (non-Yen) k-shortest-paths which could overlook some
+  paths.
+
+* BTS_1792: Call `setLocale` earlier during startup to prevent crashes.
+
 * BTS-1975: Fix the output of dumped data in VPack format.
 
 * Add file descriptors to tele metrics
