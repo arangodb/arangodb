@@ -29,7 +29,6 @@
 #include "Containers/HashSet.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
-#include "Graph/Types/ForbiddenVertices.h"
 #include "Containers/FlatHashMap.h"
 
 #include <limits>
@@ -167,13 +166,11 @@ class WeightedShortestPathEnumerator {
 
     auto getDiameter() const noexcept -> double { return _diameter; }
 
-    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void {
       _forbiddenVertices = std::move(forbidden);
     };
 
-    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void {
       _forbiddenEdges = std::move(forbidden);
     };
 
@@ -228,29 +225,6 @@ class WeightedShortestPathEnumerator {
     std::shared_ptr<EdgeSet> _forbiddenEdges;
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
-
-  /*
-   * A class that is able to store valid shortest paths results.
-   * This is required to be able to check for duplicate paths, as those can be
-   * found during a KShortestPaths graphs search.
-   */
-  class ResultCache {
-   public:
-    ResultCache(Ball& left, Ball& right);
-    ~ResultCache();
-
-    // @brief: returns whether a path could be inserted or not.
-    // True: It will be inserted if this specific path has not been added yet.
-    // False: Could not insert as this path has already been found.
-    [[nodiscard]] auto tryAddResult(CalculatedCandidate const& candidate)
-        -> bool;
-    auto clear() -> void;
-
-   private:
-    Ball& _internalLeft;
-    Ball& _internalRight;
-    std::vector<PathResult<ProviderType, Step>> _internalResultsCache{};
-  };
 
  public:
   WeightedShortestPathEnumerator(ProviderType&& forwardProvider,
@@ -322,14 +296,12 @@ class WeightedShortestPathEnumerator {
    */
   auto stealStats() -> aql::TraversalStats;
 
-  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void {
     _left.setForbiddenVertices(forbidden);
     _right.setForbiddenVertices(std::move(forbidden));
   };
 
-  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void {
     _left.setForbiddenEdges(forbidden);
     _right.setForbiddenEdges(std::move(forbidden));
   };

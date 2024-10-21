@@ -382,12 +382,11 @@ template class ::arangodb::graph::YenEnumerator<
     TracedShortestPathEnumeratorForYen<SingleProvider>, false>;
 
 template class ::arangodb::graph::YenEnumerator<
-    SingleProvider, WeightedShortestPathEnumeratorForYenAlias<SingleProvider>,
-    true>;
+    SingleProvider, WeightedShortestPathEnumeratorAlias<SingleProvider>, true>;
 
 template class ::arangodb::graph::YenEnumerator<
     ProviderTracer<SingleProvider>,
-    TracedWeightedShortestPathEnumeratorForYenAlias<SingleProvider>, true>;
+    TracedWeightedShortestPathEnumeratorAlias<SingleProvider>, true>;
 
 // ClusterProvider Section:
 
@@ -401,9 +400,8 @@ template class ::arangodb::graph::YenEnumerator<
     TracedShortestPathEnumeratorForYen<ClustProvider>, false>;
 
 template class ::arangodb::graph::YenEnumerator<
-    ClustProvider, WeightedShortestPathEnumeratorForYenAlias<ClustProvider>,
-    true>;
+    ClustProvider, WeightedShortestPathEnumeratorAlias<ClustProvider>, true>;
 
 template class ::arangodb::graph::YenEnumerator<
     ProviderTracer<ClustProvider>,
-    TracedWeightedShortestPathEnumeratorForYenAlias<ClustProvider>, true>;
+    TracedWeightedShortestPathEnumeratorAlias<ClustProvider>, true>;

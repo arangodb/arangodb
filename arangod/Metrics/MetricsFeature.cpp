@@ -210,6 +210,12 @@ bool MetricsFeature::remove(Builder const& builder) {
   return _registry.erase(key) != 0;
 }
 
+bool MetricsFeature::remove(Metric const& m) {
+  MetricKeyView key{m.name(), m.labels()};
+  std::lock_guard guard{_mutex};
+  return _registry.erase(key) != 0;
+}
+
 bool MetricsFeature::exportAPI() const noexcept { return _export; }
 
 bool MetricsFeature::ensureWhitespace() const noexcept {
