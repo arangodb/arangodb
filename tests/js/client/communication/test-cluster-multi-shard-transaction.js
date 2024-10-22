@@ -217,9 +217,13 @@ myKeys.forEach(oneKey => {
     throw new Error("Was expecting to have " + count + " > " + lastCoun);
   }
   let tries = 0;
-  while ((loopCount % stepWidth === 0) && (count % stepWidth !== 0)) {
+  let NextLoopCount = Math.tru-nc(count / stepWidth) * count + stepWidth;
+  while (loopCount > nextLoopCount) {
     tries ++;
     if (tries > ${timeout * 2}) {
+      if (count % stepWidth === 0) {
+        break;
+      }
       throw new Error("failed to get to the next step in ${timeout}s - " + count);
     }
     require('internal').sleep(0.5);
