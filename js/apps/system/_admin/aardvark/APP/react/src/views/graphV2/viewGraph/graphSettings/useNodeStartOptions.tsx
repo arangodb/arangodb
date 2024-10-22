@@ -1,6 +1,6 @@
+import { OptionType } from "@arangodb/ui";
 import { aql } from "arangojs";
 import { useEffect, useState } from "react";
-import { OptionType } from "../../../../components/select/SelectBase";
 import { getCurrentDB } from "../../../../utils/arangoClient";
 
 /**

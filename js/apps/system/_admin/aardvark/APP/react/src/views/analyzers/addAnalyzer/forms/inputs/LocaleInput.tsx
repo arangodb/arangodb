@@ -1,5 +1,5 @@
+import { InputControl } from "@arangodb/ui";
 import React from "react";
-import { InputControl } from "../../../../../components/form/InputControl";
 import { useAnalyzersContext } from "../../../AnalyzersContext";
 
 export const LocaleInput = ({

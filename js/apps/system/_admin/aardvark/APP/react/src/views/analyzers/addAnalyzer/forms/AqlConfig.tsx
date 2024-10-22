@@ -1,9 +1,6 @@
+import { InputControl, SingleSelectControl, SwitchControl, TextareaControl } from "@arangodb/ui";
 import { Grid } from "@chakra-ui/react";
 import React from "react";
-import { InputControl } from "../../../../components/form/InputControl";
-import { SelectControl } from "../../../../components/form/SelectControl";
-import { SwitchControl } from "../../../../components/form/SwitchControl";
-import { TextareaControl } from "../../../../components/form/TextareaControl";
 import { useAnalyzersContext } from "../../AnalyzersContext";
 
 export const AqlConfig = ({
@@ -45,7 +42,7 @@ export const AqlConfig = ({
         name={`${basePropertiesPath}.keepNull`}
         label={"Keep Null"}
       />
-      <SelectControl
+      <SingleSelectControl
         isDisabled={isDisabled}
         name={`${basePropertiesPath}.returnType`}
         label="Return Type"

@@ -1,3 +1,4 @@
+import { InfoTooltip, useSortableReactTable } from "@arangodb/ui";
 import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 import { Flex, Icon, Tag, Text } from "@chakra-ui/react";
 import {
@@ -7,9 +8,6 @@ import {
   Table
 } from "@tanstack/react-table";
 import React, { useMemo } from "react";
-
-import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import {
   CollectionType,
   DatabaseTableType

@@ -1,6 +1,6 @@
+import { SingleSelectControl } from "@arangodb/ui";
 import { Grid } from "@chakra-ui/react";
 import React from "react";
-import { SelectControl } from "../../../../components/form/SelectControl";
 import { useAnalyzersContext } from "../../AnalyzersContext";
 import { CaseInput } from "./inputs/CaseInput";
 
@@ -12,7 +12,7 @@ export const SegmentationConfig = ({
   const { isFormDisabled: isDisabled } = useAnalyzersContext();
   return (
     <Grid templateColumns={"1fr 1fr 1fr"} columnGap="4" rowGap="4">
-      <SelectControl
+      <SingleSelectControl
         isDisabled={isDisabled}
         name={`${basePropertiesPath}.break`}
         selectProps={{
