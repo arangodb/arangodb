@@ -443,9 +443,6 @@ aql::AstNode* ClusterIndex::specializeCondition(
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::specializeCondition(this, node, reference);
     case TRI_IDX_TYPE_VECTOR_INDEX:
-      // TODO
-      break;
-
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }

@@ -20,13 +20,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateNearVectorsExecutor.h"
-#include <cmath>
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Aql/ExecutionBlockImpl.tpp"
+
+#include <cmath>
 
 namespace arangodb::aql {
 

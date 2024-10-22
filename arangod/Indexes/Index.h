@@ -23,14 +23,14 @@
 
 #pragma once
 
-#include <s2/base/integral_types.h>
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/Result.h"
 #include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/vocbase.h"
+
+#include <s2/base/integral_types.h>
 
 #include <cstddef>
 #include <cstdint>
