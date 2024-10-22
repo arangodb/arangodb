@@ -220,10 +220,11 @@ myKeys.forEach(oneKey => {
   while ((loopCount % stepWidth === 0) && (count % stepWidth !== 0)) {
     tries ++;
     if (tries > ${timeout * 2}) {
-      throw new Error("failed to get to the next step in ${timeout}s");
+      throw new Error("failed to get to the next step in ${timeout}s - " + count);
     }
     require('internal').sleep(0.5);
     count = db[cn].count();
+    console.log("count: " + count);
   }
   lastCount = count;
 })
