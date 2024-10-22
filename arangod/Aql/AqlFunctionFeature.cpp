@@ -24,14 +24,9 @@
 #include "AqlFunctionFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ServerState.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb::application_features;
 
@@ -592,11 +587,11 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerOneShard),
        &functions::MakeDistributeGraphInput});
   add({"APPROX_NEAR_COSINE", ".,.",
-       Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::ApproxNearCosine});
   add({"APPROX_NEAR_L2", ".,.",
-       Function::makeFlags(FF::Cacheable, FF::CanRunOnDBServerCluster,
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::ApproxNearL2});
 #ifdef USE_ENTERPRISE
