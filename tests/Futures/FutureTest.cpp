@@ -848,7 +848,7 @@ TEST(FutureTest, futures_are_registered_in_global_async_registry) {
   arangodb::async_registry::get_thread_registry().garbage_collect();
   {
     auto x = foo();
-    std::vector<std::string> names;
+    std::vector<std::string_view> names;
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::Promise* promise) {
           names.push_back(promise->source_location.function_name);
