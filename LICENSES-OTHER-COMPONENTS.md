@@ -510,6 +510,15 @@ can be found [here](https://github.com/arangodb/arangodb/blob/devel/3rdParty/ire
 * License: https://www.netlib.org/lapack/LICENSE.txt
 * License Comment: The license used for the software is the modified BSD license
 
+### Fortran
+
+* Name: gfortran
+* Version: 11.4.0 
+* Date: 2023-05-29
+* Project Home: https://gcc.gnu.org/wiki/GFortran
+* License: https://moinmo.in/GPL
+* License Id: GPLv2
+
 ## Programs
 
 ### Bison
