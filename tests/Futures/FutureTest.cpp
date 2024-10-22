@@ -961,3 +961,55 @@ TEST(FutureTest,
     EXPECT_EQ(waiter_promise.waiter, nullptr);
   }
 }
+
+TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
+  struct PromiseIds {
+    bool set = false;
+    void* id;
+    void* waiter;
+  };
+
+  std::vector<std::tuple<std::string, std::function<void()>>> waiter{
+      std::make_tuple("collectAll",
+                      []() {
+                        std::vector<Future<int>> vec;
+                        vec.push_back(awaited_fn());
+                        vec.push_back(awaited_fn());
+                        auto future = arangodb::futures::collectAll(vec);
+                      }),
+      std::make_tuple("gather",
+                      []() {
+                        auto future = arangodb::futures::gather(awaited_fn(),
+                                                                awaited_fn());
+                      }),
+      std::make_tuple("collect", []() {
+        auto future = arangodb::futures::collect(awaited_fn(), awaited_fn());
+      })};
+
+  for (const auto& [name, fn] : waiter) {
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    fn();
+    std::vector<PromiseIds> awaited_promises;
+    PromiseIds waiter_promise;
+    uint count = 0;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::Promise* promise) {
+          count++;
+          if (std::string(promise->source_location.function_name)
+                  .find("awaited_fn") != std::string::npos) {
+            awaited_promises.push_back(
+                PromiseIds{true, promise->id(), promise->waiter});
+          }
+          if (std::string(promise->source_location.function_name).find(name) !=
+              std::string::npos) {
+            waiter_promise = PromiseIds{true, promise->id(), promise->waiter};
+          }
+        });
+    EXPECT_EQ(count, 3);
+    EXPECT_EQ(awaited_promises.size(), 2);
+    EXPECT_TRUE(waiter_promise.set);
+    EXPECT_EQ(awaited_promises[0].waiter, waiter_promise.id);
+    EXPECT_EQ(awaited_promises[1].waiter, waiter_promise.id);
+    EXPECT_EQ(waiter_promise.waiter, nullptr);
+  }
+}
