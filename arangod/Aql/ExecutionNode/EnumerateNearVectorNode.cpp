@@ -19,17 +19,16 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "EnumerateNearVectorNode.h"
 
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/Collection.h"
-#include "Aql/Executor/EnumerateNearVectorsExecutor.h"
+#include "Aql/Executor/EnumerateNearVectorExecutor.h"
 #include "Aql/Query.h"
 #include "Indexes/Index.h"
 #include "Aql/Ast.h"

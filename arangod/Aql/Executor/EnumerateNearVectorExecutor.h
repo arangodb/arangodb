@@ -30,10 +30,11 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <utility>
 #include <utils/empty.hpp>
 
-namespace arangodb {
-namespace aql {
+
+namespace arangodb::aql {
 
 struct AqlCall;
 class AqlItemBlockInputRange;
@@ -48,7 +49,7 @@ struct EnumerateNearVectorsExecutorInfos {
       : inputReg(inNmDocId),
         outDocumentIdReg(outDocRegId),
         outDistancesReg(outDistanceRegId),
-        index(index),
+        index(std::move(index)),
         queryContext(queryContext),
         collection(collection),
         topK(topK) {}
@@ -120,5 +121,5 @@ class EnumerateNearVectorsExecutor {
   transaction::Methods _trx;
   aql::Collection const* _collection;
 };
-}  // namespace aql
-}  // namespace arangodb
+} // namespace arangodb::aql
+

@@ -28,8 +28,7 @@
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 class ExecutionBlock;
 class ExecutionEngine;
 class ExecutionNode;
@@ -73,10 +72,9 @@ class EnumerateNearVectorNode : public ExecutionNode,
  protected:
   CostEstimate estimateCost() const override;
 
- protected:
   /// @brief export to VelocyPack
-  void doToVelocyPack(arangodb::velocypack::Builder&,
-                      unsigned flags) const override final;
+  void doToVelocyPack(arangodb::velocypack::Builder& builder,
+                      unsigned flags) const final;
 
  private:
   /// @brief input variable to read the query point from
@@ -95,5 +93,4 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// @brief selected index for vector search
   transaction::Methods::IndexHandle _index;
 };
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

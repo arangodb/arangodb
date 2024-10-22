@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EnumerateNearVectorsExecutor.h"
+#include "EnumerateNearVectorExecutor.h"
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Assertions/Assert.h"
@@ -39,7 +39,7 @@ struct Collection;
 
 using Stats = NoStats;
 
-EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher&,
+EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
                                                            Infos& infos)
     : _infos(infos),
       _trx(_infos.queryContext.newTrxContext()),
@@ -155,7 +155,7 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     searchResults(inputRowsJoined);
   }
 
-  if (_inputRows.size()) {
+  if (_inputRows.size() != 0) {
     fillOutput(output);
   }
 
@@ -163,8 +163,8 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 }
 
 [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall>
-EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
-                                            AqlCall& call) {
+EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange&  /*inputRange*/,
+                                            AqlCall&  /*call*/) {
   return {};
 }
 

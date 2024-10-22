@@ -8,7 +8,7 @@ target_sources(arango_aql PRIVATE
   EmptyExecutorInfos.h
   EnumerateCollectionExecutor.cpp
   EnumerateListExecutor.cpp
-  EnumerateNearVectorsExecutor.cpp
+  EnumerateNearVectorExecutor.cpp
   EnumeratePathsExecutor.cpp
   FilterExecutor.cpp
   HashedCollectExecutor.cpp
