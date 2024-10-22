@@ -29,6 +29,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
       : async_registry::AddToAsyncRegistry{std::move(loc)} {}
 
   std::suspend_never initial_suspend() noexcept {
+    promise_in_registry->state.store(async_registry::State::Running);
     _callerExecContext = ExecContext::currentAsShared();
     return {};
   }
@@ -64,14 +65,16 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
     struct awaitable {
       bool await_ready() { return inner_awaitable.await_ready(); }
       auto await_suspend(std::coroutine_handle<> handle) {
-        outer_promise->isSuspended = true;
+        outer_promise->promise_in_registry->state.store(
+            async_registry::State::Suspended);
         ExecContext::set(outer_promise->_callerExecContext);
         return inner_awaitable.await_suspend(handle);
       }
       auto await_resume() {
-        if (outer_promise->isSuspended) {
+        auto old_state = outer_promise->promise_in_registry->state.exchange(
+            async_registry::State::Running);
+        if (old_state == async_registry::State::Suspended) {
           outer_promise->_callerExecContext = ExecContext::currentAsShared();
-          outer_promise->isSuspended = false;
         }
         ExecContext::set(_myExecContext);
         return inner_awaitable.await_resume();
@@ -100,7 +103,6 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
   std::atomic<void*> _continuation = nullptr;
   expected<T> _value;
   std::shared_ptr<ExecContext const> _callerExecContext;
-  bool isSuspended = false;
 };
 
 template<typename T>
@@ -110,6 +112,8 @@ struct async_promise : async_promise_base<T> {
   template<typename V = T>
   void return_value(
       V&& v, std::source_location loc = std::source_location::current()) {
+    async_registry::AddToAsyncRegistry::update_state(
+        async_registry::State::Resolved);
     async_registry::AddToAsyncRegistry::update_source_location(loc);
     async_promise_base<T>::_value.emplace(std::forward<V>(v));
   }
@@ -120,6 +124,8 @@ struct async_promise<void> : async_promise_base<void> {
   async_promise(std::source_location loc = std::source_location::current())
       : async_promise_base<void>(std::move(loc)) {}
   void return_void(std::source_location loc = std::source_location::current()) {
+    async_registry::AddToAsyncRegistry::update_state(
+        async_registry::State::Resolved);
     async_registry::AddToAsyncRegistry::update_source_location(loc);
     async_promise_base<void>::_value.emplace();
   }
