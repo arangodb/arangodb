@@ -244,37 +244,6 @@ const createGraph = () => {
   // * 121 on loop
 };
 
-const createGraph2 = () => {
-  gm._create(graphName, [ gm._relation(e1Name, vName, vName) ], [],
-    {
-      numberOfShards: 9
-    }
-  );
-
-  const vertices = [];
-  const es = [];
-  vertices.push({_key:"S"});
-  vertices.push({_key:"V"});
-  vertices.push({_key:"W"});
-  vertices.push({_key:"Z"});
-  es.push({_from:`${vName}/S`,_to:`${vName}/W`,weight:9});
-  es.push({_from:`${vName}/S`,_to:`${vName}/V`,weight:10});
-  es.push({_from:`${vName}/W`,_to:`${vName}/Z`,weight:10});
-  es.push({_from:`${vName}/V`,_to:`${vName}/Z`,weight:9});
-  es.push({_from:`${vName}/V`,_to:`${vName}/W`,weight:1});
-
-  // S ------- 9 ------> W 
-  // |                 -/|
-  // |         /-------/||
-  // 10       1         10 
-  // |  -----/           |
-  // v /                 v
-  // V ------- 9 ------> Z
-
-  db[vName].save(vertices);
-  db[e1Name].save(es);
-};
-
 function kConstantWeightShortestPathTestSuite() {
   return {
     setUpAll: function () {
