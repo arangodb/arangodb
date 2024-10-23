@@ -395,7 +395,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   }
 
   flatIndex.train(counter, trainingData.data());
-  LOG_TOPIC("4jdp2", INFO, Logger::ROCKSDB)
+  LOG_TOPIC("a160b", INFO, Logger::ROCKSDB)
       << "Finished training for vector index";
 
   // Update vector definition data with quantitizer data
