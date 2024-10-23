@@ -105,7 +105,7 @@ hot_backup enterprise cluster size=large parallelity=5 -- --dumpAgencyOnError tr
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 buckets=10 size large cluster -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 buckets=10 size=large cluster -- --dumpAgencyOnError true
 server_permissions priority=1000 parallelity=5 size=small buckets=2 -- --dumpAgencyOnError true
 server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
