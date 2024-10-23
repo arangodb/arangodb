@@ -100,6 +100,8 @@ devel
 3.12.2 (2024-08-21)
 -------------------
 
+* FE-450: avoid scrollbars when license warning is visible.
+
 * Add API GET /_admin/cluster/vpackSortMigration/status to query the status of
   the vpack sorting migration on dbservers, single servers and coordinators.
 
