@@ -34,13 +34,10 @@
     },
 
     resize: function (auto) {
-      if (auto) {
-        $('.innerContent').css('height', 'auto');
-      } else {
-        $('.innerContent').height($('.centralRow').height() - 150);
-        $('#swagger iframe').height($('.centralRow').height() - 150);
-        $('#swagger #swaggerJsonContent').height($('.centralRow').height() - 150);
-      }
+      const navbarHeight = document.getElementById('navbar2').getBoundingClientRect().height;
+      const tabsHeight = document.querySelector('.application-detail-view > .headerBar')?.getBoundingClientRect().height;
+      $('#swaggerJsonContent').height(`calc(100vh - ${navbarHeight + 5 + (tabsHeight ?? 0)}px`);
+      $('#swaggerIframe').height(`calc(100vh - ${navbarHeight + 5 + (tabsHeight ?? 0)}px`);
     },
 
     toggleSwagger: function () {
@@ -91,7 +88,9 @@
           id: 'swaggerIframe',
           src: urlswag
         }).appendTo('#swagger').on('load', function () {
-          $('#swagger').height($('.centralRow').height() - 150);
+          const navbarHeight = document.getElementById('navbar2').getBoundingClientRect().height;
+          const tabsHeight = document.querySelector('.application-detail-view > .headerBar')?.getBoundingClientRect().height;
+          $('#swaggerIframe').height(`calc(100vh - ${navbarHeight + 5 + (tabsHeight ?? 0)}px`);
         });
       } else if (e.currentTarget.id === 'service-info') {
         this.resize(true);

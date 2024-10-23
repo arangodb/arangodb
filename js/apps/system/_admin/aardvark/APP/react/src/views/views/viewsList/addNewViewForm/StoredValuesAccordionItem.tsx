@@ -14,6 +14,7 @@ import React from "react";
 import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
 import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
+import { SwitchControl } from "../../../../components/form/SwitchControl";
 
 export const StoredValuesAccordionItem = () => {
   return (
@@ -54,7 +55,7 @@ const StoredValuesFields = () => {
                 <Box
                   display={"grid"}
                   gridColumnGap="4"
-                  gridTemplateColumns={"1fr 1fr 40px"}
+                  gridTemplateColumns={"1fr 1fr 70px 30px"}
                   rowGap="5"
                   alignItems={"end"}
                   key={index}
@@ -79,6 +80,24 @@ const StoredValuesFields = () => {
                       selectProps={{
                         options: compressionOptions
                       }}
+                    />
+                  </Box>
+                  <Box minWidth={"0"}>
+                    <FormLabel
+                      htmlFor={`storedValues.${index}.cache`}
+                    >
+                      Cache
+                    </FormLabel>
+                    <SwitchControl
+                      switchProps={{
+                        isDisabled: !window.frontendConfig.isEnterprise
+                      }}
+                      tooltip={
+                        window.frontendConfig.isEnterprise
+                        ? undefined
+                        : "Field normalization value caching is available in Enterprise plans."
+                      }
+                      name={`storedValues.${index}.cache`}
                     />
                   </Box>
                   {index > 0 ? (
