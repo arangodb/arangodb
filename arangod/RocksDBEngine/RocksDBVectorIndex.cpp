@@ -170,7 +170,7 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
   }
 
   faiss::InvertedListsIterator* get_iterator(
-      std::size_t listNumber, void* inverted_list_context) const override {
+      std::size_t listNumber, void* /*inverted_list_context*/) const override {
     return new RocksDBInvertedListsIterator(_index, _collection, _trx,
                                             listNumber, this->code_size);
   }

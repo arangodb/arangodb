@@ -91,10 +91,9 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
   return static_cast<bool>(outVariable == attributeAccessResult.first);
 }
 
-AstNode* getApproxNearAttribute(auto const* sortNode,
-                                std::unique_ptr<ExecutionPlan>& plan,
-                                std::shared_ptr<Index> const& vectorIndex,
-                                const auto* outVariable) {
+AstNode const* getApproxNearExpression(
+    auto const* sortNode, std::unique_ptr<ExecutionPlan>& plan,
+    std::shared_ptr<Index> const& vectorIndex) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
   // simple
@@ -131,6 +130,12 @@ AstNode* getApproxNearAttribute(auto const* sortNode,
     return nullptr;
   }
 
+  return calculationNodeExpressionNode;
+}
+
+AstNode* getApproxNearAttributeExpression(
+    auto const* calculationNodeExpressionNode,
+    std::shared_ptr<Index> const& vectorIndex, const auto* outVariable) {
   // one of the params must be a documentField and the other a query point
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
@@ -155,6 +160,7 @@ AstNode* getApproxNearAttribute(auto const* sortNode,
                                    outVariable)) {
     return approxFunctionParamLeft;
   }
+
   return nullptr;
 }
 
@@ -223,10 +229,16 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
 
     for (auto const& index : vectorIndexes) {
-      auto* queryExpression = getApproxNearAttribute(
-          sortNode, plan, index, enumerateCollectionNode->outVariable());
-      if (queryExpression == nullptr) {
+      auto const* approxNearExpression =
+          getApproxNearExpression(sortNode, plan, index);
+      if (approxNearExpression == nullptr) {
         LOG_RULE << "Query expression not valid";
+        continue;
+      }
+      auto* approximatedAttributeExpression = getApproxNearAttributeExpression(
+          approxNearExpression, index, enumerateCollectionNode->outVariable());
+      if (approximatedAttributeExpression == nullptr) {
+        LOG_RULE << "Function parameters not valid";
         continue;
       }
 
@@ -247,7 +259,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
       auto* queryPointCalculationNode = plan->createNode<CalculationNode>(
           plan.get(), plan->nextId(),
-          std::make_unique<Expression>(plan->getAst(), queryExpression),
+          std::make_unique<Expression>(plan->getAst(),
+                                       approximatedAttributeExpression),
           inVariable);
 
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
