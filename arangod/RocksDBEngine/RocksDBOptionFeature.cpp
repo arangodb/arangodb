@@ -1599,7 +1599,7 @@ limited number of edge collections/shards/indexes.)");
           introducedIn = 31200;
         }
         if (family == RocksDBColumnFamilyManager::Family::VectorIndex) {
-          introducedIn = 31202;
+          introducedIn = 31300;
         }
 
         options

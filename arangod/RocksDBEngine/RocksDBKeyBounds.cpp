@@ -118,8 +118,7 @@ RocksDBKeyBounds RocksDBKeyBounds::MdiVPackIndex(uint64_t indexId) {
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::VectorVPackIndex(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::VectorVPackIndexValue, indexId,
-                          false);
+  return {RocksDBEntryType::VectorVPackIndexValue, indexId, false};
 }
 
 /// used for seeking lookups

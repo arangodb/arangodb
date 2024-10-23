@@ -1436,7 +1436,9 @@ void RocksDBCollection::figuresSpecific(
                 true);
             break;
           case Index::TRI_IDX_TYPE_VECTOR_INDEX:
-            // TODO
+            count = rocksutils::countKeyRange(
+                db, RocksDBKeyBounds::VectorVPackIndex(rix->objectId()),
+                snapshot, true);
             break;
           default:
             // we should not get here

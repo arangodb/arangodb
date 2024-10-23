@@ -3857,9 +3857,9 @@ auto insertGatherNode(
     }
     case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
       auto elements = SortElementVector{};
-      auto envNode =
+      auto const* envNode =
           ExecutionNode::castTo<EnumerateNearVectorNode const*>(node);
-      auto collection = envNode->collection();
+      auto const* collection = envNode->collection();
       TRI_ASSERT(collection != nullptr);
       auto numberOfShards = collection->numberOfShards();
 

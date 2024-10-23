@@ -70,7 +70,8 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
     case RocksDBColumnFamilyManager::Family::PrimaryIndex:
     case RocksDBColumnFamilyManager::Family::GeoIndex:
     case RocksDBColumnFamilyManager::Family::FulltextIndex:
-    case RocksDBColumnFamilyManager::Family::MdiIndex: {
+    case RocksDBColumnFamilyManager::Family::MdiIndex:
+    case RocksDBColumnFamilyManager::Family::VectorIndex: {
       // fixed 8 byte object id prefix
       result.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
           rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
@@ -103,10 +104,6 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
       result.table_factory = std::shared_ptr<rocksdb::TableFactory>(
           rocksdb::NewBlockBasedTableFactory(tableOptions));
       result.comparator = _vpackCmp.get();
-      break;
-    }
-    case RocksDBColumnFamilyManager::Family::VectorIndex: {
-      // TODO
       break;
     }
   }
