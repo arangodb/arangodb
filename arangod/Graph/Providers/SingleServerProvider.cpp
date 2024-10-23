@@ -118,6 +118,45 @@ auto SingleServerProvider<Step>::fetch(std::vector<Step*> const& looseEnds)
 }
 
 template<class Step>
+std::shared_ptr<std::vector<typename SingleServerProvider<Step>::ExpansionInfo>>
+SingleServerProvider<Step>::getNeighbours(Step const& step) {
+  // First check the cache:
+  auto const& vertex = step.getVertex();
+  auto it =
+      _useVertexCache ? _vertexCache.find(vertex.getID()) : _vertexCache.end();
+  if (it != _vertexCache.end()) {
+    // We have already expanded this vertex, so we can just use the
+    // cached result:
+    return it->second;  // Return a copy of the shared_ptr
+  }
+
+  // We actually have to run the cursor:
+  TRI_ASSERT(_cursor != nullptr);
+  std::shared_ptr<std::vector<ExpansionInfo>> newNeighbours =
+      std::make_shared<std::vector<ExpansionInfo>>();
+
+  _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
+  ++_rearmed;
+  _cursor->readAll(
+      *this, _stats, step.getDepth(),
+      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
+        ++_readSomething;
+        // Add to vector above:
+        newNeighbours->emplace_back(std::move(eid), edge, cursorID);
+      });
+  if (_useVertexCache) {
+    size_t newMemoryUsage = 0;
+    for (auto const& neighbour : *newNeighbours) {
+      newMemoryUsage += neighbour.size();
+    }
+    _monitor.increaseMemoryUsage(newMemoryUsage);
+    _memoryUsageVertexCache += newMemoryUsage;
+    _vertexCache.insert({vertex.getID(), newNeighbours});
+  }
+  return newNeighbours;
+}
+
+template<class Step>
 auto SingleServerProvider<Step>::expand(
     Step const& step, size_t previous,
     std::function<void(Step)> const& callback) -> void {
@@ -127,47 +166,11 @@ auto SingleServerProvider<Step>::expand(
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
 
-  std::vector<ExpansionInfo>* neighbours;
-  std::vector<ExpansionInfo> newNeighbours;  // only used if not in cache
-
-  // First check the cache:
-  auto it =
-      _useVertexCache ? _vertexCache.find(vertex.getID()) : _vertexCache.end();
-  if (it != _vertexCache.end()) {
-    // We have already expanded this vertex, so we can just use the
-    // cached result:
-    neighbours = &it->second;
-  } else {
-    // We actually have to run the cursor:
-    TRI_ASSERT(_cursor != nullptr);
-    _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
-    ++_rearmed;
-    _cursor->readAll(
-        *this, _stats, step.getDepth(),
-        [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
-          ++_readSomething;
-          // Add to vector above:
-          newNeighbours.emplace_back(std::move(eid), edge, cursorID);
-        });
-    if (_useVertexCache) {
-      size_t newMemoryUsage = newNeighbours.size() * sizeof(ExpansionInfo);
-      for (auto const& neighbour : newNeighbours) {
-        newMemoryUsage += neighbour.edgeData.size();
-      }
-      _monitor.increaseMemoryUsage(newMemoryUsage);
-      _memoryUsageVertexCache += newMemoryUsage;
-      auto [it, inserted] =
-          _vertexCache.insert({vertex.getID(), std::move(newNeighbours)});
-      neighbours = &it->second;
-    } else {
-      neighbours = &newNeighbours;
-    }
-  }
-
+  std::shared_ptr<std::vector<ExpansionInfo>> neighbours = getNeighbours(step);
   // Now do the work:
   for (auto const& neighbour : *neighbours) {
     VPackSlice edge = neighbour.edge();
-    VertexType id = _cache.persistString(([&]() -> auto {
+    VertexType id = _cache.persistString(([&]() -> auto{
       if (edge.isString()) {
         return VertexType(edge);
       } else {

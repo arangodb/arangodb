@@ -76,11 +76,15 @@ class SingleServerProvider {
     ExpansionInfo(ExpansionInfo const& other) = delete;
     ExpansionInfo(ExpansionInfo&& other) = default;
     VPackSlice edge() const noexcept { return VPackSlice(edgeData.data()); }
+    size_t size() const noexcept {
+      return sizeof(ExpansionInfo) + edgeData.size();
+    }
   };
 
   // Contains the data we found previously on expansion:
   using FoundVertexCache =
-      containers::FlatHashMap<VertexType, std::vector<ExpansionInfo>>;
+      containers::FlatHashMap<VertexType,
+                              std::shared_ptr<std::vector<ExpansionInfo>>>;
 
  public:
   using Options = SingleServerBaseProviderOptions;
@@ -160,6 +164,8 @@ class SingleServerProvider {
  private:
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> buildCursor(
       arangodb::aql::FixedVarExpressionContext& expressionContext);
+  // Fetches a list of neighbours potentially using the cache:
+  std::shared_ptr<std::vector<ExpansionInfo>> getNeighbours(Step const& step);
 
   ResourceMonitor& _monitor;
   // Unique_ptr to have this class movable, and to keep reference of trx()
