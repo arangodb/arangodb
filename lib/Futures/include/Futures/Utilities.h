@@ -158,6 +158,7 @@ collectAll(InputIterator first, InputIterator last) {
 
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
   for (size_t i = 0; first != last; ++first, ++i) {
+    first->set_promise_waiter(ctx->p.id());
     std::move(*first).thenFinal(
         [i, ctx](auto&& t) { ctx->results[i] = std::move(t); });
   }
@@ -176,6 +177,7 @@ namespace gather {
 
 template<typename C, typename... Ts, std::size_t... I>
 void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
+  (ts.set_promise_waiter(c->p.id()), ...);
   (std::move(ts).thenFinal(
        [&](Try<Ts>&& t) { std::get<I>(c->results) = std::move(t); }),
    ...);
@@ -211,6 +213,7 @@ namespace collect {
 
 template<typename C, typename... Ts, std::size_t... I>
 void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
+  (ts.set_promise_waiter(c->p.id()), ...);
   (std::move(ts).thenFinal([c](Try<Ts>&& t) {
     if (t.hasException()) {
       if (c->hadError.exchange(true, std::memory_order_release) == false) {
