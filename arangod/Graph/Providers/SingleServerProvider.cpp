@@ -170,7 +170,7 @@ auto SingleServerProvider<Step>::expand(
   // Now do the work:
   for (auto const& neighbour : *neighbours) {
     VPackSlice edge = neighbour.edge();
-    VertexType id = _cache.persistString(([&]() -> auto{
+    VertexType id = _cache.persistString(([&]() -> auto {
       if (edge.isString()) {
         return VertexType(edge);
       } else {
