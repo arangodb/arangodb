@@ -36,7 +36,6 @@
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
 
-#include <type_traits>
 #include <vector>
 
 using namespace arangodb;
