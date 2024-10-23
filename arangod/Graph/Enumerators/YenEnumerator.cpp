@@ -178,7 +178,6 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     // First find the shortest path using the _shortestPathEnumerator:
     auto start = std::chrono::steady_clock::now();
     _shortestPathEnumerator->reset(_source, _target);
-    LOG_DEVEL << "Shortest path from " << _source << " to " << _target;
     bool found = _shortestPathEnumerator->getNextPath(result);
     LOG_TOPIC("47001", TRACE, Logger::GRAPHS)
         << "Yen: shortest path from " << _source << " to " << _target
