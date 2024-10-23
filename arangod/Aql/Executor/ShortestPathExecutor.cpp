@@ -49,13 +49,13 @@ template class ::arangodb::aql::ShortestPathExecutorInfos<
     TracedShortestPathEnumerator<Cluster>>;
 
 template class ::arangodb::aql::ShortestPathExecutorInfos<
-    WeightedShortestPathEnumerator<SingleServer>>;
+    WeightedShortestPathEnumeratorAlias<SingleServer>>;
 template class ::arangodb::aql::ShortestPathExecutorInfos<
-    TracedWeightedShortestPathEnumerator<SingleServer>>;
+    TracedWeightedShortestPathEnumeratorAlias<SingleServer>>;
 template class ::arangodb::aql::ShortestPathExecutorInfos<
-    WeightedShortestPathEnumerator<Cluster>>;
+    WeightedShortestPathEnumeratorAlias<Cluster>>;
 template class ::arangodb::aql::ShortestPathExecutorInfos<
-    TracedWeightedShortestPathEnumerator<Cluster>>;
+    TracedWeightedShortestPathEnumeratorAlias<Cluster>>;
 
 // Executor
 template class ::arangodb::aql::ShortestPathExecutor<
@@ -68,10 +68,10 @@ template class ::arangodb::aql::ShortestPathExecutor<
     TracedShortestPathEnumerator<Cluster>>;
 
 template class ::arangodb::aql::ShortestPathExecutor<
-    WeightedShortestPathEnumerator<SingleServer>>;
+    WeightedShortestPathEnumeratorAlias<SingleServer>>;
 template class ::arangodb::aql::ShortestPathExecutor<
-    WeightedShortestPathEnumerator<Cluster>>;
+    WeightedShortestPathEnumeratorAlias<Cluster>>;
 template class ::arangodb::aql::ShortestPathExecutor<
-    TracedWeightedShortestPathEnumerator<SingleServer>>;
+    TracedWeightedShortestPathEnumeratorAlias<SingleServer>>;
 template class ::arangodb::aql::ShortestPathExecutor<
-    TracedWeightedShortestPathEnumerator<Cluster>>;
+    TracedWeightedShortestPathEnumeratorAlias<Cluster>>;

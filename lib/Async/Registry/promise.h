@@ -105,11 +105,21 @@ struct AddToAsyncRegistry {
   ~AddToAsyncRegistry();
 
   auto set_promise_waiter(void* waiter) {
-    promise_in_registry->waiter.store(waiter);
+    if (promise_in_registry != nullptr) {
+      promise_in_registry->waiter.store(waiter);
+    }
   }
-  auto id() -> void* { return promise_in_registry->id(); }
+  auto id() -> void* {
+    if (promise_in_registry != nullptr) {
+      return promise_in_registry->id();
+    } else {
+      return nullptr;
+    }
+  }
   auto update_source_location(std::source_location loc) {
-    promise_in_registry->source_location.line.store(loc.line());
+    if (promise_in_registry != nullptr) {
+      promise_in_registry->source_location.line.store(loc.line());
+    }
   }
 
  private:

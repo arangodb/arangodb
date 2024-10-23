@@ -120,6 +120,14 @@ class Promise {
 
   arangodb::futures::Future<T> getFuture();
 
+  auto set_promise_waiter(void* waiter) {
+    return _state->set_promise_waiter(waiter);
+  }
+  auto id() -> void* { return _state->id(); }
+  auto update_source_location(std::source_location loc) {
+    _state->update_source_location(std::move(loc));
+  }
+
  private:
   explicit Promise(detail::SharedState<T>* state)
       : _state(state), _retrieved(false) {}
