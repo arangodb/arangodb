@@ -64,7 +64,8 @@ void EnumerateNearVectorsExecutor::fillInput(
           "query point must be a vector");
     }
 
-    // TODO optimize double allocation with vectorInput and inputRows2
+    // TODO if deserializeWithStatus could accept span this vectorInput could
+    // be optimized away
     if (auto res =
             velocypack::deserializeWithStatus(value.slice(), vectorInput);
         !res.ok()) {
@@ -163,8 +164,8 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 }
 
 [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall>
-EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange&  /*inputRange*/,
-                                            AqlCall&  /*call*/) {
+EnumerateNearVectorsExecutor::skipRowsRange(
+    AqlItemBlockInputRange& /*inputRange*/, AqlCall& /*call*/) {
   return {};
 }
 
