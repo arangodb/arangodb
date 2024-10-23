@@ -513,4 +513,45 @@ TYPED_TEST(AsyncTest, async_promises_in_async_registry_know_their_waiter) {
   EXPECT_EQ(waiter_promise.waiter, nullptr);
 }
 
+TYPED_TEST(AsyncTest, async_promises_in_async_registry_know_their_state) {
+  {
+    auto coro = [&]() -> async<int> {
+      co_await this->wait;
+      co_return 12;
+    }();
+
+    if (std::is_same<decltype(this->wait), WaitSlot>()) {
+      uint count = 0;
+      arangodb::async_registry::registry.for_promise(
+          [&](arangodb::async_registry::Promise* promise) {
+            count++;
+            EXPECT_EQ(promise->state.load(),
+                      arangodb::async_registry::State::Suspended);
+          });
+      EXPECT_EQ(count, 1);
+    }
+
+    this->wait.resume();
+    this->wait.await();
+
+    uint count = 0;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::Promise* promise) {
+          count++;
+          EXPECT_EQ(promise->state.load(),
+                    arangodb::async_registry::State::Resolved);
+        });
+    EXPECT_EQ(count, 1);
+  }
+
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::Promise* promise) {
+        count++;
+        EXPECT_EQ(promise->state.load(),
+                  arangodb::async_registry::State::Deleted);
+      });
+  EXPECT_EQ(count, 1);
+}
+
 #include "AsyncTestLineNumbers.tpp"

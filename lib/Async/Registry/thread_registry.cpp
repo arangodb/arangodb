@@ -99,6 +99,9 @@ auto ThreadRegistry::add_promise(std::source_location location) noexcept
 auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
   // makes sure that promise is really in this list
   ADB_PROD_ASSERT(promise->registry.get() == this);
+
+  promise->state.store(State::Deleted);
+
   // keep a local copy of the shared pointer. This promise might be the
   // last of the registry.
   auto self = std::move(promise->registry);
