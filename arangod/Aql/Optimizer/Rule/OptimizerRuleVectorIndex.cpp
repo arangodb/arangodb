@@ -72,12 +72,13 @@ bool checkIfIndexedFieldIsSameAsSearched(
 }
 
 bool checkApproxNearVariableInput(auto const& vectorIndex,
-                                  auto const* approxFunctionParamLeft) {
+                                  auto const* approxFunctionParam,
+                                  auto* outVariable) {
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
       attributeAccessResult;
-  if (approxFunctionParamLeft == nullptr ||
-      !approxFunctionParamLeft->isAttributeAccessForVariable(
-          attributeAccessResult, false)) {
+  if (approxFunctionParam == nullptr ||
+      !approxFunctionParam->isAttributeAccessForVariable(attributeAccessResult,
+                                                         false)) {
     return false;
   }
   // check if APPROX function parameter is on indexed field
@@ -86,12 +87,14 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
     return false;
   }
 
-  return true;
+  // check if APPROX function parameter is the same one as being outputted by
+  return static_cast<bool>(outVariable == attributeAccessResult.first);
 }
 
-AstNode* getQueryPointsExpression(auto const* sortNode,
-                                  std::unique_ptr<ExecutionPlan>& plan,
-                                  std::shared_ptr<Index> const& vectorIndex) {
+AstNode* getApproxNearAttribute(auto const* sortNode,
+                                std::unique_ptr<ExecutionPlan>& plan,
+                                std::shared_ptr<Index> const& vectorIndex,
+                                const auto* outVariable) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
   // simple
@@ -99,7 +102,7 @@ AstNode* getQueryPointsExpression(auto const* sortNode,
     return nullptr;
   }
   auto const& sortField = sortFields[0];
-  // Cannot be descending
+  // TODO depending on the metric it can be descending e.g. cosine
   if (!sortField.ascending) {
     return nullptr;
   }
@@ -143,18 +146,16 @@ AstNode* getQueryPointsExpression(auto const* sortNode,
 
   if (approxFunctionParamLeft->type ==
       arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    if (!checkApproxNearVariableInput(vectorIndex, approxFunctionParamLeft)) {
-      return nullptr;
+    if (checkApproxNearVariableInput(vectorIndex, approxFunctionParamLeft,
+                                     outVariable)) {
+      return approxFunctionParamRight;
     }
-
-    return approxFunctionParamRight;
   }
-
-  if (!checkApproxNearVariableInput(vectorIndex, approxFunctionParamRight)) {
-    return nullptr;
+  if (checkApproxNearVariableInput(vectorIndex, approxFunctionParamRight,
+                                   outVariable)) {
+    return approxFunctionParamLeft;
   }
-
-  return approxFunctionParamLeft;
+  return nullptr;
 }
 
 }  // namespace
@@ -222,7 +223,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
 
     for (auto const& index : vectorIndexes) {
-      auto* queryExpression = getQueryPointsExpression(sortNode, plan, index);
+      auto* queryExpression = getApproxNearAttribute(
+          sortNode, plan, index, enumerateCollectionNode->outVariable());
       if (queryExpression == nullptr) {
         LOG_RULE << "Query expression not valid";
         continue;

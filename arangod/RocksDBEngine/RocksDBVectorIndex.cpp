@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 #include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -236,7 +237,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   if (auto data = info.get("trainedData"); !data.isNone()) {
     velocypack::deserialize(data, _trainedData.emplace());
   }
-  // TODO
+  // TODO improve on this
   _trainingDataSize = _definition.nLists * 1000;
 
   _quantizer =
@@ -394,6 +395,9 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   }
 
   flatIndex.train(counter, trainingData.data());
+  LOG_TOPIC("4jdp2", INFO, Logger::ROCKSDB)
+      << "Finished training for vector index";
+
   // Update vector definition data with quantitizer data
   _trainedData = std::visit(
       [](auto&& quant) {

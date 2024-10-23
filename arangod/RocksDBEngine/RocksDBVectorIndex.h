@@ -70,7 +70,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   char const* typeName() const override { return "rocksdb-vector"; }
 
-  bool matchesDefinition(VPackSlice const&) const override;
+  bool matchesDefinition(VPackSlice const& /*unused*/) const override;
 
   void prepareIndex(std::unique_ptr<rocksdb::Iterator> it, rocksdb::Slice upper,
                     RocksDBMethods* methods) override;
