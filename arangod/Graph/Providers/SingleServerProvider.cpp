@@ -88,9 +88,10 @@ SingleServerProvider<Step>::SingleServerProvider(
              _opts.getEdgeProjections(), _opts.produceVertices()),
       _stats{} {
   _cursor = buildCursor(opts.expressionContext());
-  if (!_opts.indexInformations().second.empty()) {
-    // If we have depth dependent filters, we must not use the cache
-    _useVertexCache = false;
+  if (_opts.indexInformations().second.empty()) {
+    // If we have depth dependent filters, we must not use the cache,
+    // otherwise, we do:
+    _vertexCache.emplace();
   }
 }
 
@@ -122,12 +123,13 @@ std::shared_ptr<std::vector<typename SingleServerProvider<Step>::ExpansionInfo>>
 SingleServerProvider<Step>::getNeighbours(Step const& step) {
   // First check the cache:
   auto const& vertex = step.getVertex();
-  auto it =
-      _useVertexCache ? _vertexCache.find(vertex.getID()) : _vertexCache.end();
-  if (it != _vertexCache.end()) {
-    // We have already expanded this vertex, so we can just use the
-    // cached result:
-    return it->second;  // Return a copy of the shared_ptr
+  if (_vertexCache.has_value()) {
+    auto it = _vertexCache->find(vertex.getID());
+    if (it != _vertexCache->end()) {
+      // We have already expanded this vertex, so we can just use the
+      // cached result:
+      return it->second;  // Return a copy of the shared_ptr
+    }
   }
 
   // We actually have to run the cursor:
@@ -144,14 +146,14 @@ SingleServerProvider<Step>::getNeighbours(Step const& step) {
         // Add to vector above:
         newNeighbours->emplace_back(std::move(eid), edge, cursorID);
       });
-  if (_useVertexCache) {
+  if (_vertexCache.has_value()) {
     size_t newMemoryUsage = 0;
     for (auto const& neighbour : *newNeighbours) {
       newMemoryUsage += neighbour.size();
     }
     _monitor.increaseMemoryUsage(newMemoryUsage);
     _memoryUsageVertexCache += newMemoryUsage;
-    _vertexCache.insert({vertex.getID(), newNeighbours});
+    _vertexCache->insert({vertex.getID(), newNeighbours});
   }
   return newNeighbours;
 }
@@ -208,7 +210,9 @@ auto SingleServerProvider<Step>::clear() -> void {
   // Clear the cache - this cache does contain StringRefs
   // We need to make sure that no one holds references to the cache (!)
   _cache.clear();
-  _vertexCache.clear();
+  if (_vertexCache.has_value()) {
+    _vertexCache->clear();
+  }
   _monitor.decreaseMemoryUsage(_memoryUsageVertexCache);
   _memoryUsageVertexCache = 0;
 
