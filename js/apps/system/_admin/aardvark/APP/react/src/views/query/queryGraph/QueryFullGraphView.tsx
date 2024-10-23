@@ -40,6 +40,7 @@ import {
   QueryFullGraphContextProvider,
   useQueryFullGraph
 } from "./QueryFullGraphContext";
+import { useNavbarHeight } from "../../useNavbarHeight";
 
 export const QueryFullGraphView = () => {
   const { queryGraphResult } = useQueryContext();
@@ -260,13 +261,14 @@ const ApplyButton = () => {
 
 const QueryFullGraphViewInner = () => {
   const { network, visJsRef, progressValue } = useQueryFullGraph();
+  const navbarHeight = useNavbarHeight();
   return (
     <Flex direction="column" height="full" width="full">
       <QueryGraphHeader />
       <Box
         position="relative"
         width="full"
-        height="calc(100vh - 60px)"
+        height={`calc(100vh - ${navbarHeight}px)`}
         overflow="auto"
       >
         {progressValue < 100 && (

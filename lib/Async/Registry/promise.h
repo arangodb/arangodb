@@ -58,6 +58,14 @@ auto inspect(Inspector& f, SourceLocation& x) {
   }
 }
 
+enum class State { Running = 0, Suspended, Resolved, Deleted };
+template<typename Inspector>
+auto inspect(Inspector& f, State& x) {
+  return f.enumeration(x).values(State::Running, "Running", State::Suspended,
+                                 "Suspended", State::Resolved, "Resolved",
+                                 State::Deleted, "Deleted");
+}
+
 struct Promise {
   Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
           std::source_location location);
@@ -70,6 +78,7 @@ struct Promise {
 
   SourceLocation source_location;
   std::atomic<void*> waiter = nullptr;
+  std::atomic<State> state = State::Running;
   // identifies the promise list it belongs to
   std::shared_ptr<ThreadRegistry> registry;
   Promise* next = nullptr;
@@ -88,10 +97,11 @@ template<typename Inspector>
 auto inspect(Inspector& f, Promise& x) {
   if constexpr (!Inspector::isLoading) {  // only serialize
     return f.object(x).fields(
-        f.field("thread", x.thread),
+        f.field("owning_thread", x.thread),
         f.field("source_location", x.source_location),
         f.field("id", reinterpret_cast<intptr_t>(x.id())),
-        f.field("waiter", reinterpret_cast<intptr_t>(x.waiter.load())));
+        f.field("waiter", reinterpret_cast<intptr_t>(x.waiter.load())),
+        f.field("state", x.state.load()));
   }
 }
 
@@ -105,17 +115,34 @@ struct AddToAsyncRegistry {
   ~AddToAsyncRegistry();
 
   auto set_promise_waiter(void* waiter) {
-    promise_in_registry->waiter.store(waiter);
+    if (promise_in_registry != nullptr) {
+      promise_in_registry->waiter.store(waiter);
+    }
   }
-  auto id() -> void* { return promise_in_registry->id(); }
+  auto id() -> void* {
+    if (promise_in_registry != nullptr) {
+      return promise_in_registry->id();
+    } else {
+      return nullptr;
+    }
+  }
   auto update_source_location(std::source_location loc) {
-    promise_in_registry->source_location.line.store(loc.line());
+    if (promise_in_registry != nullptr) {
+      promise_in_registry->source_location.line.store(loc.line());
+    }
+  }
+  auto update_state(State state) {
+    if (promise_in_registry != nullptr) {
+      promise_in_registry->state.store(state);
+    }
   }
 
  private:
   struct noop {
     void operator()(void*) {}
   };
+
+ public:
   std::unique_ptr<Promise, noop> promise_in_registry = nullptr;
 };
 

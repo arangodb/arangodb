@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-446: add missing caching options for inverted indexes and arangosearch
+  views.
+
 * Speed up shortest path computations by choosing more diligently which
   side to expand next. This brings back 3.10 performance.
 
@@ -99,6 +102,8 @@ devel
 
 3.12.2 (2024-08-21)
 -------------------
+
+* FE-450: avoid scrollbars when license warning is visible.
 
 * Add API GET /_admin/cluster/vpackSortMigration/status to query the status of
   the vpack sorting migration on dbservers, single servers and coordinators.
