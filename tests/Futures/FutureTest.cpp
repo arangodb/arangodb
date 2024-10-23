@@ -1013,3 +1013,80 @@ TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
     EXPECT_EQ(waiter_promise.waiter, nullptr);
   }
 }
+
+namespace {
+auto expect_all_promises_in_state(arangodb::async_registry::State state,
+                                  uint number_of_promises) {
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::Promise* promise) {
+        count++;
+        EXPECT_EQ(promise->state.load(), state);
+      });
+  EXPECT_EQ(count, number_of_promises);
+}
+}  // namespace
+TEST(FutureTest, promises_in_async_registry_know_their_state) {
+  {  // resolved future
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      auto future = makeFuture(1);
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   0);
+    }
+  }
+  {  // future without callback
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      Promise<int> p;
+      auto future = p.getFuture();
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
+
+      p.setValue(1);
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   1);
+    }
+    expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 1);
+  }
+  {  // adding callback before resolving future
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      Promise<int> p;
+      auto future = p.getFuture();
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
+
+      auto a = std::move(future).thenValue([](int a) { return 1; });
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   2);
+
+      p.setValue(1);
+      future.waitAndGet();
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   2);
+    }
+    expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 2);
+  }
+  {  // adding callback after resolving future
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      Promise<int> p;
+      auto future = p.getFuture();
+
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
+
+      p.setValue(1);
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   1);
+
+      auto a = std::move(future).thenValue([](int a) { return 1; });
+      future.waitAndGet();
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   2);
+    }
+
+    expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 2);
+  }
+}

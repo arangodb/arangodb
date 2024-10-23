@@ -58,6 +58,7 @@ export type InvertedIndexValuesType = {
   storedValues?: {
     fields: string[];
     compression: "lz4" | "none";
+    cache?: boolean;
   }[];
   cleanupIntervalStep?: number;
   commitIntervalMsec?: number;
@@ -77,6 +78,7 @@ const initialValues: InvertedIndexValuesType = {
   inBackground: commonFieldsMap.inBackground.initialValue,
   analyzer: "",
   features: [],
+  cache: false,
   includeAllFields: false,
   trackListPositions: false,
   searchField: false,
@@ -114,6 +116,16 @@ const analyzerFeaturesOptions = ["frequency", "position", "offset", "norm"].map(
 );
 
 export const invertedIndexFieldsMap = {
+  cache: {
+    isDisabled: !window.frontendConfig.isEnterprise,
+    label: "Cache",
+    name: "cache",
+    type: "boolean",
+    group: "fields", 
+    tooltip: window.frontendConfig.isEnterprise
+      ? "Always cache field normalization values in memory for all fields by default."
+      : "Field normalization value caching is available in Enterprise plans.",
+  },
   fields: {
     label: "Fields",
     name: "fields",
@@ -163,6 +175,16 @@ export const invertedIndexFieldsMap = {
     label: "Primary Sort",
     name: "primarySort",
     type: "custom"
+  },
+  primaryKeyCache: {
+    isDisabled: !window.frontendConfig.isEnterprise,
+    label: "Primary Key Cache",
+    name: "primaryKeyCache",
+    type: "boolean",
+    group: "general",
+    tooltip: window.frontendConfig.isEnterprise
+      ? "Always cache primary key columns in memory."
+      : "Primary key column caching is available in Enterprise plans.",
   },
   storedValues: {
     label: "Stored Values",
@@ -229,12 +251,14 @@ const invertedIndexFields = [
   invertedIndexFieldsMap.fields,
   { ...commonFieldsMap.name, group: "general" },
   invertedIndexFieldsMap.analyzer,
+  invertedIndexFieldsMap.cache,
   invertedIndexFieldsMap.features,
   invertedIndexFieldsMap.includeAllFields,
   invertedIndexFieldsMap.trackListPositions,
   invertedIndexFieldsMap.searchField,
   invertedIndexFieldsMap.primarySort,
   invertedIndexFieldsMap.storedValues,
+  invertedIndexFieldsMap.primaryKeyCache,
   invertedIndexFieldsMap.writebufferIdle,
   invertedIndexFieldsMap.writebufferActive,
   invertedIndexFieldsMap.writebufferSizeMax,
@@ -247,6 +271,7 @@ const invertedIndexFields = [
 
 const fieldSchema: any = Yup.object().shape({
   name: Yup.string().required(),
+  cache: Yup.boolean(),
   inBackground: Yup.boolean(),
   analyzer: Yup.string(),
   features: Yup.array().of(Yup.string().required()),
