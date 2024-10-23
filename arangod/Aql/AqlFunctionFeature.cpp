@@ -587,11 +587,13 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerOneShard),
        &functions::MakeDistributeGraphInput});
   add({"APPROX_NEAR_COSINE", ".,.",
-       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServerCluster,
+       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                           FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::ApproxNearCosine});
   add({"APPROX_NEAR_L2", ".,.",
-       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServerCluster,
+       Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                           FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::ApproxNearL2});
 #ifdef USE_ENTERPRISE

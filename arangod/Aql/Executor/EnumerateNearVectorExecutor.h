@@ -33,7 +33,6 @@
 #include <utility>
 #include <utils/empty.hpp>
 
-
 namespace arangodb::aql {
 
 struct AqlCall;
@@ -121,5 +120,4 @@ class EnumerateNearVectorsExecutor {
   transaction::Methods _trx;
   aql::Collection const* _collection;
 };
-} // namespace arangodb::aql
-
+}  // namespace arangodb::aql

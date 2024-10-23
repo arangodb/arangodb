@@ -91,8 +91,7 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
 
 AstNode* getQueryPointsExpression(auto const* sortNode,
                                   std::unique_ptr<ExecutionPlan>& plan,
-                                  std::shared_ptr<Index> const& vectorIndex,
-                                  Variable const* enumerateNodeOutVar) {
+                                  std::shared_ptr<Index> const& vectorIndex) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
   // simple
@@ -181,7 +180,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
   // avoid subqueries for now
   plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
   for (ExecutionNode* node : nodes) {
-    auto enumerateCollectionNode =
+    auto* enumerateCollectionNode =
         ExecutionNode::castTo<EnumerateCollectionNode*>(node);
 
     // check if there are vector indexes on collection
@@ -203,7 +202,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                << (currentNode ? currentNode->getTypeString() : "nullptr");
       continue;
     }
-    auto sortNode = ExecutionNode::castTo<SortNode*>(currentNode);
+    auto* sortNode = ExecutionNode::castTo<SortNode*>(currentNode);
 
     auto const* maybeLimitNode = sortNode->getFirstParent();
     if (!maybeLimitNode || maybeLimitNode->getType() != EN::LIMIT) {
@@ -222,9 +221,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       continue;
     }
 
-    for (auto& index : vectorIndexes) {
-      auto queryExpression = getQueryPointsExpression(
-          sortNode, plan, index, enumerateCollectionNode->outVariable());
+    for (auto const& index : vectorIndexes) {
+      auto* queryExpression = getQueryPointsExpression(sortNode, plan, index);
       if (queryExpression == nullptr) {
         LOG_RULE << "Query expression not valid";
         continue;
@@ -232,32 +230,33 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
       // replace the collection enumeration with the enumerate near node
       // furthermore, we have to remove the calculation node
-      auto documentVariable = enumerateCollectionNode->outVariable();
+      const auto* documentVariable = enumerateCollectionNode->outVariable();
 
-      auto distanceVariable = sortNode->elements()[0].var;
-      auto oldDocumentVariable = enumerateCollectionNode->outVariable();
+      auto const* distanceVariable = sortNode->elements()[0].var;
+      auto const* oldDocumentVariable = enumerateCollectionNode->outVariable();
 
       // actually we want this to be late materialized.
       // But this is too complicated for now. A later optimizer rule should
       // but the late materialization into place.
-      auto documentIdVariable = oldDocumentVariable;
+      auto const* documentIdVariable = oldDocumentVariable;
 
       auto limit = limitNode->limit();
-      auto inVariable = plan->getAst()->variables()->createTemporaryVariable();
+      auto* inVariable = plan->getAst()->variables()->createTemporaryVariable();
 
-      auto queryPointCalculationNode = plan->createNode<CalculationNode>(
+      auto* queryPointCalculationNode = plan->createNode<CalculationNode>(
           plan.get(), plan->nextId(),
           std::make_unique<Expression>(plan->getAst(), queryExpression),
           inVariable);
 
-      auto enumerateNear = plan->createNode<EnumerateNearVectorNode>(
+      auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit,
           enumerateCollectionNode->collection(), index);
 
-      auto materializer = plan->createNode<materialize::MaterializeRocksDBNode>(
-          plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
-          *documentIdVariable, *documentVariable, *documentVariable);
+      auto* materializer =
+          plan->createNode<materialize::MaterializeRocksDBNode>(
+              plan.get(), plan->nextId(), enumerateCollectionNode->collection(),
+              *documentIdVariable, *documentVariable, *documentVariable);
       plan->excludeFromScatterGather(enumerateNear);
 
       plan->replaceNode(enumerateCollectionNode, enumerateNear);
@@ -267,7 +266,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       // we don't need this sort node at all, because we produce sorted output
       plan->unlinkNode(sortNode);
 
-      auto distanceCalculationNode = plan->getVarSetBy(distanceVariable->id);
+      auto* distanceCalculationNode = plan->getVarSetBy(distanceVariable->id);
       plan->unlinkNode(distanceCalculationNode);
 
       modified = true;
