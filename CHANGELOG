@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-446: add missing caching options for inverted indexes and arangosearch
+  views.
+
 * Speed up shortest path computations by choosing more diligently which
   side to expand next. This brings back 3.10 performance.
 

@@ -14,6 +14,18 @@ import React from "react";
 import { InputControl } from "../../../../components/form/InputControl";
 import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
+import { SwitchControl } from "../../../../components/form/SwitchControl";
+
+const compressionOptions = [
+  {
+    label: "LZ4",
+    value: "lz4"
+  },
+  {
+    label: "None",
+    value: "none"
+  }
+];
 
 export const PrimarySortAccordionItem = () => {
   return (
@@ -26,10 +38,37 @@ export const PrimarySortAccordionItem = () => {
       </AccordionButton>
       <AccordionPanel pb={4}>
         <PrimarySortFields />
+        <Box
+          display={"grid"}
+          gridTemplateColumns={"200px 1fr"}
+          rowGap="5"
+          pt={4}
+        >
+          <FormLabel htmlFor="primarySortCompression">Compression</FormLabel>
+          <SelectControl
+            name="primarySortCompression"
+            selectProps={{
+              options: compressionOptions
+            }}
+          />
+          <FormLabel htmlFor="primarySortCache">Cache</FormLabel>
+          <SwitchControl
+            name="primarySortCache"
+            switchProps={{
+              isDisabled: !window.frontendConfig.isEnterprise
+            }}
+            tooltip={
+              window.frontendConfig.isEnterprise
+              ? undefined
+              : "Primary key column caching is available in Enterprise plans."
+            }
+          />
+        </Box>
       </AccordionPanel>
     </AccordionItem>
   );
 };
+
 const directionOptions = [
   {
     label: "Ascending",
@@ -40,6 +79,7 @@ const directionOptions = [
     value: "desc"
   }
 ];
+
 const PrimarySortFields = () => {
   const { values } = useFormikContext<AddNewViewFormValues>();
   return (
