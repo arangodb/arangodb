@@ -179,7 +179,10 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
     arangodb::futures::Promise<T> promise;
     arangodb::futures::Try<T> result;
 
-    auto initial_suspend() noexcept { return std_coro::suspend_never{}; }
+    auto initial_suspend() noexcept {
+      promise.update_state(arangodb::async_registry::State::Running);
+      return std_coro::suspend_never{};
+    }
     auto final_suspend() noexcept {
       // TODO use symmetric transfer here
       struct awaitable {
@@ -204,6 +207,7 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
 
     auto return_value(T const& t) noexcept(
         std::is_nothrow_copy_constructible_v<T>) {
+      promise.update_state(arangodb::async_registry::State::Resolved);
       static_assert(std::is_copy_constructible_v<T>);
       result.emplace(t);
     }
@@ -213,6 +217,7 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
         std::source_location loc = std::source_location::
             current()) noexcept(std::is_nothrow_move_constructible_v<T>) {
       static_assert(std::is_move_constructible_v<T>);
+      promise.update_state(arangodb::async_registry::State::Resolved);
       promise.update_source_location(std::move(loc));
       result.emplace(std::move(t));
     }
@@ -231,9 +236,17 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
       struct awaitable {
         bool await_ready() { return inner_awaitable.await_ready(); }
         auto await_suspend(std::coroutine_handle<> handle) {
+          outer_promise->promise.update_state(
+              arangodb::async_registry::State::Suspended);
           return inner_awaitable.await_suspend(handle);
         }
-        auto await_resume() { return inner_awaitable.await_resume(); }
+        auto await_resume() {
+          outer_promise->promise.update_state(
+              arangodb::async_registry::State::Running);
+          return inner_awaitable.await_resume();
+        }
+
+        promise_type* outer_promise;
         inner_awaitable_type inner_awaitable;
       };
 
@@ -243,8 +256,8 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
       }
       promise.update_source_location(std::move(loc));
 
-      return awaitable{arangodb::get_awaitable_object(
-          std::forward<U>(co_awaited_expression))};
+      return awaitable{this, arangodb::get_awaitable_object(
+                                 std::forward<U>(co_awaited_expression))};
     }
   };
 };
@@ -298,7 +311,10 @@ struct std_coro::coroutine_traits<
 
     promise_type(std::source_location loc = std::source_location::current())
         : promise{std::move(loc)} {}
-    auto initial_suspend() noexcept { return std_coro::suspend_never{}; }
+    auto initial_suspend() noexcept {
+      promise.update_state(arangodb::async_registry::State::Running);
+      return std_coro::suspend_never{};
+    }
     auto final_suspend() noexcept {
       // TODO use symmetric transfer here
       struct awaitable {
@@ -324,6 +340,7 @@ struct std_coro::coroutine_traits<
 
     auto return_void(
         std::source_location loc = std::source_location::current()) noexcept {
+      promise.update_state(arangodb::async_registry::State::Resolved);
       promise.update_source_location(std::move(loc));
       result.emplace();
     }
@@ -342,9 +359,17 @@ struct std_coro::coroutine_traits<
       struct awaitable {
         bool await_ready() { return inner_awaitable.await_ready(); }
         auto await_suspend(std::coroutine_handle<> handle) {
+          outer_promise->promise.update_state(
+              arangodb::async_registry::State::Suspended);
           return inner_awaitable.await_suspend(handle);
         }
-        auto await_resume() { return inner_awaitable.await_resume(); }
+        auto await_resume() {
+          outer_promise->promise.update_state(
+              arangodb::async_registry::State::Running);
+          return inner_awaitable.await_resume();
+        }
+
+        promise_type* outer_promise;
         inner_awaitable_type inner_awaitable;
       };
 
@@ -354,8 +379,8 @@ struct std_coro::coroutine_traits<
       }
       promise.update_source_location(std::move(loc));
 
-      return awaitable{arangodb::get_awaitable_object(
-          std::forward<U>(co_awaited_expression))};
+      return awaitable{this, arangodb::get_awaitable_object(
+                                 std::forward<U>(co_awaited_expression))};
     }
   };
 };
