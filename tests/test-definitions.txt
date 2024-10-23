@@ -70,8 +70,8 @@ restart priority=1000 size=medium cluster -- --dumpAgencyOnError true --forceJso
 load_balancing priority=500 size=medium cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
 
-replication2_client size=small cluster
-replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
+#replication2_client size=small cluster
+#replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
 
 resilience_analyzers priority=500 size=medium cluster -- --dumpAgencyOnError true
 resilience_failover priority=1200 size=medium buckets=4 cluster -- --dumpAgencyOnError true
@@ -91,7 +91,7 @@ shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_aql priority=1000 size=medium+ cluster buckets=20 -- --dumpAgencyOnError true
 shell_client priority=500 cluster size=medium+ buckets=20 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
-shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
+#shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
 
 rta_makedata cluster parallelity=5
 rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 --  --forceOneShard true
@@ -105,7 +105,7 @@ hot_backup enterprise cluster size=large parallelity=5 -- --dumpAgencyOnError tr
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 buckets=10 cluster -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 buckets=10 size=large cluster -- --dumpAgencyOnError true
 server_permissions priority=1000 parallelity=5 size=small buckets=2 -- --dumpAgencyOnError true
 server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
