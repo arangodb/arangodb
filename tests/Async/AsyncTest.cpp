@@ -3,8 +3,10 @@
 #include "Async/Registry/registry_variable.h"
 #include "Async/Registry/registry.h"
 #include "Async/Registry/thread_registry.h"
+#include "Utils/ExecContext.h"
 
 #include <gtest/gtest.h>
+#include <coroutine>
 #include <thread>
 #include <deque>
 
@@ -378,10 +380,12 @@ TYPED_TEST(AsyncTest, coroutine_is_removed_before_registry_entry) {
   }
 }
 
-auto foo() -> async<CopyOnlyValue> { co_return 1; }
-auto bar() -> async<CopyOnlyValue> { co_return 4; }
-auto baz() -> async<CopyOnlyValue> { co_return 2; }
-TEST(AsyncTest, promises_are_registered_in_global_registry) {
+namespace {
+auto foo() -> async<void> { co_return; }
+auto bar() -> async<void> { co_return; }
+auto baz() -> async<void> { co_return; }
+}  // namespace
+TYPED_TEST(AsyncTest, promises_are_registered_in_global_async_registry) {
   auto coro_foo = foo();
   EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()), 1);
 
@@ -389,10 +393,10 @@ TEST(AsyncTest, promises_are_registered_in_global_registry) {
     auto coro_bar = bar();
     auto coro_baz = baz();
 
-    std::vector<std::string> names;
+    std::vector<std::string_view> names;
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::Promise* promise) {
-          names.push_back(promise->entry_point.function_name());
+          names.push_back(promise->source_location.function_name);
         });
     EXPECT_EQ(names.size(), 3);
     EXPECT_TRUE(names[0].find("foo") != std::string::npos);
@@ -400,3 +404,154 @@ TEST(AsyncTest, promises_are_registered_in_global_registry) {
     EXPECT_TRUE(names[2].find("bar") != std::string::npos);
   }).join();
 }
+
+struct ExecContext_Waiting : public arangodb::ExecContext {
+  ExecContext_Waiting()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Waiting",
+                              "", arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_Calling : public arangodb::ExecContext {
+  ExecContext_Calling()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Calling",
+                              "", arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_Begin : public arangodb::ExecContext {
+  ExecContext_Begin()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Begin", "",
+                              arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_End : public arangodb::ExecContext {
+  ExecContext_End()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "End", "",
+                              arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+TYPED_TEST(AsyncTest, execution_context_is_local_to_coroutine) {
+  ExecContextScope exec(std::make_shared<ExecContext_Begin>());
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  auto waiting_coro = [&]() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    ExecContextScope exec(std::make_shared<ExecContext_Waiting>());
+    EXPECT_EQ(ExecContext::current().user(), "Waiting");
+    co_await this->wait;
+    EXPECT_EQ(ExecContext::current().user(), "Waiting");
+    co_return;
+  }();
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  auto trivial_coro = []() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    co_return;
+  }();
+
+  auto calling_coro = [&]() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    ExecContextScope exec(std::make_shared<ExecContext_Calling>());
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_await std::move(waiting_coro);
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_await std::move(trivial_coro);
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_return;
+  };
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  calling_coro();
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  ExecContextScope new_exec(std::make_shared<ExecContext_End>());
+  EXPECT_EQ(ExecContext::current().user(), "End");
+
+  this->wait.resume();
+  this->wait.await();
+  EXPECT_EQ(ExecContext::current().user(), "End");
+}
+
+namespace {
+auto awaited_fn() -> async<void> { co_return; };
+auto waiter_fn(async<void>&& fn) -> async<void> {
+  co_await std::move(fn);
+  co_return;
+};
+}  // namespace
+TYPED_TEST(AsyncTest, async_promises_in_async_registry_know_their_waiter) {
+  auto awaited_coro = awaited_fn();
+  auto waiter_coro = waiter_fn(std::move(awaited_coro));
+
+  struct PromiseIds {
+    bool set = false;
+    void* id;
+    void* waiter;
+  };
+  PromiseIds awaited_promise;
+  PromiseIds waiter_promise;
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::Promise* promise) {
+        count++;
+        if (promise->source_location.function_name.find("awaited_fn") !=
+            std::string::npos) {
+          awaited_promise = PromiseIds{true, promise->id(), promise->waiter};
+        }
+        if (promise->source_location.function_name.find("waiter_fn") !=
+            std::string::npos) {
+          waiter_promise = PromiseIds{true, promise->id(), promise->waiter};
+        }
+      });
+  EXPECT_EQ(count, 2);
+  EXPECT_TRUE(awaited_promise.set);
+  EXPECT_TRUE(waiter_promise.set);
+  EXPECT_EQ(awaited_promise.waiter, waiter_promise.id);
+  EXPECT_EQ(waiter_promise.waiter, nullptr);
+}
+
+TYPED_TEST(AsyncTest, async_promises_in_async_registry_know_their_state) {
+  {
+    auto coro = [&]() -> async<int> {
+      co_await this->wait;
+      co_return 12;
+    }();
+
+    if (std::is_same<decltype(this->wait), WaitSlot>()) {
+      uint count = 0;
+      arangodb::async_registry::registry.for_promise(
+          [&](arangodb::async_registry::Promise* promise) {
+            count++;
+            EXPECT_EQ(promise->state.load(),
+                      arangodb::async_registry::State::Suspended);
+          });
+      EXPECT_EQ(count, 1);
+    }
+
+    this->wait.resume();
+    this->wait.await();
+
+    uint count = 0;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::Promise* promise) {
+          count++;
+          EXPECT_EQ(promise->state.load(),
+                    arangodb::async_registry::State::Resolved);
+        });
+    EXPECT_EQ(count, 1);
+  }
+
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::Promise* promise) {
+        count++;
+        EXPECT_EQ(promise->state.load(),
+                  arangodb::async_registry::State::Deleted);
+      });
+  EXPECT_EQ(count, 1);
+}
+
+#include "AsyncTestLineNumbers.tpp"

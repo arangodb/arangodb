@@ -246,7 +246,7 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
           // no shortest path available
           assertEqual(1024, actual.length);
         } else {
-          let actual = db._query(query, null, {memoryLimit: 3 * 1000 * 1000 + 4 * 1000}).toArray();
+          let actual = db._query(query, null, {memoryLimit: 9 * 1000 * 1000 + 4 * 1000}).toArray();
           // no shortest path available
           assertEqual(1024, actual.length);
         }

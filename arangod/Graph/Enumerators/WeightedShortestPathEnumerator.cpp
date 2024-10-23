@@ -20,6 +20,7 @@
 ///
 /// @author Michael Hackstein
 /// @author Heiko Kernbach
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WeightedShortestPathEnumerator.h"
@@ -71,7 +72,10 @@ WeightedShortestPathEnumerator<
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                               PathValidator>::Ball::~Ball() = default;
+                               PathValidator>::Ball::~Ball() {
+  clear();
+  clearProvider();
+}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -85,7 +89,7 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   _queue.append(std::move(firstStep));
   _queued = 1;
   _expanded = 0;
-  _foundVertices.emplace(center, VertexWeight(0.0));
+  _foundVertices.emplace(center, VertexInfo(0.0));
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -97,9 +101,9 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   _interior.reset();  // PathStore
   _diameter = -std::numeric_limits<double>::infinity();
   _validator.reset();
-
-  // Provider - Must be last one to be cleared(!)
-  clearProvider();
+  // We do not clear the provider here, or else it would immediately
+  // clear all its caches. For repeated calls we want to retain the caches.
+  // The provider is only cleared in the destructor.
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -116,30 +120,6 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   TRI_ASSERT(_interior.size() == 0);
 
   _provider.clear();
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::doneWithDepth() const
-    -> bool {
-  return _queue.isEmpty();
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::noPathLeft() const
-    -> bool {
-  return doneWithDepth();
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::Ball::peekQueue() const
-    -> Step const& {
-  return _queue.peek();
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -182,27 +162,6 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedShortestPathEnumerator<
     QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::fetchResults(CandidatesStore& candidates) -> void {
-  auto looseEnds = [&]() {
-    if (_direction == FORWARD) {
-      return candidates.getLeftLooseEnds();
-    }
-
-    ADB_PROD_ASSERT(_direction == Direction::BACKWARD);
-    return candidates.getRightLooseEnds();
-  }();
-
-  if (!looseEnds.empty()) {
-    // Will throw all network errors here
-    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
-    futureEnds.waitAndGet();
-  }
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<
-    QueueType, PathStoreType, ProviderType,
     PathValidator>::Ball::hasBeenVisited(Step const& step) -> bool {
   auto it = _foundVertices.find(step.getVertex().getID());
   if (it == _foundVertices.end()) {
@@ -231,10 +190,10 @@ auto WeightedShortestPathEnumerator<
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
-auto WeightedShortestPathEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::Ball::validateSingletonPath(CandidatesStore& candidates)
-    -> void {
+auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
+                                    PathValidator>::Ball::
+    validateSingletonPath(std::optional<CalculatedCandidate>& bestPath)
+        -> void {
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
 
@@ -245,7 +204,8 @@ auto WeightedShortestPathEnumerator<
   ValidationResult res = _validator.validatePath(step);
 
   if (!res.isFiltered()) {
-    candidates.append(std::make_tuple(0.0, step, step));
+    TRI_ASSERT(!bestPath.has_value());
+    bestPath = std::make_tuple(0.0, step, step);
   }
 }
 
@@ -253,8 +213,8 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::Ball::
-    computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
-        -> void {
+    computeNeighbourhoodOfNextVertex(
+        Ball& other, std::optional<CalculatedCandidate>& bestPath) -> void {
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
 
@@ -295,7 +255,7 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
       if (reachedIt == _foundVertices.end()) {
         reachedIt =
             _foundVertices
-                .emplace(n.getVertex().getID(), VertexWeight(n.getWeight()))
+                .emplace(n.getVertex().getID(), VertexInfo(n.getWeight()))
                 .first;
       } else if (reachedIt->second.weight > n.getWeight()) {
         // Reduce the weight of the vertex, note that the old Step will
@@ -309,9 +269,9 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
         needToQueue = false;
       }
 
-      // Note that even if the other side has already expanded the vertex,
-      // we still potentially queue it and thus will later expand it.
       if (other.hasBeenVisited(n)) {
+        // If the other side has already expanded the vertex, we do not need
+        // to queue it, since we do not have to expand it.
         needToQueue = false;
         // Need to validate this step, too:
         ValidationResult res =
@@ -322,7 +282,7 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
         // other side!), so that we can no longer reach it with a
         // different path, which might have a smaller weight.
         if (!(res.isFiltered() || res.isPruned())) {
-          other.matchResultsInShell(n, candidates, _validator);
+          other.matchResultsInShell(n, bestPath, _validator);
         }
       }
       if (needToQueue) {
@@ -343,7 +303,8 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::Ball::
-    matchResultsInShell(Step const& otherStep, CandidatesStore& candidates,
+    matchResultsInShell(Step const& otherStep,
+                        std::optional<CalculatedCandidate>& bestPath,
                         PathValidator const& otherSideValidator) -> void {
   auto it = _foundVertices.find(otherStep.getVertex().getID());
   TRI_ASSERT(it != _foundVertices.end());
@@ -355,12 +316,13 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   auto res = _validator.validatePath(ourStep, otherSideValidator);
   if (!(res.isFiltered() || res.isPruned())) {
     double nextFullPathWeight = ourStep.getWeight() + otherStep.getWeight();
-    if (_direction == FORWARD) {
-      candidates.append(
-          std::make_tuple(nextFullPathWeight, ourStep, otherStep));
-    } else {
-      candidates.append(
-          std::make_tuple(nextFullPathWeight, otherStep, ourStep));
+    if (!bestPath.has_value() ||
+        nextFullPathWeight < std::get<0>(bestPath.value())) {
+      if (_direction == FORWARD) {
+        bestPath = std::make_tuple(nextFullPathWeight, ourStep, otherStep);
+      } else {
+        bestPath = std::make_tuple(nextFullPathWeight, otherStep, ourStep);
+      }
     }
   }
 }
@@ -388,55 +350,6 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
 }
 
 /*
- * Class: ResultCache (internally used in WeightedShortestPathEnumerator)
- */
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedShortestPathEnumerator<
-    QueueType, PathStoreType, ProviderType,
-    PathValidator>::ResultCache::ResultCache(Ball& left, Ball& right)
-    : _internalLeft(left), _internalRight(right), _internalResultsCache{} {}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                               PathValidator>::ResultCache::~ResultCache() =
-    default;
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::ResultCache::clear()
-    -> void {
-  _internalResultsCache.clear();
-};
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::ResultCache::
-    tryAddResult(CalculatedCandidate const& candidate) -> bool {
-  auto const& [weight, first, second] = candidate;
-  PathResult<ProviderType, typename ProviderType::Step> resultPathCandidate{
-      _internalLeft.provider(), _internalRight.provider()};
-
-  // generates left and right parts of the path and combines them
-  // then checks whether we do have a path duplicate or not.
-  _internalLeft.buildPath(first, resultPathCandidate);
-  _internalRight.buildPath(second, resultPathCandidate);
-  for (auto const& pathToCheck : _internalResultsCache) {
-    bool foundDuplicate =
-        resultPathCandidate.isEqualEdgeRepresentation(pathToCheck);
-    if (foundDuplicate) {
-      return false;
-    }
-  }
-  _internalResultsCache.push_back(std::move(resultPathCandidate));
-  return true;
-};
-
-/*
  * Class: WeightedShortestPathEnumerator
  */
 
@@ -454,7 +367,6 @@ WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
             validatorOptions, resourceMonitor},
       _right{Direction::BACKWARD, std::move(backwardProvider), _options,
              std::move(validatorOptions), resourceMonitor},
-      _resultsCache(_left, _right),
       _resultPath{_left.provider(), _right.provider()} {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -478,9 +390,7 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::clear() {
   // Order is important here, please do not change.
   // 1.) Remove current results & state
-  _candidatesStore.clear();
-  _resultsCache.clear();
-  _results.clear();
+  _bestPath.reset();
 
   // 2.) Remove both Balls (order here is not important)
   _left.clear();
@@ -501,7 +411,7 @@ template<class QueueType, class PathStoreType, class ProviderType,
 bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::isDone() const {
   TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
-  return _results.empty() && searchDone();
+  return !_bestPath.has_value() && searchDone();
 }
 
 /**
@@ -564,40 +474,11 @@ bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::getNextPath(VPackBuilder&
                                                                     result) {
   auto handleResult = [&]() {
-    /*
-     * Helper method to take care of stored results (in: _results)
-     */
-    if (!_results.empty()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
-      TRI_ASSERT(_results.size() == 1);
-#endif
-
-      auto const& [weight, leftVertex, rightVertex] = _results.front();
-
-      _resultPath.clear();
-      _left.buildPath(leftVertex, _resultPath);
-      _right.buildPath(rightVertex, _resultPath);
-      TRI_ASSERT(!_resultPath.isEmpty());
-
-      if (_emitWeight) {
-        // Add weight attribute to edges
-        _resultPath.toVelocyPack(
-            result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
-      } else {
-        _resultPath.toVelocyPack(result);
-      }
-      // remove handled result
-      _results.pop_front();
-
-      return true;
-    } else {
+    // Helper method to take care of a found result:
+    if (!isAlgorithmFinished() || !_bestPath.has_value()) {
       return false;
     }
-  };
-
-  auto handleCandidate = [&](CalculatedCandidate&& candidate) {
-    auto const& [weight, leftVertex, rightVertex] = candidate;
+    auto const& [weight, leftVertex, rightVertex] = _bestPath.value();
 
     _resultPath.clear();
     _left.buildPath(leftVertex, _resultPath);
@@ -611,33 +492,15 @@ bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
     } else {
       _resultPath.toVelocyPack(result);
     }
-  };
-
-  auto checkShortestPathCandidates = [&]() {
-    TRI_ASSERT(searchDone());
-    TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
-    /*
-     * Helper method to take care of ShortestPath related candidates
-     * Only allowed to find and return exactly one path.
-     */
-    bool foundPath = handleResult();
-    if (!foundPath) {
-      if (!_candidatesStore.isEmpty() && !isAlgorithmFinished()) {
-        CalculatedCandidate candidate = _candidatesStore.pop();
-        handleCandidate(std::move(candidate));
-        foundPath = true;
-        // ShortestPath produces only one result.
-        setAlgorithmFinished();
-      }
-    }
-
-    return foundPath;
+    _bestPath.reset();
+    return true;
   };
 
   auto report = [&]() {
-    LOG_DEVEL << "Left: expanded " << _left.getExpanded()
-              << " queued: " << _left.getQueued() << " Right: expanded "
-              << _right.getExpanded() << " queued: " << _right.getQueued();
+    LOG_TOPIC("47010", TRACE, Logger::GRAPHS)
+        << "Yen: Left: expanded " << _left.getExpanded()
+        << " queued: " << _left.getQueued() << " Right: expanded "
+        << _right.getExpanded() << " queued: " << _right.getQueued();
   };
 
   while (!isDone()) {
@@ -651,16 +514,8 @@ bool WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
       // At this state we've produced a valid path result. In case we're
       // using the path type "(Weighted)ShortestPath", the algorithm is
       // finished. We need to store this information.
-
-      setAlgorithmFinished();  // just quick exit marker
       report();
       return true;
-    } else {
-      // Check candidates list
-      if (checkShortestPathCandidates()) {
-        report();
-        return true;
-      };
     }
   }
 
@@ -676,24 +531,15 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
   while (!searchDone()) {
     _resultsFetched = false;
 
-    auto report = [&]() {
-      LOG_DEVEL << "Left: expanded " << _left.getExpanded()
-                << " queued: " << _left.getQueued() << " Right: expanded "
-                << _right.getExpanded() << " queued: " << _right.getQueued()
-                << " Candidates: " << _candidatesStore.size()
-                << " Results: " << _results.size();
-    };
-    report();
-
     if (_singleton) {
-      _left.validateSingletonPath(_candidatesStore);
+      _left.validateSingletonPath(_bestPath);
       setAlgorithmFinished();
     } else {
       auto searchLocation = getBallToContinueSearch();
       if (searchLocation == BallSearchLocation::LEFT) {
-        _left.computeNeighbourhoodOfNextVertex(_right, _candidatesStore);
+        _left.computeNeighbourhoodOfNextVertex(_right, _bestPath);
       } else if (searchLocation == BallSearchLocation::RIGHT) {
-        _right.computeNeighbourhoodOfNextVertex(_left, _candidatesStore);
+        _right.computeNeighbourhoodOfNextVertex(_left, _bestPath);
       } else {
         TRI_ASSERT(searchLocation == BallSearchLocation::FINISH);
         // Our queue is empty. We cannot produce more results.
@@ -701,8 +547,8 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
       }
     }
 
-    if (!_candidatesStore.isEmpty()) {
-      auto bestWeight = std::get<0>(_candidatesStore.peek());
+    if (_bestPath.has_value()) {
+      auto bestWeight = std::get<0>(_bestPath.value());
       // If the sum of the diameters of left and right search is
       // at least as big as the best candidate, there will not be a better
       // candidate found. This is because of the following: The "diameter"
@@ -738,8 +584,6 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
       auto sumDiameter = leftDiameter + rightDiameter;
 
       if (sumDiameter >= bestWeight) {
-        CalculatedCandidate bestCandidate = _candidatesStore.pop();
-        _results.emplace_back(std::move(bestCandidate));
         setAlgorithmFinished();
       }
 
@@ -748,25 +592,21 @@ void WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
       // have actually found some path, then we are done. Why is that?
       // Assume wlog that the left side is finished and we have found
       // a path. Then the left hand side has found everything that is
-      // reachable from the source and has expanded it.
-      if ((_left.isQueueEmpty() || _right.isQueueEmpty()) &&
-          (!_results.empty() || !_candidatesStore.isEmpty())) {
+      // reachable from the source, unless it has already been expanded
+      // by the other side. The left hand side has expanded everything it
+      // has found. If the right hand side has expanded a vertex, it "knows"
+      // the distance of this vertex from the target and knows a shortest
+      // path. Therefore, we do not have to go there any more.
+      if (_left.isQueueEmpty() || _right.isQueueEmpty()) {
         // Note that we might have already found a path with the above
         // criteria, so we should then not report a second one:
-        if (_results.empty()) {
-          CalculatedCandidate candidate = _candidatesStore.pop();
-          _results.emplace_back(std::move(candidate));
-        }
         setAlgorithmFinished();
       }
     }
   }
 
-  if (_options.onlyProduceOnePath() /* found a candidate */) {
-    fetchResult();
-  } else {
-    fetchResults();
-  }
+  TRI_ASSERT(_options.onlyProduceOnePath());
+  fetchResult();
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -801,9 +641,10 @@ WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
     return BallSearchLocation::FINISH;
   }
 
-  LOG_DEVEL << "Pondering left/right: " << _left.queueSize() << " vs. "
-            << _right.queueSize() << " ==> "
-            << (_left.queueSize() < _right.queueSize() ? "LEFT" : "RIGHT");
+  LOG_TOPIC("47011", TRACE, Logger::GRAPHS)
+      << "Pondering left/right: " << _left.queueSize() << " vs. "
+      << _right.queueSize() << " ==> "
+      << (_left.queueSize() < _right.queueSize() ? "LEFT" : "RIGHT");
 
   if (_left.getDiameter() < 0.0) {
     return BallSearchLocation::LEFT;
@@ -846,13 +687,14 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::searchDone() const -> bool {
-  if ((_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished()) {
+  if ((_left.isQueueEmpty() && _right.isQueueEmpty()) ||
+      isAlgorithmFinished()) {
     return true;
   }
-  if (_left.noPathLeft() && _candidatesStore.isEmpty() && _results.empty()) {
+  if (_left.isQueueEmpty() && !_bestPath.has_value()) {
     return true;
   }
-  if (_right.noPathLeft() && _candidatesStore.isEmpty() && _results.empty()) {
+  if (_right.isQueueEmpty() && !_bestPath.has_value()) {
     // Special case for singleton (source == target), in this case
     // we should indicate that there is something still coming. If
     // we have already delivered the singleton, then the algorithm
@@ -869,21 +711,10 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
-                                    PathValidator>::fetchResults() -> void {
-  if (!_resultsFetched && !_candidatesStore.isEmpty()) {
-    _left.fetchResults(_candidatesStore);
-    _right.fetchResults(_candidatesStore);
-  }
-  _resultsFetched = true;
-}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
                                     PathValidator>::fetchResult() -> void {
-  if (!_resultsFetched && !_candidatesStore.isEmpty()) {
-    _left.fetchResult(_candidatesStore.peek());
-    _right.fetchResult(_candidatesStore.peek());
+  if (_bestPath.has_value()) {
+    _left.fetchResult(_bestPath.value());
+    _right.fetchResult(_bestPath.value());
   }
   _resultsFetched = true;
 }
@@ -911,10 +742,10 @@ auto WeightedShortestPathEnumerator<QueueType, PathStoreType, ProviderType,
 // TracedWShortestPath (cluster)   Tr<We>  Tr      Tr<Cl>  Va<Tr,Gl,Pa>
 //
 // # Weighted ShortestPath for Yen:
-// WShortestPath (yen, single)     We      No      Si      Ta<Va,Gl,Pa>
-// WShortestPath (yen, cluster)    We      No      Cl      Ta<Va,Gl,Pa>
-// TracedWShortestPath (yen, sin)  Tr<We>  Tr      Tr<Si>  Ta<Va<Tr,Gl,Pa>>
-// TracedWShortestPath (yen, clu)  Tr<We>  Tr      Tr<Cl>  Ta<Va<Tr,Gl,Pa>>
+// WShortestPath (yen, single)     We      No      Si      Va<No,No>
+// WShortestPath (yen, cluster)    We      No      Cl      Va<No,No>
+// TracedWShortestPath (yen, sin)  Tr<We>  Tr      Tr<Si>  Tr<Va<No,No>>
+// TracedWShortestPath (yen, clu)  Tr<We>  Tr      Tr<Cl>  Tr<Va<No,No>>
 //
 // Where:
 //   Si/Cl    Single or Cluster provider
@@ -933,35 +764,17 @@ template class WeightedShortestPathEnumerator<
     WeightedQueue<SingleServerProviderStep>,
     PathStore<SingleServerProviderStep>, SingleProvider,
     PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-// WeightedShortestPathEnumeratorForYen<SingleProvider>:
-template class WeightedShortestPathEnumerator<
-    WeightedQueue<SingleServerProviderStep>,
-    PathStore<SingleServerProviderStep>, SingleProvider,
-    PathValidatorTabooWrapper<PathValidator<
-        SingleProvider, PathStore<SingleServerProviderStep>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
 
 // TracedWeightedShortestPathEnumerator<SingleProvider>:
 template class WeightedShortestPathEnumerator<
     QueueTracer<WeightedQueue<SingleServerProviderStep>>,
     PathStoreTracer<PathStore<SingleServerProviderStep>>,
     ProviderTracer<SingleProvider>,
-    PathValidatorTracer<PathValidator<
-        ProviderTracer<SingleProvider>,
-        PathStoreTracer<PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
-// TracedWeightedShortestPathEnumeratorForYen<SingleProvider>:
-template class WeightedShortestPathEnumerator<
-    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    ProviderTracer<SingleProvider>,
-    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
-        ProviderTracer<SingleProvider>,
-        PathStoreTracer<PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
+    PathValidatorTracer<
+        PathValidator<ProviderTracer<SingleProvider>,
+                      PathStoreTracer<PathStore<SingleServerProviderStep>>,
+                      VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>>;
 
 /* ClusterProvider Section */
 
@@ -972,34 +785,16 @@ template class WeightedShortestPathEnumerator<
     WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
     ClustProvider,
     PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-// WeightedShortestPathEnumeratorForYen<ClustProvider>:
-template class WeightedShortestPathEnumerator<
-    WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-    ClustProvider,
-    PathValidatorTabooWrapper<PathValidator<
-        ClustProvider, PathStore<ClusterProviderStep>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
+                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
 
 // TracedWeightedShortestPathEnumerator<ClustProvider>:
 template class WeightedShortestPathEnumerator<
     QueueTracer<WeightedQueue<ClusterProviderStep>>,
     PathStoreTracer<PathStore<ClusterProviderStep>>,
     ProviderTracer<ClustProvider>,
-    PathValidatorTracer<PathValidator<
-        ProviderTracer<ClustProvider>,
-        PathStoreTracer<PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
-// TracedWeightedShortestPathEnumeratorForYen<ClustProvider>:
-template class WeightedShortestPathEnumerator<
-    QueueTracer<WeightedQueue<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    ProviderTracer<ClustProvider>,
-    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
-        ProviderTracer<ClustProvider>,
-        PathStoreTracer<PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
+    PathValidatorTracer<
+        PathValidator<ProviderTracer<ClustProvider>,
+                      PathStoreTracer<PathStore<ClusterProviderStep>>,
+                      VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>>;
 
 }  // namespace arangodb::graph

@@ -1,11 +1,21 @@
 devel
 -----
 
+* Speed up shortest path further by using a neighbour cache in the 
+  SingleServerProvider.
+
+* FE-446: add missing caching options for inverted indexes and arangosearch
+  views.
+
 * Speed up shortest path computations by choosing more diligently which
   side to expand next. This brings back 3.10 performance.
 
 * Fixed a bug in (non-Yen) k-shortest-paths which could overlook some
   paths.
+
+* BTS_1792: Call `setLocale` earlier during startup to prevent crashes.
+
+* BTS-1975: Fix the output of dumped data in VPack format.
 
 * Add file descriptors to tele metrics
 
@@ -95,6 +105,8 @@ devel
 
 3.12.2 (2024-08-21)
 -------------------
+
+* FE-450: avoid scrollbars when license warning is visible.
 
 * Add API GET /_admin/cluster/vpackSortMigration/status to query the status of
   the vpack sorting migration on dbservers, single servers and coordinators.

@@ -660,22 +660,24 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       // find a shorter one.
       // Proof:
       // Assume that there is a shortest path P with weight w' < w. Then
-      // w' < d1+d2 in particular. The weights of the vertices on the path
-      // might not be the the shortest path to these vertices, but if a
-      // vertex V on the path is reached by some weight d on this path, then
-      // its smallest weight by which it can be reached is at most d.
-      // This means that all vertices on P which are on this path less than
-      // d1 away from the start vertex have already been found and expanded
-      // by the left hand side. Likewise, all vertices on P which are - on
-      // P - less than d2 away from the end vertex have already been found
-      // and expanded by the right hand side. Since w' < d1 + d2, there is no
-      // "gap" between the two sides: There cannot be a vertex on the path,
-      // which is both at least d1 from the start and at least d2 from the
-      // target. It might even be that some vertex on the path P has been
-      // expanded by both sides. In any case, there must be an edge on the
-      // path, so that the source of the edge has been expanded by the left
-      // hand side and the target of the edge has been expanded by the right
-      // hand side. Then one of these expansions has to have happened first
+      // w' < d1+d2 in particular. The weights of the vertices on the
+      // path might not be the the shortest path to these vertices, but
+      // if a vertex V on the path is reached by some weight d on this
+      // path, then its smallest weight by which it can be reached is
+      // at most d. This means that all vertices on P which are on this
+      // path less than d1 away from the start vertex have already been
+      // found and expanded by the left hand side (or by the right hand
+      // side). Likewise, all vertices on P which are - on P - less
+      // than d2 away from the end vertex have already been found and
+      // expanded by the right hand side (or by the left hand side).
+      // Since w' < d1 + d2, there is no "gap" between the two sides:
+      // There cannot be a vertex on the path, which is both at least d1
+      // from the start and at least d2 from the target. It might even
+      // be that some vertex on the path P has been expanded by both
+      // sides. In any case, there must be an edge on the path, so that
+      // the source of the edge has been expanded by the left hand side
+      // and the target of the edge has been expanded by the right hand
+      // side. Then one of these expansions has to have happened first
       // and the other must have seen this path.
       // For a K-SHORTEST-PATH search all candidates that have lower
       // weight than the sum of the two diameters are valid shortest

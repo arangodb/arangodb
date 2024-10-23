@@ -410,10 +410,7 @@ class WeightedTwoSidedEnumerator {
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
-  auto setEmitWeight(bool) -> void {}
-
- private:
-  [[nodiscard]] auto searchDone() const -> bool;
+ private : [[nodiscard]] auto searchDone() const -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
   // we will not be able to generate the resulting path
   auto fetchResults() -> void;

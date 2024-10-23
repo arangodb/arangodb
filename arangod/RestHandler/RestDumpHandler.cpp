@@ -24,7 +24,6 @@
 #include "RestDumpHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/TokenCache.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"

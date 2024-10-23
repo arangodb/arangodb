@@ -20,29 +20,43 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "promise.h"
+#pragma once
 
-#include "Async/Registry/registry_variable.h"
-#include "Async/Registry/thread_registry.h"
+#include <concepts>
+#include <coroutine>
+#include <utility>
 
-using namespace arangodb::async_registry;
+namespace arangodb {
 
-Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
-                 std::source_location entry_point)
-    : thread{registry->thread},
-      source_location{entry_point.file_name(), entry_point.function_name(),
-                      entry_point.line()},
-      registry{std::move(registry)},
-      next{next} {}
+template<typename T>
+concept HasOperatorCoAwait = requires(T t) {
+  operator co_await(std::forward<T>(t));
+};
+template<typename T>
+concept HasMemberOperatorCoAwait = requires(T t) {
+  std::forward<T>(t).operator co_await();
+};
 
-auto Promise::mark_for_deletion() noexcept -> void {
-  registry->mark_for_deletion(this);
+template<typename T>
+auto get_awaitable_object(T&& t) -> T&& {
+  return std::forward<T>(t);
+}
+template<HasOperatorCoAwait T>
+auto get_awaitable_object(T&& t) {
+  return operator co_await(std::forward<T>(t));
+}
+template<HasMemberOperatorCoAwait T>
+auto get_awaitable_object(T&& t) {
+  return std::forward<T>(t).operator co_await();
 }
 
-AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc)
-    : promise_in_registry{get_thread_registry().add_promise(std::move(loc))} {}
-AddToAsyncRegistry::~AddToAsyncRegistry() {
-  if (promise_in_registry != nullptr) {
-    promise_in_registry->mark_for_deletion();
-  }
-}
+template<typename T>
+concept CanSetPromiseWaiter = requires(T t, void* waiter) {
+  t.set_promise_waiter(waiter);
+};
+template<typename T>
+concept HasId = requires(T t) {
+  { t.id() } -> std::convertible_to<void*>;
+};
+
+}  // namespace arangodb

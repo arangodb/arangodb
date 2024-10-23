@@ -29,7 +29,6 @@
 #include "Containers/HashSet.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
-#include "Graph/Types/ForbiddenVertices.h"
 #include "Containers/FlatHashMap.h"
 
 #include <limits>
@@ -129,98 +128,7 @@ class WeightedShortestPathEnumerator {
   using EdgeSet =
       arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>;
 
-  using Shell = std::multiset<Step>;
-  using ResultList = std::deque<CalculatedCandidate>;
   using GraphOptions = arangodb::graph::TwoSidedEnumeratorOptions;
-
-  /*
-   * Weighted candidate store for handling path-match candidates in the order
-   * from the lowest weight to the highest weight.
-   */
-  class CandidatesStore {
-   public:
-    void clear() {
-      if (!_queue.empty()) {
-        _queue.clear();
-      }
-    }
-
-    void append(CalculatedCandidate candidate) {
-      // if emplace() throws, no harm is done, and the memory usage increase
-      // will be rolled back
-      _queue.emplace_back(std::move(candidate));
-      // std::push_heap takes the last element in the queue, assumes that all
-      // other elements are in heap structure, and moves the last element into
-      // the correct position in the heap (incl. rebalancing of other elements)
-      // The heap structure guarantees that the first element in the queue
-      // is the "largest" element (in our case it is the smallest, as we
-      // inverted the comparator)
-      std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
-    }
-
-    [[nodiscard]] size_t size() const { return _queue.size(); }
-
-    [[nodiscard]] bool isEmpty() const { return _queue.empty(); }
-
-    [[nodiscard]] std::vector<Step*> getLeftLooseEnds() {
-      std::vector<Step*> steps;
-
-      for (auto& [_, step, __] : _queue) {
-        if (!step.isProcessable()) {
-          steps.emplace_back(&step);
-        }
-      }
-
-      return steps;
-    }
-
-    [[nodiscard]] std::vector<Step*> getRightLooseEnds() {
-      std::vector<Step*> steps;
-
-      for (auto& [_, __, step] : _queue) {
-        if (!step.isProcessable()) {
-          steps.emplace_back(&step);
-        }
-      }
-
-      return steps;
-    }
-
-    [[nodiscard]] CalculatedCandidate& peek() {
-      TRI_ASSERT(!_queue.empty());
-      // will return a pointer to the step with the lowest weight amount
-      // possible. The heap structure guarantees that the first element in the
-      // queue is the "largest" element (in our case it is the smallest, as we
-      // inverted the comparator)
-      return _queue.front();
-    }
-
-    [[nodiscard]] CalculatedCandidate pop() {
-      TRI_ASSERT(!isEmpty());
-      // std::pop_heap will move the front element (the one we would like to
-      // steal) to the back of the vector, keeping the tree intact otherwise.
-      // Now we steal the last element.
-      std::pop_heap(_queue.begin(), _queue.end(), _cmpHeap);
-      CalculatedCandidate first = std::move(_queue.back());
-      _queue.pop_back();
-      return first;
-    }
-
-   private:
-    struct WeightedComparator {
-      bool operator()(CalculatedCandidate const& a,
-                      CalculatedCandidate const& b) {
-        auto const& [weightA, candAA, candAB] = a;
-        auto const& [weightB, candBA, candBB] = b;
-        return weightA > weightB;
-      }
-    };
-
-    WeightedComparator _cmpHeap{};
-
-    /// @brief queue datastore
-    std::vector<CalculatedCandidate> _queue;
-  };
 
   class Ball {
    public:
@@ -230,43 +138,39 @@ class WeightedShortestPathEnumerator {
     ~Ball();
     auto clear() -> void;
     auto reset(VertexRef center, size_t depth = 0) -> void;
-    [[nodiscard]] auto noPathLeft() const -> bool;
-    [[nodiscard]] auto peekQueue() const -> Step const&;
     [[nodiscard]] auto isQueueEmpty() const -> bool;
-    [[nodiscard]] auto doneWithDepth() const -> bool;
     [[nodiscard]] auto queueSize() const -> size_t { return _queue.size(); }
 
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
 
-    auto matchResultsInShell(Step const& match, CandidatesStore& results,
+    auto matchResultsInShell(Step const& match,
+                             std::optional<CalculatedCandidate>& bestPath,
                              PathValidatorType const& otherSideValidator)
         -> void;
 
-    auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& results)
-        -> void;
+    auto computeNeighbourhoodOfNextVertex(
+        Ball& other, std::optional<CalculatedCandidate>& bestPath) -> void;
 
     [[nodiscard]] auto hasBeenVisited(Step const& step) -> bool;
-    auto validateSingletonPath(CandidatesStore& candidates) -> void;
+    auto validateSingletonPath(std::optional<CalculatedCandidate>& bestPath)
+        -> void;
 
     auto ensureQueueHasProcessableElement() -> void;
 
     // Ensure that we have fetched all vertices in the _results list.
     // Otherwise, we will not be able to generate the resulting path
-    auto fetchResults(CandidatesStore& candidates) -> void;
     auto fetchResult(CalculatedCandidate& candidate) -> void;
 
     auto provider() -> ProviderType&;
 
     auto getDiameter() const noexcept -> double { return _diameter; }
 
-    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void {
       _forbiddenVertices = std::move(forbidden);
     };
 
-    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-        -> void requires HasForbidden<PathValidatorType> {
+    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void {
       _forbiddenEdges = std::move(forbidden);
     };
 
@@ -297,8 +201,8 @@ class WeightedShortestPathEnumerator {
     ProviderType _provider;
 
     PathValidatorType _validator;
-    struct VertexWeight {
-      VertexWeight(double w)
+    struct VertexInfo {
+      VertexInfo(double w)
           : weight(w), position(0), expanded(false), cancelled(false) {}
       double weight;
       size_t position;  // this is only set once `expanded` is true
@@ -312,7 +216,7 @@ class WeightedShortestPathEnumerator {
                         // without deleting its Step with the wrong
                         // weight from the queue.
     };
-    containers::FlatHashMap<typename Step::VertexType, VertexWeight>
+    containers::FlatHashMap<typename Step::VertexType, VertexInfo>
         _foundVertices;
     Direction _direction;
     GraphOptions _graphOptions;
@@ -321,29 +225,6 @@ class WeightedShortestPathEnumerator {
     std::shared_ptr<EdgeSet> _forbiddenEdges;
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
-
-  /*
-   * A class that is able to store valid shortest paths results.
-   * This is required to be able to check for duplicate paths, as those can be
-   * found during a KShortestPaths graphs search.
-   */
-  class ResultCache {
-   public:
-    ResultCache(Ball& left, Ball& right);
-    ~ResultCache();
-
-    // @brief: returns whether a path could be inserted or not.
-    // True: It will be inserted if this specific path has not been added yet.
-    // False: Could not insert as this path has already been found.
-    [[nodiscard]] auto tryAddResult(CalculatedCandidate const& candidate)
-        -> bool;
-    auto clear() -> void;
-
-   private:
-    Ball& _internalLeft;
-    Ball& _internalRight;
-    std::vector<PathResult<ProviderType, Step>> _internalResultsCache{};
-  };
 
  public:
   WeightedShortestPathEnumerator(ProviderType&& forwardProvider,
@@ -415,14 +296,12 @@ class WeightedShortestPathEnumerator {
    */
   auto stealStats() -> aql::TraversalStats;
 
-  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden) -> void {
     _left.setForbiddenVertices(forbidden);
     _right.setForbiddenVertices(std::move(forbidden));
   };
 
-  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
-      -> void requires HasForbidden<PathValidatorType> {
+  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden) -> void {
     _left.setForbiddenEdges(forbidden);
     _right.setForbiddenEdges(std::move(forbidden));
   };
@@ -433,7 +312,6 @@ class WeightedShortestPathEnumerator {
   [[nodiscard]] auto searchDone() const -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
   // we will not be able to generate the resulting path
-  auto fetchResults() -> void;
   auto fetchResult() -> void;
 
   // Ensure that we have more valid paths in the _result stock.
@@ -457,10 +335,7 @@ class WeightedShortestPathEnumerator {
   Ball _left;
   Ball _right;
 
-  // Templated result list, where only valid result(s) are stored in
-  CandidatesStore _candidatesStore{};
-  ResultCache _resultsCache;
-  ResultList _results{};
+  std::optional<CalculatedCandidate> _bestPath{std::nullopt};
 
   bool _resultsFetched{false};
   bool _algorithmFinished{false};

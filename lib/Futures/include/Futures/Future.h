@@ -309,6 +309,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
+    set_promise_waiter(future.id());
     getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -339,6 +340,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
+    set_promise_waiter(future.id());
     getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -373,6 +375,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
+    set_promise_waiter(future.id());
     getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       pr.setTry(detail::makeTryWith([&fn, &t] {
@@ -395,6 +398,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
+    set_promise_waiter(future.id());
     getState().setCallback([fn = std::forward<F>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       try {
@@ -433,6 +437,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
+    set_promise_waiter(future.id());
     getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -466,6 +471,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
+    set_promise_waiter(future.id());
     getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -488,6 +494,19 @@ class [[nodiscard]] Future {
       }
     });
     return future;
+  }
+
+  auto set_promise_waiter(void* waiter) {
+    if (_state != nullptr) {
+      _state->set_promise_waiter(waiter);
+    }
+  }
+  auto id() -> void* {
+    if (_state != nullptr) {
+      return _state->id();
+    } else {
+      return nullptr;
+    }
   }
 
  private:

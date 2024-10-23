@@ -51,7 +51,7 @@ namespace detail {
 ///   |                    ---> OnlyCallback ---                    |
 ///   +-------------------------------------------------------------+
 template<typename T>
-class SharedState : async_registry::AddToAsyncRegistry {
+class SharedState : public async_registry::AddToAsyncRegistry {
   enum class State : uint8_t {
     Start = 1 << 0,
     OnlyResult = 1 << 1,
@@ -202,6 +202,7 @@ class SharedState : async_registry::AddToAsyncRegistry {
       case State::Start:
         if (_state.compare_exchange_strong(state, State::OnlyResult,
                                            std::memory_order_release)) {
+          update_state(async_registry::State::Resolved);
           return;
         }
         TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
@@ -238,7 +239,9 @@ class SharedState : async_registry::AddToAsyncRegistry {
   SharedState(std::source_location loc)
       : async_registry::AddToAsyncRegistry(std::move(loc)),
         _state(State::Start),
-        _attached(2) {}
+        _attached(2) {
+    update_state(async_registry::State::Suspended);
+  }
 
   /// use to construct a ready future
   explicit SharedState(Try<T>&& t)
@@ -278,10 +281,14 @@ class SharedState : async_registry::AddToAsyncRegistry {
     TRI_ASSERT(_state == State::Done);
     TRI_ASSERT(_callback);
 
+    update_state(async_registry::State::Running);
+
     _attached.fetch_add(1);
     // SharedStateScope makes this exception safe
     SharedStateScope scope(this);  // will call detachOne()
     _callback(std::move(_result));
+
+    update_state(async_registry::State::Resolved);
   }
 
  private:

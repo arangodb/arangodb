@@ -58,7 +58,6 @@ class LanguageFeature final : public application_features::ApplicationFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
 
   icu_64_64::Locale& getLocale();
   std::tuple<std::string_view, basics::LanguageType> getLanguage() const;

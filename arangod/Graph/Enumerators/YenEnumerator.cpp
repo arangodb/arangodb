@@ -173,22 +173,31 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
   if (_isDone) {
     return false;
   }
-  LOG_DEVEL << "YenEnumerator::getNextPath()";
+  LOG_TOPIC("47000", TRACE, Logger::GRAPHS) << "YenEnumerator::getNextPath()";
   if (_shortestPaths.empty()) {
     // First find the shortest path using the _shortestPathEnumerator:
+    auto start = std::chrono::steady_clock::now();
     _shortestPathEnumerator->reset(_source, _target);
     LOG_DEVEL << "Shortest path from " << _source << " to " << _target;
     bool found = _shortestPathEnumerator->getNextPath(result);
-    LOG_DEVEL << "done.";
+    LOG_TOPIC("47001", TRACE, Logger::GRAPHS)
+        << "Yen: shortest path from " << _source << " to " << _target
+        << " done in "
+        << std::chrono::duration_cast<std::chrono::microseconds>(
+               std::chrono::steady_clock::now() - start)
+               .count()
+        << " microseconds.";
     if (!found) {
       _isDone = true;
       return false;
     }
     auto const& path = _shortestPathEnumerator->getLastPathResult();
+    LOG_TOPIC("47002", TRACE, Logger::GRAPHS)
+        << "Path found, weight: " << path.getWeight();
     for (size_t i = 0; i < path.getLength(); ++i) {
-      LOG_DEVEL << "Vertex: " << path.getVertex(i).getID();
+      LOG_TOPIC("47003", TRACE, Logger::GRAPHS)
+          << "Vertex: " << path.getVertex(i).getID();
     }
-    LOG_DEVEL << "Weight: " << path.getWeight();
     auto owned = toOwned(path);
     owned.setBranchPoint(0);
     _shortestPaths.emplace_back(std::move(owned));  // Copy the path with all
@@ -215,7 +224,8 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     // previous path:
     auto forbiddenVertices = std::make_shared<VertexSet>();
     for (size_t i = 0; i < prefixLen; ++i) {
-      LOG_DEVEL << "Forbidden vertex: " << prevPath.getVertex(i).getID();
+      LOG_TOPIC("47004", TRACE, Logger::GRAPHS)
+          << "Yen: forbidden vertex: " << prevPath.getVertex(i).getID();
       forbiddenVertices->insert(prevPath.getVertex(i).getID());
     }
     // To avoid finding old shortest paths again, we must forbid every edge,
@@ -223,8 +233,9 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     // same prefix:
     auto forbiddenEdges = std::make_shared<EdgeSet>();
     forbiddenEdges->insert(prevPath.getEdge(prefixLen).getID());
-    LOG_DEVEL << "Forbidden edge from " << prevPath.getVertex(prefixLen).getID()
-              << " to " << prevPath.getVertex(prefixLen + 1).getID();
+    LOG_TOPIC("47005", TRACE, Logger::GRAPHS)
+        << "Yen: forbidden edge from " << prevPath.getVertex(prefixLen).getID()
+        << " to " << prevPath.getVertex(prefixLen + 1).getID();
     // This handles the previous one, now do the ones before:
     for (size_t i = 0; i + 1 < _shortestPaths.size(); ++i) {
       // Check if that shortest path has the same prefix:
@@ -239,9 +250,10 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
         }
         if (samePrefix) {
           forbiddenEdges->insert(_shortestPaths[i].getEdge(prefixLen).getID());
-          LOG_DEVEL << "Forbidden edge from "
-                    << _shortestPaths[i].getVertex(prefixLen).getID() << " to "
-                    << _shortestPaths[i].getVertex(prefixLen + 1).getID();
+          LOG_TOPIC("47006", TRACE, Logger::GRAPHS)
+              << "Yen: forbidden edge from "
+              << _shortestPaths[i].getVertex(prefixLen).getID() << " to "
+              << _shortestPaths[i].getVertex(prefixLen + 1).getID();
         }
       }
     }
@@ -254,21 +266,24 @@ bool YenEnumerator<ProviderType, EnumeratorType, IsWeighted>::getNextPath(
     _shortestPathEnumerator->setForbiddenEdges(std::move(forbiddenEdges));
 
     VPackBuilder temp;
-    LOG_DEVEL << "Another shortest path from " << spurVertex.getID() << " to "
-              << _target;
     auto start = std::chrono::steady_clock::now();
     bool found = _shortestPathEnumerator->getNextPath(temp);
-    LOG_DEVEL << "Finished in "
-              << std::chrono::duration_cast<std::chrono::microseconds>(
-                     std::chrono::steady_clock::now() - start)
-                     .count();
+    LOG_TOPIC("47007", TRACE, Logger::GRAPHS)
+        << "Yen: another shortest path from " << spurVertex.getID() << " to "
+        << _target << ", finished in "
+        << std::chrono::duration_cast<std::chrono::microseconds>(
+               std::chrono::steady_clock::now() - start)
+               .count()
+        << " microseconds.";
     if (found) {
       PathResult<ProviderType, typename ProviderType::Step> const& path =
           _shortestPathEnumerator->getLastPathResult();
+      LOG_TOPIC("47008", TRACE, Logger::GRAPHS)
+          << "Yen: Path found, weight: " << path.getWeight();
       for (size_t i = 0; i < path.getLength(); ++i) {
-        LOG_DEVEL << "Vertex: " << path.getVertex(i).getID();
+        LOG_TOPIC("47009", TRACE, Logger::GRAPHS)
+            << "Vertex: " << path.getVertex(i).getID();
       }
-      LOG_DEVEL << "Weight: " << path.getWeight();
       auto newPath = std::make_unique<
           PathResult<ProviderType, typename ProviderType::Step>>(
           path.getSourceProvider(), path.getTargetProvider());  // empty path
@@ -368,12 +383,11 @@ template class ::arangodb::graph::YenEnumerator<
     TracedShortestPathEnumeratorForYen<SingleProvider>, false>;
 
 template class ::arangodb::graph::YenEnumerator<
-    SingleProvider, WeightedShortestPathEnumeratorForYenAlias<SingleProvider>,
-    true>;
+    SingleProvider, WeightedShortestPathEnumeratorAlias<SingleProvider>, true>;
 
 template class ::arangodb::graph::YenEnumerator<
     ProviderTracer<SingleProvider>,
-    TracedWeightedShortestPathEnumeratorForYenAlias<SingleProvider>, true>;
+    TracedWeightedShortestPathEnumeratorAlias<SingleProvider>, true>;
 
 // ClusterProvider Section:
 
@@ -387,9 +401,8 @@ template class ::arangodb::graph::YenEnumerator<
     TracedShortestPathEnumeratorForYen<ClustProvider>, false>;
 
 template class ::arangodb::graph::YenEnumerator<
-    ClustProvider, WeightedShortestPathEnumeratorForYenAlias<ClustProvider>,
-    true>;
+    ClustProvider, WeightedShortestPathEnumeratorAlias<ClustProvider>, true>;
 
 template class ::arangodb::graph::YenEnumerator<
     ProviderTracer<ClustProvider>,
-    TracedWeightedShortestPathEnumeratorForYenAlias<ClustProvider>, true>;
+    TracedWeightedShortestPathEnumeratorAlias<ClustProvider>, true>;

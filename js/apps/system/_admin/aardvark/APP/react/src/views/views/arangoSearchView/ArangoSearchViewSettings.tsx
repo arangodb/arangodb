@@ -11,6 +11,7 @@ import { ArangoSearchViewPropertiesType } from "../View.types";
 import { ArangoSearchJSONEditor } from "./ArangoSearchJSONEditor";
 import { ArangoSearchViewForm } from "./ArangoSearchViewForm";
 import { useUpdateArangoSearchViewProperties } from "./useUpdateArangoSearchViewProperties";
+import { useNavbarHeight } from "../../useNavbarHeight";
 
 export const ArangoSearchViewSettings = ({
   view
@@ -32,6 +33,7 @@ export const ArangoSearchViewSettingsInner = () => {
       setChanged(true);
     }
   }, [values, setChanged, dirty]);
+  const navbarHeight = useNavbarHeight();
   return (
     <Grid
       as={Form}
@@ -40,8 +42,9 @@ export const ArangoSearchViewSettingsInner = () => {
       }}
       backgroundColor="white"
       width="100%"
-      height="calc(100vh - 80px)"
+      height={`calc(100vh - ${navbarHeight}px)`}
       gridTemplateRows="120px 1fr"
+      marginBottom="0"
     >
       <EditViewHeader />
       <Split
