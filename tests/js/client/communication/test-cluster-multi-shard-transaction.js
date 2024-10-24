@@ -217,13 +217,18 @@ myKeys.forEach(oneKey => {
     throw new Error("Was expecting to have " + count + " > " + lastCoun);
   }
   let tries = 0;
-  while ((loopCount % stepWidth === 0) && (count % stepWidth !== 0)) {
+  let nextLoopCount = Math.trunc(count / stepWidth) * count + stepWidth;
+  while (loopCount > nextLoopCount) {
     tries ++;
     if (tries > ${timeout * 2}) {
-      throw new Error("failed to get to the next step in ${timeout}s");
+      if (count % stepWidth === 0) {
+        break;
+      }
+      throw new Error("failed to get to the next step in ${timeout}s - " + count);
     }
     require('internal').sleep(0.5);
     count = db[cn].count();
+    console.log("count: " + count);
   }
   lastCount = count;
 })
