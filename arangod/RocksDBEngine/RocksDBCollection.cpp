@@ -1503,10 +1503,8 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   key->constructDocument(objectId(), documentId);
   TRI_ASSERT(key->containsLocalDocumentId(documentId));
 
-  if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // banish new document to avoid caching without committing first
-    invalidateCacheEntry(key.ref());
-  }
+  // banish new document to avoid caching without committing first
+  invalidateCacheEntry(key.ref());
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
@@ -1915,10 +1913,8 @@ Result RocksDBCollection::modifyDocument(
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
-  if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // banish new document to avoid caching without committing first
-    invalidateCacheEntry(key.ref());
-  }
+  // banish new document to avoid caching without committing first
+  invalidateCacheEntry(key.ref());
 
   trx->state()->trackShardUsage(
       *trx->resolver(), _logicalCollection.vocbase().name(),
