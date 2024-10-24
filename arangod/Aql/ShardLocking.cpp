@@ -145,6 +145,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
       break;
     }
     case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
     case ExecutionNode::INDEX: {
       auto const* colNode =
           dynamic_cast<CollectionAccessingNode const*>(baseNode);
