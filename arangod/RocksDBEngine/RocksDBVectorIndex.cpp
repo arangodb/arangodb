@@ -237,8 +237,8 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   if (auto data = info.get("trainedData"); !data.isNone()) {
     velocypack::deserialize(data, _trainedData.emplace());
   }
-  // TODO improve on this
-  _trainingDataSize = _definition.nLists * 1000;
+  // Number is from faiss::ClusteringParameters::max_points_per_centroid
+  _trainingDataSize = _definition.nLists * 256;
 
   _quantizer =
       std::invoke([this]() -> std::variant<faiss::IndexFlat, faiss::IndexFlatL2,
@@ -368,10 +368,10 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
 
   std::vector<float> trainingData;
   std::size_t counter{0};
+  std::vector<float> input;
+  input.reserve(_definition.dimensions);
   while (counter < _trainingDataSize && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
-    std::vector<float> input;
-    input.reserve(_definition.dimensions);
 
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
     VPackSlice value = accessDocumentPath(doc, _fields[0]);
@@ -385,16 +385,19 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     TRI_ASSERT(input.size() ==
                static_cast<std::size_t>(_definition.dimensions));
 
-    if (_definition.metric == SimilarityMetric::kCosine) {
-      faiss::fvec_renorm_L2(_definition.dimensions, 1, input.data());
-    }
     trainingData.insert(trainingData.end(), input.begin(), input.end());
+    input.clear();
 
     it->Next();
     ++counter;
   }
 
+  if (_definition.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(_definition.dimensions, counter, trainingData.data());
+  }
+  LOG_DEVEL << "Starting Training";
   flatIndex.train(counter, trainingData.data());
+  LOG_DEVEL << "Finished Training";
   LOG_TOPIC("a160b", INFO, Logger::ROCKSDB)
       << "Finished training for vector index";
 
