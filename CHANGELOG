@@ -1,6 +1,10 @@
 devel
 -----
 
+
+3.12.3 (XXXX-XX-XX)
+-------------------
+
 * Add missing accounting for document lookups in JOIN nodes when in late
   materialize mode.
 
