@@ -930,6 +930,8 @@ Result IndexFactory::enhanceJsonIndexVector(
     processIndexSparseFlag(definition, builder, create);
 
     processIndexInBackground(definition, builder);
+
+    processIndexParallelism(definition, builder);
   }
 
   return res;
