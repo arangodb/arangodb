@@ -217,7 +217,7 @@ myKeys.forEach(oneKey => {
     throw new Error("Was expecting to have " + count + " > " + lastCoun);
   }
   let tries = 0;
-  let NextLoopCount = Math.trunc(count / stepWidth) * count + stepWidth;
+  let nextLoopCount = Math.trunc(count / stepWidth) * count + stepWidth;
   while (loopCount > nextLoopCount) {
     tries ++;
     if (tries > ${timeout * 2}) {
