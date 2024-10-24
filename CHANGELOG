@@ -1,6 +1,9 @@
 devel
 -----
 
+* Add missing accounting for document lookups in JOIN nodes when in late
+  materialize mode.
+
 * Speed up shortest path further by using a neighbour cache in the 
   SingleServerProvider.
 
