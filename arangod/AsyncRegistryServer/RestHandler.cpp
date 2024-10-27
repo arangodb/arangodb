@@ -23,6 +23,7 @@
 #include "RestHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
 #include "Inspection/VPack.h"
 #include "Rest/CommonDefines.h"
@@ -43,8 +44,9 @@ auto RestHandler::execute() -> RestStatus {
 
   VPackBuilder builder;
   builder.openArray();
-  registry.for_promise(
-      [&](Promise* promise) { velocypack::serialize(builder, *promise); });
+  registry.for_promise([&](PromiseSnapshot promise) {
+    velocypack::serialize(builder, promise);
+  });
   builder.close();
 
   generateResult(rest::ResponseCode::OK, builder.slice());

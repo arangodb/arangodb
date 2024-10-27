@@ -1,3 +1,4 @@
+#include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
 #include "Futures/Future.h"
 
@@ -11,6 +12,7 @@
 
 using namespace arangodb::futures;
 
+namespace {
 struct WaitSlot {
   void resume() {
     ready = true;
@@ -91,6 +93,19 @@ struct ConcurrentNoWait {
   std::jthread _thread;
 };
 
+auto expect_all_promises_in_state(arangodb::async_registry::State state,
+                                  uint number_of_promises) {
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::PromiseSnapshot promise) {
+        count++;
+        EXPECT_EQ(promise.state, state);
+      });
+  EXPECT_EQ(count, number_of_promises);
+}
+
+}  // namespace
+
 template<typename WaitType>
 struct FutureCoroutineTest : ::testing::Test {
   void SetUp() override {
@@ -116,35 +131,14 @@ TYPED_TEST(FutureCoroutineTest, promises_in_async_registry_know_their_state) {
     }();
 
     if (std::is_same<decltype(this->wait), WaitSlot>()) {
-      uint count = 0;
-      arangodb::async_registry::registry.for_promise(
-          [&](arangodb::async_registry::Promise* promise) {
-            count++;
-            EXPECT_EQ(promise->state.load(),
-                      arangodb::async_registry::State::Suspended);
-          });
-      EXPECT_EQ(count, 1);
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
     }
 
     this->wait.resume();
     this->wait.await();
 
-    uint count = 0;
-    arangodb::async_registry::registry.for_promise(
-        [&](arangodb::async_registry::Promise* promise) {
-          count++;
-          EXPECT_EQ(promise->state.load(),
-                    arangodb::async_registry::State::Resolved);
-        });
-    EXPECT_EQ(count, 1);
+    expect_all_promises_in_state(arangodb::async_registry::State::Resolved, 1);
   }
-
-  uint count = 0;
-  arangodb::async_registry::registry.for_promise(
-      [&](arangodb::async_registry::Promise* promise) {
-        count++;
-        EXPECT_EQ(promise->state.load(),
-                  arangodb::async_registry::State::Deleted);
-      });
-  EXPECT_EQ(count, 1);
+  expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 1);
 }
