@@ -378,12 +378,17 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+          fmt::format("vector must be array of numbers!",
+                      _definition.dimensions));
+    }
+
+    if (input.size() != static_cast<std::size_t>(_definition.dimensions)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
           fmt::format(
               "vector length must be of size {}, same as index dimensions!",
               _definition.dimensions));
     }
-    TRI_ASSERT(input.size() ==
-               static_cast<std::size_t>(_definition.dimensions));
 
     trainingData.insert(trainingData.end(), input.begin(), input.end());
     input.clear();
