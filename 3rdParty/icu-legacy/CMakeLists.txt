@@ -25,7 +25,6 @@ file(
 set(ICU64_LIBS 
     "${CMAKE_CURRENT_BINARY_DIR}/lib/libicui18n64.a"
     "${CMAKE_CURRENT_BINARY_DIR}/lib/libicuuc64.a"
-    "${CMAKE_CURRENT_BINARY_DIR}/lib/libicudata64.a"
 )
 
 # add build-type specific c flags and cxx flags here, because otherwise
@@ -53,7 +52,7 @@ ExternalProject_Add(
       CPPFLAGS=${CMAKE_CPPFLAGS}
       --prefix=${CMAKE_CURRENT_BINARY_DIR}
       --with-library-suffix=64
-      --with-data-packaging=static
+      --with-data-packaging=archive
       --enable-static
       --disable-samples 
       --disable-tests
@@ -65,7 +64,6 @@ ExternalProject_Add(
     ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
       && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicui18n64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
       && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicuuc64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
-      && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicudata64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
 )
 
 # copy ICU public header files into build directory
