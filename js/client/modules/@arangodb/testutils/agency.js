@@ -298,7 +298,7 @@ class agencyMgr {
   detectAgencyAlive(httpAuthOptions) {
     if (!this.options.agency ||
         !this.shouldBeCompleted() ||
-        !this.moreIsAlreadyRunning()) {
+        this.moreIsAlreadyRunning()) {
       print("no agency check this time.");
       return;
     }
