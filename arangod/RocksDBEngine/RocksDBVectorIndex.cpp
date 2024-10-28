@@ -186,7 +186,9 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
 struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
   RocksDBIndexIVFFlat(Index* quantizer, size_t dimensions, size_t nLists,
                       faiss::MetricType metricType)
-      : IndexIVFFlat(quantizer, dimensions, nLists, metricType) {}
+      : IndexIVFFlat(quantizer, dimensions, nLists, metricType) {
+    cp.check_input_data_for_NaNs = false;
+  }
 
   void replace_invlists(RocksDBInvertedLists* invertedList) {
     IndexIVFFlat::replace_invlists(invertedList, false);
