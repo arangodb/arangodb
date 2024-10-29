@@ -3,6 +3,7 @@
 import sys
 import json
 from typing import List
+from typing import Optional
 
 class Thread(object):
     def __init__(self, name: str, id: int):
@@ -33,14 +34,44 @@ class Promise(object):
     def __init__(self, hierarchy: int, data: Data):
         self.hierarchy = hierarchy
         self.data = data
-    def __str__(self):
-        return ''.join(["  " for x in range(self.hierarchy)]) + str(Data(**self.data))
+    
+def branching_symbol(hierarchy:int, previous_hierarchy: Optional[int]) -> str:
+    if hierarchy == 0:
+        return "─"
+    elif hierarchy == previous_hierarchy:
+        return "├"
+    else:
+        return "┌"
+    
+def branch_ascii(hierarchy: int, continuations: list) -> str:
+    ascii = [" " for x in range(2*hierarchy)] + [branching_symbol(hierarchy, continuations[-1] if len(continuations) > 0 else None)] + [" "]
+    for continuation in continuations:
+        if continuation < hierarchy:
+            ascii[2*continuation] = "│"
+    return ''.join(ascii)
+                
     
 class Stacktrace(object):
     def __init__(self, promises: List[Promise]):
         self.promises = promises
     def __str__(self):
-        return "\n".join(str(Promise(**x)) for x in self.promises)
+        lines = []
+        stack = []
+        for promise in self.promises:
+            hierarchy = promise["hierarchy"]
+            # pop finished hierarchy
+            if len(stack) > 0 and hierarchy < stack[-1]:
+                stack.pop()
+
+            ascii = branch_ascii(hierarchy, stack)
+
+            # push current but not if already on stack
+            if len(stack) == 0 or hierarchy != stack[0]:
+                stack.append(hierarchy)
+
+            lines.append(ascii + str(Data(**promise["data"])))
+        return "\n".join(lines)
+    
         
 def test_intput() -> str:
     return """{"promise_stacktraces": [
@@ -65,7 +96,7 @@ def test_intput() -> str:
   ],
   [
     {
-      "hierarchy": 3,
+      "hierarchy": 2,
       "data": {
         "owning_thread": {
           "name": "AgencyCache",
@@ -82,7 +113,7 @@ def test_intput() -> str:
       }
     },
     {
-      "hierarchy": 2,
+      "hierarchy": 1,
       "data": {
         "owning_thread": {
           "name": "AgencyCache",
@@ -95,6 +126,40 @@ def test_intput() -> str:
         },
         "id": 124252709790368,
         "waiter": 124252709790848,
+        "state": "Suspended"
+      }
+    },
+    {
+      "hierarchy": 2,
+      "data": {
+        "owning_thread": {
+          "name": "AgencyCache",
+          "id": "124252722300608"
+        },
+        "source_location": {
+          "file_name": "/home/jvolmer/code/arangodb/arangod/Agency/AsyncAgencyComm.cpp",
+          "line": 325,
+          "function_name": "auto (anonymous namespace)::agencyAsyncSend(AsyncAgencyCommManager &, RequestMeta &&, VPackBuffer<uint8_t> &&)::(anonymous class)::operator()(auto) [auto:1 = arangodb::futures::Unit]"
+        },
+        "id": 124252709790848,
+        "waiter": 124252709791008,
+        "state": "Suspended"
+      }
+    },
+    {
+      "hierarchy": 1,
+      "data": {
+        "owning_thread": {
+          "name": "AgencyCache",
+          "id": "124252722300608"
+        },
+        "source_location": {
+          "file_name": "/home/jvolmer/code/arangodb/arangod/Agency/AsyncAgencyComm.cpp",
+          "line": 325,
+          "function_name": "auto (anonymous namespace)::agencyAsyncSend(AsyncAgencyCommManager &, RequestMeta &&, VPackBuffer<uint8_t> &&)::(anonymous class)::operator()(auto) [auto:1 = arangodb::futures::Unit]"
+        },
+        "id": 124252709790848,
+        "waiter": 124252709791008,
         "state": "Suspended"
       }
     },
