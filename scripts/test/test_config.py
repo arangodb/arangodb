@@ -15,7 +15,7 @@ class TestConfig:
     # pylint: disable=too-many-instance-attributes disable=too-many-arguments
     # pylint: disable=too-many-branches disable=too-many-statements
     # pylint: disable=too-few-public-methods disable=line-too-long
-    def __init__(self, cfg, name, suite, args, priority, parallelity, flags):
+    def __init__(self, cfg, name, suite, args, arangosh_args, priority, parallelity, flags):
         """defaults for test config"""
         self.parallelity = parallelity
         self.launch_delay = 1.3
@@ -56,6 +56,9 @@ class TestConfig:
         self.report_file = self.base_logdir / "UNITTEST_RESULT.json"
         self.base_testdir = cfg.test_data_dir_x / self.name
 
+        self.arangosh_args = arangosh_args.split(" ")
+        if self.arangosh_args is None:
+            self.arangosh_args = []
         self.args = copy.deepcopy(cfg.extra_args)
         for param in args:
             if param.startswith("$"):

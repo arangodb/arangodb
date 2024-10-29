@@ -46,6 +46,7 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
     def run_testing(
         self,
         testcase,
+        arangosh_args,
         testing_args,
         timeout,
         directory,
@@ -85,7 +86,8 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
             testscript,
         ]
         run_cmd = (
-            args
+            arangosh_args
+            + args
             + [
                 "--",
                 testcase,

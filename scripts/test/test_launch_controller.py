@@ -49,6 +49,7 @@ def parse_arguments():
     parser.add_argument("--extraArgs", help="", type=str)
     parser.add_argument("--suffix", help="", type=str)
     parser.add_argument("--build", help="build folder", type=str)
+    parser.add_argument("--arangosh_args", help="args to arangosh", type=str)
     return parser.parse_args()
 
 

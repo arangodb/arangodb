@@ -466,6 +466,9 @@ jobs:
         type: string
       suites:
         type: string
+      arangosh_args:
+        type: string
+        default: ""
       size:
         type: string
       extraArgs:
@@ -532,6 +535,7 @@ jobs:
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
+              --arangosh_args "<< parameters.arangosh_args >>" \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
               --extraArgs ' << parameters.extraArgs >>'
