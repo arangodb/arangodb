@@ -310,12 +310,15 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
     deployment_variant = (
         f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
     )
-
+    arangosh_args = ""
+    if 'arangosh_args' in test:
+        arangosh_args = " ".join(test["arangosh_args"])
+        del(test["arangosh_args"])
     job = {
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "arangosh_args": test["arangosh_args"].extend,
+        "arangosh_args": arangosh_args,
         "size": get_test_size(size, build_config, cluster),
         "cluster": cluster,
         "requires": build_jobs,
@@ -609,10 +612,14 @@ def main():
     """entrypoint"""
     try:
         args = parse_arguments()
+        if args.sanitizer is None:
+            args.sanitizer = ""
         if not args.sanitizer in ["", "tsan", "alubsan"]:
             raise Exception(
                 f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'alubsan'"
             )
+        if args.ui_testsuites is None:
+            args.ui_testsuites = ""
         tests = read_definitions(args.definitions)
         # if args.validate_only:
         #    return  # nothing left to do
