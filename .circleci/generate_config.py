@@ -315,7 +315,7 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "arangosh_args": test["arangosh_args"],
+        "arangosh_args": test["arangosh_args"].extend,
         "size": get_test_size(size, build_config, cluster),
         "cluster": cluster,
         "requires": build_jobs,
@@ -354,7 +354,7 @@ def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statem
     job = {
         "name": f"test-{filter_statement}-{edition}-{deployment_mode}-UI",
         "suiteName": filter_statement,
-        "arangosh_args": [],
+        "arangosh_args": "",
         "deployment": deployment_mode,
         "browser": "Remote_CHROME",
         "enterprise": "EP" if build_config.enterprise else "C",
