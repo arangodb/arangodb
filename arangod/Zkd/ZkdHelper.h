@@ -174,6 +174,5 @@ std::ostream& operator<<(std::ostream& os, struct floating_point const& fp);
 
 std::ostream& operator<<(std::ostream& ostream,
                          arangodb::zkd::byte_string const& string);
-std::ostream& operator<<(
-    std::ostream& ostream,
-    arangodb::zkd::byte_string_view string);  // namespace arangodb::zkd
+std::ostream& operator<<(std::ostream& ostream,
+                         arangodb::zkd::byte_string_view string);

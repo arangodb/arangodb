@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
+#include <array>
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -369,7 +370,7 @@ TEST(Zkd_getNextZValue, testFigure41) {
   auto test =
       [&pMin, &pMax](
           std::vector<byte_string> const& inputCoords,
-          std::optional<std::vector<byte_string>> const& expectedCoords) {
+          std::optional<std::vector<zkd::byte_string>> const& expectedCoords) {
         auto const input = interleave(inputCoords);
         auto const expected = std::invoke([&]() -> std::optional<byte_string> {
           if (expectedCoords.has_value()) {
