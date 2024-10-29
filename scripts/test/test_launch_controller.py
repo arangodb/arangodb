@@ -74,7 +74,7 @@ def main():
         )
         runner = TestingRunner(SiteConfig(base_source_dir, build_dir))
         runner.scenarios.append(
-            TestConfig(runner.cfg, name, suite, args.arangosh_args, [*extra_args], 1, 1, [])
+            TestConfig(runner.cfg, name, suite, [*extra_args], args.arangosh_args, 1, 1, [])
         )
         launch_runner(runner, True)
     except Exception as exc:
