@@ -315,7 +315,7 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "arangosh_args": arangosh_args,
+        "arangosh_args": test["arangosh_args"],
         "size": get_test_size(size, build_config, cluster),
         "cluster": cluster,
         "requires": build_jobs,
