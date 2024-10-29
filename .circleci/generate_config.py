@@ -176,7 +176,7 @@ def read_definition_line(line):
             break
         if bit.startswith("--"):
             arangosh_args.append(bit)
-        if "=" in bit:
+        elif "=" in bit:
             key, value = bit.split("=", maxsplit=1)
             params[key] = value
         else:
