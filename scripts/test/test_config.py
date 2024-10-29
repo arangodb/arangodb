@@ -59,7 +59,7 @@ class TestConfig:
         print("i"*80)
         print(arangosh_args)
         self.arangosh_args = [];
-        if self.arangosh_args is not None and self.arangosh_args.len > 0:
+        if self.arangosh_args is not None and len(self.arangosh_args) > 0:
             self.arangosh_args = self.arangosh_args.split(' ')
         self.args = copy.deepcopy(cfg.extra_args)
         for param in args:
