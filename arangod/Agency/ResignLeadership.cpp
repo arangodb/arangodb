@@ -357,9 +357,9 @@ bool ResignLeadership::start(bool& aborts) {
           Supervision::TimePoint now(std::chrono::system_clock::now());
           if (now - timeCreated >=
               std::chrono::seconds{_waitForInSyncTimeout}) {
-            LOG_TOPIC("d4473", ERR, Logger::SUPERVISION)
-                << "Not starting resign leadership job because some shards "
-                   "have no common in sync follower";
+            LOG_TOPIC("d4475", ERR, Logger::SUPERVISION)
+                << "Failing resign leadership job (" << _jobId
+                << ") because some shards have no common in sync follower";
             finish("", "", false,
                    "Some shards failed to have an in sync follower after "
                    "timeout.");
@@ -486,6 +486,7 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
           if (toServer.empty()) {
             LOG_TOPIC("5c92e", INFO, Logger::SUPERVISION)
+                << "ResignLeadership job: " << _jobId << " server: " << _server
                 << "no common in-sync follower found for shard "
                 << database.first << "/" << collptr.first << "/" << shard.first
                 << (_waitForInSync ? " - waiting for follower."
