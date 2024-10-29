@@ -101,7 +101,6 @@ class RocksDBVectorIndex final : public RocksDBIndex {
  private:
   UserVectorIndexDefinition _definition;
   Quantitizer _quantizer;
-  std::size_t _trainingDataSize;
   std::optional<TrainedData> _trainedData;
 };
 

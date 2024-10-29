@@ -22,13 +22,15 @@
 #pragma once
 
 #include <vector>
-#include <optional>
 #include <cstdint>
 
 #include "Inspection/Status.h"
 #include "fmt/format.h"
 
 namespace arangodb {
+
+// Number of training iterations, in faiss it is 25 by default
+static constexpr int kdefaultTrainingIterations{25};
 
 struct VectorHashFunction {
   double bParam;
@@ -78,6 +80,7 @@ struct UserVectorIndexDefinition {
   std::uint64_t dimensions;
   SimilarityMetric metric;
   std::int64_t nLists;
+  int trainingIterations;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, UserVectorIndexDefinition& x) {
@@ -89,8 +92,9 @@ struct UserVectorIndexDefinition {
               }
               return inspection::Status::Success{};
             }),
-        f.field("metric", x.metric).fallback(SimilarityMetric::kCosine),
-        f.field("nLists", x.nLists));
+        f.field("metric", x.metric), f.field("nLists", x.nLists),
+        f.field("trainingIterations", x.trainingIterations)
+            .fallback(kdefaultTrainingIterations));
   }
 };
 

@@ -51,6 +51,15 @@
 
 namespace arangodb {
 
+faiss::MetricType metricToFaissMetric(const SimilarityMetric metric) {
+  switch (metric) {
+    case SimilarityMetric::kL2:
+      return faiss::MetricType::METRIC_L2;
+    case SimilarityMetric::kCosine:
+      return faiss::MetricType::METRIC_INNER_PRODUCT;
+  }
+}
+
 struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
                                LogicalCollection* collection,
@@ -81,10 +90,10 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   void next() override { _it->Next(); }
 
   std::pair<faiss::idx_t, const uint8_t*> get_id_and_codes() override {
-    auto const id = RocksDBKey::indexDocumentId(_it->key());
+    auto const docId = RocksDBKey::indexDocumentId(_it->key());
     TRI_ASSERT(_codeSize == _it->value().size());
     const auto* value = reinterpret_cast<const uint8_t*>(_it->value().data());
-    return {static_cast<faiss::idx_t>(id.id()), value};
+    return {static_cast<faiss::idx_t>(docId.id()), value};
   }
 
  private:
@@ -112,17 +121,17 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
     assert(status.ok());
   }
 
-  [[nodiscard]] std::size_t list_size(std::size_t listNumber) const override {
+  std::size_t list_size(std::size_t /*listNumber*/) const override {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
                                    "faiss list_size not supported");
   }
 
-  const std::uint8_t* get_codes(std::size_t listNumber) const override {
+  const std::uint8_t* get_codes(std::size_t /*listNumber*/) const override {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
                                    "faiss get_codes not supported");
   }
 
-  const faiss::idx_t* get_ids(std::size_t listNumber) const override {
+  const faiss::idx_t* get_ids(std::size_t /*listNumber*/) const override {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
                                    "faiss get_ids not supported");
   }
@@ -148,13 +157,13 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
     return 0;
   }
 
-  void update_entries(std::size_t listNumber, std::size_t offset,
-                      std::size_t n_entry, const faiss::idx_t* ids,
-                      const std::uint8_t* code) override {
+  void update_entries(std::size_t /*listNumber*/, std::size_t /*offset*/,
+                      std::size_t /*n_entry*/, const faiss::idx_t* /*ids*/,
+                      const std::uint8_t* /*code*/) override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  void resize(std::size_t listNumber, std::size_t new_size) override {
+  void resize(std::size_t /*listNumber*/, std::size_t /*new_size*/) override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
@@ -184,10 +193,13 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
 };
 
 struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
-  RocksDBIndexIVFFlat(Index* quantizer, size_t dimensions, size_t nLists,
-                      faiss::MetricType metricType)
-      : IndexIVFFlat(quantizer, dimensions, nLists, metricType) {
+  RocksDBIndexIVFFlat(Index* quantizer,
+                      UserVectorIndexDefinition const& definition)
+      : IndexIVFFlat(quantizer, definition.dimensions, definition.nLists,
+                     metricToFaissMetric(definition.metric)) {
+    // We do the check
     cp.check_input_data_for_NaNs = false;
+    cp.niter = definition.trainingIterations;
   }
 
   void replace_invlists(RocksDBInvertedLists* invertedList) {
@@ -209,20 +221,9 @@ RocksDBIndexIVFFlat createFaissIndex(auto&& quantitizer,
                                      auto&& vectorDefinition) {
   return std::visit(
       [&](auto&& quant) {
-        return RocksDBIndexIVFFlat(
-            &quant, vectorDefinition.dimensions, vectorDefinition.nLists,
-            metricToFaissMetric(vectorDefinition.metric));
+        return RocksDBIndexIVFFlat(&quant, vectorDefinition);
       },
       quantitizer);
-}
-
-faiss::MetricType metricToFaissMetric(const SimilarityMetric metric) {
-  switch (metric) {
-    case SimilarityMetric::kL2:
-      return faiss::MetricType::METRIC_L2;
-    case SimilarityMetric::kCosine:
-      return faiss::MetricType::METRIC_INNER_PRODUCT;
-  }
 }
 
 RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
@@ -239,8 +240,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   if (auto data = info.get("trainedData"); !data.isNone()) {
     velocypack::deserialize(data, _trainedData.emplace());
   }
-  // Number is from faiss::ClusteringParameters::max_points_per_centroid
-  _trainingDataSize = _definition.nLists * 256;
 
   _quantizer =
       std::invoke([this]() -> std::variant<faiss::IndexFlat, faiss::IndexFlatL2,
@@ -278,7 +277,7 @@ void RocksDBVectorIndex::toVelocyPack(
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(VPackValue("params"));
   velocypack::serialize(builder, _definition);
-  if (_trainedData) {
+  if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals)) {
     builder.add(VPackValue("trainedData"));
     velocypack::serialize(builder, *_trainedData);
   }
@@ -368,11 +367,14 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                            _definition.nLists, flatIndex.code_size);
   flatIndex.replace_invlists(&ril);
 
-  std::vector<float> trainingData;
   std::size_t counter{0};
+  std::size_t trainingDataSize =
+      flatIndex.cp.max_points_per_centroid * _definition.nLists;
+  std::vector<float> trainingData;
   std::vector<float> input;
   input.reserve(_definition.dimensions);
-  while (counter < _trainingDataSize && it->Valid()) {
+
+  while (counter < trainingDataSize && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
 
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));

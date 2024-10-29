@@ -916,7 +916,7 @@ Result IndexFactory::enhanceJsonIndexVector(
   }
 
   if (definition.get("unique").isTrue()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique");
+    return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
   }
 
   builder.add(VPackValue("params"));
