@@ -602,6 +602,9 @@ jobs:
       rta-branch:
         type: string
         default: "main"
+      arangosh_args:
+        type: string
+        default: ""
     steps:
       - add_ssh_keys:
           fingerprints:
