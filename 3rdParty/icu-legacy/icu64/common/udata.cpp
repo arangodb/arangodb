@@ -691,6 +691,8 @@ openCommonData(const char *path,          /*  Path from OpenChoice?          */
                 return gCommonICUDataArray[commonDataIndex];
             }
 #if U_PLATFORM_HAS_WINUWP_API == 0 // Windows UWP Platform does not support dll icu data at this time
+#if 0
+            // ArangoDB: We are not using this since we do not compile in the data.
             int32_t i;
             for(i = 0; i < commonDataIndex; ++i) {
                 if(gCommonICUDataArray[i]->pHeader == &U_ICUDATA_ENTRY_POINT) {
@@ -698,6 +700,7 @@ openCommonData(const char *path,          /*  Path from OpenChoice?          */
                     return NULL;
                 }
             }
+#endif
 #endif
         }
 
@@ -715,11 +718,14 @@ openCommonData(const char *path,          /*  Path from OpenChoice?          */
         }
         */
 #if U_PLATFORM_HAS_WINUWP_API == 0 // Windows UWP Platform does not support dll icu data at this time
+#if 0
+        // ArangoDB: We are not using this since we do not compile in the data.
         setCommonICUDataPointer(&U_ICUDATA_ENTRY_POINT, FALSE, pErrorCode);
         {
             Mutex lock;
             return gCommonICUDataArray[commonDataIndex];
         }
+#endif
 #endif
     }
 
