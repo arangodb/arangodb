@@ -162,6 +162,7 @@ class ArangoLanguageFeatureTest
   // Can be omitted if not needed.
   static void SetUpTestCase() {
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollator(nullptr);
+    u_cleanup_64_64();
   }
 
   // Per-test-suite tear-down.
