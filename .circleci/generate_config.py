@@ -317,7 +317,7 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
     )
     arangosh_args = ""
     if 'arangosh_args' in test:
-        arangosh_args = " ".join(test["arangosh_args"])
+        arangosh_args = test["arangosh_args"]
         del(test["arangosh_args"])
     job = {
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
@@ -464,9 +464,9 @@ def add_create_docker_image_job(workflow, build_config, build_jobs, args):
         else "public.ecr.aws/b0b8h2r4/arangodb-preview"
     )
     branch = os.environ.get("CIRCLE_BRANCH", "unknown-brach")
-    match = re.fullmatch("(.+\/)?(.+)", branch)
-    if match:
-        branch = match.group(2)
+    #match = re.fullmatch("(.+\/)?(.+)", branch)
+    #if match:
+    #    branch = match.group(2)
 
     sha1 = os.environ.get("CIRCLE_SHA1")
     if sha1 is None:
