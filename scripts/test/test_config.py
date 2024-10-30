@@ -1,6 +1,7 @@
 #!/bin/env python3
 """ keep the config for one testsuite to execute """
 import copy
+import json
 import logging
 import os
 
@@ -56,11 +57,9 @@ class TestConfig:
         self.report_file = self.base_logdir / "UNITTEST_RESULT.json"
         self.base_testdir = cfg.test_data_dir_x / self.name
 
-        print("i"*80)
-        print(arangosh_args)
         self.arangosh_args = [];
-        if self.arangosh_args is not None and len(self.arangosh_args) > 0:
-            self.arangosh_args = self.arangosh_args.split(' ')
+        if arangosh_args is not None and len(arangosh_args) > 0:
+            self.arangosh_args = json.loads(arangosh_args)
         self.args = copy.deepcopy(cfg.extra_args)
         for param in args:
             if param.startswith("$"):
