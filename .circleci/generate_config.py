@@ -197,7 +197,7 @@ def read_definition_line(line):
     is_cluster = "cluster" in flags
     params = validate_params(params)
 
-    if len(arangosh_args) === 0:
+    if len(arangosh_args) == 0:
         arangosh_args = ""
     else:
         arangosh_args = json.dumps(arangosh_args)
