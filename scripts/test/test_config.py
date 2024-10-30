@@ -58,6 +58,7 @@ class TestConfig:
         self.base_testdir = cfg.test_data_dir_x / self.name
 
         self.arangosh_args = [];
+        # the yaml work around is to have an A prepended. detect and strip out:
         if arangosh_args is not None and len(arangosh_args) > 0 and arangosh_args != 'A ""':
             print(arangosh_args)
             self.arangosh_args = json.loads(arangosh_args[1:])

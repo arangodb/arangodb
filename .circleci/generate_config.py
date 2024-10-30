@@ -199,8 +199,6 @@ def read_definition_line(line):
 
     if len(arangosh_args) == 0:
         arangosh_args = ""
-        # else:
-        #arangosh_args = json.dumps(arangosh_args)
     return {
         "name": params.get("name", suites),
         "suites": suites,
@@ -317,6 +315,7 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
     )
     arangosh_args = ""
     if 'arangosh_args' in test:
+        # Yaml workaround: prepend an A to stop bad things from happening.
         arangosh_args = "A " + json.dumps(test["arangosh_args"])
         del(test["arangosh_args"])
     job = {
@@ -464,9 +463,9 @@ def add_create_docker_image_job(workflow, build_config, build_jobs, args):
         else "public.ecr.aws/b0b8h2r4/arangodb-preview"
     )
     branch = os.environ.get("CIRCLE_BRANCH", "unknown-brach")
-    #match = re.fullmatch("(.+\/)?(.+)", branch)
-    #if match:
-    #    branch = match.group(2)
+    match = re.fullmatch("(.+\/)?(.+)", branch)
+    if match:
+        branch = match.group(2)
 
     sha1 = os.environ.get("CIRCLE_SHA1")
     if sha1 is None:
