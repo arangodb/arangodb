@@ -199,8 +199,8 @@ def read_definition_line(line):
 
     if len(arangosh_args) == 0:
         arangosh_args = ""
-    else:
-        arangosh_args = json.dumps(arangosh_args)
+        # else:
+        #arangosh_args = json.dumps(arangosh_args)
     return {
         "name": params.get("name", suites),
         "suites": suites,
