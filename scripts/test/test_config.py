@@ -58,7 +58,7 @@ class TestConfig:
         self.base_testdir = cfg.test_data_dir_x / self.name
 
         self.arangosh_args = [];
-        if arangosh_args is not None and len(arangosh_args) > 0:
+        if arangosh_args is not None and len(arangosh_args) > 0 and arangosh_args != 'A ""':
             print(arangosh_args)
             self.arangosh_args = json.loads(arangosh_args[1:])
         self.args = copy.deepcopy(cfg.extra_args)
