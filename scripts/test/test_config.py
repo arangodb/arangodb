@@ -59,6 +59,7 @@ class TestConfig:
 
         self.arangosh_args = [];
         if arangosh_args is not None and len(arangosh_args) > 0:
+            print(arangosh_args)
             self.arangosh_args = json.loads(arangosh_args)
         self.args = copy.deepcopy(cfg.extra_args)
         for param in args:
