@@ -64,8 +64,8 @@ void setCollator(std::string_view language,
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, type)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'. "
-        << "The icudtl.dat file might be of the wrong version. "
-        << "Check for an incorrectly set ICU_DATA environment variable";
+        << "The icudtl_legacy.dat file might be of the wrong version. "
+        << "Check for an incorrectly set ICU_DATA_LEGACY environment variable";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
 }
