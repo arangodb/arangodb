@@ -170,6 +170,7 @@ void ClusterIndex::toVelocyPack(
         !pair.key.isEqualString(StaticStrings::IndexName) &&
         !pair.key.isEqualString(StaticStrings::IndexType) &&
         !pair.key.isEqualString(StaticStrings::IndexFields) &&
+        !pair.key.isEqualString(StaticStrings::IndexPrefixFields) &&
         !pair.key.isEqualString("selectivityEstimate") &&
         !pair.key.isEqualString("figures") &&
         !pair.key.isEqualString(StaticStrings::IndexUnique) &&

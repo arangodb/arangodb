@@ -37,6 +37,7 @@ struct ThreadRegistry;
 struct Thread {
   std::string name;
   std::thread::id id;
+  bool operator==(Thread const&) const = default;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Thread& x) {
@@ -44,19 +45,28 @@ auto inspect(Inspector& f, Thread& x) {
                             f.field("id", fmt::format("{}", x.id)));
 }
 
+struct SourceLocationSnapshot {
+  const std::string_view file_name;
+  const std::string_view function_name;
+  std::uint_least32_t line;
+  bool operator==(SourceLocationSnapshot const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, SourceLocationSnapshot& x) {
+  return f.object(x).fields(f.field("file_name", x.file_name),
+                            f.field("line", x.line),
+                            f.field("function_name", x.function_name));
+}
 struct SourceLocation {
+  auto snapshot() -> SourceLocationSnapshot {
+    return SourceLocationSnapshot{.file_name = file_name,
+                                  .function_name = function_name,
+                                  .line = line.load()};
+  }
   const std::string_view file_name;
   const std::string_view function_name;
   std::atomic<std::uint_least32_t> line;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, SourceLocation& x) {
-  if constexpr (!Inspector::isLoading) {  // only serialize
-    return f.object(x).fields(f.field("file_name", x.file_name),
-                              f.field("line", x.line.load()),
-                              f.field("function_name", x.function_name));
-  }
-}
 
 enum class State { Running = 0, Suspended, Resolved, Deleted };
 template<typename Inspector>
@@ -66,6 +76,23 @@ auto inspect(Inspector& f, State& x) {
                                  State::Deleted, "Deleted");
 }
 
+struct PromiseSnapshot {
+  void* id;
+  Thread thread;
+  SourceLocationSnapshot source_location;
+  void* waiter;
+  State state;
+  bool operator==(PromiseSnapshot const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, PromiseSnapshot& x) {
+  return f.object(x).fields(
+      f.field("owning_thread", x.thread),
+      f.field("source_location", x.source_location),
+      f.field("id", reinterpret_cast<intptr_t>(x.id)),
+      f.field("waiter", reinterpret_cast<intptr_t>(x.waiter)),
+      f.field("state", x.state));
+}
 struct Promise {
   Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
           std::source_location location);
@@ -73,6 +100,13 @@ struct Promise {
 
   auto mark_for_deletion() noexcept -> void;
   auto id() -> void* { return this; }
+  auto snapshot() -> PromiseSnapshot {
+    return PromiseSnapshot{.id = id(),
+                           .thread = thread,
+                           .source_location = source_location.snapshot(),
+                           .waiter = waiter.load(),
+                           .state = state.load()};
+  }
 
   Thread thread;
 
@@ -93,17 +127,6 @@ struct Promise {
   // only needed to garbage collect promises
   Promise* next_to_free = nullptr;
 };
-template<typename Inspector>
-auto inspect(Inspector& f, Promise& x) {
-  if constexpr (!Inspector::isLoading) {  // only serialize
-    return f.object(x).fields(
-        f.field("owning_thread", x.thread),
-        f.field("source_location", x.source_location),
-        f.field("id", reinterpret_cast<intptr_t>(x.id())),
-        f.field("waiter", reinterpret_cast<intptr_t>(x.waiter.load())),
-        f.field("state", x.state.load()));
-  }
-}
 
 struct AddToAsyncRegistry {
   AddToAsyncRegistry() = default;
