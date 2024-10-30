@@ -426,6 +426,7 @@ TEST_F(CStringUtf8Test, tst_char_length) {
 TEST_F(CStringUtf8Test, tst_funny_international_strings) {
   const char* left = "三脈山麻桿";
   const char* right = "三脉山麻杆";
-  EXPECT_TRUE(arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(
-                  left, strlen(left), right, strlen(right)) < 0);
+  EXPECT_LT(arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(
+                left, strlen(left), right, strlen(right)),
+            0);
 }
