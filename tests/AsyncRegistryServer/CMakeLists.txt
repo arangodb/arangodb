@@ -1,0 +1,11 @@
+add_library(arango_tests_async_registry_server OBJECT
+  StacktraceTest.cpp)
+target_include_directories(arango_tests_async_registry_server PRIVATE
+  ${PROJECT_SOURCE_DIR}/lib)
+target_link_libraries(arango_tests_async_registry_server PRIVATE
+  gtest)
+
+add_executable(arangodbtests_async_registry_server EXCLUDE_FROM_ALL)
+target_link_libraries(arangodbtests_async_registry_server
+  arango_tests_async_registry_server
+  gtest_main)
