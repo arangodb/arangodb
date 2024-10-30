@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add `waitForInSync`/`waitForInSyncTimeout` option to the resign
+  leadership job and api.
 
 3.12.3 (XXXX-XX-XX)
 -------------------
