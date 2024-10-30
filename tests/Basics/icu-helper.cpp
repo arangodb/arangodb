@@ -31,8 +31,10 @@
 #include "Basics/files.h"
 
 std::string IcuInitializer::icuData;
+std::string IcuInitializer::exePath;
 
 void IcuInitializer::reinit() {
+  loadIcuData();
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(
       "", arangodb::basics::LanguageType::DEFAULT);
 }
@@ -41,12 +43,8 @@ void IcuInitializer::setup(char const* path) {
   if (!icuData.empty()) {
     return;
   }
-  std::string p;
-  std::string binaryPath = TRI_LocateBinaryPath(path);
-  icuData = arangodb::LanguageFeature::prepareIcu(TEST_DIRECTORY, binaryPath, p,
-                                                  "basics_suite");
-  UErrorCode status = U_ZERO_ERROR;
-  udata_setCommonData(reinterpret_cast<void const*>(icuData.c_str()), &status);
+  exePath = path;
+  std::string p = loadIcuData();
   if (icuData.empty() ||
       !arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(
           "", arangodb::basics::LanguageType::DEFAULT)) {
@@ -63,4 +61,14 @@ void IcuInitializer::setup(char const* path) {
         p;
     std::cerr << msg << std::endl;
   }
+}
+
+std::string IcuInitializer::loadIcuData() {
+  std::string p;
+  std::string binaryPath = TRI_LocateBinaryPath(exePath.c_str());
+  icuData = arangodb::LanguageFeature::prepareIcu(TEST_DIRECTORY, binaryPath, p,
+                                                  "basics_suite");
+  UErrorCode status = U_ZERO_ERROR;
+  udata_setCommonData(reinterpret_cast<void const*>(icuData.c_str()), &status);
+  return p;
 }
