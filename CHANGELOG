@@ -1,6 +1,18 @@
 devel
 -----
 
+* Bring unicode collation back to the exact 3.11 behaviour by shipping the 
+  original 3.11 tables in a icudtl_legacy.dat file. This fixes corruption
+  bugs which could happen on upgrade to 3.12 because funny international
+  strings are indexed in VPack indexes.
+
+
+3.12.3 (XXXX-XX-XX)
+-------------------
+
+* Add missing accounting for document lookups in JOIN nodes when in late
+  materialize mode.
+
 * Speed up shortest path further by using a neighbour cache in the 
   SingleServerProvider.
 
