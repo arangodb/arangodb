@@ -317,7 +317,7 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
     )
     arangosh_args = ""
     if 'arangosh_args' in test:
-        arangosh_args = "A " + test["arangosh_args"]
+        arangosh_args = "A " + json.dumps(test["arangosh_args"])
         del(test["arangosh_args"])
     job = {
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
