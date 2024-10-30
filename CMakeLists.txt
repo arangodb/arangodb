@@ -1141,4 +1141,3 @@ add_custom_target(arangodb
    DEPENDS arangod client-tools)
 
 add_subdirectory(utils/gdb-pretty-printers/immer/test)
-
