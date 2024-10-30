@@ -41,7 +41,7 @@ struct Metrics {
               ready_for_deletion_promises,
           std::shared_ptr<metrics::Counter> threads_total,
           std::shared_ptr<metrics::Gauge<std::uint64_t>> running_threads,
-          std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_threads, )
+          std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_threads)
       : promises_total{promises_total},
         registered_promises{registered_promises},
         ready_for_deletion_promises{ready_for_deletion_promises},
