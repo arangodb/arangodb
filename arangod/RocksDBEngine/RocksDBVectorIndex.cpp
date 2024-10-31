@@ -197,7 +197,6 @@ struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
                       UserVectorIndexDefinition const& definition)
       : IndexIVFFlat(quantizer, definition.dimensions, definition.nLists,
                      metricToFaissMetric(definition.metric)) {
-    // We do the check
     cp.check_input_data_for_NaNs = false;
     cp.niter = definition.trainingIterations;
   }
@@ -251,10 +250,14 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
             return {faiss::IndexFlatIP(_definition.dimensions)};
         }
       });
+  LOG_DEVEL << "Loading training data: numberOfVectors: "
+            << _trainedData->numberOfCentroids
+            << " codeDataSize: " << _trainedData->codeData.size()
+            << " codeSize: " << _trainedData->codeSize;
   if (_trainedData) {
     std::visit(
         [this](auto&& quant) {
-          quant.ntotal = _trainedData->numberOfCodes;
+          quant.ntotal = _trainedData->numberOfCentroids;
           quant.codes = _trainedData->codeData;
           quant.code_size = _trainedData->codeSize;
           quant.d = _definition.dimensions;
@@ -277,6 +280,7 @@ void RocksDBVectorIndex::toVelocyPack(
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(VPackValue("params"));
   velocypack::serialize(builder, _definition);
+
   if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals)) {
     builder.add(VPackValue("trainedData"));
     velocypack::serialize(builder, *_trainedData);
@@ -343,7 +347,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
   if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
     return {TRI_ERROR_BAD_PARAMETER, res.error()};
   }
-  TRI_ASSERT(input.size() == static_cast<std::size_t>(_definition.dimensions));
 
   if (input.size() != static_cast<std::size_t>(_definition.dimensions)) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -362,13 +365,14 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                                       rocksdb::Slice upper,
                                       RocksDBMethods* methods) {
+  LOG_DEVEL << " Calling prepareIndex ";
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, &_collection, nullptr, methods, _cf,
                            _definition.nLists, flatIndex.code_size);
   flatIndex.replace_invlists(&ril);
 
-  std::size_t counter{0};
-  std::size_t trainingDataSize =
+  std::int64_t counter{0};
+  std::int64_t trainingDataSize =
       flatIndex.cp.max_points_per_centroid * _definition.nLists;
   std::vector<float> trainingData;
   std::vector<float> input;
@@ -410,11 +414,15 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   LOG_TOPIC("a160b", INFO, Logger::ROCKSDB)
       << "Finished training for vector index";
 
-  // Update vector definition data with quantitizer data
+  // Update vector definition data with quantizier data
   _trainedData = std::visit(
       [](auto&& quant) {
+        LOG_DEVEL << "Trained data: codeDataSize: " << quant.codes.size()
+                  << " ntotal: " << quant.ntotal
+                  << " codeSize: " << quant.code_size;
+
         return TrainedData{.codeData = quant.codes,
-                           .numberOfCodes = static_cast<size_t>(quant.ntotal),
+                           .numberOfCentroids = quant.ntotal,
                            .codeSize = quant.code_size};
       },
       _quantizer);
