@@ -89,7 +89,7 @@ def testing_runner(testing_instance, this, arangosh):
         this.finish = datetime.now(tz=None)
         this.delta = this.finish - this.start
         this.delta_seconds = this.delta.total_seconds()
-        logging.info("done with %s - %d", {this.name_enum, ret["rc_exit"]})
+        logging.info("done with %s - %s", {this.name_enum, str(ret["rc_exit"])})
         this.crashed = (
             not this.crashed_file.exists() or this.crashed_file.read_text() == "true"
         )
