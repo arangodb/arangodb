@@ -1,6 +1,8 @@
 v3.11.12 (XXXX-XX-XX)
 ---------------------
 
+* Update tzdata as of 31.10.2024.
+
 * BTS_1792: Call `setLocale` earlier during startup to prevent crashes.
 
 * Change dumping of VPack to JSON for large double values with absolute
