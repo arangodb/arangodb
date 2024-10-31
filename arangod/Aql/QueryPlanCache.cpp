@@ -109,6 +109,7 @@ size_t QueryPlanCache::Value::memoryUsage() const noexcept {
 
 QueryPlanCache::QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
                                size_t maxIndividualEntrySize,
+                               double invalidationTime,
                                metrics::Counter* numberOfHitsMetric,
                                metrics::Counter* numberOfMissesMetric)
     : _entries(5, KeyHasher{}, KeyEqual{}),
@@ -116,6 +117,7 @@ QueryPlanCache::QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
       _maxEntries(maxEntries),
       _maxMemoryUsage(maxMemoryUsage),
       _maxIndividualEntrySize(maxIndividualEntrySize),
+      _invalidationTime(invalidationTime),
       _numberOfHitsMetric(numberOfHitsMetric),
       _numberOfMissesMetric(numberOfMissesMetric) {}
 
@@ -134,11 +136,12 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
   std::shared_lock guard(_mutex);
   if (auto it = _entries.find(key); it != _entries.end()) {
     // increase numUsed counter of current entry.
-    // when used more than kMaxNumUsages times, we intentionally wipe the entry
-    // from the cache and return a nullptr. this is done so that somehow
-    // outdated entries get replaced with fresh entries eventually
-    if ((*it).second->numUsed.fetch_add(1, std::memory_order_relaxed) <=
-        kMaxNumUsages) {
+    // when entry is older than _invalidationTime, we intentionally wipe
+    // the entry from the cache and return a nullptr. this is done so
+    // that somehow outdated entries get replaced with fresh entries
+    // eventually
+    if ((*it).second->dateCreated + _invalidationTime > TRI_microtime()) {
+      (*it).second->numUsed.fetch_add(1, std::memory_order_relaxed);
       if (_numberOfHitsMetric != nullptr) {
         _numberOfHitsMetric->count();
       }
@@ -305,11 +308,16 @@ void QueryPlanCache::applySizeConstraints() {
     // pseudorandom number between 0 and 63 and skip that many steps in the map.
     // when done with skipping, we have found our target item and evict it. this
     // is not very random, but it is bounded and allows us to get away without
-    // maintaining a full LRU list.
+    // maintaining a full LRU list. When we stumble over an entry that is
+    // already beyond its invalidation time, we evict it immediately.
     size_t entriesToSkip =
         RandomGenerator::interval(uint32_t(64)) % _entries.size();
     auto it = _entries.begin();
+    auto now = TRI_microtime();
     while (entriesToSkip-- > 0) {
+      if (it->second->dateCreated + _invalidationTime < now) {
+        break;
+      }
       ++it;
     }
     TRI_ASSERT(it != _entries.end());

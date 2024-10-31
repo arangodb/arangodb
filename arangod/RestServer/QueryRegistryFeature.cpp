@@ -208,6 +208,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
       _queryPlanCacheMaxEntries(128),
       _queryPlanCacheMaxMemoryUsage(8 * 1024 * 1024),
       _queryPlanCacheMaxIndividualEntrySize(2 * 1024 * 1024),
+      _queryPlanCacheInvalidationTime(900.0),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
@@ -508,6 +509,16 @@ queries.)");
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31202);
+  options
+      ->addOption("--query.plan-cache-invalidation-time",
+                  "The time in seconds after which a query plan is invalidated "
+                  "in the query plan cache.",
+                  new DoubleParameter(&_queryPlanCacheInvalidationTime),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31204);
 
   // query results cache
   options

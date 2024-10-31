@@ -142,7 +142,7 @@ class QueryPlanCache {
   QueryPlanCache& operator=(QueryPlanCache const&) = delete;
 
   QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
-                 size_t maxIndividualEntrySize,
+                 size_t maxIndividualEntrySize, double invalidationTime,
                  metrics::Counter* numberOfHitsMetric,
                  metrics::Counter* numberOfMissesMetric);
 
@@ -200,6 +200,9 @@ class QueryPlanCache {
 
   // Maximum allowed size for an individual entry.
   size_t const _maxIndividualEntrySize;
+
+  // Time to invalidate a cache entry in seconds:
+  double _invalidationTime;
 
   /// Number of plan cache lookup hits
   metrics::Counter* _numberOfHitsMetric;

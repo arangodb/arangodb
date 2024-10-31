@@ -107,6 +107,9 @@ class QueryRegistryFeature final : public ArangodFeature {
   uint64_t queryPlanCacheMaxIndividualEntrySize() const noexcept {
     return _queryPlanCacheMaxIndividualEntrySize;
   }
+  double queryPlanCacheInvalidationTime() const noexcept {
+    return _queryPlanCacheInvalidationTime;
+  }
   metrics::Counter* queryPlanCacheHitsMetric() const {
     return &_queryPlanCacheHitsMetric;
   }
@@ -155,6 +158,8 @@ class QueryRegistryFeature final : public ArangodFeature {
   uint64_t _queryPlanCacheMaxMemoryUsage;
   // query plan cache - maximum individual entry size
   uint64_t _queryPlanCacheMaxIndividualEntrySize;
+  // query plan cache - invalidation time in seconds
+  double _queryPlanCacheInvalidationTime;
 
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;
