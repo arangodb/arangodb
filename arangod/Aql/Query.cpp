@@ -1604,12 +1604,6 @@ bool Query::canUsePlanCache() const noexcept {
     return false;
   }
 
-  // using the forceOneShardAttributeValue query option currently
-  // disables query plan caching as well.
-  if (!_queryOptions.forceOneShardAttributeValue.empty()) {
-    return false;
-  }
-
   return true;
 }
 

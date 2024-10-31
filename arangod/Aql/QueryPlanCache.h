@@ -49,10 +49,12 @@ struct QueryOptions;
 // The cache can cache serialized query execution plans (in velocypack format)
 // in a map, mapping from {query string, bind parameters, fullCount} to the
 // cached plan.
-// The cache keys consist of the full query string, the query's `fullcount`
-// attribute value and the set of "relevant" bind parameters, which are the
-// collection name parameters only. Attribute name bind parameters and value
-// bind parameters are not part of the cache keys.
+// The cache keys consist of the full query string, the query's
+// `fullcount` and `forceOneShard` attribute values and the set of
+// "relevant" bind parameters, which are the collection name parameters
+// only. Attribute name bind parameters and value bind parameters are
+// not part of the cache keys.
+// We need all this in the key since they can influence query optimization!
 // The collection name bind parameters are relevant during the query
 // optimization phase, because they determine which collections and indexes
 // can be used by the query.
@@ -85,6 +87,9 @@ class QueryPlanCache {
 
     // Fullcount enabled for query: yes or no
     bool fullCount;
+
+    // forceOneShard enabled for query: yes or no
+    bool forceOneShard;
 
     size_t hash() const;
 

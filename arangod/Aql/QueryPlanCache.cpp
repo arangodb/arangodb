@@ -61,9 +61,11 @@ size_t QueryPlanCache::KeyHasher::operator()(
   boost::hash_combine(hash, key.queryString.hash());
   boost::hash_combine(hash,
                       VPackSlice(key.bindParameters->data()).normalizedHash());
-  // arbitrary integer values used here from https://hexwords.netlify.app/
+  // arbitrary integer values used here from sha1sum-ing
   // for fullcount=true / fullcount=false
-  boost::hash_combine(hash, key.fullCount ? 0xB16F007 : 0xB0BCA7);
+  // for forceOneShard=true / forceOneShard=false
+  boost::hash_combine(hash, key.fullCount ? 0x8ca49570 : 0xcd9ff1e8);
+  boost::hash_combine(hash, key.forceOneShard ? 0x36c0c09b : 0x20e96f11);
   return hash;
 }
 
@@ -197,7 +199,8 @@ QueryPlanCache::Key QueryPlanCache::createCacheKey(
     QueryString const& queryString,
     std::shared_ptr<velocypack::Builder> const& bindVars,
     QueryOptions const& queryOptions) const {
-  return {queryString, filterBindParameters(bindVars), queryOptions.fullCount};
+  return {queryString, filterBindParameters(bindVars), queryOptions.fullCount,
+          !queryOptions.forceOneShardAttributeValue.empty()};
 }
 
 void QueryPlanCache::invalidate(std::string const& dataSourceGuid) {
