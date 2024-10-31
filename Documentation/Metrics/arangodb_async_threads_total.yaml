@@ -1,7 +1,7 @@
 name: arangodb_async_threads_total
-introducedIn: "3.12.3"
+introducedIn: "3.12.4"
 help: |
-  Number of all threads created so far that execute asynchronous functions.
+  Total number of threads that registered asynchronous promises since database creation.
 unit: number
 type: counter
 category: Statistics
@@ -9,4 +9,4 @@ complexity: advanced
 exposedBy:
   - dbserver
 description: |
-  Number of all threads created so far that execute asynchronous functions.
+  Total number of threads that registered asynchronous promises since database creation.

@@ -32,9 +32,10 @@ using namespace arangodb::async_registry;
 
 namespace {
 
-auto promises_in_registry(Registry& registry) -> std::vector<Promise*> {
-  std::vector<Promise*> promises;
-  registry.for_promise([&](Promise* promise) { promises.push_back(promise); });
+auto promises_in_registry(Registry& registry) -> std::vector<PromiseSnapshot> {
+  std::vector<PromiseSnapshot> promises;
+  registry.for_promise(
+      [&](PromiseSnapshot promise) { promises.push_back(promise); });
   return promises;
 }
 
@@ -48,7 +49,8 @@ TEST_F(AsyncRegistryTest, registers_promise_on_same_thread) {
 
   auto* promise = thread_registry->add_promise();
 
-  EXPECT_EQ(promises_in_registry(registry), std::vector<Promise*>{promise});
+  EXPECT_EQ(promises_in_registry(registry),
+            std::vector<PromiseSnapshot>{promise->snapshot()});
 
   promise->mark_for_deletion();
   thread_registry->garbage_collect();
@@ -62,7 +64,8 @@ TEST_F(AsyncRegistryTest, registers_promise_on_different_threads) {
 
     auto* promise = thread_registry->add_promise();
 
-    EXPECT_EQ(promises_in_registry(registry), std::vector<Promise*>{promise});
+    EXPECT_EQ(promises_in_registry(registry),
+              std::vector<PromiseSnapshot>{promise->snapshot()});
 
     promise->mark_for_deletion();
     thread_registry->garbage_collect();
@@ -77,7 +80,8 @@ TEST_F(AsyncRegistryTest,
   auto* second_promise = thread_registry->add_promise();
 
   EXPECT_EQ(promises_in_registry(registry),
-            (std::vector<Promise*>{second_promise, first_promise}));
+            (std::vector<PromiseSnapshot>{second_promise->snapshot(),
+                                          first_promise->snapshot()}));
 
   first_promise->mark_for_deletion();
   second_promise->mark_for_deletion();
@@ -95,7 +99,8 @@ TEST_F(AsyncRegistryTest, iterates_over_promises_on_differen_threads) {
     auto* second_promise = thread_registry->add_promise();
 
     EXPECT_EQ(promises_in_registry(registry),
-              (std::vector<Promise*>{first_promise, second_promise}));
+              (std::vector<PromiseSnapshot>{first_promise->snapshot(),
+                                            second_promise->snapshot()}));
 
     second_promise->mark_for_deletion();
     thread_registry->garbage_collect();
@@ -111,13 +116,15 @@ TEST_F(AsyncRegistryTest,
   auto thread_registry = registry.add_thread();
 
   auto* promise = thread_registry->add_promise();
-  EXPECT_EQ(promises_in_registry(registry), (std::vector<Promise*>{promise}));
+  EXPECT_EQ(promises_in_registry(registry),
+            (std::vector<PromiseSnapshot>{promise->snapshot()}));
 
   promise->mark_for_deletion();
-  EXPECT_EQ(promises_in_registry(registry), (std::vector<Promise*>{promise}));
+  EXPECT_EQ(promises_in_registry(registry),
+            (std::vector<PromiseSnapshot>{promise->snapshot()}));
 
   thread_registry->garbage_collect();
-  EXPECT_EQ(promises_in_registry(registry), (std::vector<Promise*>{}));
+  EXPECT_EQ(promises_in_registry(registry), (std::vector<PromiseSnapshot>{}));
 }
 
 TEST_F(AsyncRegistryTest, promises_on_removed_thread_are_still_iterated_over) {
@@ -127,7 +134,8 @@ TEST_F(AsyncRegistryTest, promises_on_removed_thread_are_still_iterated_over) {
     auto thread_registry = registry.add_thread();
     promise = thread_registry->add_promise();
   }
-  EXPECT_EQ(promises_in_registry(registry), (std::vector<Promise*>{promise}));
+  EXPECT_EQ(promises_in_registry(registry),
+            (std::vector<PromiseSnapshot>{promise->snapshot()}));
 
   promise->mark_for_deletion();
 }
@@ -147,5 +155,5 @@ TEST_F(
 
   promise->mark_for_deletion();
 
-  EXPECT_EQ(promises_in_registry(registry), (std::vector<Promise*>{}));
+  EXPECT_EQ(promises_in_registry(registry), (std::vector<PromiseSnapshot>{}));
 }
