@@ -51,11 +51,8 @@ DECLARE_GAUGE(arangodb_async_registered_threads, std::uint64_t,
               "Number of threads the asynchronous registry iterates over to "
               "list all asynchronous promises");
 
-Feature::Feature(Server& server)
-    : ArangodFeature{server, *this},
-      metrics{create_metrics(
-          server.template getFeature<arangodb::metrics::MetricsFeature>())} {
-  registry.set_metrics(metrics);
+Feature::Feature(Server& server) : ArangodFeature{server, *this} {
+  startsAfter<arangodb::metrics::MetricsFeature>();
 }
 
 auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
@@ -92,6 +89,9 @@ struct Feature::PromiseCleanupThread {
 };
 
 void Feature::start() {
+  metrics = create_metrics(
+      server().template getFeature<arangodb::metrics::MetricsFeature>());
+  registry.set_metrics(metrics);
   _cleanupThread = std::make_shared<PromiseCleanupThread>(_options.gc_timeout);
 }
 
