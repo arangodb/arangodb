@@ -6200,7 +6200,7 @@
           "description": "additional options for key generation. If specified, then `keyOptions`\nshould be a JSON object containing the following attributes:\n",
           "properties": {
            "allowUserKeys": {
-            "description": "If set to `true`, then you are allowed to supply own key values in the\n`_key` attribute of documents. If set to `false`, then the key generator\nis solely be responsible for generating keys and an error is raised if you\nsupply own key values in the `_key` attribute of documents.\n\n\n\u003e **WARNING:**\nYou should not use both user-specified and automatically generated document keys\nin the same collection in cluster deployments for collections with more than a\nsingle shard. Mixing the two can lead to conflicts because Coordinators that\nauto-generate keys in this case are not aware of all keys which are already used.\n",
+            "description": "If set to `true`, then you are allowed to supply own key values in the\n`_key` attribute of documents. If set to `false`, then the key generator\nis solely responsible for generating keys and an error is raised if you\nsupply own key values in the `_key` attribute of documents.\n\n\n\u003e **WARNING:**\nYou should not use both user-specified and automatically generated document keys\nin the same collection in cluster deployments for collections with more than a\nsingle shard. Mixing the two can lead to conflicts because Coordinators that\nauto-generate keys in this case are not aware of all keys which are already used.\n",
             "type": "boolean"
            },
            "increment": {
@@ -10294,7 +10294,8 @@
               "filtered",
               "httpRequests",
               "executionTime",
-              "peakMemoryUsage"
+              "peakMemoryUsage",
+              "intermediateCommits"
              ],
              "type": "object"
             },
@@ -10516,8 +10517,6 @@
                 },
                 "required": [
                  "name",
-                 "type",
-                 "name",
                  "type"
                 ],
                 "type": "object"
@@ -10559,13 +10558,6 @@
               }
              },
              "required": [
-              "nodes",
-              "rules",
-              "collections",
-              "variables",
-              "estimatedCost",
-              "estimatedNrItems",
-              "isModificationQuery",
               "nodes",
               "rules",
               "collections",
@@ -10617,15 +10609,6 @@
               }
              },
              "required": [
-              "initializing",
-              "parsing",
-              "optimizing ast",
-              "loading collections",
-              "instantiating plan",
-              "optimizing plan",
-              "instantiating executors",
-              "executing",
-              "finalizing",
               "initializing",
               "parsing",
               "optimizing ast",
@@ -10702,10 +10685,6 @@
                  "id",
                  "calls",
                  "items",
-                 "runtime",
-                 "id",
-                 "calls",
-                 "items",
                  "runtime"
                 ],
                 "type": "object"
@@ -10746,18 +10725,7 @@
               "httpRequests",
               "executionTime",
               "peakMemoryUsage",
-              "writesExecuted",
-              "writesIgnored",
-              "scannedFull",
-              "scannedIndex",
-              "cursorsCreated",
-              "cursorsRearmed",
-              "cacheHits",
-              "cacheMisses",
-              "filtered",
-              "httpRequests",
-              "executionTime",
-              "peakMemoryUsage"
+              "intermediateCommits"
              ],
              "type": "object"
             },
@@ -10776,8 +10744,6 @@
               },
               "required": [
                "code",
-               "message",
-               "code",
                "message"
               ],
               "type": "object"
@@ -10786,8 +10752,6 @@
             }
            },
            "required": [
-            "warnings",
-            "stats",
             "warnings",
             "stats"
            ],
@@ -10967,10 +10931,6 @@
                 },
                 "required": [
                  "name",
-                 "type",
-                 "name",
-                 "type",
-                 "name",
                  "type"
                 ],
                 "type": "object"
@@ -11012,20 +10972,6 @@
               }
              },
              "required": [
-              "nodes",
-              "rules",
-              "collections",
-              "variables",
-              "estimatedCost",
-              "estimatedNrItems",
-              "isModificationQuery",
-              "nodes",
-              "rules",
-              "collections",
-              "variables",
-              "estimatedCost",
-              "estimatedNrItems",
-              "isModificationQuery",
               "nodes",
               "rules",
               "collections",
@@ -11077,24 +11023,6 @@
               }
              },
              "required": [
-              "initializing",
-              "parsing",
-              "optimizing ast",
-              "loading collections",
-              "instantiating plan",
-              "optimizing plan",
-              "instantiating executors",
-              "executing",
-              "finalizing",
-              "initializing",
-              "parsing",
-              "optimizing ast",
-              "loading collections",
-              "instantiating plan",
-              "optimizing plan",
-              "instantiating executors",
-              "executing",
-              "finalizing",
               "initializing",
               "parsing",
               "optimizing ast",
@@ -11171,14 +11099,6 @@
                  "id",
                  "calls",
                  "items",
-                 "runtime",
-                 "id",
-                 "calls",
-                 "items",
-                 "runtime",
-                 "id",
-                 "calls",
-                 "items",
                  "runtime"
                 ],
                 "type": "object"
@@ -11219,30 +11139,7 @@
               "httpRequests",
               "executionTime",
               "peakMemoryUsage",
-              "writesExecuted",
-              "writesIgnored",
-              "scannedFull",
-              "scannedIndex",
-              "cursorsCreated",
-              "cursorsRearmed",
-              "cacheHits",
-              "cacheMisses",
-              "filtered",
-              "httpRequests",
-              "executionTime",
-              "peakMemoryUsage",
-              "writesExecuted",
-              "writesIgnored",
-              "scannedFull",
-              "scannedIndex",
-              "cursorsCreated",
-              "cursorsRearmed",
-              "cacheHits",
-              "cacheMisses",
-              "filtered",
-              "httpRequests",
-              "executionTime",
-              "peakMemoryUsage"
+              "intermediateCommits"
              ],
              "type": "object"
             },
@@ -11261,10 +11158,6 @@
               },
               "required": [
                "code",
-               "message",
-               "code",
-               "message",
-               "code",
                "message"
               ],
               "type": "object"
@@ -11273,10 +11166,6 @@
             }
            },
            "required": [
-            "warnings",
-            "stats",
-            "warnings",
-            "stats",
             "warnings",
             "stats"
            ],
@@ -21178,7 +21067,7 @@
       }
      },
      {
-      "description": "Whether to include hidden indexes in the result. Internal indexes\nand ones that are currently built in the background are hidden.\n",
+      "description": "Whether to include hidden indexes in the result. Internal indexes\n(such as `arangosearch`) and ones that are currently built in the\nbackground are hidden.\n",
       "in": "query",
       "name": "withHidden",
       "required": false,
