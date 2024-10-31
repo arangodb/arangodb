@@ -6,6 +6,11 @@ devel
   bugs which could happen on upgrade to 3.12 because funny international
   strings are indexed in VPack indexes.
 
+* Improve the observability of asynchronous operations by saving all ongoing
+  asynchronous operations (associated with async<T> and Future<T>) in a registry.
+  A REST call gives information about all these operations via a list of all
+  ongoing stacktraces.
+
 
 3.12.3 (2024-10-25)
 -------------------

@@ -74,6 +74,8 @@ auto RestHandler::execute() -> RestStatus {
   auto awaited_promises = promises.index_by_awaitee();
 
   VPackBuilder builder;
+  builder.openObject();
+  builder.add(VPackValue("promise_stacktraces"));
   builder.openArray();
   for (auto root : roots) {
     builder.openArray();
@@ -92,6 +94,7 @@ auto RestHandler::execute() -> RestStatus {
     } while (true);
     builder.close();
   }
+  builder.close();
   builder.close();
 
   generateResult(rest::ResponseCode::OK, builder.slice());

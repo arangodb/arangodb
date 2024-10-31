@@ -31,6 +31,7 @@
 #include <condition_variable>
 #include <exception>
 #include <mutex>
+#include <stdexcept>
 
 using namespace arangodb::futures;
 
@@ -923,10 +924,18 @@ TEST(FutureTest,
         auto future =
             awaited_fn().thenValue([](int a) { return makeFuture(a); });
       },
+      []() {
+        auto future =
+            makeFuture(1).thenValue([&](int a) { return awaited_fn(); });
+      },
       []() { auto future = awaited_fn().then([](Try<int>&& a) { return 1; }); },
       []() {
         auto future =
             awaited_fn().then([](Try<int>&& a) { return makeFuture(a); });
+      },
+      []() {
+        auto future =
+            makeFuture(1).then([](Try<int>&& a) { return awaited_fn(); });
       },
       []() {
         auto future = awaited_fn().thenError<std::logic_error&>(
@@ -935,6 +944,12 @@ TEST(FutureTest,
       []() {
         auto future = awaited_fn().thenError<std::logic_error&>(
             [](std::logic_error& t) { return makeFuture(1); });
+      },
+      []() {
+        auto future =
+            makeFuture<int>(std::make_exception_ptr(std::logic_error("foo")))
+                .thenError<std::logic_error&>(
+                    [](std::logic_error& t) { return awaited_fn(); });
       },
   };
 
