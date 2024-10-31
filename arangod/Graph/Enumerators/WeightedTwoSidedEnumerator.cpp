@@ -45,21 +45,6 @@
 #include <velocypack/HashedStringRef.h>
 #include <limits>
 
-namespace {
-
-bool almostEqual(double x, double y) {
-  if (x == y) {
-    return true;
-  }
-
-  auto diff = std::abs(x - y);
-  auto norm =
-      std::min((std::abs(x) + std::abs(y)), std::numeric_limits<double>::max());
-  return diff < std::max(std::numeric_limits<double>::round_error(),
-                         std::numeric_limits<double>::epsilon() * norm);
-}
-}  // namespace
-
 namespace arangodb::graph {
 
 /*
@@ -95,6 +80,7 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::Ball::reset(VertexRef center,
                                                             size_t depth) {
   clear();
+  _center = center;
   auto firstStep = _provider.startVertex(center, depth);
   _queue.append(std::move(firstStep));
 }
@@ -272,45 +258,46 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   auto tmp = _queue.pop();
 
   // if the other side has explored this vertex, don't add it again
-  if (!other.hasBeenVisited(tmp)) {
-    auto posPrevious = _interior.append(std::move(tmp));
-    auto& step = _interior.getStepReference(posPrevious);
-
-    TRI_ASSERT(step.getWeight() >= _diameter);
-    _diameter = step.getWeight();
-    ValidationResult res = _validator.validatePath(step);
-
-    if (!res.isFiltered()) {
-      _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
-    }
-
-    if (!res.isPruned()) {
-      _provider.expand(step, posPrevious, [&](Step n) -> void {
-        // TODO: maybe the pathStore could be asked whether a vertex has been
-        // visited?
-        if (other.hasBeenVisited(n)) {
-          // Need to validate this step, too:
-          ValidationResult res =
-              _validator.validatePathWithoutGlobalVertexUniqueness(n);
-          // Note that we must not fully enforce uniqueness here for the
-          // following reason: If vertex uniqueness is set to global,
-          // then we would burn that vertex (which belongs to the
-          // other side!), so that we can no longer reach it with a
-          // different path, which might have a smaller weight.
-          if (!(res.isFiltered() || res.isPruned())) {
-            _haveSeenOtherSide = true;
-            other.matchResultsInShell(n, candidates, _validator);
-          }
-        } else {
-          // If the other side has already visited the vertex, we do not
-          // have to put it on our queue. But if not, we must look at it
-          // later:
-          _queue.append(std::move(n));
-        }
-      });
-    }
-  } else {
+  if (other.hasBeenVisited(tmp)) {
     _haveSeenOtherSide = true;
+  }
+
+  auto posPrevious = _interior.append(std::move(tmp));
+  auto& step = _interior.getStepReference(posPrevious);
+
+  TRI_ASSERT(step.getWeight() >= _diameter);
+  _diameter = step.getWeight();
+  ValidationResult res = _validator.validatePath(step);
+
+  if (!res.isFiltered()) {
+    _visitedNodes[step.getVertex().getID()].emplace_back(posPrevious);
+  }
+
+  if (!res.isPruned() && step.getVertex().getID() != other.getCenter()) {
+    // We do not want to go further than the center of the other side!
+    _provider.expand(step, posPrevious, [&](Step n) -> void {
+      // TODO: maybe the pathStore could be asked whether a vertex has been
+      // visited?
+      if (other.hasBeenVisited(n)) {
+        // Need to validate this step, too:
+        ValidationResult res =
+            _validator.validatePathWithoutGlobalVertexUniqueness(n);
+        // Note that we must not fully enforce uniqueness here for the
+        // following reason: If vertex uniqueness is set to global,
+        // then we would burn that vertex (which belongs to the
+        // other side!), so that we can no longer reach it with a
+        // different path, which might have a smaller weight.
+        if (!(res.isFiltered() || res.isPruned())) {
+          _haveSeenOtherSide = true;
+          other.matchResultsInShell(n, candidates, _validator);
+        }
+      } else {
+        // If the other side has already visited the vertex, we do not
+        // have to put it on our queue. But if not, we must look at it
+        // later:
+        _queue.append(std::move(n));
+      }
+    });
   }
 }
 
@@ -431,7 +418,12 @@ WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _right{Direction::BACKWARD, std::move(backwardProvider), _options,
              std::move(validatorOptions), resourceMonitor},
       _resultsCache(_left, _right),
-      _resultPath{_left.provider(), _right.provider()} {}
+      _resultPath{_left.provider(), _right.provider()} {
+  // For now, we only support KShortestPaths searches, since we do not
+  // offer weighted AllShortestPaths searches anyway. This could be implemented
+  // here.
+  TRI_ASSERT(_options.getPathType() == PathType::Type::KShortestPaths);
+}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -475,10 +467,8 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::isDone() const {
-  if (_options.getPathType() == PathType::Type::KShortestPaths) {
-    if (!_candidatesStore.isEmpty()) {
-      return false;
-    }
+  if (!_candidatesStore.isEmpty()) {
+    return false;
   }
 
   return _results.empty() && searchDone();
@@ -548,12 +538,6 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
      * Helper method to take care of stored results (in: _results)
      */
     if (!_results.empty()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      if (_options.getPathType() == PathType::Type::ShortestPath) {
-        TRI_ASSERT(_results.size() == 1);
-      }
-#endif
-
       auto const& [weight, leftVertex, rightVertex] = _results.front();
 
       _resultPath.clear();
@@ -561,14 +545,9 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       _right.buildPath(rightVertex, _resultPath);
       TRI_ASSERT(!_resultPath.isEmpty());
 
-      if (_options.getPathType() == PathType::Type::KShortestPaths ||
-          _emitWeight) {
-        // Add weight attribute to edges
-        _resultPath.toVelocyPack(
-            result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
-      } else {
-        _resultPath.toVelocyPack(result);
-      }
+      // Add weight attribute to edges
+      _resultPath.toVelocyPack(
+          result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
       // remove handled result
       _results.pop_front();
 
@@ -586,14 +565,9 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     _right.buildPath(rightVertex, _resultPath);
     TRI_ASSERT(!_resultPath.isEmpty());
 
-    if (_options.getPathType() == PathType::Type::KShortestPaths ||
-        _emitWeight) {
-      // Add weight attribute to edges
-      _resultPath.toVelocyPack(
-          result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
-    } else {
-      _resultPath.toVelocyPack(result);
-    }
+    // Add weight attribute to edges
+    _resultPath.toVelocyPack(
+        result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
   };
 
   auto checkCandidates = [&]() {
@@ -603,7 +577,6 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     TRI_ASSERT(searchDone());
     // ShortestPath not allowed because we cannot produce more than one
     // result in total.
-    TRI_ASSERT(_options.getPathType() != PathType::Type::ShortestPath);
 
     if (!_candidatesStore.isEmpty()) {
       while (!_candidatesStore.isEmpty()) {
@@ -625,27 +598,6 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     return false;
   };
 
-  auto checkShortestPathCandidates = [&]() {
-    TRI_ASSERT(searchDone());
-    TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
-    /*
-     * Helper method to take care of ShortestPath related candidates
-     * Only allowed to find and return exactly one path.
-     */
-    bool foundPath = handleResult();
-    if (!foundPath) {
-      if (!_candidatesStore.isEmpty() && !isAlgorithmFinished()) {
-        CalculatedCandidate candidate = _candidatesStore.pop();
-        handleCandidate(std::move(candidate));
-        foundPath = true;
-        // ShortestPath produces only one result.
-        setAlgorithmFinished();
-      }
-    }
-
-    return foundPath;
-  };
-
   while (!isDone()) {
     if (!searchDone()) {
       searchMoreResults();
@@ -656,20 +608,12 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
         // At this state we've produced a valid path result. In case we're
         // using the path type "(Weighted)ShortestPath", the algorithm is
         // finished. We need to store this information.
-
-        TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
         setAlgorithmFinished();  // just quick exit marker
       }
       return true;
     } else {
       // Check candidates list
-      if (_options.getPathType() == PathType::Type::KShortestPaths) {
-        return checkCandidates();
-      } else {
-        if (checkShortestPathCandidates()) {
-          return true;
-        };
-      }
+      return checkCandidates();
     }
   }
 
@@ -702,20 +646,39 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
     if (!_candidatesStore.isEmpty()) {
       auto bestWeight = std::get<0>(_candidatesStore.peek());
-      // if the sum of the diameters of left and right search are
-      // bigger than the best candidate, there will not be a better
-      // candidate found.
-      //
-      // A simple shortest path search is done *now* (and not
-      // earlier!);
-      //
-      // It is *required* to continue search for a shortest path even
-      // after having found *some* path between the two searches:
-      // There might be improvements on the weight in paths that are
-      // found later. Improvements are impossible only if the sum of the
-      // diameters of the two searches is bigger or equal to the current
-      // best found path.
-      //
+      // If the sum of the diameters of left and right search is
+      // at least as big as the best candidate, there will not be a better
+      // candidate found. This is because of the following: The "diameter"
+      // of a ball is the weight d of the next vertex to be expanded. This
+      // means that we already know that the shortest paths to that vertex
+      // have weight d. All vertices with a lower weight have already
+      // been expanded (and potentially some of weight d).
+      // Now assume that we have d1 and d2 as diameters of the left and
+      // right search, respectively and we have found some path with weight
+      // w <= d1 + d2 and that was the best we have found so far. We claim
+      // that we can deliver this path as next result, since we will not
+      // find a shorter one.
+      // Proof:
+      // Assume that there is a shortest path P with weight w' < w. Then
+      // w' < d1+d2 in particular. The weights of the vertices on the
+      // path might not be the the shortest path to these vertices, but
+      // if a vertex V on the path is reached by some weight d on this
+      // path, then its smallest weight by which it can be reached is
+      // at most d. This means that all vertices on P which are on this
+      // path less than d1 away from the start vertex have already been
+      // found and expanded by the left hand side (or by the right hand
+      // side). Likewise, all vertices on P which are - on P - less
+      // than d2 away from the end vertex have already been found and
+      // expanded by the right hand side (or by the left hand side).
+      // Since w' < d1 + d2, there is no "gap" between the two sides:
+      // There cannot be a vertex on the path, which is both at least d1
+      // from the start and at least d2 from the target. It might even
+      // be that some vertex on the path P has been expanded by both
+      // sides. In any case, there must be an edge on the path, so that
+      // the source of the edge has been expanded by the left hand side
+      // and the target of the edge has been expanded by the right hand
+      // side. Then one of these expansions has to have happened first
+      // and the other must have seen this path.
       // For a K-SHORTEST-PATH search all candidates that have lower
       // weight than the sum of the two diameters are valid shortest
       // paths that must be returned.  K-SHORTEST-PATH search has to
@@ -728,28 +691,28 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       if (sumDiameter >= bestWeight) {
         while (!_candidatesStore.isEmpty() and
                std::get<0>(_candidatesStore.peek()) < sumDiameter) {
-          bool foundShortestPath = false;
           CalculatedCandidate potentialCandidate = _candidatesStore.pop();
 
-          if (_options.getPathType() == PathType::Type::KShortestPaths) {
-            foundShortestPath = _resultsCache.tryAddResult(potentialCandidate);
-          } else if (_options.getPathType() == PathType::Type::ShortestPath) {
-            // Performance optimization: We do not use the cache as we will
-            // always calculate only one path.
-            foundShortestPath = true;
-          }
-
-          if (foundShortestPath) {
+          if (_resultsCache.tryAddResult(potentialCandidate)) {
             _results.emplace_back(std::move(potentialCandidate));
-
-            if (_options.getPathType() == PathType::Type::ShortestPath) {
-              // Proven to be finished with the algorithm. Our last best score
-              // is the shortest path (quick exit).
-              setAlgorithmFinished();
-              break;
-            }
           }
         }
+      }
+      // There is another case, in which we are done: If one of the
+      // sides has finished in the sense that its queue is empty, and we
+      // have actually found some path, then we are done. Why is that?
+      // Assume wlog that the left side is finished and we have found
+      // a path. Then the left hand side has found everything that is
+      // reachable from the source and has expanded it.
+      if ((_left.isQueueEmpty() || _right.isQueueEmpty()) &&
+          (!_results.empty() || !_candidatesStore.isEmpty())) {
+        while (!_candidatesStore.isEmpty()) {
+          CalculatedCandidate candidate = _candidatesStore.pop();
+          if (_resultsCache.tryAddResult(candidate)) {
+            _results.emplace_back(std::move(candidate));
+          }
+        }
+        setAlgorithmFinished();
       }
     }
   }
@@ -798,11 +761,6 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
      * Helper method to take care of stored results (in: _results)
      */
     if (!_results.empty()) {
-      if (_options.getPathType() == PathType::Type::ShortestPath) {
-        ADB_PROD_ASSERT(_results.size() == 1)
-            << "ShortestPath found more than one path. This is not allowed.";
-      }
-
       // remove handled result
       _results.pop_front();
 
@@ -817,7 +775,6 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
      * Helper method to take care of KPath related candidates
      */
     TRI_ASSERT(searchDone());
-    TRI_ASSERT(_options.getPathType() == PathType::Type::KShortestPaths);
     if (!_candidatesStore.isEmpty()) {
       while (!_candidatesStore.isEmpty()) {
         CalculatedCandidate potentialCandidate = _candidatesStore.pop();
@@ -845,10 +802,6 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
     if (skipResult()) {
       // means we've found a valid path
-      if (_options.getPathType() == PathType::Type::ShortestPath) {
-        setAlgorithmFinished();
-      }
-
       return true;
     } else {
       // Check candidates list
@@ -887,23 +840,22 @@ WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     return BallSearchLocation::LEFT;
   }
 
-  // From here both _left and _right are guaranteed to not be empty.
-  if (almostEqual(_left.peekQueue().getWeight(), _left.getDiameter())) {
+  // Here is the argument for the following final decision: If the search
+  // happens to be "asymmetric" in the sense that one side has a lot more
+  // work to do (which can easily happen with directed edges), then we
+  // have better chances to complete the search if we put more emphasis
+  // on the "cheaper" side. This is likely the one which has a shorter
+  // queue. And even if the queue is only shorter temporarily, then this
+  // will change over time as we expand more and more vertices on that
+  // side. If the search is symmetric, we expect to have approximately
+  // equal queue lengths by always expanding the shorter one. This is because
+  // most graphs "expand" around their vertices. And even if we happen to
+  // finish off one side first by this choice, this does not matter in the
+  // grand scheme of things.
+  if (_left.queueSize() <= _right.queueSize()) {
     return BallSearchLocation::LEFT;
   }
-
-  if (almostEqual(_right.peekQueue().getWeight(), _right.getDiameter())) {
-    return BallSearchLocation::RIGHT;
-  }
-
-  if (_left.getDiameter() <= _right.getDiameter()) {
-    return BallSearchLocation::LEFT;
-  } else {
-    return BallSearchLocation::RIGHT;
-  }
-
-  // Default
-  return BallSearchLocation::FINISH;
+  return BallSearchLocation::RIGHT;
 }
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -968,23 +920,11 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 //
 // Name                            Queue   Store   Prov    Valid
 //
-// # Weighted ShortestPath:
-// WShortestPath (single)          We      No      Si      Va<Gl,Pa>
-// WShortestPath (cluster)         We      No      Cl      Va<Gl,Pa>
-// TracedWShortestPath (single)    Tr<We>  Tr      Tr<Si>  Va<Tr,Gl,Pa>
-// TracedWShortestPath (cluster)   Tr<We>  Tr      Tr<Cl>  Va<Tr,Gl,Pa>
-//
-// # Weighted ShortestPath for Yen:
-// WShortestPath (yen, single)     We      No      Si      Ta<Va,Gl,Pa>
-// WShortestPath (yen, cluster)    We      No      Cl      Ta<Va,Gl,Pa>
-// TracedWShortestPath (yen, sin)  Tr<We>  Tr      Tr<Si>  Ta<Va<Tr,Gl,Pa>>
-// TracedWShortestPath (yen, clu)  Tr<We>  Tr      Tr<Cl>  Ta<Va<Tr,Gl,Pa>>
-//
 // # Weighted K-Shortest-Paths (legacy):
 // >WKShortestPath (single)        We      No      Si      Va<Pa,Pa>
 // >WKShortestPath (cluster)       We      No      Cl      Va<Pa,Pa>
-// >TracedWKShortestPath (single)  Tr<Fi>  Tr      Tr<Si>  Va<Tr,Pa,Pa>
-// >TracedWKShortestPath (cluster) Tr<Fi>  Tr      Tr<Cl>  Va<Tr,Pa,Pa>
+// >TracedWKShortestPath (single)  Tr<We>  Tr      Tr<Si>  Va<Tr,Pa,Pa>
+// >TracedWKShortestPath (cluster) Tr<We>  Tr      Tr<Cl>  Va<Tr,Pa,Pa>
 //
 // Where:
 //   Si/Cl    Single or Cluster provider
@@ -1005,21 +945,6 @@ template class WeightedTwoSidedEnumerator<
     PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-// WeightedShortestPathEnumerator<SingleProvider>:
-template class WeightedTwoSidedEnumerator<
-    WeightedQueue<SingleServerProviderStep>,
-    PathStore<SingleServerProviderStep>, SingleProvider,
-    PathValidator<SingleProvider, PathStore<SingleServerProviderStep>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-// WeightedShortestPathEnumeratorForYen<SingleProvider>:
-template class WeightedTwoSidedEnumerator<
-    WeightedQueue<SingleServerProviderStep>,
-    PathStore<SingleServerProviderStep>, SingleProvider,
-    PathValidatorTabooWrapper<PathValidator<
-        SingleProvider, PathStore<SingleServerProviderStep>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
 // TracedWeightedTwoSidedEnumeratorWithProvider<SingleProvider>:
 template class WeightedTwoSidedEnumerator<
     QueueTracer<WeightedQueue<SingleServerProviderStep>>,
@@ -1029,26 +954,6 @@ template class WeightedTwoSidedEnumerator<
         PathValidator<ProviderTracer<SingleProvider>,
                       PathStoreTracer<PathStore<SingleServerProviderStep>>,
                       VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
-
-// TracedWeightedShortestPathEnumerator<SingleProvider>:
-template class WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    ProviderTracer<SingleProvider>,
-    PathValidatorTracer<PathValidator<
-        ProviderTracer<SingleProvider>,
-        PathStoreTracer<PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
-// TracedWeightedShortestPathEnumeratorForYen<SingleProvider>:
-template class WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<SingleServerProviderStep>>,
-    PathStoreTracer<PathStore<SingleServerProviderStep>>,
-    ProviderTracer<SingleProvider>,
-    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
-        ProviderTracer<SingleProvider>,
-        PathStoreTracer<PathStore<SingleServerProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
 
 /* ClusterProvider Section */
 
@@ -1061,21 +966,6 @@ template class WeightedTwoSidedEnumerator<
     PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
-// WeightedShortestPathEnumerator<ClustProvider>:
-template class WeightedTwoSidedEnumerator<
-    WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-    ClustProvider,
-    PathValidator<ClustProvider, PathStore<ClusterProviderStep>,
-                  VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>;
-
-// WeightedShortestPathEnumeratorForYen<ClustProvider>:
-template class WeightedTwoSidedEnumerator<
-    WeightedQueue<ClusterProviderStep>, PathStore<ClusterProviderStep>,
-    ClustProvider,
-    PathValidatorTabooWrapper<PathValidator<
-        ClustProvider, PathStore<ClusterProviderStep>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
 // TracedWeightedTwoSidedEnumeratorWithProvider<ClustProvider>:
 template class WeightedTwoSidedEnumerator<
     QueueTracer<WeightedQueue<ClusterProviderStep>>,
@@ -1085,25 +975,5 @@ template class WeightedTwoSidedEnumerator<
         PathValidator<ProviderTracer<ClustProvider>,
                       PathStoreTracer<PathStore<ClusterProviderStep>>,
                       VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>>;
-
-// TracedWeightedShortestPathEnumerator<ClustProvider>:
-template class WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    ProviderTracer<ClustProvider>,
-    PathValidatorTracer<PathValidator<
-        ProviderTracer<ClustProvider>,
-        PathStoreTracer<PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>;
-
-// TracedWeightedShortestPathEnumeratorForYen<ClustProvider>:
-template class WeightedTwoSidedEnumerator<
-    QueueTracer<WeightedQueue<ClusterProviderStep>>,
-    PathStoreTracer<PathStore<ClusterProviderStep>>,
-    ProviderTracer<ClustProvider>,
-    PathValidatorTracer<PathValidatorTabooWrapper<PathValidator<
-        ProviderTracer<ClustProvider>,
-        PathStoreTracer<PathStore<ClusterProviderStep>>,
-        VertexUniquenessLevel::GLOBAL, EdgeUniquenessLevel::PATH>>>>;
 
 }  // namespace arangodb::graph

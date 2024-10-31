@@ -624,15 +624,15 @@ void findShardKeysInExpression(arangodb::aql::AstNode const* root,
 // static node types used by some optimizer rules
 // having them statically available avoids having to build the lists over
 // and over for each AQL query
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     removeUnnecessaryCalculationsNodeTypes{
         arangodb::aql::ExecutionNode::CALCULATION,
         arangodb::aql::ExecutionNode::SUBQUERY};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     interchangeAdjacentEnumerationsNodeTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
         arangodb::aql::ExecutionNode::ENUMERATE_LIST};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     scatterInClusterNodeTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
         arangodb::aql::ExecutionNode::INDEX,
@@ -642,19 +642,19 @@ std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
         arangodb::aql::ExecutionNode::REPLACE,
         arangodb::aql::ExecutionNode::REMOVE,
         arangodb::aql::ExecutionNode::UPSERT};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     removeDataModificationOutVariablesNodeTypes{
         arangodb::aql::ExecutionNode::REMOVE,
         arangodb::aql::ExecutionNode::INSERT,
         arangodb::aql::ExecutionNode::UPDATE,
         arangodb::aql::ExecutionNode::REPLACE,
         arangodb::aql::ExecutionNode::UPSERT};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
-    moveFilterIntoEnumerateTypes{
-        arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-        arangodb::aql::ExecutionNode::INDEX,
-        arangodb::aql::ExecutionNode::ENUMERATE_LIST};
-std::initializer_list<arangodb::aql::ExecutionNode::NodeType> const
+static constexpr std::initializer_list<
+    arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
+    arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+    arangodb::aql::ExecutionNode::INDEX,
+    arangodb::aql::ExecutionNode::ENUMERATE_LIST};
+static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     undistributeNodeTypes{arangodb::aql::ExecutionNode::UPDATE,
                           arangodb::aql::ExecutionNode::REPLACE,
                           arangodb::aql::ExecutionNode::REMOVE};

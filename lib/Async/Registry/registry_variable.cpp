@@ -24,14 +24,16 @@
 
 namespace arangodb::async_registry {
 
-Registry coroutine_registry;
+Registry registry;
 
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
-    ThreadRegistryGuard() : _registry{coroutine_registry.add_thread()} {}
-    ~ThreadRegistryGuard() {
-      coroutine_registry.remove_thread(std::move(_registry));
-    }
+    ThreadRegistryGuard() : _registry{registry.add_thread()} {}
+
+    /**
+       Runs when the current thread is deleted
+     */
+    ~ThreadRegistryGuard() {}
 
     std::shared_ptr<ThreadRegistry> _registry;
   };

@@ -153,12 +153,23 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
     params.instanceManager.prepareInstance();
     params.instanceManager.launchTcpDump("");
     params.instanceManager.nonfatalAssertSearch();
-    if (!params.instanceManager.launchInstance()) {
+    try {
+      if (!params.instanceManager.launchInstance()) {
+        params.instanceManager.destructor(false);
+        return {
+          export: {
+            status: false,
+            message: 'failed to start server!'
+          }
+        };
+      }
+    } catch (ex) {
+      params.options.cleanup = false;
       params.instanceManager.destructor(false);
       return {
         export: {
           status: false,
-          message: 'failed to start server!'
+          message: `failed to start server: ${ex}\n${ex.stack}`
         }
       };
     }
@@ -291,6 +302,7 @@ function _recovery (options, recoveryTests) {
       fs.makeDirectoryRecursive(params.rootDir);
       fs.makeDirectoryRecursive(params.temp_path);
       let ret = runArangodRecovery(params, useEncryption, !doNotKillTests.includes(test));
+      localOptions.cleanup &= params.options.cleanup;
       if (!ret.status) {
         results[test] = ret;
         results.status = false;

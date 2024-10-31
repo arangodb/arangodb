@@ -6,6 +6,7 @@ import { CreatableMultiSelectControl } from "../../../../../components/form/Crea
 import { SelectControl } from "../../../../../components/form/SelectControl";
 import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
+import { SwitchControl } from "../../../../../components/form/SwitchControl";
 
 export const InvertedIndexStoredValues = ({
   field
@@ -46,7 +47,7 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                 <Box
                   display={"grid"}
                   gridColumnGap="4"
-                  gridTemplateColumns={"1fr 1fr 40px"}
+                  gridTemplateColumns={"1fr 1fr 70px 30px"}
                   rowGap="5"
                   alignItems={"end"}
                   key={index}
@@ -74,6 +75,24 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                       selectProps={{
                         options: compressionOptions
                       }}
+                    />
+                  </Box>
+                  <Box minWidth={"0"}>
+                    <FormLabel
+                      htmlFor={`storedValues.${index}.cache`}
+                    >
+                      Cache
+                    </FormLabel>
+                    <SwitchControl
+                      switchProps={{
+                        isDisabled: !window.frontendConfig.isEnterprise
+                      }}
+                      name={`storedValues.${index}.cache`}
+                      tooltip={
+                        window.frontendConfig.isEnterprise
+                        ? undefined
+                        : "Field normalization value caching is available in Enterprise plans."
+                      }
                     />
                   </Box>
                   <IconButton

@@ -51,7 +51,9 @@ parameters:
   ui-testsuites:
     type: string
     default: ""
-
+  rta-branch:
+    type: string
+    default: "main"
 # our defined job, and its steps
 jobs:
   # this is in a separate job from "setup" to make it as cheap as possible (because it uses the bare base image)

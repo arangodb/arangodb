@@ -323,6 +323,7 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
+  arango_tests_async_registry_server
   arango_tests_basics
   arango_tests_replication2
   arango_tests_replication2_pure
@@ -414,5 +415,6 @@ endforeach()
 
 add_subdirectory(Actor)
 add_subdirectory(Async)
+add_subdirectory(AsyncRegistryServer)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)

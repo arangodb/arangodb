@@ -1000,49 +1000,49 @@ bool areInRangeCallsIdentical(auto const* arrayNode, auto const* otherArrayNode,
   return true;
 }
 
-bool canInRangeBeRemoved(auto const* andNode, auto const* otherAndNode,
+bool canInRangeBeRemoved(auto const* inRangeNode, auto const* otherAndNode,
                          bool isFromTraverser, Variable const* variable,
                          Index const* index) {
-  auto* arrayNode = andNode;
-  auto* otherArrayNode = otherAndNode;
-  while (arrayNode != nullptr && otherArrayNode != nullptr) {
-    if (arrayNode->type == NODE_TYPE_FCALL) {
-      break;
+  for (std::size_t i{0}; i < otherAndNode->numMembers(); ++i) {
+    auto const* operand = otherAndNode->getMemberUnchecked(i);
+    if (operand->type != NODE_TYPE_FCALL ||
+        aql::functions::getFunctionName(*operand) != "IN_RANGE") {
+      continue;
     }
-    arrayNode = arrayNode->getMember(0);
-    otherArrayNode = otherArrayNode->getMember(0);
+
+    // since we know that this is IN_RANGE node, it must contain 5 members
+    auto const* operandArrayNode = operand->getMember(0);
+    TRI_ASSERT(operandArrayNode->numMembers() == 5);
+
+    auto const* firstElemInRangeFunction = operandArrayNode->getMember(0);
+
+    bool isFieldCoveredByIndex{false};
+    std::pair<Variable const*, std::vector<basics::AttributeName>> result;
+    for (auto const& elem : index->fields()) {
+      if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
+          !firstElemInRangeFunction->isAttributeAccessForVariable(
+              result, isFromTraverser) ||
+          result.first != variable ||
+          !basics::AttributeName::isIdentical(result.second, elem, false)) {
+        ::clearAttributeAccess(result);
+        isFieldCoveredByIndex = true;
+        break;
+      }
+      ::clearAttributeAccess(result);
+    }
+
+    if (!isFieldCoveredByIndex) {
+      return false;
+    }
+
+    auto const* inRangeArrayNode = inRangeNode->getMember(0);
+    if (areInRangeCallsIdentical(inRangeArrayNode, operandArrayNode,
+                                 isFromTraverser)) {
+      return true;
+    }
   }
 
-  if (andNode == nullptr || otherAndNode == nullptr) {
-    return false;
-  }
-  if (arrayNode->type != otherArrayNode->type) {
-    return false;
-  }
-  arrayNode = arrayNode->getMember(0);
-  otherArrayNode = otherArrayNode->getMember(0);
-
-  TRI_ASSERT(arrayNode->numMembers() == 5);
-  if (arrayNode->numMembers() != otherArrayNode->numMembers()) {
-    return false;
-  }
-
-  // Check if the checked element from IN_RANGE function is part of the
-  // index
-  auto const* firstElemInRangeFunction = arrayNode->getMember(0);
-  std::pair<Variable const*, std::vector<basics::AttributeName>> result;
-  if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
-      !firstElemInRangeFunction->isAttributeAccessForVariable(
-          result, isFromTraverser) ||
-      result.first != variable ||
-      !basics::AttributeName::isIdentical(result.second, index->fields()[0],
-                                          false)) {
-    ::clearAttributeAccess(result);
-    return false;
-  }
-  ::clearAttributeAccess(result);
-
-  return areInRangeCallsIdentical(arrayNode, otherArrayNode, isFromTraverser);
+  return false;
 }
 
 void Condition::collectOverlappingMembers(
@@ -1147,7 +1147,7 @@ void Condition::collectOverlappingMembers(
 
     if (operand->type == NODE_TYPE_FCALL &&
         functions::getFunctionName(*operand) == "IN_RANGE") {
-      if (canInRangeBeRemoved(andNode, otherAndNode, isFromTraverser, variable,
+      if (canInRangeBeRemoved(operand, otherAndNode, isFromTraverser, variable,
                               index)) {
         toRemove.emplace(i);
       }

@@ -27,6 +27,7 @@ export type PrimarySortType = {
 export type StoredValueType = {
   fields: string[];
   compression: Compression;
+  cache?: boolean;
 };
 
 type StoredValues = {
@@ -60,6 +61,8 @@ type ConsolidationPolicy =
   | TierConsolidationPolicy;
 
 type AdvancedProperties = {
+  primaryKeyCache?: boolean;
+  primarySortCache?: boolean;
   primarySortCompression?: Compression;
   cleanupIntervalStep?: number;
   commitIntervalMsec?: number;

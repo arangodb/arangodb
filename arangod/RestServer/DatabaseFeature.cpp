@@ -69,6 +69,7 @@
 #include "V8Server/V8DealerFeature.h"
 #endif
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/VocbaseMetrics.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 

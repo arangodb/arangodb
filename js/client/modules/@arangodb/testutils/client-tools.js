@@ -214,6 +214,11 @@ class ConfigBuilder {
       this.config['--compress-output'] = true;
     }
   }
+  activateVPack() {
+    if (this.type === 'dump') {
+      this.config['--dump-vpack'] = true;
+    }
+  }
   deactivateCompression() {
     if (this.type === 'dump') {
       this.config['--compress-output'] = false;
@@ -433,7 +438,7 @@ function launchSnippetInBG (options, snippet, key, cn, single=false) {
   }
   let client = launchInShellBG(file);
   print(`${CYAN}started client with key '${key}', pid ${client.pid}, args: ${JSON.stringify(client.args)}${RESET}`);
-  return { key, file, client };
+  return { key, file, client, done: false };
 }
 
 function joinBGShells (options, clients, waitFor, cn) {
@@ -443,14 +448,14 @@ function joinBGShells (options, clients, waitFor, cn) {
   while (++tries < waitFor) {
     clients.forEach(function (client) {
       if (!client.done) {
-        let status = internal.statusExternal(client.client.pid);
-        if (status.status !== 'RUNNING') {
-          let success = client.client.sh.fetchSanFileAfterExit(client.client.pid);
-          IM.serverCrashedLocal |= success;
-          client.failed = success;
+        client.status = internal.statusExternal(client.client.pid);
+        if (client.status.status !== 'RUNNING') {
+          let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          IM.serverCrashedLocal |= failed;
+          client.failed = failed;
           client.done = true;
         }
-        if (status.status === 'TERMINATED' && status.exit === 0) {
+        if (client.status.status === 'TERMINATED' && client.status.exit === 0) {
           IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
           client.failed = false;
         }
@@ -491,24 +496,26 @@ function cleanupBGShells (clients, cn) {
     const logfile = client.file + '.log';
     if (client.failed) {
       if (fs.exists(logfile)) {
-        print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and wrote logfile: \n${fs.readFileSync(logfile).toString()} ${RESET}`);
+        print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()} ${RESET}`);
       } else {
         print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and did not write a logfile${RESET}`);
       }
+    } else {
+      try {
+        if (IM.options.cleanup) {
+          fs.remove(logfile);
+        }
+      } catch (err) { }
     }
-    try {
-      if (IM.options.cleanup) {
-        fs.remove(logfile);
-      }
-    } catch (err) { }
-
     if (!client.done) {
       // hard-kill all running instances
       try {
         let status = internal.statusExternal(client.client.pid).status;
+        print(`${RED}${Date()} current not done client ${client.client.pid} status: ${status}${RESET}`);
         if (status === 'RUNNING') {
           print(`${RED}${Date()} forcefully killing test client with pid ${client.client.pid} ${db['${cn}'].exists('stop')}\n${JSON.stringify(db['${cn}'].toArray())}`);
           internal.killExternal(client.client.pid, 9 /*SIGKILL*/);
+          client.status = internal.statusExternal(client.client.pid);
         }
       } catch (err) { }
     }

@@ -1,6 +1,7 @@
 import { Link, Spinner, Stack, Text } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
-import { Index } from "arangojs/indexes";
+import { HiddenIndex } from "arangojs/indexes";
+import { isArray, isObject } from "lodash";
 import React from "react";
 import { ReactTable } from "../../../../components/table/ReactTable";
 import { TableControl } from "../../../../components/table/TableControl";
@@ -10,24 +11,27 @@ import { TYPE_TO_LABEL_MAP } from "../CollectionIndicesHelpers";
 import { useSyncIndexCreationJob } from "../useSyncIndexCreationJob";
 import { CollectionIndexActionButtons } from "./CollectionIndexActionButtons";
 
-const columnHelper = createColumnHelper<Index & { progress?: number }>();
+const columnHelper = createColumnHelper<HiddenIndex>();
 
-const NameCell = ({
-  info
-}: {
-  info: CellContext<Index & { progress?: number }, string>;
-}) => {
-  const id = info.row.original.id;
+const NameCell = ({ info }: { info: CellContext<HiddenIndex, unknown> }) => {
+  const { id, progress } = info.row.original;
   const finalId = id.slice(id.lastIndexOf("/") + 1); // remove the collection name from the id
   const collectionName = window.location.hash.split("#cIndices/")[1]; // get the collection name from the url
+
+  const name = info.cell.getValue();
+  // name may not exist for HiddenIndex
+  const finalName = typeof name === "string" ? name : finalId;
+
+  if (typeof progress === "number" && progress < 100) {
+    return (
+      <Text>
+        {finalName} <Spinner size="xs" /> {progress.toFixed(0)}%
+      </Text>
+    );
+  }
+
   // need to use href here instead of RouteLink due to a bug in react-router
-  return typeof info.row.original.progress === "number" &&
-    info.row.original.progress < 100 ? (
-    <Text>
-      {info.cell.getValue()} <Spinner size="xs" />{" "}
-      {info.row.original.progress.toFixed(0)}%
-    </Text>
-  ) : (
+  return (
     <Link
       href={`#cIndices/${collectionName}/${finalId}`}
       textDecoration="underline"
@@ -36,7 +40,7 @@ const NameCell = ({
         color: "blue.600"
       }}
     >
-      {info.cell.getValue()}
+      {finalName}
     </Link>
   );
 };
@@ -59,12 +63,28 @@ const TABLE_COLUMNS = [
   }),
   columnHelper.accessor(
     row => {
-      return row.fields
-        .map(field => {
-          if (typeof field === "string") return field;
-          return field.name;
-        })
-        .join(", ");
+      if (!row.fields) {
+        return "-";
+      }
+      if (isArray(row.fields)) {
+        if (row.fields.length === 0) {
+          return "-";
+        }
+        return row.fields
+          .map(field => {
+            if (typeof field === "string") {
+              return field;
+            }
+            return field.name;
+          })
+          .join(", ");
+      }
+      if (isObject(row.fields)) {
+        if (Object.keys(row.fields).length === 0) {
+          return "-";
+        }
+        return Object.keys(row.fields).join(", ");
+      }
     },
     {
       header: "Fields",
@@ -115,7 +135,7 @@ const TABLE_COLUMNS = [
 export const CollectionIndicesTable = () => {
   useSyncIndexCreationJob();
   const { collectionIndices } = useCollectionIndicesContext();
-  const tableInstance = useSortableReactTable<Index>({
+  const tableInstance = useSortableReactTable<HiddenIndex>({
     data: collectionIndices || [],
     columns: TABLE_COLUMNS,
     defaultSorting: [
@@ -129,11 +149,11 @@ export const CollectionIndicesTable = () => {
   });
   return (
     <Stack>
-      <TableControl<Index & { progress?: number }>
+      <TableControl<HiddenIndex>
         table={tableInstance}
         columns={TABLE_COLUMNS}
       />
-      <ReactTable<Index & { progress?: number }>
+      <ReactTable<HiddenIndex>
         table={tableInstance}
         emptyStateMessage="No indexes found"
         onRowSelect={row => {

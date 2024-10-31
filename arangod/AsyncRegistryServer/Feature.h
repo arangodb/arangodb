@@ -22,13 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Async/Registry/registry_variable.h"
 #include "Async/Registry/Metrics.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb::async_registry {
 
-class Feature final : public application_features::ApplicationFeature {
+class Feature final : public ArangodFeature {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<const Metrics>;
@@ -36,19 +36,24 @@ class Feature final : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() { return "Coroutines"; }
 
-  template<typename Server>
-  Feature(Server& server)
-      : application_features::ApplicationFeature{server,
-                                                 Server::template id<Feature>(),
-                                                 name()},
-        metrics{create_metrics(
-            server.template getFeature<arangodb::metrics::MetricsFeature>())} {
-    coroutine_registry.set_metrics(metrics);
-    // startsAfter<Bla, Server>();
-  }
+  Feature(Server& server);
+
+  ~Feature();
+
+  void start() override final;
+  void stop() override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
  private:
+  struct Options {
+    size_t gc_timeout{1};
+  };
+  Options _options;
+
   std::shared_ptr<const Metrics> metrics;
+
+  struct PromiseCleanupThread;
+  std::shared_ptr<PromiseCleanupThread> _cleanupThread;
 };
 
 }  // namespace arangodb::async_registry

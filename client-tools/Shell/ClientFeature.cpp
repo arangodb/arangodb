@@ -101,7 +101,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_username));
 
   std::string basename = TRI_Basename(options->progname());
-  bool isArangosh = basename == "arangosh" || basename == "arangosh.exe";
+  bool isArangosh = basename == "arangosh";
 
   char const* endpointHelp;
   if (isArangosh) {

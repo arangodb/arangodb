@@ -173,7 +173,7 @@ class StaticStrings {
   static std::string const ForceOneShardAttributeValue;
   static std::string const JoinStrategyType;
   static std::string const Algorithm;
-  static std::string const Yen;
+  static std::string const Legacy;
 
   // HTTP headers
   static std::string const Accept;
@@ -190,7 +190,6 @@ class StaticStrings {
   static std::string const Async;
   static std::string const AsyncId;
   static std::string const Authorization;
-  static std::string const BatchContentType;
   static std::string const CacheControl;
   static std::string const Chunked;
   static std::string const Close;

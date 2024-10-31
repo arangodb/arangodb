@@ -1624,6 +1624,22 @@ function transactionOperationsSuite () {
       assertEqual([ 'foo' ], sortedKeys(c1));
     },
 
+    testReadWithCache: function() {
+
+      c1 = db._create(cn1, {cacheEnabled: true});
+      let trx = db._createTransaction({
+        collections: {read: [cn1]}
+      });
+
+      assertEqual(trx.collection(cn1).exists("baz"), false);
+
+      // insert and read the document
+      c1.insert({_key: "baz"});
+      c1.document("baz");
+
+      assertEqual(trx.collection(cn1).exists("baz"), false);
+    },
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx with read operation
     // //////////////////////////////////////////////////////////////////////////////

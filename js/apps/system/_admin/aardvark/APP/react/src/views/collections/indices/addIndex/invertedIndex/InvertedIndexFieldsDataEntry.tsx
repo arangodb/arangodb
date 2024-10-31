@@ -52,6 +52,13 @@ const SelectedFieldDetails = ({
         />
         <FormField
           field={{
+            ...invertedIndexFieldsMap.cache,
+            name: `${fullPath}.cache`,
+            tooltip: "Always cache field normalization values in memory for this field."
+          }}
+        />
+        <FormField
+          field={{
             ...invertedIndexFieldsMap.includeAllFields,
             name: `${fullPath}.includeAllFields`
           }}
@@ -77,7 +84,9 @@ const SelectedFieldDetails = ({
               ...invertedIndexFieldsMap.fields,
               isRequired: false,
               isDisabled: !window.frontendConfig.isEnterprise,
-              tooltip: "Nested fields are avaiable on Enterprise plans",
+              tooltip: window.frontendConfig.isEnterprise
+                ? undefined
+                : "Nested fields are available on Enterprise plans.",
               label: "Nested fields",
               name: `${fullPath}.nested`
             }}

@@ -30,7 +30,7 @@ let internal = require("internal");
 let db = arangodb.db;
 
 const {
-  waitForShardsInSync, getMetric, getUrlById
+  waitForShardsInSync, getMetric, getUrlById, getAllMetric
 } = require('@arangodb/test-helper');
 
 const database = "WriteConcernReadOnlyMetricDatabase";
@@ -47,7 +47,10 @@ function WriteConcernReadOnlyMetricSuite() {
     tearDown: function () {
       global.instanceManager.debugClearFailAt();
       db._useDatabase("_system");
-      db._dropDatabase(database);
+      try {
+        db._dropDatabase(database);
+      } catch (e) {
+      }
     },
 
     testCheckMetric: function () {
@@ -79,6 +82,19 @@ function WriteConcernReadOnlyMetricSuite() {
       metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
       assertEqual(metricValue, 0);
 
+      // now drop the database. we expect the metric to be gone
+      db._useDatabase("_system");
+      db._dropDatabase(database);
+
+      let k = 0;
+      for (; k < 100; k++) {
+        const metrics = getAllMetric(getUrlById(leader), '');
+        if (metrics.indexOf(database) === -1) {
+          break;
+        }
+        internal.sleep(0.5);
+      }
+      assertNotEqual(k, 100);
     },
   };
 }

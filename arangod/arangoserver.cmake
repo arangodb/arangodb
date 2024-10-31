@@ -78,7 +78,6 @@ add_library(arangoserver STATIC
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
-  RestHandler/RestBatchHandler.cpp
   RestHandler/RestCompactHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp

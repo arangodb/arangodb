@@ -1138,12 +1138,14 @@ const IndexJoinTestSuite = function () {
       assertEqual(join.indexInfos[1].producesOutput, true);
       assertEqual(join.indexInfos[1].indexCoversProjections, true);
 
-
-      const result = db._createStatement(query).execute().toArray();
+      const cursor = db._createStatement(query).execute();
+      const result = cursor.toArray();
       assertEqual(result.length, 20);
       for (const [a, b] of result) {
         assertEqual(a, b.x);
       }
+
+      assertEqual(cursor.getExtra().stats.documentLookups, 100);
     },
 
     testLateMaterializedPushPastJoin: function () {

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Async/Registry/promise.h"
 #include "Async/Registry/thread_registry.h"
 
 #include <cstdint>
@@ -52,7 +53,7 @@ struct Registry {
   /**
      Removes a coroutine thread registry from this registry.
    */
-  auto remove_thread(std::shared_ptr<ThreadRegistry> registry) -> void;
+  auto remove_thread(ThreadRegistry* registry) -> void;
 
   /**
      Executes a function on each coroutine in the registry.
@@ -61,15 +62,17 @@ struct Registry {
      items stay valid during iteration (i.e. are not deleted in the meantime).
    */
   template<typename F>
-  requires std::invocable<F, PromiseInList*>
+  requires std::invocable<F, PromiseSnapshot>
   auto for_promise(F&& function) -> void {
     auto regs = [&] {
       auto guard = std::lock_guard(mutex);
       return registries;
     }();
 
-    for (auto& registry : regs) {
-      registry->for_promise(function);
+    for (auto& registry_weak : regs) {
+      if (auto registry = registry_weak.lock()) {
+        registry->for_promise(function);
+      }
     }
   }
 
@@ -82,8 +85,24 @@ struct Registry {
     _metrics = metrics;
   }
 
+  /**
+     Runs an external clean up.
+   */
+  void run_external_cleanup() noexcept {
+    auto regs = [&] {
+      auto guard = std::lock_guard(mutex);
+      return registries;
+    }();
+
+    for (auto& registry_weak : regs) {
+      if (auto registry = registry_weak.lock()) {
+        registry->garbage_collect_external();
+      }
+    }
+  }
+
  private:
-  std::vector<std::shared_ptr<ThreadRegistry>> registries;
+  std::vector<std::weak_ptr<ThreadRegistry>> registries;
   std::mutex mutex;
   std::shared_ptr<const Metrics> _metrics;
 };
