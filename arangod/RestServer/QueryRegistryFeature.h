@@ -116,6 +116,9 @@ class QueryRegistryFeature final : public ArangodFeature {
   metrics::Counter* queryPlanCacheMissesMetric() const {
     return &_queryPlanCacheMissesMetric;
   }
+  metrics::Gauge<uint64_t>* queryPlanCacheMemoryUsage() const {
+    return &_queryPlanCacheMemoryUsage;
+  }
 
   metrics::Gauge<uint64_t>* cursorsMetric() const { return &_activeCursors; }
   metrics::Gauge<uint64_t>* cursorsMemoryUsageMetric() const {
@@ -188,6 +191,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   metrics::Gauge<uint64_t>& _cursorsMemoryUsage;
   metrics::Counter& _queryPlanCacheHitsMetric;
   metrics::Counter& _queryPlanCacheMissesMetric;
+  metrics::Gauge<uint64_t>& _queryPlanCacheMemoryUsage;
 };
 
 }  // namespace arangodb

@@ -173,6 +173,9 @@ DECLARE_COUNTER(arangodb_aql_query_plan_cache_hits_total,
                 "Total number of lookup hits in the AQL query plan cache");
 DECLARE_COUNTER(arangodb_aql_query_plan_cache_misses_total,
                 "Total number of lookup misses in the AQL query plan cache");
+DECLARE_GAUGE(
+    arangodb_aql_query_plan_cache_memory_usage, uint64_t,
+    "Total memory usage of the AQL query plan cache across all databases");
 
 QueryRegistryFeature::QueryRegistryFeature(Server& server,
                                            metrics::MetricsFeature& metrics)
@@ -234,7 +237,9 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
       _queryPlanCacheHitsMetric(
           metrics.add(arangodb_aql_query_plan_cache_hits_total{})),
       _queryPlanCacheMissesMetric(
-          metrics.add(arangodb_aql_query_plan_cache_misses_total{})) {
+          metrics.add(arangodb_aql_query_plan_cache_misses_total{})),
+      _queryPlanCacheMemoryUsage(
+          metrics.add(arangodb_aql_query_plan_cache_memory_usage{})) {
   static_assert(
       Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
 

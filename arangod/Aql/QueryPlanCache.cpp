@@ -31,6 +31,7 @@
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
 #include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
 #include "Random/RandomGenerator.h"
 #include "VocBase/vocbase.h"
 
@@ -111,7 +112,8 @@ QueryPlanCache::QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
                                size_t maxIndividualEntrySize,
                                double invalidationTime,
                                metrics::Counter* numberOfHitsMetric,
-                               metrics::Counter* numberOfMissesMetric)
+                               metrics::Counter* numberOfMissesMetric,
+                               metrics::Gauge<uint64_t>* memoryUsageMetric)
     : _entries(5, KeyHasher{}, KeyEqual{}),
       _memoryUsage(0),
       _maxEntries(maxEntries),
@@ -119,7 +121,8 @@ QueryPlanCache::QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
       _maxIndividualEntrySize(maxIndividualEntrySize),
       _invalidationTime(invalidationTime),
       _numberOfHitsMetric(numberOfHitsMetric),
-      _numberOfMissesMetric(numberOfMissesMetric) {}
+      _numberOfMissesMetric(numberOfMissesMetric),
+      _totalMemoryUsageMetric(memoryUsageMetric) {}
 
 QueryPlanCache::~QueryPlanCache() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -156,7 +159,11 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
     if (auto it = _entries.find(key); it != _entries.end()) {
       auto const& value = (*it).second;
       TRI_ASSERT(_memoryUsage >= value->memoryUsage());
-      _memoryUsage -= value->memoryUsage();
+      uint64_t usage = value->memoryUsage();
+      _memoryUsage -= usage;
+      if (_totalMemoryUsageMetric != nullptr) {
+        _totalMemoryUsageMetric->fetch_sub(usage);
+      }
       _entries.erase(it);
     }
   }
@@ -185,13 +192,20 @@ bool QueryPlanCache::store(
   // the same cache key first, and subtract its memory usage before
   // we can actually delete it.
   if (auto it = _entries.find(key); it != _entries.end()) {
-    _memoryUsage -= (*it).first.memoryUsage() + (*it).second->memoryUsage();
+    size_t usage = (*it).first.memoryUsage() + (*it).second->memoryUsage();
+    _memoryUsage -= usage;
+    if (_totalMemoryUsageMetric != nullptr) {
+      _totalMemoryUsageMetric->fetch_sub(usage);
+    }
     _entries.erase(it);
   }
 
   bool inserted = _entries.emplace(std::move(key), std::move(value)).second;
   TRI_ASSERT(inserted);
   _memoryUsage += memoryUsage;
+  if (_totalMemoryUsageMetric != nullptr) {
+    _totalMemoryUsageMetric->fetch_add(memoryUsage);
+  }
 
   applySizeConstraints();
 
@@ -223,12 +237,18 @@ void QueryPlanCache::invalidate(std::string const& dataSourceGuid) {
 
   TRI_ASSERT(_memoryUsage >= total);
   _memoryUsage -= total;
+  if (_totalMemoryUsageMetric != nullptr) {
+    _totalMemoryUsageMetric->fetch_sub(total);
+  }
 }
 
 void QueryPlanCache::invalidateAll() {
   std::unique_lock guard(_mutex);
   // make sure all memory is acutally freed
   _entries = {};
+  if (_totalMemoryUsageMetric != nullptr) {
+    _totalMemoryUsageMetric->fetch_sub(_memoryUsage);
+  }
   _memoryUsage = 0;
 }
 
@@ -321,7 +341,11 @@ void QueryPlanCache::applySizeConstraints() {
       ++it;
     }
     TRI_ASSERT(it != _entries.end());
-    _memoryUsage -= (*it).first.memoryUsage() + (*it).second->memoryUsage();
+    size_t usage = (*it).first.memoryUsage() + (*it).second->memoryUsage();
+    _memoryUsage -= usage;
+    if (_totalMemoryUsageMetric != nullptr) {
+      _totalMemoryUsageMetric->fetch_sub(usage);
+    }
     _entries.erase(it);
   }
 }

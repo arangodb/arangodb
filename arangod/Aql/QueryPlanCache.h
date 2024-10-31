@@ -144,7 +144,8 @@ class QueryPlanCache {
   QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
                  size_t maxIndividualEntrySize, double invalidationTime,
                  metrics::Counter* numberOfHitsMetric,
-                 metrics::Counter* numberOfMissesMetric);
+                 metrics::Counter* numberOfMissesMetric,
+                 metrics::Gauge<uint64_t>* memoryUsageMetric);
 
   ~QueryPlanCache();
 
@@ -209,6 +210,9 @@ class QueryPlanCache {
 
   /// number of plan cache lookup misses
   metrics::Counter* _numberOfMissesMetric;
+
+  /// Total memory usage across all QueryPlanCaches in all databases
+  metrics::Gauge<uint64_t>* _totalMemoryUsageMetric;
 };
 
 }  // namespace arangodb::aql
