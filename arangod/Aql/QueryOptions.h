@@ -119,6 +119,10 @@ struct QueryOptions {
   bool skipAudit;
   // whether or not the optimizer result should be cached
   bool optimizePlanForCaching;
+  // whether or not the optimizer plan cache should be used, note that
+  // if usePlanCache is set then optimizePlanForCaching is also automatically
+  // set to true.
+  bool usePlanCache;
 
   ExplainRegisterPlan explainRegisters;
 

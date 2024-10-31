@@ -43,6 +43,7 @@ const cn2 = "UnitTestsQueryPlanCache2";
 
 const assertNotCached = (query, bindVars = {}, options = {}) => {
   options.optimizePlanForCaching = true;
+  options.usePlanCache = true;
   // execute query once
   let res = db._query(query, bindVars, options);
   assertFalse(res.hasOwnProperty("planCacheKey"));
@@ -55,6 +56,7 @@ const assertNotCached = (query, bindVars = {}, options = {}) => {
 
 const assertCached = (query, bindVars = {}, options = {}) => {
   options.optimizePlanForCaching = true;
+  options.usePlanCache = true;
   // execute query once
   let res = db._query(query, bindVars, options);
   assertFalse(res.hasOwnProperty("planCacheKey"));
@@ -124,7 +126,7 @@ function QueryPlanCacheTestSuite () {
         users.grantCollection("test_user", "_system", cn2, "ro");
 
         // plans should still be cached for queries 1 and 2
-        const options = { optimizePlanForCaching: true };
+        const options = { optimizePlanForCaching: true, usePlanCache: true };
         let res = db._query(query1, {}, options);
         assertTrue(res.hasOwnProperty("planCacheKey"));
         
@@ -179,8 +181,8 @@ function QueryPlanCacheTestSuite () {
       const query1 = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value1 == @value RETURN doc.value`;
       const query2 = `${uniqid()} FOR doc IN @@collection FILTER doc.value1 == @value RETURN doc.value`;
       const query3 = `${uniqid()} FOR doc IN ${cn2} FILTER doc.value1 == @value RETURN doc.value`;
-      const options = { optimizePlanForCaching: true };
-      const optionsFullCount = { optimizePlanForCaching: true, fullCount: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
+      const optionsFullCount = { optimizePlanForCaching: true, usePlanCache: true, fullCount: true };
         
       const endpoint = arango.getEndpoint();
       users.save("test_user1", "testi");
@@ -263,7 +265,7 @@ function QueryPlanCacheTestSuite () {
       const query1 = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value1 == @value RETURN doc.value`;
       const query2 = `${uniqid()} FOR doc IN @@collection FILTER doc.value1 == @value RETURN doc.value`;
       const query3 = `${uniqid()} FOR doc IN ${cn2} FILTER doc.value1 == @value RETURN doc.value`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
         
       const endpoint = arango.getEndpoint();
       users.save("test_user1", "testi");

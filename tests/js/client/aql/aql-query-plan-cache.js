@@ -37,6 +37,7 @@ const cn2 = "UnitTestsQueryPlanCache2";
 
 const assertNotCached = (query, bindVars = {}, options = {}) => {
   options.optimizePlanForCaching = true;
+  options.usePlanCache = true;
   // execute query once
   let res = db._query(query, bindVars, options);
   assertFalse(res.hasOwnProperty("planCacheKey"));
@@ -49,6 +50,7 @@ const assertNotCached = (query, bindVars = {}, options = {}) => {
 
 const assertCached = (query, bindVars = {}, options = {}) => {
   options.optimizePlanForCaching = true;
+  options.usePlanCache = true;
   // execute query once
   let res = db._query(query, bindVars, options);
   assertFalse(res.hasOwnProperty("planCacheKey"));
@@ -104,7 +106,7 @@ function QueryPlanCacheTestSuite () {
 
     testWarningsDuringExecution : function () {
       const query = `${uniqid()} RETURN 1 / NOOPT(0)`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
   
       // execute query once
       let res = db._query(query, null, options);
@@ -141,7 +143,7 @@ function QueryPlanCacheTestSuite () {
     
     testDifferentCollectionsBindParameter : function () {
       const query = `${uniqid()} FOR doc IN @@collection FILTER doc.value <= 6 RETURN doc`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
 
       db._query(`FOR i IN 1..10 INSERT {value: i} INTO ${cn1}`);
       db._query(`FOR i IN 1..10 INSERT {value: i * 2} INTO ${cn2}`);
@@ -170,7 +172,7 @@ function QueryPlanCacheTestSuite () {
     
     testValueBindParameter : function () {
       const query = `${uniqid()} FOR doc IN 0..99 FILTER doc == @value RETURN doc`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
 
       let key;
       for (let i = 0; i < 100; ++i) {
@@ -193,7 +195,7 @@ function QueryPlanCacheTestSuite () {
     testExplain : function () {
       const query = `${uniqid()} FOR doc IN 0..99 RETURN doc`;
       const bindVars = {};
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
 
       let stmt = db._createStatement({ query, bindVars, options });
       let res = stmt.explain();
@@ -209,7 +211,7 @@ function QueryPlanCacheTestSuite () {
     testExplainAllPlans : function () {
       const query = `${uniqid()} FOR doc IN 0..99 RETURN doc`;
       const bindVars = {};
-      const options = { optimizePlanForCaching: true, allPlans: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true, allPlans: true };
 
       let stmt = db._createStatement({ query, bindVars, options });
       let res = stmt.explain();
@@ -225,7 +227,7 @@ function QueryPlanCacheTestSuite () {
     
     testProfiling : function () {
       const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == 1 SORT doc.value LIMIT 2 RETURN doc`;
-      const options = { optimizePlanForCaching: true, profile: 2 };
+      const options = { optimizePlanForCaching: true, usePlanCache: true, profile: 2 };
 
       let res = db._query(query, null, options);
       assertFalse(res.hasOwnProperty("planCacheKey"));
@@ -257,7 +259,7 @@ function QueryPlanCacheTestSuite () {
     
     testProfilingOutput : function () {
       const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == 1 SORT doc.value LIMIT 2 RETURN doc`;
-      const options = { optimizePlanForCaching: true, profile: 2 };
+      const options = { optimizePlanForCaching: true, usePlanCache: true, profile: 2 };
 
       let output = require('@arangodb/aql/explainer').profileQuery({ query, options }, false);
       assertNotMatch(/plan cache key:/i, output);
@@ -277,8 +279,8 @@ function QueryPlanCacheTestSuite () {
     
     testFullCount : function () {
       const query = `${uniqid()} FOR doc IN 0..99 LIMIT 10 RETURN doc`;
-      const options1 = { optimizePlanForCaching: true };
-      const options2 = { optimizePlanForCaching: true, fullCount: true };
+      const options1 = { optimizePlanForCaching: true, usePlanCache: true };
+      const options2 = { optimizePlanForCaching: true, usePlanCache: true, fullCount: true };
 
       // execute without fullCount
       let res = db._query(query, null, options1);
@@ -308,7 +310,7 @@ function QueryPlanCacheTestSuite () {
 
     testInvalidationAfterCollectionRecreation : function () {
       const query = `${uniqid()} FOR doc IN ${cn1} RETURN doc`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
 
       db._query(`FOR i IN 1..10 INSERT {} INTO ${cn1}`);
 
@@ -340,7 +342,7 @@ function QueryPlanCacheTestSuite () {
     
     testNoInvalidationAfterUnrelatedCollectionDropping : function () {
       const query = `${uniqid()} FOR doc IN ${cn1} RETURN doc`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
 
       db._query(`FOR i IN 1..10 INSERT {} INTO ${cn1}`);
 
@@ -374,7 +376,7 @@ function QueryPlanCacheTestSuite () {
       }
 
       const query = `${uniqid()} FOR doc IN ${cn1} RETURN doc`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
 
       db._query(`FOR i IN 1..10 INSERT {} INTO ${cn1}`);
 
@@ -409,7 +411,7 @@ function QueryPlanCacheTestSuite () {
     
     testInvalidationAfterCollectionPropertyChange : function () {
       const query = `${uniqid()} FOR doc IN ${cn1} RETURN doc`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
 
       db._query(`FOR i IN 1..10 INSERT {} INTO ${cn1}`);
 
@@ -437,7 +439,7 @@ function QueryPlanCacheTestSuite () {
     
     testInvalidationAfterIndexCreation : function () {
       const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == @value RETURN doc.value`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
       
       db._query(`FOR i IN 1..10 INSERT {value: i} INTO ${cn1}`);
 
@@ -466,7 +468,7 @@ function QueryPlanCacheTestSuite () {
     
     testInvalidationAfterIndexDrop : function () {
       const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == @value RETURN doc.value`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
       
       db[cn1].ensureIndex({ type: "persistent", fields: ["value"], name: "value" });
       db._query(`FOR i IN 1..10 INSERT {value: i} INTO ${cn1}`);
@@ -509,7 +511,7 @@ function QueryPlanCacheTestSuite () {
           }
         }
         const query = `${uniqid()} FOR v, e, p IN 1..4 OUTBOUND '${vn}/test0' GRAPH '${gn}' RETURN {v, e, p}`;
-        const options = { optimizePlanForCaching: true };
+        const options = { optimizePlanForCaching: true, usePlanCache: true };
 
         let res = db._query(query, null, options);
         assertFalse(res.hasOwnProperty("planCacheKey"));
@@ -532,7 +534,7 @@ function QueryPlanCacheTestSuite () {
       let g = graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 1, replicationFactor: 1 });
       try {
         const query = `${uniqid()} FOR v, e, p IN 1..4 OUTBOUND '${vn}/test0' GRAPH @g RETURN {v, e, p}`;
-        const options = { optimizePlanForCaching: true };
+        const options = { optimizePlanForCaching: true, usePlanCache: true };
 
         let res = db._query(query, {g: gn}, options);
         assertFalse(res.hasOwnProperty("planCacheKey"));
@@ -552,7 +554,7 @@ function QueryPlanCacheTestSuite () {
       let g = graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 1, replicationFactor: 1 });
       try {
         const query = `${uniqid()} FOR v, e, p IN @min..@max OUTBOUND '${vn}/test0' GRAPH '${gn}' RETURN {v, e, p}`;
-        const options = { optimizePlanForCaching: true };
+        const options = { optimizePlanForCaching: true, usePlanCache: true };
 
         let res = db._query(query, {min: 1, max: 2}, options);
         assertFalse(res.hasOwnProperty("planCacheKey"));
@@ -566,7 +568,7 @@ function QueryPlanCacheTestSuite () {
     
     testViewQuery : function () {
       const vn = 'UnitTestsView';
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
 
       db._createView(vn, "arangosearch", {});
       try {
@@ -627,7 +629,7 @@ function QueryPlanCacheTestSuite () {
     
     testPlanAttributeNotSetForQueryFromCache : function () {
       const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value == @value RETURN doc.value`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
       
       let res = db._query(query, {value: 1}, options);
       assertFalse(res.hasOwnProperty("planCacheKey"));
@@ -644,7 +646,7 @@ function QueryPlanCacheTestSuite () {
     },
     
     testPlanCacheClearing : function () {
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
 
       for (let i = 0; i < 100; ++i) {
         const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value${i} == @value RETURN doc.value`;
@@ -666,7 +668,7 @@ function QueryPlanCacheTestSuite () {
       const query1 = `${uniqid()} FOR doc IN ${cn1} FILTER doc.value1 == @value RETURN doc.value`;
       const query2 = `${uniqid()} FOR doc IN @@collection FILTER doc.value1 == @value RETURN doc.value`;
       const query3 = `${uniqid()} FOR doc IN ${cn2} FILTER doc.value1 == @value RETURN doc.value`;
-      const options = { optimizePlanForCaching: true };
+      const options = { optimizePlanForCaching: true, usePlanCache: true };
         
       db._query(query1, {value: 1}, options);
       db._query(query2, {"@collection": cn1, value: 1}, options);

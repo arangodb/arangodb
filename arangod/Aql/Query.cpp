@@ -352,7 +352,7 @@ void Query::ensureExecutionTime() noexcept {
 }
 
 bool Query::tryLoadPlanFromCache() {
-  if (canUsePlanCache()) {
+  if (_queryOptions.usePlanCache && canUsePlanCache()) {
     // construct plan cache key
     TRI_ASSERT(!_planCacheKey.has_value());
     _planCacheKey.emplace(_vocbase.queryPlanCache().createCacheKey(
@@ -573,6 +573,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
        _ast->containsTraversalDepthValueBindParameters() ||
        _ast->containsUpsertLookupValueBindParameters() || !_warnings.empty())) {
     _queryOptions.optimizePlanForCaching = false;
+    _queryOptions.usePlanCache = false;
     _planCacheKey.reset();
   }
 
@@ -656,7 +657,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   plan->findVarUsage();
 
   if (_planCacheKey.has_value()) {
-    TRI_ASSERT(_queryOptions.optimizePlanForCaching);
+    TRI_ASSERT(_queryOptions.optimizePlanForCaching &&
+               _queryOptions.usePlanCache);
 
     // if query parsing/optimization produces warnings. we must disable query
     // plan caching.

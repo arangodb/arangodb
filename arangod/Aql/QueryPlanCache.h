@@ -59,8 +59,8 @@ struct QueryOptions;
 // optimization phase, because they determine which collections and indexes
 // can be used by the query.
 // Once an AQL query is started that has its "optimizePlanForCaching"
-// flag set to true, the Query object will generate a cache key object for the
-// query plan cache.
+// and "usePlanCache" flags set to true, the Query object will generate
+// a cache key object for the query plan cache.
 // It will then perform a lookup in the query plan cache and run the query using
 // the serialized cached plan if there is any in the cache. If there is no plan
 // in the cache, the Query object will memorize its cache key and invoke the
