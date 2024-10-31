@@ -1,6 +1,8 @@
 devel
 -----
 
+* Update tzdata as of 31.10.2024.
+
 * Bring unicode collation back to the exact 3.11 behaviour by shipping the 
   original 3.11 tables in a icudtl_legacy.dat file. This fixes corruption
   bugs which could happen on upgrade to 3.12 because funny international
