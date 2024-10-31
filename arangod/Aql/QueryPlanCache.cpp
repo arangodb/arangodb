@@ -131,6 +131,9 @@ QueryPlanCache::~QueryPlanCache() {
     total += it.first.memoryUsage() + it.second->memoryUsage();
   }
   TRI_ASSERT(_memoryUsage == total);
+  if (_totalMemoryUsageMetric != nullptr) {
+    _totalMemoryUsageMetric->fetch_sub(_memoryUsage);
+  }
 #endif
 }
 
@@ -158,8 +161,8 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
     // it may have changed between the original lookup and now.
     if (auto it = _entries.find(key); it != _entries.end()) {
       auto const& value = (*it).second;
-      TRI_ASSERT(_memoryUsage >= value->memoryUsage());
-      uint64_t usage = value->memoryUsage();
+      uint64_t usage = it->first.memoryUsage() + value->memoryUsage();
+      TRI_ASSERT(_memoryUsage >= usage);
       _memoryUsage -= usage;
       if (_totalMemoryUsageMetric != nullptr) {
         _totalMemoryUsageMetric->fetch_sub(usage);
@@ -228,7 +231,7 @@ void QueryPlanCache::invalidate(std::string const& dataSourceGuid) {
   for (auto it = _entries.begin(); it != _entries.end(); /* no hoisting */) {
     auto const& value = (*it).second;
     if (value->dataSources.contains(dataSourceGuid)) {
-      total += value->memoryUsage();
+      total += it->first.memoryUsage() + value->memoryUsage();
       it = _entries.erase(it);
     } else {
       ++it;
