@@ -1522,6 +1522,9 @@ class instance {
         throw new Error(`Failed to crash ${this.name}: ${ex}`);
       }
       if (reply.code !== 200) {
+        if (reply === undefined) {
+          reply = { parsedBody: "thrown during connect"}
+        }
         throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
       }
     }
