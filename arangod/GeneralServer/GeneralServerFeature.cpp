@@ -753,10 +753,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 #endif
 
   f.addPrefixHandler(
-      "/_api/async_registry",
-      RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
-
-  f.addPrefixHandler(
       "/_api/dump",
       RestHandlerCreator<arangodb::RestDumpHandler>::createNoData);
 
@@ -845,6 +841,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   // ...........................................................................
   // /_admin
   // ...........................................................................
+
+  f.addPrefixHandler(
+      "/_admin/async-registry",
+      RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_admin/cluster",

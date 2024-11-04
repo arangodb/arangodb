@@ -12,6 +12,9 @@ parameters:
     # contains a branch with the same name as the arangodb repo. If this is the case
     # we use it, otherwise we fall back to "devel".
     default: ""
+  arangosh_args:
+    type: string
+    default: ""
   use-minimal-debug-info:
     type: boolean
     default: true

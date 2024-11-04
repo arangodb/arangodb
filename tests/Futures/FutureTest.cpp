@@ -21,6 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
@@ -30,6 +31,7 @@
 #include <condition_variable>
 #include <exception>
 #include <mutex>
+#include <stdexcept>
 
 using namespace arangodb::futures;
 
@@ -839,8 +841,9 @@ auto foo() -> Future<int> {
 }
 auto promise_count(arangodb::async_registry::ThreadRegistry& registry) -> uint {
   uint promise_count = 0;
-  registry.for_promise(
-      [&](arangodb::async_registry::Promise* promise) { promise_count++; });
+  registry.for_promise([&](arangodb::async_registry::PromiseSnapshot promise) {
+    promise_count++;
+  });
   return promise_count;
 }
 }  // namespace
@@ -850,8 +853,8 @@ TEST(FutureTest, futures_are_registered_in_global_async_registry) {
     auto x = foo();
     std::vector<std::string_view> names;
     arangodb::async_registry::registry.for_promise(
-        [&](arangodb::async_registry::Promise* promise) {
-          names.push_back(promise->source_location.function_name);
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
+          names.push_back(promise.source_location.function_name);
         });
     EXPECT_EQ(names.size(), 1);
     EXPECT_TRUE(names[0].find("foo") != std::string::npos);
@@ -882,15 +885,15 @@ TEST(FutureTest,
   PromiseIds waiter_promise;
   uint count = 0;
   arangodb::async_registry::registry.for_promise(
-      [&](arangodb::async_registry::Promise* promise) {
+      [&](arangodb::async_registry::PromiseSnapshot promise) {
         count++;
-        if (promise->source_location.function_name.find("awaited_co") !=
+        if (promise.source_location.function_name.find("awaited_co") !=
             std::string::npos) {
-          awaited_promise = PromiseIds{true, promise->id(), promise->waiter};
+          awaited_promise = PromiseIds{true, promise.id, promise.waiter};
         }
-        if (promise->source_location.function_name.find("waiter_co") !=
+        if (promise.source_location.function_name.find("waiter_co") !=
             std::string::npos) {
-          waiter_promise = PromiseIds{true, promise->id(), promise->waiter};
+          waiter_promise = PromiseIds{true, promise.id, promise.waiter};
         }
       });
   EXPECT_EQ(count, 2);
@@ -921,10 +924,18 @@ TEST(FutureTest,
         auto future =
             awaited_fn().thenValue([](int a) { return makeFuture(a); });
       },
+      []() {
+        auto future =
+            makeFuture(1).thenValue([&](int a) { return awaited_fn(); });
+      },
       []() { auto future = awaited_fn().then([](Try<int>&& a) { return 1; }); },
       []() {
         auto future =
             awaited_fn().then([](Try<int>&& a) { return makeFuture(a); });
+      },
+      []() {
+        auto future =
+            makeFuture(1).then([](Try<int>&& a) { return awaited_fn(); });
       },
       []() {
         auto future = awaited_fn().thenError<std::logic_error&>(
@@ -933,6 +944,12 @@ TEST(FutureTest,
       []() {
         auto future = awaited_fn().thenError<std::logic_error&>(
             [](std::logic_error& t) { return makeFuture(1); });
+      },
+      []() {
+        auto future =
+            makeFuture<int>(std::make_exception_ptr(std::logic_error("foo")))
+                .thenError<std::logic_error&>(
+                    [](std::logic_error& t) { return awaited_fn(); });
       },
   };
 
@@ -943,15 +960,15 @@ TEST(FutureTest,
     PromiseIds waiter_promise;
     uint count = 0;
     arangodb::async_registry::registry.for_promise(
-        [&](arangodb::async_registry::Promise* promise) {
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          if (std::string(promise->source_location.function_name)
+          if (std::string(promise.source_location.function_name)
                   .find("awaited_fn") != std::string::npos) {
-            awaited_promise = PromiseIds{true, promise->id(), promise->waiter};
+            awaited_promise = PromiseIds{true, promise.id, promise.waiter};
           }
-          if (std::string(promise->source_location.function_name)
+          if (std::string(promise.source_location.function_name)
                   .find("TestBody") != std::string::npos) {
-            waiter_promise = PromiseIds{true, promise->id(), promise->waiter};
+            waiter_promise = PromiseIds{true, promise.id, promise.waiter};
           }
         });
     EXPECT_EQ(count, 2);
@@ -993,16 +1010,16 @@ TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
     PromiseIds waiter_promise;
     uint count = 0;
     arangodb::async_registry::registry.for_promise(
-        [&](arangodb::async_registry::Promise* promise) {
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          if (std::string(promise->source_location.function_name)
+          if (std::string(promise.source_location.function_name)
                   .find("awaited_fn") != std::string::npos) {
             awaited_promises.push_back(
-                PromiseIds{true, promise->id(), promise->waiter});
+                PromiseIds{true, promise.id, promise.waiter});
           }
-          if (std::string(promise->source_location.function_name).find(name) !=
+          if (std::string(promise.source_location.function_name).find(name) !=
               std::string::npos) {
-            waiter_promise = PromiseIds{true, promise->id(), promise->waiter};
+            waiter_promise = PromiseIds{true, promise.id, promise.waiter};
           }
         });
     EXPECT_EQ(count, 3);
@@ -1019,9 +1036,9 @@ auto expect_all_promises_in_state(arangodb::async_registry::State state,
                                   uint number_of_promises) {
   uint count = 0;
   arangodb::async_registry::registry.for_promise(
-      [&](arangodb::async_registry::Promise* promise) {
+      [&](arangodb::async_registry::PromiseSnapshot promise) {
         count++;
-        EXPECT_EQ(promise->state.load(), state);
+        EXPECT_EQ(promise.state, state);
       });
   EXPECT_EQ(count, number_of_promises);
 }

@@ -35,27 +35,27 @@ namespace arangodb::async_registry {
 
 struct Metrics {
   Metrics() = default;
-  Metrics(std::shared_ptr<metrics::Gauge<std::uint64_t>> active_functions,
+  Metrics(std::shared_ptr<metrics::Counter> promises_total,
+          std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_promises,
           std::shared_ptr<metrics::Gauge<std::uint64_t>>
-              ready_for_deletion_functions,
-          std::shared_ptr<metrics::Gauge<std::uint64_t>> active_threads,
-          std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_threads,
-          std::shared_ptr<metrics::Counter> total_threads,
-          std::shared_ptr<metrics::Counter> total_functions)
-      : active_functions{active_functions},
-        ready_for_deletion_functions{ready_for_deletion_functions},
-        running_threads{active_threads},
-        registered_threads{registered_threads},
-        total_threads{total_threads},
-        total_functions{total_functions} {}
+              ready_for_deletion_promises,
+          std::shared_ptr<metrics::Counter> threads_total,
+          std::shared_ptr<metrics::Gauge<std::uint64_t>> running_threads,
+          std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_threads)
+      : promises_total{promises_total},
+        registered_promises{registered_promises},
+        ready_for_deletion_promises{ready_for_deletion_promises},
+        threads_total{threads_total},
+        running_threads{running_threads},
+        registered_threads{registered_threads} {}
 
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> active_functions = nullptr;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> ready_for_deletion_functions =
+  std::shared_ptr<metrics::Counter> promises_total = nullptr;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_promises = nullptr;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> ready_for_deletion_promises =
       nullptr;
+  std::shared_ptr<metrics::Counter> threads_total = nullptr;
   std::shared_ptr<metrics::Gauge<std::uint64_t>> running_threads = nullptr;
   std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_threads = nullptr;
-  std::shared_ptr<metrics::Counter> total_threads = nullptr;
-  std::shared_ptr<metrics::Counter> total_functions = nullptr;
 };
 
 }  // namespace arangodb::async_registry

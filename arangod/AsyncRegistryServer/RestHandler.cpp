@@ -22,12 +22,41 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "RestHandler.h"
 
+#include "Async/Registry/promise.h"
+#include "Async/Registry/stacktrace.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
 #include "Inspection/VPack.h"
 #include "Rest/CommonDefines.h"
 
+using namespace arangodb;
 using namespace arangodb::async_registry;
+
+auto all_undeleted_promises()
+    -> std::pair<WaiterForest<PromiseSnapshot>, std::vector<Id>> {
+  WaiterForest<PromiseSnapshot> forest;
+  std::vector<Id> roots;
+  registry.for_promise([&](PromiseSnapshot promise) {
+    if (promise.state != State::Deleted) {
+      forest.insert(promise.id, promise.waiter, promise);
+      if (promise.waiter == nullptr) {
+        roots.emplace_back(promise.id);
+      }
+    }
+  });
+  return std::make_pair(forest, roots);
+}
+
+struct Entry {
+  TreeHierarchy hierarchy;
+  PromiseSnapshot data;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, Entry& x) {
+  return f.object(x).fields(f.field("hierarchy", x.hierarchy),
+                            f.field("data", x.data));
+}
 
 RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
                          GeneralResponse* response)
@@ -41,10 +70,31 @@ auto RestHandler::execute() -> RestStatus {
     return RestStatus::DONE;
   }
 
+  auto [promises, roots] = all_undeleted_promises();
+  auto awaited_promises = promises.index_by_awaitee();
+
   VPackBuilder builder;
+  builder.openObject();
+  builder.add(VPackValue("promise_stacktraces"));
   builder.openArray();
-  registry.for_promise(
-      [&](Promise* promise) { velocypack::serialize(builder, *promise); });
+  for (auto root : roots) {
+    builder.openArray();
+    auto dfs = DFS_PostOrder{awaited_promises, root};
+    do {
+      auto next = dfs.next();
+      if (next == std::nullopt) {
+        break;
+      }
+      auto [id, hierarchy] = next.value();
+      auto data = awaited_promises.data(id);
+      if (data != std::nullopt) {
+        auto entry = Entry{.hierarchy = hierarchy, .data = data.value()};
+        velocypack::serialize(builder, entry);
+      }
+    } while (true);
+    builder.close();
+  }
+  builder.close();
   builder.close();
 
   generateResult(rest::ResponseCode::OK, builder.slice());
