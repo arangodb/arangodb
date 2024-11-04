@@ -1288,4 +1288,3 @@ void GraphManager::invalidateQueryOptimizerCaches() const {
   // do would be to retry, but this is already done by `sendRequestRetry`.
   // So we just return here and let the request objects go out of scope.
 }
-
