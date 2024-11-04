@@ -120,10 +120,17 @@ devel
 * In replication use vpack as transport format throughout, so that even
   large and strangely encoded numbers are transported faithfully.
 
+* Update tzdata as of 31.10.2024.
+
 * Bring unicode collation back to the exact 3.11 behaviour by shipping the 
   original 3.11 tables in a icudtl_legacy.dat file. This fixes corruption
   bugs which could happen on upgrade to 3.12 because funny international
   strings are indexed in VPack indexes.
+
+* Improve the observability of asynchronous operations by saving all ongoing
+  asynchronous operations (associated with async<T> and Future<T>) in a registry.
+  A REST call gives information about all these operations via a list of all
+  ongoing stacktraces.
 
 
 3.12.3 (2024-10-25)
