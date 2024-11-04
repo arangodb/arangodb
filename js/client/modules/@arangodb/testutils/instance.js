@@ -73,6 +73,14 @@ let PORTMANAGER;
 
 const seconds = x => x * 1000;
 
+const unInteristingLogTopics = [
+  "de8f3",
+  "e8b68",
+  "1afb1",
+  "d72fb",
+  "f3108",
+];
+
 function getSockStatFile(pid) {
   try {
     return fs.read("/proc/" + pid + "/net/sockstat");
@@ -1129,7 +1137,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
-  readImportantLogLines (logPath) {
+  readImportantLogLines () {
     let fnLines = [];
     const buf = fs.readBuffer(fs.join(this.logFile));
     let lineStart = 0;
@@ -1147,7 +1155,16 @@ class instance {
         if (warn || info) {
           continue;
         }
-        fnLines.push(line);
+        let foundUninteresting = false;
+        unInteristingLogTopics.forEach(logToken => {
+          if (line.search(logToken) !== -1) {
+            print(line)
+            foundUninteresting = true;
+          }
+        });
+        if (!foundUninteresting) {
+          fnLines.push(line);
+        }
       }
     }
     return fnLines;
