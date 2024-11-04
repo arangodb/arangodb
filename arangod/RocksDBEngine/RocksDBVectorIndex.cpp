@@ -299,6 +299,8 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   RocksDBInvertedLists ril(this, collection.get(), trx, rocksDBMethods, _cf,
                            _definition.nLists, flatIndex.code_size);
   flatIndex.replace_invlists(&ril);
+  // TODO expose as parameter to APPROX_NEAR
+  flatIndex.nprobe = 2;
 
   std::vector<float> distances(topK * count);
   std::vector<faiss::idx_t> labels(topK * count);
@@ -308,6 +310,10 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   }
   flatIndex.search(count, inputs.data(), topK, distances.data(), labels.data(),
                    nullptr);
+  // faiss returns squared distances, square them so they are returned in normal
+  // form
+  std::ranges::transform(distances, distances.begin(),
+                         [](auto const& elem) { return std::sqrt(elem); });
 
   return {std::move(labels), std::move(distances)};
 }
