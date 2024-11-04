@@ -86,7 +86,7 @@ const SelectedFieldDetails = ({
               isDisabled: !window.frontendConfig.isEnterprise,
               tooltip: window.frontendConfig.isEnterprise
                 ? undefined
-                : "Nested fields are available on Enterprise plans.",
+                : "Nested fields are available in the Enterprise Edition.",
               label: "Nested fields",
               name: `${fullPath}.nested`
             }}

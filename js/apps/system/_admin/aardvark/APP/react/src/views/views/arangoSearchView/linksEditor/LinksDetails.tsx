@@ -54,7 +54,7 @@ export const LinksDetails = () => {
             tooltip={
               window.frontendConfig.isEnterprise
               ? "Always cache field normalization values in memory."
-              : "Field normalization value caching is available in Enterprise plans."
+              : "Field normalization value caching is available in the Enterprise Edition."
             }
           />
           {!isFieldView && (

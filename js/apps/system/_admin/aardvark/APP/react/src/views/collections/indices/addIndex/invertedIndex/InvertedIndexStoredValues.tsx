@@ -91,7 +91,7 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                       tooltip={
                         window.frontendConfig.isEnterprise
                         ? undefined
-                        : "Field normalization value caching is available in Enterprise plans."
+                        : "Field normalization value caching is available in the Enterprise Edition."
                       }
                     />
                   </Box>
