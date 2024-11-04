@@ -38,6 +38,9 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/RequestOptions.h"
 #include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -139,6 +142,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
   if (res.fail()) {
     return false;
   }
+  invalidateQueryOptimizerCaches();
   return true;
 }
 
@@ -417,7 +421,7 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 
   res = trx.finish(result.result);
 
-  ctx()->vocbase().queryPlanCache().invalidateAll();
+  invalidateQueryOptimizerCaches();
 
   if (res.fail() && result.ok()) {
     return OperationResult{std::move(res), options};
@@ -1244,3 +1248,44 @@ Result GraphManager::ensureVertexShardingMatches(
   return TRI_ERROR_NO_ERROR;
 }
 #endif
+
+void GraphManager::invalidateQueryOptimizerCaches() const {
+  // First our own cache:
+  _vocbase.queryPlanCache().invalidateAll();
+
+  // Now send a request to all other coordinators:
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+
+  auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+  auto& nf = _vocbase.server().getFeature<NetworkFeature>();
+
+  auto coords = ci.getCurrentCoordinators();
+  std::vector<futures::Future<network::Response>> requests;
+  requests.reserve(coords.size());
+
+  network::RequestOptions opts;
+  opts.database = _vocbase.name();
+
+  std::string path{"/_api/query-plan-cache"};
+  for (auto const& server : coords) {
+    if (server != ServerState::instance()->getId()) {
+      // Do not send a message to ourselves!
+      auto f =
+          network::sendRequestRetry(nf.pool(), "server:" + server,
+                                    fuerte::RestVerb::Delete, path, {}, opts);
+      requests.emplace_back(std::move(f).then(
+          [server](auto&& response) { return std::move(response).get(); }));
+    }
+    LOG_TOPIC("33231", TRACE, Logger::GRAPHS)
+        << "Invalidating query optimizer cache on server " << server
+        << " (fire-and-forget)";
+  }
+  // We just do a fire-and-forget here, the worst that can happen is that
+  // we did not reach a coordinator and it is still using an old cache
+  // entry referring to a graph situtation that does not exist anymore.
+  // Since the query cache entries are invalidated automatically after some
+  // time, this fixes itself. After all, the only thing we could potentially
+  // do would be to retry, but this is already done by `sendRequestRetry`.
+  // So we just return here and let the request objects go out of scope.
+}
+
