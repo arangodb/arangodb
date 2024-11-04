@@ -57,7 +57,7 @@ const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
           selectProps={{
             options: [
               {
-                label: "lz4",
+                label: "LZ4",
                 value: "lz4"
               },
               { label: "None", value: "none" }
