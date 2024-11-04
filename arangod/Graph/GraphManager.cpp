@@ -938,7 +938,7 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     builder.add(StaticStrings::KeyString, VPackValue(graph.name()));
   }
 
-  ctx()->vocbase().queryPlanCache().invalidateAll();
+  invalidateQueryOptimizerCaches();
 
   {  // Remove from _graphs
     OperationOptions options(ExecContext::current());
