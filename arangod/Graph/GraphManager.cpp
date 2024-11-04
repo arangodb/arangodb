@@ -1253,8 +1253,10 @@ void GraphManager::invalidateQueryOptimizerCaches() const {
   // First our own cache:
   _vocbase.queryPlanCache().invalidateAll();
 
-  // Now send a request to all other coordinators:
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  // If we are in a cluster, send a request to all other coordinators:
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
+  }
 
   auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   auto& nf = _vocbase.server().getFeature<NetworkFeature>();
