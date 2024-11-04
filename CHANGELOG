@@ -1,6 +1,40 @@
 devel
 -----
 
+* Update tzdata as of 31.10.2024.
+
+* Bring unicode collation back to the exact 3.11 behaviour by shipping the 
+  original 3.11 tables in a icudtl_legacy.dat file. This fixes corruption
+  bugs which could happen on upgrade to 3.12 because funny international
+  strings are indexed in VPack indexes.
+
+* Improve the observability of asynchronous operations by saving all ongoing
+  asynchronous operations (associated with async<T> and Future<T>) in a registry.
+  A REST call gives information about all these operations via a list of all
+  ongoing stacktraces.
+
+
+3.12.3 (2024-10-25)
+-------------------
+
+* Add missing accounting for document lookups in JOIN nodes when in late
+  materialize mode.
+
+* Speed up shortest path further by using a neighbour cache in the
+  SingleServerProvider.
+
+* FE-446: add missing caching options for inverted indexes and arangosearch
+  views.
+
+* Speed up shortest path computations by choosing more diligently which side to
+  expand next. This brings back 3.10 performance.
+
+* Fixed a bug in (non-Yen) k-shortest-paths which could overlook some paths.
+
+* BTS_1792: Call `setLocale` earlier during startup to prevent crashes.
+
+* BTS-1975: Fix the output of dumped data in VPack format.
+
 * Add file descriptors to tele metrics
 
 * Bind variables for TTL deletions should not be moved when now reused.
@@ -10,19 +44,19 @@ devel
 
 * BTS-1950: geo index query stuck
   The geo index iterator got stuck when multiple coverings were requested
-  multiple time. The corresponding flag was not resetted resulting in an
-  endless loop.
+  multiple time. The corresponding flag was not resetted resulting in an endless
+  loop.
 
 * Allow to use `/_api/wal/tail` with VelocyPack response and change cluster
-  internal replication to use it. This has advantages in performance and 
-  can replicate any VelocyPack value faithfully.
+  internal replication to use it. This has advantages in performance and can
+  replicate any VelocyPack value faithfully.
 
-* Change dumping of VPack to JSON for large double values with absolute
-  value between 2^53 and 2^64. This ensures that dumps to JSON followed
-  by parsing of the JSON back to VPack retain the right numerical values.
+* Change dumping of VPack to JSON for large double values with absolute value
+  between 2^53 and 2^64. This ensures that dumps to JSON followed by parsing of
+  the JSON back to VPack retain the right numerical values.
   This fixes a problem in arangodump/arangorestore as well as in replication.
-  Furthermore, JSON output from the API now shows numbers in this area
-  with their correct numerical value.
+  Furthermore, JSON output from the API now shows numbers in this area with
+  their correct numerical value.
 
 * FE-465: handle HiddenIndex type & "fields" object in collection index page.
 
@@ -30,26 +64,25 @@ devel
 
 * Upgraded OpenSSL to 3.3.2.
 
-* In replication use vpack as transport format throughout, so that even
-  large and strangely encoded numbers are transported faithfully.
+* In replication use vpack as transport format throughout, so that even large
+  and strangely encoded numbers are transported faithfully.
 
 * The optimizer was very pessimistic about sparse mdi indexes and did not
   properly react to queries that excluded null values.
 
-* Fix blockage in RestMetricsHandlers if there are resigned leaders. We use 
+* Fix blockage in RestMetricsHandlers if there are resigned leaders. We use
   getResponsibleServerNoDelay there to decide if metrics should be exposed.
 
-* Fix blockage in SynchronizeShard: We do some agency communication there,
-  this should use skipScheduler to avoid being blocked by all scheduler
-  threads being busy. This solves a problem found in RTA on upgrade
-  with resignLeadership.
+* Fix blockage in SynchronizeShard: We do some agency communication there, this
+  should use skipScheduler to avoid being blocked by all scheduler threads being
+  busy. This solves a problem found in RTA on upgrade with resignLeadership.
 
-* Fix bug in upstream rocksdb to not leak file descriptors when iouring
-  is used for RocksDB.
+* Fix bug in upstream rocksdb to not leak file descriptors when iouring is used
+  for RocksDB.
 
-* Fix circleci setup w.r.t. enterprise branch.
+* Fix CircleCI setup w.r.t. enterprise branch.
 
-* Adjust documentation and testing of --cluster.force-one-shard option to 
+* Adjust documentation and testing of --cluster.force-one-shard option to
   reality.
 
 * Rebuilt included rclone v1.62.2 with go1.22.6 and non-vulnerable dependencies.
@@ -64,8 +97,8 @@ devel
   (indirectly) depended on a RemoteNode. This allows more query parts to run
   concurrently.
 
-* Extend COLLECT optimizer rule to consider existing SORT nodes that cover
-  all group variables. Previously the following query would use a hash collect
+* Extend COLLECT optimizer rule to consider existing SORT nodes that cover all
+  group variables. Previously the following query would use a hash collect
   instead of a sorted collect:
   ```
   FOR d IN docs
@@ -74,21 +107,24 @@ devel
     RETURN v
   ```
   The reason is that previously the rule unconditionally created a SORT node
-  with all group variables sorted in ascending order, but because that
-  resulted in a plan with two different SORT nodes which obviously is more
-  expensive than the hash collect, which was thus preferred.
-  The sorted collect doesn't need the values to be sorted in a particular
-  order, it just needs the values to be grouped correctly. So the new version
-  now checks if there are existing SORT nodes that already cover all the group
+  with all group variables sorted in ascending order, but because that resulted
+  in a plan with two different SORT nodes which obviously is more expensive than
+  the hash collect, which was thus preferred.
+  The sorted collect doesn't need the values to be sorted in a particular order,
+  it just needs the values to be grouped correctly. So the new version now
+  checks if there are existing SORT nodes that already cover all the group
   values, and in that case does not create an additional SORT node. That way
-  we can also utilize descending SORTs as in the example above, and perhaps
-  even utilize an index if we have one.
+  we can also utilize descending SORTs as in the example above, and perhaps even
+  utilize an index if we have one.
 
-* FE-422: Permissions of users managed by ArangoGraph are now shown as read-only.
+* FE-422: Permissions of users managed by ArangoGraph are now shown as
+  read-only.
 
 
 3.12.2 (2024-08-21)
 -------------------
+
+* FE-450: avoid scrollbars when license warning is visible.
 
 * Add API GET /_admin/cluster/vpackSortMigration/status to query the status of
   the vpack sorting migration on dbservers, single servers and coordinators.

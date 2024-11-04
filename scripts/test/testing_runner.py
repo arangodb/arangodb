@@ -72,6 +72,7 @@ def testing_runner(testing_instance, this, arangosh):
         this.start = datetime.now(tz=None)
         ret = arangosh.run_testing(
             this.suite,
+            this.arangosh_args,
             this.args,
             15 * 60,  # 15 Minutes screen idle before timeout
             this.base_logdir,
@@ -88,7 +89,7 @@ def testing_runner(testing_instance, this, arangosh):
         this.finish = datetime.now(tz=None)
         this.delta = this.finish - this.start
         this.delta_seconds = this.delta.total_seconds()
-        logging.info("done with %s", {this.name_enum})
+        logging.info("done with %s - %s", {this.name_enum, str(ret["rc_exit"])})
         this.crashed = (
             not this.crashed_file.exists() or this.crashed_file.read_text() == "true"
         )

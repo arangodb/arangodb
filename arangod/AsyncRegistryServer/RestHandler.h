@@ -33,7 +33,7 @@ class RestHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "AsyncRegistryRestHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RequestLane lane() const override final { return RequestLane::CLUSTER_ADMIN; }
   RestStatus execute() override;
 
   Feature& _feature;

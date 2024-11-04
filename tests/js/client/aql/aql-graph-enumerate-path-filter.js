@@ -203,7 +203,7 @@ function enumeratePathsFilter() {
       assertRuleDoesNotFire(query);
     },
     testFiresWithNesting: function() {
-      for (let o of ['', ', algorithm: "yen"']) {
+      for (let o of ['', ', algorithm: "legacy"']) {
         const query = `
           FOR path2 IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/22" GRAPH "${graphName}"  
             FOR path IN ANY K_PATHS "${vName}/0" TO "${vName}/2" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
@@ -215,7 +215,7 @@ function enumeratePathsFilter() {
       }
     },
     testExpectedPathFound: function() {
-      for (let o of ['', ' OPTIONS { algorithm: "yen" } ']) {
+      for (let o of ['', ' OPTIONS { algorithm: "legacy" } ']) {
         const unrestrictedQuery = `
           FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}" ${o}
               LIMIT 1

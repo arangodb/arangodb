@@ -53,8 +53,8 @@ ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics,
                     .id = std::this_thread::get_id()}},
       registry{registry},
       metrics{metrics} {
-  if (metrics->total_threads != nullptr) {
-    metrics->total_threads->count();
+  if (metrics->threads_total != nullptr) {
+    metrics->threads_total->count();
   }
   if (metrics->running_threads != nullptr) {
     metrics->running_threads->fetch_add(1);
@@ -79,8 +79,8 @@ auto ThreadRegistry::add_promise(std::source_location location) noexcept
       << std::this_thread::get_id()
       << " but needs to be called from ThreadRegistry's owning thread "
       << thread.id << ". " << this;
-  if (metrics->total_functions != nullptr) {
-    metrics->total_functions->count();
+  if (metrics->promises_total != nullptr) {
+    metrics->promises_total->count();
   }
   auto current_head = promise_head.load(std::memory_order_relaxed);
   auto promise =
@@ -90,8 +90,8 @@ auto ThreadRegistry::add_promise(std::source_location location) noexcept
   }
   // (1) - this store synchronizes with load in (2)
   promise_head.store(promise, std::memory_order_release);
-  if (metrics->active_functions != nullptr) {
-    metrics->active_functions->fetch_add(1);
+  if (metrics->registered_promises != nullptr) {
+    metrics->registered_promises->fetch_add(1);
   }
   return promise;
 }
@@ -99,6 +99,9 @@ auto ThreadRegistry::add_promise(std::source_location location) noexcept
 auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
   // makes sure that promise is really in this list
   ADB_PROD_ASSERT(promise->registry.get() == this);
+
+  promise->state.store(State::Deleted);
+
   // keep a local copy of the shared pointer. This promise might be the
   // last of the registry.
   auto self = std::move(promise->registry);
@@ -113,11 +116,11 @@ auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
   // DO NOT access promise after this line. The owner thread might already
   // be running a cleanup and promise might be deleted.
 
-  if (metrics->active_functions != nullptr) {
-    metrics->active_functions->fetch_sub(1);
+  if (metrics->registered_promises != nullptr) {
+    metrics->registered_promises->fetch_sub(1);
   }
-  if (metrics->ready_for_deletion_functions != nullptr) {
-    metrics->ready_for_deletion_functions->fetch_add(1);
+  if (metrics->ready_for_deletion_promises != nullptr) {
+    metrics->ready_for_deletion_promises->fetch_add(1);
   }
 
   // self destroyed here. registry might be destroyed here as well.
@@ -140,8 +143,8 @@ auto ThreadRegistry::cleanup() noexcept -> void {
   while (next != nullptr) {
     current = next;
     next = next->next_to_free;
-    if (metrics->ready_for_deletion_functions != nullptr) {
-      metrics->ready_for_deletion_functions->fetch_sub(1);
+    if (metrics->ready_for_deletion_promises != nullptr) {
+      metrics->ready_for_deletion_promises->fetch_sub(1);
     }
     remove(current);
     delete current;
@@ -165,8 +168,8 @@ auto ThreadRegistry::garbage_collect_external() noexcept -> void {
     current = next;
     next = next->next_to_free;
     if (current->previous != nullptr) {
-      if (metrics->ready_for_deletion_functions != nullptr) {
-        metrics->ready_for_deletion_functions->fetch_sub(1);
+      if (metrics->ready_for_deletion_promises != nullptr) {
+        metrics->ready_for_deletion_promises->fetch_sub(1);
       }
       remove(current);
       delete current;

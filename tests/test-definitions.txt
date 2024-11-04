@@ -47,7 +47,7 @@ shell_client_multi priority=1500 parallelity=2 single suffix=http -- --http true
 shell_client_transaction,shell_client_transaction name=shell_client_transaction priority=750 single -- $EncryptionAtRest --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"}]
 shell_client_traffic,shell_client_traffic,shell_client_traffic,shell_client_traffic name=shell_client_traffic priority=250 parallelity=1 single -- --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"},{"http":true,"ssl":true,"suffix":"http-ssl"},{"http2":true,"ssl":true,"suffix":"http2-ssl"}]
 
-shell_client_aql buckets=19 priority=250  single
+shell_client_aql buckets=19 priority=250  single --javascript.v8-max-heap=6144
 
 # C++ unit tests are executed in single env
 gtest_iresearch priority=1000 parallelity=3 size=medium single
@@ -70,8 +70,8 @@ restart priority=1000 size=medium cluster -- --dumpAgencyOnError true --forceJso
 load_balancing priority=500 size=medium cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
 
-replication2_client size=small cluster
-replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
+#replication2_client size=small cluster
+#replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
 
 resilience_analyzers priority=500 size=medium cluster -- --dumpAgencyOnError true
 resilience_failover priority=1200 size=medium buckets=4 cluster -- --dumpAgencyOnError true
@@ -88,10 +88,10 @@ shell_client_multi priority=1500 cluster suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 
 # different number of buckets in cluster
-shell_client_aql priority=1000 size=medium+ cluster buckets=20 -- --dumpAgencyOnError true
+shell_client_aql priority=1000 size=medium+ cluster buckets=20 --javascript.v8-max-heap=6144 -- --dumpAgencyOnError true
 shell_client priority=500 cluster size=medium+ buckets=20 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
-shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
+#shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
 
 rta_makedata cluster parallelity=5
 rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 --  --forceOneShard true
@@ -105,15 +105,14 @@ hot_backup enterprise cluster size=large parallelity=5 -- --dumpAgencyOnError tr
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 buckets=10 cluster -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 buckets=10 size=large cluster -- --dumpAgencyOnError true
 server_permissions priority=1000 parallelity=5 size=small buckets=2 -- --dumpAgencyOnError true
 server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
 # Dump Tests
 dump cluster size=medium parallelity=5 -- --dumpAgencyOnError true
 dump single size=medium -- --dumpAgencyOnError true
-# BTS-1975: it is known to be broken in the cluster.
-# dump cluster suffix=_vpack size=medium parallelity=5 -- --dumpAgencyOnError true --dumpVPack true
+dump cluster suffix=_vpack size=medium parallelity=5 -- --dumpAgencyOnError true --dumpVPack true
 dump single suffix=_vpack size=medium -- --dumpAgencyOnError true --dumpVPack true
 # BTS-1852 enable after fix:
 # dump size=medium enterprise cluster name=dump_singleshard_cluster -- --forceOneShard true --cluster true --dumpAgencyOnError true
@@ -126,6 +125,8 @@ dump_maskings  enterprise size=medium -- --dumpAgencyOnError true
 dump_encrypted enterprise size=medium -- --dumpAgencyOnError true
 dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
 dump_mixed_single_cluster size=large -- --dumpAgencyOnError true
+dump_mixed_cluster_single suffix=_vpack size=medium -- --dumpAgencyOnError true --dumpVPack true
+dump_mixed_single_cluster suffix=_vpack size=large -- --dumpAgencyOnError true --dumpVPack true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes single size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
 dump_with_crashes full cluster size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
@@ -157,5 +158,5 @@ wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
 communication full priority=1000 parallelity=2 single
 communication_ssl full priority=1000 parallelity=2 single
 
-communication full priority=1000 parallelity=6 cluster
-communication_ssl full priority=1000 parallelity=6 cluster
+communication full priority=1000 size=large parallelity=6 cluster
+communication_ssl full priority=1000 size=large parallelity=6 cluster

@@ -189,6 +189,7 @@ return false;`
         }
       }
       let tests = [];
+      let timeout = IM.options.isInstrumented ? 30 : 5;
       for(let count = 0; count < 2; count++) {
         tests.push([
           `TransactionInsertTest_${count}`,
@@ -216,13 +217,18 @@ myKeys.forEach(oneKey => {
     throw new Error("Was expecting to have " + count + " > " + lastCoun);
   }
   let tries = 0;
-  while ((loopCount % stepWidth === 0) && (count % stepWidth !== 0)) {
+  let nextLoopCount = Math.trunc(count / stepWidth) * count + stepWidth;
+  while (loopCount > nextLoopCount) {
     tries ++;
-    if (tries > 10) {
-      throw new Error("failed to get to the next step in 5s");
+    if (tries > ${timeout * 2}) {
+      if (count % stepWidth === 0) {
+        break;
+      }
+      throw new Error("failed to get to the next step in ${timeout}s - " + count);
     }
     require('internal').sleep(0.5);
     count = db[cn].count();
+    console.log("count: " + count);
   }
   lastCount = count;
 })

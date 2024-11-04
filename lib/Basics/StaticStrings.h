@@ -173,7 +173,7 @@ class StaticStrings {
   static std::string const ForceOneShardAttributeValue;
   static std::string const JoinStrategyType;
   static std::string const Algorithm;
-  static std::string const Yen;
+  static std::string const Legacy;
 
   // HTTP headers
   static std::string const Accept;

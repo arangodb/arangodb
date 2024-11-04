@@ -21,6 +21,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Async/Registry/promise.h"
+#include "Async/Registry/registry_variable.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 
@@ -29,6 +31,7 @@
 #include <condition_variable>
 #include <exception>
 #include <mutex>
+#include <stdexcept>
 
 using namespace arangodb::futures;
 
@@ -829,4 +832,278 @@ TEST(FutureTest, basic_example_fpointer) {
   auto f2 = std::move(f).thenValue(&onThenHelperAddOne);
   p.setValue(42);
   ASSERT_TRUE(f2.waitAndGet() == 43);
+}
+
+namespace {
+auto foo() -> Future<int> {
+  Promise<int> p;
+  return p.getFuture();
+}
+auto promise_count(arangodb::async_registry::ThreadRegistry& registry) -> uint {
+  uint promise_count = 0;
+  registry.for_promise([&](arangodb::async_registry::PromiseSnapshot promise) {
+    promise_count++;
+  });
+  return promise_count;
+}
+}  // namespace
+TEST(FutureTest, futures_are_registered_in_global_async_registry) {
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  {
+    auto x = foo();
+    std::vector<std::string_view> names;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
+          names.push_back(promise.source_location.function_name);
+        });
+    EXPECT_EQ(names.size(), 1);
+    EXPECT_TRUE(names[0].find("foo") != std::string::npos);
+  }
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()), 0);
+}
+
+namespace {
+auto awaited_co() -> Future<Unit> { co_return; };
+auto waiter_co(Future<Unit>&& fn) -> Future<Unit> {
+  co_await std::move(fn);
+  co_return;
+};
+}  // namespace
+TEST(FutureTest,
+     future_coroutine_promises_in_async_registry_know_their_waiter) {
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  auto awaited_coro = awaited_co();
+  auto waiter_coro = waiter_co(std::move(awaited_coro));
+
+  struct PromiseIds {
+    bool set = false;
+    void* id;
+    void* waiter;
+  };
+  PromiseIds awaited_promise;
+  PromiseIds waiter_promise;
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::PromiseSnapshot promise) {
+        count++;
+        if (promise.source_location.function_name.find("awaited_co") !=
+            std::string::npos) {
+          awaited_promise = PromiseIds{true, promise.id, promise.waiter};
+        }
+        if (promise.source_location.function_name.find("waiter_co") !=
+            std::string::npos) {
+          waiter_promise = PromiseIds{true, promise.id, promise.waiter};
+        }
+      });
+  EXPECT_EQ(count, 2);
+  EXPECT_TRUE(awaited_promise.set);
+  EXPECT_TRUE(waiter_promise.set);
+  EXPECT_EQ(awaited_promise.waiter, waiter_promise.id);
+  EXPECT_EQ(waiter_promise.waiter, nullptr);
+}
+
+namespace {
+auto awaited_fn() -> Future<int> {
+  Promise<int> p;
+  return p.getFuture();
+}
+}  // namespace
+TEST(FutureTest,
+     continued_future_promises_in_async_registry_know_their_waiter) {
+  struct PromiseIds {
+    bool set = false;
+    void* id;
+    void* waiter;
+  };
+
+  std::vector<std::function<void()>> waiter{
+
+      []() { auto future = awaited_fn().thenValue([](int a) { return 1; }); },
+      []() {
+        auto future =
+            awaited_fn().thenValue([](int a) { return makeFuture(a); });
+      },
+      []() {
+        auto future =
+            makeFuture(1).thenValue([&](int a) { return awaited_fn(); });
+      },
+      []() { auto future = awaited_fn().then([](Try<int>&& a) { return 1; }); },
+      []() {
+        auto future =
+            awaited_fn().then([](Try<int>&& a) { return makeFuture(a); });
+      },
+      []() {
+        auto future =
+            makeFuture(1).then([](Try<int>&& a) { return awaited_fn(); });
+      },
+      []() {
+        auto future = awaited_fn().thenError<std::logic_error&>(
+            [](std::logic_error& t) { return 1; });
+      },
+      []() {
+        auto future = awaited_fn().thenError<std::logic_error&>(
+            [](std::logic_error& t) { return makeFuture(1); });
+      },
+      []() {
+        auto future =
+            makeFuture<int>(std::make_exception_ptr(std::logic_error("foo")))
+                .thenError<std::logic_error&>(
+                    [](std::logic_error& t) { return awaited_fn(); });
+      },
+  };
+
+  for (const auto& fn : waiter) {
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    fn();
+    PromiseIds awaited_promise;
+    PromiseIds waiter_promise;
+    uint count = 0;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
+          count++;
+          if (std::string(promise.source_location.function_name)
+                  .find("awaited_fn") != std::string::npos) {
+            awaited_promise = PromiseIds{true, promise.id, promise.waiter};
+          }
+          if (std::string(promise.source_location.function_name)
+                  .find("TestBody") != std::string::npos) {
+            waiter_promise = PromiseIds{true, promise.id, promise.waiter};
+          }
+        });
+    EXPECT_EQ(count, 2);
+    EXPECT_TRUE(awaited_promise.set);
+    EXPECT_TRUE(waiter_promise.set);
+    EXPECT_EQ(awaited_promise.waiter, waiter_promise.id);
+    EXPECT_EQ(waiter_promise.waiter, nullptr);
+  }
+}
+
+TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
+  struct PromiseIds {
+    bool set = false;
+    void* id;
+    void* waiter;
+  };
+
+  std::vector<std::tuple<std::string, std::function<void()>>> waiter{
+      std::make_tuple("collectAll",
+                      []() {
+                        std::vector<Future<int>> vec;
+                        vec.push_back(awaited_fn());
+                        vec.push_back(awaited_fn());
+                        auto future = arangodb::futures::collectAll(vec);
+                      }),
+      std::make_tuple("gather",
+                      []() {
+                        auto future = arangodb::futures::gather(awaited_fn(),
+                                                                awaited_fn());
+                      }),
+      std::make_tuple("collect", []() {
+        auto future = arangodb::futures::collect(awaited_fn(), awaited_fn());
+      })};
+
+  for (const auto& [name, fn] : waiter) {
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    fn();
+    std::vector<PromiseIds> awaited_promises;
+    PromiseIds waiter_promise;
+    uint count = 0;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
+          count++;
+          if (std::string(promise.source_location.function_name)
+                  .find("awaited_fn") != std::string::npos) {
+            awaited_promises.push_back(
+                PromiseIds{true, promise.id, promise.waiter});
+          }
+          if (std::string(promise.source_location.function_name).find(name) !=
+              std::string::npos) {
+            waiter_promise = PromiseIds{true, promise.id, promise.waiter};
+          }
+        });
+    EXPECT_EQ(count, 3);
+    EXPECT_EQ(awaited_promises.size(), 2);
+    EXPECT_TRUE(waiter_promise.set);
+    EXPECT_EQ(awaited_promises[0].waiter, waiter_promise.id);
+    EXPECT_EQ(awaited_promises[1].waiter, waiter_promise.id);
+    EXPECT_EQ(waiter_promise.waiter, nullptr);
+  }
+}
+
+namespace {
+auto expect_all_promises_in_state(arangodb::async_registry::State state,
+                                  uint number_of_promises) {
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::PromiseSnapshot promise) {
+        count++;
+        EXPECT_EQ(promise.state, state);
+      });
+  EXPECT_EQ(count, number_of_promises);
+}
+}  // namespace
+TEST(FutureTest, promises_in_async_registry_know_their_state) {
+  {  // resolved future
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      auto future = makeFuture(1);
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   0);
+    }
+  }
+  {  // future without callback
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      Promise<int> p;
+      auto future = p.getFuture();
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
+
+      p.setValue(1);
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   1);
+    }
+    expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 1);
+  }
+  {  // adding callback before resolving future
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      Promise<int> p;
+      auto future = p.getFuture();
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
+
+      auto a = std::move(future).thenValue([](int a) { return 1; });
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   2);
+
+      p.setValue(1);
+      future.waitAndGet();
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   2);
+    }
+    expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 2);
+  }
+  {  // adding callback after resolving future
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      Promise<int> p;
+      auto future = p.getFuture();
+
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
+
+      p.setValue(1);
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   1);
+
+      auto a = std::move(future).thenValue([](int a) { return 1; });
+      future.waitAndGet();
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   2);
+    }
+
+    expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 2);
+  }
 }

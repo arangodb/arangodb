@@ -8,6 +8,9 @@ parameters:
   enterprise-commit:
     type: string
     default: ""
+  arangosh_args:
+    type: string
+    default: ""
   use-minimal-debug-info:
     type: boolean
     default: true
@@ -463,6 +466,9 @@ jobs:
         type: string
       suites:
         type: string
+      arangosh_args:
+        type: string
+        default: ""
       size:
         type: string
       extraArgs:
@@ -529,6 +535,7 @@ jobs:
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
+              --arangosh_args '<< parameters.arangosh_args >>' \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
               --extraArgs ' << parameters.extraArgs >>'
@@ -595,6 +602,9 @@ jobs:
       rta-branch:
         type: string
         default: "main"
+      arangosh_args:
+        type: string
+        default: ""
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -624,6 +634,7 @@ jobs:
               cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
               cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
             elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
+              sudo sysctl vm.mmap_rnd_bits=28
               export TSAN_OPTIONS="log_exe_name=true:log_path=/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
               export SAN_MODE=tsan
               cp work/ArangoDB/ubsan_arangodb_suppressions.txt work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt

@@ -83,7 +83,7 @@ function kEarlyAbortRegressionTest() {
     testPathsExists: function () {
       const query = `
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${vName}/0" TO "${vName}/1" GRAPH "${graphName}"
-          OPTIONS {weightAttribute: "weight"}
+          OPTIONS {weightAttribute: "weight", algorithm: "legacy"}
           LIMIT 1
           RETURN path`;
       const result = db._query(query).toArray();
@@ -103,7 +103,7 @@ function kEarlyAbortRegressionTest() {
     testPathsExistsYen: function () {
       const query = `
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${vName}/0" TO "${vName}/1" GRAPH "${graphName}"
-          OPTIONS {weightAttribute: "weight", algorithm: "yen"}
+          OPTIONS {weightAttribute: "weight"}
           LIMIT 1
           RETURN path`;
       const result = db._query(query).toArray();
@@ -123,7 +123,7 @@ function kEarlyAbortRegressionTest() {
     testPaths: function () {
       const query = `
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${vName}/0" TO "${vName}/1" GRAPH "${graphName}"
-          OPTIONS {weightAttribute: "weight"}
+          OPTIONS {weightAttribute: "weight", algorithm: "legacy"}
           RETURN path.weight`;
       const result = db._query(query).toArray();
       assertEqual([1000,1100], result);
@@ -132,7 +132,7 @@ function kEarlyAbortRegressionTest() {
     testPathsYen: function () {
       const query = `
         FOR path IN OUTBOUND K_SHORTEST_PATHS "${vName}/0" TO "${vName}/1" GRAPH "${graphName}"
-          OPTIONS {weightAttribute: "weight", algorithm: "yen"}
+          OPTIONS {weightAttribute: "weight"}
           RETURN path.weight`;
       const result = db._query(query).toArray();
       assertEqual([1000,1100], result);
