@@ -1158,7 +1158,6 @@ class instance {
         let foundUninteresting = false;
         unInteristingLogTopics.forEach(logToken => {
           if (line.search(logToken) !== -1) {
-            print(line)
             foundUninteresting = true;
           }
         });

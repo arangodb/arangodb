@@ -508,7 +508,6 @@ class instanceManager {
     let importantLines = {};
     this.arangods.forEach(arangod => {
       let lines = arangod.readImportantLogLines();
-      print(lines)
       if (lines.length > 0) {
         importantLines[arangod.name] = lines;
       }
