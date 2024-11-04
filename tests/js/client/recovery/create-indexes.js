@@ -74,7 +74,7 @@ function recoverySuite () {
       for (i = 0; i < 5; ++i) {
         c = db._collection('UnitTestsRecovery' + i);
         assertEqual(100, c.count());
-        idx = c.getIndexes();
+        idx = c.indexes();
         assertEqual(3, idx.length);
 
         for (j = 1; j < 3; ++j) {

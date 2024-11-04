@@ -64,7 +64,7 @@ function recoverySuite () {
 
     testBrokenIndex: function () {
       const c = db._collection('UnitTestsRecovery1');
-      const indexes = c.getIndexes();
+      const indexes = c.indexes();
       assertEqual(indexes.length, 1);
       assertEqual(indexes[0].type, 'primary');
       assertEqual(indexes[0].id, 'UnitTestsRecovery1/0');

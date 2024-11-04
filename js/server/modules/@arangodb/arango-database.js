@@ -246,7 +246,7 @@ ArangoDatabase.prototype._index = function (id) {
     throw err;
   }
 
-  var indexes = col.getIndexes();
+  var indexes = col.indexes();
   var i;
 
   for (i = 0;  i < indexes.length;  ++i) {
