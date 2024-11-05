@@ -1,11 +1,14 @@
-import { CreatableMultiSelectControl, SingleSelectControl } from "@arangodb/ui";
+import {
+  CreatableMultiSelectControl,
+  SingleSelectControl,
+  SwitchControl
+} from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
 import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
-import { SwitchControl } from "../../../../../components/form/SwitchControl";
 
 export const InvertedIndexStoredValues = ({
   field
@@ -77,9 +80,7 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                     />
                   </Box>
                   <Box minWidth={"0"}>
-                    <FormLabel
-                      htmlFor={`storedValues.${index}.cache`}
-                    >
+                    <FormLabel htmlFor={`storedValues.${index}.cache`}>
                       Cache
                     </FormLabel>
                     <SwitchControl
@@ -89,8 +90,8 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                       name={`storedValues.${index}.cache`}
                       tooltip={
                         window.frontendConfig.isEnterprise
-                        ? undefined
-                        : "Field normalization value caching is available in Enterprise plans."
+                          ? undefined
+                          : "Field normalization value caching is available in Enterprise plans."
                       }
                     />
                   </Box>

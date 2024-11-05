@@ -1,11 +1,10 @@
-import { InputControl, SingleSelectControl } from "@arangodb/ui";
+import { InputControl, SingleSelectControl, SwitchControl } from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton, Spacer } from "@chakra-ui/react";
 import { FieldArray, useField } from "formik";
 import React from "react";
 import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
-import { SwitchControl } from "../../../../../components/form/SwitchControl";
 
 export const InvertedIndexPrimarySort = ({
   field
@@ -72,8 +71,8 @@ const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
           name="primarySort.cache"
           tooltip={
             window.frontendConfig.isEnterprise
-            ? undefined
-            : "Primary sort column caching is available in Enterprise plans."
+              ? undefined
+              : "Primary sort column caching is available in Enterprise plans."
           }
         />
         <Spacer />

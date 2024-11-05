@@ -1,4 +1,4 @@
-import { InputControl, SingleSelectControl } from "@arangodb/ui";
+import { InputControl, SingleSelectControl, SwitchControl } from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import {
   AccordionButton,
@@ -13,7 +13,6 @@ import {
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
-import { SwitchControl } from "../../../../components/form/SwitchControl";
 
 const compressionOptions = [
   {
@@ -44,7 +43,7 @@ export const PrimarySortAccordionItem = () => {
           pt={4}
         >
           <FormLabel htmlFor="primarySortCompression">Compression</FormLabel>
-          <SelectControl
+          <SingleSelectControl
             name="primarySortCompression"
             selectProps={{
               options: compressionOptions
@@ -58,8 +57,8 @@ export const PrimarySortAccordionItem = () => {
             }}
             tooltip={
               window.frontendConfig.isEnterprise
-              ? undefined
-              : "Primary key column caching is available in Enterprise plans."
+                ? undefined
+                : "Primary key column caching is available in Enterprise plans."
             }
           />
         </Box>

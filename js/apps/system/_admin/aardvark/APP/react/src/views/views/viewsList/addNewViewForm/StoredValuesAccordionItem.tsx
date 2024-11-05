@@ -1,4 +1,8 @@
-import { CreatableMultiSelectControl, SingleSelectControl } from "@arangodb/ui";
+import {
+  CreatableMultiSelectControl,
+  SingleSelectControl,
+  SwitchControl
+} from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import {
   AccordionButton,
@@ -13,7 +17,6 @@ import {
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
-import { SwitchControl } from "../../../../components/form/SwitchControl";
 
 export const StoredValuesAccordionItem = () => {
   return (
@@ -82,9 +85,7 @@ const StoredValuesFields = () => {
                     />
                   </Box>
                   <Box minWidth={"0"}>
-                    <FormLabel
-                      htmlFor={`storedValues.${index}.cache`}
-                    >
+                    <FormLabel htmlFor={`storedValues.${index}.cache`}>
                       Cache
                     </FormLabel>
                     <SwitchControl
@@ -93,8 +94,8 @@ const StoredValuesFields = () => {
                       }}
                       tooltip={
                         window.frontendConfig.isEnterprise
-                        ? undefined
-                        : "Field normalization value caching is available in Enterprise plans."
+                          ? undefined
+                          : "Field normalization value caching is available in Enterprise plans."
                       }
                       name={`storedValues.${index}.cache`}
                     />
