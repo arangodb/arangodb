@@ -32,26 +32,6 @@ namespace arangodb {
 // Number of training iterations, in faiss it is 25 by default
 static constexpr int kdefaultTrainingIterations{25};
 
-struct VectorHashFunction {
-  double bParam;
-  double wParam;
-  std::vector<double> vParam;
-
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, VectorHashFunction& x) {
-    return f.object(x)
-        .fields(f.field("bParam", x.bParam), f.field("wParam", x.wParam),
-                f.field("vParam", x.vParam))
-        .invariant([](VectorHashFunction& x) -> inspection::Status {
-          if (x.wParam == 0) {
-            return {"Division by zero is undefined!"};
-          }
-
-          return inspection::Status::Success{};
-        });
-  }
-};
-
 enum class SimilarityMetric : std::uint8_t {
   kL2,
   kCosine,
