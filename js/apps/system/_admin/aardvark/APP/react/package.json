@@ -3,7 +3,7 @@
   "version": "3.0.0",
   "private": true,
   "dependencies": {
-    "@arangodb/ui": "^0.0.14",
+    "@arangodb/ui": "^0.0.17",
     "@chakra-ui/icons": "^2.1.1",
     "@chakra-ui/react": "^2.8.2",
     "@chakra-ui/theme-tools": "^2.1.2",
