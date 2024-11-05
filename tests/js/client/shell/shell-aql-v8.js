@@ -111,7 +111,7 @@ function V8QuerySuite () {
     },
 
     testApplyUserDefinedMultiple : function () {
-      let results = db._query({ query: "FOR i IN 0..2000 FILTER 'a' == test::decodeURIComponent('a') RETURN 'done'" }).toArray();
+      let results = db._query({ query: "FOR i IN 0..10000 FILTER 'a' == test::decodeURIComponent('a') RETURN 'done'" }).toArray();
       assertEqual('done', results[0]);
     },
 
