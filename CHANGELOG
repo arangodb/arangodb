@@ -1,6 +1,42 @@
 devel
 -----
 
+* Add vector index based on faiss implementation. Current vector index 
+  implementation supports L2 and cosine metrics. To create vector index
+  vector fields in collection must already be populated with data. Example
+  of vector index creation:
+  ```
+    db.<collection>.ensureIndex({
+      type: "vector",
+      fields: ["value1"],
+      params: {
+        "metric": "l2",
+        "dimensions": 300,
+        "nLists": 100
+      }
+    });
+  ````
+  where parameters are:
+  - metric: defines how similarity/distance is calculated, can be
+    l2 or cosine,
+  - nLists: number of lists to create,
+  - dimensions: vector dimensions, ArangoDB will also check that all the vectors
+    have correct number of components,
+  - trainingIterations: how many training iterations will be use, 
+  Current limitation that vector index can be crated only on a single field.
+  Vector creation has two phases, training in which the centroids are being determined
+  from the subset of data, and insertion phase in which the lists are being populated.
+  To trigger the vector index usage appropriate APPROX_NEAR function must be used
+  along with SORT and LIMIT clauses e.g.:
+  ```
+    FOR d IN docs
+    LET distance = APPROX_NEAR_L2(d.vector, @queryVector)
+    SORT distance
+    LIMIT 10
+    RETURN {d, distance}
+  ````
+  This returns top 10 nearest neighbors to @queryVector.
+
 * Update tzdata as of 31.10.2024.
 
 * Bring unicode collation back to the exact 3.11 behaviour by shipping the 
