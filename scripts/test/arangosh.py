@@ -3,13 +3,12 @@
 import logging
 import os
 from async_client import (
+    ArangoCLIprogressiveTimeoutExecutor,
+
     make_logfile_params,
     logfile_line_result,
     delete_logfile_params,
 )
-
-from async_client import ArangoCLIprogressiveTimeoutExecutor
-
 
 class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
     """configuration"""
@@ -42,10 +41,12 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
                     else:
                         memory //= 2
                 return ["--memory", str(memory)]
+        return []
 
     def run_testing(
         self,
         testcase,
+        arangosh_args,
         testing_args,
         timeout,
         directory,
@@ -85,8 +86,7 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
             testscript,
         ]
         run_cmd = (
-            args
-            + [
+            arangosh_args + args + [
                 "--",
                 testcase,
                 "--testOutput",

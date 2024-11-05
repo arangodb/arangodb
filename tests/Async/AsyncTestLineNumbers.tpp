@@ -36,9 +36,9 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
 
     uint count = 0;
     arangodb::async_registry::registry.for_promise(
-        [&](arangodb::async_registry::Promise* promise) {
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise->source_location.line.load(), 34);
+          EXPECT_EQ(promise.source_location.line, 34);
         });
     EXPECT_EQ(count, 1);
   }
@@ -54,18 +54,18 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
 
     uint count = 0;
     arangodb::async_registry::registry.for_promise(
-        [&](arangodb::async_registry::Promise* promise) {
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise->source_location.line.load(), 50);
+          EXPECT_EQ(promise.source_location.line, 50);
         });
     EXPECT_EQ(count, 1);
     wait.resume();
 
     count = 0;
     arangodb::async_registry::registry.for_promise(
-        [&](arangodb::async_registry::Promise* promise) {
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise->source_location.line.load(), 52);
+          EXPECT_EQ(promise.source_location.line, 52);
         });
     EXPECT_EQ(count, 1);
   }
@@ -81,18 +81,18 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
 
     uint count = 0;
     arangodb::async_registry::registry.for_promise(
-        [&](arangodb::async_registry::Promise* promise) {
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise->source_location.line.load(), 77);
+          EXPECT_EQ(promise.source_location.line, 77);
         });
     EXPECT_EQ(count, 1);
     wait.await();
 
     count = 0;
     arangodb::async_registry::registry.for_promise(
-        [&](arangodb::async_registry::Promise* promise) {
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
-          EXPECT_EQ(promise->source_location.line.load(), 79);
+          EXPECT_EQ(promise.source_location.line, 79);
         });
     EXPECT_EQ(count, 1);
   }

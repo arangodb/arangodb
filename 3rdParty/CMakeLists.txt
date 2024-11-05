@@ -110,6 +110,8 @@ set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 add_subdirectory(icu-legacy)
 set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)
 set(ICU64_INCLUDE_DIR "${ICU64_INCLUDE_DIR}" PARENT_SCOPE)
+set(ICU_DT_LEGACY "${ICU_DT_LEGACY}" PARENT_SCOPE)
+set(ICU_DT_LEGACY_DEST "${ICU_DT_LEGACY_DEST}" PARENT_SCOPE)
 
 ################################################################################
 ## Google Abseil

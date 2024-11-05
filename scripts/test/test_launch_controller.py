@@ -49,6 +49,7 @@ def parse_arguments():
     parser.add_argument("--extraArgs", help="", type=str)
     parser.add_argument("--suffix", help="", type=str)
     parser.add_argument("--build", help="build folder", type=str)
+    parser.add_argument("--arangosh_args", help="args to arangosh", type=str)
     return parser.parse_args()
 
 
@@ -73,7 +74,7 @@ def main():
         )
         runner = TestingRunner(SiteConfig(base_source_dir, build_dir))
         runner.scenarios.append(
-            TestConfig(runner.cfg, name, suite, [*extra_args], 1, 1, [])
+            TestConfig(runner.cfg, name, suite, [*extra_args], args.arangosh_args, 1, 1, [])
         )
         launch_runner(runner, True)
     except Exception as exc:
