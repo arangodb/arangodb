@@ -85,10 +85,8 @@ const StoredValuesFields = () => {
                     />
                   </Box>
                   <Box minWidth={"0"}>
-                    <FormLabel htmlFor={`storedValues.${index}.cache`}>
-                      Cache
-                    </FormLabel>
                     <SwitchControl
+                      label="Cache"
                       switchProps={{
                         isDisabled: !window.frontendConfig.isEnterprise
                       }}
