@@ -205,7 +205,7 @@ function makeDataWrapper (options) {
   }
 
   options.cleanup = options.cleanup && localOptions.cleanup;
-  SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 1000);
+  SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout * 1000);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
   let timeout = SetGlobalExecutionDeadlineTo(0.0);
   if (timeout) {
