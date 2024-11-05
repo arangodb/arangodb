@@ -1253,6 +1253,9 @@ void GraphManager::invalidateQueryOptimizerCaches() const {
   // First our own cache:
   _vocbase.queryPlanCache().invalidateAll();
 
+  LOG_TOPIC("33232", TRACE, Logger::GRAPHS)
+      << "Invalidating query optimizer cache locally.";
+
   // If we are in a cluster, send a request to all other coordinators:
   if (!ServerState::instance()->isCoordinator()) {
     return;
@@ -1277,10 +1280,10 @@ void GraphManager::invalidateQueryOptimizerCaches() const {
                                     fuerte::RestVerb::Delete, path, {}, opts);
       requests.emplace_back(std::move(f).then(
           [server](auto&& response) { return std::move(response).get(); }));
+      LOG_TOPIC("33231", TRACE, Logger::GRAPHS)
+          << "Invalidating query optimizer cache remotely on server " << server
+          << " (fire-and-forget)";
     }
-    LOG_TOPIC("33231", TRACE, Logger::GRAPHS)
-        << "Invalidating query optimizer cache on server " << server
-        << " (fire-and-forget)";
   }
   // We just do a fire-and-forget here, the worst that can happen is that
   // we did not reach a coordinator and it is still using an old cache
