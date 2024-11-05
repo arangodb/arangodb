@@ -1151,8 +1151,8 @@ class instance {
         // filter out regular INFO lines, and test related messages
         let warn = line.search('WARNING about to execute:') !== -1;
         let info = line.search(' INFO ') !== -1;
-
-        if (warn || info) {
+        let crash = line.search('{crash}') !== -1;
+        if (warn || (info && ! crash)) {
           continue;
         }
         let foundUninteresting = false;
