@@ -250,7 +250,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
             return {faiss::IndexFlatIP(_definition.dimensions)};
         }
       });
-    if (_trainedData) {
+  if (_trainedData) {
     std::visit(
         [this](auto&& quant) {
           quant.ntotal = _trainedData->numberOfCentroids;
