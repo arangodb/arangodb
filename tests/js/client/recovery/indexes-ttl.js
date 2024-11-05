@@ -54,7 +54,7 @@ function recoverySuite () {
   return {
     testIndexesTtl: function () {
       let c = db._collection('UnitTestsRecovery1');
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
 
       assertEqual("ttl", idx.type);
       assertEqual(["value"], idx.fields);
@@ -62,7 +62,7 @@ function recoverySuite () {
       assertFalse(idx.estimates);
       
       c = db._collection('UnitTestsRecovery2');
-      idx = c.getIndexes()[1];
+      idx = c.indexes()[1];
 
       assertEqual("ttl", idx.type);
       assertEqual(["value"], idx.fields);

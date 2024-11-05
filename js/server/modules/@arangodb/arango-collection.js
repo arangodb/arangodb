@@ -110,7 +110,7 @@ ArangoCollection.prototype.toArray = function () {
 // / *Examples*
 // /
 // / @code
-// / arango> db.example.getIndexes().map(function(x) { return x.id; })
+// / arango> db.example.indexes().map(function(x) { return x.id; })
 // / ["example/0"]
 // / arango> db.example.index("93013/0")
 // / { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
@@ -118,7 +118,7 @@ ArangoCollection.prototype.toArray = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.index = function (id) {
-  var indexes = this.getIndexes();
+  var indexes = this.indexes();
   var i;
 
   if (typeof id === 'object' && id.hasOwnProperty('id')) {

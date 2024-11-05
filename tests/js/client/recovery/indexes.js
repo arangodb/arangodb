@@ -66,7 +66,7 @@ function recoverySuite () {
     testIndexes: function () {
       var docs;
       var c = db._collection('UnitTestsRecovery'), i;
-      var idx = c.getIndexes().sort(function (l, r) {
+      var idx = c.indexes().sort(function (l, r) {
         if (l.id.length !== r.id.length) {
           return l.id.length - r.id.length < 0 ? -1 : 1;
         }

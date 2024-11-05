@@ -273,7 +273,7 @@ function IndexSuite() {
       helper.waitUnload(collection);
 
       assertEqual(idx.id, collection.index(idx.id).id);
-      assertEqual(idx.id, collection.getIndexes()[1].id);
+      assertEqual(idx.id, collection.indexes()[1].id);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,7 +296,7 @@ function IndexSuite() {
       }
 
       try {
-        collection.getIndexes();
+        collection.indexes();
         fail();
       } catch (e2) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e2.errorNum);
@@ -336,10 +336,10 @@ function IndexSuite() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: return value of getIndexes
+/// @brief test suite: return value of indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-function GetIndexesSuite() {
+function IndexesSuite() {
   'use strict';
 
   let collection = null;
@@ -361,7 +361,7 @@ function GetIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetPrimary: function() {
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(1, res.length);
       var idx = res[0];
@@ -377,7 +377,7 @@ function GetIndexesSuite() {
 
     testGetPersistentUnique1: function() {
       collection.ensureIndex({type: "persistent", fields: ["value"], unique: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -394,7 +394,7 @@ function GetIndexesSuite() {
 
     testGetPersistentUnique2: function() {
       collection.ensureIndex({type: "persistent", fields: ["value1", "value2"], unique: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -411,7 +411,7 @@ function GetIndexesSuite() {
 
     testGetSparsePersistentUnique1: function() {
       collection.ensureIndex({type: "persistent", fields: ["value"], unique: true, sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -428,7 +428,7 @@ function GetIndexesSuite() {
 
     testGetSparsePersistentUnique2: function() {
       collection.ensureIndex({type: "persistent", fields: ["value1", "value2"], unique: true, sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -445,7 +445,7 @@ function GetIndexesSuite() {
 
     testGetPersistentNonUnique1: function() {
       collection.ensureIndex({type: "persistent", fields: ["value"]});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -462,7 +462,7 @@ function GetIndexesSuite() {
 
     testGetPersistentNonUnique2: function() {
       collection.ensureIndex({type: "persistent", fields: ["value1", "value2"]});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -479,7 +479,7 @@ function GetIndexesSuite() {
 
     testGetSparsePersistentNonUnique1: function() {
       collection.ensureIndex({type: "persistent", fields: ["value"], sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -496,7 +496,7 @@ function GetIndexesSuite() {
 
     testGetSparsePersistentNonUnique2: function() {
       collection.ensureIndex({type: "persistent", fields: ["value1", "value2"], sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -573,7 +573,7 @@ function GetIndexesSuite() {
 
     testGetFulltext: function() {
       collection.ensureIndex({type: "fulltext", fields: ["value"]});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -589,7 +589,7 @@ function GetIndexesSuite() {
 
     testGetRocksDBUnique1: function() {
       collection.ensureIndex({type: "persistent", unique: true, fields: ["value"]});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -606,7 +606,7 @@ function GetIndexesSuite() {
 
     testGetRocksDBUnique2: function() {
       collection.ensureIndex({type: "persistent", unique: true, fields: ["value1", "value2"]});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -623,7 +623,7 @@ function GetIndexesSuite() {
 
     testGetSparseRocksDBUnique1: function() {
       collection.ensureIndex({type: "persistent", unique: true, fields: ["value"], sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -640,7 +640,7 @@ function GetIndexesSuite() {
 
     testGetSparseRocksDBUnique2: function() {
       collection.ensureIndex({type: "persistent", unique: true, fields: ["value1", "value2"], sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -657,7 +657,7 @@ function GetIndexesSuite() {
 
     testGetRocksDBNonUnique1: function() {
       collection.ensureIndex({type: "persistent", fields: ["value"]});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -674,7 +674,7 @@ function GetIndexesSuite() {
 
     testGetRocksDBNonUnique2: function() {
       collection.ensureIndex({type: "persistent", fields: ["value1", "value2"]});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -691,7 +691,7 @@ function GetIndexesSuite() {
 
     testGetSparseRocksDBNonUnique1: function() {
       collection.ensureIndex({type: "persistent", fields: ["value"], sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -708,7 +708,7 @@ function GetIndexesSuite() {
 
     testGetSparseRocksDBNonUnique2: function() {
       collection.ensureIndex({type: "persistent", fields: ["value1", "value2"], sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -723,10 +723,10 @@ function GetIndexesSuite() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: return value of getIndexes for an edge collection
+/// @brief test suite: return value of indexes for an edge collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function GetIndexesEdgesSuite() {
+function IndexesEdgesSuite() {
   'use strict';
 
   let collection = null;
@@ -748,7 +748,7 @@ function GetIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgeGetPrimary: function() {
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[0];
@@ -765,7 +765,7 @@ function GetIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetEdge: function() {
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(2, res.length);
       var idx = res[1];
@@ -784,7 +784,7 @@ function GetIndexesEdgesSuite() {
 
     testEdgeGetGeoConstraint1: function() {
       collection.ensureIndex({type: "geo", fields: ["lat", "lon"], geoJson: false});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
@@ -804,7 +804,7 @@ function GetIndexesEdgesSuite() {
 
     testEdgeGetGeoConstraint2: function() {
       collection.ensureIndex({type: "geo", fields: ["lat", "lon"], geoJson: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
@@ -824,7 +824,7 @@ function GetIndexesEdgesSuite() {
 
     testEdgeGetGeoConstraint3: function() {
       collection.ensureIndex({type: "geo", fields: ["lat"], geoJson: true, sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
@@ -845,7 +845,7 @@ function GetIndexesEdgesSuite() {
 
     testEdgeGetGeoIndex1: function() {
       collection.ensureIndex({type: "geo", fields: ["lat"], geoJson: true, sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
@@ -866,7 +866,7 @@ function GetIndexesEdgesSuite() {
 
     testEdgeGetGeoIndex2: function() {
       collection.ensureIndex({type: "geo", fields: ["lat", "lon"]});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
@@ -886,7 +886,7 @@ function GetIndexesEdgesSuite() {
 
     testEdgeGetPersistentUnique: function() {
       collection.ensureIndex({type: "persistent", fields: ["value"], unique: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
@@ -906,7 +906,7 @@ function GetIndexesEdgesSuite() {
 
     testEdgeGetSparsePersistentUnique: function() {
       collection.ensureIndex({type: "persistent", fields: ["value"], unique: true, sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
@@ -926,7 +926,7 @@ function GetIndexesEdgesSuite() {
 
     testEdgeGetPersistent: function() {
       collection.ensureIndex({type: "persistent", fields: ["value"]});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
@@ -946,7 +946,7 @@ function GetIndexesEdgesSuite() {
 
     testEdgeGetSparsePersistent: function() {
       collection.ensureIndex({type: "persistent", fields: ["value"], sparse: true});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
@@ -966,7 +966,7 @@ function GetIndexesEdgesSuite() {
 
     testEdgeGetFulltext: function() {
       collection.ensureIndex({type: "fulltext", fields: ["value"]});
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(3, res.length);
       var idx = res[2];
@@ -1572,7 +1572,7 @@ function MultiIndexRollbackSuite() {
       collection.ensureIndex({type: "persistent", fields: ["_from", "_to", "link"], unique: true});
       collection.ensureIndex({type: "persistent", fields: ["_to", "ext"], unique: true, sparse: true});
 
-      var res = collection.getIndexes();
+      var res = collection.indexes();
 
       assertEqual(4, res.length);
       assertEqual("primary", res[0].type);
@@ -1641,7 +1641,7 @@ function ParallelIndexSuite() {
       let time = require("internal").time;
       let start = time();
       while (true) {
-        let indexes = require("internal").db._collection(cn).getIndexes();
+        let indexes = require("internal").db._collection(cn).indexes();
         assertTrue(indexes.length >= 1, indexes);
         if (indexes.length === noIndexes + 1) {
           // primary index + user-defined indexes
@@ -1658,7 +1658,7 @@ function ParallelIndexSuite() {
         require("internal").wait(0.5, false);
       }
 
-      let indexes = require("internal").db._collection(cn).getIndexes();
+      let indexes = require("internal").db._collection(cn).indexes();
       assertEqual(noIndexes + 1, indexes.length);
     },
 
@@ -1672,7 +1672,7 @@ function ParallelIndexSuite() {
       let time = require("internal").time;
       let start = time();
       while (true) {
-        let indexes = require("internal").db._collection(cn).getIndexes();
+        let indexes = require("internal").db._collection(cn).indexes();
         if (indexes.length === 4 + 1) {
           // primary index + user-defined indexes
           break;
@@ -1694,7 +1694,7 @@ function ParallelIndexSuite() {
       // will not do anything because the target indexes already exist)
       require("internal").wait(5, false);
 
-      let indexes = require("internal").db._collection(cn).getIndexes();
+      let indexes = require("internal").db._collection(cn).indexes();
       assertEqual(4 + 1, indexes.length);
     }
   };
@@ -1745,8 +1745,8 @@ function IndexUpdateSuite() {
 }
 
 jsunity.run(IndexSuite);
-jsunity.run(GetIndexesSuite);
-jsunity.run(GetIndexesEdgesSuite);
+jsunity.run(IndexesSuite);
+jsunity.run(IndexesEdgesSuite);
 jsunity.run(DuplicateValuesSuite);
 jsunity.run(MultiIndexRollbackSuite);
 jsunity.run(ParallelIndexSuite);

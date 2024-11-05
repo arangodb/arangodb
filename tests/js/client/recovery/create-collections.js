@@ -99,7 +99,7 @@ function recoverySuite () {
       assertTrue(prop.waitForSync);
       assertEqual(2, c.type());
       assertFalse(prop.isSystem);
-      idx = c.getIndexes();
+      idx = c.indexes();
       assertEqual(3, idx.length);
 
       c = db._collection('UnitTestsRecovery2');
@@ -108,7 +108,7 @@ function recoverySuite () {
       assertFalse(prop.waitForSync);
       assertEqual(2, c.type());
       assertFalse(prop.isSystem);
-      idx = c.getIndexes();
+      idx = c.indexes();
       assertEqual(2, idx.length);
       assertEqual('skiplist', idx[1].type);
       assertFalse(idx[1].unique);
@@ -120,7 +120,7 @@ function recoverySuite () {
       assertFalse(prop.waitForSync);
       assertEqual(3, c.type());
       assertFalse(prop.isSystem);
-      idx = c.getIndexes();
+      idx = c.indexes();
       assertEqual(3, idx.length);
       assertEqual('edge', idx[1].type);
       assertEqual('skiplist', idx[2].type);
@@ -131,7 +131,7 @@ function recoverySuite () {
       prop = c.properties();
       assertEqual(2, c.type());
       assertTrue(prop.isSystem);
-      idx = c.getIndexes();
+      idx = c.indexes();
       assertEqual(2, idx.length);
       assertEqual('hash', idx[1].type);
       assertTrue(idx[1].unique);

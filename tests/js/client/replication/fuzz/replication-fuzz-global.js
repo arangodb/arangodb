@@ -439,7 +439,7 @@ function ReplicationSuite() {
 
           let dropIndex = function () {
             let collection = pickCollection();
-            let indexes = collection.getIndexes();
+            let indexes = collection.indexes();
             if (indexes.length > 1) {
               collection.dropIndex(indexes[1]);
             }
