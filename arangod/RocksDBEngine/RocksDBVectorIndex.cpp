@@ -304,10 +304,12 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   }
   flatIndex.search(count, inputs.data(), topK, distances.data(), labels.data(),
                    nullptr);
-  // faiss returns squared distances, square them so they are returned in normal
-  // form
-  std::ranges::transform(distances, distances.begin(),
-                         [](auto const& elem) { return std::sqrt(elem); });
+  // faiss returns squared distances for L2, square them so they are returned in
+  // normal form
+  if (_definition.metric == SimilarityMetric::kL2) {
+    std::ranges::transform(distances, distances.begin(),
+                           [](auto const& elem) { return std::sqrt(elem); });
+  }
 
   return {std::move(labels), std::move(distances)};
 }
