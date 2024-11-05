@@ -250,11 +250,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
             return {faiss::IndexFlatIP(_definition.dimensions)};
         }
       });
-  LOG_DEVEL << "Loading training data: numberOfVectors: "
-            << _trainedData->numberOfCentroids
-            << " codeDataSize: " << _trainedData->codeData.size()
-            << " codeSize: " << _trainedData->codeSize;
-  if (_trainedData) {
+    if (_trainedData) {
     std::visit(
         [this](auto&& quant) {
           quant.ntotal = _trainedData->numberOfCentroids;
@@ -371,7 +367,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                                       rocksdb::Slice upper,
                                       RocksDBMethods* methods) {
-  LOG_DEVEL << " Calling prepareIndex ";
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, &_collection, nullptr, methods, _cf,
                            _definition.nLists, flatIndex.code_size);
@@ -414,19 +409,13 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimensions, counter, trainingData.data());
   }
-  LOG_DEVEL << "Starting Training";
   flatIndex.train(counter, trainingData.data());
-  LOG_DEVEL << "Finished Training";
   LOG_TOPIC("a160b", INFO, Logger::ROCKSDB)
       << "Finished training for vector index";
 
   // Update vector definition data with quantizier data
   _trainedData = std::visit(
       [](auto&& quant) {
-        LOG_DEVEL << "Trained data: codeDataSize: " << quant.codes.size()
-                  << " ntotal: " << quant.ntotal
-                  << " codeSize: " << quant.code_size;
-
         return TrainedData{.codeData = quant.codes,
                            .numberOfCentroids = quant.ntotal,
                            .codeSize = quant.code_size};
