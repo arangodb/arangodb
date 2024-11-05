@@ -295,8 +295,6 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   RocksDBInvertedLists ril(this, collection.get(), trx, rocksDBMethods, _cf,
                            _definition.nLists, flatIndex.code_size);
   flatIndex.replace_invlists(&ril);
-  // TODO expose as parameter to APPROX_NEAR
-  flatIndex.nprobe = 2;
 
   std::vector<float> distances(topK * count);
   std::vector<faiss::idx_t> labels(topK * count);

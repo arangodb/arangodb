@@ -81,7 +81,8 @@ function VectorIndexL2TestSuite() {
                 params: {
                     metric: "l2",
                     dimensions: dimension,
-                    nLists: 10
+                    nLists: 10,
+                    trainingIterations: 10,
                 },
             });
         },
