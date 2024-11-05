@@ -173,7 +173,17 @@ function makeDataWrapper (options) {
     localOptions.dbServers = 3;
   }
 
+  SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 1000);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
+  let timeout = SetGlobalExecutionDeadlineTo(0.0);
+  if (timeout) {
+    return {
+      timeout: true,
+      forceTerminate: true,
+      status: false,
+      message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(rc)}`,
+    };
+  }
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }
