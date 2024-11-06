@@ -46,7 +46,7 @@ devel
   optimized as usual, and the cached plan will be inserted into the plan cache.
   Repeated executions of the same query (same query string and using the same 
   set of collection bind parameters) will then make use of the cached plan
-  entry.
+  entry, potentially with different value bind parameters.
 
   The following query options will be ignored when a cached plan is used:
   - `joinStrategyType`
