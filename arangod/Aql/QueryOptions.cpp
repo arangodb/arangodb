@@ -76,8 +76,8 @@ QueryOptions::QueryOptions()
       fullCount(false),
       count(false),
       skipAudit(false),
-      optimizePlanForCaching(false),
-      usePlanCache(false),
+      optimizePlanForCaching(true),
+      usePlanCache(true),
       explainRegisters(ExplainRegisterPlan::No),
       desiredJoinStrategy(JoinStrategyType::kDefault) {
   // now set some default values from server configuration options
