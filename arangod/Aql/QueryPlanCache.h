@@ -133,11 +133,6 @@ class QueryPlanCache {
     std::atomic<size_t> numUsed;
   };
 
-  struct Entry {
-    Key key;
-    Value value;
-  };
-
   QueryPlanCache(QueryPlanCache const&) = delete;
   QueryPlanCache& operator=(QueryPlanCache const&) = delete;
 
