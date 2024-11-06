@@ -1,3 +1,4 @@
+import { SingleSelectControl } from "@arangodb/ui";
 import {
   AddIcon,
   ArrowDownIcon,
@@ -7,11 +8,10 @@ import {
 import { Box, Button, Grid, IconButton, Stack, Text } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { SelectControl } from "../../../../components/form/SelectControl";
-import { TYPE_TO_LABEL_MAP } from "../../AnalyzersHelpers";
 import { PipelineStates } from "../../Analyzer.types";
-import { AnalyzerTypeForm } from "../AnalyzerTypeForm";
 import { useAnalyzersContext } from "../../AnalyzersContext";
+import { TYPE_TO_LABEL_MAP } from "../../AnalyzersHelpers";
+import { AnalyzerTypeForm } from "../AnalyzerTypeForm";
 
 const ANALYZER_TYPE_OPTIONS = TYPE_TO_LABEL_MAP
   ? (Object.keys(TYPE_TO_LABEL_MAP)
@@ -55,7 +55,7 @@ export const PipelineConfig = () => {
                 >
                   <Text>{index + 1}.</Text>
                   <Stack>
-                    <SelectControl
+                    <SingleSelectControl
                       isDisabled={isDisabled}
                       name={`properties.pipeline.${index}.type`}
                       selectProps={{
