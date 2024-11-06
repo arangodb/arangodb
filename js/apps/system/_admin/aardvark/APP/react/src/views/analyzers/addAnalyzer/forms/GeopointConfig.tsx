@@ -1,6 +1,6 @@
+import { CreatableMultiSelectControl } from "@arangodb/ui";
 import { Grid } from "@chakra-ui/react";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
 import { useAnalyzersContext } from "../../AnalyzersContext";
 import { GeoOptionsInputs } from "./inputs/GeoOptionsInputs";
 

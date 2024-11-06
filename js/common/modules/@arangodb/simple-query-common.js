@@ -530,7 +530,7 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
   this._distance = null;
 
   if (iid === undefined) {
-    idx = collection.getIndexes();
+    idx = collection.indexes();
 
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
@@ -636,7 +636,7 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
   this._distance = null;
 
   if (iid === undefined) {
-    idx = collection.getIndexes();
+    idx = collection.indexes();
 
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
@@ -746,7 +746,7 @@ SimpleQueryWithinRectangle = function (collection, latitude1, longitude1, latitu
   this._index = (iid === undefined ? null : iid);
 
   if (iid === undefined) {
-    idx = collection.getIndexes();
+    idx = collection.indexes();
 
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
@@ -835,7 +835,7 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
   this._index = (iid === undefined ? null : iid);
 
   if (iid === undefined) {
-    var idx = collection.getIndexes();
+    var idx = collection.indexes();
     var i;
 
     for (i = 0;  i < idx.length;  ++i) {

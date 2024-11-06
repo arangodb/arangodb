@@ -100,12 +100,12 @@ describe('User Rights Management', () => {
                 expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
                 if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                   let col = db._collection(colName);
-                  let origIdxCount = col.getIndexes().length;
+                  let origIdxCount = col.indexes().length;
                   expect(origIdxCount).to.equal(1); // Only primary index
                   let idx = col.ensureIndex({ type: "hash", fields: ["foo"] });
-                  expect(col.getIndexes().length).to.equal(origIdxCount + 1, 'Ensure Index reported success, but collection does not show it.');
+                  expect(col.indexes().length).to.equal(origIdxCount + 1, 'Ensure Index reported success, but collection does not show it.');
                   col.dropIndex(idx);
-                  expect(col.getIndexes().length).to.equal(origIdxCount, 'Drop Index reported success, but collection does still show it.');
+                  expect(col.indexes().length).to.equal(origIdxCount, 'Drop Index reported success, but collection does still show it.');
                 } else {
                   let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                     (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
@@ -117,8 +117,8 @@ describe('User Rights Management', () => {
                   }
                   if (hasReadAccess) {
                     let col = db._collection(colName);
-                    let origIdxCount = col.getIndexes().length;
-                    expect(col.getIndexes().length).to.equal(origIdxCount, `${name} was able to create a new index on the collection, with insufficent rights.`);
+                    let origIdxCount = col.indexes().length;
+                    expect(col.indexes().length).to.equal(origIdxCount, `${name} was able to create a new index on the collection, with insufficent rights.`);
                   }
                 }
               });

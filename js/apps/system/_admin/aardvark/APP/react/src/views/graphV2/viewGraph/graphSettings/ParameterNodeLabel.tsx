@@ -1,6 +1,6 @@
+import { InfoTooltip } from "@arangodb/ui";
 import { FormLabel, Input } from "@chakra-ui/react";
 import React, { ChangeEvent } from "react";
-import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterNodeLabel = () => {

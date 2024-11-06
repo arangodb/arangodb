@@ -65,7 +65,7 @@ function recoverySuite () {
 
       let checkIndex = function(indexName) {
         let c = db._collection("UnitTestsRecoveryDummy");
-        let indexes = c.getIndexes().filter(i => i.type === "inverted" && i.name === indexName);
+        let indexes = c.indexes().filter(i => i.type === "inverted" && i.name === indexName);
         assertEqual(0, indexes.length);
       };
       checkIndex("i1");

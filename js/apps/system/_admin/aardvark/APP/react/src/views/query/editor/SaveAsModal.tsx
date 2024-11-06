@@ -1,8 +1,8 @@
+import { InputControl } from "@arangodb/ui";
 import { Button, Stack } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import * as Yup from "yup";
-import { InputControl } from "../../../components/form/InputControl";
 import {
   Modal,
   ModalBody,

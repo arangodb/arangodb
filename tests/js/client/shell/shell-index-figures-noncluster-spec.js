@@ -85,21 +85,21 @@ describe('Index figures', function () {
       });
 
       it('index types', function() {
-        var indexes = col.getIndexes(true);
+        var indexes = col.indexes(true);
         expect(indexes.length).to.be.equal(2);
         expect(indexes[0].type).to.be.equal("primary");
         expect(indexes[1].type).to.be.equal("edge");
       });
 
       it('index - memory', function() {
-        var indexes = col.getIndexes(true);
+        var indexes = col.indexes(true);
         indexes.forEach((i) => {
             verifyMemory(i);
         });
       });
 
       it('figures - cache', function() {
-        var indexes = col.getIndexes(true);
+        var indexes = col.indexes(true);
         indexes.forEach((i) => {
           verifyCache(i);
         });
@@ -120,7 +120,7 @@ describe('Index figures', function () {
       it('should fill the cache', function() {
         // The cache does not expose fillgrades an such.
         // We can only check memory consumption...
-        let indexes = col.getIndexes(true);
+        let indexes = col.indexes(true);
         let edgeIndex = indexes[1];
         expect(edgeIndex.type).to.be.equal('edge');
 
@@ -131,7 +131,7 @@ describe('Index figures', function () {
         col.loadIndexesIntoMemory();
 
         // Test if the memory consumption goes up
-        let indexes2 = col.getIndexes(true);
+        let indexes2 = col.indexes(true);
         let edgeIndex2 = indexes2[1];
         expect(edgeIndex2.type).to.be.equal('edge');
         expect(edgeIndex2.figures.cacheSize).to.be.at.least(oldSize);
@@ -157,20 +157,20 @@ describe('Index figures', function () {
       db._drop(colName);
     });
     it('verify index types', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       expect(indexes.length).to.be.equal(2);
       expect(indexes[0].type).to.be.equal("primary");
       expect(indexes[1].type).to.be.equal("hash");
     });
     it('verify index - memory', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       indexes.forEach((i) => {
         verifyMemory(i);
       });
     });
     // FIXME not implemented
     it.skip('verify figures - cache', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
       });
@@ -196,20 +196,20 @@ describe('Index figures', function () {
       db._drop(colName);
     });
     it('verify index types', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       expect(indexes.length).to.be.equal(2);
       expect(indexes[0].type).to.be.equal("primary");
       expect(indexes[1].type).to.be.equal("skiplist");
     });
     it('verify index - memory', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       indexes.forEach((i) => {
         verifyMemory(i);
       });
     });
     // FIXME not implemented
     it.skip('verify figures - cache', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
       });
@@ -235,20 +235,20 @@ describe('Index figures', function () {
       db._drop(colName);
     });
     it('verify index types', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       expect(indexes.length).to.be.equal(2);
       expect(indexes[0].type).to.be.equal("primary");
       expect(indexes[1].type).to.be.equal("fulltext");
     });
     it('verify index - memory', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       indexes.forEach((i) => {
         verifyMemory(i);
       });
     });
     // FIXME not implemented
     it.skip('verify figures - cache', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
       });
@@ -278,20 +278,20 @@ describe('Index figures', function () {
       db._drop(colName);
     });
     it('verify index types', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       expect(indexes.length).to.be.equal(2);
       expect(indexes[0].type).to.be.equal("primary");
       expect(indexes[1].type).to.be.equal("geo");
     });
     it('verify index - memory', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       indexes.forEach((i) => {
         verifyMemory(i);
       });
     });
     // FIXME not implemented
     it.skip('verify figures - cache', function() {
-      var indexes = col.getIndexes(true);
+      var indexes = col.indexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
       });

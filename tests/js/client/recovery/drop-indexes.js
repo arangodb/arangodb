@@ -45,7 +45,7 @@ if (runSetup === true) {
   let c;
   for (let i = 0; i < 4; ++i) {
     c = db._collection('UnitTestsRecovery' + i);
-    let idx = c.getIndexes();
+    let idx = c.indexes();
     for (let j = 1; j < idx.length; ++j) {
       c.dropIndex(idx[j].id);
     }
@@ -76,13 +76,13 @@ function recoverySuite () {
 
       for (i = 0; i < 4; ++i) {
         c = db._collection('UnitTestsRecovery' + i);
-        idx = c.getIndexes();
+        idx = c.indexes();
         assertEqual(1, idx.length);
         assertEqual('primary', idx[0].type);
       }
 
       c = db._collection('UnitTestsRecovery4');
-      idx = c.getIndexes();
+      idx = c.indexes();
       assertEqual(3, idx.length);
     }
 
