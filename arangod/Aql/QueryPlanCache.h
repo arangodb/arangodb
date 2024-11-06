@@ -69,6 +69,13 @@ struct QueryOptions;
 // cache, using the already computed cache key.
 class QueryPlanCache {
  public:
+  struct VPackInBufferWithComparator {
+    std::shared_ptr<velocypack::UInt8Buffer> buffer;
+    VPackInBufferWithComparator(std::shared_ptr<velocypack::UInt8Buffer> buffer)
+        : buffer(std::move(buffer)) {}
+    bool operator==(VPackInBufferWithComparator const& other) const noexcept;
+  };
+
   struct Key {
     QueryString queryString;
 
@@ -76,7 +83,7 @@ class QueryPlanCache {
     // These parameters do not include value bind parameters and
     // attribute name bind parameters.
     // Guaranteed to be a non-nullptr.
-    std::shared_ptr<velocypack::UInt8Buffer> bindParameters;
+    VPackInBufferWithComparator bindParameters;
 
     // Fullcount enabled for query: yes or no
     bool fullCount;
@@ -87,14 +94,12 @@ class QueryPlanCache {
     size_t hash() const;
 
     size_t memoryUsage() const noexcept;
+
+    bool operator==(Key const& other) const noexcept = default;
   };
 
   struct KeyHasher {
     size_t operator()(Key const& key) const noexcept;
-  };
-
-  struct KeyEqual {
-    bool operator()(Key const& lhs, Key const& rhs) const noexcept;
   };
 
   struct DataSourceEntry {
@@ -174,7 +179,7 @@ class QueryPlanCache {
 
   // Mapping from plan cache key to stored plan velocypack.
   // protected by _mutex.
-  std::unordered_map<Key, std::shared_ptr<Value>, KeyHasher, KeyEqual> _entries;
+  std::unordered_map<Key, std::shared_ptr<Value>, KeyHasher> _entries;
 
   // Total approximate memory usage by _entries. protected by _mutex.
   size_t _memoryUsage;

@@ -63,6 +63,9 @@ class QueryString {
   void append(std::string& out) const;
   std::string extract(size_t maxLength) const;
   std::string extractRegion(int line, int column) const;
+  bool operator==(QueryString const& other) const noexcept {
+    return equal(other);
+  }
 
  private:
   uint64_t computeHash() const noexcept;

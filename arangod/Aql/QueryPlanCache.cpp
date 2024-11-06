@@ -53,15 +53,15 @@ size_t QueryPlanCache::Key::memoryUsage() const noexcept {
   // strings may have reserved more capacity than actual bytes
   // are used. the velocypack buffer for the bind parameters also
   // may have some overhead because of over-allocation.
-  return 256 + queryString.size() + bindParameters->byteSize();
+  return 256 + queryString.size() + bindParameters.buffer->byteSize();
 }
 
 size_t QueryPlanCache::KeyHasher::operator()(
     QueryPlanCache::Key const& key) const noexcept {
   size_t hash = 0;
   boost::hash_combine(hash, key.queryString.hash());
-  boost::hash_combine(hash,
-                      VPackSlice(key.bindParameters->data()).normalizedHash());
+  boost::hash_combine(
+      hash, VPackSlice(key.bindParameters.buffer->data()).normalizedHash());
   // arbitrary integer values used here from sha1sum-ing
   // for fullcount=true / fullcount=false
   // for forceOneShard=true / forceOneShard=false
@@ -70,25 +70,20 @@ size_t QueryPlanCache::KeyHasher::operator()(
   return hash;
 }
 
-bool QueryPlanCache::KeyEqual::operator()(
-    QueryPlanCache::Key const& lhs,
-    QueryPlanCache::Key const& rhs) const noexcept {
-  if (lhs.fullCount != rhs.fullCount) {
-    return false;
-  }
-
-  if (!lhs.queryString.equal(rhs.queryString)) {
-    return false;
-  }
-
-  auto lhsSlice = VPackSlice(lhs.bindParameters->data());
-  auto rhsSlice = VPackSlice(rhs.bindParameters->data());
-  if (lhsSlice.normalizedHash() != rhsSlice.normalizedHash()) {
-    return false;
-  }
-  if (basics::VelocyPackHelper::compare(
-          lhsSlice, rhsSlice,
-          /*useUtf8*/ true, &VPackOptions::Defaults, nullptr, nullptr) != 0) {
+bool QueryPlanCache::VPackInBufferWithComparator::operator==(
+    VPackInBufferWithComparator const& other) const noexcept {
+  auto lhsSlice = VPackSlice(buffer->data());
+  auto rhsSlice = VPackSlice(other.buffer->data());
+  try {
+    if (lhsSlice.normalizedHash() != rhsSlice.normalizedHash()) {
+      return false;
+    }
+    if (basics::VelocyPackHelper::compare(
+            lhsSlice, rhsSlice,
+            /*useUtf8*/ true, &VPackOptions::Defaults, nullptr, nullptr) != 0) {
+      return false;
+    }
+  } catch (basics::Exception const&) {
     return false;
   }
   return true;
@@ -114,7 +109,7 @@ QueryPlanCache::QueryPlanCache(size_t maxEntries, size_t maxMemoryUsage,
                                metrics::Counter* numberOfHitsMetric,
                                metrics::Counter* numberOfMissesMetric,
                                metrics::Gauge<uint64_t>* memoryUsageMetric)
-    : _entries(5, KeyHasher{}, KeyEqual{}),
+    : _entries(5, KeyHasher{}),
       _memoryUsage(0),
       _maxEntries(maxEntries),
       _maxMemoryUsage(maxMemoryUsage),
@@ -274,10 +269,10 @@ void QueryPlanCache::toVelocyPack(
     builder.add("hash", VPackValue(std::to_string(key.hash())));
     builder.add("query", VPackValue(key.queryString.string()));
     builder.add("queryHash", VPackValue(key.queryString.hash()));
-    if (key.bindParameters == nullptr) {
+    if (key.bindParameters.buffer == nullptr) {
       builder.add("bindVars", VPackSlice::emptyObjectSlice());
     } else {
-      builder.add("bindVars", VPackSlice(key.bindParameters->data()));
+      builder.add("bindVars", VPackSlice(key.bindParameters.buffer->data()));
     }
     builder.add("fullCount", VPackValue(key.fullCount));
 
