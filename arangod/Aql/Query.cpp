@@ -397,7 +397,6 @@ bool Query::tryLoadPlanFromCache() {
         THROW_ARANGO_EXCEPTION(revisionRes);
       }
 
-      // TODO: validate all this
       prepareFromVelocyPack(querySlice, collections, variables,
                             /*snippets*/ querySlice.get("nodes"),
                             /*simpleSnippetFormat*/ true, analyzersRevision);
