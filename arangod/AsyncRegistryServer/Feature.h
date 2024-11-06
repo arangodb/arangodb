@@ -24,6 +24,7 @@
 
 #include "Async/Registry/registry_variable.h"
 #include "Async/Registry/Metrics.h"
+#include "Basics/FutureSharedLock.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb::async_registry {
@@ -32,9 +33,18 @@ class Feature final : public ArangodFeature {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<const Metrics>;
+  struct SchedulerWrapper {
+    using WorkHandle = Scheduler::WorkHandle;
+    template<typename F>
+    void queue(F&&);
+    template<typename F>
+    WorkHandle queueDelayed(F&&, std::chrono::milliseconds);
+  };
 
  public:
   static constexpr std::string_view name() { return "Coroutines"; }
+  auto asyncLock() -> futures::Future<
+      futures::FutureSharedLock<SchedulerWrapper>::LockGuard>;
 
   Feature(Server& server);
 
@@ -54,6 +64,9 @@ class Feature final : public ArangodFeature {
 
   struct PromiseCleanupThread;
   std::shared_ptr<PromiseCleanupThread> _cleanupThread;
+
+  SchedulerWrapper _schedulerWrapper;
+  futures::FutureSharedLock<SchedulerWrapper> _async_mutex;
 };
 
 }  // namespace arangodb::async_registry

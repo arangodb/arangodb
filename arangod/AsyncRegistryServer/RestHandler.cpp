@@ -63,12 +63,14 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
     : RestVocbaseBaseHandler(server, request, response),
       _feature(server.getFeature<Feature>()) {}
 
-auto RestHandler::execute() -> RestStatus {
+auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
+
+  auto lock_guard = co_await _feature.asyncLock();
 
   auto [promises, roots] = all_undeleted_promises();
   auto awaited_promises = promises.index_by_awaitee();
@@ -98,5 +100,5 @@ auto RestHandler::execute() -> RestStatus {
   builder.close();
 
   generateResult(rest::ResponseCode::OK, builder.slice());
-  return RestStatus::DONE;
+  co_return;
 }
