@@ -69,13 +69,6 @@ struct QueryOptions;
 // cache, using the already computed cache key.
 class QueryPlanCache {
  public:
-  // Maximum number of times a cached query plan is used before it is
-  // invalidated and wiped from the cache.
-  // The rationale for wiping entries from the cache after they have been
-  // used several times is that somehow outdated entries get flush
-  // eventually.
-  static constexpr size_t kMaxNumUsages = 256;
-
   struct Key {
     QueryString queryString;
 
