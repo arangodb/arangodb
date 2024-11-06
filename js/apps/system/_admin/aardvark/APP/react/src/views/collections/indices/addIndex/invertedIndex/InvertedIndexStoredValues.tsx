@@ -1,12 +1,14 @@
+import {
+  CreatableMultiSelectControl,
+  SingleSelectControl,
+  SwitchControl
+} from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../../../components/form/CreatableMultiSelectControl";
-import { SelectControl } from "../../../../../components/form/SelectControl";
 import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
-import { SwitchControl } from "../../../../../components/form/SwitchControl";
 
 export const InvertedIndexStoredValues = ({
   field
@@ -69,7 +71,7 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                     <FormLabel htmlFor={`storedValues.${index}.compression`}>
                       Compression
                     </FormLabel>
-                    <SelectControl
+                    <SingleSelectControl
                       isDisabled={field.isDisabled}
                       name={`storedValues.${index}.compression`}
                       selectProps={{
@@ -78,9 +80,7 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                     />
                   </Box>
                   <Box minWidth={"0"}>
-                    <FormLabel
-                      htmlFor={`storedValues.${index}.cache`}
-                    >
+                    <FormLabel htmlFor={`storedValues.${index}.cache`}>
                       Cache
                     </FormLabel>
                     <SwitchControl
@@ -90,8 +90,8 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                       name={`storedValues.${index}.cache`}
                       tooltip={
                         window.frontendConfig.isEnterprise
-                        ? undefined
-                        : "Field normalization value caching is available in Enterprise plans."
+                          ? undefined
+                          : "Field normalization value caching is available in Enterprise plans."
                       }
                     />
                   </Box>

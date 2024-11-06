@@ -120,6 +120,8 @@ devel
 * In replication use vpack as transport format throughout, so that even
   large and strangely encoded numbers are transported faithfully.
 
+* FE-466: use @arangodb/ui library.
+
 * Update tzdata as of 31.10.2024.
 
 * Bring unicode collation back to the exact 3.11 behaviour by shipping the 

@@ -70,7 +70,7 @@ function recoverySuite () {
 
     testIndexesRocksDBNoSync: function () {
       const c = db._collection('UnitTestsRecovery');
-      const idxs = c.getIndexes();
+      const idxs = c.indexes();
       assertEqual(idxs.length, 2);
       let idx = idxs[1];
       assertFalse(idx.unique);
