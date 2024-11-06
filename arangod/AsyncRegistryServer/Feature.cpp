@@ -26,7 +26,6 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "ProgramOptions/Parameters.h"
 
 using namespace arangodb::async_registry;
@@ -53,22 +52,10 @@ DECLARE_GAUGE(arangodb_async_registered_threads, std::uint64_t,
               "Number of threads the asynchronous registry iterates over to "
               "list all asynchronous promises");
 
-template<typename F>
-void Feature::SchedulerWrapper::queue(F&& fn) {
-  SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
-                                     std::forward<F>(fn));
-}
-template<typename F>
-Feature::SchedulerWrapper::WorkHandle Feature::SchedulerWrapper::queueDelayed(
-    F&& fn, std::chrono::milliseconds timeout) {
-  return SchedulerFeature::SCHEDULER->queueDelayed(
-      "rocksdb-meta-collection-lock-timeout", RequestLane::CLUSTER_INTERNAL,
-      timeout, std::forward<F>(fn));
-}
-
 Feature::Feature(Server& server)
     : ArangodFeature{server, *this}, _async_mutex{_schedulerWrapper} {
-  startsAfter<arangodb::metrics::MetricsFeature>();
+  startsAfter<metrics::MetricsFeature>();
+  startsAfter<SchedulerFeature>();
 }
 
 auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)

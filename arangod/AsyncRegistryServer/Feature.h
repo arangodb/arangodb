@@ -26,6 +26,7 @@
 #include "Async/Registry/Metrics.h"
 #include "Basics/FutureSharedLock.h"
 #include "RestServer/arangod.h"
+#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb::async_registry {
 
@@ -36,9 +37,16 @@ class Feature final : public ArangodFeature {
   struct SchedulerWrapper {
     using WorkHandle = Scheduler::WorkHandle;
     template<typename F>
-    void queue(F&&);
+    void queue(F&& fn) {
+      SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
+                                         std::forward<F>(fn));
+    }
     template<typename F>
-    WorkHandle queueDelayed(F&&, std::chrono::milliseconds);
+    WorkHandle queueDelayed(F&& fn, std::chrono::milliseconds timeout) {
+      return SchedulerFeature::SCHEDULER->queueDelayed(
+          "rocksdb-meta-collection-lock-timeout", RequestLane::CLUSTER_INTERNAL,
+          timeout, std::forward<F>(fn));
+    }
   };
 
  public:
