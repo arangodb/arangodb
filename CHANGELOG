@@ -6,7 +6,7 @@ devel
   repeatedly. This feature is currently experimental.
 
   The plan cache is fully optional and is only considered for AQL queries that
-  have the option `optimizePlanForCaching` set to `true`. If the option is not
+  have the option `usePlanCache` set to `true`. If the option is not
   set to `true`, the plan cache is bypassed. This is also the default.
 
   If the option is set to `true`, the query's eligibility for being cached is
@@ -14,7 +14,6 @@ devel
   are not eligible for plan caching:
   - `allPlans`
   - `explainRegisters`
-  - `forceOneShardAttributeValue`
   - `inaccessibleCollections`
   - `optimizer.rules`
   - `shardIds`
@@ -54,11 +53,11 @@ devel
   - `maxDNFConditionMembers`
   - `maxNodesPerCallstack`
 
-  Whenever a query uses a cached plan from the plan cache, the query result will
-  include an attribute `planCacheKey` on the top level when executing, 
-  explaining or profiling a query. The explain and profiling output will also
-  display a "plan cache key: ..." indicator to show that a cached query plan
-  was used.
+  Whenever a query uses a cached plan from the plan cache, the query
+  result will include an attribute `planCacheKey` on the top level when
+  executing, explaining or profiling a query. The explain and profiling
+  output will also display a "plan cache key: ..." indicator to show
+  that a cached query plan was used.
 
   The query plan cache is organized per database. It gets invalidated at the
   following events:
@@ -116,6 +115,8 @@ devel
   - `arangodb_aql_query_plan_cache_misses_total`: total number of plans looked
     up and not found in the query plan cache, across all database-specific plan
     caches on the instance.
+  - `arangodb_aql_query_plan_cache_memory_usage`: total current memory usage
+    of all query plan caches across all databases on this instance in bytes.
 
 * In replication use vpack as transport format throughout, so that even
   large and strangely encoded numbers are transported faithfully.
