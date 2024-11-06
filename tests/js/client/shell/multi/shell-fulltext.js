@@ -129,7 +129,7 @@ function fulltextCreateSuite () {
       var result = internal.db._query("RETURN FULLTEXT(" + c.name() + ", 'text', 'foo')").toArray()[0];
       assertEqual(0, result.length);
 
-      var indexes = c.getIndexes();
+      var indexes = c.indexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
         if (index.type !== "fulltext") {
@@ -152,7 +152,7 @@ function fulltextCreateSuite () {
     testCreateIndexExisting : function () {
       var idx = c.ensureIndex({ type: "fulltext", fields: ["textattr"] });
 
-      var indexes = c.getIndexes();
+      var indexes = c.indexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
         if (index.type !== "fulltext") {
@@ -181,7 +181,7 @@ function fulltextCreateSuite () {
       var result = internal.db._query("RETURN FULLTEXT(" + c.name() + ", 'iam-an-indexed-ATTRIBUTE', 'foo')").toArray()[0];
       assertEqual(0, result.length);
 
-      var indexes = c.getIndexes();
+      var indexes = c.indexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
         if (index.type !== "fulltext") {
@@ -204,7 +204,7 @@ function fulltextCreateSuite () {
     testCreateIndexSubstringsExisting : function () {
       var idx = c.ensureIndex({ type: "fulltext", fields: ["iam-an-indexed-ATTRIBUTE"] });
 
-      var indexes = c.getIndexes();
+      var indexes = c.indexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
         if (index.type !== "fulltext") {
@@ -233,7 +233,7 @@ function fulltextCreateSuite () {
       var result = internal.db._query("RETURN FULLTEXT(" + c.name() + ", 'a.b.c', 'foo')").toArray()[0];
       assertEqual(0, result.length);
 
-      var indexes = c.getIndexes();
+      var indexes = c.indexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
         if (index.type !== "fulltext") {
@@ -258,7 +258,7 @@ function fulltextCreateSuite () {
       var idx2 = c.ensureIndex({ type: "fulltext", fields: ["attr1"] });
       var idx3 = c.ensureIndex({ type: "fulltext", fields: ["attr2"] });
 
-      var indexes = c.getIndexes();
+      var indexes = c.indexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
         if (index.type !== "fulltext") {
@@ -290,7 +290,7 @@ function fulltextCreateSuite () {
     testCreateIndexMinLength1 : function () {
       var idx = c.ensureIndex({ type: "fulltext", fields: ["test"], minLength: 5 });
 
-      var indexes = c.getIndexes();
+      var indexes = c.indexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
         if (index.type !== "fulltext") {
@@ -314,7 +314,7 @@ function fulltextCreateSuite () {
     testCreateIndexMinLength2 : function () {
       var idx = c.ensureIndex({ type: "fulltext", fields: ["test"], minLength: 1 });
 
-      var indexes = c.getIndexes();
+      var indexes = c.indexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
         if (index.type !== "fulltext") {

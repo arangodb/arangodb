@@ -54,7 +54,7 @@ function testEnsureInvertedIndex() {
       delete r["inBackground"];  // TODO Why do we need to return inBackground?
 
       let was = false;
-      let indexes = db.c.getIndexes();
+      let indexes = db.c.indexes();
       indexes.forEach(function (index) {
         if (index["name"] === "i") {
           assertEqual(index, r);
