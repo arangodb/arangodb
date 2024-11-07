@@ -8,7 +8,7 @@ from threading import Thread
 from traceback import print_exc
 from dmesg import DmesgWatcher, dmesg_runner
 from overload_thread import spawn_overload_watcher_thread, shutdown_overload_watcher_thread
-from site_config import SiteConfig
+from site_config import SiteConfig, IS_LINUX
 
 
 def launch_runner(runner, create_report):
@@ -38,10 +38,10 @@ def launch_runner(runner, create_report):
     finally:
         sys.stderr.flush()
         sys.stdout.flush()
-        shutdown_overload_watcher_thread()
         runner.create_log_file()
         runner.create_testruns_file()
         dmesg.end_run()
         logging.info("joining dmesg threads")
         dmesg_thread.join()
+        shutdown_overload_watcher_thread()
         runner.print_and_exit_closing_stance()
