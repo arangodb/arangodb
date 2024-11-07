@@ -88,7 +88,7 @@ function recoverySuite () {
 
     testIndexesSkiplist: function () {
       var c = db._collection('UnitTestsRecovery1'), idx, i;
-      idx = c.getIndexes()[1];
+      idx = c.indexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value' ], idx.fields);
@@ -98,7 +98,7 @@ function recoverySuite () {
       assertEqual(1, db._query("FOR doc IN UnitTestsRecovery1 FILTER doc.value == 1 RETURN doc").toArray().length);
 
       c = db._collection('UnitTestsRecovery2');
-      idx = c.getIndexes()[1];
+      idx = c.indexes()[1];
       assertTrue(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'a.value' ], idx.fields);
@@ -108,7 +108,7 @@ function recoverySuite () {
       assertEqual(1, db._query("FOR doc IN UnitTestsRecovery2 FILTER doc.a.value == 1 RETURN doc").toArray().length);
 
       c = db._collection('UnitTestsRecovery3');
-      idx = c.getIndexes()[1];
+      idx = c.indexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'a', 'b' ], idx.fields);

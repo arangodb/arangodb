@@ -1,19 +1,17 @@
+import { CreatableMultiSelectControl, InputControl, SingleSelectControl, SwitchControl } from "@arangodb/ui";
 import {
   Accordion,
   AccordionButton,
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
-  Box, Flex,
+  Box,
+  Flex,
   Grid,
   Stack
 } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../components/form/CreatableMultiSelectControl";
-import { InputControl } from "../../../components/form/InputControl";
-import { SelectControl } from "../../../components/form/SelectControl";
-import { SwitchControl } from "../../../components/form/SwitchControl";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useFetchDatabase } from "../../databases/useFetchDatabase";
 import { useCollectionsContext } from "../CollectionsContext";
@@ -62,7 +60,7 @@ export const AddCollectionForm = () => {
                   name="name"
                   label="Name"
                 />
-                <SelectControl
+                <SingleSelectControl
                   isDisabled={isDisabled}
                   name={"type"}
                   label="Type"
@@ -211,7 +209,7 @@ const ShardFields = ({ isOneShard }: { isOneShard: boolean }) => {
 
   return (
     <>
-      <SelectControl
+      <SingleSelectControl
         isDisabled={isDisabled}
         name={"distributeShardsLike"}
         label="Distribute shards like"

@@ -77,7 +77,7 @@ function EdgeIndexSuite () {
 
     testIndexSelectivityEmpty: function () {
       waitForEstimatorSync();  // make sure estimates are consistent
-      var edgeIndex = edge.getIndexes()[1];
+      var edgeIndex = edge.indexes()[1];
       assertTrue(edgeIndex.hasOwnProperty('selectivityEstimate'));
       assertEqual(1, edgeIndex.selectivityEstimate);
     },
@@ -89,7 +89,7 @@ function EdgeIndexSuite () {
     testIndexSelectivityOneDoc: function () {
       edge.save(v1, v2, { });
       waitForEstimatorSync();  // make sure estimates are consistent
-      var edgeIndex = edge.getIndexes()[1];
+      var edgeIndex = edge.indexes()[1];
       assertTrue(edgeIndex.hasOwnProperty('selectivityEstimate'));
       assertEqual(1, edgeIndex.selectivityEstimate);
     },
@@ -105,7 +105,7 @@ function EdgeIndexSuite () {
         edge.save(v1, v2, { });
       }
       waitForEstimatorSync();  // make sure estimates are consistent
-      edgeIndex = edge.getIndexes()[1];
+      edgeIndex = edge.indexes()[1];
       expectedSelectivity = 1 / 1000;
       // allow for some floating-point deviations
       assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
@@ -120,7 +120,7 @@ function EdgeIndexSuite () {
       }
 
       waitForEstimatorSync();  // make sure estimates are consistent
-      edgeIndex = edge.getIndexes()[1];
+      edgeIndex = edge.indexes()[1];
       expectedSelectivity = 1.0;
       // allow for some floating-point deviations
       assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
@@ -135,7 +135,7 @@ function EdgeIndexSuite () {
         edge.save(vn + '/from' + i, vn + '/to' + i, { });
       }
       waitForEstimatorSync();  // make sure estimates are consistent
-      var edgeIndex = edge.getIndexes()[1];
+      var edgeIndex = edge.indexes()[1];
       assertTrue(1, edgeIndex.selectivityEstimate);
     },
 
@@ -148,7 +148,7 @@ function EdgeIndexSuite () {
         edge.save(vn + '/from' + i, vn + '/1', { });
       }
       waitForEstimatorSync();  // make sure estimates are consistent
-      var edgeIndex = edge.getIndexes()[1];
+      var edgeIndex = edge.indexes()[1];
       var expectedSelectivity = (1 + (1 / 1000)) * 0.5;
       assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
     },
@@ -162,7 +162,7 @@ function EdgeIndexSuite () {
         edge.save(vn + '/from' + (i % 20), vn + '/to' + i, { });
       }
       waitForEstimatorSync();  // make sure estimates are consistent
-      var edgeIndex = edge.getIndexes()[1];
+      var edgeIndex = edge.indexes()[1];
       var expectedSelectivity = (1 + (20 / 1000)) * 0.5;
       assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
     },
@@ -174,7 +174,7 @@ function EdgeIndexSuite () {
       }
       edge.save(docs);
       waitForEstimatorSync();  // make sure estimates are consistent
-      let idx = edge.getIndexes()[1];
+      let idx = edge.indexes()[1];
       let estimateBefore = idx.selectivityEstimate;
       try {
         internal.db._executeTransaction({
@@ -198,7 +198,7 @@ function EdgeIndexSuite () {
         // Insert failed.
         // Validate that estimate is non modified
         waitForEstimatorSync();  // make sure estimates are consistent
-        idx = edge.getIndexes()[1];
+        idx = edge.indexes()[1];
         assertEqual(idx.selectivityEstimate, estimateBefore);
       }
 

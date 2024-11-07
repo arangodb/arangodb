@@ -224,9 +224,13 @@ AsyncPrefetchEligibility CalculationNode::canUseAsyncPrefetching()
   // the constraint for determinism is there because we could produce
   // different query results when prefetching is enabled, at least in
   // streaming queries.
-  return expression()->isDeterministic() && !expression()->willUseV8()
-             ? AsyncPrefetchEligibility::kEnableForNode
-             : AsyncPrefetchEligibility::kDisableForNode;
+  if (expression()->willUseV8()) {
+    return AsyncPrefetchEligibility::kDisableGlobally;
+  }
+  if (expression()->isDeterministic()) {
+    return AsyncPrefetchEligibility::kEnableForNode;
+  }
+  return AsyncPrefetchEligibility::kDisableForNode;
 }
 
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }

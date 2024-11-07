@@ -24,7 +24,9 @@
 
 #include "Async/Registry/registry_variable.h"
 #include "Async/Registry/Metrics.h"
+#include "Basics/FutureSharedLock.h"
 #include "RestServer/arangod.h"
+#include "Scheduler/SchedulerFeature.h"
 
 namespace arangodb::async_registry {
 
@@ -32,9 +34,25 @@ class Feature final : public ArangodFeature {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<const Metrics>;
+  struct SchedulerWrapper {
+    using WorkHandle = Scheduler::WorkHandle;
+    template<typename F>
+    void queue(F&& fn) {
+      SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
+                                         std::forward<F>(fn));
+    }
+    template<typename F>
+    WorkHandle queueDelayed(F&& fn, std::chrono::milliseconds timeout) {
+      return SchedulerFeature::SCHEDULER->queueDelayed(
+          "rocksdb-meta-collection-lock-timeout", RequestLane::CLUSTER_INTERNAL,
+          timeout, std::forward<F>(fn));
+    }
+  };
 
  public:
   static constexpr std::string_view name() { return "Coroutines"; }
+  auto asyncLock() -> futures::Future<
+      futures::FutureSharedLock<SchedulerWrapper>::LockGuard>;
 
   Feature(Server& server);
 
@@ -54,6 +72,9 @@ class Feature final : public ArangodFeature {
 
   struct PromiseCleanupThread;
   std::shared_ptr<PromiseCleanupThread> _cleanupThread;
+
+  SchedulerWrapper _schedulerWrapper;
+  futures::FutureSharedLock<SchedulerWrapper> _async_mutex;
 };
 
 }  // namespace arangodb::async_registry
