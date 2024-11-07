@@ -1,11 +1,9 @@
+import { ReactTable, TableControl, useSortableReactTable } from "@arangodb/ui";
 import { Link, Spinner, Stack, Text } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import { HiddenIndex } from "arangojs/indexes";
 import { isArray, isObject } from "lodash";
 import React from "react";
-import { ReactTable } from "../../../../components/table/ReactTable";
-import { TableControl } from "../../../../components/table/TableControl";
-import { useSortableReactTable } from "../../../../components/table/useSortableReactTable";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { TYPE_TO_LABEL_MAP } from "../CollectionIndicesHelpers";
 import { useSyncIndexCreationJob } from "../useSyncIndexCreationJob";
@@ -149,10 +147,7 @@ export const CollectionIndicesTable = () => {
   });
   return (
     <Stack>
-      <TableControl<HiddenIndex>
-        table={tableInstance}
-        columns={TABLE_COLUMNS}
-      />
+      <TableControl<HiddenIndex> table={tableInstance} />
       <ReactTable<HiddenIndex>
         table={tableInstance}
         emptyStateMessage="No indexes found"

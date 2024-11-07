@@ -4557,7 +4557,7 @@ function transactionIteratorSuite(dbParams) {
     testIteratorBoundsForward: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
       c.ensureIndex({ type: "persistent", fields: ["value2"] });
-      let res = c.getIndexes();
+      let res = c.indexes();
       assertEqual(3, res.length);
 
       const opts = {
@@ -4599,7 +4599,7 @@ function transactionIteratorSuite(dbParams) {
     testIteratorBoundsReverse: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
       c.ensureIndex({ type: "persistent", fields: ["value2"] });
-      let res = c.getIndexes();
+      let res = c.indexes();
       assertEqual(3, res.length);
 
       const opts = {

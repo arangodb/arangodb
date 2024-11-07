@@ -64,7 +64,7 @@ function testSuite() {
           "includeAllFields": true,
           "analyzer": "identity"
       });
-      let properties = db.c0.getIndexes().find(function (idx) { return idx.name === "c0_cached";});
+      let properties = db.c0.indexes().find(function (idx) { return idx.name === "c0_cached";});
       if (isEnterprise) {
         assertTrue(properties.fields[0].cache);
         assertTrue(properties.primaryKeyCache);

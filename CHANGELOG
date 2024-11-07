@@ -37,6 +37,11 @@ devel
   ````
   This returns top the 10 nearest neighbors to @queryVector.
 
+* Fix a crash with async prefetch and user defined functions in AQL. This
+  fixes BTS-2003.
+
+* FE-466: use @arangodb/ui library.
+
 * Update tzdata as of 31.10.2024.
 
 * Bring unicode collation back to the exact 3.11 behaviour by shipping the 

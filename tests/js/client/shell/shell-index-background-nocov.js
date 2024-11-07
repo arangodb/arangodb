@@ -183,7 +183,7 @@ function backgroundIndexSuite() {
       }
 
       waitForEstimatorSync(); // make sure estimates are consistent
-      let indexes = c.getIndexes(true);
+      let indexes = c.indexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
@@ -241,7 +241,7 @@ function backgroundIndexSuite() {
       }
 
       waitForEstimatorSync(); // make sure estimates are consistent
-      let indexes = c.getIndexes(true);
+      let indexes = c.indexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
@@ -307,7 +307,7 @@ function backgroundIndexSuite() {
         assertEqual(cursor.count(), 1);
       }
 
-      let indexes = c.getIndexes(true);
+      let indexes = c.indexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
@@ -433,7 +433,7 @@ function backgroundIndexSuite() {
       }
 
       waitForEstimatorSync(); // make sure estimates are consistent
-      let indexes = c.getIndexes(true);
+      let indexes = c.indexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
@@ -505,7 +505,7 @@ function backgroundIndexSuite() {
       assertEqual(oldCursor.count(), 0);
 
       waitForEstimatorSync(); // make sure estimates are consistent
-      let indexes = c.getIndexes(true);
+      let indexes = c.indexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':
@@ -537,15 +537,15 @@ function backgroundIndexSuite() {
       const idxDef = {type: 'persistent', fields: ['value'], unique: false, inBackground: true};
       let idx = c.ensureIndex(idxDef);
 
-      assertEqual(c.getIndexes().length, 2);
+      assertEqual(c.indexes().length, 2);
 
       c.dropIndex(idx.id);
 
-      assertEqual(c.getIndexes().length, 1);
+      assertEqual(c.indexes().length, 1);
 
       idx = c.ensureIndex(idxDef);
 
-      assertEqual(c.getIndexes().length, 2);
+      assertEqual(c.indexes().length, 2);
 
       // check for entries via index
       const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1", 
@@ -553,7 +553,7 @@ function backgroundIndexSuite() {
       assertEqual(newCursor.count(), 12500);
 
       waitForEstimatorSync(); // make sure estimates are consistent
-      let indexes = c.getIndexes(true);
+      let indexes = c.indexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':

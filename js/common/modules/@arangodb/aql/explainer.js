@@ -2543,7 +2543,7 @@ function debug(query, bindVars, options) {
         name: collection.name,
         type: c.type(),
         properties: c.properties(),
-        indexes: c.getIndexes(true),
+        indexes: c.indexes(true),
         count: c.count(),
         counts: c.count(true),
         examples

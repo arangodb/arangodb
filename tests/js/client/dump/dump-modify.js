@@ -60,8 +60,8 @@ function dumpTestSuite() {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
 
-      assertEqual(1, c.getIndexes().length); // just primary index
-      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1, c.indexes().length); // just primary index
+      assertEqual("primary", c.indexes()[0].type);
 
       c.ensureIndex({type: "hash", fields: ["abc"]});
 
@@ -123,9 +123,9 @@ function dumpTestSuite() {
       assertEqual(3, c.type()); // edges
       assertFalse(p.waitForSync);
 
-      assertEqual(2, c.getIndexes().length); // primary index + edges index
-      assertEqual("primary", c.getIndexes()[0].type);
-      assertEqual("edge", c.getIndexes()[1].type);
+      assertEqual(2, c.indexes().length); // primary index + edges index
+      assertEqual("primary", c.indexes()[0].type);
+      assertEqual("edge", c.indexes()[1].type);
       assertEqual(10, c.count());
       c.ensureIndex({type: "hash", fields: ["abc"]});
 
@@ -160,8 +160,8 @@ function dumpTestSuite() {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
 
-      assertEqual(1, c.getIndexes().length); // just primary index
-      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1, c.indexes().length); // just primary index
+      assertEqual("primary", c.indexes()[0].type);
       assertEqual(3, c.count());
     },
 
@@ -176,8 +176,8 @@ function dumpTestSuite() {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
 
-      assertEqual(1, c.getIndexes().length); // just primary index
-      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1, c.indexes().length); // just primary index
+      assertEqual("primary", c.indexes()[0].type);
       assertEqual(9000, c.count());
 
       c.ensureIndex({type: "hash", fields: ["abc"]});
@@ -200,46 +200,46 @@ function dumpTestSuite() {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
 
-      assertEqual(9, c.getIndexes().length);
-      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(9, c.indexes().length);
+      assertEqual("primary", c.indexes()[0].type);
 
-      assertEqual("hash", c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
-      assertFalse(c.getIndexes()[1].sparse);
-      assertEqual(["a_uc"], c.getIndexes()[1].fields);
+      assertEqual("hash", c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
+      assertFalse(c.indexes()[1].sparse);
+      assertEqual(["a_uc"], c.indexes()[1].fields);
 
-      assertEqual("skiplist", c.getIndexes()[2].type);
-      assertFalse(c.getIndexes()[2].unique);
-      assertFalse(c.getIndexes()[2].sparse);
-      assertEqual(["a_s1", "a_s2"], c.getIndexes()[2].fields);
+      assertEqual("skiplist", c.indexes()[2].type);
+      assertFalse(c.indexes()[2].unique);
+      assertFalse(c.indexes()[2].sparse);
+      assertEqual(["a_s1", "a_s2"], c.indexes()[2].fields);
 
-      assertEqual("hash", c.getIndexes()[3].type);
-      assertFalse(c.getIndexes()[3].unique);
-      assertFalse(c.getIndexes()[3].sparse);
-      assertEqual(["a_h1", "a_h2"], c.getIndexes()[3].fields);
+      assertEqual("hash", c.indexes()[3].type);
+      assertFalse(c.indexes()[3].unique);
+      assertFalse(c.indexes()[3].sparse);
+      assertEqual(["a_h1", "a_h2"], c.indexes()[3].fields);
 
-      assertEqual("skiplist", c.getIndexes()[4].type);
-      assertTrue(c.getIndexes()[4].unique);
-      assertFalse(c.getIndexes()[4].sparse);
-      assertEqual(["a_su"], c.getIndexes()[4].fields);
+      assertEqual("skiplist", c.indexes()[4].type);
+      assertTrue(c.indexes()[4].unique);
+      assertFalse(c.indexes()[4].sparse);
+      assertEqual(["a_su"], c.indexes()[4].fields);
 
-      assertEqual("hash", c.getIndexes()[5].type);
-      assertFalse(c.getIndexes()[5].unique);
-      assertTrue(c.getIndexes()[5].sparse);
-      assertEqual(["a_hs1", "a_hs2"], c.getIndexes()[5].fields);
+      assertEqual("hash", c.indexes()[5].type);
+      assertFalse(c.indexes()[5].unique);
+      assertTrue(c.indexes()[5].sparse);
+      assertEqual(["a_hs1", "a_hs2"], c.indexes()[5].fields);
 
-      assertEqual("skiplist", c.getIndexes()[6].type);
-      assertFalse(c.getIndexes()[6].unique);
-      assertTrue(c.getIndexes()[6].sparse);
-      assertEqual(["a_ss1", "a_ss2"], c.getIndexes()[6].fields);
+      assertEqual("skiplist", c.indexes()[6].type);
+      assertFalse(c.indexes()[6].unique);
+      assertTrue(c.indexes()[6].sparse);
+      assertEqual(["a_ss1", "a_ss2"], c.indexes()[6].fields);
 
-      assertFalse(c.getIndexes()[7].unique);
-      assertEqual("fulltext", c.getIndexes()[7].type);
-      assertEqual(["a_f"], c.getIndexes()[7].fields);
+      assertFalse(c.indexes()[7].unique);
+      assertEqual("fulltext", c.indexes()[7].type);
+      assertEqual(["a_f"], c.indexes()[7].fields);
 
-      assertEqual("geo", c.getIndexes()[8].type);
-      assertEqual(["a_la", "a_lo"], c.getIndexes()[8].fields);
-      assertFalse(c.getIndexes()[8].unique);
+      assertEqual("geo", c.indexes()[8].type);
+      assertEqual(["a_la", "a_lo"], c.indexes()[8].fields);
+      assertFalse(c.indexes()[8].unique);
 
       assertEqual(0, c.count());
       c.ensureIndex({type: "hash", fields: ["abc"]});
@@ -256,8 +256,8 @@ function dumpTestSuite() {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
 
-      assertEqual(1, c.getIndexes().length); // just primary index
-      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1, c.indexes().length); // just primary index
+      assertEqual("primary", c.indexes()[0].type);
       assertEqual(0, c.count());
     },
 
@@ -276,8 +276,8 @@ function dumpTestSuite() {
       assertEqual(7, p.keyOptions.offset);
       assertEqual(42, p.keyOptions.increment);
 
-      assertEqual(1, c.getIndexes().length); // just primary index
-      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1, c.indexes().length); // just primary index
+      assertEqual("primary", c.indexes()[0].type);
       assertEqual(1001, c.count());
 
       for (let i = 0; i < 1000; ++i) {
@@ -306,8 +306,8 @@ function dumpTestSuite() {
       assertEqual("padded", p.keyOptions.type);
       assertFalse(p.keyOptions.allowUserKeys);
 
-      assertEqual(1, c.getIndexes().length); // just primary index
-      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1, c.indexes().length); // just primary index
+      assertEqual("primary", c.indexes()[0].type);
       assertEqual(1001, c.count());
 
       let allDocs = {};
@@ -340,8 +340,8 @@ function dumpTestSuite() {
       assertEqual("uuid", p.keyOptions.type);
       assertFalse(p.keyOptions.allowUserKeys);
 
-      assertEqual(1, c.getIndexes().length); // just primary index
-      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1, c.indexes().length); // just primary index
+      assertEqual("primary", c.indexes()[0].type);
       assertEqual(1001, c.count());
 
       let allDocs = {};
@@ -368,8 +368,8 @@ function dumpTestSuite() {
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
 
-      assertEqual(1, c.getIndexes().length); // just primary index
-      assertEqual("primary", c.getIndexes()[0].type);
+      assertEqual(1, c.indexes().length); // just primary index
+      assertEqual("primary", c.indexes()[0].type);
       assertEqual(8, c.count());
 
       var texts = [
@@ -467,9 +467,9 @@ function dumpTestSuite() {
       var c = db._collection("UnitTestsDumpPersistent");
       var p = c.properties();
 
-      assertEqual(2, c.getIndexes().length);
-      assertEqual("primary", c.getIndexes()[0].type);
-      assertEqual("persistent", c.getIndexes()[1].type);
+      assertEqual(2, c.indexes().length);
+      assertEqual("primary", c.indexes()[0].type);
+      assertEqual("persistent", c.indexes()[1].type);
       assertEqual(10000, c.count());
 
       var res = db._query("FOR doc IN " + c.name() + " FILTER doc.value >= 0 RETURN doc").toArray();

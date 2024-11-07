@@ -1283,7 +1283,7 @@ function BaseTestConfig () {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
-          var idx = db._collection(cn).getIndexes();
+          var idx = db._collection(cn).indexes();
           assertEqual(3, idx.length); // primary + hash + skiplist
           for (var i = 1; i < idx.length; ++i) {
             assertFalse(idx[i].unique);
@@ -2588,8 +2588,8 @@ function ReplicationIncrementalKeyConflict () {
       db._flushCache();
       c = db._collection(cn);
       
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
+      assertEqual('hash', c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
 
       assertEqual(3, c.count());
       assertEqual(1, c.document('x').value);
@@ -2620,8 +2620,8 @@ function ReplicationIncrementalKeyConflict () {
 
       db._flushCache();
 
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
+      assertEqual('hash', c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
 
       c = db._collection(cn);
       assertEqual(3, c.count());
@@ -2718,8 +2718,8 @@ function ReplicationIncrementalKeyConflict () {
 
       db._flushCache();
 
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
+      assertEqual('hash', c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
 
       c = db._collection(cn);
       assertEqual(1000, c.count());
@@ -2769,8 +2769,8 @@ function ReplicationIncrementalKeyConflict () {
 
       db._flushCache();
 
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
+      assertEqual('hash', c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
 
       c = db._collection(cn);
       assertEqual(1000, c.count());
@@ -2805,8 +2805,8 @@ function ReplicationIncrementalKeyConflict () {
 
       assertEqual(10000, c.count());
 
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
+      assertEqual('hash', c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
 
       connectToLeader();
       c = db._collection(cn);
@@ -2849,8 +2849,8 @@ function ReplicationIncrementalKeyConflict () {
       c = db._collection(cn);
       assertEqual(10000, c.count());
 
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
+      assertEqual('hash', c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
     }
   };
 }
@@ -2925,8 +2925,8 @@ function ReplicationNonIncrementalKeyConflict () {
       assertEqual(2, c.document('y').value);
       assertEqual(3, c.document('z').value);
 
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
+      assertEqual('hash', c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
 
       connectToLeader();
       c = db._collection(cn);
@@ -2959,8 +2959,8 @@ function ReplicationNonIncrementalKeyConflict () {
       assertEqual(1, c.document('x').value);
       assertEqual(2, c.document('y').value);
 
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
+      assertEqual('hash', c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
     },
     
     testKeyConflictsNonIncrementalManyDocuments: function () {
@@ -2991,8 +2991,8 @@ function ReplicationNonIncrementalKeyConflict () {
 
       assertEqual(10000, c.count());
 
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
+      assertEqual('hash', c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
 
       connectToLeader();
       c = db._collection(cn);
@@ -3036,8 +3036,8 @@ function ReplicationNonIncrementalKeyConflict () {
       c = db._collection(cn);
       assertEqual(10000, c.count());
 
-      assertEqual('hash', c.getIndexes()[1].type);
-      assertTrue(c.getIndexes()[1].unique);
+      assertEqual('hash', c.indexes()[1].type);
+      assertTrue(c.indexes()[1].unique);
     }
   };
 }
