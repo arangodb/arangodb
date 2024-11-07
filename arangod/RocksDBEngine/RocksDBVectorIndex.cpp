@@ -195,7 +195,7 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
 struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
   RocksDBIndexIVFFlat(Index* quantizer,
                       UserVectorIndexDefinition const& definition)
-      : IndexIVFFlat(quantizer, definition.dimensions, definition.nLists,
+      : IndexIVFFlat(quantizer, definition.dimension, definition.nLists,
                      metricToFaissMetric(definition.metric)) {
     cp.check_input_data_for_NaNs = false;
     cp.niter = definition.trainingIterations;
@@ -245,9 +245,9 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                            faiss::IndexFlatIP> {
         switch (_definition.metric) {
           case arangodb::SimilarityMetric::kL2:
-            return {faiss::IndexFlatL2(_definition.dimensions)};
+            return {faiss::IndexFlatL2(_definition.dimension)};
           case arangodb::SimilarityMetric::kCosine:
-            return {faiss::IndexFlatIP(_definition.dimensions)};
+            return {faiss::IndexFlatIP(_definition.dimension)};
         }
       });
   if (_trainedData) {
@@ -256,7 +256,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
           quant.ntotal = _trainedData->numberOfCentroids;
           quant.codes = _trainedData->codeData;
           quant.code_size = _trainedData->codeSize;
-          quant.d = _definition.dimensions;
+          quant.d = _definition.dimension;
           quant.metric_type = metricToFaissMetric(_definition.metric);
           quant.is_trained = true;
         },
@@ -289,7 +289,7 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
                               transaction::Methods* trx,
                               std::shared_ptr<LogicalCollection> collection,
                               std::size_t count, std::size_t topK) {
-  TRI_ASSERT(topK * count == (inputs.size() / _definition.dimensions) * topK);
+  TRI_ASSERT(topK * count == (inputs.size() / _definition.dimension) * topK);
 
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, collection.get(), trx, rocksDBMethods, _cf,
@@ -300,7 +300,7 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   std::vector<faiss::idx_t> labels(topK * count);
 
   if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimensions, count, inputs.data());
+    faiss::fvec_renorm_L2(_definition.dimension, count, inputs.data());
   }
   flatIndex.search(count, inputs.data(), topK, distances.data(), labels.data(),
                    nullptr);
@@ -345,19 +345,19 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
 
   VPackSlice value = accessDocumentPath(doc, _fields[0]);
   std::vector<float> input;
-  input.reserve(_definition.dimensions);
+  input.reserve(_definition.dimension);
   if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
     return {TRI_ERROR_BAD_PARAMETER, res.error()};
   }
 
-  if (input.size() != static_cast<std::size_t>(_definition.dimensions)) {
+  if (input.size() != static_cast<std::size_t>(_definition.dimension)) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "input vector does not have correct dimensions"};
+            "input vector does not have correct dimension"};
   }
 
   auto const docId = static_cast<faiss::idx_t>(documentId.id());
   if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimensions, 1, input.data());
+    faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
   flatIndex.add_with_ids(1, input.data(), &docId);
 
@@ -377,7 +377,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
       flatIndex.cp.max_points_per_centroid * _definition.nLists;
   std::vector<float> trainingData;
   std::vector<float> input;
-  input.reserve(_definition.dimensions);
+  input.reserve(_definition.dimension);
 
   while (counter < trainingDataSize && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
@@ -385,18 +385,16 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
     VPackSlice value = accessDocumentPath(doc, _fields[0]);
     if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
-          fmt::format("vector must be array of numbers!",
-                      _definition.dimensions));
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
+                                     "vector must be array of numbers!");
     }
 
-    if (input.size() != static_cast<std::size_t>(_definition.dimensions)) {
+    if (input.size() != static_cast<std::size_t>(_definition.dimension)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
           fmt::format(
-              "vector length must be of size {}, same as index dimensions!",
-              _definition.dimensions));
+              "vector length must be of size {}, same as index dimension!",
+              _definition.dimension));
     }
 
     trainingData.insert(trainingData.end(), input.begin(), input.end());
@@ -407,7 +405,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   }
 
   if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimensions, counter, trainingData.data());
+    faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
   }
   flatIndex.train(counter, trainingData.data());
   LOG_TOPIC("a160b", INFO, Logger::ROCKSDB)
@@ -437,19 +435,19 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
 
   VPackSlice value = accessDocumentPath(doc, _fields[0]);
   std::vector<float> input;
-  input.reserve(_definition.dimensions);
+  input.reserve(_definition.dimension);
   if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
     return {TRI_ERROR_BAD_PARAMETER, res.error()};
   }
-  TRI_ASSERT(input.size() == static_cast<std::size_t>(_definition.dimensions));
+  TRI_ASSERT(input.size() == static_cast<std::size_t>(_definition.dimension));
 
-  if (input.size() != static_cast<std::size_t>(_definition.dimensions)) {
+  if (input.size() != static_cast<std::size_t>(_definition.dimension)) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "input vector does not have correct dimensions"};
+            "input vector does not have correct dimension"};
   }
 
   if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimensions, 1, input.data());
+    faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
   auto const docId = static_cast<faiss::idx_t>(documentId.id());
   flatIndex.remove_id(input, docId);

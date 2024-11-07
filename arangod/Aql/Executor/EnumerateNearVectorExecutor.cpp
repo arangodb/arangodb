@@ -55,7 +55,7 @@ void EnumerateNearVectorsExecutor::fillInput(
 
     AqlValue value = input.getValue(docRegId);
     std::vector<float> vectorInput;
-    vectorInput.reserve(_infos.index->getVectorIndexDefinition().dimensions);
+    vectorInput.reserve(_infos.index->getVectorIndexDefinition().dimension);
 
     // TODO currently we do not accept anything else then array
     if (!value.isArray()) {
@@ -74,11 +74,11 @@ void EnumerateNearVectorsExecutor::fillInput(
           "could not read input query point");
     }
     if (vectorInput.size() !=
-        _infos.index->getVectorIndexDefinition().dimensions) {
+        _infos.index->getVectorIndexDefinition().dimension) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
           fmt::format("a vector must be of dimension {}",
-                      _infos.index->getVectorIndexDefinition().dimensions));
+                      _infos.index->getVectorIndexDefinition().dimension));
     }
 
     _inputRows.emplace_back(input);

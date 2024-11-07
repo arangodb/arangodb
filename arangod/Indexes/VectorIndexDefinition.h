@@ -59,7 +59,7 @@ struct TrainedData {
 };
 
 struct UserVectorIndexDefinition {
-  std::uint64_t dimensions;
+  std::uint64_t dimension;
   SimilarityMetric metric;
   std::int64_t nLists;
   int trainingIterations;
@@ -67,10 +67,10 @@ struct UserVectorIndexDefinition {
   template<class Inspector>
   friend inline auto inspect(Inspector& f, UserVectorIndexDefinition& x) {
     return f.object(x).fields(
-        f.field("dimensions", x.dimensions)
+        f.field("dimension", x.dimension)
             .invariant([](auto value) -> inspection::Status {
               if (value < 1) {
-                return {"Dimensions must be greater then 0!"};
+                return {"Dimension must be greater then 0!"};
               }
               return inspection::Status::Success{};
             }),
