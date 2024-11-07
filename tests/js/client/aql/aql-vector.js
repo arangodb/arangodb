@@ -80,7 +80,7 @@ function VectorIndexL2TestSuite() {
                 inBackground: false,
                 params: {
                     metric: "l2",
-                    dimensions: dimension,
+                    dimension: dimension,
                     nLists: 10,
                     trainingIterations: 10,
                 },
@@ -387,7 +387,7 @@ function VectorIndexCosineTestSuite() {
                 fields: ["vector"],
                 params: {
                     metric: "cosine",
-                    dimensions: dimension,
+                    dimension: dimension,
                     nLists: 10
                 },
             });
@@ -499,7 +499,7 @@ function MultipleVectorIndexesOnField() {
                 inBackground: false,
                 params: {
                     metric: "cosine",
-                    dimensions: dimension,
+                    dimension: dimension,
                     nLists: 10
                 },
             });
@@ -510,7 +510,7 @@ function MultipleVectorIndexesOnField() {
                 inBackground: false,
                 params: {
                     metric: "l2",
-                    dimensions: dimension,
+                    dimension: dimension,
                     nLists: 10
                 },
             });
@@ -548,7 +548,7 @@ function MultipleVectorIndexesOnField() {
                 inBackground: false,
                 params: {
                     metric: "cosine",
-                    dimensions: dimension,
+                    dimension: dimension,
                     nLists: 10
                 },
             });
@@ -559,7 +559,7 @@ function MultipleVectorIndexesOnField() {
                 inBackground: false,
                 params: {
                     metric: "l2",
-                    dimensions: dimension,
+                    dimension: dimension,
                     nLists: 10
                 },
             });
@@ -597,7 +597,7 @@ function MultipleVectorIndexesOnField() {
                 fields: ["fieldVec"],
                 params: {
                     metric: "l2",
-                    dimensions: dimension,
+                    dimension: dimension,
                     nLists: 10
                 },
             });
@@ -607,7 +607,7 @@ function MultipleVectorIndexesOnField() {
                 fields: ["vector"],
                 params: {
                     metric: "l2",
-                    dimensions: dimension,
+                    dimension: dimension,
                     nLists: 10
                 },
             });
