@@ -76,6 +76,7 @@ function sendRequest(method, endpoint, body, usePrimary) {
     return {};
   }
   assertTrue(res.hasOwnProperty('body'), JSON.stringify(res));
+  assertTrue(res.body !== undefined, JSON.stringify(res));
   let resultBody = res.body;
   if (typeof resultBody === "string") {
     resultBody = JSON.parse(resultBody);
