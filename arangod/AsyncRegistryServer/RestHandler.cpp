@@ -21,6 +21,8 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "RestHandler.h"
+#include <optional>
+#include <variant>
 
 #include "Async/Registry/promise.h"
 #include "Async/Registry/stacktrace.h"
@@ -46,8 +48,18 @@ auto all_undeleted_promises()
   std::vector<Id> roots;
   registry.for_promise([&](PromiseSnapshot promise) {
     if (promise.state != State::Deleted) {
-      forest.insert(promise.id, promise.waiter, promise);
-      if (promise.waiter == nullptr) {
+      // only async waiters are considered here, they point to other promises in
+      // the registry
+      // sync waiters point to threads that are waiting synchronously and are
+      // not relevant for creating the forest
+      auto waiter =
+          promise.waiter.has_value()
+              ? (std::holds_alternative<AsyncWaiter>(promise.waiter.value())
+                     ? std::get<AsyncWaiter>(promise.waiter.value())
+                     : nullptr)
+              : nullptr;
+      forest.insert(promise.id, waiter, promise);
+      if (waiter == nullptr) {
         roots.emplace_back(promise.id);
       }
     }

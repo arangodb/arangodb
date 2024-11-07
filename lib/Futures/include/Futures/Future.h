@@ -271,7 +271,10 @@ class [[nodiscard]] Future {
   Try<T> const&& result() const&& { return std::move(getStateTryChecked()); }
 
   /// Blocks until this Future is complete.
-  void wait() { detail::waitImpl(*this); }
+  void wait() {
+    set_promise_waiter(std::this_thread::get_id());
+    detail::waitImpl(*this);
+  }
 
   /// When this Future has completed, execute func which is a function that
   /// can be called with either `T&&` or `Try<T>&&`.
@@ -499,7 +502,12 @@ class [[nodiscard]] Future {
     return future;
   }
 
-  auto set_promise_waiter(void* waiter) {
+  auto set_promise_waiter(async_registry::AsyncWaiter waiter) {
+    if (_state != nullptr) {
+      _state->set_promise_waiter(waiter);
+    }
+  }
+  auto set_promise_waiter(async_registry::SyncWaiter waiter) {
     if (_state != nullptr) {
       _state->set_promise_waiter(waiter);
     }
