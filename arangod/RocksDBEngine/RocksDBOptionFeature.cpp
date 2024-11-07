@@ -1538,7 +1538,7 @@ limited number of edge collections/shards/indexes.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31202)
+      .setIntroducedIn(31204)
       .setLongDescription(R"(Enabling this option will make RocksDB's
   compaction write the index data for different vector
   indexes (also indexes from different collections/shards) into different
@@ -1599,7 +1599,7 @@ limited number of edge collections/shards/indexes.)");
           introducedIn = 31200;
         }
         if (family == RocksDBColumnFamilyManager::Family::VectorIndex) {
-          introducedIn = 31300;
+          introducedIn = 31204;
         }
 
         options
