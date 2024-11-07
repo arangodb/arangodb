@@ -1,33 +1,33 @@
 devel
 -----
 
-* Add vector index based on faiss implementation. Current vector index 
-  implementation supports L2 and cosine metrics. To create vector index,
-  vector field in collection must already be populated with data. Example
-  of vector index creation:
+*  Add a vector index based on faiss implementation. The current vector index 
+  implementation supports the L2 and cosine metrics. To create a vector index,
+  the vector field in the collection must already be populated with data. Here is an
+  example of a vector index creation:
   ```
     db.<collection>.ensureIndex({
       type: "vector",
       fields: ["value1"],
       params: {
         "metric": "l2",
-        "dimensions": 300,
+        "dimension": 300,
         "nLists": 100
       }
     });
   ````
-  Where parameters are:
-  - metric: defines how similarity/distance is calculated, can be
+  Where the parameters are:
+  - `metric`: defines how similarity/distance is calculated, can be
     l2 or cosine,
-  - nLists: number of lists to create,
-  - dimensions: vector dimensions, ArangoDB will also check that all the vectors
+  - `nLists`: number of lists to create,
+  - `dimension`: vector dimensions, ArangoDB will also check that all the vectors
     have the correct number of components,
-  - trainingIterations: how many training iterations will be used, 
+  - `trainingIterations`: how many training iterations will be used, 
   The Current limitation is that a vector index can be created only on a single field.
-  Vector creation has two phases, training in which the centroids are being determined
+  The vector index creation has two phases, training in which the centroids are being determined
   from the subset of data, and insertion phase in which the lists are being populated.
-  To trigger the vector index usage appropriate APPROX_NEAR function must be used
-  along with SORT and LIMIT clauses e.g.:
+  To trigger the vector index an appropriate `APPROX_NEAR` function must be used
+  along with `SORT` and `LIMIT` clauses e.g.:
   ```
     FOR d IN docs
     LET distance = APPROX_NEAR_L2(d.vector, @queryVector)
@@ -35,7 +35,7 @@ devel
     LIMIT 10
     RETURN {d, distance}
   ````
-  This returns top the 10 nearest neighbors to @queryVector.
+  This returns top the 10 nearest neighbors to `@queryVector`.
 
 * Fix a crash with async prefetch and user defined functions in AQL. This
   fixes BTS-2003.
