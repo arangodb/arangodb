@@ -86,7 +86,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
 
     // update promises in registry
     if constexpr (CanSetPromiseWaiter<U>) {
-      co_awaited_expression.set_promise_waiter(this->id());
+      co_awaited_expression.set_promise_waiter({this->id()});
     }
     update_source_location(loc);
 
@@ -177,7 +177,7 @@ struct async {
   bool valid() const noexcept { return _handle != nullptr; }
   operator bool() const noexcept { return valid(); }
 
-  auto set_promise_waiter(async_registry::AsyncWaiter waiter) {
+  auto set_promise_waiter(async_registry::RequesterIdentifier waiter) {
     _handle.promise().set_promise_waiter(waiter);
   }
   auto id() -> void* { return _handle.promise()->id(); }

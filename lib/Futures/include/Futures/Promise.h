@@ -121,7 +121,7 @@ class Promise {
 
   arangodb::futures::Future<T> getFuture();
 
-  auto set_promise_waiter(async_registry::AsyncWaiter waiter) {
+  auto set_promise_waiter(async_registry::RequesterIdentifier waiter) {
     return _state->set_promise_waiter(waiter);
   }
   auto id() -> void* { return _state->id(); }

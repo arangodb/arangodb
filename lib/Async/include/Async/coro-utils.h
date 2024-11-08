@@ -25,6 +25,7 @@
 #include <concepts>
 #include <coroutine>
 #include <utility>
+#include "Async/Registry/promise.h"
 
 namespace arangodb {
 
@@ -51,7 +52,8 @@ auto get_awaitable_object(T&& t) {
 }
 
 template<typename T>
-concept CanSetPromiseWaiter = requires(T t, void* waiter) {
+concept CanSetPromiseWaiter =
+    requires(T t, async_registry::RequesterIdentifier waiter) {
   t.set_promise_waiter(waiter);
 };
 template<typename T>
