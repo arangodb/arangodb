@@ -44,6 +44,7 @@ const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
