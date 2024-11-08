@@ -97,6 +97,10 @@ class MultipleRemoteModificationNode final : public ExecutionNode,
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching() const noexcept final {
+    return AsyncPrefetchEligibility::kDisableGlobally;
+  }
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,

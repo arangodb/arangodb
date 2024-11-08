@@ -1748,8 +1748,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
   TRI_ASSERT(_transactionContext != nullptr);
   TRI_ASSERT(_trx != nullptr);
 
-  if ((_ast->canApplyParallelism() || _ast->containsAsyncPrefetch()) &&
-      !_ast->containsModificationNode()) {
+  if (_ast->canApplyParallelism() || _ast->containsAsyncPrefetch()) {
     // some degree of parallel execution. nodes should better not
     // share the transaction context, but create their own, non-shared
     // objects.
