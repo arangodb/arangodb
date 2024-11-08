@@ -2226,11 +2226,12 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         // that we have been restarted but the leader did not notice that
         // we were gone, we must check if the leader is set correctly here
         // locally for our shard:
+        VPackSlice theLeader = VPackSlice::emptyStringSlice();
         VPackSlice lshard = localdb.get(shname);
         TRI_ASSERT(lshard.isObject());
         bool needsResyncBecauseOfRestart = false;
         if (lshard.isObject()) {  // just in case
-          VPackSlice theLeader = lshard.get("theLeader");
+          theLeader = lshard.get("theLeader");
           if (theLeader.isString() &&
               theLeader.stringView() ==
                   maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
@@ -2238,10 +2239,25 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
           }
         }
 
+        if (cservers.length() == 0 ||
+            cservers[0].stringView().starts_with("_")) {
+          // Do not attempt to sync if the server in current is still resigned.
+          LOG_TOPIC("2dba7", INFO, Logger::MAINTENANCE)
+              << "refuse to synchronize shard with a resigned leader in "
+                 "current - myself = "
+              << serverId << " current servers = " << cservers.toJson();
+          continue;
+        }
+
         // if we are considered to be in sync there is nothing to do
         if (!needsResyncBecauseOfRestart && indexOf(cservers, serverId) > 0) {
           continue;
         }
+
+        LOG_TOPIC("3d7a8", DEBUG, Logger::MAINTENANCE)
+            << "detected synchronize shard: myself = " << serverId
+            << " current servers = " << cservers.toJson()
+            << " local theLeader = " << theLeader.toJson();
 
         std::string leader = pservers[0].copyString();
         std::string forcedResync =
