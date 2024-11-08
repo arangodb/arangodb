@@ -31,8 +31,8 @@ class Waiter(object):
         self.is_sync = is_sync
         self.item = item
     @classmethod
-    def from_json(cls, blob: Optional[dict]):
-        if blob is None:
+    def from_json(cls, blob: dict):
+        if not blob:
             return None
         sync = blob.get("sync")
         if sync is not None:
@@ -46,7 +46,7 @@ class Waiter(object):
             return ""
 
 class Data(object):
-    def __init__(self, owning_thread: Thread, source_location: SourceLocation, id: int, state: str, waiter: Optional[Waiter] = 0):
+    def __init__(self, owning_thread: Thread, source_location: SourceLocation, id: int, state: str, waiter: Waiter):
         self.owning_thread = owning_thread
         self.source_location = source_location
         self.id = id
@@ -54,7 +54,7 @@ class Data(object):
         self.state = state
     @classmethod
     def from_json(cls, blob: dict):
-        return cls(Thread.from_json(blob["owning_thread"]), SourceLocation.from_json(blob["source_location"]), blob["id"], blob["state"], Waiter.from_json(blob.get("waiter")))
+        return cls(Thread.from_json(blob["owning_thread"]), SourceLocation.from_json(blob["source_location"]), blob["id"], blob["state"], Waiter.from_json(blob["waiter"]))
     def __str__(self):
         waiter_str = str(self.waiter) if self.waiter != None else ""
         return str(self.source_location) + ", " + str(self.owning_thread) + ", " + self.state + waiter_str
@@ -119,6 +119,7 @@ def test_intput() -> str:
           "function_name": "arangodb::network::(anonymous namespace)::Pack::Pack(DestinationId &&, RequestLane, bool, bool)"
         },
         "id": 124252709790688,
+        "waiter": {},
         "state": "Suspended"
       }
     }

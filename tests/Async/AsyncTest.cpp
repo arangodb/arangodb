@@ -506,11 +506,12 @@ TYPED_TEST(AsyncTest, async_promises_in_async_registry_know_their_waiter) {
   EXPECT_TRUE(awaited_promise.has_value());
   EXPECT_TRUE(waiter_promise.has_value());
   EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::AsyncWaiter>(
-      awaited_promise->waiter.value()));
-  EXPECT_EQ(std::get<arangodb::async_registry::AsyncWaiter>(
-                awaited_promise->waiter.value()),
-            waiter_promise->id);
-  EXPECT_EQ(waiter_promise->waiter, std::nullopt);
+      awaited_promise->waiter));
+  EXPECT_EQ(
+      std::get<arangodb::async_registry::AsyncWaiter>(awaited_promise->waiter),
+      waiter_promise->id);
+  EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::NoWaiter>(
+      waiter_promise->waiter));
 }
 
 namespace {

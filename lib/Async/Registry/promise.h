@@ -89,6 +89,14 @@ auto inspect(Inspector& f, State& x) {
 
 using AsyncWaiter = void*;
 using SyncWaiter = std::thread::id;
+struct NoWaiter {
+  bool operator==(NoWaiter const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, NoWaiter& x) {
+  return f.object(x).fields();
+}
+
 struct AsyncWaiterTmp {
   AsyncWaiter item;
 };
@@ -104,14 +112,15 @@ template<typename Inspector>
 auto inspect(Inspector& f, SyncWaiterTmp& x) {
   return f.object(x).fields(f.field("sync", fmt::format("{}", x.item)));
 }
-struct WaiterTmp : std::variant<AsyncWaiterTmp, SyncWaiterTmp> {};
+struct WaiterTmp : std::variant<AsyncWaiterTmp, SyncWaiterTmp, NoWaiter> {};
 template<typename Inspector>
 auto inspect(Inspector& f, WaiterTmp& x) {
   return f.variant(x).unqualified().alternatives(
+      inspection::inlineType<NoWaiter>(),
       inspection::inlineType<AsyncWaiterTmp>(),
       inspection::inlineType<SyncWaiterTmp>());
 }
-struct Waiter : std::variant<AsyncWaiter, SyncWaiter> {};
+struct Waiter : std::variant<NoWaiter, AsyncWaiter, SyncWaiter> {};
 template<typename Inspector>
 auto inspect(Inspector& f, Waiter& x) {
   if constexpr (!Inspector::isLoading) {  // only serialize
@@ -121,6 +130,7 @@ auto inspect(Inspector& f, Waiter& x) {
               return WaiterTmp{AsyncWaiterTmp{waiter}};
             },
             [&](SyncWaiter waiter) { return WaiterTmp{SyncWaiterTmp{waiter}}; },
+            [&](NoWaiter waiter) { return WaiterTmp{waiter}; },
         },
         x);
     return f.apply(tmp);
@@ -131,7 +141,7 @@ struct PromiseSnapshot {
   void* id;
   Thread thread;
   SourceLocationSnapshot source_location;
-  std::optional<Waiter> waiter;
+  Waiter waiter = {NoWaiter{}};
   State state;
   bool operator==(PromiseSnapshot const&) const = default;
 };
@@ -161,7 +171,7 @@ struct Promise {
   Thread thread;
 
   SourceLocation source_location;
-  std::atomic<std::optional<Waiter>> waiter;
+  std::atomic<Waiter> waiter = Waiter{NoWaiter{}};
   std::atomic<State> state = State::Running;
   // identifies the promise list it belongs to
   std::shared_ptr<ThreadRegistry> registry;
