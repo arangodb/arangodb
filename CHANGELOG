@@ -1,5 +1,7 @@
-v3.11.12 (XXXX-XX-XX)
+v3.11.12 (2024-10-31)
 ---------------------
+
+* Update tzdata as of 31.10.2024.
 
 * BTS_1792: Call `setLocale` earlier during startup to prevent crashes.
 

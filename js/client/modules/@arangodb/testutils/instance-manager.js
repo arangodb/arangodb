@@ -549,10 +549,12 @@ class instanceManager {
   }
   readImportantLogLines (logPath) {
     let importantLines = {};
-    // TODO: iterate over instances
-    // for (let i = 0; i < list.length; i++) {
-    // }
-
+    this.arangods.forEach(arangod => {
+      let lines = arangod.readImportantLogLines();
+      if (lines.length > 0) {
+        importantLines[arangod.name] = lines;
+      }
+    });
     return importantLines;
   }
 
@@ -653,7 +655,7 @@ class instanceManager {
       } else {
         return {
           status: false,
-          message: yaml.safedump(reply.body)
+          message: yaml.safeDump(reply.body)
         };
       }
     } catch (ex) {
@@ -739,6 +741,10 @@ class instanceManager {
     this.arangods.forEach((arangod) => {
       arangod.aggregateDebugger();
     });
+    let lines = this.readImportantLogLines();
+    if (lines !== {} ) {
+      rp.addFailRunsMessage("found log relevant log-lines: \n" + yaml.safeDump(lines));
+    }
     return true;
   }
 
@@ -829,7 +835,6 @@ class instanceManager {
     }
 
     var shutdownTime = time();
-
     while (toShutdown.length > 0) {
       toShutdown = toShutdown.filter(arangod => {
         if (arangod.exitStatus === null) {

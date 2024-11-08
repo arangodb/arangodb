@@ -34,6 +34,7 @@ const sleep = internal.sleep;
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const statusExternal = internal.statusExternal;
+const SetGlobalExecutionDeadlineTo = internal.SetGlobalExecutionDeadlineTo;
 
 /* Modules: */
 const _ = require('lodash');
@@ -43,6 +44,7 @@ const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
@@ -203,7 +205,18 @@ function makeDataWrapper (options) {
     localOptions.dbServers = 3;
   }
 
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout * 1000);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
+  let timeout = SetGlobalExecutionDeadlineTo(0.0);
+  if (timeout) {
+    return {
+      timeout: true,
+      forceTerminate: true,
+      status: false,
+      message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(rc)}`,
+    };
+  }
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }
