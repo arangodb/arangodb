@@ -38,10 +38,10 @@ def launch_runner(runner, create_report):
     finally:
         sys.stderr.flush()
         sys.stdout.flush()
+        shutdown_overload_watcher_thread()
         runner.create_log_file()
         runner.create_testruns_file()
         dmesg.end_run()
         logging.info("joining dmesg threads")
         dmesg_thread.join()
-        shutdown_overload_watcher_thread()
         runner.print_and_exit_closing_stance()
