@@ -1,3 +1,5 @@
+#include <optional>
+#include <optional>
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -31,7 +33,9 @@
 #include <condition_variable>
 #include <exception>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
+#include <variant>
 
 using namespace arangodb::futures;
 
@@ -876,31 +880,31 @@ TEST(FutureTest,
   auto awaited_coro = awaited_co();
   auto waiter_coro = waiter_co(std::move(awaited_coro));
 
-  struct PromiseIds {
-    bool set = false;
-    void* id;
-    void* waiter;
-  };
-  PromiseIds awaited_promise;
-  PromiseIds waiter_promise;
+  std::optional<arangodb::async_registry::PromiseSnapshot> awaited_promise;
+  std::optional<arangodb::async_registry::PromiseSnapshot> waiter_promise;
   uint count = 0;
   arangodb::async_registry::registry.for_promise(
       [&](arangodb::async_registry::PromiseSnapshot promise) {
         count++;
         if (promise.source_location.function_name.find("awaited_co") !=
             std::string::npos) {
-          awaited_promise = PromiseIds{true, promise.id, promise.waiter};
+          awaited_promise = promise;
         }
         if (promise.source_location.function_name.find("waiter_co") !=
             std::string::npos) {
-          waiter_promise = PromiseIds{true, promise.id, promise.waiter};
+          waiter_promise = promise;
         }
       });
   EXPECT_EQ(count, 2);
-  EXPECT_TRUE(awaited_promise.set);
-  EXPECT_TRUE(waiter_promise.set);
-  EXPECT_EQ(awaited_promise.waiter, waiter_promise.id);
-  EXPECT_EQ(waiter_promise.waiter, nullptr);
+  EXPECT_TRUE(awaited_promise.has_value());
+  EXPECT_TRUE(waiter_promise.has_value());
+  EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::AsyncWaiter>(
+      awaited_promise->waiter));
+  EXPECT_EQ(
+      std::get<arangodb::async_registry::AsyncWaiter>(awaited_promise->waiter),
+      waiter_promise->id);
+  EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::NoWaiter>(
+      waiter_promise->waiter));
 }
 
 namespace {
@@ -911,14 +915,7 @@ auto awaited_fn() -> Future<int> {
 }  // namespace
 TEST(FutureTest,
      continued_future_promises_in_async_registry_know_their_waiter) {
-  struct PromiseIds {
-    bool set = false;
-    void* id;
-    void* waiter;
-  };
-
   std::vector<std::function<void()>> waiter{
-
       []() { auto future = awaited_fn().thenValue([](int a) { return 1; }); },
       []() {
         auto future =
@@ -956,36 +953,35 @@ TEST(FutureTest,
   for (const auto& fn : waiter) {
     arangodb::async_registry::get_thread_registry().garbage_collect();
     fn();
-    PromiseIds awaited_promise;
-    PromiseIds waiter_promise;
+    std::optional<arangodb::async_registry::PromiseSnapshot> awaited_promise;
+    std::optional<arangodb::async_registry::PromiseSnapshot> waiter_promise;
     uint count = 0;
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
           if (std::string(promise.source_location.function_name)
                   .find("awaited_fn") != std::string::npos) {
-            awaited_promise = PromiseIds{true, promise.id, promise.waiter};
+            awaited_promise = promise;
           }
           if (std::string(promise.source_location.function_name)
                   .find("TestBody") != std::string::npos) {
-            waiter_promise = PromiseIds{true, promise.id, promise.waiter};
+            waiter_promise = promise;
           }
         });
     EXPECT_EQ(count, 2);
-    EXPECT_TRUE(awaited_promise.set);
-    EXPECT_TRUE(waiter_promise.set);
-    EXPECT_EQ(awaited_promise.waiter, waiter_promise.id);
-    EXPECT_EQ(waiter_promise.waiter, nullptr);
+    EXPECT_TRUE(awaited_promise.has_value());
+    EXPECT_TRUE(waiter_promise.has_value());
+    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::AsyncWaiter>(
+        awaited_promise->waiter));
+    EXPECT_EQ(std::get<arangodb::async_registry::AsyncWaiter>(
+                  awaited_promise->waiter),
+              waiter_promise->id);
+    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::NoWaiter>(
+        waiter_promise->waiter));
   }
 }
 
 TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
-  struct PromiseIds {
-    bool set = false;
-    void* id;
-    void* waiter;
-  };
-
   std::vector<std::tuple<std::string, std::function<void()>>> waiter{
       std::make_tuple("collectAll",
                       []() {
@@ -1006,28 +1002,36 @@ TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
   for (const auto& [name, fn] : waiter) {
     arangodb::async_registry::get_thread_registry().garbage_collect();
     fn();
-    std::vector<PromiseIds> awaited_promises;
-    PromiseIds waiter_promise;
+    std::vector<arangodb::async_registry::PromiseSnapshot> awaited_promises;
+    std::optional<arangodb::async_registry::PromiseSnapshot> waiter_promise;
     uint count = 0;
     arangodb::async_registry::registry.for_promise(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
           if (std::string(promise.source_location.function_name)
                   .find("awaited_fn") != std::string::npos) {
-            awaited_promises.push_back(
-                PromiseIds{true, promise.id, promise.waiter});
+            awaited_promises.push_back(promise);
           }
           if (std::string(promise.source_location.function_name).find(name) !=
               std::string::npos) {
-            waiter_promise = PromiseIds{true, promise.id, promise.waiter};
+            waiter_promise = promise;
           }
         });
     EXPECT_EQ(count, 3);
     EXPECT_EQ(awaited_promises.size(), 2);
-    EXPECT_TRUE(waiter_promise.set);
-    EXPECT_EQ(awaited_promises[0].waiter, waiter_promise.id);
-    EXPECT_EQ(awaited_promises[1].waiter, waiter_promise.id);
-    EXPECT_EQ(waiter_promise.waiter, nullptr);
+    EXPECT_TRUE(waiter_promise.has_value());
+    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::AsyncWaiter>(
+        awaited_promises[0].waiter));
+    EXPECT_EQ(std::get<arangodb::async_registry::AsyncWaiter>(
+                  awaited_promises[0].waiter),
+              waiter_promise->id);
+    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::AsyncWaiter>(
+        awaited_promises[1].waiter));
+    EXPECT_EQ(std::get<arangodb::async_registry::AsyncWaiter>(
+                  awaited_promises[1].waiter),
+              waiter_promise->id);
+    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::NoWaiter>(
+        waiter_promise->waiter));
   }
 }
 
