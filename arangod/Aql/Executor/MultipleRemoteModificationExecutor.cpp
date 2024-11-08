@@ -60,10 +60,10 @@ MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
     Fetcher& fetcher, Infos& info)
     : _ctx(std::make_shared<transaction::StandaloneContext>(
           info._query.vocbase(), info._query.operationOrigin())),
-      _trx(createTransaction(_ctx, info)),
+      _trx(info._query.newTrxContext()),
       _info(info),
       _upstreamState(ExecutionState::HASMORE) {
-  _trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  //_trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 };
 
@@ -155,10 +155,12 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
         "'update' or 'replace'");
   }
 
+#if 0
   auto res = _trx.begin();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+#endif
 
   auto result = _trx.insert(_info._aqlCollection->name(), inDocument.slice(),
                             _info._options);
@@ -190,10 +192,12 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
     }
   }
 
+#if 0
   res = _trx.commit();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+#endif
 
   stats.incrWritesExecuted(writesExecuted);
   stats.incrWritesIgnored(writesIgnored);
