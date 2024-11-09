@@ -96,7 +96,7 @@ function recoverySuite () {
 
     testSingleAttributeHashIndexInfo: function() {
       let c = db._collection(colName1);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value' ], idx.fields);
@@ -115,13 +115,13 @@ function recoverySuite () {
 
     testSingleAttributeHashIndexEstimate: function () {
       let c = db._collection(colName1);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertEqual(est1, idx.selectivityEstimate);
     },
 
     testNestedAttributeHashIndexInfo: function() {
       let c = db._collection(colName2);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertTrue(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'a.value' ], idx.fields);
@@ -140,13 +140,13 @@ function recoverySuite () {
 
     testNestedAttributeHashIndexEstimate: function () {
       let c = db._collection(colName2);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertEqual(est2, idx.selectivityEstimate);
     },
 
     testManyAttributesHashIndexInfo: function() {
       let c = db._collection(colName3);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'a', 'b' ], idx.fields);
@@ -166,7 +166,7 @@ function recoverySuite () {
 
     testManyAttributesHashIndexEstimate: function () {
       let c = db._collection(colName3);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertEqual(est3, idx.selectivityEstimate);
     },
 

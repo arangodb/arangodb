@@ -1,11 +1,10 @@
+import { CreatableMultiSelect, OptionType } from "@arangodb/ui";
 import { Box, FormLabel, Spacer } from "@chakra-ui/react";
 import { FieldArray, useField } from "formik";
 import { isArray } from "lodash";
 import React from "react";
 import { components, MultiValueGenericProps } from "react-select";
 import { FormFieldProps } from "../../../../../components/form/FormField";
-import CreatableMultiSelect from "../../../../../components/select/CreatableMultiSelect";
-import { OptionType } from "../../../../../components/select/SelectBase";
 import { IndexInfoTooltip } from "../IndexInfoTooltip";
 import { useInvertedIndexContext } from "./InvertedIndexContext";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";

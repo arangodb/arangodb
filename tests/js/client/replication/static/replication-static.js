@@ -1477,13 +1477,13 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(1001, state.count);
 
-          state.idx = c.getIndexes()[1];
+          state.idx = c.indexes()[1];
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
-          var idx = db._collection(cn).getIndexes()[1];
+          var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
           assertEqual('hash', state.idx.type);
           assertFalse(state.idx.unique);
@@ -1518,13 +1518,13 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(1001, state.count);
 
-          state.idx = c.getIndexes()[1];
+          state.idx = c.indexes()[1];
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
-          var idx = db._collection(cn).getIndexes()[1];
+          var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
           assertEqual('hash', state.idx.type);
           assertFalse(state.idx.unique);
@@ -1559,13 +1559,13 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(501, state.count);
 
-          state.idx = c.getIndexes()[1];
+          state.idx = c.indexes()[1];
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
-          var idx = db._collection(cn).getIndexes()[1];
+          var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
           assertEqual('hash', state.idx.type);
           assertTrue(state.idx.unique);
@@ -1600,13 +1600,13 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(501, state.count);
 
-          state.idx = c.getIndexes()[1];
+          state.idx = c.indexes()[1];
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
-          var idx = db._collection(cn).getIndexes()[1];
+          var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
           assertEqual('hash', state.idx.type);
           assertTrue(state.idx.unique);
@@ -1641,13 +1641,13 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(1001, state.count);
 
-          state.idx = c.getIndexes()[1];
+          state.idx = c.indexes()[1];
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
-          var idx = db._collection(cn).getIndexes()[1];
+          var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
           assertEqual('skiplist', state.idx.type);
           assertFalse(state.idx.unique);
@@ -1682,13 +1682,13 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(1001, state.count);
 
-          state.idx = c.getIndexes()[1];
+          state.idx = c.indexes()[1];
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
-          var idx = db._collection(cn).getIndexes()[1];
+          var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
           assertEqual('skiplist', state.idx.type);
           assertFalse(state.idx.unique);
@@ -1723,13 +1723,13 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(501, state.count);
 
-          state.idx = c.getIndexes()[1];
+          state.idx = c.indexes()[1];
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
-          var idx = db._collection(cn).getIndexes()[1];
+          var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
           assertEqual('skiplist', state.idx.type);
           assertTrue(state.idx.unique);
@@ -1764,13 +1764,13 @@ function BaseTestConfig() {
           state.count = collectionCount(cn);
           assertEqual(501, state.count);
 
-          state.idx = c.getIndexes()[1];
+          state.idx = c.indexes()[1];
         },
         function(state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
 
-          var idx = db._collection(cn).getIndexes()[1];
+          var idx = db._collection(cn).indexes()[1];
           assertEqual(state.idx.id, idx.id);
           assertEqual('skiplist', state.idx.type);
           assertTrue(state.idx.unique);

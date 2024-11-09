@@ -18,6 +18,7 @@ declare global {
     App: any;
     /* add views here */
     ShardDistributionReactView: any;
+    $: any;
   }
 }
 

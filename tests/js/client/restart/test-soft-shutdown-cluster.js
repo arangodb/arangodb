@@ -303,17 +303,18 @@ function testSuite() {
       // Now until all jobs are done:
       let startTime = time();
       const isCov = require("@arangodb/test-helper").versionHas('coverage');
-      const timeout = (isCov) ? 90*4 : 90;
+      const timeout = (isCov) ? 90*5 : 90;
       while (true) {
         status = arango.GET("/_admin/shutdown");
         if (status.lowPrioQueuedRequests === 0 &&
             status.lowPrioOngoingRequests === 0) {
           break;   // all good!
         }
-        if (time() - startTime > timeout) {
+        let delta = time() - startTime;
+        if (delta > timeout) {
           // 45 seconds should be enough for at least 2 threads
           // to execute 128 requests, usually, it will be much faster.
-          assertTrue(false, "finishing jobs took too long");
+          assertTrue(false, `finishing jobs took too long ${delta} > ${timeout}`);
         }
         console.warn("status2:", status);
         assertTrue(status.softShutdownOngoing, "expect status.softShutdownOngoing == true");

@@ -64,13 +64,13 @@ function dumpTestSuite () {
       assertTrue(!!g.exists('knows_graph'));
 
       assertEqual(3, e.type()); // edge
-      assertEqual(2, e.getIndexes().length);
-      assertEqual('edge', e.getIndexes()[1].type);
+      assertEqual(2, e.indexes().length);
+      assertEqual('edge', e.indexes()[1].type);
       assertEqual(5, e.count());
 
       assertEqual(2, v.type()); // document
-      assertEqual(1, v.getIndexes().length); // just primary index
-      assertEqual('primary', v.getIndexes()[0].type);
+      assertEqual(1, v.indexes().length); // just primary index
+      assertEqual('primary', v.indexes()[0].type);
       assertEqual(5, v.count());
     }
   };

@@ -1,9 +1,8 @@
+import { InfoTooltip } from "@arangodb/ui";
 import { Checkbox, Grid, HStack, Stack } from "@chakra-ui/react";
-
 import { useFormikContext } from "formik";
 import { get } from "lodash";
 import React from "react";
-import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useEditViewContext } from "../../editView/EditViewContext";
 import { ArangoSearchViewPropertiesType } from "../../View.types";
 import { AnalyzersDropdown } from "./AnalyzersDropdown";

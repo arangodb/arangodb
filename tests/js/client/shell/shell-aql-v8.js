@@ -40,11 +40,13 @@ function V8QuerySuite () {
       } catch (err) {}
       
       functions.register('test::testudf', function() { return 42; });
+      functions.register('test::decodeURIComponent', function (text) { try { return decodeURIComponent(text); } catch (e) { return ''; } });
     },
     
     tearDownAll : function () {
       try {
         functions.unregister('test::testudf');
+        functions.unregister('test::decodeURIComponent');
       } catch (err) {}
     },
 
@@ -106,6 +108,11 @@ function V8QuerySuite () {
     testApplyUserDefinedHidden : function () {
       let results = db._query({ query: "RETURN APPLY(NOOPT('test::testudf'), [])" }).toArray();
       assertEqual(42, results[0]);
+    },
+
+    testApplyUserDefinedMultiple : function () {
+      let results = db._query({ query: "FOR i IN 0..10000 FILTER 'a' == test::decodeURIComponent('a') RETURN 'done'" }).toArray();
+      assertEqual('done', results[0]);
     },
 
   };
