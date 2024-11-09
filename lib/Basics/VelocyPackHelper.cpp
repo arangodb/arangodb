@@ -239,7 +239,7 @@ void VelocyPackHelper::initialize() {
 
   // set up options for validating requests, without UTF-8 validation
   looseRequestValidationOptions = VPackOptions::Defaults;
-  looseRequestValidationOptions.checkAttributeUniqueness = true;
+  looseRequestValidationOptions.checkAttributeUniqueness = false;
   looseRequestValidationOptions.validateUtf8Strings = false;
   looseRequestValidationOptions.disallowExternals = true;
   looseRequestValidationOptions.disallowCustom = true;

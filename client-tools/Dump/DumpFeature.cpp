@@ -1090,12 +1090,24 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   std::shared_ptr<VPackBuilder> parsedBody;
   try {
     parsedBody = response->getBodyVelocyPack();
+  } catch (std::exception const& e) {
+    return Result{
+        TRI_ERROR_INTERNAL,
+        "got malformed JSON response from server: " + std::string{e.what()} +
+            "failed to parse inventory body: " +
+            response->getBody().toString()};
   } catch (...) {
-    return ::ErrorMalformedJsonResponse;
+    return Result{TRI_ERROR_INTERNAL,
+                  "got malformed JSON response from server: "
+                      "failed to parse inventory body: " +
+                      response->getBody().toString()};
   }
   VPackSlice body = parsedBody->slice();
   if (!body.isObject()) {
-    return ::ErrorMalformedJsonResponse;
+    return Result{TRI_ERROR_INTERNAL,
+                  "got malformed JSON response from server: "
+                  "inventory body is not an object: " +
+                      body.toJson()};
   }
 
   if (_options.allDatabases) {
@@ -1127,7 +1139,10 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   // parse collections array
   VPackSlice collections = body.get("collections");
   if (!collections.isArray()) {
-    return ::ErrorMalformedJsonResponse;
+    return Result{TRI_ERROR_INTERNAL,
+                  "got malformed JSON response from server: "
+                  "inventory collections expected to be an array - found: " +
+                      collections.toJson()};
   }
 
   // get the view list
@@ -1139,6 +1154,8 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   // Step 1. Store database properties files
   Result res = storeDumpJson(body, dbName);
   if (res.fail()) {
+    return Result{TRI_ERROR_INTERNAL, "failed to write dump.json file: " +
+                                          std::string{res.errorMessage()}};
     return res;
   }
 
