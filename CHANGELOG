@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix shard synchronisation race where after a shard move the new
+  leader informs followers before it updates Current in the Agency. In
+  some cases the old leader fell subsequently out of sync.
+
 * Fix a crash with async prefetch and user defined functions in AQL. This
   fixes BTS-2003.
 
