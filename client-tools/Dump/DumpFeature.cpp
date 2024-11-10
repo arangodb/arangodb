@@ -1099,7 +1099,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL,
                   "got malformed JSON response from server: "
-                      "failed to parse inventory body: " +
+                  "failed to parse inventory body: " +
                       response->getBody().toString()};
   }
   VPackSlice body = parsedBody->slice();
