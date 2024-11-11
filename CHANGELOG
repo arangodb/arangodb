@@ -1,12 +1,12 @@
-3.12.3.1 (XXXX-XX-XX)
+3.12.3.1 (2024-11-11)
 ---------------------
 
-* Fix shard synchronisation race where after a shard move the new
-  leader informs followers before it updates Current in the Agency. In
-  some cases the old leader fell subsequently out of sync.
+* Fix shard synchronisation race where after a shard move the new leader informs
+  followers before it updates Current in the Agency. In some cases the old
+  leader fell subsequently out of sync.
 
-* Correct ClusterInfo output for MDI, which otherwise breaks
-  `arangodump` when MDI are present with "malformed JSON" error.
+* Correct ClusterInfo output for MDI, which otherwise breaks `arangodump` when
+  MDI are present with "malformed JSON" error.
 
 
 3.12.3 (2024-10-25)
