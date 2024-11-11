@@ -1,3 +1,10 @@
+v3.11.13 (XXXX-XX-XX)
+---------------------
+
+* Fix shard synchronisation race where after a shard move the new
+  leader informs followers before it updates Current in the Agency. In
+  some cases the old leader fell subsequently out of sync.
+
 v3.11.12 (2024-10-31)
 ---------------------
 
