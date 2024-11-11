@@ -177,7 +177,7 @@ struct async {
   bool valid() const noexcept { return _handle != nullptr; }
   operator bool() const noexcept { return valid(); }
 
-  auto set_promise_waiter(void* waiter) {
+  auto set_promise_waiter(async_registry::AsyncWaiter waiter) {
     _handle.promise().set_promise_waiter(waiter);
   }
   auto id() -> void* { return _handle.promise()->id(); }
