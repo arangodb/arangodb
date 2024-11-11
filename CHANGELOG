@@ -1,7 +1,6 @@
 devel
 -----
 
-<<<<<<< HEAD
 *  Add a vector index based on faiss implementation. The current vector index 
   implementation supports the L2 and cosine metrics. To create a vector index,
   the vector field in the collection must already be populated with data. Here is an
