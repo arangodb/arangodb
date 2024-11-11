@@ -585,6 +585,7 @@ function rtaWaitShardsInSync(options, instanceManager) {
     print(myargs);
   }
   let rc = pu.executeAndWait(pu.ARANGOSH_BIN, myargs, options, 'arangosh', instanceManager.rootDir, options.coreCheck);
+  return rc;
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangoimport
