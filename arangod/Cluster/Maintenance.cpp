@@ -2675,14 +2675,26 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
             needsResyncBecauseOfRestart = true;
           }
         }
+        TRI_ASSERT(cservers.length() > 0);
+        auto currentLeader = cservers[0].stringView();
+        auto planLeader = pservers[0].stringView();
 
-        if (cservers.length() == 0 ||
-            cservers[0].stringView().starts_with("_")) {
-          // Do not attempt to sync if the server in current is still resigned.
+        if (currentLeader.starts_with("_") || planLeader != currentLeader) {
+          // Do not attempt to sync if the server in current is still resigned
+          // or not equal to the planned leader.
+          // Thus, we never
+          // 1. sync with a server resigned in plan.
+          //    (Leadership is about to change)
+          // 2. if plan is not equal to current
+          //    (probably going to change as well)
+          // 3. if current is resigned
+          //    (new leader hasn't confirmed leadership yet)
+
           LOG_TOPIC("2dba7", INFO, Logger::MAINTENANCE)
               << "refuse to synchronize shard with a resigned leader in "
                  "current - myself = "
-              << serverId << " current servers = " << cservers.toJson();
+              << serverId << " plan servers = " << pservers.toJson()
+              << " current servers = " << cservers.toJson();
           continue;
         }
 
