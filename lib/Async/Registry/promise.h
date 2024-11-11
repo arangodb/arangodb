@@ -24,12 +24,23 @@
 
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <source_location>
 #include <string>
 #include <thread>
+#include "Inspection/Types.h"
 #include "fmt/format.h"
 #include "fmt/std.h"
 
+namespace {
+// helper type for the visitor
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+}  // namespace
 namespace arangodb::async_registry {
 
 struct ThreadRegistry;
@@ -46,8 +57,8 @@ auto inspect(Inspector& f, Thread& x) {
 }
 
 struct SourceLocationSnapshot {
-  const std::string_view file_name;
-  const std::string_view function_name;
+  std::string_view file_name;
+  std::string_view function_name;
   std::uint_least32_t line;
   bool operator==(SourceLocationSnapshot const&) const = default;
 };
@@ -76,22 +87,71 @@ auto inspect(Inspector& f, State& x) {
                                  State::Deleted, "Deleted");
 }
 
+using AsyncWaiter = void*;
+using SyncWaiter = std::thread::id;
+struct NoWaiter {
+  bool operator==(NoWaiter const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, NoWaiter& x) {
+  return f.object(x).fields();
+}
+
+struct AsyncWaiterTmp {
+  AsyncWaiter item;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, AsyncWaiterTmp& x) {
+  return f.object(x).fields(
+      f.field("async", reinterpret_cast<intptr_t>(x.item)));
+}
+struct SyncWaiterTmp {
+  SyncWaiter item;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, SyncWaiterTmp& x) {
+  return f.object(x).fields(f.field("sync", fmt::format("{}", x.item)));
+}
+struct WaiterTmp : std::variant<AsyncWaiterTmp, SyncWaiterTmp, NoWaiter> {};
+template<typename Inspector>
+auto inspect(Inspector& f, WaiterTmp& x) {
+  return f.variant(x).unqualified().alternatives(
+      inspection::inlineType<NoWaiter>(),
+      inspection::inlineType<AsyncWaiterTmp>(),
+      inspection::inlineType<SyncWaiterTmp>());
+}
+struct Waiter : std::variant<NoWaiter, AsyncWaiter, SyncWaiter> {};
+template<typename Inspector>
+auto inspect(Inspector& f, Waiter& x) {
+  if constexpr (!Inspector::isLoading) {  // only serialize
+    WaiterTmp tmp = std::visit(
+        overloaded{
+            [&](AsyncWaiter waiter) {
+              return WaiterTmp{AsyncWaiterTmp{waiter}};
+            },
+            [&](SyncWaiter waiter) { return WaiterTmp{SyncWaiterTmp{waiter}}; },
+            [&](NoWaiter waiter) { return WaiterTmp{waiter}; },
+        },
+        x);
+    return f.apply(tmp);
+  }
+}
+
 struct PromiseSnapshot {
   void* id;
   Thread thread;
   SourceLocationSnapshot source_location;
-  void* waiter;
+  Waiter waiter = {NoWaiter{}};
   State state;
   bool operator==(PromiseSnapshot const&) const = default;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PromiseSnapshot& x) {
-  return f.object(x).fields(
-      f.field("owning_thread", x.thread),
-      f.field("source_location", x.source_location),
-      f.field("id", reinterpret_cast<intptr_t>(x.id)),
-      f.field("waiter", reinterpret_cast<intptr_t>(x.waiter)),
-      f.field("state", x.state));
+  return f.object(x).fields(f.field("owning_thread", x.thread),
+                            f.field("source_location", x.source_location),
+                            f.field("id", reinterpret_cast<intptr_t>(x.id)),
+                            f.field("waiter", x.waiter),
+                            f.field("state", x.state));
 }
 struct Promise {
   Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
@@ -111,7 +171,7 @@ struct Promise {
   Thread thread;
 
   SourceLocation source_location;
-  std::atomic<void*> waiter = nullptr;
+  std::atomic<Waiter> waiter = Waiter{NoWaiter{}};
   std::atomic<State> state = State::Running;
   // identifies the promise list it belongs to
   std::shared_ptr<ThreadRegistry> registry;
@@ -137,9 +197,14 @@ struct AddToAsyncRegistry {
   AddToAsyncRegistry& operator=(AddToAsyncRegistry&&) = delete;
   ~AddToAsyncRegistry();
 
-  auto set_promise_waiter(void* waiter) {
+  auto set_promise_waiter(AsyncWaiter waiter) {
     if (promise_in_registry != nullptr) {
-      promise_in_registry->waiter.store(waiter);
+      promise_in_registry->waiter.store({{waiter}});
+    }
+  }
+  auto set_promise_waiter(SyncWaiter waiter) {
+    if (promise_in_registry != nullptr) {
+      promise_in_registry->waiter.store({{waiter}});
     }
   }
   auto id() -> void* {
