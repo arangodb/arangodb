@@ -101,9 +101,19 @@ AstNode const* getApproxNearExpression(
     return nullptr;
   }
   auto const& sortField = sortFields[0];
-  // TODO depending on the metric it can be descending e.g. cosine
-  if (!sortField.ascending) {
-    return nullptr;
+  switch (vectorIndex->getVectorIndexDefinition().metric) {
+    // L2 metric can only be in ascending order
+    case SimilarityMetric::kL2:
+      if (!sortField.ascending) {
+        return nullptr;
+      }
+      break;
+    // Cosine similarity can only be in descending order
+    case SimilarityMetric::kCosine:
+      if (sortField.ascending) {
+        return nullptr;
+      }
+      break;
   }
 
   // check if SORT node contains APPROX function

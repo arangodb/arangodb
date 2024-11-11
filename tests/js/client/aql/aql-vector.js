@@ -220,6 +220,28 @@ function VectorIndexL2TestSuite() {
             assertEqual(500, results.length);
         },
 
+        testApproxL2DescendingOrder: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_L2(d.vector, @qp) DESC LIMIT 5" +
+                " RETURN d";
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            const plan = db
+                ._createStatement({
+                    query,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(0, indexNodes.length);
+        },
+
         testApproxL2MultipleTopK: function() {
             const query =
                 "FOR d IN " +
@@ -402,7 +424,7 @@ function VectorIndexCosineTestSuite() {
             const query =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_COSINE(d.unIndexedVector, @qp) LIMIT 5 RETURN d";
+                " SORT APPROX_NEAR_COSINE(d.unIndexedVector, @qp) DESC LIMIT 5 RETURN d";
 
             const bindVars = {
                 qp: randomPoint
@@ -426,7 +448,7 @@ function VectorIndexCosineTestSuite() {
             const query =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_COSINE(d.vector, @qp) LIMIT @topK " +
+                " SORT APPROX_NEAR_COSINE(d.vector, @qp) DESC LIMIT @topK " +
                 " RETURN d";
 
             const topKs = [1, 5, 10, 15, 50, 100];
@@ -452,6 +474,29 @@ function VectorIndexCosineTestSuite() {
                 assertEqual(topKExpected[i], results.length);
             }
         },
+
+        testApproxCosineMultipleTopKWronfOrder: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_COSINE(d.vector, @qp) ASC LIMIT 5 " +
+                " RETURN d";
+
+              const bindVars = {
+                  qp: randomPoint,
+              };
+              const plan = db
+                  ._createStatement({
+                      query,
+                      bindVars,
+                  })
+                  .explain().plan;
+              const indexNodes = plan.nodes.filter(function(n) {
+                  return n.type === "EnumerateNearVectorNode";
+              });
+              assertEqual(0, indexNodes.length);
+        },
+
     };
 }
 
@@ -567,7 +612,7 @@ function MultipleVectorIndexesOnField() {
             const query =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_COSINE(d.vector, @qp) " +
+                " SORT APPROX_NEAR_COSINE(d.vector, @qp) DESC " +
                 " LIMIT 5 RETURN d";
 
             const bindVars = {
