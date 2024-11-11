@@ -82,6 +82,7 @@ class SiteConfig:
     # pylint: disable=too-few-public-methods disable=too-many-instance-attributes
     def __init__(self, base_source_dir, build_dir):
         # pylint: disable=too-many-statements disable=too-many-branches
+        self.basedir = Path.cwd()
         self.datetime_format = "%Y-%m-%dT%H%M%SZ"
         self.trace = False
         self.portbase = 7000
