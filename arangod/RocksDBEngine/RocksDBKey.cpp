@@ -151,10 +151,10 @@ void RocksDBKey::constructMdiIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
-                                           std::size_t listNumber) {
+                                           std::uint64_t listNumber) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
-  // Key contains: indexId(uint64_t) + listNumber(size_t)
-  size_t keyLength = sizeof(uint64_t) + sizeof(std::size_t);
+  // Key contains: indexId(uint64_t) + listNumber(uint64_t)
+  size_t keyLength = sizeof(uint64_t) + sizeof(std::uint64_t);
   _buffer->clear();
   _buffer->reserve(keyLength);
 
@@ -164,11 +164,12 @@ void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
 }
 
 void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
-                                           std::size_t listNumber,
+                                           std::uint64_t listNumber,
                                            LocalDocumentId documentId) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
-  // Key contains: indexId(uint64_t) + listNumber(size_t) + documentId(uint64_t)
-  size_t keyLength = sizeof(uint64_t) + sizeof(std::size_t) +
+  // Key contains: indexId(uint64_t) + listNumber(uint64_t) +
+  // documentId(uint64_t)
+  size_t keyLength = sizeof(uint64_t) + sizeof(std::uint64_t) +
                      sizeof(LocalDocumentId::BaseType);
   _buffer->clear();
   _buffer->reserve(keyLength);
@@ -661,15 +662,15 @@ zkd::byte_string_view RocksDBKey::mdiUniqueIndexCurveValue(
   return mdiUniqueIndexCurveValue(slice.data(), slice.size());
 }
 
-std::size_t RocksDBKey::vectorVPackIndexListValue(const rocksdb::Slice& slice) {
+std::uint64_t RocksDBKey::vectorVPackIndexListValue(const rocksdb::Slice& slice) {
   return vectorVPackIndexListValue(slice.data(), slice.size());
 }
 
-std::size_t RocksDBKey::vectorVPackIndexListValue(char const* data,
-                                                  size_t size) {
+std::uint64_t RocksDBKey::vectorVPackIndexListValue(char const* data,
+                                                  std::uint64_t size) {
   TRI_ASSERT(data != nullptr);
   constexpr auto vectorIndexKeySize =
-      sizeof(std::uint64_t) + sizeof(std::size_t) + sizeof(std::uint64_t);
+      sizeof(std::uint64_t) + sizeof(std::uint64_t) + sizeof(std::uint64_t);
   TRI_ASSERT(size == vectorIndexKeySize);
 
   return uint64FromPersistent(data + size - sizeof(std::uint64_t));
