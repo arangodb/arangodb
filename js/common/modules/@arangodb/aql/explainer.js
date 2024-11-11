@@ -1423,7 +1423,12 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
+        if (node.mode === "object") {
+          return keyword('FOR') + ' [' + variableName(node.keyOutVariable) + ', ' + variableName(node.valueOutVariable) + '] ' + keyword('OF') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* object iteration */') + filter;
+        } else {
+          return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
+        }
+        break;
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
@@ -2536,7 +2541,7 @@ function debug(query, bindVars, options) {
         name: collection.name,
         type: c.type(),
         properties: c.properties(),
-        indexes: c.getIndexes(true),
+        indexes: c.indexes(true),
         count: c.count(),
         counts: c.count(true),
         examples

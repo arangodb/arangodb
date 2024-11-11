@@ -182,6 +182,13 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::replaceLikeWithRange, OptimizerRule::makeFlags(),
                R"(Replace LIKE() function with range scans where possible.)");
 
+  registerRule(
+      "replace-entries-with-object-iteration",
+      replaceEntriesWithObjectIteration,
+      OptimizerRule::replaceEntriesWithObjectIteration,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace FOR ... ENTRIES(obj) enumeration with proper object iteration.)");
+
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule,
                OptimizerRule::inlineSubqueriesRule,

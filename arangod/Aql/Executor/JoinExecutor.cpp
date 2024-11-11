@@ -25,6 +25,7 @@
 #include "JoinExecutor.h"
 #include "Aql/Collection.h"
 #include "Aql/DocumentExpressionContext.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/system-compiler.h"
@@ -32,8 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 #define LOG_JOIN LOG_DEVEL_IF(false)
 #define LOG_JOIN_MEMORY LOG_DEVEL_IF(false)
@@ -498,6 +498,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               AqlValueGuard guard{v, false};
               output.moveValueInto(idx.docIdOutputRegister, _currentRow,
                                    &guard);
+              // account for later document lookups here, because the
+              // MaterializeExecutor has NoStats.
+              stats.incrDocumentLookups(1);
             }
 
             if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
@@ -690,7 +693,7 @@ void JoinExecutor::constructStrategy() {
     options.constantFields = idx.constantFields;
 
     auto& desc = indexDescription.emplace_back();
-    desc.isUnique = idx.index->unique();
+    desc.isUniqueStream = idx.isUniqueStream;
     desc.numProjections = 0;
     desc.numConstants = idx.constantFields.size();
     desc.numKeyComponents = idx.usedKeyFields.size();
@@ -733,3 +736,7 @@ void JoinExecutor::constructStrategy() {
       std::move(indexDescription),
       _infos.query->queryOptions().desiredJoinStrategy);
 }
+
+template class ExecutionBlockImpl<JoinExecutor>;
+
+}  // namespace arangodb::aql

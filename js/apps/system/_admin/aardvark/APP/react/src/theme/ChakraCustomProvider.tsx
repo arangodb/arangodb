@@ -60,6 +60,16 @@ export const ChakraCustomProvider = ({
             ".chakra-toast__inner button[aria-label='Close']": {
               top: "12px !important",
               right: "12px !important"
+            },
+            "blockquote, dl, dd, h1, h2, h3, h4, h5, h6, hr, figure, p, pre": {
+              margin: 0
+            },
+            "label, input, button, select, textarea": {
+              lineHeight: "inherit"
+            },
+            "pre, code, kbd,samp": {
+              fontFamily: "SFMono-Regular,Menlo,Monaco,Consolas,monospace",
+              fontSize: "1em"
             }
           }}
         />

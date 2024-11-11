@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, fail */
+/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -30,9 +30,9 @@ var jsunity = require('jsunity');
 var analyzers = require("@arangodb/analyzers");
 const {getEndpointsByType, getRawMetric} = require("@arangodb/test-helper");
 
-function runSetup() {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
@@ -72,6 +72,7 @@ function runSetup() {
 
   c.save({name: 'crashme'}, {waitForSync: true});
 
+  return 0;
 }
 
 function recoverySuite() {
@@ -103,7 +104,7 @@ function recoverySuite() {
 
       let checkIndex = function (indexName, analyzer, includeAllFields, hasFields) {
         let c = db._collection("UnitTestsRecoveryDummy");
-        let indexes = c.getIndexes().filter(i => i.type === "inverted" && i.name === indexName);
+        let indexes = c.indexes().filter(i => i.type === "inverted" && i.name === indexName);
         assertEqual(1, indexes.length);
 
         let i = indexes[0];
@@ -142,11 +143,11 @@ function recoverySuite() {
       let coordinators = getEndpointsByType("coordinator");
       for (let i = 0; i < coordinators.length; i++) {
         let c = coordinators[i];
-        getRawMetric(c, '?mode=trigger_global');
+        getRawMetric(c, '?mode=trigger_global runSetup');
       }
       let figures;
       for (let i = 0; i < 100; ++i) {
-        figures = db._collection('UnitTestsRecoveryDummy').getIndexes(true, true)
+        figures = db._collection('UnitTestsRecoveryDummy').indexes(true, true)
           .find(e => e.name === "i1")
           .figures;
         if (figures.numDocs > 500) {
@@ -166,13 +167,5 @@ function recoverySuite() {
   };
 }
 
-function main(argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

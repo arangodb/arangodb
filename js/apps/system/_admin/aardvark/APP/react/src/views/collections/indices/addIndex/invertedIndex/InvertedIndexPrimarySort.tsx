@@ -1,9 +1,8 @@
+import { InputControl, SingleSelectControl, SwitchControl } from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton, Spacer } from "@chakra-ui/react";
 import { FieldArray, useField } from "formik";
 import React from "react";
-import { InputControl } from "../../../../../components/form/InputControl";
-import { SelectControl } from "../../../../../components/form/SelectControl";
 import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
@@ -50,7 +49,7 @@ const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
         marginTop="2"
       >
         <FormLabel htmlFor="primarySort.compression">Compression</FormLabel>
-        <SelectControl
+        <SingleSelectControl
           isDisabled={field.isDisabled}
           name="primarySort.compression"
           selectProps={{
@@ -62,6 +61,19 @@ const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
               { label: "None", value: "none" }
             ]
           }}
+        />
+        <Spacer />
+        <FormLabel htmlFor="primarySort.cache">Cache</FormLabel>
+        <SwitchControl
+          switchProps={{
+            isDisabled: field.isDisabled || !window.frontendConfig.isEnterprise
+          }}
+          name="primarySort.cache"
+          tooltip={
+            window.frontendConfig.isEnterprise
+              ? undefined
+              : "Primary sort column caching is available in Enterprise plans."
+          }
         />
         <Spacer />
       </Box>
@@ -95,7 +107,7 @@ const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
                       >
                         Direction
                       </FormLabel>
-                      <SelectControl
+                      <SingleSelectControl
                         isDisabled={field.isDisabled}
                         name={`primarySort.fields.${index}.direction`}
                         selectProps={{

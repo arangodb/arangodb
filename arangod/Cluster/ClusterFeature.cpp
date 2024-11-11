@@ -326,6 +326,7 @@ Coordinators.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::Enterprise))
       .setLongDescription(R"(If set to `true`, forces the cluster into creating
 all future collections with only a single shard and using the same DB-Server as
@@ -333,8 +334,7 @@ as these collections' shards leader. All collections created this way are
 eligible for specific AQL query optimizations that can improve query performance
 and provide advanced transactional guarantees.
 
-**Warning**: If you use multiple Coordinators, use the same value on all
-Coordinators.)");
+**Warning**: Use the same value on all Coordinators and all DBServers!)");
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
@@ -374,7 +374,7 @@ Coordinators.)");
       .setLongDescription(R"(The possible values for the option are:
 
 - `jwt-all`: requires a valid JWT for all accesses to `/_admin/cluster` and its
-  sub-routes. If you use this configuration, the **CLUSTER** and **NODES**
+  sub-routes. If you use this configuration, the **Cluster** and **Nodes**
   sections of the web interface are disabled, as they rely on the ability to
   read data from several cluster APIs.
 
@@ -1064,7 +1064,11 @@ void ClusterFeature::shutdownHeartbeatThread() {
         LOG_TOPIC("d8a5b", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the heartbeat "
                "thread";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        FATAL_ERROR_ABORT();
+#else
         FATAL_ERROR_EXIT();
+#endif
       }
       if (++counter % 50 == 0) {
         LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
@@ -1094,7 +1098,11 @@ void ClusterFeature::shutdownAgencyCache() {
       if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
         LOG_TOPIC("b5a8d", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the agency cache";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        FATAL_ERROR_ABORT();
+#else
         FATAL_ERROR_EXIT();
+#endif
       }
       if (++counter % 50 == 0) {
         LOG_TOPIC("acab0", WARN, arangodb::Logger::CLUSTER)

@@ -27,6 +27,7 @@
 #include "Basics/Utf8Helper.h"
 
 #include <unicode/locid.h>
+#include <unicode/urename.h>
 
 #include <memory>
 #include <string>
@@ -47,6 +48,7 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   template<typename Server>
   explicit LanguageFeature(Server& server)
       : application_features::ApplicationFeature{server, *this},
+        _binaryPath(server.getBinaryPath()),
         _locale(),
         _langType(basics::LanguageType::INVALID),
         _forceLanguageCheck(true) {
@@ -57,8 +59,13 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   ~LanguageFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+
   void prepare() override final;
-  void start() override final;
+
+  static std::string prepareIcu(std::string const& binaryPath,
+                                std::string const& binaryExecutionPath,
+                                std::string& path,
+                                std::string const& binaryName);
 
   icu_64_64::Locale& getLocale();
   std::tuple<std::string_view, basics::LanguageType> getLanguage() const;
@@ -67,6 +74,8 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void resetLanguage(std::string_view language, basics::LanguageType type);
 
  private:
+  char const* _binaryPath;
+  std::string _icuData;
   icu_64_64::Locale _locale;
   std::string _defaultLanguage;
   std::string _icuLanguage;

@@ -41,7 +41,6 @@
 #include "Basics/application-exit.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
-#include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
@@ -184,7 +183,7 @@ You can adjust the parameter settings at runtime using the
 per-topic log messages to different outputs. The output definition can be one
 of the following:
 
-- `-` for stdin
+- `-` for stdout
 - `+` for stderr
 - `syslog://<syslog-facility>`
 - `syslog://<syslog-facility>/<application-name>`
@@ -226,12 +225,18 @@ The old `--log.file` option is still available for convenience. It is a
 shortcut for the more general option `--log.output file://filename`.
 
 The old `--log.requests-file` option is still available. It is a shortcut for
-the more general option `--log.output requests=file://...`.)");
+the more general option `--log.output requests=file://...`.
+
+To change the log levels for the specified output you can add a comma separated
+list of topics with their respective level after the output definition, separated
+by a semicolon:
+`--log.output file:///path/to/file;queries=trace,requests=info`
+`--log.output -;all=error`)");
 
   std::vector<std::string> topicsVector;
   auto const& levels = Logger::logLevelTopics();
   for (auto const& level : levels) {
-    topicsVector.emplace_back(level.first);
+    topicsVector.emplace_back(level.first->name());
   }
   std::string topicsJoined = StringUtils::join(topicsVector, ", ");
 
@@ -709,15 +714,15 @@ void LoggerFeature::prepare() {
 
   for (auto const& definition : _output) {
     if (_supervisor && definition.starts_with("file://")) {
-      LogAppender::addAppender(Logger::defaultLogGroup(),
-                               definition + ".supervisor");
+      Logger::addAppender(Logger::defaultLogGroup(),
+                          definition + ".supervisor");
     } else {
-      LogAppender::addAppender(Logger::defaultLogGroup(), definition);
+      Logger::addAppender(Logger::defaultLogGroup(), definition);
     }
   }
 
   if (_foregroundTty) {
-    LogAppender::addAppender(Logger::defaultLogGroup(), "-");
+    Logger::addAppender(Logger::defaultLogGroup(), "-");
   }
 
   if (_forceDirect || _supervisor) {

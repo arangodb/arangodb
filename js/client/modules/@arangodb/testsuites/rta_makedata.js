@@ -43,6 +43,7 @@ const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
@@ -106,7 +107,19 @@ function makeDataWrapper (options) {
           if (count === 2) {
             ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
           }
-
+          if (count === 2) {
+            try {
+              this.instanceManager.upgradeCycleInstance();
+            } catch(e) {
+              return {
+                'forceTerminate': true,
+                'message': `upgradeCycle failed by: ${e.message}\n${e.stack}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+            }
+          }
           if (count === 3) {
             this.instanceManager.arangods.forEach(function (oneInstance, i) {
               if (oneInstance.isRole(inst.instanceRole.dbServer)) {
@@ -115,6 +128,17 @@ function makeDataWrapper (options) {
             });
             print('stopping dbserver ' + stoppedDbServerInstance.name +
                   ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
+            try {
+              this.instanceManager.resignLeaderShip(stoppedDbServerInstance);
+            } catch(e) {
+              return {
+                'forceTerminate': true,
+                'message': `resigning leadership failed by: ${e.message}\n${e.stack}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+            }
             stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
             stoppedDbServerInstance.waitForExit();
             moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
@@ -150,7 +174,17 @@ function makeDataWrapper (options) {
     localOptions.dbServers = 3;
   }
 
+  SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout * 1000);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
+  let timeout = SetGlobalExecutionDeadlineTo(0.0);
+  if (timeout) {
+    return {
+      timeout: true,
+      forceTerminate: true,
+      status: false,
+      message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(rc)}`,
+    };
+  }
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }

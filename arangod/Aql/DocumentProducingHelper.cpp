@@ -678,6 +678,7 @@ IndexIterator::CoveringCallback aql::getCallback(
 
           return false;
         };
+        context.incrLookups();
         context.getPhysical().lookup(
             context.getTrxPtr(), token, cb,
             {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites()),

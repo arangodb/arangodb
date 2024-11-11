@@ -23,13 +23,13 @@
 
 #include "SubqueryStartExecutor.h"
 
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionState.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 SubqueryStartExecutor::SubqueryStartExecutor(Fetcher&, Infos&) {}
 
@@ -112,3 +112,7 @@ auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
   // Nothing to create here.
   return 0;
 }
+
+template class ExecutionBlockImpl<SubqueryStartExecutor>;
+
+}  // namespace arangodb::aql

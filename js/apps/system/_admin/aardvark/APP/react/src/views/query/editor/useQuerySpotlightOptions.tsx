@@ -1,6 +1,6 @@
+import { OptionType } from "@arangodb/ui";
 import { CollectionMetadata, CollectionType } from "arangojs/collection";
 import useSWR from "swr";
-import { OptionType } from "../../../components/select/SelectBase";
 import {
   getApiRouteForCurrentDB,
   getCurrentDB
@@ -53,7 +53,7 @@ const useBuiltinFunctionOptions = () => {
   const fetchBuiltins = async () => {
     const route = getApiRouteForCurrentDB();
     const response = await route.get("/aql-builtin");
-    return response.body;
+    return response.parsedBody;
   };
   const { data, isLoading: isFunctionsLoading } = useSWR<{ functions: any[] }>(
     "/aql-builtin",

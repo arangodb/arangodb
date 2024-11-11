@@ -55,6 +55,7 @@ class sanHandler {
     this.backup = {};
   }
   detectLogfiles(rootDir, tmpDir) {
+    this.tmpDir = tmpDir;
     if (this.enabled) {
       if (containsDoubleByte(rootDir)) {
         rootDir = tmpDir;
@@ -72,7 +73,7 @@ class sanHandler {
     }
   }
   getSanOptions() {
-    let subProcesEnv = [];
+    let subProcesEnv = [`TMPDIR=${this.tmpDir}`];
     if (this.enabled) {
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
@@ -140,6 +141,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
   const isCoverage = versionHas('coverage');
   const isSan = versionHas('asan') || versionHas('tsan');
   const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
+  const haveFailAt = versionHas('failure-tests');
   tu.CopyIntoObject(optionsDefaults, {
     'isCov': isCoverage,
     'covOptions': {},
@@ -147,6 +149,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'isSan': isSan,
     'sanOptions': {},
     'isInstrumented': isInstrumented,
+    'haveFailAt': haveFailAt, // silent option - automatically set only.
     'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   });
 
@@ -191,6 +194,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
         }
       });
     }
+    print(options.sanOptions);
     if (options.isCov && process.env.hasOwnProperty(coverage_name)) {
       options.covOptions[coverage_name] = process.env[coverage_name];
       delete process.env[coverage_name];

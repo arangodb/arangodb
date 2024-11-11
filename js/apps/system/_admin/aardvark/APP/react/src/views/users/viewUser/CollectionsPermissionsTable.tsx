@@ -1,12 +1,11 @@
+import { ReactTable, useSortableReactTable } from "@arangodb/ui";
 import { Box, Flex, Tag } from "@chakra-ui/react";
 import { createColumnHelper, Row } from "@tanstack/react-table";
 import React from "react";
-import { ReactTable } from "../../../components/table/ReactTable";
-import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { CollectionDefaultRowWarningPopover } from "./CollectionDefaultRowWarningPopover";
 import { CollectionPermissionSwitch } from "./CollectionPermissionSwitch";
 import { getIsDefaultRow } from "./DatabasePermissionSwitch";
-import { PermissionType, useUsername } from "./useFetchDatabasePermissions";
+import { PermissionType } from "./useFetchDatabasePermissions";
 
 export type CollectionType = {
   collectionName: string;
@@ -129,12 +128,15 @@ const COLLECTION_COLUMNS = [
   ...collectionPermissionColumns
 ];
 export const CollectionsPermissionsTable = ({
-  row
+  row,
+  isManagedUser,
+  isRootUser
 }: {
   row: Row<DatabaseTableType>;
+  isManagedUser: boolean;
+  isRootUser: boolean;
 }) => {
   const { databaseName } = row.original;
-  const { username } = useUsername();
   const tableInstance = useSortableReactTable<CollectionType>({
     data: row.original.collections || [],
     columns: COLLECTION_COLUMNS,
@@ -148,7 +150,8 @@ export const CollectionsPermissionsTable = ({
     storageKey: "collection-permissions-table",
     meta: {
       databaseName,
-      username: decodeURIComponent(username)
+      isManagedUser,
+      isRootUser
     }
   });
 

@@ -23,7 +23,7 @@ export const useSyncSearchViewUpdates = ({
       );
     },
     onError: error => {
-      const errorMessage = error?.response?.body?.errorMessage;
+      const errorMessage = error?.response?.parsedBody?.errorMessage;
       window.arangoHelper.arangoError("View creation failed", errorMessage);
     },
     jobCollectionName: viewName

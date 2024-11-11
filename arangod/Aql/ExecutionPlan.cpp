@@ -66,6 +66,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Containers/SmallVector.h"
 #include "Graph/PathType.h"
 #include "Graph/ShortestPathOptions.h"
@@ -86,13 +87,14 @@ using namespace arangodb::basics;
 
 namespace {
 
-std::initializer_list<ExecutionNode::NodeType> const indexHintCheckTypes{
-    ExecutionNode::ENUMERATE_COLLECTION,
+static constexpr std::initializer_list<ExecutionNode::NodeType>
+    indexHintCheckTypes{
+        ExecutionNode::ENUMERATE_COLLECTION,
 #ifdef EXTENDED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
-    ExecutionNode::TRAVERSAL,
-    ExecutionNode::ENUMERATE_PATHS,
+        ExecutionNode::TRAVERSAL,
+        ExecutionNode::ENUMERATE_PATHS,
 #endif
-};
+    };
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
@@ -380,6 +382,10 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
         } else if (name == StaticStrings::IndexHintOption) {
           options->setHint(
               IndexHint(ast->query(), optionsNode, IndexHint::FromTraversal{}));
+        } else if (name == arangodb::StaticStrings::UseCache) {
+          if (value->isBoolValue()) {
+            options->setUseCache(value->getBoolValue());
+          }
         } else {
           ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
                                                 "TRAVERSAL", name);
@@ -452,6 +458,14 @@ std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
               ast->query(), "unknown",
               arangodb::graph::PathType::toString(type), name);
 #endif
+        } else if (name == arangodb::StaticStrings::UseCache) {
+          if (value->isBoolValue()) {
+            options->setUseCache(value->getBoolValue());
+          }
+        } else if (name == arangodb::StaticStrings::Algorithm) {
+          if (value->isStringValue()) {
+            options->setAlgorithm(value->getStringValue());
+          }
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown",

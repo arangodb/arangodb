@@ -1113,6 +1113,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
                                ApplyStats& applyStats,
                                arangodb::velocypack::Builder& builder,
                                uint64_t& ignoreCount) {
+  bool isVPack = replutils::isVelocyPack(*response);
   // reload users if they were modified
   _usersModified = false;
   _analyzersModified.clear();
@@ -1153,37 +1154,43 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
   TRI_ASSERT(*end == '\0');
 
   while (p < end) {
-    char const* q = static_cast<char const*>(memchr(p, '\n', (end - p)));
-
-    if (q == nullptr) {
-      q = end;
-    }
-
     char const* lineStart = p;
-    size_t const lineLength = q - p;
+    size_t lineLength = 0;
+    VPackSlice slice;
+    if (!isVPack) {
+      char const* q = static_cast<char const*>(memchr(p, '\n', (end - p)));
 
-    if (lineLength < 2) {
-      // we are done
-      return Result();
+      if (q == nullptr) {
+        q = end;
+      }
+
+      size_t const lineLength = q - p;
+
+      if (lineLength < 2) {
+        // we are done
+        return Result();
+      }
+
+      TRI_ASSERT(q <= end);
+
+      builder.clear();
+      try {
+        VPackParser parser(builder);
+        parser.parse(p, static_cast<size_t>(q - p));
+      } catch (std::exception const& ex) {
+        return Result(TRI_ERROR_HTTP_CORRUPTED_JSON, ex.what());
+      } catch (...) {
+        return Result(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      p = q + 1;
+      slice = builder.slice();
+    } else {
+      slice = VPackSlice{reinterpret_cast<uint8_t const*>(p)};
+      lineLength = slice.byteSize();
+      p += lineLength;
     }
-
-    TRI_ASSERT(q <= end);
-
     applyStats.processedMarkers++;
-
-    builder.clear();
-    try {
-      VPackParser parser(builder);
-      parser.parse(p, static_cast<size_t>(q - p));
-    } catch (std::exception const& ex) {
-      return Result(TRI_ERROR_HTTP_CORRUPTED_JSON, ex.what());
-    } catch (...) {
-      return Result(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    p = q + 1;
-
-    VPackSlice const slice = builder.slice();
 
     if (!slice.isObject()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,

@@ -77,9 +77,6 @@ void ShellFeature::collectOptions(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   options->addOption("--javascript.script-parameter", "Script parameter.",
                      new VectorParameter<StringParameter>(&_scriptParameters));
-
-  options->addOption("--javascript.run-main", "Execute main function.",
-                     new BooleanParameter(&_runMain));
 #endif
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   options->addOption(
@@ -166,7 +163,7 @@ void ShellFeature::start() {
         TRI_IF_FAILURE("startTelemetricsForTest") { startTelemetrics(); }
 #endif
         ok = shell.runScript(_executeScripts, _positionals, true,
-                             _scriptParameters, _runMain);
+                             _scriptParameters);
         break;
 
       case RunMode::EXECUTE_STRING:
@@ -175,7 +172,7 @@ void ShellFeature::start() {
 
       case RunMode::CHECK_SYNTAX:
         ok = shell.runScript(_checkSyntaxFiles, _positionals, false,
-                             _scriptParameters, _runMain);
+                             _scriptParameters);
         break;
 
       case RunMode::UNIT_TESTS:

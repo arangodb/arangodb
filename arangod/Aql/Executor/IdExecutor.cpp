@@ -28,6 +28,7 @@
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryOptions.h"
@@ -38,8 +39,7 @@
 #include <algorithm>
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 IdExecutorInfos::IdExecutorInfos(bool doCount, RegisterId outputRegister,
                                  std::string distributeId,
@@ -123,7 +123,12 @@ auto IdExecutor<UsedFetcher>::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
-template class ::arangodb::aql::IdExecutor<ConstFetcher>;
+template class IdExecutor<ConstFetcher>;
 // ID can always pass through
-template class ::arangodb::aql::IdExecutor<
-    SingleRowFetcher<BlockPassthrough::Enable>>;
+template class IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>;
+
+template class ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
+template class ExecutionBlockImpl<
+    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;
+
+}  // namespace arangodb::aql

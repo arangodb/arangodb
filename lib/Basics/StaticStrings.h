@@ -106,6 +106,7 @@ class StaticStrings {
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
   static std::string const FrontendCollection;
+  static std::string const QueriesCollection;
   static std::string const StatisticsCollection;
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
@@ -171,6 +172,8 @@ class StaticStrings {
   static std::string const Parallelism;
   static std::string const ForceOneShardAttributeValue;
   static std::string const JoinStrategyType;
+  static std::string const Algorithm;
+  static std::string const Legacy;
 
   // HTTP headers
   static std::string const Accept;
@@ -187,7 +190,6 @@ class StaticStrings {
   static std::string const Async;
   static std::string const AsyncId;
   static std::string const Authorization;
-  static std::string const BatchContentType;
   static std::string const CacheControl;
   static std::string const Chunked;
   static std::string const Close;
@@ -284,7 +286,6 @@ class StaticStrings {
   static std::string const ReplicatedLogs;
 
   // graph attribute names
-  static std::string const GraphCollection;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;

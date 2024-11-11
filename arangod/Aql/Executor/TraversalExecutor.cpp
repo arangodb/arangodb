@@ -24,11 +24,13 @@
 #include "TraversalExecutor.h"
 
 #include "Aql/Ast.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/system-compiler.h"
+#include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Providers/ClusterProvider.h"
@@ -38,6 +40,7 @@
 #include "Transaction/Helpers.h"
 
 #ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Providers/SmartGraphRPCCommunicator.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
@@ -46,8 +49,7 @@
 
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
@@ -341,10 +343,10 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
 #ifdef USE_ENTERPRISE
   if (isSmart) {
     baseProviderOptions.setRPCCommunicator(
-        std::make_unique<enterprise::SmartGraphRPCCommunicator>(
+        std::make_unique<aql::enterprise::SmartGraphRPCCommunicator>(
             query, query.resourceMonitor(), baseProviderOptions.engines()));
     _traversalEnumerator = TraversalEnumerator::createEnumerator<
-        enterprise::SmartGraphProvider<ClusterProviderStep>>(
+        aql::enterprise::SmartGraphProvider<ClusterProviderStep>>(
         order, uniqueVertices, uniqueEdges, query,
         std::move(baseProviderOptions), std::move(pathValidatorOptions),
         std::move(enumeratorOptions), useTracing);
@@ -542,3 +544,7 @@ arangodb::graph::TraversalEnumerator* TraversalExecutor::traversalEnumerator() {
   TRI_ASSERT(_traversalEnumerator != nullptr);
   return _traversalEnumerator;
 }
+
+template class ExecutionBlockImpl<TraversalExecutor>;
+
+}  // namespace arangodb::aql

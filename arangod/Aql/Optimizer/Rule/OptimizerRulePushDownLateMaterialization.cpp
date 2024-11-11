@@ -124,15 +124,20 @@ bool checkPossibleProjection(ExecutionPlan* plan,
         << "projection output registers shouldn't be set at this point";
     proj.addPaths(attributes);
 
-    if (index->covers(proj)) {
-      LOG_RULE << "INDEX COVERS ATTRIBTUES";
-      indexNode->projections() = std::move(proj);
-      indexNode->projections().setCoveringContext(indexNode->collection()->id(),
-                                                  index);
-      TRI_ASSERT(indexNode->projections().usesCoveringIndex());
-      return true;
+    if (proj.size() <= indexNode->maxProjections()) {
+      if (index->covers(proj)) {
+        LOG_RULE << "INDEX COVERS ATTRIBTUES";
+        indexNode->projections() = std::move(proj);
+        indexNode->projections().setCoveringContext(
+            indexNode->collection()->id(), index);
+        TRI_ASSERT(indexNode->projections().usesCoveringIndex());
+        return true;
+      } else {
+        LOG_RULE << "INDEX DOES NOT COVER " << proj;
+      }
     } else {
-      LOG_RULE << "INDEX DOES NOT COVER " << proj;
+      LOG_RULE << "maxProjections for index reached (" << proj.size()
+               << " <= " << indexNode->maxProjections() << ")";
     }
   } else if (matOriginNode->getType() == EN::JOIN) {
     LOG_RULE << "ATTEMPT TO ADD PROJECTIONS TO JOIN NODE";

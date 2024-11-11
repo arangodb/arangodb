@@ -80,12 +80,16 @@ TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
   auto block = itemBlockManager.requestBlock(1000, 5);
   RegisterInfos registerInfos(RegIdSet{3}, RegIdSet{4}, 4, 5, {},
                               {RegIdSet{0, 1, 2, 3}});
-  EnumerateListExecutorInfos executorInfos(
-      3, 4, *fakedQuery, nullptr, std::numeric_limits<VariableId>::max(), {});
+  Variable var("test", std::numeric_limits<VariableId>::max(), false, monitor);
+  std::vector<const Variable*> variableId{&var};
+  EnumerateListExecutorInfos executorInfos(3, {4}, *fakedQuery, nullptr,
+                                           std::move(variableId), {});
   EnumerateListExecutor testee(fetcher, executorInfos);
   SharedAqlItemBlockPtr inBlock =
-      buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
-                                       {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
+      buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1,
+      2])"}}},
+                                       {{{1}, {2}, {3}, {R"([true, 1,
+                                       2])"}}}});
 
   AqlItemBlockInputRange input{MainQueryState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
@@ -120,12 +124,16 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
   auto block = itemBlockManager.requestBlock(1000, 5);
   RegisterInfos registerInfos(RegIdSet{3}, RegIdSet{4}, 4, 5, {},
                               {RegIdSet{0, 1, 2, 3}});
-  EnumerateListExecutorInfos executorInfos(
-      3, 4, *fakedQuery, nullptr, std::numeric_limits<VariableId>::max(), {});
+  Variable var("test", std::numeric_limits<VariableId>::max(), false, monitor);
+  std::vector<const Variable*> variableId{&var};
+  EnumerateListExecutorInfos executorInfos(3, {4}, *fakedQuery, nullptr,
+                                           std::move(variableId), {});
   EnumerateListExecutor testee(fetcher, executorInfos);
   SharedAqlItemBlockPtr inBlock =
-      buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
-                                       {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
+      buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1,
+      2])"}}},
+                                       {{{1}, {2}, {3}, {R"([true, 1,
+                                       2])"}}}});
 
   AqlItemBlockInputRange input{MainQueryState::DONE, 0, inBlock, 0};
   OutputAqlItemRow output(std::move(block), registerInfos.getOutputRegisters(),
@@ -153,14 +161,17 @@ using EnumerateListParamType = std::tuple<SplitType>;
 class EnumerateListExecutorTestProduce
     : public AqlExecutorTestCaseWithParam<EnumerateListParamType, false> {
  protected:
-  EnumerateListExecutorInfos executorInfos;
-
   SharedAqlItemBlockPtr block;
   NoStats stats;
+  Variable var;
+  std::vector<const Variable*> variableId;
+  EnumerateListExecutorInfos executorInfos;
 
   EnumerateListExecutorTestProduce()
-      : executorInfos(0, 1, *fakedQuery, nullptr,
-                      std::numeric_limits<VariableId>::max(), {}) {}
+      : var("test", std::numeric_limits<VariableId>::max(), false, monitor),
+        variableId{&var},
+        executorInfos(0, {1}, *fakedQuery, nullptr, std::move(variableId), {}) {
+  }
 
   auto makeRegisterInfos(RegisterId inputRegister = 0,
                          RegisterId outputRegister = 1,
@@ -180,12 +191,12 @@ class EnumerateListExecutorTestProduce
   auto makeExecutorInfos(RegisterId inputRegister = 0,
                          RegisterId outputRegister = 1)
       -> EnumerateListExecutorInfos {
-    EnumerateListExecutorInfos infos{inputRegister,
-                                     outputRegister,
-                                     *fakedQuery,
-                                     nullptr,
-                                     std::numeric_limits<VariableId>::max(),
-                                     {}};
+    Variable var("test", std::numeric_limits<VariableId>::max(), false,
+                 monitor);
+    std::vector<const Variable*> variableId{&var};
+    EnumerateListExecutorInfos infos{inputRegister,         {outputRegister},
+                                     *fakedQuery,           nullptr,
+                                     std::move(variableId), {}};
     return infos;
   }
 };
@@ -373,7 +384,7 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_soft) {
                       RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
                       RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
       .expectSkipped(0)
-      .expectedState(ExecutionState::HASMORE)  // hasmore because of softLimit
+      .expectedState(ExecutionState::HASMORE)  // hasmore because ofsoftLimit
       .run();
 }
 

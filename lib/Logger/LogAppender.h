@@ -23,21 +23,15 @@
 
 #pragma once
 
-#include <stddef.h>
 #include <array>
-#include <functional>
-#include <map>
-#include <memory>
+#include <atomic>
 #include <string>
 #include <thread>
-#include <typeindex>
-#include <utility>
-#include <vector>
+#include <unordered_map>
 
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
-#include "Logger/LogGroup.h"
 #include "Logger/LogLevel.h"
+#include "Logger/Topics.h"
 
 namespace arangodb {
 class LogTopic;
@@ -45,56 +39,29 @@ struct LogMessage;
 
 class LogAppender {
  public:
-  static void addAppender(LogGroup const&, std::string const& definition);
-
-  static void addGlobalAppender(LogGroup const&, std::shared_ptr<LogAppender>);
-
-  static std::shared_ptr<LogAppender> buildAppender(LogGroup const&,
-                                                    std::string const& output);
-
-  static void logGlobal(LogGroup const&, LogMessage const&);
-  static void log(LogGroup const&, LogMessage const&);
-
-  static void reopen();
-  static void shutdown();
-
-  static bool haveAppenders(LogGroup const&, size_t topicId);
-
- public:
-  LogAppender() = default;
+  LogAppender();
   virtual ~LogAppender() = default;
 
   LogAppender(LogAppender const&) = delete;
   LogAppender& operator=(LogAppender const&) = delete;
 
- public:
+  void setCurrentLevelsAsDefault();
+  void resetLevelsToDefault();
+  auto getLogLevel(LogTopic const& topic) -> LogLevel;
+  void setLogLevel(LogTopic const& topic, LogLevel level);
+  auto getLogLevels() -> std::unordered_map<LogTopic*, LogLevel>;
+
   void logMessageGuarded(LogMessage const&);
 
   virtual std::string details() const = 0;
-
-  static bool allowStdLogging() { return _allowStdLogging; }
-  static void allowStdLogging(bool value) { _allowStdLogging = value; }
-
-  static Result parseDefinition(std::string const& definition,
-                                std::string& topicName, std::string& output,
-                                LogTopic*& topic);
 
  protected:
   virtual void logMessage(LogMessage const& message) = 0;
 
  private:
-  static arangodb::basics::ReadWriteLock _appendersLock;
-  static std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count>
-      _globalAppenders;
-  static std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>,
-                    LogGroup::Count>
-      _topics2appenders;
-  static std::array<std::map<std::string, std::shared_ptr<LogAppender>>,
-                    LogGroup::Count>
-      _definition2appenders;
-  static bool _allowStdLogging;
-
   basics::ReadWriteLock _logOutputMutex;
   std::atomic<std::thread::id> _logOutputMutexOwner;
+  std::array<std::atomic<LogLevel>, logger::kNumTopics> _topicLevels;
+  std::array<LogLevel, logger::kNumTopics> _defaultLevels;
 };
 }  // namespace arangodb

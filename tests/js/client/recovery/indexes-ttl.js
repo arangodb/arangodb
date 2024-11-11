@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue, assertNotNull */
+/* global runSetup assertEqual, assertFalse, assertTrue, assertNotNull */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -28,9 +28,9 @@ const db = require('@arangodb').db;
 const internal = require('internal');
 const jsunity = require('jsunity');
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   let c = db._create('UnitTestsRecovery1');
   c.ensureIndex({ type: "ttl", fields: ["value"], expireAfter: 60 });
@@ -40,6 +40,7 @@ function runSetup () {
 
   c.save({ _key: 'crashme' }, true);
 
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -53,7 +54,7 @@ function recoverySuite () {
   return {
     testIndexesTtl: function () {
       let c = db._collection('UnitTestsRecovery1');
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
 
       assertEqual("ttl", idx.type);
       assertEqual(["value"], idx.fields);
@@ -61,7 +62,7 @@ function recoverySuite () {
       assertFalse(idx.estimates);
       
       c = db._collection('UnitTestsRecovery2');
-      idx = c.getIndexes()[1];
+      idx = c.indexes()[1];
 
       assertEqual("ttl", idx.type);
       assertEqual(["value"], idx.fields);
@@ -76,13 +77,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

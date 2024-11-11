@@ -495,7 +495,7 @@ function unitTestPrettyPrintResults (options, results) {
               failedMessages += '\n';
               onlyFailedMessages += '\n';
             }
-            m = '      "' + one + '" failed: ' + details[one];
+            m = '      "' + one + '" failed: ' + details[one].replaceAll('\\n', '\n');
             failedMessages += RED + m + RESET + '\n\n';
             onlyFailedMessages += m + '\n\n';
             count++;

@@ -170,6 +170,7 @@ void ClusterIndex::toVelocyPack(
         !pair.key.isEqualString(StaticStrings::IndexName) &&
         !pair.key.isEqualString(StaticStrings::IndexType) &&
         !pair.key.isEqualString(StaticStrings::IndexFields) &&
+        !pair.key.isEqualString(StaticStrings::IndexPrefixFields) &&
         !pair.key.isEqualString("selectivityEstimate") &&
         !pair.key.isEqualString("figures") &&
         !pair.key.isEqualString(StaticStrings::IndexUnique) &&
@@ -270,7 +271,7 @@ void ClusterIndex::updateProperties(velocypack::Slice slice) {
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
   auto& engine = _collection.vocbase().engine();
-  return Index::Compare(engine, _info.slice(), info,
+  return Index::compare(engine, _info.slice(), info,
                         _collection.vocbase().name());
 }
 
@@ -474,13 +475,13 @@ ClusterIndex::coveredFields() const {
   }
 }
 
-bool ClusterIndex::supportsStreamInterface(
+Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
     IndexStreamOptions const& opts) const noexcept {
   switch (_indexType) {
     case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return RocksDBVPackIndex::checkSupportsStreamInterface(_coveredFields,
-                                                               opts);
+        return RocksDBVPackIndex::checkSupportsStreamInterface(
+            _coveredFields, _fields, _unique, opts);
       }
       [[fallthrough]];
     }
@@ -496,5 +497,5 @@ bool ClusterIndex::supportsStreamInterface(
     default:
       break;
   }
-  return false;
+  return Index::StreamSupportResult::makeUnsupported();
 }

@@ -4494,9 +4494,7 @@ function transactionTTLStreamSuite (dbParams) {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAbortIdleTrx: function () {
-      try {
-        internal.debugSetFailAt("lowStreamingIdleTimeout");
-      } catch (err) {}
+      global.instanceManager.debugSetFailAt("lowStreamingIdleTimeout");
 
       try {
         let trx = db._createTransaction({
@@ -4519,7 +4517,7 @@ function transactionTTLStreamSuite (dbParams) {
         }
       } finally {
         try {
-          internal.debugRemoveFailAt("lowStreamingIdleTimeout");
+          global.instanceManager.debugRemoveFailAt("lowStreamingIdleTimeout");
         } catch (err) {}
       }
     }
@@ -4559,7 +4557,7 @@ function transactionIteratorSuite(dbParams) {
     testIteratorBoundsForward: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
       c.ensureIndex({ type: "persistent", fields: ["value2"] });
-      let res = c.getIndexes();
+      let res = c.indexes();
       assertEqual(3, res.length);
 
       const opts = {
@@ -4601,7 +4599,7 @@ function transactionIteratorSuite(dbParams) {
     testIteratorBoundsReverse: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
       c.ensureIndex({ type: "persistent", fields: ["value2"] });
-      let res = c.getIndexes();
+      let res = c.indexes();
       assertEqual(3, res.length);
 
       const opts = {

@@ -5,6 +5,7 @@ target_sources(arango_aql PRIVATE
   OptimizerRulePropagateConstantAttributes.cpp
   OptimizerRulePushDownLateMaterialization.cpp
   OptimizerRulePushLimitIntoIndex.cpp
+  OptimizerRuleReplaceEntriesWithObjectIteration.cpp
   OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRulesCluster.cpp
   OptimizerRulesGraph.cpp

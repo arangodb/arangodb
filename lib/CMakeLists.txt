@@ -80,9 +80,12 @@ add_library(arango_lightweight STATIC
         Basics/threads-posix.cpp
         Basics/tri-strings.cpp
         Containers/ImmerMemoryPolicy.h
+        Logger/Appenders.cpp
         Logger/Escaper.cpp
         Logger/LogAppender.cpp
         Logger/LogAppenderFile.cpp
+        Logger/LogAppenderStdStream.cpp
+        Logger/LogAppenderStream.cpp
         Logger/LogAppenderSyslog.cpp
         Logger/LogContext.cpp
         Logger/LogLevel.cpp
@@ -120,6 +123,7 @@ target_link_libraries(arango_lightweight
          arango_inspection
          absl::flat_hash_set
          absl::synchronization
+         arango_async
   PRIVATE date_interface
           fmt
           arango_assertions
@@ -294,6 +298,7 @@ if (USE_ENTERPRISE)
 endif()
 
 add_subdirectory(Actor)
+add_subdirectory(Async)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
 if (USE_V8)

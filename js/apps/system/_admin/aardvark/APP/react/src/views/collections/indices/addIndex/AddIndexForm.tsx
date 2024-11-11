@@ -1,6 +1,6 @@
+import { SingleSelect } from "@arangodb/ui";
 import { Box, FormLabel } from "@chakra-ui/react";
 import React, { useState } from "react";
-import SingleSelect from "../../../../components/select/SingleSelect";
 import { CollectionIndex } from "../CollectionIndex.types";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { FulltextIndexForm } from "./FulltextIndexForm";
@@ -14,9 +14,9 @@ import { TTLIndexForm } from "./TTLIndexForm";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
-  const [indexType, setIndexType] = useState<CollectionIndex["type"]>(
-    indexTypeOptions[0].value
-  );
+  const [indexType, setIndexType] = useState<
+    CollectionIndex["type"] | "fulltext"
+  >(indexTypeOptions[0].value);
   let tooltipText = "Type of index to create.";
   return (
     <Box width="100%" paddingY="4" height="full" background="white">
@@ -55,7 +55,7 @@ const IndexTypeForm = ({
   type,
   onClose
 }: {
-  type: CollectionIndex["type"];
+  type: CollectionIndex["type"] | "fulltext";
   onClose: () => void;
 }) => {
   if (type === "inverted") {

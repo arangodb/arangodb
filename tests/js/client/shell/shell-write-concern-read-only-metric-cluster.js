@@ -30,7 +30,7 @@ let internal = require("internal");
 let db = arangodb.db;
 
 const {
-  waitForShardsInSync, getMetric, getUrlById, debugSetFailAt, clearAllFailurePoints
+  waitForShardsInSync, getMetric, getUrlById, getAllMetric
 } = require('@arangodb/test-helper');
 
 const database = "WriteConcernReadOnlyMetricDatabase";
@@ -45,9 +45,12 @@ function WriteConcernReadOnlyMetricSuite() {
     },
 
     tearDown: function () {
-      clearAllFailurePoints();
+      global.instanceManager.debugClearFailAt();
       db._useDatabase("_system");
-      db._dropDatabase(database);
+      try {
+        db._dropDatabase(database);
+      } catch (e) {
+      }
     },
 
     testCheckMetric: function () {
@@ -64,8 +67,8 @@ function WriteConcernReadOnlyMetricSuite() {
       assertEqual(metricValue, 0);
 
       // suspend the follower
-      debugSetFailAt(getUrlById(follower), "LogicalCollection::insert");
-      debugSetFailAt(getUrlById(follower), "SynchronizeShard::disable");
+      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
+      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
 
       // trigger a follower drop
       c.insert({});
@@ -73,12 +76,25 @@ function WriteConcernReadOnlyMetricSuite() {
       metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
       assertEqual(metricValue, 1); // one shard does not have enough in sync follower
 
-      clearAllFailurePoints();
+      global.instanceManager.debugClearFailAt();
       waitForShardsInSync(c.name());
 
       metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
       assertEqual(metricValue, 0);
 
+      // now drop the database. we expect the metric to be gone
+      db._useDatabase("_system");
+      db._dropDatabase(database);
+
+      let k = 0;
+      for (; k < 100; k++) {
+        const metrics = getAllMetric(getUrlById(leader), '');
+        if (metrics.indexOf(database) === -1) {
+          break;
+        }
+        internal.sleep(0.5);
+      }
+      assertNotEqual(k, 100);
     },
   };
 }

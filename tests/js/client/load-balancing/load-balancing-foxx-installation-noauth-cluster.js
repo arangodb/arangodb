@@ -60,21 +60,26 @@ const getEncodedFoxxZipFile = () => {
   return base64Encode(itzpapalotlZip);
 };
 
+const isCov = require("@arangodb/test-helper").versionHas('coverage');
+
 function sendRequest(method, endpoint, body, usePrimary) {
   let res;
   const i = usePrimary ? 0 : 1;
-
+  let timeout = (isCov)?100:10;
   try {
     const envelope = {
       body,
       method,
-      url: `${coordinators[i]}${endpoint}`
+      url: `${coordinators[i]}${endpoint}`,
+      options: { timeout: timeout}
     };
     res = request(envelope);
   } catch (err) {
     console.error(`Exception processing ${method} ${endpoint}`, err.stack);
     return {};
   }
+  assertTrue(res.hasOwnProperty('body'), JSON.stringify(res));
+  assertTrue(res.body !== undefined, JSON.stringify(res));
   let resultBody = res.body;
   if (typeof resultBody === "string") {
     resultBody = JSON.parse(resultBody);
@@ -107,6 +112,7 @@ const installFoxxZipFile = (databaseName, usePrimary, fileName, coordinatorId, e
 
   const installPath = `/_db/${databaseName}/_admin/aardvark/foxxes/zip?mount=${encodeURIComponent(installMountPath)}&setup=true`;
   const installResult = sendRequest('PUT', installPath, JSON.stringify(installBody), usePrimary);
+  assertTrue(installResult.hasOwnProperty('error'), JSON.stringify(installResult));
   if (expectedFailureCode) {
     // TODO: We want to be able to test this in more detail. But currently, foxx does not deliver proper ArangoErrors
     // in some failure cases. Created BTS-Ticket: https://arangodb.atlassian.net/browse/BTS-1345 needs to be resolved

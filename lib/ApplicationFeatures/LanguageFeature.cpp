@@ -23,9 +23,11 @@
 
 #include "LanguageFeature.h"
 
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
+#include "Basics/directories.h"
 #include "Basics/error.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
@@ -38,6 +40,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 
 #include <absl/strings/str_cat.h>
+#include <unicode/udata.h>
 #include <cstdlib>
 
 namespace {
@@ -61,8 +64,8 @@ void setCollator(std::string_view language,
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, type)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'. "
-        << "The icudtl.dat file might be of the wrong version. "
-        << "Check for an incorrectly set ICU_DATA environment variable";
+        << "The icudtl_legacy.dat file might be of the wrong version. "
+        << "Check for an incorrectly set ICU_DATA_LEGACY environment variable";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
   }
 }
@@ -166,7 +169,89 @@ or `--default-language`. Setting both of them results in an error.)");
       .setIntroducedIn(30800);
 }
 
+std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
+                                        std::string const& binaryExecutionPath,
+                                        std::string& path,
+                                        std::string const& binaryName) {
+  std::string fn("icudtl_legacy.dat");
+  if (TRI_GETENV("ICU_DATA_LEGACY", path)) {
+    path = FileUtils::buildFilename(path, fn);
+  }
+  if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
+    if (!path.empty()) {
+      LOG_TOPIC("23333", WARN, arangodb::Logger::FIXME)
+          << "failed to locate '" << fn << "' at '" << path << "'";
+    }
+
+    std::string bpfn = FileUtils::buildFilename(binaryExecutionPath, fn);
+
+    if (TRI_IsRegularFile(fn.c_str())) {
+      path = fn;
+    } else if (TRI_IsRegularFile(bpfn.c_str())) {
+      path = bpfn;
+    } else {
+      std::string argv0 =
+          FileUtils::buildFilename(binaryExecutionPath, binaryName);
+      path = TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
+      path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, fn);
+
+      if (!TRI_IsRegularFile(path.c_str())) {
+        // Try whether we have an absolute install prefix:
+        path = FileUtils::buildFilename(ICU_DESTINATION_DIRECTORY, fn);
+      }
+    }
+
+    if (!TRI_IsRegularFile(path.c_str())) {
+      std::string msg =
+          std::string(
+              "failed to initialize legacy ICU library. Could not locate '") +
+          path +
+          "'. Please make sure it is available. "
+          "The environment variable ICU_DATA_LEGACY";
+      std::string icupath;
+      if (TRI_GETENV("ICU_DATA_LEGACY", icupath)) {
+        msg += "='" + icupath + "'";
+      }
+      msg += " should point to the directory containing '" + fn + "'";
+
+      LOG_TOPIC("23334", FATAL, arangodb::Logger::FIXME) << msg;
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
+    } else {
+      std::string icu_path = path.substr(0, path.length() - fn.length());
+      FileUtils::makePathAbsolute(icu_path);
+      FileUtils::normalizePath(icu_path);
+      setenv("ICU_DATA_LEGACY", icu_path.c_str(), 1);
+    }
+  }
+
+  std::string icuData = basics::FileUtils::slurp(path);
+
+  if (icuData.empty()) {
+    LOG_TOPIC("23335", FATAL, arangodb::Logger::FIXME)
+        << "failed to load '" << fn << "' at '" << path << "' - "
+        << TRI_last_error();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
+  }
+
+  return icuData;
+}
+
 void LanguageFeature::prepare() {
+  // First find and load the language data for our own interal libicu.
+  // They come from a table file which we ship with the server:
+  auto context = ArangoGlobalContext::CONTEXT;
+  std::string p;
+  std::string binaryExecutionPath = context->getBinaryPath();
+  std::string binaryName = context->binaryName();
+  if (_icuData.empty()) {
+    _icuData = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
+                                           binaryName);
+    UErrorCode status = U_ZERO_ERROR;
+    udata_setCommonData(reinterpret_cast<void const*>(_icuData.c_str()),
+                        &status);
+  }
+
+  // Now on to the language type and locale settings:
   _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
 
   if (LanguageType::INVALID == _langType) {
@@ -179,9 +264,8 @@ void LanguageFeature::prepare() {
   ::setCollator(
       _langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage,
       _langType);
+  ::setLocale(_locale);
 }
-
-void LanguageFeature::start() { ::setLocale(_locale); }
 
 icu_64_64::Locale& LanguageFeature::getLocale() { return _locale; }
 

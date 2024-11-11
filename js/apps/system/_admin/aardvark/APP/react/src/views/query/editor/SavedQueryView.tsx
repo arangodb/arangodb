@@ -1,3 +1,4 @@
+import { ReactTable, TableControl, useSortableReactTable } from "@arangodb/ui";
 import { ArrowBackIcon, CopyIcon, DeleteIcon } from "@chakra-ui/icons";
 import {
   Box,
@@ -16,9 +17,6 @@ import { InfoCircle } from "styled-icons/boxicons-solid";
 import { PlayArrow } from "styled-icons/material";
 import aqlTemplates from "../../../../public/assets/aqltemplates.json";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
-import { ReactTable } from "../../../components/table/ReactTable";
-import { TableControl } from "../../../components/table/TableControl";
-import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { download } from "../../../utils/downloadHelper";
 import { useQueryContext } from "../QueryContextProvider";
 import { AQLEditor } from "./AQLEditor";
@@ -218,13 +216,9 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
       gridTemplateColumns="minmax(450px, 0.5fr) 1fr"
       height="full"
     >
-      <Stack height="full" overflow="auto">
+      <Stack height="full" overflow="hidden">
         <Box paddingLeft="2" paddingTop="1">
-          <TableControl
-            table={tableInstance}
-            columns={TABLE_COLUMNS}
-            showColumnSelector={false}
-          />
+          <TableControl table={tableInstance} showColumnSelector={false} />
         </Box>
         <ReactTable<QueryType>
           table={tableInstance}
@@ -238,6 +232,12 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
             if (!row.getIsSelected()) {
               row.toggleSelected();
             }
+          }}
+          // 100% - height of the control element - gap
+          height="calc(100% - 36px - 8px)"
+          tableContainerProps={{
+            // just overflow: auto doesn't work due to chakra impl details
+            overflowY: "auto"
           }}
         />
       </Stack>

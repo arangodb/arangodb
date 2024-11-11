@@ -370,12 +370,12 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
   } else {
     instanceInfo.debuggerInfo = generateCoreDumpGDB(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
-  }
-  // renice debugger to lowest prio so it doesn't steal test resources
-  try {
-    internal.setPriorityExternal(instanceInfo.debuggerInfo.pid.pid, 20);
-  } catch (ex) {
-    print(`${RED} renicing of debugger ${instanceInfo.debuggerInfo.pid.pid} failed: ${ex} ${RESET}`);
+    // renice debugger to lowest prio so it doesn't steal test resources
+    try {
+      internal.setPriorityExternal(instanceInfo.debuggerInfo.pid.pid, 20);
+    } catch (ex) {
+      print(`${RED} renicing of debugger ${instanceInfo.debuggerInfo.pid.pid} failed: ${ex} ${RESET}`);
+    }
   }
 }
 

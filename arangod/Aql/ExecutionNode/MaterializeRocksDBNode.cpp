@@ -25,11 +25,12 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/MaterializeExecutor.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"

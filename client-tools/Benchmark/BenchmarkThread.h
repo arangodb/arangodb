@@ -61,7 +61,7 @@ class BenchmarkThread : public arangodb::Thread {
   BenchmarkThread(application_features::ApplicationServer& server,
                   BenchmarkOperation* operation,
                   basics::ConditionVariable* condition, void (*callback)(),
-                  size_t threadNumber, uint64_t const batchSize,
+                  size_t threadNumber,
                   BenchmarkCounter<uint64_t>* operationsCounter,
                   ClientFeature& client, bool keepAlive, bool async,
                   double histogramIntervalSize, uint64_t histogramNumIntervals,
@@ -71,13 +71,12 @@ class BenchmarkThread : public arangodb::Thread {
         _startCondition(condition),
         _callback(callback),
         _threadNumber(threadNumber),
-        _batchSize(batchSize),
         _warningCount(0),
         _operationsCounter(operationsCounter),
         _client(client),
         _keepAlive(keepAlive),
         _async(async),
-        _useVelocyPack(_batchSize == 0),
+        _useVelocyPack(true),
         _generateHistogram(generateHistogram),
         _httpClient(nullptr),
         _offset(0),
@@ -115,10 +114,8 @@ class BenchmarkThread : public arangodb::Thread {
     size_t i = 0;
     std::shared_lock lock{_mutex};
     histogramIntervalSize = _histogramIntervalSize;
-    uint64_t divisor = std::max(std::uint64_t(1), _batchSize);
     while (i < which.size()) {
-      counts[i] =
-          static_cast<size_t>(lround(_counter * which[i] / divisor / 100.0));
+      counts[i] = static_cast<size_t>(lround(_counter * which[i] / 100.0));
       i++;
     }
     i = 0;
@@ -200,18 +197,14 @@ class BenchmarkThread : public arangodb::Thread {
     }
 
     while (!isStopping()) {
-      uint64_t numOps = _operationsCounter->next(_batchSize);
+      uint64_t numOps = _operationsCounter->next(0);
 
       if (numOps == 0) {
         break;
       }
 
       try {
-        if (_batchSize < 1) {
-          executeSingleRequest();
-        } else {
-          executeBatchRequest(numOps);
-        }
+        executeRequest();
       } catch (std::bad_alloc const&) {
         LOG_TOPIC("29451", FATAL, arangodb::Logger::BENCH)
             << "Caught OOM exception during test execution!";
@@ -226,74 +219,13 @@ class BenchmarkThread : public arangodb::Thread {
         FATAL_ERROR_EXIT();
       }
 
-      _operationsCounter->done(_batchSize > 0 ? _batchSize : 1);
+      _operationsCounter->done(1);
     }
   }
 
  private:
-  /// @brief execute a batch request with numOperations parts
-  void executeBatchRequest(uint64_t numOperations) {
-    TRI_ASSERT(!_useVelocyPack);
-
-    static char const boundary[] = "XXXarangobench-benchmarkXXX";
-    size_t blen = strlen(boundary);
-
-    _payloadBuffer.clear();
-    for (uint64_t i = 0; i < numOperations; ++i) {
-      // append boundary
-      _payloadBuffer.append("--", 2);
-      _payloadBuffer.append(boundary, blen);
-      _payloadBuffer.append("\r\n", 2);
-      // append content-type, this will also begin the body
-      _payloadBuffer.append(std::string_view("Content-Type: "));
-      _payloadBuffer.append(StaticStrings::BatchContentType);
-      _payloadBuffer.append("\r\n\r\n", 4);
-
-      // everything else (i.e. part request header & body) will get into the
-      // body
-      size_t const threadCounter = _counter++;
-      size_t const globalCounter = _offset + threadCounter;
-
-      _requestData.clear();
-      _operation->buildRequest(_threadNumber, threadCounter, globalCounter,
-                               _requestData);
-
-      // headline, e.g. POST /... HTTP/1.1
-      _payloadBuffer.append(HttpRequest::translateMethod(_requestData.type));
-      _payloadBuffer.push_back(' ');
-      _payloadBuffer.append(_requestData.url);
-      _payloadBuffer.append(std::string_view(" HTTP/1.1\r\n\r\n"));
-      velocypack::Slice payloadSlice = _requestData.payload.slice();
-      if (!payloadSlice.isNone()) {
-        velocypack::StringSink sink(&_payloadBuffer);
-        velocypack::Dumper dumper(&sink);
-        dumper.dump(payloadSlice);
-        _payloadBuffer.append("\r\n", 2);
-      }
-    }
-
-    // end of MIME
-    _payloadBuffer.append("--", 2);
-    _payloadBuffer.append(boundary, blen);
-    _payloadBuffer.append("--\r\n", 4);
-
-    _headers[StaticStrings::ContentTypeHeader] =
-        StaticStrings::MultiPartContentType + "; boundary=" + boundary;
-
-    double start = TRI_microtime();
-    std::unique_ptr<httpclient::SimpleHttpResult> result(_httpClient->request(
-        rest::RequestType::POST, "/_api/batch", _payloadBuffer.data(),
-        _payloadBuffer.size(), _headers));
-
-    double delta = TRI_microtime() - start;
-    trackTime(delta);
-    processResponse(result.get(), /*batch*/ true, numOperations);
-
-    _httpClient->recycleResult(std::move(result));
-  }
-
   /// @brief execute a single request
-  void executeSingleRequest() {
+  void executeRequest() {
     size_t const threadCounter = _counter++;
     size_t const globalCounter = _offset + threadCounter;
 
@@ -329,48 +261,27 @@ class BenchmarkThread : public arangodb::Thread {
         _requestData.type, _requestData.url, p, length, _headers));
     double delta = TRI_microtime() - start;
     trackTime(delta);
-    processResponse(result.get(), /*batch*/ false, 1);
+    processResponse(result.get());
 
     _httpClient->recycleResult(std::move(result));
   }
 
-  void processResponse(httpclient::SimpleHttpResult const* result, bool batch,
-                       uint64_t numOperations) {
-    char const* type = (batch ? "batch" : "single");
-    TRI_ASSERT(numOperations > 0);
-
+  void processResponse(httpclient::SimpleHttpResult const* result) {
     auto check = arangodb::HttpResponseChecker::check(
         _httpClient->getErrorMessage(), result);
     if (check.ok()) {
-      if (batch) {
-        // for batch requests we have to check the error header in addition
-        auto const& headers = result->getHeaderFields();
-        if (auto it = headers.find(StaticStrings::Errors);
-            it != headers.end()) {
-          uint32_t errorCount = basics::StringUtils::uint32((*it).second);
-          if (errorCount > 0) {
-            _operationsCounter->incFailures(errorCount);
-            if (++_warningCount < maxWarnings) {
-              LOG_TOPIC("b1db5", WARN, arangodb::Logger::BENCH)
-                  << type
-                  << " operation server side warning count: " << errorCount;
-            }
-          }
-        }
-      }
-
       return;
     }
 
-    _operationsCounter->incFailures(numOperations);
+    _operationsCounter->incFailures(1);
     if (result != nullptr && !result->isComplete()) {
-      _operationsCounter->incIncompleteFailures(numOperations);
+      _operationsCounter->incIncompleteFailures(1);
     }
     if (++_warningCount < maxWarnings) {
       if (check.fail()) {
         LOG_TOPIC("fb835", WARN, arangodb::Logger::BENCH)
-            << type << " request for URL '" << _requestData.url << ": "
-            << check.errorMessage();
+            << "Request for URL '" << _requestData.url
+            << "': " << check.errorMessage();
       }
     } else if (_warningCount == maxWarnings) {
       LOG_TOPIC("6daf1", WARN, arangodb::Logger::BENCH)
@@ -383,8 +294,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// (will be recycled for each request)
   BenchmarkOperation::RequestData _requestData;
 
-  /// @brief temporary buffer for stringified JSON values or
-  /// for batch requests
+  /// @brief temporary buffer for stringified JSON values
   /// (will be recycled for each request)
   std::string _payloadBuffer;
 
@@ -399,9 +309,6 @@ class BenchmarkThread : public arangodb::Thread {
 
   /// @brief our thread number
   size_t _threadNumber;
-
-  /// @brief batch size
-  uint64_t const _batchSize;
 
   /// @brief warning counter
   int _warningCount;

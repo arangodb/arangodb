@@ -175,6 +175,8 @@ function parseServers(servers) {
     assertTrue(stats.hasOwnProperty("n_threads"));
     assertTrue(stats.hasOwnProperty("virtual_size"));
     assertTrue(stats.hasOwnProperty("resident_set_size"));
+    assertTrue(stats.hasOwnProperty("fileDescrtors"));
+    assertTrue(stats.hasOwnProperty("fileDescrtorsLimit"));
     if (host.role !== "COORDINATOR") {
       assertTrue(host.hasOwnProperty("engine_stats"));
       stats = host["engine_stats"];

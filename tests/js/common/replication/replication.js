@@ -564,7 +564,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
@@ -586,7 +586,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "hash", fields: ["a"] });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
@@ -608,7 +608,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true, sparse: true });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
@@ -631,7 +631,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "hash", fields: ["a"], sparse: true });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
@@ -653,7 +653,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "skiplist", fields: ["a", "b", "c"] });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -676,7 +676,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertEqual(c._id, entry.cid);
@@ -698,7 +698,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "skiplist", fields: ["a", "b", "c"], sparse: true });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -721,7 +721,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true, sparse: true });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertEqual(c._id, entry.cid);
@@ -741,7 +741,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
       c.ensureIndex({ type: "fulltext", fields: ["a"], minLength: 5 });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
@@ -763,7 +763,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "geo", fields: ["a", "b"] });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -784,7 +784,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "geo", fields: ["a"], geoJson: true });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -806,7 +806,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "geo", fields: ["a", "b"], geoJson: false });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -829,7 +829,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "geo", fields: ["a", "b"], geoJson: false });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -852,7 +852,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "geo", fields: ["a"], geoJson: true });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -876,7 +876,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       // use index at #1 (#0 is primary index)
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       c.dropIndex(idx);
       var entry = getLogEntries(tick, 2101)[0];
 

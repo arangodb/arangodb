@@ -1,12 +1,11 @@
+import { ReactTable, useSortableReactTable } from "@arangodb/ui";
 import { DeleteIcon } from "@chakra-ui/icons";
 import { Button, IconButton, ModalFooter, ModalHeader } from "@chakra-ui/react";
 import { CellContext } from "@tanstack/react-table";
 import { QueryInfo } from "arangojs/database";
-import React, { useEffect } from "react";
 import moment from "moment";
+import React, { useEffect } from "react";
 import { Modal } from "../../../components/modal";
-import { ReactTable } from "../../../components/table/ReactTable";
-import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useQueryContext } from "../QueryContextProvider";
 

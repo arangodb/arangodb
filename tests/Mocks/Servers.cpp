@@ -36,6 +36,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/Query.h"
+#include "Aql/QueryInfoLoggerFeature.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
 #include "Basics/files.h"
@@ -221,6 +222,7 @@ static void SetupAqlPhase(MockServer& server) {
 
   server.addFeature<aql::AqlFunctionFeature>(true);
   server.addFeature<aql::OptimizerRulesFeature>(true);
+  server.addFeature<aql::QueryInfoLoggerFeature>(true);
   server.addFeature<AqlFeature>(true);
 
 #ifdef USE_ENTERPRISE

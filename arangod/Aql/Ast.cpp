@@ -236,9 +236,9 @@ bool translateNodeStackToAttributePath(
  *
  * @param resolver CollectionNameResolver to identify category
  * @param accessType Access of this Source, NONE/READ/WRITE/EXCLUSIVE
- * @param failIfDoesNotExist If true => throws error im SourceNotFound. False =>
+ * @param failIfDoesNotExist If true => throws error if SourceNotFound. False =>
  * Treat non-existing like a collection
- * @param name Name of the datasource
+ * @param nameRef Name of the datasource (in/out parameter)
  *
  * @return The Category of this datasource (Collection or View), and a reference
  * to the translated name (cid => name if required).
@@ -247,16 +247,23 @@ LogicalDataSource::Category injectDataSourceInQuery(
     Ast& ast, CollectionNameResolver const& resolver,
     AccessMode::Type accessType, bool failIfDoesNotExist,
     std::string_view& nameRef) {
+  // NOTE nameRef may be modified later if a numeric collection ID is given
+  // instead of a collection Name. Afterwards it will contain the name.
+  if (nameRef.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                                   "empty name collections are not supported");
+  }
+
   std::string const name = std::string(nameRef);
-  // NOTE The name may be modified if a numeric collection ID is given instead
-  // of a collection Name. Afterwards it will contain the name.
   auto const dataSource = resolver.getDataSource(name);
 
   if (dataSource == nullptr) {
     // datasource not found...
     if (failIfDoesNotExist) {
-      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                    "name: %s", name.c_str());
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
+                       ": name: ", name));
     }
 
     // still add datasource to query, simply because the AST will also be built
@@ -274,9 +281,10 @@ LogicalDataSource::Category injectDataSourceInQuery(
   // the collection by its numeric id
   auto const& dataSourceName = dataSource->name();
 
-  if (nameRef != name) {
-    // name has changed by the lookup, so we need to reserve the collection
-    // name on the heap and update our std::string_view
+  if (name != dataSourceName) {
+    TRI_ASSERT(name.front() >= '0' && name.front() <= '9');
+    // name was a numeric collection id, so we need to store the collection
+    // name on the heap and update our std::string_view to point to it
     char* p = ast.resources().registerString(dataSourceName.data(),
                                              dataSourceName.size());
     nameRef = std::string_view(p, dataSourceName.size());
@@ -303,7 +311,7 @@ LogicalDataSource::Category injectDataSourceInQuery(
 
     ast.query().addDataSource(dataSource);
 
-    // Make sure to add all collections now:
+    // Make sure to add all collections from the view now:
     resolver.visitCollections(
         [&ast, accessType](LogicalCollection& col) -> bool {
           ast.query().collections().add(col.name(), accessType,
@@ -3387,7 +3395,10 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   // - number
   if (converted->value.type == VALUE_TYPE_INT) {
     // int64
-    return createNodeValueInt(-converted->getIntValue());
+    int64_t i = converted->getIntValue();
+    if (i > std::numeric_limits<int64_t>::min()) {
+      return createNodeValueInt(-i);
+    }
   }
 
   // double

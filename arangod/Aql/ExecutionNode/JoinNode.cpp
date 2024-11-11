@@ -27,7 +27,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
@@ -41,6 +41,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashMap.h"
@@ -192,6 +193,7 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                   .constantFields = std::move(constantFields)});
 
     idx.isLateMaterialized = it.get("isLateMaterialized").isTrue();
+    idx.isUniqueStream = it.get("isUniqueStream").isTrue();
     if (idx.isLateMaterialized) {
       idx.outDocIdVariable =
           Variable::varFromVPack(plan->getAst(), it, "outDocIdVariable");
@@ -249,6 +251,9 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       builder.add("isLateMaterialized", VPackValue(true));
       builder.add(VPackValue("outDocIdVariable"));
       it.outDocIdVariable->toVelocyPack(builder);
+    }
+    if (it.isUniqueStream) {
+      builder.add("isUniqueStream", VPackValue(true));
     }
     // condition
     builder.add(VPackValue("condition"));
@@ -363,6 +368,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     data.producesOutput = idx.producesOutput;
 
     data.isLateMaterialized = idx.isLateMaterialized;
+    data.isUniqueStream = idx.isUniqueStream;
     if (data.isLateMaterialized) {
       data.docIdOutputRegister = variableToRegisterId(idx.outDocIdVariable);
       writableOutputRegisters.emplace(data.docIdOutputRegister);

@@ -26,6 +26,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <source_location>
 #include <thread>
 
 #include "Futures/Exceptions.h"
@@ -270,7 +271,10 @@ class [[nodiscard]] Future {
   Try<T> const&& result() const&& { return std::move(getStateTryChecked()); }
 
   /// Blocks until this Future is complete.
-  void wait() { detail::waitImpl(*this); }
+  void wait() {
+    set_promise_waiter(std::this_thread::get_id());
+    detail::waitImpl(*this);
+  }
 
   /// When this Future has completed, execute func which is a function that
   /// can be called with either `T&&` or `Try<T>&&`.
@@ -297,7 +301,8 @@ class [[nodiscard]] Future {
   typename std::enable_if<!isTry<typename R::FirstArg>::value &&
                               !R::ReturnsFuture::value,
                           typename R::FutureT>::type
-  thenValue(F&& fn) && {
+  thenValue(F&& fn,
+            std::source_location loc = std::source_location::current()) && {
     typedef typename R::ReturnsFuture::inner B;
     using DF = detail::decay_t<F>;
 
@@ -305,8 +310,9 @@ class [[nodiscard]] Future {
     static_assert(!std::is_same<B, void>::value, "");
     static_assert(!R::ReturnsFuture::value, "");
 
-    Promise<B> promise;
+    Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
+    set_promise_waiter(future.id());
     getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -326,7 +332,8 @@ class [[nodiscard]] Future {
   typename std::enable_if<!isTry<typename R::FirstArg>::value &&
                               R::ReturnsFuture::value,
                           typename R::FutureT>::type
-  thenValue(F&& fn) && {
+  thenValue(F&& fn,
+            std::source_location loc = std::source_location::current()) && {
     typedef typename R::ReturnsFuture::inner B;
     using DF = detail::decay_t<F>;
 
@@ -334,15 +341,17 @@ class [[nodiscard]] Future {
     static_assert(std::is_invocable_r<Future<B>, F, T>::value,
                   "Function must be invocable with T");
 
-    Promise<B> promise;
+    Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    getState().setCallback([fn = std::forward<DF>(fn),
-                            pr = std::move(promise)](Try<T>&& t) mutable {
+    set_promise_waiter(future.id());
+    getState().setCallback([fn = std::forward<DF>(fn), pr = std::move(promise),
+                            future_id = future.id()](Try<T>&& t) mutable {
       if (t.hasException()) {
         pr.setException(std::move(t).exception());
       } else {
         try {
           auto f = std::invoke(std::forward<DF>(fn), std::move(t).get());
+          f.set_promise_waiter(future_id);
           std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
             pr.setTry(std::move(t));
           });
@@ -360,15 +369,17 @@ class [[nodiscard]] Future {
   typename std::enable_if<isTry<typename R::FirstArg>::value &&
                               !R::ReturnsFuture::value,
                           typename R::FutureT>::type
-  then(F&& func) && {
+  then(F&& func,
+       std::source_location loc = std::source_location::current()) && {
     typedef typename R::ReturnsFuture::inner B;
     using DF = detail::decay_t<F>;
 
     static_assert(!isFuture<B>::value, "");
     static_assert(!std::is_same<B, void>::value, "");
 
-    Promise<B> promise;
+    Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
+    set_promise_waiter(future.id());
     getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       pr.setTry(detail::makeTryWith([&fn, &t] {
@@ -384,16 +395,19 @@ class [[nodiscard]] Future {
   typename std::enable_if<isTry<typename R::FirstArg>::value &&
                               R::ReturnsFuture::value,
                           typename R::FutureT>::type
-  then(F&& func) && {
+  then(F&& func,
+       std::source_location loc = std::source_location::current()) && {
     typedef typename R::ReturnsFuture::inner B;
     static_assert(!isFuture<B>::value, "");
 
-    Promise<B> promise;
+    Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    getState().setCallback([fn = std::forward<F>(func),
-                            pr = std::move(promise)](Try<T>&& t) mutable {
+    set_promise_waiter(future.id());
+    getState().setCallback([fn = std::forward<F>(func), pr = std::move(promise),
+                            future_id = future.id()](Try<T>&& t) mutable {
       try {
         auto f = std::invoke(std::forward<F>(fn), std::move(t));
+        f.set_promise_waiter(future_id);
         std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
           pr.setTry(std::move(t));
         });
@@ -420,13 +434,15 @@ class [[nodiscard]] Future {
            typename R = std::invoke_result_t<F, ExceptionType>>
   typename std::enable_if<!isFuture<R>::value,
                           Future<typename lift_unit<R>::type>>::type
-  thenError(F&& func) && {
+  thenError(F&& func,
+            std::source_location loc = std::source_location::current()) && {
     typedef typename lift_unit<R>::type B;
     typedef std::decay_t<ExceptionType> ET;
     using DF = detail::decay_t<F>;
 
-    Promise<B> promise;
+    Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
+    set_promise_waiter(future.id());
     getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -452,21 +468,24 @@ class [[nodiscard]] Future {
            typename R = std::invoke_result_t<F, ExceptionType>>
   typename std::enable_if<isFuture<R>::value,
                           Future<typename isFuture<R>::inner>>::type
-  thenError(F&& fn) && {
+  thenError(F&& fn,
+            std::source_location loc = std::source_location::current()) && {
     typedef typename isFuture<R>::inner B;
     typedef std::decay_t<ExceptionType> ET;
     using DF = detail::decay_t<F>;
 
-    Promise<B> promise;
+    Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    getState().setCallback([fn = std::forward<DF>(fn),
-                            pr = std::move(promise)](Try<T>&& t) mutable {
+    set_promise_waiter(future.id());
+    getState().setCallback([fn = std::forward<DF>(fn), pr = std::move(promise),
+                            future_id = future.id()](Try<T>&& t) mutable {
       if (t.hasException()) {
         try {
           std::rethrow_exception(std::move(t).exception());
         } catch (ET& e) {
           try {
             auto f = std::invoke(std::forward<DF>(fn), e);
+            f.set_promise_waiter(future_id);
             std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
               pr.setTry(std::move(t));
             });
@@ -481,6 +500,24 @@ class [[nodiscard]] Future {
       }
     });
     return future;
+  }
+
+  auto set_promise_waiter(async_registry::AsyncWaiter waiter) {
+    if (_state != nullptr) {
+      _state->set_promise_waiter(waiter);
+    }
+  }
+  auto set_promise_waiter(async_registry::SyncWaiter waiter) {
+    if (_state != nullptr) {
+      _state->set_promise_waiter(waiter);
+    }
+  }
+  auto id() -> void* {
+    if (_state != nullptr) {
+      return _state->id();
+    } else {
+      return nullptr;
+    }
   }
 
  private:

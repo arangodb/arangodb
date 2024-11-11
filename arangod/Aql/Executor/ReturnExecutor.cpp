@@ -22,15 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReturnExecutor.h"
+
 #include "Aql/AqlValue.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Exceptions.h"
 
 #include <algorithm>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, bool doCount)
     : _inputRegisterId(inputRegister), _doCount(doCount) {
@@ -110,3 +111,7 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   // Otherwise we do not know.
   return call.getLimit();
 }
+
+template class ExecutionBlockImpl<ReturnExecutor>;
+
+}  // namespace arangodb::aql

@@ -50,6 +50,8 @@
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/QueryInfoLoggerFeature.h"
+#include "AsyncRegistryServer/Feature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/directories.h"

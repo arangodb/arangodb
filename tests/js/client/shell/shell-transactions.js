@@ -31,7 +31,8 @@ const arangodb = require('@arangodb');
 const db = arangodb.db;
 const testHelper = require('@arangodb/test-helper').helper;
 const {activateFailure} = require('@arangodb/test-helper');
-const isCluster = require("internal").isCluster();
+const isCluster = internal.isCluster();
+let IM = global.instanceManager;
 
 let compareStringIds = function (l, r) {
   'use strict';
@@ -69,13 +70,13 @@ function transactionFailuresSuite () {
   return {
 
     setUp: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
 
       db._drop(cn);
       c = null;
@@ -98,7 +99,7 @@ function transactionFailuresSuite () {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       assertEqual(1, c.count());
       assertEqual("baz", c.document("foobar").value);
     },
@@ -134,7 +135,7 @@ function transactionFailuresSuite () {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       assertEqual(100, c.count());
     },
     
@@ -170,7 +171,7 @@ function transactionFailuresSuite () {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       assertEqual(1, c.count());
       assertEqual("baz", c.document("foobar").value);
     }
@@ -186,13 +187,13 @@ function transactionRevisionsSuite () {
   return {
 
     setUp: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
     },
 
@@ -1621,6 +1622,22 @@ function transactionOperationsSuite () {
       require('@arangodb').db._executeTransaction(obj);
       assertEqual(1, c1.count());
       assertEqual([ 'foo' ], sortedKeys(c1));
+    },
+
+    testReadWithCache: function() {
+
+      c1 = db._create(cn1, {cacheEnabled: true});
+      let trx = db._createTransaction({
+        collections: {read: [cn1]}
+      });
+
+      assertEqual(trx.collection(cn1).exists("baz"), false);
+
+      // insert and read the document
+      c1.insert({_key: "baz"});
+      c1.document("baz");
+
+      assertEqual(trx.collection(cn1).exists("baz"), false);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -4152,7 +4169,7 @@ function transactionTraversalSuite () {
 // / @brief executes the test suites
 // //////////////////////////////////////////////////////////////////////////////
 
-if (arango.POST("/_admin/execute", "return require('internal').debugCanUseFailAt();")) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(transactionFailuresSuite);
 }
 jsunity.run(transactionRevisionsSuite);
