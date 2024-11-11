@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-483: add support for usePlanCache in editor UI.
+
 * Fix a crash with async prefetch and user defined functions in AQL. This
   fixes BTS-2003.
 
