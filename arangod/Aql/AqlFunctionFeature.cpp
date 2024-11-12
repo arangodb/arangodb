@@ -27,6 +27,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
+#include "RestServer/VectorIndexFeature.h"
 
 using namespace arangodb::application_features;
 
@@ -586,16 +587,19 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &functions::MakeDistributeGraphInput});
-  add({"APPROX_NEAR_COSINE", ".,.",
-       Function::makeFlags(FF::Deterministic, FF::Cacheable,
-                           FF::CanRunOnDBServerCluster,
-                           FF::CanRunOnDBServerOneShard),
-       &functions::ApproxNearCosine});
-  add({"APPROX_NEAR_L2", ".,.",
-       Function::makeFlags(FF::Deterministic, FF::Cacheable,
-                           FF::CanRunOnDBServerCluster,
-                           FF::CanRunOnDBServerOneShard),
-       &functions::ApproxNearL2});
+
+  if (server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+    add({"APPROX_NEAR_COSINE", ".,.",
+         Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                             FF::CanRunOnDBServerCluster,
+                             FF::CanRunOnDBServerOneShard),
+         &functions::ApproxNearCosine});
+    add({"APPROX_NEAR_L2", ".,.",
+         Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                             FF::CanRunOnDBServerCluster,
+                             FF::CanRunOnDBServerOneShard),
+         &functions::ApproxNearL2});
+  }
 #ifdef USE_ENTERPRISE
   add({"SELECT_SMART_DISTRIBUTE_GRAPH_INPUT", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,

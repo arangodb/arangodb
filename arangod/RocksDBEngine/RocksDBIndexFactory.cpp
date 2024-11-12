@@ -24,6 +24,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
@@ -43,6 +44,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
+#include "RestServer/VectorIndexFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -356,6 +358,13 @@ struct VectorIndexFactory : public DefaultIndexFactory {
       velocypack::Builder& normalized, velocypack::Slice definition,
       bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
+
+    if (!_server.getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "vector index feature is not enabled. Run ArangoDB with "
+              "`--experimental-vector-index` flag turned on."};
+    }
+
     normalized.add(StaticStrings::IndexType,
                    velocypack::Value(Index::oldtypeName(_type)));
 
@@ -483,9 +492,9 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   emplace("zkd", zkdIndexFactory);
   emplace("mdi", mdiIndexFactory);
   emplace("mdi-prefixed", mdiPrefixedIndexFactory);
-  emplace("vector", vectorIndexFactory);
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
           iresearchInvertedIndexFactory);
+  emplace("vector", vectorIndexFactory);
 }
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>

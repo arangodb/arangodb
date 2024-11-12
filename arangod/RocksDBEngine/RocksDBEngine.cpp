@@ -69,6 +69,7 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DumpLimitsFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
+#include "RestServer/VectorIndexFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Replication2/Storage/LogStorageMethods.h"
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcher.h"
@@ -343,6 +344,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _sortingMethod(
           arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
   startsAfter<BasicFeaturePhaseServer>();
+  startsAfter<VectorIndexFeature>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
   startsAfter<RocksDBOptionFeature>();
@@ -1151,7 +1153,9 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
-  addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
+  if (server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+    addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
+  }
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -1223,8 +1227,10 @@ void RocksDBEngine::start() {
   TRI_ASSERT(RocksDBColumnFamilyManager::get(
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
-  RocksDBColumnFamilyManager::set(
-      RocksDBColumnFamilyManager::Family::VectorIndex, cfHandles[10]);
+  if (server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+    RocksDBColumnFamilyManager::set(
+        RocksDBColumnFamilyManager::Family::VectorIndex, cfHandles[10]);
+  }
 
   // will crash the process if version does not match
   arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted,
