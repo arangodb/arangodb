@@ -1,3 +1,4 @@
+import { InfoTooltip } from "@arangodb/ui";
 import {
   Box,
   Button,
@@ -17,7 +18,6 @@ import {
   ModalFooter,
   ModalHeader
 } from "../../../../components/modal";
-import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { getCurrentDB } from "../../../../utils/arangoClient";
 import { useGraph } from "../GraphContext";
 

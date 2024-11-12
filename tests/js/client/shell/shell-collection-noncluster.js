@@ -123,7 +123,7 @@ function CollectionSuite () {
       // Test Selectivity Estimates
       {
         waitForEstimatorSync();  // make sure estimates are consistent
-        let indexes = c.getIndexes(true);
+        let indexes = c.indexes(true);
         for (let i of indexes) {
           switch (i.type) {
             case 'primary':
@@ -295,7 +295,7 @@ function CollectionSuite () {
           }
 
           // check if edge cache is present
-          let idxs = c.getIndexes(true);
+          let idxs = c.indexes(true);
           assertEqual("edge", idxs[1].type, idxs);
 
           let initial = [];
@@ -312,7 +312,7 @@ function CollectionSuite () {
           internal.wait(3);
 
           // checking if edge cache grew
-          idxs = c.getIndexes(true);
+          idxs = c.indexes(true);
           idxs.forEach(function(idx, i) {
             if (idx.figures.cacheInUse) {
               assertTrue(idx.figures.cacheSize >= initial[i].cacheSize, idx);
@@ -325,7 +325,7 @@ function CollectionSuite () {
             c.outEdges("c/v" + (i / 100));
             c.inEdges("c/v" + (i / 100));
           }
-          idxs = c.getIndexes(true);
+          idxs = c.indexes(true);
           // cache was filled with same queries, hit rate must now increase
           idxs.forEach(function(idx, i) {
             if (idx.figures.cacheInUse) {
@@ -340,7 +340,7 @@ function CollectionSuite () {
             c.outEdges("c/v" + (i / 100));
             c.inEdges("c/v" + (i / 100));
           }
-          idxs = c.getIndexes(true);
+          idxs = c.indexes(true);
           // cache was filled with same queries, hit rate must be higher
           idxs.forEach(function(idx, i) {
             if (idx.figures.cacheInUse) {

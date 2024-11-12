@@ -98,7 +98,7 @@ function recoverySuite () {
     testNoSyncSingleAttributeHashIndexInfo: function() {
       let c = db._collection(colName1);
       assertEqual(c.count(), 1000);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value' ], idx.fields);
@@ -117,14 +117,14 @@ function recoverySuite () {
 
     testNoSyncSingleAttributeHashIndexEstimate: function () {
       let c = db._collection(colName1);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertEqual(est1, idx.selectivityEstimate);
     },
 
     testNoSyncNestedAttributeHashIndexInfo: function() {
       let c = db._collection(colName2);
       assertEqual(c.count(), 1000);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertTrue(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'a.value' ], idx.fields);
@@ -143,13 +143,13 @@ function recoverySuite () {
 
     testNoSyncNestedAttributeHashIndexEstimate: function () {
       let c = db._collection(colName2);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertEqual(est2, idx.selectivityEstimate);
     },
 
     testNoSyncManyAttributesHashIndexInfo: function() {
       let c = db._collection(colName3);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'a', 'b' ], idx.fields);
@@ -170,7 +170,7 @@ function recoverySuite () {
     testNoSyncManyAttributesHashIndexEstimate: function () {
       let c = db._collection(colName3);
       assertEqual(c.count(), 1000);
-      let idx = c.getIndexes()[1];
+      let idx = c.indexes()[1];
       assertEqual(est3, idx.selectivityEstimate);
     },
 

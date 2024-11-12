@@ -51,40 +51,40 @@ function nestedArraySimpleSuite () {
 
     // try with hash index on value
     var idx = c.ensureIndex({ type: "hash", fields: [ "value" ] });
-    assertEqual(2, c.getIndexes().length);
+    assertEqual(2, c.indexes().length);
     
     result = db._query(q).toArray().sort();
     assertEqual(expected, result);
     assertEqual(useIndexForSimple, indexUsed(q));
 
     c.dropIndex(idx);
-    assertEqual(1, c.getIndexes().length);
+    assertEqual(1, c.indexes().length);
     
     // try with hash index on value[*]
     idx = c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
-    assertEqual(2, c.getIndexes().length);
+    assertEqual(2, c.indexes().length);
     
     result = db._query(q).toArray().sort();
     assertEqual(expected, result);
     assertEqual(useIndexForArray, indexUsed(q));
     
     c.dropIndex(idx);
-    assertEqual(1, c.getIndexes().length);
+    assertEqual(1, c.indexes().length);
     
     // try with skiplist ndex on value
     idx = c.ensureIndex({ type: "skiplist", fields: [ "value" ] });
-    assertEqual(2, c.getIndexes().length);
+    assertEqual(2, c.indexes().length);
     
     result = db._query(q).toArray().sort();
     assertEqual(expected, result);
     assertEqual(useIndexForSimple, indexUsed(q));
     
     c.dropIndex(idx);
-    assertEqual(1, c.getIndexes().length);
+    assertEqual(1, c.indexes().length);
     
     // try with skiplist index on value[*]
     c.ensureIndex({ type: "skiplist", fields: [ "value[*]" ] });
-    assertEqual(2, c.getIndexes().length);
+    assertEqual(2, c.indexes().length);
     
     result = db._query(q).toArray().sort();
     assertEqual(expected, result);

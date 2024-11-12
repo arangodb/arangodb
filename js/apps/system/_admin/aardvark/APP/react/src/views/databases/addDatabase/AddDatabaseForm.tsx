@@ -1,12 +1,9 @@
+import { InfoTooltip, InputControl, MultiSelectControl, SwitchControl } from "@arangodb/ui";
 import { Divider, FormLabel, Grid, Stack, Text } from "@chakra-ui/react";
-import React from "react";
-import { InputControl } from "../../../components/form/InputControl";
-import { useDatabasesContext } from "../DatabasesContext";
 import { useField } from "formik";
-import { SwitchControl } from "../../../components/form/SwitchControl";
-import { MultiSelectControl } from "../../../components/form/MultiSelectControl";
+import React from "react";
 import { useFetchUsers } from "../../users/useFetchUsers";
-import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
+import { useDatabasesContext } from "../DatabasesContext";
 
 export const AddDatabaseForm = ({
   initialFocusRef

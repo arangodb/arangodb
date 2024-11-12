@@ -104,7 +104,7 @@ function recoverySuite() {
 
       let checkIndex = function (indexName, analyzer, includeAllFields, hasFields) {
         let c = db._collection("UnitTestsRecoveryDummy");
-        let indexes = c.getIndexes().filter(i => i.type === "inverted" && i.name === indexName);
+        let indexes = c.indexes().filter(i => i.type === "inverted" && i.name === indexName);
         assertEqual(1, indexes.length);
 
         let i = indexes[0];
@@ -147,7 +147,7 @@ function recoverySuite() {
       }
       let figures;
       for (let i = 0; i < 100; ++i) {
-        figures = db._collection('UnitTestsRecoveryDummy').getIndexes(true, true)
+        figures = db._collection('UnitTestsRecoveryDummy').indexes(true, true)
           .find(e => e.name === "i1")
           .figures;
         if (figures.numDocs > 500) {

@@ -85,7 +85,7 @@ function optimizeNonVertexCentricIndexesSuite() {
 
     tearDown: () => {
       // After each test get rid of all superflous indexes.
-      var idxs = db[en].getIndexes();
+      var idxs = db[en].indexes();
       for (let i = 2; i < idxs.length; ++i) {
         db[en].dropIndex(idxs[i].id);
       }

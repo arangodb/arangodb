@@ -33,6 +33,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 const { sanHandler } = require('@arangodb/testutils/san-file-handler');
 const executeExternal = internal.executeExternal;
+const isCov = require("@arangodb/test-helper").versionHas('coverage');
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -312,6 +313,9 @@ function makeArgsArangosh (options) {
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
 
+  if (isCov) {
+    args['server.request-timeout'] = 1200 * 4; // quadruple the default
+  }
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
   }
@@ -581,6 +585,7 @@ function rtaWaitShardsInSync(options, instanceManager) {
     print(myargs);
   }
   let rc = pu.executeAndWait(pu.ARANGOSH_BIN, myargs, options, 'arangosh', instanceManager.rootDir, options.coreCheck);
+  return rc;
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangoimport

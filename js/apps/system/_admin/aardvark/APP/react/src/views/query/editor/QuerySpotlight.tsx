@@ -1,9 +1,8 @@
+import { SingleSelect, OptionType } from "@arangodb/ui";
 import { Box } from "@chakra-ui/react";
 import React from "react";
 import { FilterOptionOption } from "react-select/dist/declarations/src/filters";
 import { Modal } from "../../../components/modal";
-import { OptionType } from "../../../components/select/SelectBase";
-import SingleSelect from "../../../components/select/SingleSelect";
 import { useQueryContext } from "../QueryContextProvider";
 import { useQuerySpotlightOptions } from "./useQuerySpotlightOptions";
 

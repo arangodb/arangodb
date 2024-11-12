@@ -111,7 +111,7 @@ const recoverySuite = function () {
 
     testIndexEstimates: () => {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
-      let indexes = c.getIndexes(true);
+      let indexes = c.indexes(true);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':

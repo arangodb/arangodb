@@ -1,6 +1,6 @@
+import { OptionType } from "@arangodb/ui";
 import { CollectionMetadata, CollectionType } from "arangojs/collection";
 import useSWR from "swr";
-import { OptionType } from "../../../components/select/SelectBase";
 import {
   getApiRouteForCurrentDB,
   getCurrentDB

@@ -1,5 +1,5 @@
+import { OptionType } from "@arangodb/ui";
 import { useEffect, useState } from "react";
-import { OptionType } from "../../../../components/select/SelectBase";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
 const convertNodeStartToValues = (nodeStart?: string) => {
