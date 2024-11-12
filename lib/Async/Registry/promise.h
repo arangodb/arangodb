@@ -160,7 +160,7 @@ auto inspect(Inspector& f, PromiseSnapshot& x) {
 }
 struct Promise {
   Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
-          std::source_location location);
+          RequesterIdentifier requester, std::source_location location);
   ~Promise() = default;
 
   auto mark_for_deletion() noexcept -> void;
@@ -195,7 +195,8 @@ struct Promise {
 
 struct AddToAsyncRegistry {
   AddToAsyncRegistry() = default;
-  AddToAsyncRegistry(std::source_location loc);
+  AddToAsyncRegistry(std::source_location loc, RequesterIdentifier requester = {
+                                                   std::this_thread::get_id()});
   AddToAsyncRegistry(AddToAsyncRegistry const&) = delete;
   AddToAsyncRegistry& operator=(AddToAsyncRegistry const&) = delete;
   AddToAsyncRegistry(AddToAsyncRegistry&&) = delete;

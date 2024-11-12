@@ -71,7 +71,8 @@ ThreadRegistry::~ThreadRegistry() noexcept {
   cleanup();
 }
 
-auto ThreadRegistry::add_promise(std::source_location location) noexcept
+auto ThreadRegistry::add_promise(std::source_location location,
+                                 RequesterIdentifier requester) noexcept
     -> Promise* {
   // promise needs to live on the same thread as this registry
   ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id)
@@ -83,8 +84,8 @@ auto ThreadRegistry::add_promise(std::source_location location) noexcept
     metrics->promises_total->count();
   }
   auto current_head = promise_head.load(std::memory_order_relaxed);
-  auto promise =
-      new Promise{current_head, shared_from_this(), std::move(location)};
+  auto promise = new Promise{current_head, shared_from_this(),
+                             std::this_thread::get_id(), std::move(location)};
   if (current_head != nullptr) {
     current_head->previous = promise;
   }

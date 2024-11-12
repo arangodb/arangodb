@@ -28,10 +28,12 @@
 using namespace arangodb::async_registry;
 
 Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
+                 RequesterIdentifier requester,
                  std::source_location entry_point)
     : thread{registry->thread},
       source_location{entry_point.file_name(), entry_point.function_name(),
                       entry_point.line()},
+      requester{Requester{.is_waiting = false, .identifier = requester}},
       registry{std::move(registry)},
       next{next} {}
 
@@ -39,8 +41,10 @@ auto Promise::mark_for_deletion() noexcept -> void {
   registry->mark_for_deletion(this);
 }
 
-AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc)
-    : promise_in_registry{get_thread_registry().add_promise(std::move(loc))} {}
+AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc,
+                                       RequesterIdentifier requester)
+    : promise_in_registry{
+          get_thread_registry().add_promise(std::move(loc), requester)} {}
 AddToAsyncRegistry::~AddToAsyncRegistry() {
   if (promise_in_registry != nullptr) {
     promise_in_registry->mark_for_deletion();
