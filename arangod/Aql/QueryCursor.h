@@ -26,6 +26,8 @@
 
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"

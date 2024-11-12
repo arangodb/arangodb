@@ -30,9 +30,12 @@
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResult.h"
-#include "Basics/Guarded.h"
 #include "Aql/QueryString.h"
+#include "Basics/Guarded.h"
 #include "Basics/ResourceUsage.h"
+#include "Futures/Future.h"
+#include "Futures/Try.h"
+#include "Futures/Unit.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
