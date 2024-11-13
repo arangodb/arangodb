@@ -1,3 +1,11 @@
+v3.11.13 (XXXX-XX-XX)
+---------------------
+
+* Fix leader resignation race in coordinator, which lead to forgotten
+  collection read locks on dbservers, which in turn could lead to deadlocks
+  in the cluster.
+
+
 v3.11.12 (2024-10-31)
 ---------------------
 

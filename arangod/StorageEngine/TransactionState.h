@@ -283,14 +283,27 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   }
 
   [[nodiscard]] bool knowsServer(std::string_view uuid) const {
+    if (uuid.starts_with('_')) {
+      uuid = uuid.substr(1);
+    }
     return _knownServers.find(uuid) != _knownServers.end();
   }
 
   /// @brief add a server to the known set
-  void addKnownServer(std::string_view uuid) { _knownServers.emplace(uuid); }
+  void addKnownServer(std::string_view uuid) {
+    if (uuid.starts_with('_')) {
+      uuid = uuid.substr(1);
+    }
+    _knownServers.emplace(uuid);
+  }
 
   /// @brief remove a server from the known set
-  void removeKnownServer(std::string_view uuid) { _knownServers.erase(uuid); }
+  void removeKnownServer(std::string_view uuid) {
+    if (uuid.starts_with('_')) {
+      uuid = uuid.substr(1);
+    }
+    _knownServers.erase(uuid);
+  }
 
   void clearKnownServers() { _knownServers.clear(); }
 
