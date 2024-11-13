@@ -349,9 +349,13 @@ function launchInShellBG  (file) {
   let IM = global.instanceManager;
   let args = makeArgsArangosh(IM.options);
   const logFile = `file://${file}.log`;
+  let timeout = 30;
+  if (isCov) {
+    timeout *= 4; // quadruple the timeout
+  }
   let moreArgs = {
     'server.database': arango.getDatabaseName(),
-    'server.request-timeout': '30',
+    'server.request-timeout': timeout,
     'log.foreground-tty': 'false',
     //'log.level': ['info', 'httpclient=debug', 'V8=debug'],
     'log.output': logFile,
@@ -562,7 +566,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     print(argv);
   }
   
-  let timeout = (options.isInstrumented) ? 60 * 26 : 60 * 15;
+  let timeout = (options.isInstrumented) ? 60 * 30 : 60 * 15;
   return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
 }
 function rtaWaitShardsInSync(options, instanceManager) {
