@@ -491,7 +491,7 @@ queries.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31202);
+      .setIntroducedIn(31204);
 
   options
       ->addOption("--query.plan-cache-max-memory-usage",
@@ -502,7 +502,7 @@ queries.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31202);
+      .setIntroducedIn(31204);
 
   options
       ->addOption("--query.plan-cache-max-entry-size",
@@ -513,7 +513,7 @@ queries.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31202);
+      .setIntroducedIn(31204);
   options
       ->addOption("--query.plan-cache-invalidation-time",
                   "The time in seconds after which a query plan is invalidated "

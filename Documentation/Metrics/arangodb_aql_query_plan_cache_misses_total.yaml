@@ -1,5 +1,5 @@
 name: arangodb_aql_query_plan_cache_misses_total
-introducedIn: "3.12.3"
+introducedIn: "3.12.4"
 help: |
   Total number of lookup misses in the AQL query plan cache.
 unit: number
