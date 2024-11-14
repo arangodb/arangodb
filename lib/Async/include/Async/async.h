@@ -1,15 +1,16 @@
 #pragma once
 
 #include "Async/Registry/promise.h"
+#include "Async/Registry/registry.h"
+#include "Async/Registry/registry_variable.h"
 #include "Async/coro-utils.h"
 #include "Async/expected.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Utils/ExecContext.h"
+#include "Inspection/Format.h"
 
 #include <coroutine>
 #include <atomic>
+#include <future>
 #include <stdexcept>
 #include <utility>
 #include <source_location>
@@ -26,7 +27,9 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
   using promise_type = async_promise<T>;
 
   async_promise_base(std::source_location loc)
-      : async_registry::AddToAsyncRegistry{std::move(loc)} {}
+      : async_registry::AddToAsyncRegistry{std::move(loc)} {
+    *async_registry::get_current_coroutine() = {id()};
+  }
 
   std::suspend_never initial_suspend() noexcept {
     promise_in_registry->state.store(async_registry::State::Running);
@@ -65,6 +68,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
     struct awaitable {
       bool await_ready() { return inner_awaitable.await_ready(); }
       auto await_suspend(std::coroutine_handle<> handle) {
+        outer_promise->update_current_coroutine();
         outer_promise->promise_in_registry->state.store(
             async_registry::State::Suspended);
         ExecContext::set(outer_promise->_callerExecContext);
@@ -94,7 +98,10 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
         this, get_awaitable_object(std::forward<U>(co_awaited_expression)),
         ExecContext::currentAsShared()};
   }
-  void unhandled_exception() { _value.set_exception(std::current_exception()); }
+  void unhandled_exception() {
+    _value.set_exception(std::current_exception());
+    update_current_coroutine();
+  }
   auto get_return_object() {
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
@@ -115,6 +122,7 @@ struct async_promise : async_promise_base<T> {
     async_registry::AddToAsyncRegistry::update_state(
         async_registry::State::Resolved);
     async_registry::AddToAsyncRegistry::update_source_location(loc);
+    async_promise_base<T>::update_current_coroutine();
     async_promise_base<T>::_value.emplace(std::forward<V>(v));
   }
 };
@@ -127,6 +135,7 @@ struct async_promise<void> : async_promise_base<void> {
     async_registry::AddToAsyncRegistry::update_state(
         async_registry::State::Resolved);
     async_registry::AddToAsyncRegistry::update_source_location(loc);
+    update_current_coroutine();
     async_promise_base<void>::_value.emplace();
   }
 };

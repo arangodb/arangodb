@@ -195,37 +195,18 @@ struct Promise {
 
 struct AddToAsyncRegistry {
   AddToAsyncRegistry() = default;
-  AddToAsyncRegistry(std::source_location loc, RequesterIdentifier requester = {
-                                                   std::this_thread::get_id()});
+  AddToAsyncRegistry(std::source_location loc);
   AddToAsyncRegistry(AddToAsyncRegistry const&) = delete;
   AddToAsyncRegistry& operator=(AddToAsyncRegistry const&) = delete;
   AddToAsyncRegistry(AddToAsyncRegistry&&) = delete;
   AddToAsyncRegistry& operator=(AddToAsyncRegistry&&) = delete;
   ~AddToAsyncRegistry();
 
-  auto set_promise_waiter(RequesterIdentifier requester) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->requester.store(
-          Requester{.is_waiting = true, .identifier = requester});
-    }
-  }
-  auto id() -> void* {
-    if (promise_in_registry != nullptr) {
-      return promise_in_registry->id();
-    } else {
-      return nullptr;
-    }
-  }
-  auto update_source_location(std::source_location loc) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->source_location.line.store(loc.line());
-    }
-  }
-  auto update_state(State state) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->state.store(state);
-    }
-  }
+  auto set_promise_waiter(RequesterIdentifier requester) -> void;
+  auto id() -> void*;
+  auto update_source_location(std::source_location loc) -> void;
+  auto update_state(State state) -> void;
+  auto update_current_coroutine() -> void;
 
  private:
   struct noop {

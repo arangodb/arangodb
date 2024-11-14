@@ -84,8 +84,8 @@ auto ThreadRegistry::add_promise(std::source_location location,
     metrics->promises_total->count();
   }
   auto current_head = promise_head.load(std::memory_order_relaxed);
-  auto promise = new Promise{current_head, shared_from_this(),
-                             std::this_thread::get_id(), std::move(location)};
+  auto promise = new Promise{current_head, shared_from_this(), requester,
+                             std::move(location)};
   if (current_head != nullptr) {
     current_head->previous = promise;
   }
