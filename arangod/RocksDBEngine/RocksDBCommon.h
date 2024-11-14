@@ -108,5 +108,20 @@ void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds,
   }
 }
 
+inline auto accessDocumentPath(VPackSlice doc,
+                               std::vector<basics::AttributeName> const& path)
+    -> VPackSlice {
+  for (auto&& attrib : path) {
+    TRI_ASSERT(attrib.shouldExpand == false);
+    if (!doc.isObject()) {
+      return VPackSlice::noneSlice();
+    }
+
+    doc = doc.get(attrib.name);
+  }
+
+  return doc;
+}
+
 }  // namespace rocksutils
 }  // namespace arangodb

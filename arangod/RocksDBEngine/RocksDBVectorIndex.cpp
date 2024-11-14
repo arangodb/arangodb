@@ -322,22 +322,6 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   return {std::move(labels), std::move(distances)};
 }
 
-// TODO Move away, also remove from MDIIndex.cpp
-auto accessDocumentPath(VPackSlice doc,
-                        std::vector<basics::AttributeName> const& path)
-    -> VPackSlice {
-  for (auto&& attrib : path) {
-    TRI_ASSERT(attrib.shouldExpand == false);
-    if (!doc.isObject()) {
-      return VPackSlice::noneSlice();
-    }
-
-    doc = doc.get(attrib.name);
-  }
-
-  return doc;
-}
-
 /// @brief inserts a document into the index
 Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
                                   RocksDBMethods* methods,
@@ -351,7 +335,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
                            _definition.nLists, flatIndex.code_size);
   flatIndex.replace_invlists(&ril);
 
-  VPackSlice value = accessDocumentPath(doc, _fields[0]);
+  VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
@@ -397,7 +381,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     TRI_ASSERT(it->key().compare(upper) < 0);
 
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
-    VPackSlice value = accessDocumentPath(doc, _fields[0]);
+    VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
     if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
                                      "vector must be array of numbers!");
@@ -447,7 +431,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                            _definition.nLists, flatIndex.code_size);
   flatIndex.replace_invlists(&ril);
 
-  VPackSlice value = accessDocumentPath(doc, _fields[0]);
+  VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
   std::vector<float> input;
   input.reserve(_definition.dimension);
   if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
