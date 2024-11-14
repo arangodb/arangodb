@@ -59,7 +59,7 @@ const testPaths = {
   'shell_client_multi': [ tu.pathForTesting('common/shell/multi'), tu.pathForTesting('client/shell/multi')],
   'shell_server_only': [ tu.pathForTesting('server/shell') ],
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
-  'shell_client_aql_vector': [ tu.pathForTesting('client/aql/vector'), tu.pathForTesting('common/aql') ],
+  'shell_client_aql_vector': [ tu.pathForTesting('client/aql/vector') ],
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
   'shell_client_traffic': [ tu.pathForTesting('client/shell/traffic') ],
