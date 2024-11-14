@@ -71,6 +71,6 @@ VocbaseMetrics::~VocbaseMetrics() {
     _metricsFeature->remove(*shards_read_only_by_write_concern);
   }
   if (ServerState::instance()->isCoordinator()) {
-    _metricsFeature->remove(*shards_read_only_by_write_concern);
+    _metricsFeature->remove(*transactions_lost_subordinates);
   }
 }
