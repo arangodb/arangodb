@@ -482,19 +482,19 @@ function VectorIndexCosineTestSuite() {
                 " SORT APPROX_NEAR_COSINE(d.vector, @qp) ASC LIMIT 5 " +
                 " RETURN d";
 
-              const bindVars = {
-                  qp: randomPoint,
-              };
-              const plan = db
-                  ._createStatement({
-                      query,
-                      bindVars,
-                  })
-                  .explain().plan;
-              const indexNodes = plan.nodes.filter(function(n) {
-                  return n.type === "EnumerateNearVectorNode";
-              });
-              assertEqual(0, indexNodes.length);
+            const bindVars = {
+                qp: randomPoint,
+            };
+            const plan = db
+                ._createStatement({
+                    query,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(0, indexNodes.length);
         },
 
     };
