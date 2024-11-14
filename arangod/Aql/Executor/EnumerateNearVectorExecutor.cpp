@@ -54,8 +54,8 @@ void EnumerateNearVectorsExecutor::fillInput(
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     AqlValue value = input.getValue(docRegId);
-    std::vector<float> vectorInput;
-    vectorInput.reserve(_infos.index->getVectorIndexDefinition().dimension);
+    // std::vector<float> vectorInput;
+    // vectorInput.reserve(_infos.index->getVectorIndexDefinition().dimension);
 
     // TODO currently we do not accept anything else then array
     if (!value.isArray()) {
@@ -66,27 +66,22 @@ void EnumerateNearVectorsExecutor::fillInput(
               value.getTypeString()));
     }
 
-    // TODO if deserializeWithStatus could accept span this vectorInput could
-    // be optimized away
-    if (auto res =
-            velocypack::deserializeWithStatus(value.slice(), vectorInput);
-        !res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          "could not read input query point");
+    std::size_t vectorComponentsCount{0};
+    for (arangodb::velocypack::ArrayIterator itr(value.slice()); itr.valid();
+         ++itr, ++vectorComponentsCount) {
+      inputRowsJoined.push_back(itr.value().getDouble());
     }
-    if (vectorInput.size() !=
+
+    if (vectorComponentsCount !=
         _infos.index->getVectorIndexDefinition().dimension) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
           fmt::format("a vector must be of dimension {}, but is {}",
                       _infos.index->getVectorIndexDefinition().dimension,
-                      vectorInput.size()));
+                      vectorComponentsCount));
     }
 
     _inputRows.emplace_back(input);
-    inputRowsJoined.insert(inputRowsJoined.end(), vectorInput.begin(),
-                           vectorInput.end());
   }
 }
 
