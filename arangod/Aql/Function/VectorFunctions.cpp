@@ -19,21 +19,26 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Functions.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/Functions.h"
+
+#include "Logger/LogMacros.h"
 
 namespace arangodb::aql::functions {
 
 AqlValue ApproxNearCosine(ExpressionContext* expressionContext,
                           AstNode const& node,
                           VPackFunctionParametersView parameters) {
+  LOG_TOPIC("1d8b9e", WARN, Logger::AQL) << "vector index is not being used";
   return CosineSimilarity(expressionContext, node, parameters);
 }
 
 AqlValue ApproxNearL2(ExpressionContext* expressionContext, AstNode const& node,
                       VPackFunctionParametersView parameters) {
+  LOG_TOPIC("fe17d", WARN, Logger::AQL) << "vector index is not being used";
   return L2Distance(expressionContext, node, parameters);
 }
 
