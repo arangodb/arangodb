@@ -1,3 +1,9 @@
+v3.11.13 (XXXX-XX-XX) 
+---------------------
+
+* BTS-2014: Fix delay if write hits early after a hotbackup restore.
+
+
 v3.11.12 (2024-10-31)
 ---------------------
 
