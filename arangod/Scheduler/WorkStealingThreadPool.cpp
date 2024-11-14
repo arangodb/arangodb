@@ -210,6 +210,8 @@ void WorkStealingThreadPool::ThreadState::run() noexcept {
     maxStealAttempts = totalMaxStealAttempts;
   };
 
+  constexpr uint64_t GC_INTERVAL = 10;  // every 10 iterations
+  std::size_t work_counter = 0;
   while (!stop.load(std::memory_order_relaxed)) {
     std::unique_lock guard(mutex);
     if (!_queue.empty()) {
@@ -261,6 +263,11 @@ void WorkStealingThreadPool::ThreadState::run() noexcept {
         basics::cpu_relax();
         ++stealAttempts;
       }
+    }
+
+    work_counter = (work_counter + 1) % GC_INTERVAL;
+    if (work_counter == 0) {
+      async_registry::get_thread_registry().garbage_collect();
     }
   }
 }

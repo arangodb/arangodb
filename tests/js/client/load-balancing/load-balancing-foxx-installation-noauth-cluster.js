@@ -60,15 +60,18 @@ const getEncodedFoxxZipFile = () => {
   return base64Encode(itzpapalotlZip);
 };
 
+const isCov = require("@arangodb/test-helper").versionHas('coverage');
+
 function sendRequest(method, endpoint, body, usePrimary) {
   let res;
   const i = usePrimary ? 0 : 1;
-
+  let timeout = (isCov)?120:10;
   try {
     const envelope = {
       body,
       method,
-      url: `${coordinators[i]}${endpoint}`
+      url: `${coordinators[i]}${endpoint}`,
+      options: { timeout: timeout}
     };
     res = request(envelope);
   } catch (err) {
@@ -76,6 +79,7 @@ function sendRequest(method, endpoint, body, usePrimary) {
     return {};
   }
   assertTrue(res.hasOwnProperty('body'), JSON.stringify(res));
+  assertTrue(res.body !== undefined, JSON.stringify(res));
   let resultBody = res.body;
   if (typeof resultBody === "string") {
     resultBody = JSON.parse(resultBody);

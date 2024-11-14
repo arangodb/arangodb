@@ -281,7 +281,7 @@ class runLocalInArangoshRunner extends testRunnerBase {
           timeout: true,
           forceTerminate: true,
           status: false,
-          message: `test aborted due to ${require('internal').getDeadlineReasonString()}. Original test status: ${JSON.stringify(result)}`,
+          message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(result)}`,
         };
       }
       if (result === undefined) {
