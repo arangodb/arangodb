@@ -603,16 +603,23 @@ Result FollowerInfo::persistInAgency(bool isRemove,
           LOG_TOPIC("57c84", ERR, Logger::CLUSTER)
               << "Found: " << currentEntry.toJson();
         }
-        // We have to prevent an endless loop in this case, if the collection
-        // has been dropped in the agency in the meantime
-        ++badCurrentCount;
-        if (badCurrentCount > 30) {
-          // this retries for 15s, if current is bad for such a long time, we
-          // assume that the collection has been dropped in the meantime:
-          LOG_TOPIC("8972b", INFO, Logger::CLUSTER)
-              << "giving up persisting follower info for dropped collection";
-          return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-        }
+        // If we get here and the Current/Collections entry for this
+        // collection is not an object, then our task here is obviously
+        // meaningless. Since our task in life is to update the Current
+        // entry, there is nothing to do. Note that this can happen if
+        // the collection has been dropped in the meantime, or if we are
+        // directly after a hotbackup restore and this collection has
+        // existed before and after the restore. In particular, we do want
+        // to delay things unduly, if we are coming from
+        //   updateFailoverCandidates
+        //   allowedToWrite
+        // which can happen any time even directly after a hotbackup restore.
+        // For this particular case it is also OK to return
+        //   TRI_ERROR_ARANGO_DATABASE_NOT_FOUND
+        // since the actual error code is not checked in this case.
+        LOG_TOPIC("8972b", INFO, Logger::CLUSTER)
+            << "giving up persisting follower info for dropped collection";
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
       } else {
         if (!planEntry.isArray() || planEntry.length() == 0 ||
             !planEntry[0].isString() ||
