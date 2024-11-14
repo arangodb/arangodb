@@ -143,6 +143,10 @@ devel
   bugs which could happen on upgrade to 3.12 because funny international
   strings are indexed in VPack indexes.
 
+* Implements a faster encoding of doubles to a memcmp format. Makes it a cmake option.
+  Makes sure that it does not produce different values as the old/slower implementation.
+  Removes unneeded db._explain in a test
+
 * Improve the observability of asynchronous operations by saving all ongoing
   asynchronous operations (associated with async<T> and Future<T>) in a registry.
   A REST call gives information about all these operations via a list of all
