@@ -83,6 +83,7 @@ class EnumerateNearVectorsExecutor {
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateNearVectorsExecutorInfos;
+  // TODO(jbajic) add stats
   using Stats = NoStats;
 
   EnumerateNearVectorsExecutor(Fetcher&, Infos&);

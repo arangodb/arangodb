@@ -44,7 +44,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
-using Quantitizer =
+using Quantizer =
     std::variant<faiss::IndexFlat, faiss::IndexFlatL2, faiss::IndexFlatIP>;
 
 // This assertion must hold for faiss::idx_t to be used
@@ -102,7 +102,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
  private:
   UserVectorIndexDefinition _definition;
-  Quantitizer _quantizer;
+  Quantizer _quantizer;
   std::optional<TrainedData> _trainedData;
 };
 

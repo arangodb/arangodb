@@ -662,12 +662,13 @@ zkd::byte_string_view RocksDBKey::mdiUniqueIndexCurveValue(
   return mdiUniqueIndexCurveValue(slice.data(), slice.size());
 }
 
-std::uint64_t RocksDBKey::vectorVPackIndexListValue(const rocksdb::Slice& slice) {
+std::uint64_t RocksDBKey::vectorVPackIndexListValue(
+    rocksdb::Slice const& slice) {
   return vectorVPackIndexListValue(slice.data(), slice.size());
 }
 
 std::uint64_t RocksDBKey::vectorVPackIndexListValue(char const* data,
-                                                  std::uint64_t size) {
+                                                    std::uint64_t size) {
   TRI_ASSERT(data != nullptr);
   constexpr auto vectorIndexKeySize =
       sizeof(std::uint64_t) + sizeof(std::uint64_t) + sizeof(std::uint64_t);

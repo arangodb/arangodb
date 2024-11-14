@@ -88,7 +88,7 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
   }
 
   // check if APPROX function parameter is the same one as being outputted by
-  return static_cast<bool>(outVariable == attributeAccessResult.first);
+  return outVariable == attributeAccessResult.first;
 }
 
 AstNode const* getApproxNearExpression(
@@ -194,7 +194,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
   bool modified{false};
 
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  // avoid subqueries for now
   plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
   for (ExecutionNode* node : nodes) {
     auto* enumerateCollectionNode =
@@ -258,10 +257,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
       auto const* distanceVariable = sortNode->elements()[0].var;
       auto const* oldDocumentVariable = enumerateCollectionNode->outVariable();
-
-      // actually we want this to be late materialized.
-      // But this is too complicated for now. A later optimizer rule should
-      // but the late materialization into place.
       auto const* documentIdVariable = oldDocumentVariable;
 
       auto limit = limitNode->limit();

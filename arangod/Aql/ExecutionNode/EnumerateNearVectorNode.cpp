@@ -62,7 +62,9 @@ ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
   return ENUMERATE_NEAR_VECTORS;
 }
 
-size_t EnumerateNearVectorNode::getMemoryUsedBytes() const { return 0; }
+size_t EnumerateNearVectorNode::getMemoryUsedBytes() const {
+  return sizeof(*this);
+}
 
 std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     ExecutionEngine& engine) const {
@@ -114,7 +116,7 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
 }
 
 CostEstimate EnumerateNearVectorNode::estimateCost() const {
-  // TODO
+  // TODO(jbajic) check if it is accurate
   CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedNrItems *= _limit;
   return estimate;
@@ -126,6 +128,8 @@ void EnumerateNearVectorNode::getVariablesUsedHere(VarSet& vars) const {
 
 std::vector<const Variable*> EnumerateNearVectorNode::getVariablesSetHere()
     const {
+  // TODO(jbajic) the distance might not be used, and documents is materialized
+  // regardless if it is being used later on
   return {_documentOutVariable, _distanceOutVariable};
 }
 

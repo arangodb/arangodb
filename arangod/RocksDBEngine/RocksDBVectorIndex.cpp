@@ -51,7 +51,7 @@
 
 namespace arangodb {
 
-faiss::MetricType metricToFaissMetric(const SimilarityMetric metric) {
+faiss::MetricType metricToFaissMetric(SimilarityMetric const metric) {
   switch (metric) {
     case SimilarityMetric::kL2:
       return faiss::MetricType::METRIC_L2;
@@ -89,10 +89,10 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
 
   void next() override { _it->Next(); }
 
-  std::pair<faiss::idx_t, const uint8_t*> get_id_and_codes() override {
+  std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override {
     auto const docId = RocksDBKey::indexDocumentId(_it->key());
     TRI_ASSERT(_codeSize == _it->value().size());
-    const auto* value = reinterpret_cast<const uint8_t*>(_it->value().data());
+    auto const* value = reinterpret_cast<uint8_t const*>(_it->value().data());
     return {static_cast<faiss::idx_t>(docId.id()), value};
   }
 
@@ -122,23 +122,23 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
   }
 
   std::size_t list_size(std::size_t /*listNumber*/) const override {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "faiss list_size not supported");
   }
 
-  const std::uint8_t* get_codes(std::size_t /*listNumber*/) const override {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+  std::uint8_t const* get_codes(std::size_t /*listNumber*/) const override {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "faiss get_codes not supported");
   }
 
-  const faiss::idx_t* get_ids(std::size_t /*listNumber*/) const override {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+  faiss::idx_t const* get_ids(std::size_t /*listNumber*/) const override {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "faiss get_ids not supported");
   }
 
   size_t add_entries(std::size_t listNumber, std::size_t nEntry,
-                     const faiss::idx_t* ids,
-                     const std::uint8_t* code) override {
+                     faiss::idx_t const* ids,
+                     std::uint8_t const* code) override {
     for (std::size_t i = 0; i < nEntry; i++) {
       RocksDBKey rocksdbKey;
       // Can we get away with saving LocalDocumentID in key, maybe we need to
@@ -149,10 +149,14 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
 
       auto const value = RocksDBValue::VectorIndexValue(
           reinterpret_cast<const char*>(code + i * code_size), code_size);
-      auto status =
+      auto const status =
           _rocksDBMethods->PutUntracked(_cf, rocksdbKey, value.string());
 
-      TRI_ASSERT(status.ok());
+      if (!status.ok()) {
+        // Here we need to throw since there is no way to return the status
+        auto const res = rocksutils::convertStatus(status);
+        THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      }
     }
     return 0;
   }
@@ -160,11 +164,11 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
   void update_entries(std::size_t /*listNumber*/, std::size_t /*offset*/,
                       std::size_t /*n_entry*/, const faiss::idx_t* /*ids*/,
                       const std::uint8_t* /*code*/) override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   void resize(std::size_t /*listNumber*/, std::size_t /*new_size*/) override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   void remove_id(size_t list_no, faiss::idx_t id) {
@@ -175,7 +179,11 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
     rocksdbKey.constructVectorIndexValue(_index->objectId(), list_no, docId);
     auto status = _rocksDBMethods->Delete(_cf, rocksdbKey);
 
-    TRI_ASSERT(status.ok());
+    if (!status.ok()) {
+      // Here we need to throw since there is no way to return the status
+      auto const res = rocksutils::convertStatus(status);
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
   }
 
   faiss::InvertedListsIterator* get_iterator(
@@ -206,7 +214,7 @@ struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
     rocksdbInvertedLists = invertedList;
   }
 
-  void remove_id(std::vector<float>& vector, const faiss::idx_t docId) {
+  void remove_id(std::vector<float>& vector, faiss::idx_t const docId) {
     faiss::idx_t listId{0};
     quantizer->assign(1, vector.data(), &listId);
     rocksdbInvertedLists->remove_id(listId, docId);
@@ -216,10 +224,10 @@ struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
   RocksDBInvertedLists* rocksdbInvertedLists = nullptr;
 };
 
-RocksDBIndexIVFFlat createFaissIndex(auto&& quantitizer,
-                                     auto&& vectorDefinition) {
+RocksDBIndexIVFFlat createFaissIndex(auto& quantitizer,
+                                     auto& vectorDefinition) {
   return std::visit(
-      [&](auto&& quant) {
+      [&vectorDefinition](auto& quant) {
         return RocksDBIndexIVFFlat(&quant, vectorDefinition);
       },
       quantitizer);
@@ -352,14 +360,20 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
 
   if (input.size() != static_cast<std::size_t>(_definition.dimension)) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "input vector does not have correct dimension"};
+            fmt::format("input vector of {} dimension does not have the "
+                        "correct dimension of {}",
+                        input.size(), _definition.dimension)};
   }
 
   auto const docId = static_cast<faiss::idx_t>(documentId.id());
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
-  flatIndex.add_with_ids(1, input.data(), &docId);
+  try {
+    flatIndex.add_with_ids(1, input.data(), &docId);
+  } catch (basics::Exception& e) {
+    return {e.code(), e.message()};
+  }
 
   return {};
 }
@@ -450,7 +464,12 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
   auto const docId = static_cast<faiss::idx_t>(documentId.id());
-  flatIndex.remove_id(input, docId);
+
+  try {
+    flatIndex.remove_id(input, docId);
+  } catch (basics::Exception& e) {
+    return {e.code(), e.message()};
+  }
 
   return {};
 }

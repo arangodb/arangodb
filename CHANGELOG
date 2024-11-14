@@ -3,7 +3,7 @@ devel
 
 *  Add a vector index based on faiss implementation. The current vector index 
   implementation supports the L2 and cosine metrics. To create a vector index,
-  the vector field in the collection must already be populated with data. Here is an
+  the vector field(s) in the collection must already be populated with data. Here is an
   example of a vector index creation:
   ```
     db.<collection>.ensureIndex({
@@ -23,7 +23,7 @@ devel
   - `dimension`: vector dimensions, ArangoDB will also check that all the vectors
     have the correct number of components,
   - `trainingIterations`: how many training iterations will be used, 
-  The Current limitation is that a vector index can be created only on a single field.
+  The current limitation is that a vector index can be created only on a single field.
   The vector index creation has two phases, training in which the centroids are being determined
   from the subset of data, and insertion phase in which the lists are being populated.
   To trigger the vector index an appropriate `APPROX_NEAR` function must be used
@@ -35,7 +35,7 @@ devel
     LIMIT 10
     RETURN {d, distance}
   ````
-  This returns top the 10 nearest neighbors to `@queryVector`.
+  This returns the top 10 nearest neighbors to `@queryVector`.
 
 * Fix shard synchronisation race where after a shard move the new
   leader informs followers before it updates Current in the Agency. In

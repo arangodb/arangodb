@@ -3342,6 +3342,7 @@ struct SortToIndexNode final
       case EN::REMOTE:
       case EN::MATERIALIZE:
       case EN::LIMIT:  // LIMIT is criterion to stop
+      case EN::ENUMERATE_NEAR_VECTORS:
         return true;   // abort.
 
       case EN::SORT:  // pulling two sorts together is done elsewhere.
@@ -3356,9 +3357,6 @@ struct SortToIndexNode final
 
       case EN::INDEX:
         return handleIndexNode(ExecutionNode::castTo<IndexNode*>(en));
-
-      case EN::ENUMERATE_NEAR_VECTORS:
-        return true;  // TODO
       case EN::ENUMERATE_COLLECTION:
         return handleEnumerateCollectionNode(
             ExecutionNode::castTo<EnumerateCollectionNode*>(en));

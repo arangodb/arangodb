@@ -1548,7 +1548,7 @@ limited number of edge collections/shards/indexes.)");
   Enabling this option usually has the benefit of making the RocksDB
   compaction more efficient when a lot of different collections/shards/indexes
   are written to in parallel.
-  The disavantage of enabling this option is that there can be more .sst
+  The disadvantage of enabling this option is that there can be more .sst
   files than when the option is turned off, and the disk space used by
   these .sst files can be higher than if there are fewer .sst files (this
   is because there is some per-.sst file overhead).

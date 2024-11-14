@@ -318,7 +318,7 @@ class RocksDBKey {
   static zkd::byte_string_view mdiIndexCurveValue(rocksdb::Slice const& slice);
   static zkd::byte_string_view mdiUniqueIndexCurveValue(
       rocksdb::Slice const& slice);
-  static std::size_t vectorVPackIndexListValue(const rocksdb::Slice& slice);
+  static std::size_t vectorVPackIndexListValue(rocksdb::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts log index from key

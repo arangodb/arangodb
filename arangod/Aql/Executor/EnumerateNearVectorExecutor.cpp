@@ -61,7 +61,9 @@ void EnumerateNearVectorsExecutor::fillInput(
     if (!value.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          "query point must be a vector");
+          basics::StringUtils::concatT(
+              "query point must be a vector, but is a ",
+              value.getTypeString()));
     }
 
     // TODO if deserializeWithStatus could accept span this vectorInput could
@@ -77,8 +79,9 @@ void EnumerateNearVectorsExecutor::fillInput(
         _infos.index->getVectorIndexDefinition().dimension) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          fmt::format("a vector must be of dimension {}",
-                      _infos.index->getVectorIndexDefinition().dimension));
+          fmt::format("a vector must be of dimension {}, but is {}",
+                      _infos.index->getVectorIndexDefinition().dimension,
+                      vectorInput.size()));
     }
 
     _inputRows.emplace_back(input);

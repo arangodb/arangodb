@@ -447,7 +447,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
     case ENUMERATE_NEAR_VECTORS:
       return new EnumerateNearVectorNode(plan, slice);
     // should never reach this point
-    case MAX_NODE_TYPE_VALUE:
+    default:
       TRI_ASSERT(false);
   }
 
