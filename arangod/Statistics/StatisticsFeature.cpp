@@ -607,7 +607,7 @@ class StatisticsThread final : public ServerThread<ArangodServer> {
 
 StatisticsFeature::StatisticsFeature(Server& server)
     : ArangodFeature{server, *this},
-      _statistics(false),
+      _statistics(true),
       _statisticsHistory(false),
       _statisticsHistoryTouched(false),
       _statisticsAllDatabases(true),
