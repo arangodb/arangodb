@@ -577,7 +577,6 @@ Result FollowerInfo::persistInAgency(bool isRemove,
   std::string curPath = ::currentShardPath(*_docColl);
   std::string planPath = ::planShardPath(*_docColl);
   AgencyComm ac(_docColl->vocbase().server());
-  int badCurrentCount = 0;
   using namespace std::chrono_literals;
   auto wait(50ms), waitMore(wait);
   do {
