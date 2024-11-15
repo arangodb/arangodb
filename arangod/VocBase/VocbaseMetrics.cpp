@@ -67,10 +67,11 @@ VocbaseMetrics::~VocbaseMetrics() {
   if (_metricsFeature == nullptr) {
     return;
   }
-  if (ServerState::instance()->isDBServer()) {
-    _metricsFeature->remove(*shards_read_only_by_write_concern);
+
+#define DELETE_METRIC(m)           \
+  if ((m) != nullptr) {            \
+    _metricsFeature->remove(*(m)); \
   }
-  if (ServerState::instance()->isCoordinator()) {
-    _metricsFeature->remove(*transactions_lost_subordinates);
-  }
+  DELETE_METRIC(shards_read_only_by_write_concern);
+  DELETE_METRIC(transactions_lost_subordinates);
 }
