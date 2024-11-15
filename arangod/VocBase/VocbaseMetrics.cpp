@@ -30,7 +30,7 @@ DECLARE_GAUGE(arangodb_vocbase_shards_read_only_by_write_concern, std::uint64_t,
               "Number of shards that are in read-only mode because the number "
               "of in-sync replicas is lower than the write-concern");
 DECLARE_COUNTER(
-    arangodb_vocbase_transactions_lost_subordinates,
+    arangodb_vocbase_transactions_lost_subordinates_total,
     "Counts the number of lost subordinate transactions on database servers.");
 
 std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
@@ -55,7 +55,7 @@ std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
   }
   if (ServerState::instance()->isCoordinator()) {
     metrics->transactions_lost_subordinates =
-        createMetric(arangodb_vocbase_transactions_lost_subordinates{});
+        createMetric(arangodb_vocbase_transactions_lost_subordinates_total{});
   }
   metrics->_metricsFeature = &mf;
 

@@ -1,4 +1,4 @@
-name: arangodb_vocbase_transactions_lost_subordinates
+name: arangodb_vocbase_transactions_lost_subordinates_total
 introducedIn: "3.12.4"
 help: |
   Counts the number of lost subordinate transactions on database servers.
