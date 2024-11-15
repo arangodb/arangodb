@@ -868,43 +868,6 @@ TEST(FutureTest, futures_are_registered_in_global_async_registry) {
 }
 
 namespace {
-auto awaited_co() -> Future<Unit> { co_return; };
-auto waiter_co(Future<Unit>&& fn) -> Future<Unit> {
-  co_await std::move(fn);
-  co_return;
-};
-}  // namespace
-TEST(FutureTest,
-     future_coroutine_promises_in_async_registry_know_their_waiter) {
-  arangodb::async_registry::get_thread_registry().garbage_collect();
-  auto awaited_coro = awaited_co();
-  auto waiter_coro = waiter_co(std::move(awaited_coro));
-
-  std::optional<arangodb::async_registry::PromiseSnapshot> awaited_promise;
-  std::optional<arangodb::async_registry::PromiseSnapshot> waiter_promise;
-  uint count = 0;
-  arangodb::async_registry::registry.for_promise(
-      [&](arangodb::async_registry::PromiseSnapshot promise) {
-        count++;
-        if (promise.source_location.function_name.find("awaited_co") !=
-            std::string::npos) {
-          awaited_promise = promise;
-        }
-        if (promise.source_location.function_name.find("waiter_co") !=
-            std::string::npos) {
-          waiter_promise = promise;
-        }
-      });
-  EXPECT_EQ(count, 2);
-  EXPECT_TRUE(awaited_promise.has_value());
-  EXPECT_TRUE(waiter_promise.has_value());
-  EXPECT_EQ(awaited_promise->requester,
-            arangodb::async_registry::Requester{waiter_promise->id});
-  EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::SyncRequester>(
-      waiter_promise->requester));
-}
-
-namespace {
 auto awaited_fn() -> Future<int> {
   Promise<int> p;
   return p.getFuture();

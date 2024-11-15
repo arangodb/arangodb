@@ -121,15 +121,18 @@ class Promise {
 
   arangodb::futures::Future<T> getFuture();
 
-  auto update_requester(async_registry::Requester waiter) {
-    return _state->update_requester(waiter);
-  }
   auto id() -> void* { return _state->id(); }
-  auto update_source_location(std::source_location loc) {
+  auto update_source_location(std::source_location loc) -> void {
     _state->update_source_location(std::move(loc));
   }
-  auto update_state(async_registry::State state) {
+  auto update_state(async_registry::State state) -> void {
     _state->update_state(std::move(state));
+  }
+  auto update_requester(async_registry::Requester waiter) -> void {
+    return _state->update_requester(waiter);
+  }
+  auto update_current_coroutine() -> void {
+    _state->update_current_coroutine();
   }
 
  private:
