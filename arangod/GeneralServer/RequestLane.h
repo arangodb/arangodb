@@ -63,7 +63,7 @@ enum class RequestLane {
   // V8 or having high priority.
   CLUSTER_INTERNAL,
 
-  // Internal AQL requests, or continuations. Low priority.
+  // Internal AQL requests, or continuations. Medium priority.
   CLUSTER_AQL,
 
   // For requests from the DBserver to the Coordinator, and continuations on the
