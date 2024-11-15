@@ -1,6 +1,126 @@
 devel
 -----
 
+* ArangoDB now has an optional AQL query execution plan cache that can be used
+  to skip query planning and optimization when running the same queries 
+  repeatedly. This feature is currently experimental.
+
+  The plan cache is fully optional and is only considered for AQL queries that
+  have the option `usePlanCache` set to `true`. If the option is not
+  set to `true`, the plan cache is bypassed. This is also the default.
+
+  If the option is set to `true`, the query's eligibility for being cached is
+  checked first. Any queries that have any of the following query options set
+  are not eligible for plan caching:
+  - `allPlans`
+  - `explainRegisters`
+  - `inaccessibleCollections`
+  - `optimizer.rules`
+  - `shardIds`
+
+  Additionally, a query is not eligible for plan caching if it uses attribute 
+  name bind parameters, e.g. `FILTER doc.@attributeName == ...`.
+  Furthermore, queries will not be eligible for plan caching when using value
+  bind parameters in any of the following places:
+  - specifying the depths for traversals or path queries (e.g. 
+    `FOR v, e IN @min..@max OUTBOUND ...`)
+  - referring to a named graph (e.g. `GRAPH @graphName`)
+  - referring to edge collections used in traversals or path queries 
+    (e.g. `FOR v, e IN 1..2 OUTBOUND 'v/0' @ec...`)
+  - specifying the lookup value for UPSERT operations, e.g. `UPSERT @value...`)
+  If a query produces any warnings during parsing or query plan optimization, 
+  it is also not eligible for plan caching.
+  Query plans are also not eligible for caching if they contain one of the
+  following execution node types:
+  - SingleRemoteOperationNode (cluster only)
+  - MultipleRemoteModificationNode (cluster only)
+  - UpsertNode, i.e. the AQL UPSERT functionality.
+
+  If a query is eligible for plan caching, the plan cache will be checked using
+  the exact same query string and set of collection bind parameter values.
+  A cached plan entry is only considered identical to the current query if the
+  query strings are bytewise identical and the set of collection bind 
+  parameters is exactly the same (bind parameter names and bind parameter 
+  values).
+  If no plan entry can be found in the plan cache, the query is planned and 
+  optimized as usual, and the cached plan will be inserted into the plan cache.
+  Repeated executions of the same query (same query string and using the same 
+  set of collection bind parameters) will then make use of the cached plan
+  entry, potentially with different value bind parameters.
+
+  The following query options will be ignored when a cached plan is used:
+  - `joinStrategyType`
+  - `maxDNFConditionMembers`
+  - `maxNodesPerCallstack`
+
+  Whenever a query uses a cached plan from the plan cache, the query
+  result will include an attribute `planCacheKey` on the top level when
+  executing, explaining or profiling a query. The explain and profiling
+  output will also display a "plan cache key: ..." indicator to show
+  that a cached query plan was used.
+
+  The query plan cache is organized per database. It gets invalidated at the
+  following events:
+  - an existing collection gets dropped or renamed, or the properties of an
+    existing collection are modified
+  - an index is added to an existing collection or an index is dropped
+  - an existing view gets dropped or renamed, or the properties of an existing
+    view are modified
+  - a named graph is added, or an existing named graph gets dropped
+
+  Memory usage of the query plan cache can be restricted using the following
+  startup options:
+  - `--query.plan-cache-max-entries`: maximum number of plans in the query plan
+    cache in each database. The default value is 128.
+  - `--query.plan-cache-max-memory-usage`: maximum total memory usage for the
+    query plan cache in each database. The default value is 8MB.
+  - `--query.plan-cache-max-entry-size`: maximum size of an individual entry
+    in the query plan cache in each database. The default value is 2MB.
+  Note that each database has its own query plan cache, and that these options
+  are used for each individual plan cache. Also note that in a cluster, each
+  coordinator will have its own query plan cache.
+
+  There are also new APIs to clear the contents of the query plan cache and to
+  retrieve the current plan cache entries. The following HTTP REST APIs exist:
+  - HTTP DELETE `/_api/query-plan-cache` to delete all entries in the query
+    plan cache for the current database. This requires write privileges for the
+    current database.
+  - HTTP GET `/_api/query-plan-cache` to retrieve all entries in the query
+    plan cache for the current database. This requires read privileges for the
+    current database. In addition, only those query plans will be returned for
+    which the current user has at least read permissions on all collections
+    and views included in the query.
+  In a cluster, these APIs are specific to the coordinator that they are run 
+  on.
+
+  There is also a JavaScript module `@arangodb/query/plan-cache` that exposes
+  the same functionality:
+  - `require("@arangodb/aql/plan-cache`).clear()` to delete all entries in
+    the plan cache for the current database. This requires write privileges for
+    the current database.
+  - `require("@arangodb/aql/plan-cache`).toArray()` to retrieve all entries
+    in the plan cache for the current database. This requires read privileges
+    for the current database. In addition, only those query plans will be 
+    returned for which the current user has at least read permissions on all
+    collections and views included in the query.
+  In a cluster, these APIs are specific to the coordinator that they are run 
+  on.
+
+  The following metrics are exposed on a single server and each coordinator to
+  provide insights into how many query plans were served from the query plan
+  cache:
+  - `arangodb_aql_query_plan_cache_hits_total`: total number of plans looked
+    up and found in the query plan cache, across all database-specific plan
+    caches on the instance.
+  - `arangodb_aql_query_plan_cache_misses_total`: total number of plans looked
+    up and not found in the query plan cache, across all database-specific plan
+    caches on the instance.
+  - `arangodb_aql_query_plan_cache_memory_usage`: total current memory usage
+    of all query plan caches across all databases on this instance in bytes.
+
+* In replication use vpack as transport format throughout, so that even
+  large and strangely encoded numbers are transported faithfully.
+
 * BTS-2014: Fix delay if write hits early after a hotbackup restore.
 
 * Fix leader resignation race in coordinator, which lead to forgotten
@@ -137,7 +257,6 @@ devel
 
 
 3.12.2 (2024-08-21)
--------------------
 
 * FE-450: avoid scrollbars when license warning is visible.
 

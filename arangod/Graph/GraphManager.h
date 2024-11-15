@@ -29,7 +29,6 @@
 
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Graph.h"
@@ -160,6 +159,17 @@ class GraphManager {
       std::function<Result(std::unique_ptr<Graph>)> const& callback) const;
 
  private:
+  /**
+   * @brief Invalidate all query optimizer caches in the database of this
+   * GraphManager. This is necessary in the cluster when the GraphManager
+   * runs on a coordinator and all coordinators need to be informed that
+   * their query optimizer caches are now invalid, since some graph definition
+   * has been changed. This method is called in the other GraphManager
+   * methods, whenever some graph is changed on a coordinator. This is a
+   * fire-and-forget method.
+   */
+  void invalidateQueryOptimizerCaches() const;
+
   Result ensureCollections(
       Graph& graph,
       std::unordered_set<std::string>& documentCollectionsToCreate,

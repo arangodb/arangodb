@@ -177,7 +177,10 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
                   VPackValue(ServerState::instance()->getId()));
 
   if (_query.queryOptions().optimizePlanForCaching) {
-    infoBuilder.add("bindParameters", q->bindParametersAsBuilder()->slice());
+    auto bindParametersAsBuilder = q->bindParametersAsBuilder();
+    if (bindParametersAsBuilder != nullptr) {
+      infoBuilder.add("bindParameters", q->bindParametersAsBuilder()->slice());
+    }
   }
 
   addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
