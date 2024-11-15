@@ -234,10 +234,8 @@ futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
 
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
-    auto future =
-        cursors->createQueryStream(std::move(query), batchSize, ttl, retriable);
-    // future.wait();  // TODO don't wait
-    _cursor = co_await std::move(future);
+    _cursor = co_await cursors->createQueryStream(std::move(query), batchSize,
+                                                  ttl, retriable);
     // Throws if soft shutdown is ongoing!
     _cursor->setWakeupHandler(withLogContext(
         [self = shared_from_this()]() { return self->wakeupHandler(); }));
