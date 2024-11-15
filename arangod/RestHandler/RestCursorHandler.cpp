@@ -236,7 +236,7 @@ futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
     TRI_ASSERT(cursors != nullptr);
     auto future =
         cursors->createQueryStream(std::move(query), batchSize, ttl, retriable);
-    future.wait();  // TODO don't wait
+    // future.wait();  // TODO don't wait
     _cursor = co_await std::move(future);
     // Throws if soft shutdown is ongoing!
     _cursor->setWakeupHandler(withLogContext(
@@ -663,8 +663,10 @@ RestStatus RestCursorHandler::createQueryCursor() {
   }
 
   TRI_ASSERT(_query == nullptr);
-  return waitForFuture(registerQueryOrCursor(
-      body, transaction::OperationOriginAQL{"running AQL query"}));
+  return waitForFuture(
+      registerQueryOrCursor(
+          body, transaction::OperationOriginAQL{"running AQL query"}),
+      true);
 }
 
 /// @brief shows the batch given by <batch-id> if it's the last cached batch

@@ -513,9 +513,13 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {
 /// Execute the rest handler state machine. Retry the wakeup,
 /// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
-  std::lock_guard lock{_executionMutex};
+  auto guard = std::unique_lock(_executionMutex);
+  _lockAdopted = false;
   if (_state == HandlerState::PAUSED) {
     runHandlerStateMachine();
+  }
+  if (_lockAdopted) {
+    guard.release();
   }
   return _state == HandlerState::PAUSED;
 }
@@ -748,28 +752,44 @@ RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
   return --_executionCounter == 0 ? RestStatus::DONE : RestStatus::WAITING;
 }
 
-RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
+RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f,
+                                      bool adoptLock) {
   if (f.isReady()) {             // fast-path out
     f.result().throwIfFailed();  // just throw the error upwards
     return f.waitAndGet();
   }
+  _lockAdopted = adoptLock;
   TRI_ASSERT(_executionCounter == 0);
   _executionCounter = 2;
-  std::move(f).thenFinal(withLogContext(
-      [self = shared_from_this()](futures::Try<RestStatus>&& t) -> void {
-        if (t.hasException()) {
-          self->handleExceptionPtr(std::move(t).exception());
-          self->_followupRestStatus = RestStatus::DONE;
-        } else {
-          self->_followupRestStatus = t.get();
-          if (t.get() == RestStatus::WAITING) {
-            return;  // rest handler will be woken up externally
-          }
-        }
-        if (--self->_executionCounter == 0) {
-          self->wakeupHandler();
-        }
-      }));
+  std::move(f).thenFinal(withLogContext([self = shared_from_this(),
+                                         adoptLock](futures::Try<RestStatus>&&
+                                                        t) noexcept -> void {
+    // auto guard = adoptLock ? std::lock_guard(self->_executionMutex,
+    // std::adopt_lock) : std::lock_guard(self->_executionMutex);
+    auto guard =
+        adoptLock
+            ? std::unique_lock(self->_executionMutex, std::adopt_lock)
+            : std::unique_lock(
+                  self->_executionMutex,
+                  std::defer_lock);  // TODO defer lock with adoptLock==false,
+                                     // or acquire the lock?
+    if (t.hasException()) {
+      self->handleExceptionPtr(std::move(t).exception());
+      self->_followupRestStatus = RestStatus::DONE;
+    } else {
+      self->_followupRestStatus = t.get();
+      if (t.get() == RestStatus::WAITING) {
+        return;  // rest handler will be woken up externally
+      }
+    }
+    if (--self->_executionCounter == 0) {
+      TRI_ASSERT(adoptLock == guard.owns_lock());
+      if (guard.owns_lock()) {
+        guard.unlock();
+      }
+      self->wakeupHandler();
+    }
+  }));
   return --_executionCounter == 0 ? _followupRestStatus : RestStatus::WAITING;
 }
 
@@ -792,6 +812,10 @@ void RestHandler::runHandler(
     std::function<void(rest::RestHandler*)> responseCallback) {
   TRI_ASSERT(_state == HandlerState::PREPARE);
   _sendResponseCallback = std::move(responseCallback);
-  std::lock_guard guard(_executionMutex);
+  auto guard = std::unique_lock(_executionMutex);
+  _lockAdopted = false;
   runHandlerStateMachine();
+  if (_lockAdopted) {
+    guard.release();
+  }
 }

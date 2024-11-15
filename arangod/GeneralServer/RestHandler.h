@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/ResultT.h"
+#include "Basics/UnshackledMutex.h"
 #include "Futures/Unit.h"
 #include "GeneralServer/RequestLane.h"
 #include "Logger/LogContext.h"
@@ -160,7 +161,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void generateError(arangodb::Result const&);
 
   [[nodiscard]] RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
-  [[nodiscard]] RestStatus waitForFuture(futures::Future<RestStatus>&& f);
+  [[nodiscard]] RestStatus waitForFuture(futures::Future<RestStatus>&& f,
+                                         bool adoptLock = false);
 
   enum class HandlerState : uint8_t {
     PREPARE = 0,
@@ -200,8 +202,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ArangodServer& _server;
   RequestStatistics::Item _statistics;
 
+  mutable basics::UnshackledMutex _executionMutex;
+  mutable bool _lockAdopted = false;
+
  private:
-  mutable std::mutex _executionMutex;
   mutable std::atomic_uint8_t _executionCounter{0};
   mutable RestStatus _followupRestStatus;
 

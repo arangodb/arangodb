@@ -50,13 +50,13 @@ RestStatus RestSimpleQueryHandler::execute() {
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
-      return waitForFuture(allDocuments());
+      return waitForFuture(allDocuments(), true);
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH) {
       // all-keys query
-      return waitForFuture(allDocumentKeys());
+      return waitForFuture(allDocumentKeys(), true);
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE) {
       // by-example query
-      return waitForFuture(byExample());
+      return waitForFuture(byExample(), true);
     }
   }
 

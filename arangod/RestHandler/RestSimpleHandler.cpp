@@ -65,9 +65,9 @@ RestStatus RestSimpleHandler::execute() {
     std::string const& prefix = _request->requestPath();
 
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
-      return waitForFuture(removeByKeys(body));
+      return waitForFuture(removeByKeys(body), true);
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
-      return waitForFuture(lookupByKeys(body));
+      return waitForFuture(lookupByKeys(body), true);
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "unsupported value for <operation>");
