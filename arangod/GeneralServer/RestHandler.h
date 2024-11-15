@@ -55,7 +55,7 @@ class GeneralRequest;
 class RequestStatistics;
 class Result;
 
-enum class RestStatus { DONE, WAITING, FAIL };
+enum class RestStatus { DONE, WAITING };
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {

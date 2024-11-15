@@ -613,7 +613,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
       if (_cursor->isRetriable()) {
         _cursor->setLastQueryBatchObject(builder.steal());
       }
-      return RestStatus::FAIL;
+      return RestStatus::DONE;
     }
 
     generateResult(code, builder.slice(), std::move(ctx));
