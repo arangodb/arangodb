@@ -868,6 +868,63 @@ TEST(FutureTest, futures_are_registered_in_global_async_registry) {
 }
 
 namespace {
+auto find_promise_by_name(std::string_view name)
+    -> std::optional<arangodb::async_registry::PromiseSnapshot> {
+  std::optional<arangodb::async_registry::PromiseSnapshot> requested_promise =
+      std::nullopt;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::PromiseSnapshot promise) {
+        if (promise.source_location.function_name.find(name) !=
+            std::string::npos) {
+          requested_promise = promise;
+        }
+      });
+  return requested_promise;
+}
+}  // namespace
+TEST(FutureTest,
+     future_coroutine_promises_in_async_registry_know_their_requester) {
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::SyncRequester>(
+      *arangodb::async_registry::get_current_coroutine()));
+
+  struct Functions {
+    static auto awaited_co() -> Future<Unit> {
+      auto promise = find_promise_by_name("awaited_co");
+      EXPECT_TRUE(promise.has_value());
+      EXPECT_TRUE(
+          std::holds_alternative<arangodb::async_registry::SyncRequester>(
+              promise->requester));
+      co_return;
+    };
+    static auto waiter_co(Future<Unit>&& fn) -> Future<Unit> {
+      auto waiter_promise = find_promise_by_name("waiter_co");
+      EXPECT_TRUE(waiter_promise.has_value());
+      EXPECT_TRUE(
+          std::holds_alternative<arangodb::async_registry::SyncRequester>(
+              waiter_promise->requester));
+
+      co_await std::move(fn);
+
+      waiter_promise = find_promise_by_name("waiter_co");
+      EXPECT_TRUE(waiter_promise.has_value());
+      EXPECT_TRUE(
+          std::holds_alternative<arangodb::async_registry::SyncRequester>(
+              waiter_promise->requester));
+
+      auto promise = find_promise_by_name("awaited_co");
+      EXPECT_TRUE(promise.has_value());
+      EXPECT_EQ(promise->requester,
+                arangodb::async_registry::Requester{waiter_promise->id});
+
+      co_return;
+    };
+  };
+  auto awaited_coro = Functions::awaited_co();
+  auto waiter_coro = Functions::waiter_co(std::move(awaited_coro));
+}
+
+namespace {
 auto awaited_fn() -> Future<int> {
   Promise<int> p;
   return p.getFuture();
