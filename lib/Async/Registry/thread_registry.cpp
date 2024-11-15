@@ -72,8 +72,7 @@ ThreadRegistry::~ThreadRegistry() noexcept {
 }
 
 auto ThreadRegistry::add_promise(std::source_location location,
-                                 RequesterIdentifier requester) noexcept
-    -> Promise* {
+                                 Requester requester) noexcept -> Promise* {
   // promise needs to live on the same thread as this registry
   ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id)
       << "ThreadRegistry::add was called from thread "

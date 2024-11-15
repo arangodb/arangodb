@@ -52,9 +52,8 @@ auto get_awaitable_object(T&& t) {
 }
 
 template<typename T>
-concept CanSetPromiseWaiter =
-    requires(T t, async_registry::RequesterIdentifier waiter) {
-  t.set_promise_waiter(waiter);
+concept CanUpdateRequester = requires(T t, async_registry::Requester waiter) {
+  t.update_requester(waiter);
 };
 template<typename T>
 concept HasId = requires(T t) {

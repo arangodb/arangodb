@@ -57,7 +57,7 @@ auto all_undeleted_promises()
               [&](AsyncRequester waiter) -> AsyncRequester { return waiter; },
               [&](SyncRequester waiter) -> AsyncRequester { return nullptr; },
           },
-          promise.requester.identifier);
+          promise.requester);
       forest.insert(promise.id, waiter, promise);
       if (waiter == nullptr) {
         roots.emplace_back(promise.id);

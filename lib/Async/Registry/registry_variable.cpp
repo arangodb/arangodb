@@ -39,11 +39,11 @@ auto get_thread_registry() noexcept -> ThreadRegistry& {
 }
 
 // get_current_coroutine_or_thread_id
-auto get_current_coroutine() noexcept -> RequesterIdentifier* {
+auto get_current_coroutine() noexcept -> Requester* {
   struct Guard {
     Guard() : _identifier{{std::this_thread::get_id()}} {}
 
-    RequesterIdentifier _identifier;
+    Requester _identifier;
   };
   static thread_local auto guard = Guard{};
   return &guard._identifier;

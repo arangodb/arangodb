@@ -251,8 +251,8 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
       };
 
       // update promises in registry
-      if constexpr (arangodb::CanSetPromiseWaiter<U>) {
-        co_awaited_expression.set_promise_waiter({promise.id()});
+      if constexpr (arangodb::CanUpdateRequester<U>) {
+        co_awaited_expression.update_requester({promise.id()});
       }
       promise.update_source_location(std::move(loc));
 
@@ -374,8 +374,8 @@ struct std_coro::coroutine_traits<
       };
 
       // update promises in registry
-      if constexpr (arangodb::CanSetPromiseWaiter<U>) {
-        co_awaited_expression.set_promise_waiter({promise.id()});
+      if constexpr (arangodb::CanUpdateRequester<U>) {
+        co_awaited_expression.update_requester({promise.id()});
       }
       promise.update_source_location(std::move(loc));
 

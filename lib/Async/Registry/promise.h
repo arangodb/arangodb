@@ -105,41 +105,30 @@ template<typename Inspector>
 auto inspect(Inspector& f, SyncRequesterWrapper& x) {
   return f.object(x).fields(f.field("sync", fmt::format("{}", x.item)));
 }
-struct RequesterIdentifierWrapper
+struct RequesterWrapper
     : std::variant<SyncRequesterWrapper, AsyncRequesterWrapper> {};
 template<typename Inspector>
-auto inspect(Inspector& f, RequesterIdentifierWrapper& x) {
+auto inspect(Inspector& f, RequesterWrapper& x) {
   return f.variant(x).unqualified().alternatives(
       inspection::inlineType<AsyncRequesterWrapper>(),
       inspection::inlineType<SyncRequesterWrapper>());
 }
-struct RequesterIdentifier : std::variant<SyncRequester, AsyncRequester> {};
-template<typename Inspector>
-auto inspect(Inspector& f, RequesterIdentifier& x) {
-  if constexpr (!Inspector::isLoading) {  // only serialize
-    RequesterIdentifierWrapper tmp = std::visit(
-        overloaded{
-            [&](AsyncRequester waiter) {
-              return RequesterIdentifierWrapper{AsyncRequesterWrapper{waiter}};
-            },
-            [&](SyncRequester waiter) {
-              return RequesterIdentifierWrapper{SyncRequesterWrapper{waiter}};
-            },
-        },
-        x);
-    return f.apply(tmp);
-  }
-}
-
-struct Requester {
-  bool is_waiting = false;
-  RequesterIdentifier identifier;
-  bool operator==(Requester const&) const = default;
-};
+struct Requester : std::variant<SyncRequester, AsyncRequester> {};
 template<typename Inspector>
 auto inspect(Inspector& f, Requester& x) {
-  return f.object(x).fields(f.field("is_waiting", x.is_waiting),
-                            f.field("identifier", x.identifier));
+  if constexpr (!Inspector::isLoading) {  // only serialize
+    RequesterWrapper tmp =
+        std::visit(overloaded{
+                       [&](AsyncRequester waiter) {
+                         return RequesterWrapper{AsyncRequesterWrapper{waiter}};
+                       },
+                       [&](SyncRequester waiter) {
+                         return RequesterWrapper{SyncRequesterWrapper{waiter}};
+                       },
+                   },
+                   x);
+    return f.apply(tmp);
+  }
 }
 
 struct PromiseSnapshot {
@@ -160,7 +149,7 @@ auto inspect(Inspector& f, PromiseSnapshot& x) {
 }
 struct Promise {
   Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
-          RequesterIdentifier requester, std::source_location location);
+          Requester requester, std::source_location location);
   ~Promise() = default;
 
   auto mark_for_deletion() noexcept -> void;
@@ -202,10 +191,10 @@ struct AddToAsyncRegistry {
   AddToAsyncRegistry& operator=(AddToAsyncRegistry&&) = delete;
   ~AddToAsyncRegistry();
 
-  auto set_promise_waiter(RequesterIdentifier requester) -> void;
   auto id() -> void*;
   auto update_source_location(std::source_location loc) -> void;
   auto update_state(State state) -> void;
+  auto update_requester(Requester requester) -> void;
   auto update_current_coroutine() -> void;
 
  private:

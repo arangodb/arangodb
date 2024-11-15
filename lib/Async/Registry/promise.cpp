@@ -29,12 +29,11 @@
 using namespace arangodb::async_registry;
 
 Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
-                 RequesterIdentifier requester,
-                 std::source_location entry_point)
+                 Requester requester, std::source_location entry_point)
     : thread{registry->thread},
       source_location{entry_point.file_name(), entry_point.function_name(),
                       entry_point.line()},
-      requester{Requester{.is_waiting = false, .identifier = requester}},
+      requester{requester},
       registry{std::move(registry)},
       next{next} {}
 
@@ -50,11 +49,9 @@ AddToAsyncRegistry::~AddToAsyncRegistry() {
     promise_in_registry->mark_for_deletion();
   }
 }
-auto AddToAsyncRegistry::set_promise_waiter(RequesterIdentifier new_requester)
-    -> void {
+auto AddToAsyncRegistry::update_requester(Requester new_requester) -> void {
   if (promise_in_registry != nullptr) {
-    promise_in_registry->requester.store(
-        Requester{.is_waiting = true, .identifier = new_requester});
+    promise_in_registry->requester.store(new_requester);
   }
 }
 auto AddToAsyncRegistry::id() -> void* {
@@ -77,6 +74,6 @@ auto AddToAsyncRegistry::update_state(State state) -> void {
 }
 auto AddToAsyncRegistry::update_current_coroutine() -> void {
   if (promise_in_registry != nullptr) {
-    *get_current_coroutine() = promise_in_registry->requester.load().identifier;
+    *get_current_coroutine() = promise_in_registry->requester.load();
   }
 }

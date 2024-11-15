@@ -505,9 +505,8 @@ TYPED_TEST(
     static auto awaited_by_awaited_fn(TestType test) -> async<void> {
       auto promise = find_promise_by_name("awaited_by_awaited_fn");
       EXPECT_TRUE(promise.has_value());
-      EXPECT_FALSE(promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::AsyncRequester>(
-          promise->requester.identifier));
+          promise->requester));
       co_await test->wait;
 
       co_return;
@@ -515,55 +514,48 @@ TYPED_TEST(
     static auto awaited_fn(TestType test) -> async<void> {
       auto promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(promise.has_value());
-      EXPECT_FALSE(promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::AsyncRequester>(
-          promise->requester.identifier));
+          promise->requester));
 
       auto fn = Functions::awaited_by_awaited_fn(test);
       auto awaited_promise = find_promise_by_name("awaited_by_awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
       EXPECT_EQ(awaited_promise->requester,
-                (async_registry::Requester{.is_waiting = false,
-                                           .identifier = {promise->id}}));
+                async_registry::Requester{promise->id});
 
       co_await std::move(fn);
       awaited_promise = find_promise_by_name("awaited_by_awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
       EXPECT_EQ(awaited_promise->requester,
-                (async_registry::Requester{.is_waiting = true,
-                                           .identifier = {promise->id}}));
+                async_registry::Requester{promise->id});
 
       co_return;
     };
     static auto waiter_fn(TestType test) -> async<void> {
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_FALSE(waiter_promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::SyncRequester>(
-          waiter_promise->requester.identifier));
+          waiter_promise->requester));
 
       auto fn = Functions::awaited_fn(test);
 
       auto awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
       EXPECT_EQ(awaited_promise->requester,
-                (async_registry::Requester{
-                    .is_waiting = false, .identifier = {waiter_promise->id}}));
+                async_registry::Requester{waiter_promise->id});
 
       co_await std::move(fn);
 
       awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
       EXPECT_EQ(awaited_promise->requester,
-                (async_registry::Requester{
-                    .is_waiting = true, .identifier = {waiter_promise->id}}));
+                async_registry::Requester{waiter_promise->id});
 
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_FALSE(waiter_promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::SyncRequester>(
-          waiter_promise->requester.identifier));
+          waiter_promise->requester));
 
       co_return;
     };
@@ -584,18 +576,16 @@ TYPED_TEST(
     static auto awaited_2_fn() -> async<void> {
       auto promise = find_promise_by_name("awaited_2_fn");
       EXPECT_TRUE(promise.has_value());
-      EXPECT_FALSE(promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::AsyncRequester>(
-          promise->requester.identifier));
+          promise->requester));
 
       co_return;
     };
     static auto awaited_fn(TestType test) -> async<void> {
       auto promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(promise.has_value());
-      EXPECT_FALSE(promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::AsyncRequester>(
-          promise->requester.identifier));
+          promise->requester));
 
       co_await test->wait;
 
@@ -604,9 +594,8 @@ TYPED_TEST(
     static auto waiter_fn(TestType test) -> async<void> {
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_FALSE(waiter_promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::SyncRequester>(
-          waiter_promise->requester.identifier));
+          waiter_promise->requester));
 
       auto fn = Functions::awaited_fn(test);
       auto fn_2 = Functions::awaited_2_fn();
@@ -614,34 +603,29 @@ TYPED_TEST(
       auto awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
       EXPECT_EQ(awaited_promise->requester,
-                (async_registry::Requester{
-                    .is_waiting = false, .identifier = {waiter_promise->id}}));
+                async_registry::Requester{waiter_promise->id});
       auto awaited_2_promise = find_promise_by_name("awaited_2_fn");
       EXPECT_TRUE(awaited_2_promise.has_value());
       EXPECT_EQ(awaited_2_promise->requester,
-                (async_registry::Requester{
-                    .is_waiting = false, .identifier = {waiter_promise->id}}));
+                async_registry::Requester{waiter_promise->id});
 
       co_await std::move(fn);
       awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
       EXPECT_EQ(awaited_promise->requester,
-                (async_registry::Requester{
-                    .is_waiting = true, .identifier = {waiter_promise->id}}));
+                async_registry::Requester{waiter_promise->id});
 
       co_await std::move(fn_2);
       awaited_2_promise = find_promise_by_name("awaited_2_fn");
       EXPECT_TRUE(awaited_2_promise.has_value());
       EXPECT_EQ(awaited_2_promise->requester,
-                (async_registry::Requester{
-                    .is_waiting = true, .identifier = {waiter_promise->id}}));
+                async_registry::Requester{waiter_promise->id});
 
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_FALSE(waiter_promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::SyncRequester>(
-          waiter_promise->requester.identifier));
+          waiter_promise->requester));
 
       co_return;
     };
@@ -661,9 +645,8 @@ TYPED_TEST(AsyncTest,
     static auto awaited_fn(TestType test) -> async<void> {
       auto promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(promise.has_value());
-      EXPECT_FALSE(promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::SyncRequester>(
-          promise->requester.identifier));
+          promise->requester));
 
       co_await test->wait;
 
@@ -672,29 +655,26 @@ TYPED_TEST(AsyncTest,
     static auto waiter_fn(async<void>&& fn) -> async<void> {
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_FALSE(waiter_promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::SyncRequester>(
-          waiter_promise->requester.identifier));
+          waiter_promise->requester));
 
       auto awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
       EXPECT_TRUE(std::holds_alternative<async_registry::SyncRequester>(
-          waiter_promise->requester.identifier));
+          waiter_promise->requester));
 
       co_await std::move(fn);
 
       awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
       EXPECT_EQ(awaited_promise->requester,
-                (async_registry::Requester{
-                    .is_waiting = true, .identifier = {waiter_promise->id}}));
+                async_registry::Requester{waiter_promise->id});
 
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_FALSE(waiter_promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::SyncRequester>(
-          waiter_promise->requester.identifier));
+          waiter_promise->requester));
 
       co_return;
     };
@@ -725,21 +705,18 @@ TYPED_TEST(
 
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_FALSE(waiter_promise->requester.is_waiting);
       EXPECT_TRUE(std::holds_alternative<async_registry::SyncRequester>(
-          waiter_promise->requester.identifier));
+          waiter_promise->requester));
 
       auto awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
       EXPECT_EQ(awaited_promise->requester,
-                (async_registry::Requester{
-                    .is_waiting = true, .identifier = {waiter_promise->id}}));
+                async_registry::Requester{waiter_promise->id});
 
       auto awaited_2_promise = find_promise_by_name("awaited_2_fn");
       EXPECT_TRUE(awaited_2_promise.has_value());
       EXPECT_EQ(awaited_2_promise->requester,
-                (async_registry::Requester{
-                    .is_waiting = false, .identifier = {waiter_promise->id}}));
+                async_registry::Requester{waiter_promise->id});
 
       co_await std::move(a);
       co_return;
