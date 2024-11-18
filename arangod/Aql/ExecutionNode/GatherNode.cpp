@@ -171,7 +171,7 @@ auto arangodb::aql::toString(GatherNode::SortMode mode) noexcept
       case DISTRIBUTE:
         TRI_ASSERT(false);
         return nullptr;  // diamond boundary
-      case REMOTESINGLE:
+      case REMOTE_SINGLE:
       case REMOTE_MULTIPLE:
         // While being a CollectionAccessingNode, it lives on the Coordinator.
         // However it should thus not be encountered here.

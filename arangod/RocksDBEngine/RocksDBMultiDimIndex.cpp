@@ -301,11 +301,9 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
 
 namespace {
 
-auto convertDouble(double x) -> zkd::byte_string {
-  zkd::BitWriter bw;
-  bw.append(zkd::Bit::ZERO);  // add zero bit for `not infinity`
-  zkd::into_bit_writer_fixed_length(bw, x);
-  return std::move(bw).str();
+auto convertDouble(double const x) -> zkd::byte_string {
+  // leading with zero to indicate `not infinity`
+  return zkd::into_zero_leading_fixed_length_byte_string(x);
 }
 
 ResultT<zkd::byte_string> readDocumentKey(

@@ -25,8 +25,28 @@
 
 #include "gtest/gtest.h"
 
+#include <format>
+#include <random>
+
 using namespace arangodb;
 using namespace arangodb::zkd;
+
+struct Zkd_RandomDoubleConversionTest : testing::Test {
+  void SetUp() override {
+    RecordProperty("seed", std::to_string(_seed));
+    std::uniform_real_distribution<double> unified_distribution(
+        std::numeric_limits<double>::min(), std::numeric_limits<double>::max());
+    uint64_t const seed =
+        std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine engine(seed);
+    // the test is O(n^2), so 1.000 doubles are 1.000.000 tests
+    for (uint32_t i = 0; i < 1000; ++i) {
+      _doublesToTest[i] = unified_distribution(engine);
+    }
+  }
+  long const _seed{std::chrono::system_clock::now().time_since_epoch().count()};
+  std::array<double, 1000> _doublesToTest{};
+};
 
 TEST(Zkd_byte_string_conversion, uint64) {
   auto tests = {
@@ -99,6 +119,7 @@ TEST(Zkd_byte_string_conversion, int64_compare) {
 }
 
 auto const doubles_worth_testing = {0.0,
+                                    -0.0,
                                     0.1,
                                     0.2,
                                     0.3,
@@ -120,31 +141,206 @@ auto const doubles_worth_testing = {0.0,
                                     -std::numeric_limits<double>::infinity(),
                                     std::numeric_limits<double>::lowest()};
 
-TEST(Zkd_byte_string_conversion, double_float_cmp) {
-  for (auto&& a : doubles_worth_testing) {
-    for (auto&& b : doubles_worth_testing) {
-      auto a_bs = to_byte_string_fixed_length(a);
-      auto b_bs = to_byte_string_fixed_length(b);
+bool TestComparable(double const a, double const b,
+                    zkd::byte_string const& a_bs,
+                    zkd::byte_string const& b_bs) {
+  EXPECT_EQ(a < b, a_bs < b_bs)
+      << "byte string of " << a << " and " << b
+      << " does not compare equally: " << a_bs << " " << b_bs;
+  if ((a < b) != (a_bs < b_bs)) {
+    return false;
+  }
 
-      EXPECT_EQ(a < b, a_bs < b_bs)
-          << "byte string of " << a << " and " << b
-          << " does not compare equally: " << a_bs << " " << b_bs
-          << " cnvrt = " << destruct_double(a) << " b = " << destruct_double(b);
-      EXPECT_EQ(a == b, a_bs == b_bs)
-          << "byte string of " << a << " and " << b
-          << " does not compare equally: " << a_bs << " " << b_bs;
-      EXPECT_EQ(a > b, a_bs > b_bs)
-          << "byte string of " << a << " and " << b
-          << " does not compare equally: " << a_bs << " " << b_bs;
-      EXPECT_EQ(a >= b, a_bs >= b_bs)
-          << "byte string of " << a << " and " << b
-          << " does not compare equally: " << a_bs << " " << b_bs;
-      EXPECT_EQ(a <= b, a_bs <= b_bs)
-          << "byte string of " << a << " and " << b
-          << " does not compare equally: " << a_bs << " " << b_bs;
+  EXPECT_EQ(a == b, a_bs == b_bs)
+      << "byte string of " << a << " and " << b
+      << " does not compare equally: " << a_bs << " " << b_bs;
+  if ((a == b) != (a_bs == b_bs)) {
+    return false;
+  }
+
+  EXPECT_EQ(a > b, a_bs > b_bs)
+      << "byte string of " << a << " and " << b
+      << " does not compare equally: " << a_bs << " " << b_bs;
+  if ((a > b) != (a_bs > b_bs)) {
+    return false;
+  }
+
+  EXPECT_EQ(a >= b, a_bs >= b_bs)
+      << "byte string of " << a << " and " << b
+      << " does not compare equally: " << a_bs << " " << b_bs;
+  if ((a >= b) != (a_bs >= b_bs)) {
+    return false;
+  }
+
+  EXPECT_EQ(a <= b, a_bs <= b_bs)
+      << "byte string of " << a << " and " << b
+      << " does not compare equally: " << a_bs << " " << b_bs;
+  if ((a <= b) != (a_bs <= b_bs)) {
+    return false;
+  }
+  return true;
+}
+
+TEST(Zkd_byte_string_conversion, double_float_cmp_slow_slow) {
+  for (auto&& a : doubles_worth_testing) {
+    auto const a_bs = double_to_byte_string_fixed_length_slow(a);
+    for (auto&& b : doubles_worth_testing) {
+      auto const b_bs = double_to_byte_string_fixed_length_slow(b);
+      TestComparable(a, b, a_bs, b_bs);
     }
   }
 }
+
+TEST_F(Zkd_RandomDoubleConversionTest, double_float_cmp_random_slow_slow) {
+  SCOPED_TRACE(std::format("Failed with seed: {}", _seed));
+  for (auto&& a : _doublesToTest) {
+    auto const a_bs = double_to_byte_string_fixed_length_slow(a);
+    for (auto&& b : _doublesToTest) {
+      auto const b_bs = double_to_byte_string_fixed_length_slow(b);
+      if (TestComparable(a, b, a_bs, b_bs) == false) {
+        // The test is O(n^2), in the worst case this could lead to a printout
+        // of 1.000.000 fails. It's enough to know the first fail and with its
+        // seed we can test for the rest locally
+        return;
+      }
+    }
+  }
+}
+
+TEST(Zkd_byte_string_conversion, double_float_cmp_zero_lead_slow_slow) {
+  for (auto&& a : doubles_worth_testing) {
+    auto const a_bs = into_zero_leading_fixed_length_byte_string_slow(a);
+    for (auto&& b : doubles_worth_testing) {
+      auto const b_bs = into_zero_leading_fixed_length_byte_string_slow(b);
+      TestComparable(a, b, a_bs, b_bs);
+    }
+  }
+}
+
+TEST_F(Zkd_RandomDoubleConversionTest,
+       double_float_cmp_zero_lead_random_slow_slow) {
+  SCOPED_TRACE(std::format("Failed with seed: {}", _seed));
+  for (auto&& a : _doublesToTest) {
+    auto const a_bs = into_zero_leading_fixed_length_byte_string_slow(a);
+    for (auto&& b : _doublesToTest) {
+      auto const b_bs = into_zero_leading_fixed_length_byte_string_slow(b);
+      if (TestComparable(a, b, a_bs, b_bs) == false) {
+        // The test is O(n^2), in the worst case this could lead to a printout
+        // of 1.000.000 fails. It's enough to know the first fail and with its
+        // seed we can test for the rest locally
+        return;
+      }
+    }
+  }
+}
+
+#ifdef USE_FAST_DOUBLE_MEMCMP_ENCODING
+TEST(Zkd_byte_string_conversion, double_float_cmp_fast_fast) {
+  for (auto&& a : doubles_worth_testing) {
+    auto const a_bs = double_to_byte_string_fixed_length_fast(a);
+    for (auto&& b : doubles_worth_testing) {
+      auto const b_bs = double_to_byte_string_fixed_length_fast(b);
+      TestComparable(a, b, a_bs, b_bs);
+    }
+  }
+}
+
+TEST(Zkd_byte_string_conversion, double_float_cmp_slow_fast) {
+  for (auto&& a : doubles_worth_testing) {
+    auto const a_bs = double_to_byte_string_fixed_length_slow(a);
+    for (auto&& b : doubles_worth_testing) {
+      auto const b_bs = double_to_byte_string_fixed_length_fast(b);
+      TestComparable(a, b, a_bs, b_bs);
+    }
+  }
+}
+
+TEST_F(Zkd_RandomDoubleConversionTest, double_float_cmp_random_fast_fast) {
+  SCOPED_TRACE(std::format("Failed with seed: {}", _seed));
+  for (auto&& a : _doublesToTest) {
+    auto const a_bs = double_to_byte_string_fixed_length_fast(a);
+    for (auto&& b : _doublesToTest) {
+      auto const b_bs = double_to_byte_string_fixed_length_fast(b);
+      if (TestComparable(a, b, a_bs, b_bs) == false) {
+        // The test is O(n^2), in the worst case this could lead to a printout
+        // of 1.000.000 fails. It's enough to know the first fail and with its
+        // seed we can test for the rest locally
+        return;
+      }
+    }
+  }
+}
+
+TEST_F(Zkd_RandomDoubleConversionTest, double_float_cmp_random_slow_fast) {
+  SCOPED_TRACE(std::format("Failed with seed: {}", _seed));
+  for (auto&& a : _doublesToTest) {
+    auto const a_bs = double_to_byte_string_fixed_length_slow(a);
+    for (auto&& b : _doublesToTest) {
+      auto const b_bs = double_to_byte_string_fixed_length_fast(b);
+      if (TestComparable(a, b, a_bs, b_bs) == false) {
+        // The test is O(n^2), in the worst case this could lead to a printout
+        // of 1.000.000 fails. It's enough to know the first fail and with its
+        // seed we can test for the rest locally
+        return;
+      }
+    }
+  }
+}
+
+TEST_F(Zkd_RandomDoubleConversionTest,
+       double_float_cmp_zero_lead_random_fast_fast) {
+  SCOPED_TRACE(std::format("Failed with seed: {}", _seed));
+  for (auto&& a : _doublesToTest) {
+    auto const a_bs = into_zero_leading_fixed_length_byte_string_fast(a);
+    for (auto&& b : _doublesToTest) {
+      auto const b_bs = into_zero_leading_fixed_length_byte_string_fast(b);
+      if (TestComparable(a, b, a_bs, b_bs) == false) {
+        // The test is O(n^2), in the worst case this could lead to a printout
+        // of 1.000.000 fails. It's enough to know the first fail and with its
+        // seed we can test for the rest locally
+        return;
+      }
+    }
+  }
+}
+
+TEST_F(Zkd_RandomDoubleConversionTest,
+       double_float_cmp_zero_lead_random_slow_fast) {
+  SCOPED_TRACE(std::format("Failed with seed: {}", _seed));
+  for (auto&& a : _doublesToTest) {
+    auto const a_bs = into_zero_leading_fixed_length_byte_string_slow(a);
+    for (auto&& b : _doublesToTest) {
+      auto const b_bs = into_zero_leading_fixed_length_byte_string_fast(b);
+      if (TestComparable(a, b, a_bs, b_bs) == false) {
+        // The test is O(n^2), in the worst case this could lead to a printout
+        // of 1.000.000 fails. It's enough to know the first fail and with its
+        // seed we can test for the rest locally
+        return;
+      }
+    }
+  }
+}
+
+TEST(Zkd_byte_string_conversion, double_float_cmp_zero_lead_fast_fast) {
+  for (auto&& a : doubles_worth_testing) {
+    auto const a_bs = into_zero_leading_fixed_length_byte_string_fast(a);
+    for (auto&& b : doubles_worth_testing) {
+      auto const b_bs = into_zero_leading_fixed_length_byte_string_fast(b);
+      TestComparable(a, b, a_bs, b_bs);
+    }
+  }
+}
+
+TEST(Zkd_byte_string_conversion, double_float_cmp_zero_lead_slow_fast) {
+  for (auto&& a : doubles_worth_testing) {
+    auto const a_bs = into_zero_leading_fixed_length_byte_string_slow(a);
+    for (auto&& b : doubles_worth_testing) {
+      auto const b_bs = into_zero_leading_fixed_length_byte_string_fast(b);
+      TestComparable(a, b, a_bs, b_bs);
+    }
+  }
+}
+#endif  // USE_FAST_DOUBLE_MEMCMP_ENCODING
 
 TEST(Zkd_byte_string_conversion, bit_reader_test) {
   auto s = "1110 10101"_bs;

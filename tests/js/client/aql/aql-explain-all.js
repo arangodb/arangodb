@@ -57,7 +57,7 @@ function explainSuite () {
       assertTrue(actual.hasOwnProperty("plansCreated"));
       assertTrue(actual.hasOwnProperty("rulesExecuted"));
       assertTrue(actual.hasOwnProperty("rulesSkipped"));
-      assertFalse(actual.hasOwnProperty("rules"));
+      assertTrue(actual.hasOwnProperty("rules"));
     },
     
     testExplainStatsRules : function () {

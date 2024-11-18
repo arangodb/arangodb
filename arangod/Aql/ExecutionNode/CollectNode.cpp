@@ -449,7 +449,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
-    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_SINGLE:
     case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
@@ -497,7 +497,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
-    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_SINGLE:
     case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
@@ -547,7 +547,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::NORESULTS:
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::UPSERT:
-    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_SINGLE:
     case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:

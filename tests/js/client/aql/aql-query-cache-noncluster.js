@@ -25,23 +25,18 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var internal = require("internal");
-let cache = require("@arangodb/aql/cache");
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const internal = require("internal");
+const cache = require("@arangodb/aql/cache");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const isEnterprise = internal.isEnterprise();
 
 function ahuacatlQueryCacheTestSuite () {
-  var cacheProperties;
-  var c1, c2;
+  let cacheProperties;
+  let c1, c2;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       cacheProperties = cache.properties();
       cache.clear();
@@ -51,10 +46,6 @@ function ahuacatlQueryCacheTestSuite () {
       c1 = db._create("UnitTestsAhuacatlQueryCache1");
       c2 = db._create("UnitTestsAhuacatlQueryCache2");
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop("UnitTestsAhuacatlQueryCache1");
@@ -73,12 +64,12 @@ function ahuacatlQueryCacheTestSuite () {
       let query = "FOR i IN 1..10000 LIMIT 10, 7 RETURN i";
 
       cache.properties({ mode: "on" });
-      let result = db._createStatement({query: query, bindVars: null, options: {fullCount: true}}).execute();
+      let result = db._createStatement({query, bindVars: null, options: {fullCount: true}}).execute();
       assertFalse(result._cached);
       assertEqual([ 11, 12, 13, 14, 15, 16, 17 ], result.toArray());
       assertEqual(10000, result.getExtra().stats.fullCount);
 
-      let result1 = db._createStatement({query: query, bindVars: null, options: {fullCount: true}}).execute();
+      let result1 = db._createStatement({query, bindVars: null, options: {fullCount: true}}).execute();
       assertTrue(result1._cached);
       assertEqual([ 11, 12, 13, 14, 15, 16, 17 ], result1.toArray());
       assertEqual(10000, result1.getExtra().stats.fullCount);
@@ -123,28 +114,28 @@ function ahuacatlQueryCacheTestSuite () {
       c2.drop();
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       c1.rename("UnitTestsAhuacatlQueryCache2");
 
       try {
-        db._createStatement({query: query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache1" }}).execute();
-      } catch (err) {
+        db._createStatement({query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache1" }}).execute();
         fail();
+      } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
     },
@@ -162,19 +153,19 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
       assertFalse(result._cached);
       assertEqual([ ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
       assertTrue(result._cached);
       assertEqual([ ], result.toArray());
 
@@ -182,17 +173,17 @@ function ahuacatlQueryCacheTestSuite () {
       c1.rename("UnitTestsAhuacatlQueryCache2");
 
       try {
-        db._createStatement({query: query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache1" }}).execute();
+        db._createStatement({query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache1" }}).execute();
         fail();
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache2" }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
     },
@@ -210,18 +201,18 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       c1.drop();
 
       try {
-        db._createStatement({query: query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache1" }}).execute();
+        db._createStatement({query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache1" }}).execute();
         fail();
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
@@ -241,18 +232,18 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       c1.drop();
 
       try {
-        db._createStatement({query: query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache1" }}).execute();
+        db._createStatement({query, bindVars:  { "@collection": "UnitTestsAhuacatlQueryCache1" }}).execute();
         fail();
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
@@ -260,11 +251,11 @@ function ahuacatlQueryCacheTestSuite () {
 
       // re-create collection with same name
       c1 = db._create("UnitTestsAhuacatlQueryCache1");
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ ], result.toArray());
     },
@@ -352,11 +343,11 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual(5, result.toArray().length);
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual(5, result.toArray().length);
     },
@@ -374,11 +365,11 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual(5, result.toArray().length);
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual(5, result.toArray().length);
     },
@@ -412,7 +403,7 @@ function ahuacatlQueryCacheTestSuite () {
 
       cache.properties({ mode: "on" });
       testQueries.forEach(function (query) {
-        var result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+        var result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
         assertFalse(result._cached);
         assertEqual(5, result.toArray().length);
       });
@@ -431,16 +422,16 @@ function ahuacatlQueryCacheTestSuite () {
         c1.save({ value: i });
       }
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name(), offset: 0, count: 1 }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name(), offset: 0, count: 1 }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1 ], result.toArray());
       
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name(), offset: 0, count: 1 }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name(), offset: 0, count: 1 }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1 ], result.toArray());
 
       // same bind parameter values, but in exchanged order
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name(), offset: 1, count: 0 }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name(), offset: 1, count: 0 }}).execute();
       assertFalse(result._cached);
       assertEqual([ ], result.toArray());
     },
@@ -455,20 +446,20 @@ function ahuacatlQueryCacheTestSuite () {
 
       cache.properties({ mode: "on" });
 
-      result = db._createStatement({query: query, bindVars:  { values: [ 1, 2, 3, 4, 5 ] }}).execute();
+      result = db._createStatement({query, bindVars:  { values: [ 1, 2, 3, 4, 5 ] }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray()[0]);
 
-      result = db._createStatement({query: query, bindVars:  { values: [ 1, 2, 3, 4, 5 ] }}).execute();
+      result = db._createStatement({query, bindVars:  { values: [ 1, 2, 3, 4, 5 ] }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray()[0]);
       
       // same bind parameter values, but in exchanged order
-      result = db._createStatement({query: query, bindVars:  { values: [ 5, 4, 3, 2, 1 ] }}).execute();
+      result = db._createStatement({query, bindVars:  { values: [ 5, 4, 3, 2, 1 ] }}).execute();
       assertFalse(result._cached);
       assertEqual([ 5, 4, 3, 2, 1 ], result.toArray()[0]);
 
-      result = db._createStatement({query: query, bindVars:  { values: [ 1, 2, 3, 5, 4 ] }}).execute();
+      result = db._createStatement({query, bindVars:  { values: [ 1, 2, 3, 5, 4 ] }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 5, 4 ], result.toArray()[0]);
     },
@@ -487,14 +478,14 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       for (i = 1; i <= 5; ++i) {
-        result = db._createStatement({query: query, bindVars:  { "@collection": c1.name(), value: i }}).execute();
+        result = db._createStatement({query, bindVars:  { "@collection": c1.name(), value: i }}).execute();
         assertFalse(result._cached);
         assertEqual([ i ], result.toArray());
       }
 
       // now the query results should be fully cached
       for (i = 1; i <= 5; ++i) {
-        result = db._createStatement({query: query, bindVars:  { "@collection": c1.name(), value: i }}).execute();
+        result = db._createStatement({query, bindVars:  { "@collection": c1.name(), value: i }}).execute();
         assertTrue(result._cached);
         assertEqual([ i ], result.toArray());
       }
@@ -514,20 +505,20 @@ function ahuacatlQueryCacheTestSuite () {
         c2.save({ value: i + 1 });
       }
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       // now the query results should be fully cached
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c2.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c2.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 2, 3, 4, 5, 6 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c2.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c2.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 2, 3, 4, 5, 6 ], result.toArray());
     },
@@ -543,17 +534,17 @@ function ahuacatlQueryCacheTestSuite () {
       var doc = c1.save({ value: 1 });
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1 ], result.toArray());
 
       c1.document(doc._key); // this will not invalidate cache
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1 ], result.toArray());
     },
@@ -569,21 +560,21 @@ function ahuacatlQueryCacheTestSuite () {
       c1.save({ value: 1 });
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1 ], result.toArray());
 
       c1.save({ value: 2 }); // this will invalidate cache
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
 
       assertEqual([ 1, 2 ], result.toArray());
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2 ], result.toArray());
     },
@@ -599,21 +590,21 @@ function ahuacatlQueryCacheTestSuite () {
       var doc = c1.save({ value: 1 });
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1 ], result.toArray());
 
       c1.update(doc, { value: 42 }); // this will invalidate cache
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 42 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 42 ], result.toArray());
     },
@@ -629,21 +620,21 @@ function ahuacatlQueryCacheTestSuite () {
       c1.save({ value: 1 });
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1 ], result.toArray());
 
       c1.remove(c1.any()._key); // this will invalidate cache
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ ], result.toArray());
     },
@@ -661,28 +652,28 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result.toArray());
 
       c1.truncate({ compact: false }); // this will invalidate cache
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ ], result.toArray());
 
       for (i = 1; i <= 10; ++i) {
         c1.save({ value: i });
       }
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result.toArray());
     },
@@ -700,21 +691,21 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       db._query("INSERT { value: 9 } INTO @@collection", { "@collection" : c1.name() });
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.toArray());
     },
@@ -732,21 +723,21 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       db._query("FOR doc IN @@collection UPDATE doc._key WITH { value: doc.value + 1 } IN @@collection", { "@collection" : c1.name() });
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 2, 3, 4, 5, 6 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 2, 3, 4, 5, 6 ], result.toArray());
     },
@@ -764,21 +755,21 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       cache.properties({ mode: "on" });
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       db._createStatement({query: "FOR doc IN @@collection REMOVE doc._key IN @@collection", bindVars:  { "@collection" : c1.name() }}).execute();
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ ], result.toArray());
     },
@@ -797,34 +788,34 @@ function ahuacatlQueryCacheTestSuite () {
 
       cache.properties({ mode: "on" });
       // collection1
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
       
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       // collection2
-      result = db._createStatement({query: query, bindVars:  { "@collection": c2.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c2.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c2.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c2.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ ], result.toArray());
 
       db._createStatement({query: "FOR doc IN @@collection1 INSERT doc IN @@collection2", bindVars:  { "@collection1" : c1.name(), "@collection2" : c2.name() }}).execute();
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c2.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c2.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c2.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c2.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
     },
@@ -886,7 +877,7 @@ function ahuacatlQueryCacheTestSuite () {
       cache.properties({ mode: "on" });
       
       var query = "FOR doc IN @@collection RETURN doc.value";
-      var result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      var result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ ], result.toArray());
 
@@ -899,11 +890,11 @@ function ahuacatlQueryCacheTestSuite () {
         params: { c1: c1.name() }
       });
       
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ "foo" ], result.toArray());
       
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ "foo" ], result.toArray());
     },
@@ -960,18 +951,18 @@ function ahuacatlQueryCacheTestSuite () {
 
             throw "peng!";
           },
-          params: { c1: c1.name(), query: query }
+          params: { c1: c1.name(), query }
         });
         fail();
       } catch (err) {
         assertMatch(/peng!/, String(err));
       }
             
-      var result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      var result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@collection": c1.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ ], result.toArray());
     }
@@ -1043,11 +1034,11 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
       cache.properties({mode: "on"});
-      let result1 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      let result1 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertFalse(result1._cached);
       assertEqual(2, result1.toArray().length);
 
-      let result2 = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      let result2 = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertTrue(result2._cached);
       assertEqual(2, result2.toArray().length);
       assertEqual(result1.toArray(), result2.toArray());
@@ -1083,12 +1074,12 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
       cache.properties({mode: "on"});
-      let result1 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      let result1 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertFalse(result1._cached);
       let res1_json = result1.toArray();
       assertEqual(2, res1_json.length);
 
-      let result2 = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      let result2 = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertTrue(result2._cached);
       let res2_json = result2.toArray();
       assertEqual(2, res2_json.length);
@@ -1098,17 +1089,17 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       v.rename("UnitTestsViewRenamed");
 
       try {
-        db._createStatement({query: query, bindVars:  { "@view": "UnitTestsView" }}).execute();
+        db._createStatement({query, bindVars:  { "@view": "UnitTestsView" }}).execute();
         fail();
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
 
-      result2 = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result2 = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertFalse(result2._cached);
       assertEqual(res1_json, result2.toArray());
 
-      result2 = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result2 = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertTrue(result2._cached);
       assertEqual(res1_json, result2.toArray());
     },
@@ -1144,11 +1135,11 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
       cache.properties({mode: "on"});
-      let result1 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      let result1 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertFalse(result1._cached);
       assertEqual(2, result1.toArray().length);
 
-      let result2 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      let result2 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertTrue(result2._cached);
       assertEqual(2, result2.toArray().length);
       assertEqual(result1.toArray(), result2.toArray());
@@ -1182,11 +1173,11 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       c2.insert({value: 2}, {waitForSync: true});
       c2.insert({"value_nested": [{ "nested_1": [{ "nested_2": "dog" }] }]}, {waitForSync: true});
 
-      result1 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      result1 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertFalse(result1._cached);
       assertEqual(3, result1.toArray().length);
 
-      result2 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      result2 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertTrue(result2._cached);
       assertEqual(3, result2.toArray().length);
     },
@@ -1221,11 +1212,11 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
       cache.properties({mode: "on"});
-      let result1 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      let result1 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertFalse(result1._cached);
       assertEqual(2, result1.toArray().length);
 
-      let result2 = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      let result2 = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertTrue(result2._cached);
       assertEqual(2, result2.toArray().length);
       assertEqual(result1.toArray(), result2.toArray());
@@ -1233,7 +1224,7 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       v.drop();
 
       try {
-        db._createStatement({query: query, bindVars:  { "@view": "UnitTestsView" }}).execute();
+        db._createStatement({query, bindVars:  { "@view": "UnitTestsView" }}).execute();
         fail();
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
@@ -1271,11 +1262,11 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
       cache.properties({mode: "on"});
-      let result1 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      let result1 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertFalse(result1._cached);
       assertEqual(2, result1.toArray().length);
 
-      let result2 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      let result2 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertTrue(result2._cached);
       assertEqual(2, result2.toArray().length);
       assertEqual(result1.toArray(), result2.toArray());
@@ -1289,11 +1280,11 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       }
       v.properties(viewMeta);
 
-      result2 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      result2 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertFalse(result2._cached);
       assertEqual(2, result2.toArray().length);
 
-      result2 = db._createStatement({query: query, bindVars:  {"@view": v.name()}}).execute();
+      result2 = db._createStatement({query, bindVars:  {"@view": v.name()}}).execute();
       assertTrue(result2._cached);
       assertEqual(2, result2.toArray().length);
     },
@@ -1410,21 +1401,21 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       }
 
       cache.properties({mode: "on"});
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       db._query("INSERT { value: 9 } INTO @@collection OPTIONS { waitForSync: true }", { "@collection" : c1.name() });
 
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.toArray());
     },
@@ -1463,21 +1454,21 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       }
 
       cache.properties({mode: "on"});
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       db._query("UPDATE 'test5' WITH { value: 9 } INTO @@collection OPTIONS { waitForSync: true }", { "@collection" : c1.name() });
 
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 9 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 9 ], result.toArray());
     },
@@ -1516,22 +1507,22 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       }
 
       cache.properties({mode: "on"});
-      result = db._createStatement({query: query, bindVars: { "@view": v.name() }, options: { cache: true }}).execute();
+      result = db._createStatement({query, bindVars: { "@view": v.name() }, options: { cache: true }}).execute();
 
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.toArray());
 
       db._query("REMOVE 'test5' INTO @@collection OPTIONS { waitForSync: true }", { "@collection" : c1.name() });
 
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertFalse(result._cached);
       assertEqual([ 1, 2, 3, 4 ], result.toArray());
 
-      result = db._createStatement({query: query, bindVars:  { "@view": v.name() }}).execute();
+      result = db._createStatement({query, bindVars:  { "@view": v.name() }}).execute();
       assertTrue(result._cached);
       assertEqual([ 1, 2, 3, 4 ], result.toArray());
     },

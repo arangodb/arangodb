@@ -7,6 +7,8 @@ import time
 from threading import Thread
 from traceback import print_exc
 from dmesg import DmesgWatcher, dmesg_runner
+from overload_thread import spawn_overload_watcher_thread, shutdown_overload_watcher_thread
+from site_config import SiteConfig
 
 
 def launch_runner(runner, create_report):
@@ -14,6 +16,7 @@ def launch_runner(runner, create_report):
     dmesg = DmesgWatcher(runner.cfg)
     dmesg_thread = Thread(target=dmesg_runner, args=[dmesg])
     dmesg_thread.start()
+    spawn_overload_watcher_thread(runner.cfg)
     time.sleep(3)
     logging.info(runner.scenarios)
     try:
@@ -35,6 +38,7 @@ def launch_runner(runner, create_report):
     finally:
         sys.stderr.flush()
         sys.stdout.flush()
+        shutdown_overload_watcher_thread()
         runner.create_log_file()
         runner.create_testruns_file()
         dmesg.end_run()

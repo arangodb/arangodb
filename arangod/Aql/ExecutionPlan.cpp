@@ -700,22 +700,26 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls,
 
 /// @brief create an execution plan from VelocyPack
 std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
-    Ast* ast, velocypack::Slice slice) {
+    Ast* ast, velocypack::Slice slice, bool simpleSnippetFormat) {
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast, /*trackMemoryUsage*/ true);
-  plan->_root = plan->fromSlice(slice);
+  plan->_root = plan->fromSlice(slice, simpleSnippetFormat);
   plan->setVarUsageComputed();
 
-  if (auto rules = slice.get("rules"); rules.isArray()) {
-    for (auto rule : VPackArrayIterator(rules)) {
-      int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
-      plan->_appliedRules.push_back(ruleId);
-    }
-  }
+  if (!simpleSnippetFormat) {
+    TRI_ASSERT(slice.isObject());
 
-  if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
-    plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
+    if (auto rules = slice.get("rules"); rules.isArray()) {
+      for (auto rule : VPackArrayIterator(rules)) {
+        int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
+        plan->_appliedRules.push_back(ruleId);
+      }
+    }
+
+    if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
+      plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
+    }
   }
 
   return plan;
@@ -779,6 +783,8 @@ void ExecutionPlan::toVelocyPack(
     }
   }
   builder.close();
+
+  builder.add("asyncPrefetchNodes", VPackValue(_asyncPrefetchNodes));
 
   // the following attributes are read by the explainer
   CostEstimate estimate = _root->getCost();
@@ -2779,13 +2785,24 @@ void ExecutionPlan::insertBefore(ExecutionNode* current,
 }
 
 /// @brief create a plan from VPack
-ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
-  if (!slice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "plan slice is not an object");
+ExecutionNode* ExecutionPlan::fromSlice(velocypack::Slice slice,
+                                        bool simpleSnippetFormat) {
+  VPackSlice nodes = VPackSlice::noneSlice();
+
+  if (simpleSnippetFormat) {
+    // simple format. we are expecting just an array with the nodes
+    nodes = slice;
+  } else {
+    // complex format. we are expecting an object with a "nodes" attribute
+    // that contains an array with the nodes
+    if (!slice.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "plan slice is not an object");
+    }
+
+    nodes = slice.get("nodes");
   }
 
-  VPackSlice nodes = slice.get("nodes");
   if (!nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "plan \"nodes\" attribute is not an array");
@@ -2820,7 +2837,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
       // found a subquery node. now do magick here
       VPackSlice subquery = it.get("subquery");
       // create the subquery nodes from the "subquery" sub-node
-      auto subqueryNode = fromSlice(subquery);
+      auto subqueryNode = fromSlice(subquery, /*simple*/ false);
 
       // register the just created subquery
       ExecutionNode::castTo<SubqueryNode*>(ret)->setSubquery(subqueryNode,
@@ -2829,7 +2846,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   }
 
   // all nodes have been created. now add the dependencies
-  for (VPackSlice const it : VPackArrayIterator(nodes)) {
+  for (VPackSlice it : VPackArrayIterator(nodes)) {
     // read the node's own id
     auto thisId = ExecutionNodeId{
         it.get("id").getNumericValue<ExecutionNodeId::BaseType>()};
