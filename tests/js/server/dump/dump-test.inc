@@ -77,7 +77,7 @@
     let collDistributionPlan = {};
     let collDistributionCurrent = {};
     const isCov = require("@arangodb/test-helper").versionHas('coverage');
-    const numSecsLimit = (isCov)? 64:16;
+    const numSecsLimit = (isCov)? 80:16;
     while (true) {
       const dbName = db._name();
       const res = db._connection.GET("/_db/" + dbName + "/_admin/cluster/shardDistribution");
@@ -99,7 +99,7 @@
       internal.sleep(numSecs);
       numSecs *= 2;
     }
-    assertTrue(numSecs < numSecsLimit, "reached timeout waited for collection " + collName + " to get in sync");
+    assertTrue(numSecs < numSecsLimit, `reached timeout waited for collection ${collName} to get in sync - ${numSecs} < ${numSecsLimit}`);
   }
 
   const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
