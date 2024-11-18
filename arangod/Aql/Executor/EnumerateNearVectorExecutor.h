@@ -44,14 +44,15 @@ struct EnumerateNearVectorsExecutorInfos {
   EnumerateNearVectorsExecutorInfos(
       RegisterId inNmDocId, RegisterId outDocRegId, RegisterId outDistanceRegId,
       transaction::Methods::IndexHandle index, QueryContext& queryContext,
-      aql::Collection const* collection, std::size_t topK)
+      aql::Collection const* collection, std::size_t topK, std::size_t offset)
       : inputReg(inNmDocId),
         outDocumentIdReg(outDocRegId),
         outDistancesReg(outDistanceRegId),
         index(std::move(index)),
         queryContext(queryContext),
         collection(collection),
-        topK(topK) {}
+        topK(topK),
+        offset(offset) {}
 
   EnumerateNearVectorsExecutorInfos() = delete;
   EnumerateNearVectorsExecutorInfos(EnumerateNearVectorsExecutorInfos&&) =
@@ -59,6 +60,9 @@ struct EnumerateNearVectorsExecutorInfos {
   EnumerateNearVectorsExecutorInfos(EnumerateNearVectorsExecutorInfos const&) =
       delete;
   ~EnumerateNearVectorsExecutorInfos() = default;
+
+  // total number of result per one query point
+  std::size_t getNubmerOfResults() const noexcept { return topK + offset; }
 
   /// @brief register to store local document id
   RegisterId const inputReg;
@@ -71,6 +75,7 @@ struct EnumerateNearVectorsExecutorInfos {
   QueryContext& queryContext;
   aql::Collection const* collection;
   std::size_t topK;
+  std::size_t offset;
 };
 
 class EnumerateNearVectorsExecutor {
@@ -103,15 +108,20 @@ class EnumerateNearVectorsExecutor {
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
- private:
-  void fillInput(AqlItemBlockInputRange& inputRange,
-                 std::vector<float>& inputRowsJoined);
+  void initializeCursor();
 
-  void searchResults(std::vector<float>& inputRowsJoined);
+ private:
+  auto returnState() const noexcept -> ExecutorState;
+
+  void fillInput(AqlItemBlockInputRange& inputRange);
+
+  void searchResults();
 
   void fillOutput(OutputAqlItemRow& output);
 
-  std::vector<InputAqlItemRow> _inputRows;
+  InputAqlItemRow _inputRow;
+  std::vector<float> _inputRowConverted;
+  ExecutorState _state{ExecutorState::HASMORE};
 
   std::vector<float> _distances;
   std::vector<VectorIndexLabelId> _labels;

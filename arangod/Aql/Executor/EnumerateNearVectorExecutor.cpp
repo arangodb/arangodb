@@ -41,130 +41,151 @@ using Stats = NoStats;
 
 EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
                                                            Infos& infos)
-    : _infos(infos),
+    : _inputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _infos(infos),
       _trx(_infos.queryContext.newTrxContext()),
       _collection(_infos.collection) {}
 
 void EnumerateNearVectorsExecutor::fillInput(
-    AqlItemBlockInputRange& inputRange, std::vector<float>& inputRowsJoined) {
+    AqlItemBlockInputRange& inputRange) {
   auto docRegId = _infos.inputReg;
 
-  while (inputRange.hasDataRow()) {
-    auto [state, input] =
-        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+  auto [state, _inputRow] =
+      inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
-    AqlValue value = input.getValue(docRegId);
-    // std::vector<float> vectorInput;
-    // vectorInput.reserve(_infos.index->getVectorIndexDefinition().dimension);
+  AqlValue value = _inputRow.getValue(docRegId);
 
-    // TODO currently we do not accept anything else then array
-    if (!value.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          basics::StringUtils::concatT(
-              "query point must be a vector, but is a ",
-              value.getTypeString()));
-    }
+  // TODO currently we do not accept anything else then array
+  if (!value.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+        basics::StringUtils::concatT("query point must be a vector, but is a ",
+                                     value.getTypeString()));
+  }
 
-    std::size_t vectorComponentsCount{0};
-    for (arangodb::velocypack::ArrayIterator itr(value.slice()); itr.valid();
-         ++itr, ++vectorComponentsCount) {
-      inputRowsJoined.push_back(itr.value().getDouble());
-    }
+  std::size_t vectorComponentsCount{0};
+  for (arangodb::velocypack::ArrayIterator itr(value.slice()); itr.valid();
+       ++itr, ++vectorComponentsCount) {
+    _inputRowConverted.push_back(itr.value().getDouble());
+  }
 
-    if (vectorComponentsCount !=
-        _infos.index->getVectorIndexDefinition().dimension) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          fmt::format("a vector must be of dimension {}, but is {}",
-                      _infos.index->getVectorIndexDefinition().dimension,
-                      vectorComponentsCount));
-    }
-
-    _inputRows.emplace_back(input);
+  if (vectorComponentsCount !=
+      _infos.index->getVectorIndexDefinition().dimension) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+        fmt::format("a vector must be of dimension {}, but is {}",
+                    _infos.index->getVectorIndexDefinition().dimension,
+                    vectorComponentsCount));
   }
 }
 
-void EnumerateNearVectorsExecutor::searchResults(
-    std::vector<float>& inputRowsJoined) {
+void EnumerateNearVectorsExecutor::searchResults() {
   auto* vectorIndex = dynamic_cast<RocksDBVectorIndex*>(_infos.index.get());
   TRI_ASSERT(vectorIndex != nullptr);
 
-  std::vector<float> convertedInputRows(_inputRows.size());
   RocksDBMethods* mthds =
       RocksDBTransactionState::toMethods(&_trx, _collection->id());
 
   std::tie(_labels, _distances) = vectorIndex->readBatch(
-      inputRowsJoined, mthds, &_trx, _collection->getCollection(),
-      _inputRows.size(), _infos.topK);
-
+      _inputRowConverted, mthds, &_trx, _collection->getCollection(), 1,
+      _infos.getNubmerOfResults());
   _initialized = true;
-  _currentProcessedResultCount = 0;
 }
 
 void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
   auto const docOutId = _infos.outDocumentIdReg;
   auto const distOutId = _infos.outDistancesReg;
 
-  auto inputRowIterator = _inputRows.begin();
   while (!output.isFull() &&
-         _currentProcessedResultCount < _inputRows.size() * _infos.topK) {
+         _currentProcessedResultCount < (_infos.topK + _infos.offset)) {
     // there are no results anymore for this input, so we can skip to next input
     // row
     if (_labels[_currentProcessedResultCount] == -1) {
-      _currentProcessedResultCount =
-          (_currentProcessedResultCount / _infos.topK + 1) * _infos.topK;
-      ++inputRowIterator;
-      continue;
+      _currentProcessedResultCount = _infos.getNubmerOfResults();
+      break;
     }
     output.moveValueInto(
-        docOutId, *inputRowIterator,
+        docOutId, _inputRow,
         AqlValueHintUInt(_labels[_currentProcessedResultCount]));
     output.moveValueInto(
-        distOutId, *inputRowIterator,
+        distOutId, _inputRow,
         AqlValueHintDouble(_distances[_currentProcessedResultCount]));
     output.advanceRow();
 
     ++_currentProcessedResultCount;
-    if (_currentProcessedResultCount % _infos.topK == 0) {
-      ++inputRowIterator;
-    }
   }
+}
+
+void EnumerateNearVectorsExecutor::initializeCursor() {
+  _state = ExecutorState::HASMORE;
+  _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _initialized = false;
+  _inputRowConverted.clear();
+  _currentProcessedResultCount = 0;
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall>
 EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output) {
-  NoStats stats;
-
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
-  std::vector<float> inputRowsJoined;
-  while (inputRange.hasDataRow() && !output.isFull() &&
-         _currentProcessedResultCount == _inputRows.size() * _infos.topK) {
-    _initialized = false;
-    fillInput(inputRange, inputRowsJoined);
-  }
-  if (_inputRows.empty()) {
-    return {inputRange.upstreamState(), stats, output.getClientCall()};
-  }
+  while (!output.isFull()) {
+    if (!_initialized) {
+      if (!_inputRow.isInitialized()) {
+        fillInput(inputRange);
+      }
 
-  if (!_initialized && !_inputRows.empty()) {
-    searchResults(inputRowsJoined);
-  }
-
-  if (_inputRows.size() != 0) {
+      searchResults();
+    }
     fillOutput(output);
+    if (_currentProcessedResultCount == _infos.getNubmerOfResults()) {
+      inputRange.advanceDataRow();
+      return {ExecutorState::DONE, {}, output.getClientCall()};
+    }
   }
 
-  return {inputRange.upstreamState(), stats, output.getClientCall()};
+  return {inputRange.upstreamState(), {}, output.getClientCall()};
 }
 
 [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall>
-EnumerateNearVectorsExecutor::skipRowsRange(
-    AqlItemBlockInputRange& /*inputRange*/, AqlCall& /*call*/) {
-  return {};
+EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                            AqlCall& call) {
+  std::size_t skipped{0};
+  while (call.needSkipMore()) {
+    // get an input row first, if necessary
+    if (!_inputRow.isInitialized() && !_initialized) {
+      std::tie(_state, _inputRow) = inputRange.peekDataRow();
+
+      if (_inputRow.isInitialized()) {
+        fillInput(inputRange);
+      } else {
+        break;
+      }
+    }
+    if (!_initialized) {
+      searchResults();
+    }
+
+    skipped = call.getOffset();
+    _currentProcessedResultCount += skipped;
+    call.didSkip(skipped);
+  }
+
+  AqlCall upstreamCall;
+
+  return {returnState(), {}, skipped, std::move(upstreamCall)};
+}
+
+auto EnumerateNearVectorsExecutor::returnState() const noexcept
+    -> ExecutorState {
+  if (_inputRow.isInitialized()) {
+    // We are still working.
+    // TODO: Potential optimization: We can ask if the cursor has more, or there
+    // are other cursors.
+    return ExecutorState::HASMORE;
+  }
+  return _state;
 }
 
 template class ExecutionBlockImpl<EnumerateNearVectorsExecutor>;

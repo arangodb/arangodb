@@ -232,7 +232,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     auto const* limitNode =
         ExecutionNode::castTo<LimitNode const*>(maybeLimitNode);
     // Offset cannot be handled, and there must be a limit which means topK
-    if (limitNode->offset() != 0 || limitNode->limit() == 0) {
+    if (limitNode->limit() == 0) {
       LOG_RULE << "Limit not set";
       continue;
     }
@@ -270,7 +270,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
-          documentIdVariable, distanceVariable, limit,
+          documentIdVariable, distanceVariable, limit, limitNode->offset(),
           enumerateCollectionNode->collection(), index);
 
       auto* materializer =

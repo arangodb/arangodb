@@ -47,7 +47,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id,
     Variable const* inVariable, Variable const* oldDocumentVariable,
     Variable const* documentOutVariable, Variable const* distanceOutVariable,
-    std::size_t limit, aql::Collection const* collection,
+    std::size_t limit, std::size_t offset, aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
@@ -56,6 +56,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _documentOutVariable(documentOutVariable),
       _distanceOutVariable(distanceOutVariable),
       _limit(limit),
+      _offset(offset),
       _index(std::move(indexHandle)) {}
 
 ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
@@ -98,7 +99,7 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 
   auto executorInfos = EnumerateNearVectorsExecutorInfos(
       inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
-      engine.getQuery(), _collectionAccess.collection(), _limit);
+      engine.getQuery(), _collectionAccess.collection(), _limit, _offset);
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
@@ -110,7 +111,7 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
                                               bool withDependencies) const {
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
-      _distanceOutVariable, _limit, collection(), _index);
+      _distanceOutVariable, _limit, _offset, collection(), _index);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }

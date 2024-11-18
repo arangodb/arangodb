@@ -330,6 +330,36 @@ function VectorIndexL2TestSuite() {
             assertEqual(5, results.length);
         },
 
+        testApproxL2Skipping: function() {
+            const queryWithSkip =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_L2(@qp, d.vector) LIMIT 3, 5 RETURN {k: d._key}";
+            const queryWithoutSkip =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 8 RETURN {k: d._key}";
+
+            const bindVars = {
+                qp: randomPoint
+            };
+
+            const planSkipped = db
+                ._createStatement({
+                    query: queryWithSkip,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = planSkipped.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
+
+            const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
+            const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
+            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+        },
+
         testApproxL2Subquery: function() {
             const queries = [
                 aql`

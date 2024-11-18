@@ -44,7 +44,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           Variable const* oldDocumentVariable,
                           Variable const* documentOutVariable,
                           Variable const* distanceOutVariable,
-                          std::size_t limit, aql::Collection const* collection,
+                          std::size_t limit, std::size_t offset,
+                          aql::Collection const* collection,
                           transaction::Methods::IndexHandle indexHandle);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
@@ -89,6 +90,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   /// @brief contains the limit, this node only produces the top k results
   std::size_t _limit;
+  std::size_t _offset;
 
   /// @brief selected index for vector search
   transaction::Methods::IndexHandle _index;

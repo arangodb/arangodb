@@ -297,7 +297,11 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
                               transaction::Methods* trx,
                               std::shared_ptr<LogicalCollection> collection,
                               std::size_t count, std::size_t topK) {
-  TRI_ASSERT(topK * count == (inputs.size() / _definition.dimension) * topK);
+  TRI_ASSERT(topK * count == (inputs.size() / _definition.dimension) * topK)
+      << "Number of components does not match vectors dimesnions, topK: "
+      << topK << ", count: " << count
+      << ", dimension: " << _definition.dimension
+      << ", inputs size: " << inputs.size();
 
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, collection.get(), trx, rocksDBMethods, _cf,
