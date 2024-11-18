@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.7-preview-2.
+
 * FE-483: add support for usePlanCache in query editor UI.
 
 * ArangoDB now has an optional AQL query execution plan cache that can be used
