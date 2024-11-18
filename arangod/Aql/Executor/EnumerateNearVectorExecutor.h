@@ -108,8 +108,6 @@ class EnumerateNearVectorsExecutor {
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
-  void initializeCursor();
-
  private:
   void fillInput(AqlItemBlockInputRange& inputRange);
 

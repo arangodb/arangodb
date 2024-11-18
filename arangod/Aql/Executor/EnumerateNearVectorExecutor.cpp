@@ -116,14 +116,6 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
   }
 }
 
-void EnumerateNearVectorsExecutor::initializeCursor() {
-  _state = ExecutorState::HASMORE;
-  _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  _initialized = false;
-  _inputRowConverted.clear();
-  _currentProcessedResultCount = 0;
-}
-
 std::tuple<ExecutorState, NoStats, AqlCall>
 EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output) {
