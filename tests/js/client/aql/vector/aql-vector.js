@@ -358,6 +358,7 @@ function VectorIndexL2TestSuite() {
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
             assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+            assertEqual(resultsWithSkip.length, 5);
         },
 
         testApproxL2Subquery: function() {
@@ -505,7 +506,7 @@ function VectorIndexCosineTestSuite() {
             }
         },
 
-        testApproxCosineMultipleTopKWronfOrder: function() {
+        testApproxCosineMultipleTopKWrongOrder: function() {
             const query =
                 "FOR d IN " +
                 collection.name() +
@@ -527,6 +528,35 @@ function VectorIndexCosineTestSuite() {
             assertEqual(0, indexNodes.length);
         },
 
+        testApproxCosineSkipping: function() {
+            const queryWithSkip =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_COSINE(@qp, d.vector) DESC LIMIT 3, 5 RETURN {k: d._key}";
+            const queryWithoutSkip =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_COSINE(d.vector, @qp) DESC LIMIT 8 RETURN {k: d._key}";
+
+            const bindVars = {
+                qp: randomPoint
+            };
+
+            const planSkipped = db
+                ._createStatement({
+                    query: queryWithSkip,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = planSkipped.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
+
+            const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
+            const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
+            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+        },
     };
 }
 

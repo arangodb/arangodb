@@ -90,6 +90,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   /// @brief contains the limit, this node only produces the top k results
   std::size_t _limit;
+
+  /// @brief contains the offset, this skips offset number of results
   std::size_t _offset;
 
   /// @brief selected index for vector search

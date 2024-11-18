@@ -111,8 +111,6 @@ class EnumerateNearVectorsExecutor {
   void initializeCursor();
 
  private:
-  auto returnState() const noexcept -> ExecutorState;
-
   void fillInput(AqlItemBlockInputRange& inputRange);
 
   void searchResults();

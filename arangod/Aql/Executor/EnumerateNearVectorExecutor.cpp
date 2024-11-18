@@ -63,18 +63,18 @@ void EnumerateNearVectorsExecutor::fillInput(
                                      value.getTypeString()));
   }
 
+  auto const dimension = _infos.index->getVectorIndexDefinition().dimension;
+  _inputRowConverted.reserve(dimension);
   std::size_t vectorComponentsCount{0};
   for (arangodb::velocypack::ArrayIterator itr(value.slice()); itr.valid();
        ++itr, ++vectorComponentsCount) {
     _inputRowConverted.push_back(itr.value().getDouble());
   }
 
-  if (vectorComponentsCount !=
-      _infos.index->getVectorIndexDefinition().dimension) {
+  if (vectorComponentsCount != dimension) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-        fmt::format("a vector must be of dimension {}, but is {}",
-                    _infos.index->getVectorIndexDefinition().dimension,
+        fmt::format("a vector must be of dimension {}, but is {}", dimension,
                     vectorComponentsCount));
   }
 }
@@ -97,7 +97,7 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
   auto const distOutId = _infos.outDistancesReg;
 
   while (!output.isFull() &&
-         _currentProcessedResultCount < (_infos.topK + _infos.offset)) {
+         _currentProcessedResultCount < _infos.getNubmerOfResults()) {
     // there are no results anymore for this input, so we can skip to next input
     // row
     if (_labels[_currentProcessedResultCount] == -1) {
@@ -127,9 +127,6 @@ void EnumerateNearVectorsExecutor::initializeCursor() {
 std::tuple<ExecutorState, NoStats, AqlCall>
 EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output) {
-  AqlCall upstreamCall{};
-  upstreamCall.fullCount = output.getClientCall().fullCount;
-
   while (!output.isFull()) {
     if (!_initialized) {
       if (!_inputRow.isInitialized()) {
@@ -172,20 +169,14 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     call.didSkip(skipped);
   }
 
-  AqlCall upstreamCall;
+  auto const state = std::invoke([&]() {
+    if (_inputRow.isInitialized()) {
+      return ExecutorState::HASMORE;
+    }
+    return _state;
+  });
 
-  return {returnState(), {}, skipped, std::move(upstreamCall)};
-}
-
-auto EnumerateNearVectorsExecutor::returnState() const noexcept
-    -> ExecutorState {
-  if (_inputRow.isInitialized()) {
-    // We are still working.
-    // TODO: Potential optimization: We can ask if the cursor has more, or there
-    // are other cursors.
-    return ExecutorState::HASMORE;
-  }
-  return _state;
+  return {state, {}, skipped, {}};
 }
 
 template class ExecutionBlockImpl<EnumerateNearVectorsExecutor>;
