@@ -1,6 +1,8 @@
 v3.11.13 (XXXX-XX-XX) 
 ---------------------
 
+* Updated ArangoDB Starter to v0.18.11-preview-2.
+
 * BTS-2014: Fix delay if write hits early after a hotbackup restore.
 
 * Fix leader resignation race in coordinator, which lead to forgotten
