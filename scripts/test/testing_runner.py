@@ -137,6 +137,8 @@ def testing_runner(testing_instance, this, arangosh):
         this.delta_seconds = this.delta.total_seconds()
     finally:
         with arangosh.slot_lock:
+            with open((sitecfg.run_root / "job_to_pids.jsonl"), "w+", encoding="utf-8")  as jsonl_file:
+                jsonl_file.write(f'{json.dumps({"pid": ret["pid"], "logfile": this.log_file})}\n')
             testing_instance.running_suites.remove(this.name_enum)
         testing_instance.done_job(this.parallelity)
 
