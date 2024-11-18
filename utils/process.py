@@ -30,8 +30,10 @@ def get_process_tree_recursive(processes, parent, tree, indent=""):
     return text
 
 have_filter = len(sys.argv) > 2
+start_pid = 1
+if len(sys.argv) > 3:
+    start_pid = int(sys.argv[3])
 print(have_filter)
-print(sys.argv[2])
 with open(sys.argv[1], "r", encoding="utf-8") as jsonl_file:
     while True:
         line = jsonl_file.readline()
@@ -82,4 +84,4 @@ with open(sys.argv[1], "r", encoding="utf-8") as jsonl_file:
             # print(f"{one_process['pid']} {one_process['ppid']} {one_process['name']}")
             tree[one_process['ppid']].append(one_process['pid'])
         # print(struct)
-        print(get_process_tree_recursive(parsed_slice[1], min(tree), tree))
+        print(get_process_tree_recursive(parsed_slice[1], start_pid, tree))
