@@ -1,5 +1,7 @@
-v3.11.13 (XXXX-XX-XX)
+v3.11.13 (XXXX-XX-XX) 
 ---------------------
+
+* BTS-2014: Fix delay if write hits early after a hotbackup restore.
 
 * Fix leader resignation race in coordinator, which lead to forgotten
   collection read locks on dbservers, which in turn could lead to deadlocks
