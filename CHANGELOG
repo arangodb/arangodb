@@ -1,6 +1,9 @@
 devel
 -----
 
+* Add metric that counts the total number of lost transaction subordinate
+  states on the database servers.
+
 * Updated ArangoDB Starter to v0.19.7-preview-2.
 
 * FE-483: add support for usePlanCache in query editor UI.
