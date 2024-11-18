@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-483: add support for usePlanCache in query editor UI.
+
 * ArangoDB now has an optional AQL query execution plan cache that can be used
   to skip query planning and optimization when running the same queries 
   repeatedly. This feature is currently experimental.

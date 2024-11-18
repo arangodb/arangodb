@@ -38,6 +38,11 @@ const BASIC_QUERY_OPTIONS = {
 };
 
 const ADVANCED_QUERY_OPTIONS = {
+  usePlanCache: {
+    type: "boolean",
+    label: "Use Plan Cache",
+    name: "usePlanCache"
+  },
   fillBlockCache: {
     type: "boolean",
     label: "Fill Block Cache",
