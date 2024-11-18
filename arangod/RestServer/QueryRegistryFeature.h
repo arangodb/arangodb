@@ -98,6 +98,28 @@ class QueryRegistryFeature final : public ArangodFeature {
   }
   uint64_t maxParallelism() const noexcept { return _maxParallelism; }
 
+  uint64_t queryPlanCacheMaxEntries() const noexcept {
+    return _queryPlanCacheMaxEntries;
+  }
+  uint64_t queryPlanCacheMaxMemoryUsage() const noexcept {
+    return _queryPlanCacheMaxMemoryUsage;
+  }
+  uint64_t queryPlanCacheMaxIndividualEntrySize() const noexcept {
+    return _queryPlanCacheMaxIndividualEntrySize;
+  }
+  double queryPlanCacheInvalidationTime() const noexcept {
+    return _queryPlanCacheInvalidationTime;
+  }
+  metrics::Counter* queryPlanCacheHitsMetric() const {
+    return &_queryPlanCacheHitsMetric;
+  }
+  metrics::Counter* queryPlanCacheMissesMetric() const {
+    return &_queryPlanCacheMissesMetric;
+  }
+  metrics::Gauge<uint64_t>* queryPlanCacheMemoryUsage() const {
+    return &_queryPlanCacheMemoryUsage;
+  }
+
   metrics::Gauge<uint64_t>* cursorsMetric() const { return &_activeCursors; }
   metrics::Gauge<uint64_t>* cursorsMemoryUsageMetric() const {
     return &_cursorsMemoryUsage;
@@ -132,6 +154,16 @@ class QueryRegistryFeature final : public ArangodFeature {
   double _queryMaxRuntime;
   uint64_t _maxQueryPlans;
   uint64_t _maxNodesPerCallstack;
+
+  // query plan cache - maximum number of entries
+  uint64_t _queryPlanCacheMaxEntries;
+  // query plan cache - maximum memory usage
+  uint64_t _queryPlanCacheMaxMemoryUsage;
+  // query plan cache - maximum individual entry size
+  uint64_t _queryPlanCacheMaxIndividualEntrySize;
+  // query plan cache - invalidation time in seconds
+  double _queryPlanCacheInvalidationTime;
+
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;
   uint64_t _queryCacheMaxEntrySize;
@@ -141,7 +173,6 @@ class QueryRegistryFeature final : public ArangodFeature {
   double _queryRegistryTTL;
   std::string _queryCacheMode;
 
- private:
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
@@ -158,6 +189,9 @@ class QueryRegistryFeature final : public ArangodFeature {
   metrics::Counter& _localQueryMemoryLimitReached;
   metrics::Gauge<uint64_t>& _activeCursors;
   metrics::Gauge<uint64_t>& _cursorsMemoryUsage;
+  metrics::Counter& _queryPlanCacheHitsMetric;
+  metrics::Counter& _queryPlanCacheMissesMetric;
+  metrics::Gauge<uint64_t>& _queryPlanCacheMemoryUsage;
 };
 
 }  // namespace arangodb

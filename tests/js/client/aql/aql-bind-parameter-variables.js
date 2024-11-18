@@ -60,7 +60,7 @@ function aqlBindParameterVariableTest() {
       const query = `
         RETURN @${bind}
       `;
-      const stmt = db._createStatement({query, bindVars: {param: 12}, options: {optimizePlanForCaching: true}});
+      const stmt = db._createStatement({query, bindVars: {param: 12}, options: {optimizePlanForCaching: true, usePlanCache: true}});
       const plan = stmt.explain().plan;
 
       const [singleton, returnNode] = plan.nodes;
@@ -84,7 +84,7 @@ function aqlBindParameterVariableTest() {
       const stmt = db._createStatement({
         query,
         bindVars: {[bind]: 12, other: true, third: "Hello"},
-        options: {optimizePlanForCaching: true}
+        options: {optimizePlanForCaching: true, usePlanCache: true}
       });
       const plan = stmt.explain().plan;
 
@@ -107,7 +107,7 @@ function aqlBindParameterVariableTest() {
         FILTER i % @${bind} == 0
         RETURN i
       `;
-      const stmt = db._createStatement({query, bindVars: {param: 4}, options: {optimizePlanForCaching: true}});
+      const stmt = db._createStatement({query, bindVars: {param: 4}, options: {optimizePlanForCaching: true, usePlanCache: true}});
       const plan = stmt.explain().plan;
 
       const singleton = plan.nodes[0];
@@ -128,7 +128,7 @@ function aqlBindParameterVariableTest() {
         LIMIT 6
         RETURN doc.i
       `;
-      const stmt = db._createStatement({query, bindVars: {param: 4}, options: {optimizePlanForCaching: true}});
+      const stmt = db._createStatement({query, bindVars: {param: 4}, options: {optimizePlanForCaching: true, usePlanCache: true}});
       const plan = stmt.explain().plan;
 
       const singleton = plan.nodes[0];
@@ -148,7 +148,7 @@ function aqlBindParameterVariableTest() {
         LIMIT 10
         RETURN [doc.i, @${bind}]
       `;
-      const stmt = db._createStatement({query, bindVars: {param: 4}, options: {optimizePlanForCaching: true}});
+      const stmt = db._createStatement({query, bindVars: {param: 4}, options: {optimizePlanForCaching: true, usePlanCache: true}});
       const result = stmt.execute().toArray();
       result.forEach(function ([a, b], idx) {
         assertEqual(a, idx);

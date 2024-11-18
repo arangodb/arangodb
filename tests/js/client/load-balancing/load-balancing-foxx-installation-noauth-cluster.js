@@ -65,7 +65,7 @@ const isCov = require("@arangodb/test-helper").versionHas('coverage');
 function sendRequest(method, endpoint, body, usePrimary) {
   let res;
   const i = usePrimary ? 0 : 1;
-  let timeout = (isCov)?100:10;
+  let timeout = (isCov)?120:10;
   try {
     const envelope = {
       body,

@@ -2478,6 +2478,9 @@ graph_subject:
     }
   | T_GRAPH bind_parameter {
       // graph name
+      if ($2->type == NODE_TYPE_PARAMETER) {
+        parser->ast()->setContainsGraphNameValueBindParameters();
+      }
       $$ = $2;
     }
   | T_GRAPH T_QUOTED_STRING {
