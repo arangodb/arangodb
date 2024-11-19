@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
+#include "Aql/QueryPlanCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Auth/UserManager.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -865,6 +866,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
     }
 
     // invalidate all entries for the database
+    vocbase->queryPlanCache().invalidateAll();
     aql::QueryCache::instance()->invalidate(vocbase);
 
     if (server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {

@@ -1,0 +1,15 @@
+name: arangodb_aql_query_plan_cache_hits_total
+introducedIn: "3.12.4"
+help: |
+  Total number of lookup hits in the AQL query plan cache.
+unit: number
+type: counter
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+  - single
+description: |
+  Total number of lookup hits in the AQL query plan cache.
+  The counter is increased whenever a query plan is looked up and found
+  in the query plan cache.
