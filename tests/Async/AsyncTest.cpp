@@ -695,7 +695,7 @@ TYPED_TEST(
   struct Functions {
     static auto awaited_2_fn(TestType test) -> async<void> {
       co_await test->wait;
-      co_return;
+      co_return;  // problem: will set current_coro to awaited_2_fn requester
     };
     static auto awaited_fn() -> async<void> { co_return; };
     static auto waiter_fn(async<void>&& fn, TestType test) -> async<void> {
@@ -718,7 +718,7 @@ TYPED_TEST(
       EXPECT_EQ(awaited_2_promise->requester,
                 async_registry::Requester{waiter_promise->id});
 
-      co_await std::move(a);
+      // co_await std::move(a);
       co_return;
     };
   };

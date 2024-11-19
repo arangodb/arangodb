@@ -195,7 +195,6 @@ struct AddToAsyncRegistry {
   auto update_source_location(std::source_location loc) -> void;
   auto update_state(State state) -> void;
   auto update_requester(Requester requester) -> void;
-  auto update_current_coroutine() -> void;
 
  private:
   struct noop {

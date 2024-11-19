@@ -21,6 +21,7 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "promise.h"
+#include <optional>
 
 #include "Async/Registry/registry_variable.h"
 #include "Async/Registry/thread_registry.h"
@@ -67,13 +68,10 @@ auto AddToAsyncRegistry::update_source_location(std::source_location loc)
     promise_in_registry->source_location.line.store(loc.line());
   }
 }
-auto AddToAsyncRegistry::update_state(State state) -> void {
+auto AddToAsyncRegistry::update_state(State state) -> std::optional<State> {
   if (promise_in_registry != nullptr) {
-    promise_in_registry->state.store(state);
-  }
-}
-auto AddToAsyncRegistry::update_current_coroutine() -> void {
-  if (promise_in_registry != nullptr) {
-    *get_current_coroutine() = promise_in_registry->requester.load();
+    return promise_in_registry->state.exchange(state);
+  } else {
+    return std::nullopt;
   }
 }

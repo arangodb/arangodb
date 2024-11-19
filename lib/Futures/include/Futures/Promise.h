@@ -125,14 +125,12 @@ class Promise {
   auto update_source_location(std::source_location loc) -> void {
     _state->update_source_location(std::move(loc));
   }
-  auto update_state(async_registry::State state) -> void {
-    _state->update_state(std::move(state));
+  auto update_state(async_registry::State state)
+      -> std::optional<async_registry::State> {
+    return _state->update_state(std::move(state));
   }
   auto update_requester(async_registry::Requester waiter) -> void {
     return _state->update_requester(waiter);
-  }
-  auto update_current_coroutine() -> void {
-    _state->update_current_coroutine();
   }
 
  private:
