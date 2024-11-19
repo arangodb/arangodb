@@ -689,13 +689,13 @@ TYPED_TEST(AsyncTest,
 
 TYPED_TEST(
     AsyncTest,
-    async_promises_in_async_registry_know_their_requester_with_move_and_call_again) {
+    async_promises_in_async_registry_know_their_requester_with_move_and_call_without_await) {
   arangodb::async_registry::get_thread_registry().garbage_collect();
   using TestType = decltype(this);
   struct Functions {
     static auto awaited_2_fn(TestType test) -> async<void> {
       co_await test->wait;
-      co_return;  // problem: will set current_coro to awaited_2_fn requester
+      co_return;
     };
     static auto awaited_fn() -> async<void> { co_return; };
     static auto waiter_fn(async<void>&& fn, TestType test) -> async<void> {
@@ -718,7 +718,6 @@ TYPED_TEST(
       EXPECT_EQ(awaited_2_promise->requester,
                 async_registry::Requester{waiter_promise->id});
 
-      // co_await std::move(a);
       co_return;
     };
   };

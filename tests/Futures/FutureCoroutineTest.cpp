@@ -165,7 +165,6 @@ TYPED_TEST(
     FutureCoroutineTest,
     promises_in_async_registry_know_their_requester_with_nested_coroutines) {
   using TestType = decltype(this);
-  arangodb::async_registry::get_thread_registry().garbage_collect();
   struct Functions {
     static auto awaited_by_awaited_fn(TestType test) -> Future<Unit> {
       auto promise = find_promise_by_name("awaited_by_awaited_fn");
@@ -238,7 +237,6 @@ TYPED_TEST(
 
 TYPED_TEST(FutureCoroutineTest,
            promises_in_async_registry_know_their_requester_with_move) {
-  arangodb::async_registry::get_thread_registry().garbage_collect();
   using TestType = decltype(this);
   struct Functions {
     static auto awaited_fn(TestType test) -> Future<Unit> {
