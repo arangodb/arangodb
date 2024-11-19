@@ -193,7 +193,7 @@ struct AddToAsyncRegistry {
 
   auto id() -> void*;
   auto update_source_location(std::source_location loc) -> void;
-  auto update_state(State state) -> void;
+  auto update_state(State state) -> std::optional<State>;
   auto update_requester(Requester requester) -> void;
 
  private:
