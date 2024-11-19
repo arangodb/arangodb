@@ -30,6 +30,9 @@ parameters:
   create-docker-images:
     type: boolean
     default: false
+  rebuild-test-docker-images:
+    type: boolean
+    default: false
   nightly:
     type: boolean
     default: false
