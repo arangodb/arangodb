@@ -3,6 +3,8 @@ devel
 
 * BTS-2018: enable count cache for virtual smart edge collections.
 
+* BTS-2017: fix CleanOutServer for satellite collections.
+
 * Add metric that counts the total number of lost transaction subordinate
   states on the database servers.
 
