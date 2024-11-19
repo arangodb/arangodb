@@ -79,9 +79,16 @@ def add_delta(p1, p2):
             p1[tid]['d_sys'] = p2[tid]['sys'] - p1[tid]['sys']
     p1['process'].append(p2['process'][0])
 
-def get_all_processes_stats_json():
+def get_all_processes_stats_json(load):
     """ aggregate a structure of all processes and their threads plus delta """
     process_full_list = {}
+    process_full_list['sys'] = {
+        'load': load,
+        'vmem': psutil.virtual_memory(),
+        'mem': psutil.swap_memory(),
+        'diskio': psutil.disk_io_counters(perdisk=True, nowrap=True),
+        'netio': psutil.net_io_counters(pernic=True, nowrap=True),
+    }
     for n in [True, False]:
         processes = psutil.process_iter()
         for process in processes:
