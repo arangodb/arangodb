@@ -322,16 +322,25 @@ jobs:
             if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
               MINIMAL_DEBUGINFO="ON"
             fi
+
+            arch="<<parameters.arch>>"
+            if test "$arch" == "x64"; then
+              LAPACK_LIB_PATH="/usr/lib/x86_64-linux-gnu/lapack/liblapack.a"
+            else
+              LAPACK_LIB_PATH="/usr/lib/aarch64-linux-gnu/lapack/liblapack.a"
+            fi
+
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
-              -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
+              -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld -fopenmp=libomp -L/opt/omp -llapack -lgfortran" \
               -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
               -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
-              -DCMAKE_INSTALL_PREFIX=/
+              -DCMAKE_INSTALL_PREFIX=/ \
+              -DLAPACK_LIBRARIES="$LAPACK_LIB_PATH"
       - run:
           name: Build
           command: |
