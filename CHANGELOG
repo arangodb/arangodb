@@ -1,7 +1,7 @@
 devel
 -----
 
-*  Add a vector index based on faiss implementation. The current vector index 
+* Add a vector index based on faiss implementation. The current vector index 
   implementation supports the L2 and cosine metrics. To create a vector index,
   the vector field(s) in the collection must already be populated with data. Here is an
   example of a vector index creation:
@@ -37,12 +37,14 @@ devel
   ````
   This returns the top 10 nearest neighbors to `@queryVector`.
 
+* Updated ArangoDB Starter to v0.19.7.
+
 * BTS-2018: enable count cache for virtual smart edge collections.
+
+* BTS-2017: fix CleanOutServer for satellite collections.
 
 * Add metric that counts the total number of lost transaction subordinate
   states on the database servers.
-
-* Updated ArangoDB Starter to v0.19.7-preview-2.
 
 * FE-483: add support for usePlanCache in query editor UI.
 
