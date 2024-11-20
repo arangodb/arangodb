@@ -41,7 +41,7 @@ auto get_thread_registry() noexcept -> ThreadRegistry& {
 // get_current_coroutine_or_thread_id
 auto get_current_coroutine() noexcept -> Requester* {
   struct Guard {
-    Guard() : _identifier{{std::this_thread::get_id()}} {}
+    Guard() : _identifier{Requester::sync()} {}
 
     Requester _identifier;
   };

@@ -34,6 +34,13 @@ Thread::Thread()
     : name{std::string{ThreadNameFetcher{}.get()}},
       id{arangodb::Thread::currentThreadId()} {}
 
+Thread::Thread(TRI_tid_t id)
+    : name{std::string{ThreadNameFetcher{id}.get()}}, id{id} {}
+
+auto Requester::sync() -> Requester {
+  return {arangodb::Thread::currentThreadId()};
+}
+
 Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
                  Requester requester, std::source_location entry_point)
     : thread{registry->thread},

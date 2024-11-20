@@ -273,7 +273,7 @@ class [[nodiscard]] Future {
 
   /// Blocks until this Future is complete.
   void wait() {
-    update_requester({std::this_thread::get_id()});
+    update_requester(async_registry::Requester::sync());
     detail::waitImpl(*this);
   }
 

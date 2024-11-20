@@ -67,8 +67,9 @@ ThreadRegistry::~ThreadRegistry() noexcept {
   cleanup();
 }
 
-auto ThreadRegistry::add_promise(std::source_location location,
-                                 Requester requester) noexcept -> Promise* {
+auto ThreadRegistry::add_promise(
+    std::source_location location = std::source_location::current(),
+    Requester requester = Requester::sync()) noexcept -> Promise* {
   // promise needs to live on the same thread as this registry
   ADB_PROD_ASSERT(arangodb::Thread::currentThreadId() == thread.id)
       << "ThreadRegistry::add was called from thread "

@@ -51,6 +51,7 @@ struct Thread {
   TRI_tid_t id;
   bool operator==(Thread const&) const = default;
   Thread();
+  Thread(TRI_tid_t id);
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Thread& x) {
@@ -90,21 +91,22 @@ auto inspect(Inspector& f, State& x) {
 }
 
 using AsyncRequester = void*;
-using SyncRequester = std::thread::id;
+using SyncRequester = TRI_tid_t;
 
 struct AsyncRequesterWrapper {
   AsyncRequester item;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, AsyncRequesterWrapper& x) {
-  return f.object(x).fields(f.field("async", fmt::format("{}", x.item)));
+  return f.object(x).fields(
+      f.field("async promise", fmt::format("{}", x.item)));
 }
 struct SyncRequesterWrapper {
-  SyncRequester item;
+  Thread item;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SyncRequesterWrapper& x) {
-  return f.object(x).fields(f.field("sync", fmt::format("{}", x.item)));
+  return f.object(x).fields(f.field("sync thread", x.item));
 }
 struct RequesterWrapper
     : std::variant<SyncRequesterWrapper, AsyncRequesterWrapper> {};
@@ -114,20 +116,22 @@ auto inspect(Inspector& f, RequesterWrapper& x) {
       inspection::inlineType<AsyncRequesterWrapper>(),
       inspection::inlineType<SyncRequesterWrapper>());
 }
-struct Requester : std::variant<SyncRequester, AsyncRequester> {};
+struct Requester : std::variant<SyncRequester, AsyncRequester> {
+  static auto sync() -> Requester;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, Requester& x) {
   if constexpr (!Inspector::isLoading) {  // only serialize
-    RequesterWrapper tmp =
-        std::visit(overloaded{
-                       [&](AsyncRequester waiter) {
-                         return RequesterWrapper{AsyncRequesterWrapper{waiter}};
-                       },
-                       [&](SyncRequester waiter) {
-                         return RequesterWrapper{SyncRequesterWrapper{waiter}};
-                       },
-                   },
-                   x);
+    RequesterWrapper tmp = std::visit(
+        overloaded{
+            [&](AsyncRequester waiter) {
+              return RequesterWrapper{AsyncRequesterWrapper{waiter}};
+            },
+            [&](SyncRequester waiter) {
+              return RequesterWrapper{SyncRequesterWrapper{Thread{waiter}}};
+            },
+        },
+        x);
     return f.apply(tmp);
   }
 }
