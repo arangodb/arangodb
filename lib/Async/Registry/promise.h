@@ -55,7 +55,7 @@ struct Thread {
 template<typename Inspector>
 auto inspect(Inspector& f, Thread& x) {
   return f.object(x).fields(f.field("name", x.name),
-                            f.field("id", fmt::format("{}", x.id)));
+                            f.field("id", fmt::format("0x{0:x}", x.id)));
 }
 
 struct SourceLocationSnapshot {
@@ -97,8 +97,7 @@ struct AsyncRequesterWrapper {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, AsyncRequesterWrapper& x) {
-  return f.object(x).fields(
-      f.field("async", reinterpret_cast<intptr_t>(x.item)));
+  return f.object(x).fields(f.field("async", fmt::format("{}", x.item)));
 }
 struct SyncRequesterWrapper {
   SyncRequester item;
@@ -145,7 +144,7 @@ template<typename Inspector>
 auto inspect(Inspector& f, PromiseSnapshot& x) {
   return f.object(x).fields(f.field("owning_thread", x.thread),
                             f.field("source_location", x.source_location),
-                            f.field("id", reinterpret_cast<intptr_t>(x.id)),
+                            f.field("id", fmt::format("{}", x.id)),
                             f.field("waiter", x.requester),
                             f.field("state", x.state));
 }
