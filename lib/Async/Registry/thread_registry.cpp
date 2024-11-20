@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "thread_registry.h"
 #include <source_location>
-#include <thread>
 
 #include "Assertions/ProdAssert.h"
 #include "Async/Registry/Metrics.h"
@@ -49,10 +48,7 @@ auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics,
 
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics,
                                Registry* registry)
-    : thread{Thread{.name = std::string{ThreadNameFetcher{}.get()},
-                    .id = std::this_thread::get_id()}},
-      registry{registry},
-      metrics{metrics} {
+    : thread{Thread{}}, registry{registry}, metrics{metrics} {
   if (metrics->threads_total != nullptr) {
     metrics->threads_total->count();
   }
@@ -74,9 +70,9 @@ ThreadRegistry::~ThreadRegistry() noexcept {
 auto ThreadRegistry::add_promise(std::source_location location,
                                  Requester requester) noexcept -> Promise* {
   // promise needs to live on the same thread as this registry
-  ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id)
+  ADB_PROD_ASSERT(arangodb::Thread::currentThreadId() == thread.id)
       << "ThreadRegistry::add was called from thread "
-      << std::this_thread::get_id()
+      << fmt::format("{}", arangodb::Thread::currentThreadId())
       << " but needs to be called from ThreadRegistry's owning thread "
       << thread.id << ". " << this;
   if (metrics->promises_total != nullptr) {
@@ -127,9 +123,9 @@ auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
 }
 
 auto ThreadRegistry::garbage_collect() noexcept -> void {
-  ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id)
+  ADB_PROD_ASSERT(arangodb::Thread::currentThreadId() == thread.id)
       << "ThreadRegistry::garbage_collect was called from thread "
-      << std::this_thread::get_id()
+      << fmt::format("{}", arangodb::Thread::currentThreadId())
       << " but needs to be called from ThreadRegistry's owning thread "
       << thread.id << ". " << this;
   auto guard = std::lock_guard(mutex);

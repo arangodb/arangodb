@@ -25,9 +25,14 @@
 
 #include "Async/Registry/registry_variable.h"
 #include "Async/Registry/thread_registry.h"
+#include "Basics/Thread.h"
 #include "Inspection/Format.h"
 
 using namespace arangodb::async_registry;
+
+Thread::Thread()
+    : name{std::string{ThreadNameFetcher{}.get()}},
+      id{arangodb::Thread::currentThreadId()} {}
 
 Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
                  Requester requester, std::source_location entry_point)

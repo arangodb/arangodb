@@ -28,6 +28,7 @@
 #include <source_location>
 #include <string>
 #include <thread>
+#include "Basics/threads-posix.h"
 #include "Inspection/Types.h"
 #include "fmt/format.h"
 #include "fmt/std.h"
@@ -47,8 +48,9 @@ struct ThreadRegistry;
 
 struct Thread {
   std::string name;
-  std::thread::id id;
+  TRI_tid_t id;
   bool operator==(Thread const&) const = default;
+  Thread();
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Thread& x) {
