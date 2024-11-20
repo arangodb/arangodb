@@ -87,52 +87,46 @@ auto inspect(Inspector& f, State& x) {
                                  State::Deleted, "Deleted");
 }
 
-using AsyncWaiter = void*;
-using SyncWaiter = std::thread::id;
-struct NoWaiter {
-  bool operator==(NoWaiter const&) const = default;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, NoWaiter& x) {
-  return f.object(x).fields();
-}
+using AsyncRequester = void*;
+using SyncRequester = std::thread::id;
 
-struct AsyncWaiterTmp {
-  AsyncWaiter item;
+struct AsyncRequesterWrapper {
+  AsyncRequester item;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, AsyncWaiterTmp& x) {
+auto inspect(Inspector& f, AsyncRequesterWrapper& x) {
   return f.object(x).fields(
       f.field("async", reinterpret_cast<intptr_t>(x.item)));
 }
-struct SyncWaiterTmp {
-  SyncWaiter item;
+struct SyncRequesterWrapper {
+  SyncRequester item;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, SyncWaiterTmp& x) {
+auto inspect(Inspector& f, SyncRequesterWrapper& x) {
   return f.object(x).fields(f.field("sync", fmt::format("{}", x.item)));
 }
-struct WaiterTmp : std::variant<AsyncWaiterTmp, SyncWaiterTmp, NoWaiter> {};
+struct RequesterWrapper
+    : std::variant<SyncRequesterWrapper, AsyncRequesterWrapper> {};
 template<typename Inspector>
-auto inspect(Inspector& f, WaiterTmp& x) {
+auto inspect(Inspector& f, RequesterWrapper& x) {
   return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<NoWaiter>(),
-      inspection::inlineType<AsyncWaiterTmp>(),
-      inspection::inlineType<SyncWaiterTmp>());
+      inspection::inlineType<AsyncRequesterWrapper>(),
+      inspection::inlineType<SyncRequesterWrapper>());
 }
-struct Waiter : std::variant<NoWaiter, AsyncWaiter, SyncWaiter> {};
+struct Requester : std::variant<SyncRequester, AsyncRequester> {};
 template<typename Inspector>
-auto inspect(Inspector& f, Waiter& x) {
+auto inspect(Inspector& f, Requester& x) {
   if constexpr (!Inspector::isLoading) {  // only serialize
-    WaiterTmp tmp = std::visit(
-        overloaded{
-            [&](AsyncWaiter waiter) {
-              return WaiterTmp{AsyncWaiterTmp{waiter}};
-            },
-            [&](SyncWaiter waiter) { return WaiterTmp{SyncWaiterTmp{waiter}}; },
-            [&](NoWaiter waiter) { return WaiterTmp{waiter}; },
-        },
-        x);
+    RequesterWrapper tmp =
+        std::visit(overloaded{
+                       [&](AsyncRequester waiter) {
+                         return RequesterWrapper{AsyncRequesterWrapper{waiter}};
+                       },
+                       [&](SyncRequester waiter) {
+                         return RequesterWrapper{SyncRequesterWrapper{waiter}};
+                       },
+                   },
+                   x);
     return f.apply(tmp);
   }
 }
@@ -141,7 +135,7 @@ struct PromiseSnapshot {
   void* id;
   Thread thread;
   SourceLocationSnapshot source_location;
-  Waiter waiter = {NoWaiter{}};
+  Requester requester;
   State state;
   bool operator==(PromiseSnapshot const&) const = default;
 };
@@ -150,12 +144,12 @@ auto inspect(Inspector& f, PromiseSnapshot& x) {
   return f.object(x).fields(f.field("owning_thread", x.thread),
                             f.field("source_location", x.source_location),
                             f.field("id", reinterpret_cast<intptr_t>(x.id)),
-                            f.field("waiter", x.waiter),
+                            f.field("waiter", x.requester),
                             f.field("state", x.state));
 }
 struct Promise {
   Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
-          std::source_location location);
+          Requester requester, std::source_location location);
   ~Promise() = default;
 
   auto mark_for_deletion() noexcept -> void;
@@ -164,14 +158,14 @@ struct Promise {
     return PromiseSnapshot{.id = id(),
                            .thread = thread,
                            .source_location = source_location.snapshot(),
-                           .waiter = waiter.load(),
+                           .requester = requester.load(),
                            .state = state.load()};
   }
 
   Thread thread;
 
   SourceLocation source_location;
-  std::atomic<Waiter> waiter = Waiter{NoWaiter{}};
+  std::atomic<Requester> requester;
   std::atomic<State> state = State::Running;
   // identifies the promise list it belongs to
   std::shared_ptr<ThreadRegistry> registry;
@@ -197,33 +191,10 @@ struct AddToAsyncRegistry {
   AddToAsyncRegistry& operator=(AddToAsyncRegistry&&) = delete;
   ~AddToAsyncRegistry();
 
-  auto set_promise_waiter(AsyncWaiter waiter) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->waiter.store({{waiter}});
-    }
-  }
-  auto set_promise_waiter(SyncWaiter waiter) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->waiter.store({{waiter}});
-    }
-  }
-  auto id() -> void* {
-    if (promise_in_registry != nullptr) {
-      return promise_in_registry->id();
-    } else {
-      return nullptr;
-    }
-  }
-  auto update_source_location(std::source_location loc) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->source_location.line.store(loc.line());
-    }
-  }
-  auto update_state(State state) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->state.store(state);
-    }
-  }
+  auto id() -> void*;
+  auto update_source_location(std::source_location loc) -> void;
+  auto update_state(State state) -> std::optional<State>;
+  auto update_requester(Requester requester) -> void;
 
  private:
   struct noop {

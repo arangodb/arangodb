@@ -26,7 +26,7 @@ class SourceLocation(object):
     def __str__(self):
         return self.function_name + " (" + self.file_name + ":" + str(self.line) + ")"
     
-class Waiter(object):
+class Requester(object):
     def __init__(self, is_sync: bool, item: int):
         self.is_sync = is_sync
         self.item = item
@@ -41,20 +41,20 @@ class Waiter(object):
             return cls(False, blob["async"])
     def __str__(self):
         if self.is_sync:
-            return "\nsync waiter thread " + str(self.item)
+            return "\nsync requester thread " + str(self.item)
         else:
             return ""
 
 class Data(object):
-    def __init__(self, owning_thread: Thread, source_location: SourceLocation, id: int, state: str, waiter: Waiter):
+    def __init__(self, owning_thread: Thread, source_location: SourceLocation, id: int, state: str, requester: Requester):
         self.owning_thread = owning_thread
         self.source_location = source_location
         self.id = id
-        self.waiter = waiter
+        self.waiter = requester
         self.state = state
     @classmethod
     def from_json(cls, blob: dict):
-        return cls(Thread.from_json(blob["owning_thread"]), SourceLocation.from_json(blob["source_location"]), blob["id"], blob["state"], Waiter.from_json(blob["waiter"]))
+        return cls(Thread.from_json(blob["owning_thread"]), SourceLocation.from_json(blob["source_location"]), blob["id"], blob["state"], Requester.from_json(blob["requester"]))
     def __str__(self):
         waiter_str = str(self.waiter) if self.waiter != None else ""
         return str(self.source_location) + ", " + str(self.owning_thread) + ", " + self.state + waiter_str
@@ -119,7 +119,7 @@ def test_intput() -> str:
           "function_name": "arangodb::network::(anonymous namespace)::Pack::Pack(DestinationId &&, RequestLane, bool, bool)"
         },
         "id": 124252709790688,
-        "waiter": {},
+        "requester": {},
         "state": "Suspended"
       }
     }
@@ -138,7 +138,7 @@ def test_intput() -> str:
           "function_name": "arangodb::network::(anonymous namespace)::Pack::Pack(DestinationId &&, RequestLane, bool, bool)"
         },
         "id": 124252709790688,
-        "waiter": {"async": 124252709790368},
+        "requester": {"async": 124252709790368},
         "state": "Suspended"
       }
     },
@@ -155,7 +155,7 @@ def test_intput() -> str:
           "function_name": "FutureRes arangodb::network::sendRequest(ConnectionPool *, DestinationId, RestVerb, std::string, velocypack::Buffer<uint8_t>, const RequestOptions &, Headers)"
         },
         "id": 124252709790368,
-        "waiter": {"async": 124252709790848},
+        "requester": {"async": 124252709790848},
         "state": "Suspended"
       }
     },
@@ -172,7 +172,7 @@ def test_intput() -> str:
           "function_name": "auto (anonymous namespace)::agencyAsyncSend(AsyncAgencyCommManager &, RequestMeta &&, VPackBuffer<uint8_t> &&)::(anonymous class)::operator()(auto) [auto:1 = arangodb::futures::Unit]"
         },
         "id": 124252709790848,
-        "waiter": {"async": 124252709791008},
+        "requester": {"async": 124252709791008},
         "state": "Suspended"
       }
     },
@@ -189,7 +189,7 @@ def test_intput() -> str:
           "function_name": "auto (anonymous namespace)::agencyAsyncSend(AsyncAgencyCommManager &, RequestMeta &&, VPackBuffer<uint8_t> &&)::(anonymous class)::operator()(auto) [auto:1 = arangodb::futures::Unit]"
         },
         "id": 124252709790848,
-        "waiter": {"async": 124252709791008},
+        "requester": {"async": 124252709791008},
         "state": "Suspended"
       }
     },
@@ -206,7 +206,7 @@ def test_intput() -> str:
           "function_name": "auto (anonymous namespace)::agencyAsyncSend(AsyncAgencyCommManager &, RequestMeta &&, VPackBuffer<uint8_t> &&)::(anonymous class)::operator()(auto) [auto:1 = arangodb::futures::Unit]"
         },
         "id": 124252709790848,
-        "waiter": {"async": 124252709791008},
+        "requester": {"async": 124252709791008},
         "state": "Suspended"
       }
     },
@@ -223,7 +223,7 @@ def test_intput() -> str:
           "function_name": "auto (anonymous namespace)::agencyAsyncSend(AsyncAgencyCommManager &, RequestMeta &&, VPackBuffer<uint8_t> &&)::(anonymous class)::operator()(auto) [auto:1 = arangodb::futures::Unit]"
         },
         "id": 124252709791008,
-        "waiter": {"sync": 123},
+        "requester": {"sync": 123},
         "state": "Suspended"
       }
     }

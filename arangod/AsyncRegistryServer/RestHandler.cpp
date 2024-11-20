@@ -54,11 +54,10 @@ auto all_undeleted_promises()
       // not relevant for creating the forest
       auto waiter = std::visit(
           overloaded{
-              [&](AsyncWaiter waiter) -> AsyncWaiter { return waiter; },
-              [&](SyncWaiter waiter) -> AsyncWaiter { return nullptr; },
-              [&](NoWaiter waiter) -> AsyncWaiter { return nullptr; },
+              [&](AsyncRequester waiter) -> AsyncRequester { return waiter; },
+              [&](SyncRequester waiter) -> AsyncRequester { return nullptr; },
           },
-          promise.waiter);
+          promise.requester);
       forest.insert(promise.id, waiter, promise);
       if (waiter == nullptr) {
         roots.emplace_back(promise.id);

@@ -21,17 +21,20 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "promise.h"
+#include <optional>
 
 #include "Async/Registry/registry_variable.h"
 #include "Async/Registry/thread_registry.h"
+#include "Inspection/Format.h"
 
 using namespace arangodb::async_registry;
 
 Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
-                 std::source_location entry_point)
+                 Requester requester, std::source_location entry_point)
     : thread{registry->thread},
       source_location{entry_point.file_name(), entry_point.function_name(),
                       entry_point.line()},
+      requester{requester},
       registry{std::move(registry)},
       next{next} {}
 
@@ -40,9 +43,35 @@ auto Promise::mark_for_deletion() noexcept -> void {
 }
 
 AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc)
-    : promise_in_registry{get_thread_registry().add_promise(std::move(loc))} {}
+    : promise_in_registry{get_thread_registry().add_promise(
+          std::move(loc), *get_current_coroutine())} {}
 AddToAsyncRegistry::~AddToAsyncRegistry() {
   if (promise_in_registry != nullptr) {
     promise_in_registry->mark_for_deletion();
+  }
+}
+auto AddToAsyncRegistry::update_requester(Requester new_requester) -> void {
+  if (promise_in_registry != nullptr) {
+    promise_in_registry->requester.store(new_requester);
+  }
+}
+auto AddToAsyncRegistry::id() -> void* {
+  if (promise_in_registry != nullptr) {
+    return promise_in_registry->id();
+  } else {
+    return nullptr;
+  }
+}
+auto AddToAsyncRegistry::update_source_location(std::source_location loc)
+    -> void {
+  if (promise_in_registry != nullptr) {
+    promise_in_registry->source_location.line.store(loc.line());
+  }
+}
+auto AddToAsyncRegistry::update_state(State state) -> std::optional<State> {
+  if (promise_in_registry != nullptr) {
+    return promise_in_registry->state.exchange(state);
+  } else {
+    return std::nullopt;
   }
 }

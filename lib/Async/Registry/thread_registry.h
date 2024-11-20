@@ -67,8 +67,9 @@ struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
      Can only be called on the owning thread, crashes
      otherwise.
    */
-  auto add_promise(std::source_location location =
-                       std::source_location::current()) noexcept -> Promise*;
+  auto add_promise(
+      std::source_location location = std::source_location::current(),
+      Requester requester = {std::this_thread::get_id()}) noexcept -> Promise*;
 
   /**
      Executes a function on each promise in the registry that is not deleted yet
