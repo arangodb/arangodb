@@ -17,6 +17,8 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateNearVectorExecutor.h"
@@ -77,6 +79,7 @@ void EnumerateNearVectorsExecutor::fillInput(
         fmt::format("a vector must be of dimension {}, but is {}", dimension,
                     vectorComponentsCount));
   }
+  _initialized = true;
 }
 
 void EnumerateNearVectorsExecutor::searchResults() {
@@ -89,7 +92,6 @@ void EnumerateNearVectorsExecutor::searchResults() {
   std::tie(_labels, _distances) = vectorIndex->readBatch(
       _inputRowConverted, mthds, &_trx, _collection->getCollection(), 1,
       _infos.getNubmerOfResults());
-  _initialized = true;
 }
 
 void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
@@ -119,6 +121,7 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
 std::tuple<ExecutorState, NoStats, AqlCall>
 EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output) {
+  LOG_DEVEL << "Producing rows";
   while (!output.isFull()) {
     if (!_initialized) {
       if (!_inputRow.isInitialized()) {
@@ -141,23 +144,43 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                             AqlCall& call) {
   std::size_t skipped{0};
-  while (call.needSkipMore()) {
+  LOG_DEVEL << "BEGGINING CALL: " << call;
+  LOG_DEVEL << __FUNCTION__ << " fullCount: " << std::boolalpha
+            << call.fullCount;
+  LOG_DEVEL << __FUNCTION__ << " needSkipMore: " << std::boolalpha
+            << call.needSkipMore()
+            << ", hasinputRange: " << inputRange.hasDataRow();
+  while (call.needSkipMore() && inputRange.hasDataRow()) {
+    LOG_DEVEL << __FUNCTION__ << ": Need to skip";
     // get an input row first, if necessary
     if (!_inputRow.isInitialized() && !_initialized) {
       std::tie(_state, _inputRow) = inputRange.peekDataRow();
 
-      if (_inputRow.isInitialized()) {
+      if (_inputRow.isInitialized() && !_initialized) {
+        LOG_DEVEL << "Doing search";
         fillInput(inputRange);
+        searchResults();
       } else {
         break;
       }
     }
-    if (!_initialized) {
-      searchResults();
-    }
 
-    skipped = call.getOffset();
-    _currentProcessedResultCount += skipped;
+    while (_currentProcessedResultCount < call.getOffset()) {
+      LOG_DEVEL << "We are checking: " << _labels;
+      if (_labels[_currentProcessedResultCount] == -1) {
+        LOG_DEVEL << "We are done: " << _labels;
+        // we are done
+        inputRange.advanceDataRow();
+        LOG_DEVEL << __FUNCTION__ << ": " << __LINE__;
+        _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        LOG_DEVEL << __FUNCTION__ << ": " << __LINE__;
+        return {ExecutorState::DONE, {}, skipped, {}};
+        continue;
+      }
+      LOG_DEVEL << "Skipping one, current: " << _currentProcessedResultCount;
+      ++_currentProcessedResultCount;
+      skipped += 1;
+    }
     call.didSkip(skipped);
   }
 
@@ -168,7 +191,10 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     return _state;
   });
 
-  return {state, {}, skipped, {}};
+  AqlCall upstreamCall;
+  LOG_DEVEL << "EnumerateNearVectorsExecutor::skipRowsRange returning " << state
+            << " " << skipped << " " << upstreamCall;
+  return {state, {}, skipped, upstreamCall};
 }
 
 template class ExecutionBlockImpl<EnumerateNearVectorsExecutor>;

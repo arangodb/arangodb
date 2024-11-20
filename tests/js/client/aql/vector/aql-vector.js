@@ -357,13 +357,15 @@ function VectorIndexL2TestSuite() {
 
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
-            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+
             assertEqual(resultsWithSkip.length, 5);
+            assertEqual(resultsWithoutSkip.length, 8);
+
+            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
         },
 
         testApproxL2Subquery: function() {
-            const queries = [
-                aql`
+            const queries = [aql`
         FOR docOuter IN ${collection}
         FILTER docOuter.nonVector < 10 
         LET neighbours = (FOR docInner IN ${collection}
@@ -372,8 +374,7 @@ function VectorIndexL2TestSuite() {
           LIMIT 5 
           RETURN { dist, doc: docInner })
         RETURN { docOuter, neighbours }
-        `,
-                aql`
+        `, aql`
         FOR docOuter IN ${collection}
         FILTER docOuter.nonVector < 10 
         LET neighbours = (FOR docInner IN ${collection}
@@ -382,8 +383,7 @@ function VectorIndexL2TestSuite() {
           LIMIT 5 
           RETURN { dist, doc: docInner })
         RETURN { docOuter, neighbours }
-        `
-            ];
+        `];
 
             for (let i = 0; i < queries.length; ++i) {
                 let query = queries[i];
@@ -399,6 +399,49 @@ function VectorIndexL2TestSuite() {
                 results.forEach((element) => {
                     assertEqual(5, element.neighbours.length);
                 });
+            }
+        },
+
+        testApproxL2SubqueryWithSkipping: function() {
+            const queryWithSkip = aql`
+            FOR docOuter IN ${collection}
+            FILTER docOuter.nonVector < 10 
+            LET neighbours = (FOR docInner IN ${collection}
+              LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector)
+              SORT dist
+              LIMIT 3, 5
+              RETURN { dist, doc: docInner })
+            RETURN { docOuter, neighbours }`;
+
+            const queryWithoutSkip = aql`
+              FOR docOuter IN ${collection}
+              FILTER docOuter.nonVector < 10 
+              LET neighbours = (FOR docInner IN ${collection}
+                LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector)
+                SORT dist
+                LIMIT 8
+                RETURN { dist, doc: docInner })
+              RETURN { docOuter, neighbours }`;
+
+            const planSkipped = db
+                ._createStatement(queryWithSkip)
+                .explain().plan;
+            const indexNodes = planSkipped.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
+
+            const resultsWithSkip = db._query(queryWithSkip).toArray();
+            const resultsWithoutSkip = db._query(queryWithoutSkip).toArray();
+            assertEqual(resultsWithSkip.length, resultsWithoutSkip.length);
+            
+            for(let i = 0; i < resultsWithSkip.length; ++i) {
+              const skipNeighbours = resultsWithSkip[i].neighbours;
+              const nonSkipNeighbours = resultsWithoutSkip[i].neighbours;
+              assertEqual(skipNeighbours.length, 5);
+              assertEqual(nonSkipNeighbours.length, 8);
+
+              assertEqual(skipNeighbours, nonSkipNeighbours.slice(3, nonSkipNeighbours.length));
             }
         },
     };
