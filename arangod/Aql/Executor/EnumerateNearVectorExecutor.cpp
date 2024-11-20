@@ -174,8 +174,7 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
         LOG_DEVEL << __FUNCTION__ << ": " << __LINE__;
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
         LOG_DEVEL << __FUNCTION__ << ": " << __LINE__;
-        return {ExecutorState::DONE, {}, skipped, {}};
-        continue;
+        break;
       }
       LOG_DEVEL << "Skipping one, current: " << _currentProcessedResultCount;
       ++_currentProcessedResultCount;
