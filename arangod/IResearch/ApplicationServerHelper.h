@@ -37,7 +37,7 @@ class AqlFunctionFeature;
 
 namespace iresearch {
 
-bool addFunction(arangodb::aql::AqlFunctionFeature& functions,
+void addFunction(arangodb::aql::AqlFunctionFeature& functions,
                  arangodb::aql::Function const& function);
 
 arangodb::aql::Function const* getFunction(
