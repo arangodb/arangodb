@@ -48,7 +48,7 @@ auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics,
 
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics,
                                Registry* registry)
-    : thread{Thread{}}, registry{registry}, metrics{metrics} {
+    : thread{ThreadId::current()}, registry{registry}, metrics{metrics} {
   if (metrics->threads_total != nullptr) {
     metrics->threads_total->count();
   }
@@ -71,11 +71,12 @@ auto ThreadRegistry::add_promise(
     std::source_location location = std::source_location::current(),
     Requester requester = Requester::sync()) noexcept -> Promise* {
   // promise needs to live on the same thread as this registry
-  ADB_PROD_ASSERT(arangodb::Thread::currentThreadId() == thread.id)
-      << "ThreadRegistry::add was called from thread "
-      << fmt::format("{}", arangodb::Thread::currentThreadId())
+  auto current_thread = ThreadId::current();
+  ADB_PROD_ASSERT(current_thread == thread)
+      << "ThreadRegistry::add_promise was called from thread "
+      << fmt::format("{}", current_thread)
       << " but needs to be called from ThreadRegistry's owning thread "
-      << thread.id << ". " << this;
+      << fmt::format("{}", thread.id) << ". " << this;
   if (metrics->promises_total != nullptr) {
     metrics->promises_total->count();
   }
@@ -124,11 +125,12 @@ auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
 }
 
 auto ThreadRegistry::garbage_collect() noexcept -> void {
-  ADB_PROD_ASSERT(arangodb::Thread::currentThreadId() == thread.id)
+  auto current_thread = ThreadId::current();
+  ADB_PROD_ASSERT(current_thread == thread)
       << "ThreadRegistry::garbage_collect was called from thread "
-      << fmt::format("{}", arangodb::Thread::currentThreadId())
+      << fmt::format("{}", current_thread)
       << " but needs to be called from ThreadRegistry's owning thread "
-      << thread.id << ". " << this;
+      << fmt::format("{}", thread.id) << ". " << this;
   auto guard = std::lock_guard(mutex);
   cleanup();
 }
