@@ -428,7 +428,7 @@ function GenericAqlSetupPathSuite(type) {
       });
 
       debug("waiting for all test clients");
-      const waitFor = isCov ? 60 * 4 : 60;
+      const waitFor = isCov ? 60 * 6 : 60;
       joinBGShells(IM.options, clients, waitFor, cn);
       assertEqual(clients.length, db[cn].count());
       let stats = {};
