@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import json
+from pathlib import Path
 import sys
 import collections
 
@@ -34,7 +35,19 @@ start_pid = 1
 if len(sys.argv) > 3:
     start_pid = int(sys.argv[3])
 print(have_filter)
-with open(sys.argv[1], "r", encoding="utf-8") as jsonl_file:
+main_log_file = Path(sys.argv[1])
+arangosh_lookup_file = main_log_file.parents[0] / "job_to_pids.jsonl"
+pid_to_fn = {}
+if arangosh_lookup_file.exists():
+    with open(arangosh_lookup_file, "r", encoding="utf-8") as jsonl_file:
+        while True:
+            line = jsonl_file.readline()
+            if len(line) == 0:
+                break
+            parsed_slice = json.loads(line)
+            pid_to_fn[f"p{parsed_slice['pid']}"] = Path(parsed_slice["logfile"]).name
+print(pid_to_fn)
+with open(main_log_file, "r", encoding="utf-8") as jsonl_file:
     while True:
         line = jsonl_file.readline()
         if len(line) == 0:
@@ -44,9 +57,14 @@ with open(sys.argv[1], "r", encoding="utf-8") as jsonl_file:
         tree = collections.defaultdict(list)
         if have_filter and parsed_slice[0].find(sys.argv[2]) < 0:
             continue
-        print(parsed_slice[0])
+        #print(parsed_slice[0])
+        #print(json.dumps(parsed_slice, indent=4))
         for process_id in parsed_slice[1]:
-            #print(process)
+            if process_id == "sys":
+                sys_stat = parsed_slice[1][process_id]
+                print(f"L {sys_stat['load'][0]:.1f} - {sys_stat['netio']['lo'][0]:,.3f}")
+                # print(json.dumps(parsed_slice[1][process_id], indent=4))
+                continue
             one_process = parsed_slice[1][process_id]['process'][0]
             #print(json.dumps(one_process, indent=4))
             name = one_process['name']
@@ -62,18 +80,22 @@ with open(sys.argv[1], "r", encoding="utf-8") as jsonl_file:
                     except ValueError:
                         one_process['name'] = f"{name} - SINGLE"
             elif name == 'arangosh':
-                #print(json.dumps(one_process, indent=4))
-                try:
-                    n = one_process['cmdline'].index('--')
-                    one_process['name'] = f"{name} - {one_process['cmdline'][n+1]}"
-                except ValueError:
+                # print(json.dumps(one_process, indent=4))
+                pidstr = f"p{one_process['pid']}"
+                if pidstr in pid_to_fn:
+                    one_process['name'] = pid_to_fn[pidstr]
+                else:
                     try:
-                        n = one_process['cmdline'].index('--javascript.unit-tests')
+                        n = one_process['cmdline'].index('--')
                         one_process['name'] = f"{name} - {one_process['cmdline'][n+1]}"
                     except ValueError:
-                        print(json.dumps(one_process, indent=4))
+                        try:
+                            n = one_process['cmdline'].index('--javascript.unit-tests')
+                            one_process['name'] = f"{name} - {one_process['cmdline'][n+1]}"
+                        except ValueError:
+                            print(json.dumps(one_process, indent=4))
+                            pass
                         pass
-                    pass
             elif name == 'python3':
                 try:
                     n = one_process['cmdline'].index('launch')
