@@ -4,6 +4,16 @@ import json
 from pathlib import Path
 import sys
 import collections
+import pyqtgraph as pg
+
+app = pg.mkQApp("Symbols Examples")
+win = pg.GraphicsLayoutWidget(show=True, title="Scatter Plot Symbols")
+win.resize(1000,600)
+
+pg.setConfigOptions(antialias=True)
+
+plot = win.addPlot(title="Plotting with symbols")
+plot.addLegend()
 
 
 def get_parent_name(processes, ppid):
@@ -38,6 +48,7 @@ print(have_filter)
 main_log_file = Path(sys.argv[1])
 arangosh_lookup_file = main_log_file.parents[0] / "job_to_pids.jsonl"
 pid_to_fn = {}
+loads = []
 if arangosh_lookup_file.exists():
     with open(arangosh_lookup_file, "r", encoding="utf-8") as jsonl_file:
         while True:
@@ -62,6 +73,7 @@ with open(main_log_file, "r", encoding="utf-8") as jsonl_file:
         for process_id in parsed_slice[1]:
             if process_id == "sys":
                 sys_stat = parsed_slice[1][process_id]
+                loads.append(sys_stat['load'][0])
                 print(f"L {sys_stat['load'][0]:.1f} - {sys_stat['netio']['lo'][0]:,.3f}")
                 # print(json.dumps(parsed_slice[1][process_id], indent=4))
                 continue
@@ -107,3 +119,9 @@ with open(main_log_file, "r", encoding="utf-8") as jsonl_file:
             tree[one_process['ppid']].append(one_process['pid'])
         # print(struct)
         print(get_process_tree_recursive(parsed_slice[1], start_pid, tree))
+
+plot.plot(loads, pen=(0,0,200), symbolBrush=(0,0,200), symbolPen='w', symbol='o', symbolSize=1, name="symbol='o'")
+
+
+plot.setXRange(0, len(loads))
+pg.exec()
