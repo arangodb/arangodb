@@ -34,14 +34,14 @@ class Requester(object):
     def from_json(cls, blob: dict):
         if not blob:
             return None
-        sync = blob.get("sync")
+        sync = blob.get("sync_thread")
         if sync is not None:
             return cls(True, sync)
         else:
-            return cls(False, blob["async"])
+            return cls(False, blob["async_promise"])
     def __str__(self):
         if self.is_sync:
-            return "\nsync requester thread " + str(self.item)
+            return "\n" + str(Thread(**self.item))
         else:
             return ""
 
@@ -98,140 +98,10 @@ class Stacktrace(object):
             if len(stack) == 0 or hierarchy != stack[0]:
                 stack.append(hierarchy)
 
-            # TODO now this does not work any more because waiter does not need to exist
             lines.append(ascii + str(Data.from_json(promise["data"])))
         return "\n".join(lines)
     
-        
-def test_intput() -> str:
-    return """{"promise_stacktraces": [
-  [
-    {
-      "hierarchy": 0,
-      "data": {
-        "owning_thread": {
-          "name": "AgencyCache",
-          "id": "124252722300608"
-        },
-        "source_location": {
-          "file_name": "/home/jvolmer/code/arangodb/arangod/Network/Methods.cpp",
-          "line": 242,
-          "function_name": "arangodb::network::(anonymous namespace)::Pack::Pack(DestinationId &&, RequestLane, bool, bool)"
-        },
-        "id": 124252709790688,
-        "requester": {},
-        "state": "Suspended"
-      }
-    }
-  ],
-  [
-    {
-      "hierarchy": 2,
-      "data": {
-        "owning_thread": {
-          "name": "AgencyCache",
-          "id": "124252722300608"
-        },
-        "source_location": {
-          "file_name": "/home/jvolmer/code/arangodb/arangod/Network/Methods.cpp",
-          "line": 242,
-          "function_name": "arangodb::network::(anonymous namespace)::Pack::Pack(DestinationId &&, RequestLane, bool, bool)"
-        },
-        "id": 124252709790688,
-        "requester": {"async": 124252709790368},
-        "state": "Suspended"
-      }
-    },
-    {
-      "hierarchy": 1,
-      "data": {
-        "owning_thread": {
-          "name": "AgencyCache",
-          "id": "124252722300608"
-        },
-        "source_location": {
-          "file_name": "/home/jvolmer/code/arangodb/arangod/Network/Methods.cpp",
-          "line": 367,
-          "function_name": "FutureRes arangodb::network::sendRequest(ConnectionPool *, DestinationId, RestVerb, std::string, velocypack::Buffer<uint8_t>, const RequestOptions &, Headers)"
-        },
-        "id": 124252709790368,
-        "requester": {"async": 124252709790848},
-        "state": "Suspended"
-      }
-    },
-    {
-      "hierarchy": 2,
-      "data": {
-        "owning_thread": {
-          "name": "AgencyCache",
-          "id": "124252722300608"
-        },
-        "source_location": {
-          "file_name": "/home/jvolmer/code/arangodb/arangod/Agency/AsyncAgencyComm.cpp",
-          "line": 325,
-          "function_name": "auto (anonymous namespace)::agencyAsyncSend(AsyncAgencyCommManager &, RequestMeta &&, VPackBuffer<uint8_t> &&)::(anonymous class)::operator()(auto) [auto:1 = arangodb::futures::Unit]"
-        },
-        "id": 124252709790848,
-        "requester": {"async": 124252709791008},
-        "state": "Suspended"
-      }
-    },
-    {
-      "hierarchy": 1,
-      "data": {
-        "owning_thread": {
-          "name": "AgencyCache",
-          "id": "124252722300608"
-        },
-        "source_location": {
-          "file_name": "/home/jvolmer/code/arangodb/arangod/Agency/AsyncAgencyComm.cpp",
-          "line": 325,
-          "function_name": "auto (anonymous namespace)::agencyAsyncSend(AsyncAgencyCommManager &, RequestMeta &&, VPackBuffer<uint8_t> &&)::(anonymous class)::operator()(auto) [auto:1 = arangodb::futures::Unit]"
-        },
-        "id": 124252709790848,
-        "requester": {"async": 124252709791008},
-        "state": "Suspended"
-      }
-    },
-    {
-      "hierarchy": 1,
-      "data": {
-        "owning_thread": {
-          "name": "AgencyCache",
-          "id": "124252722300608"
-        },
-        "source_location": {
-          "file_name": "/home/jvolmer/code/arangodb/arangod/Agency/AsyncAgencyComm.cpp",
-          "line": 325,
-          "function_name": "auto (anonymous namespace)::agencyAsyncSend(AsyncAgencyCommManager &, RequestMeta &&, VPackBuffer<uint8_t> &&)::(anonymous class)::operator()(auto) [auto:1 = arangodb::futures::Unit]"
-        },
-        "id": 124252709790848,
-        "requester": {"async": 124252709791008},
-        "state": "Suspended"
-      }
-    },
-    {
-      "hierarchy": 0,
-      "data": {
-        "owning_thread": {
-          "name": "AgencyCache",
-          "id": "124252722300608"
-        },
-        "source_location": {
-          "file_name": "/home/jvolmer/code/arangodb/arangod/Agency/AsyncAgencyComm.cpp",
-          "line": 325,
-          "function_name": "auto (anonymous namespace)::agencyAsyncSend(AsyncAgencyCommManager &, RequestMeta &&, VPackBuffer<uint8_t> &&)::(anonymous class)::operator()(auto) [auto:1 = arangodb::futures::Unit]"
-        },
-        "id": 124252709791008,
-        "requester": {"sync": 123},
-        "state": "Suspended"
-      }
-    }
-  ]
-    ]}"""
-
 def main():
-    # string = test_intput()
     string = sys.stdin.read()
     data = json.loads(string)["promise_stacktraces"]
     print("\n\n".join(str(Stacktrace(**{"promises": x})) for x in data))

@@ -149,7 +149,7 @@ auto inspect(Inspector& f, PromiseSnapshot& x) {
   return f.object(x).fields(f.field("owning_thread", x.thread),
                             f.field("source_location", x.source_location),
                             f.field("id", fmt::format("{}", x.id)),
-                            f.field("waiter", x.requester),
+                            f.field("requester", x.requester),
                             f.field("state", x.state));
 }
 struct Promise {
