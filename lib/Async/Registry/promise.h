@@ -50,12 +50,13 @@ struct ThreadRegistry;
 struct ThreadId {
   static auto current() noexcept -> ThreadId;
   auto name() -> std::string;
-  TRI_tid_t id;
+  TRI_tid_t posix_id;
+  pid_t kernel_id;
   bool operator==(ThreadId const&) const = default;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ThreadId& x) {
-  return f.object(x).fields(f.field("id", fmt::format("0x{0:x}", x.id)),
+  return f.object(x).fields(f.field("LWPID", x.kernel_id),
                             f.field("name", x.name()));
 }
 

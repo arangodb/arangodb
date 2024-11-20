@@ -155,6 +155,9 @@ void Thread::startThread(void* arg) {
 /// @brief returns the process id
 TRI_pid_t Thread::currentProcessId() { return getpid(); }
 
+/// @brief returns the kernel thread id
+TRI_pid_t Thread::currentKernelThreadId() { return gettid(); }
+
 /// @brief returns the thread process id
 uint64_t Thread::currentThreadNumber() noexcept {
   return LOCAL_THREAD_NUMBER.get();

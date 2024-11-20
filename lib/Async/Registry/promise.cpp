@@ -31,10 +31,11 @@
 using namespace arangodb::async_registry;
 
 auto ThreadId::current() noexcept -> ThreadId {
-  return ThreadId{.id = arangodb::Thread::currentThreadId()};
+  return ThreadId{.posix_id = arangodb::Thread::currentThreadId(),
+                  .kernel_id = arangodb::Thread::currentKernelThreadId()};
 }
 auto ThreadId::name() -> std::string {
-  return std::string{ThreadNameFetcher{id}.get()};
+  return std::string{ThreadNameFetcher{posix_id}.get()};
 }
 
 auto Requester::current_thread() -> Requester { return {ThreadId::current()}; }

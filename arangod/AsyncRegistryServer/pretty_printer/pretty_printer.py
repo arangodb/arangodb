@@ -11,7 +11,7 @@ class Thread(object):
         self.id = id
     @classmethod
     def from_json(cls, blob: dict):
-        return cls(blob["name"], blob["id"])
+        return cls(blob["name"], blob["LWPID"])
     def __str__(self):
         return self.name + "(" + str(self.id) + ")"
 
@@ -41,7 +41,7 @@ class Requester(object):
             return cls(False, blob["promise"])
     def __str__(self):
         if self.is_sync:
-            return "\n" + str(Thread(**self.item))
+            return "\n" + str(Thread.from_json(self.item))
         else:
             return ""
 

@@ -76,7 +76,7 @@ auto ThreadRegistry::add_promise(Requester requester,
       << "ThreadRegistry::add_promise was called from thread "
       << fmt::format("{}", current_thread)
       << " but needs to be called from ThreadRegistry's owning thread "
-      << fmt::format("{}", thread.id) << ". " << this;
+      << fmt::format("{}", thread) << ". " << this;
   if (metrics->promises_total != nullptr) {
     metrics->promises_total->count();
   }
@@ -130,7 +130,7 @@ auto ThreadRegistry::garbage_collect() noexcept -> void {
       << "ThreadRegistry::garbage_collect was called from thread "
       << fmt::format("{}", current_thread)
       << " but needs to be called from ThreadRegistry's owning thread "
-      << fmt::format("{}", thread.id) << ". " << this;
+      << fmt::format("{}", thread) << ". " << this;
   auto guard = std::lock_guard(mutex);
   cleanup();
 }
