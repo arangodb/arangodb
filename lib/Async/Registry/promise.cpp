@@ -54,7 +54,7 @@ auto Promise::mark_for_deletion() noexcept -> void {
 
 AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc)
     : promise_in_registry{get_thread_registry().add_promise(
-          std::move(loc), *get_current_coroutine())} {}
+          *get_current_coroutine(), std::move(loc))} {}
 AddToAsyncRegistry::~AddToAsyncRegistry() {
   if (promise_in_registry != nullptr) {
     promise_in_registry->mark_for_deletion();

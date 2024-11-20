@@ -67,9 +67,9 @@ ThreadRegistry::~ThreadRegistry() noexcept {
   cleanup();
 }
 
-auto ThreadRegistry::add_promise(
-    std::source_location location = std::source_location::current(),
-    Requester requester = Requester::current_thread()) noexcept -> Promise* {
+auto ThreadRegistry::add_promise(Requester requester,
+                                 std::source_location location) noexcept
+    -> Promise* {
   // promise needs to live on the same thread as this registry
   auto current_thread = ThreadId::current();
   ADB_PROD_ASSERT(current_thread == thread)
