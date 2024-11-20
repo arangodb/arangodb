@@ -1,5 +1,9 @@
-v3.11.13 (XXXX-XX-XX) 
+v3.11.13 (XXXX-XX-XX)
 ---------------------
+
+* Fix shard synchronisation race where after a shard move the new
+  leader informs followers before it updates Current in the Agency. In
+  some cases the old leader fell subsequently out of sync.
 
 * Rebuilt included rclone v1.62.2 with go1.22.8 and non-vulnerable dependencies.
 
