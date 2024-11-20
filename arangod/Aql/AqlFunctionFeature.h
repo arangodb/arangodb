@@ -44,7 +44,7 @@ class AqlFunctionFeature final : public ArangodFeature {
 
   void prepare() override final;
 
-  bool add(Function const& func);
+  void add(Function const& func);
 
   // add a function alias
   void addAlias(std::string const& alias, std::string const& original);

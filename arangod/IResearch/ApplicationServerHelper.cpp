@@ -30,9 +30,9 @@
 namespace arangodb {
 namespace iresearch {
 
-bool addFunction(arangodb::aql::AqlFunctionFeature& functions,
+void addFunction(arangodb::aql::AqlFunctionFeature& functions,
                  arangodb::aql::Function const& function) {
-  return functions.add(function);
+  functions.add(function);
 }
 
 arangodb::aql::Function const* getFunction(

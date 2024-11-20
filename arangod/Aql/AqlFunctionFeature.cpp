@@ -64,15 +64,12 @@ void AqlFunctionFeature::prepare() {
   addMiscFunctions();
 }
 
-bool AqlFunctionFeature::add(Function const& func) {
+void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
-  return _functionNames.doUnderLock([&](auto& functions) {
-    if (functions.contains(func.name)) {
-      return false;
-    } else {
+  _functionNames.doUnderLock([&](auto& functions) {
+    if (!functions.contains(func.name)) {
       // add function to the map
       functions.try_emplace(func.name, func);
-      return true;
     }
   });
 }
