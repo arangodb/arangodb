@@ -100,15 +100,13 @@ void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) const {
 bool AqlFunctionFeature::exists(std::string const& name) const {
   return _functionNames.doUnderLock(
       [&](auto const& functions) { return functions.contains(name); });
-
-  return it != _functionNames.end();
 }
 
 Function const* AqlFunctionFeature::byName(std::string const& name) const {
   auto it = _functionNames.doUnderLock([&](auto const& functions) {
     auto it = functions.find(name);
 
-    if (it == _functionNames.end()) {
+    if (it == functions.end()) {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,
                                     name.c_str());
     }
