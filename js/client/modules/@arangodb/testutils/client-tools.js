@@ -445,14 +445,19 @@ function joinBGShells (options, clients, waitFor, cn) {
       if (!client.done) {
         let status = internal.statusExternal(client.client.pid);
         if (status.status !== 'RUNNING') {
-          let success = client.client.sh.fetchSanFileAfterExit(client.client.pid);
-          IM.serverCrashedLocal |= success;
-          client.failed = success;
+          let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          IM.serverCrashedLocal |= failed;
+          client.failed = failed;
           client.done = true;
         }
-        if (status.status === 'TERMINATED' && status.exit === 0) {
-          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
-          client.failed = false;
+        if (status.status === 'TERMINATED') {
+          if (status.exit === 0) {
+            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+            client.failed = false;
+          } else {
+            IM.options.cleanup = false;
+            client.failed = true;
+          }
         }
       }
     });
