@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded OpenSSL to 3.4.0.
+
 * Rebuilt included rclone v1.65.2 with go1.22.8 and non-vulnerable dependencies.
 
 * Updated ArangoDB Starter to v0.19.7.
