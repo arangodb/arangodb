@@ -1,6 +1,8 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* Upgraded OpenSSL to 3.4.0.
+
 * Fix shard synchronisation race where after a shard move the new
   leader informs followers before it updates Current in the Agency. In
   some cases the old leader fell subsequently out of sync.
