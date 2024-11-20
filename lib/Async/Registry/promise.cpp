@@ -37,7 +37,7 @@ auto ThreadId::name() -> std::string {
   return std::string{ThreadNameFetcher{id}.get()};
 }
 
-auto Requester::sync() -> Requester { return {ThreadId::current()}; }
+auto Requester::current_thread() -> Requester { return {ThreadId::current()}; }
 
 Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
                  Requester requester, std::source_location entry_point)

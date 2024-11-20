@@ -34,11 +34,11 @@ class Requester(object):
     def from_json(cls, blob: dict):
         if not blob:
             return None
-        sync = blob.get("sync_thread")
+        sync = blob.get("thread")
         if sync is not None:
             return cls(True, sync)
         else:
-            return cls(False, blob["async_promise"])
+            return cls(False, blob["promise"])
     def __str__(self):
         if self.is_sync:
             return "\n" + str(Thread(**self.item))

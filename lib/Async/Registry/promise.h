@@ -90,45 +90,42 @@ auto inspect(Inspector& f, State& x) {
                                  State::Deleted, "Deleted");
 }
 
-using AsyncRequester = void*;
-using SyncRequester = ThreadId;
+using PromiseId = void*;
 
-struct AsyncRequesterWrapper {
-  AsyncRequester item;
+struct PromiseIdWrapper {
+  PromiseId item;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, AsyncRequesterWrapper& x) {
-  return f.object(x).fields(
-      f.field("async_promise", fmt::format("{}", x.item)));
+auto inspect(Inspector& f, PromiseIdWrapper& x) {
+  return f.object(x).fields(f.field("promise", fmt::format("{}", x.item)));
 }
-struct SyncRequesterWrapper {
-  SyncRequester item;
+struct ThreadIdWrapper {
+  ThreadId item;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, SyncRequesterWrapper& x) {
-  return f.object(x).fields(f.field("sync_thread", x.item));
+auto inspect(Inspector& f, ThreadIdWrapper& x) {
+  return f.object(x).fields(f.field("thread", x.item));
 }
-struct RequesterWrapper
-    : std::variant<SyncRequesterWrapper, AsyncRequesterWrapper> {};
+struct RequesterWrapper : std::variant<ThreadIdWrapper, PromiseIdWrapper> {};
 template<typename Inspector>
 auto inspect(Inspector& f, RequesterWrapper& x) {
   return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<AsyncRequesterWrapper>(),
-      inspection::inlineType<SyncRequesterWrapper>());
+      inspection::inlineType<PromiseIdWrapper>(),
+      inspection::inlineType<ThreadIdWrapper>());
 }
-struct Requester : std::variant<SyncRequester, AsyncRequester> {
-  static auto sync() -> Requester;
+struct Requester : std::variant<ThreadId, PromiseId> {
+  static auto current_thread() -> Requester;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Requester& x) {
   if constexpr (!Inspector::isLoading) {  // only serialize
     RequesterWrapper tmp =
         std::visit(overloaded{
-                       [&](AsyncRequester waiter) {
-                         return RequesterWrapper{AsyncRequesterWrapper{waiter}};
+                       [&](PromiseId waiter) {
+                         return RequesterWrapper{PromiseIdWrapper{waiter}};
                        },
-                       [&](SyncRequester waiter) {
-                         return RequesterWrapper{SyncRequesterWrapper{waiter}};
+                       [&](ThreadId waiter) {
+                         return RequesterWrapper{ThreadIdWrapper{waiter}};
                        },
                    },
                    x);
