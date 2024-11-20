@@ -44,7 +44,7 @@ let IM = global.instanceManager;
 
 let waitFor = 60; //isCov ? 60 * 4 : 60;
 if (versionHas('asan') || versionHas('tsan') || versionHas('coverage')) {
-  waitFor *= 10;
+  waitFor *= 15;
 }
 
 
