@@ -446,6 +446,7 @@ function joinBGShells (options, clients, waitFor, cn) {
         let status = internal.statusExternal(client.client.pid);
         if (status.status !== 'RUNNING') {
           let success = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          IM.options.cleanup = false;
           IM.serverCrashedLocal |= success;
           client.failed = success;
           client.done = true;
