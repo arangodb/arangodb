@@ -355,6 +355,7 @@ bool AddFollower::start(bool&) {
               addPreconditionUnchanged(trx, foCandsPath, foCands->slice());
             }
           });
+      addPreconditionClonesStillExist(trx, _database, shardsLikeMe);
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : chosen) {
         addPreconditionServerHealth(trx, srv, Supervision::HEALTH_STATUS_GOOD);
