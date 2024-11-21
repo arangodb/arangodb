@@ -298,8 +298,7 @@ bool FailedFollower::start(bool& aborts) {
           job.add("old", VPackValue(Supervision::HEALTH_STATUS_FAILED));
         }
         // Plan still as we see it:
-        addPreconditionUnchanged(job, planPath,
-                                 planned);
+        addPreconditionUnchanged(job, planPath, planned);
         // All clones still exist
         addPreconditionClonesStillExist(job, _database, shardsLikeMe);
         // Check that failoverCandidates are still as we inspected them:
