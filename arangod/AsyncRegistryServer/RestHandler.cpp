@@ -52,16 +52,16 @@ auto all_undeleted_promises()
       // the registry
       // sync waiters point to threads that are waiting synchronously and are
       // not relevant for creating the forest
-      auto waiter = std::visit(
-          overloaded{
-              [&](AsyncRequester waiter) -> AsyncRequester { return waiter; },
-              [&](SyncRequester waiter) -> AsyncRequester { return nullptr; },
-          },
-          promise.requester);
-      forest.insert(promise.id, waiter, promise);
-      if (waiter == nullptr) {
-        roots.emplace_back(promise.id);
-      }
+      std::visit(overloaded{
+                     [&](PromiseId waiter) {
+                       forest.insert(promise.id, waiter, promise);
+                     },
+                     [&](ThreadId thread) {
+                       forest.insert(promise.id, nullptr, promise);
+                       roots.emplace_back(promise.id);
+                     },
+                 },
+                 promise.requester);
     }
   });
   return std::make_pair(forest, roots);
