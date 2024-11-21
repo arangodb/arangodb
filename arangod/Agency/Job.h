@@ -236,6 +236,9 @@ struct Job {
   static void addWriteUnlockServer(velocypack::Builder& trx,
                                    std::string const& server,
                                    std::string const& jobId);
+  static void addPreconditionClonesStillExist(
+      velocypack::Builder& pre, std::string_view database,
+      std::vector<shard_t> const& clones);
   static void addReleaseServer(velocypack::Builder& trx,
                                std::string const& server);
   static void addReleaseShard(velocypack::Builder& trx,
