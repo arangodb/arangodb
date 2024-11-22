@@ -698,8 +698,7 @@ TYPED_TEST(
       co_return;
     };
     static auto awaited_fn() -> async<void> { co_return; };
-    static auto waiter_fn(async<void>&& fn, TestType test)
-        -> async<async<void>> {
+    static auto waiter_fn(async<void>&& fn, TestType test) -> async<void> {
       co_await std::move(fn);
 
       auto a = awaited_2_fn(test);
@@ -719,15 +718,12 @@ TYPED_TEST(
       EXPECT_EQ(awaited_2_promise->requester,
                 async_registry::Requester{waiter_promise->id});
 
-      // does not co_await a
-
-      co_return a;
+      co_return;
     };
   };
 
   auto awaited_coro = Functions::awaited_fn();
-  // make sure that awaited_2_fn lives long enough to resume it
-  auto awaited_2_coro = Functions::waiter_fn(std::move(awaited_coro), this);
+  Functions::waiter_fn(std::move(awaited_coro), this);
 
   this->wait.resume();
   this->wait.await();
