@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, assertNotUndefined, assertMatch, assertNotMatch  */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, assertNotUndefined, assertMatch, assertNotMatch, fail  */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -46,6 +46,18 @@ const assertNotCached = (query, bindVars = {}, options = {}) => {
   res = db._query(query, bindVars, options);
   // should still not have the planCacheKey attribute
   assertFalse(res.hasOwnProperty("planCacheKey"));
+};
+
+const assertErrorsOut = (query, bindVars = {}, options = {}) => {
+  options.optimizePlanForCaching = true;
+  options.usePlanCache = true;
+  // execute query once
+  try {
+    let res = db._query(query, bindVars, options);
+    fail();
+  } catch (e) {
+    assertEqual(1584, e.errorNum);
+  }
 };
 
 const assertCached = (query, bindVars = {}, options = {}) => {
@@ -125,14 +137,14 @@ function QueryPlanCacheTestSuite () {
       const query = `${uniqid()} FOR doc IN ${cn1} FILTER doc.@attr == 25 RETURN doc`;
 
       // attribute name bind parameters are not supported
-      assertNotCached(query, { attr: "foo" });
+      assertErrorsOut(query, { attr: "foo" });
     },
     
     testUpsert : function () {
       const query = `${uniqid()} UPSERT {foo: "bar"} INSERT {} UPDATE {} IN ${cn1}`;
 
       // value bind parameters are not supported when defining the lookup values for UPSERT
-      assertNotCached(query, {});
+      assertErrorsOut(query, {});
     },
     
     testCollectionBindParameter : function () {
@@ -213,16 +225,13 @@ function QueryPlanCacheTestSuite () {
       const bindVars = {};
       const options = { optimizePlanForCaching: true, usePlanCache: true, allPlans: true };
 
-      let stmt = db._createStatement({ query, bindVars, options });
-      let res = stmt.explain();
-      assertFalse(res.hasOwnProperty("planCacheKey"));
-      assertNotUndefined(res.plans, res);
-      
       // allPlans is not supported with plan caching
-      stmt = db._createStatement({ query, bindVars, options });
-      res = stmt.explain();
-      assertFalse(res.hasOwnProperty("planCacheKey"));
-      assertNotUndefined(res.plans, res);
+      let stmt = db._createStatement({ query, bindVars, options });
+      try {
+        let res = stmt.explain();
+      } catch (e) {
+        assertEqual(1584, e.errorNum);
+      }
     },
     
     testProfiling : function () {
@@ -272,9 +281,9 @@ function QueryPlanCacheTestSuite () {
       const query = `${uniqid()} RETURN 1`;
 
       assertCached(query);
-      assertNotCached(query, null, { optimizer: { rules: ["-all"] } });
-      assertNotCached(query, null, { optimizer: { rules: ["+async-prefetch"] } });
-      assertNotCached(query, null, { optimizer: { rules: ["-async-prefetch"] } });
+      assertErrorsOut(query, null, { optimizer: { rules: ["-all"] } });
+      assertErrorsOut(query, null, { optimizer: { rules: ["+async-prefetch"] } });
+      assertErrorsOut(query, null, { optimizer: { rules: ["-async-prefetch"] } });
     },
     
     testFullCount : function () {
@@ -536,11 +545,7 @@ function QueryPlanCacheTestSuite () {
         const query = `${uniqid()} FOR v, e, p IN 1..4 OUTBOUND '${vn}/test0' GRAPH @g RETURN {v, e, p}`;
         const options = { optimizePlanForCaching: true, usePlanCache: true };
 
-        let res = db._query(query, {g: gn}, options);
-        assertFalse(res.hasOwnProperty("planCacheKey"));
-      
-        res = db._query(query, {g: gn}, options);
-        assertFalse(res.hasOwnProperty("planCacheKey"));
+        assertErrorsOut(query, {g: gn}, options);
       } finally {
         graphs._drop(gn, true);
       }
@@ -556,11 +561,7 @@ function QueryPlanCacheTestSuite () {
         const query = `${uniqid()} FOR v, e, p IN @min..@max OUTBOUND '${vn}/test0' GRAPH '${gn}' RETURN {v, e, p}`;
         const options = { optimizePlanForCaching: true, usePlanCache: true };
 
-        let res = db._query(query, {min: 1, max: 2}, options);
-        assertFalse(res.hasOwnProperty("planCacheKey"));
-      
-        res = db._query(query, {min: 1, max: 2}, options);
-        assertFalse(res.hasOwnProperty("planCacheKey"));
+        assertErrorsOut(query, {min: 1, max: 2}, options);
       } finally {
         graphs._drop(gn, true);
       }

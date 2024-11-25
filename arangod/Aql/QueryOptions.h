@@ -117,7 +117,8 @@ struct QueryOptions {
   bool count;
   // skips audit logging - used only internally
   bool skipAudit;
-  // whether or not the optimizer result should be cached
+  // whether or not the plan is optimized in a way such that the optimizer
+  // result can be cached
   bool optimizePlanForCaching;
   // whether or not the optimizer plan cache should be used, note that
   // if usePlanCache is set then optimizePlanForCaching is also automatically
