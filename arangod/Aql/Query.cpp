@@ -352,7 +352,10 @@ void Query::ensureExecutionTime() noexcept {
 }
 
 bool Query::tryLoadPlanFromCache() {
-  if (_queryOptions.usePlanCache && canUsePlanCache()) {
+  if (_queryOptions.usePlanCache) {
+    if (!canUsePlanCache()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELLIGIBLE_FOR_PLAN_CACHING);
+    }
     // construct plan cache key
     TRI_ASSERT(!_planCacheKey.has_value());
     _planCacheKey.emplace(_vocbase.queryPlanCache().createCacheKey(
@@ -571,9 +574,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
        _ast->containsGraphNameValueBindParameters() ||
        _ast->containsTraversalDepthValueBindParameters() ||
        _ast->containsUpsertLookupValueBindParameters() || !_warnings.empty())) {
-    _queryOptions.optimizePlanForCaching = false;
-    _queryOptions.usePlanCache = false;
-    _planCacheKey.reset();
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELLIGIBLE_FOR_PLAN_CACHING);
   }
 
   // put in collection and attribute name bind parameters (e.g. @@collection or
