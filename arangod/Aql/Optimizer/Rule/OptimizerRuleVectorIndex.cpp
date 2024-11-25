@@ -17,6 +17,9 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jure Bajic
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"

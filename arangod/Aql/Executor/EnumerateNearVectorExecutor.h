@@ -17,6 +17,8 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -122,6 +124,7 @@ class EnumerateNearVectorsExecutor {
   std::vector<float> _distances;
   std::vector<VectorIndexLabelId> _labels;
   bool _initialized{false};
+  bool _resultsAreProcessed{false};
   std::size_t _currentProcessedResultCount{0};
   Infos const& _infos;
   transaction::Methods _trx;

@@ -17,6 +17,9 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateNearVectorNode.h"
@@ -58,8 +61,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _distanceOutVariable(distanceOutVariable),
       _limit(limit),
       _offset(offset),
-      _index(std::move(indexHandle)) {
-}
+      _index(std::move(indexHandle)) {}
 
 ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
   return ENUMERATE_NEAR_VECTORS;
