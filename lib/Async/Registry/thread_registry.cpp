@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "thread_registry.h"
 #include <source_location>
-#include <thread>
 
 #include "Assertions/ProdAssert.h"
 #include "Async/Registry/Metrics.h"
@@ -49,10 +48,7 @@ auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics,
 
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics,
                                Registry* registry)
-    : thread{Thread{.name = std::string{ThreadNameFetcher{}.get()},
-                    .id = std::this_thread::get_id()}},
-      registry{registry},
-      metrics{metrics} {
+    : thread{ThreadId::current()}, registry{registry}, metrics{metrics} {
   if (metrics->threads_total != nullptr) {
     metrics->threads_total->count();
   }
@@ -71,20 +67,22 @@ ThreadRegistry::~ThreadRegistry() noexcept {
   cleanup();
 }
 
-auto ThreadRegistry::add_promise(std::source_location location) noexcept
+auto ThreadRegistry::add_promise(Requester requester,
+                                 std::source_location location) noexcept
     -> Promise* {
   // promise needs to live on the same thread as this registry
-  ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id)
-      << "ThreadRegistry::add was called from thread "
-      << std::this_thread::get_id()
+  auto current_thread = ThreadId::current();
+  ADB_PROD_ASSERT(current_thread == thread)
+      << "ThreadRegistry::add_promise was called from thread "
+      << fmt::format("{}", current_thread)
       << " but needs to be called from ThreadRegistry's owning thread "
-      << thread.id << ". " << this;
+      << fmt::format("{}", thread) << ". " << this;
   if (metrics->promises_total != nullptr) {
     metrics->promises_total->count();
   }
   auto current_head = promise_head.load(std::memory_order_relaxed);
-  auto promise =
-      new Promise{current_head, shared_from_this(), std::move(location)};
+  auto promise = new Promise{current_head, shared_from_this(), requester,
+                             std::move(location)};
   if (current_head != nullptr) {
     current_head->previous = promise;
   }
@@ -127,11 +125,12 @@ auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
 }
 
 auto ThreadRegistry::garbage_collect() noexcept -> void {
-  ADB_PROD_ASSERT(std::this_thread::get_id() == thread.id)
+  auto current_thread = ThreadId::current();
+  ADB_PROD_ASSERT(current_thread == thread)
       << "ThreadRegistry::garbage_collect was called from thread "
-      << std::this_thread::get_id()
+      << fmt::format("{}", current_thread)
       << " but needs to be called from ThreadRegistry's owning thread "
-      << thread.id << ". " << this;
+      << fmt::format("{}", thread) << ". " << this;
   auto guard = std::lock_guard(mutex);
   cleanup();
 }

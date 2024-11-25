@@ -63,15 +63,20 @@ void AqlFunctionFeature::prepare() {
 
 void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
-  TRI_ASSERT(!_functionNames.contains(func.name));
-  // add function to the map
-  _functionNames.try_emplace(func.name, func);
+  _functionNames.doUnderLock([&](auto& functions) {
+    TRI_ASSERT(!functions.contains(func.name));
+    // add function to the map
+    functions.try_emplace(func.name, func);
+  });
 }
 
 void AqlFunctionFeature::addAlias(std::string const& alias,
                                   std::string const& original) {
-  auto it = _functionNames.find(original);
-  TRI_ASSERT(it != _functionNames.end());
+  auto it = _functionNames.doUnderLock([&](auto const& functions) {
+    auto it = functions.find(original);
+    TRI_ASSERT(it != functions.end());
+    return it;
+  });
 
   // intentionally copy original function, as we want to give it another name
   Function aliasFunction = (*it).second;
@@ -82,27 +87,33 @@ void AqlFunctionFeature::addAlias(std::string const& alias,
 
 void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) const {
   builder.openArray();
-  for (auto const& it : _functionNames) {
-    if (it.second.hasFlag(FF::Internal)) {
-      // don't serialize internal functions
-      continue;
+  _functionNames.doUnderLock([&](auto const& functions) {
+    for (auto const& it : functions) {
+      if (it.second.hasFlag(FF::Internal)) {
+        // don't serialize internal functions
+        continue;
+      }
+      it.second.toVelocyPack(builder);
     }
-    it.second.toVelocyPack(builder);
-  }
+  });
   builder.close();
 }
 
 bool AqlFunctionFeature::exists(std::string const& name) const {
-  return _functionNames.contains(name);
+  return _functionNames.doUnderLock(
+      [&](auto const& functions) { return functions.contains(name); });
 }
 
 Function const* AqlFunctionFeature::byName(std::string const& name) const {
-  auto it = _functionNames.find(name);
+  auto it = _functionNames.doUnderLock([&](auto const& functions) {
+    auto it = functions.find(name);
 
-  if (it == _functionNames.end()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,
-                                  name.c_str());
-  }
+    if (it == functions.end()) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,
+                                    name.c_str());
+    }
+    return it;
+  });
 
   // return the address of the function
   return &((*it).second);
