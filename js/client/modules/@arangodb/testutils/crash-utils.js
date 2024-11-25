@@ -639,7 +639,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
         'copying ' + binary + ' to ' +
         storeArangodPath + ' for later analysis.\n' +
       */
-      'Process facts :\n' +
+      '\n Process facts :\n' +
       yaml.safeDump(instanceInfo.getStructure()) +
       'marking build as crashy.';
   pu.serverFailMessages = pu.serverFailMessages + '\n' + message;
@@ -716,6 +716,18 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
       return;
     } else if (!fs.exists(instanceInfo.coreFilePattern)) {
+      if (instanceInfo.hasOwnProperty('rootDir') &&
+          fs.exists(instanceInfo.rootDir) &&
+          fs.exists(instanceInfo.rootDir + "/tmp")) {
+        let corefiles = fs.listTree(instanceInfo.rootDir + "/tmp").filter(fn => {
+          return fn.search(".dmp") >= 0;
+        });
+        if (corefiles.length > 0) {
+          instanceInfo.coreFilePattern = corefiles[0];
+          hint = analyzeCoreDumpWindows(instanceInfo);
+          return;
+        }
+      }
       print("No coredump exists at " + instanceInfo.coreFilePattern);
       instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
       return;
