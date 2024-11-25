@@ -565,8 +565,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   Parser parser(*this, *_ast, _queryString);
   parser.parse();
 
-  // any usage of one of the following features disable query plan caching (for
-  // now)
+  // any usage of one of the following features make the query ineligible
+  // for query plan caching (at least for now):
   if (_queryOptions.optimizePlanForCaching &&
       (_ast->containsUpsertNode() ||
        _ast->containsAttributeNameValueBindParameters() ||
@@ -1241,6 +1241,19 @@ QueryResult Query::explain() {
 
     Parser parser(*this, *_ast, _queryString);
     parser.parse();
+
+    // any usage of one of the following features make the query ineligible
+    // for query plan caching (at least for now):
+    if (_queryOptions.optimizePlanForCaching &&
+        (_ast->containsUpsertNode() ||
+         _ast->containsAttributeNameValueBindParameters() ||
+         _ast->containsCollectionNameValueBindParameters() ||
+         _ast->containsGraphNameValueBindParameters() ||
+         _ast->containsTraversalDepthValueBindParameters() ||
+         _ast->containsUpsertLookupValueBindParameters() ||
+         !_warnings.empty())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELLIGIBLE_FOR_PLAN_CACHING);
+    }
 
     // put in bind parameters
     parser.ast()->injectBindParametersFirstStage(_bindParameters,
