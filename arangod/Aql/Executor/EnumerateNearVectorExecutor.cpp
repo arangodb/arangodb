@@ -24,12 +24,18 @@
 #include "EnumerateNearVectorExecutor.h"
 
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/ExecutionState.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 
 #include <cmath>
+
+// Activate logging
+#define LOG_ENABLED false
+#define LOG_INTERNAL \
+  LOG_DEVEL_IF((LOG_ENABLED)) << __FUNCTION__ << ":" << __LINE__ << " "
 
 namespace arangodb::aql {
 
@@ -63,6 +69,7 @@ void EnumerateNearVectorsExecutor::fillInput(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
         basics::StringUtils::concatT("query point must be a vector, but is a ",
                                      value.getTypeString()));
+    _initialized = true;
   }
 
   auto const dimension = _infos.index->getVectorIndexDefinition().dimension;
@@ -79,7 +86,6 @@ void EnumerateNearVectorsExecutor::fillInput(
         fmt::format("a vector must be of dimension {}, but is {}", dimension,
                     vectorComponentsCount));
   }
-  _initialized = true;
 }
 
 void EnumerateNearVectorsExecutor::searchResults() {
@@ -116,12 +122,16 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
 
     ++_currentProcessedResultCount;
   }
+
+  if (_currentProcessedResultCount == _infos.getNubmerOfResults()) {
+    _resultsAreProcessed = true;
+  }
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall>
 EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output) {
-  LOG_DEVEL << "Producing rows";
+  LOG_INTERNAL << "hasDataRow: " << inputRange.hasDataRow();
   while (!output.isFull()) {
     if (!_initialized) {
       if (!_inputRow.isInitialized()) {
@@ -144,20 +154,18 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                             AqlCall& call) {
   std::size_t skipped{0};
-  LOG_DEVEL << "BEGGINING CALL: " << call;
-  LOG_DEVEL << __FUNCTION__ << " fullCount: " << std::boolalpha
-            << call.fullCount;
-  LOG_DEVEL << __FUNCTION__ << " needSkipMore: " << std::boolalpha
-            << call.needSkipMore()
-            << ", hasinputRange: " << inputRange.hasDataRow();
-  while (call.needSkipMore() && inputRange.hasDataRow()) {
-    LOG_DEVEL << __FUNCTION__ << ": Need to skip";
+  LOG_INTERNAL << "call: " << call << " fullCount: " << std::boolalpha
+               << call.fullCount << " needSkipMore: " << std::boolalpha
+               << call.needSkipMore()
+               << ", hasInputRange: " << inputRange.hasDataRow()
+               << ", resultsAreProcessed: " << _resultsAreProcessed;
+  while (call.needSkipMore() &&
+         (inputRange.hasDataRow() || !_resultsAreProcessed)) {
     // get an input row first, if necessary
     if (!_inputRow.isInitialized() && !_initialized) {
       std::tie(_state, _inputRow) = inputRange.peekDataRow();
 
-      if (_inputRow.isInitialized() && !_initialized) {
-        LOG_DEVEL << "Doing search";
+      if (_inputRow.isInitialized()) {
         fillInput(inputRange);
         searchResults();
       } else {
@@ -165,34 +173,68 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
       }
     }
 
-    while (_currentProcessedResultCount < call.getOffset()) {
-      LOG_DEVEL << "We are checking: " << _labels;
+    LOG_INTERNAL << "offset: " << call.getOffset()
+                 << ", _currentProcessedResultCount: "
+                 << _currentProcessedResultCount;
+    if (call.getOffset() == 0) {
+      TRI_ASSERT(call.needsFullCount())
+          << "if we need to skip and skip is 0 fullCount must be true";
+      LOG_INTERNAL << "needsFullCount is set";
+
+      skipped = ExecutionBlock::SkipAllSize();
+      break;
+    }
+
+    if (call.getOffset() == 0) {
+      TRI_ASSERT(call.needsFullCount());
+      // we are done
+      skipped = ExecutionBlock::SkipAllSize();
+      inputRange.advanceDataRow();
+      _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      continue;
+    }
+
+    while (call.getOffset() > 0) {
       if (_labels[_currentProcessedResultCount] == -1) {
-        LOG_DEVEL << "We are done: " << _labels;
-        // we are done
+        // we are done, since faiss return -1 for nonexistent results
+        skipped = ExecutionBlock::SkipAllSize();
+        _resultsAreProcessed = true;
         inputRange.advanceDataRow();
-        LOG_DEVEL << __FUNCTION__ << ": " << __LINE__;
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-        LOG_DEVEL << __FUNCTION__ << ": " << __LINE__;
-        break;
+        call.didSkip(skipped);
+        continue;
       }
-      LOG_DEVEL << "Skipping one, current: " << _currentProcessedResultCount;
+      LOG_INTERNAL << "Skipping one, current: " << _currentProcessedResultCount;
       ++_currentProcessedResultCount;
       skipped += 1;
+      call.didSkip(1);
     }
-    call.didSkip(skipped);
+
+    LOG_INTERNAL << "done with checking searchResults offset: "
+                 << call.getOffset();
   }
 
-  auto const state = std::invoke([&]() {
-    if (_inputRow.isInitialized()) {
+  if (call.needsFullCount() && _resultsAreProcessed) {
+    LOG_INTERNAL << "we have fullCount and all resultsAreProcessed, this is "
+                    "possible after produceRows";
+    _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    skipped = ExecutionBlock::SkipAllSize();
+    inputRange.advanceDataRow();
+    call.didSkip(skipped);
+    _state = ExecutorState::DONE;
+  }
+
+  auto state = std::invoke([&]() {
+    if (_inputRow.isInitialized() && !_resultsAreProcessed) {
       return ExecutorState::HASMORE;
     }
     return _state;
   });
 
   AqlCall upstreamCall;
-  LOG_DEVEL << "EnumerateNearVectorsExecutor::skipRowsRange returning " << state
-            << " " << skipped << " " << upstreamCall;
+  LOG_INTERNAL << "state: " << state << ", skipped: " << skipped
+               << ", upstreamCall: " << upstreamCall
+               << ", resultsAreProcessed: " << _resultsAreProcessed;
   return {state, {}, skipped, upstreamCall};
 }
 
