@@ -269,6 +269,19 @@ void Job::runHelper(std::string const& server, std::string const& shard,
   }
 }
 
+void Job::addPreconditionClonesStillExist(Builder& pre,
+                                          std::string_view database,
+                                          std::vector<shard_t> const& clones) {
+  for (auto const& shard : clones) {
+    pre.add(VPackValue(StringUtils::concatT("/Plan/Collections/", database, "/",
+                                            shard.collection)));
+    {
+      VPackObjectBuilder guard(&pre);
+      pre.add("oldEmpty", VPackValue(false));
+    }
+  }
+}
+
 bool Job::finish(std::string const& server, std::string const& shard,
                  bool success, std::string const& reason,
                  query_t const& payload) {
