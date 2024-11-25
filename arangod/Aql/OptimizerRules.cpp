@@ -3343,7 +3343,7 @@ struct SortToIndexNode final
       case EN::MATERIALIZE:
       case EN::LIMIT:  // LIMIT is criterion to stop
       case EN::ENUMERATE_NEAR_VECTORS:
-        return true;   // abort.
+        return true;  // abort.
 
       case EN::SORT:  // pulling two sorts together is done elsewhere.
         if (!_sorts.empty() || _sortNode != nullptr) {

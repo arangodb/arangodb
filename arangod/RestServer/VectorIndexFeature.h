@@ -39,7 +39,7 @@ class VectorIndexFeature final : public ArangodFeature {
 
   bool isVectorIndexEnabled() const;
 
-  private:
+ private:
   bool _useVectorIndex{false};
 };
 
