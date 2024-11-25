@@ -32,7 +32,7 @@ namespace arangodb::aql::functions {
 AqlValue ApproxNearCosine(ExpressionContext* expressionContext,
                           AstNode const& node,
                           VPackFunctionParametersView parameters) {
-  LOG_TOPIC("1d8b9e", WARN, Logger::AQL) << "vector index is not being used";
+  LOG_TOPIC("1d8b9", WARN, Logger::AQL) << "vector index is not being used";
   return CosineSimilarity(expressionContext, node, parameters);
 }
 
