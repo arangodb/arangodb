@@ -520,7 +520,7 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
   velocypack::Builder serialized;
   plan.toVelocyPack(serialized, flags,
                     buildSerializeQueryDataCallback(
-                        {.includeNumericIds = true, .includeViews = false}));
+                        {.includeNumericIds = true, .includeViews = true}));
 
   auto dataSources = std::invoke([&]() {
     std::unordered_map<std::string, QueryPlanCache::DataSourceEntry>
@@ -1268,13 +1268,14 @@ QueryResult Query::explain() {
     _trx = AqlTransaction::create(_transactionContext, _collections,
                                   _queryOptions.transactionOptions);
 
+    enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
+
     Result res = _trx->begin();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
     _ast->validateAndOptimize(*_trx, {.optimizeNonCacheable = true});
 
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
@@ -1363,8 +1364,22 @@ QueryResult Query::explain() {
                        _warnings.empty() && _ast->root()->isCacheable());
 
       if (_planCacheKey.has_value()) {
-        // store result plan in query plan cache
-        storePlanInCache(*bestPlan);
+        // if query parsing/optimization produces warnings. we must disable
+        // query plan caching. additionally, if the query contains a
+        // REMOTE_SINGLE/REMOTE_MULTIPLE node, we must also disable caching,
+        // because these node types do not have constructors for being created
+        // from serialized velocypack input
+        bool canCachePlan = _warnings.empty() &&
+                            !plan->contains(ExecutionNode::REMOTE_SINGLE) &&
+                            !plan->contains(ExecutionNode::REMOTE_MULTIPLE);
+
+        if (canCachePlan) {
+          // store result plan in query plan cache
+          storePlanInCache(*bestPlan);
+        } else {
+          // do not store plan in cache
+          _planCacheKey.reset();
+        }
       }
     }
 
