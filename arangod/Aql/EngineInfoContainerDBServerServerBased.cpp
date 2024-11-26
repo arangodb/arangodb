@@ -403,7 +403,6 @@ auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(kSetupTimeout);
-  options.skipScheduler = true;  // hack to speed up future.get()
   network::addUserParameter(options, trx.username());
 
   TRI_IF_FAILURE("Query::setupTimeout") {
@@ -755,7 +754,6 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(10.0);  // Picked arbitrarily
-  options.skipScheduler = true;              // hack to speed up future.get()
 
   // Shutdown query snippets
   VPackBuffer<uint8_t> body;
