@@ -1370,8 +1370,8 @@ QueryResult Query::explain() {
         // because these node types do not have constructors for being created
         // from serialized velocypack input
         bool canCachePlan = _warnings.empty() &&
-                            !plan->contains(ExecutionNode::REMOTE_SINGLE) &&
-                            !plan->contains(ExecutionNode::REMOTE_MULTIPLE);
+                            !bestPlan->contains(ExecutionNode::REMOTE_SINGLE) &&
+                            !bestPlan->contains(ExecutionNode::REMOTE_MULTIPLE);
 
         if (canCachePlan) {
           // store result plan in query plan cache
