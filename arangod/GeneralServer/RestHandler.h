@@ -202,10 +202,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ArangodServer& _server;
   RequestStatistics::Item _statistics;
 
+ private:
   mutable basics::UnshackledMutex _executionMutex;
   mutable bool _lockAdopted = false;
-
- private:
   mutable std::atomic_uint8_t _executionCounter{0};
   mutable RestStatus _followupRestStatus;
 
