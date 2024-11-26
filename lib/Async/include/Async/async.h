@@ -70,8 +70,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
     struct awaitable {
       bool await_ready() { return inner_awaitable.await_ready(); }
       auto await_suspend(std::coroutine_handle<> handle) {
-        outer_promise->promise_in_registry->state.store(
-            async_registry::State::Suspended);
+        outer_promise->update_state(async_registry::State::Suspended);
         ExecContext::set(outer_promise->_callerExecContext);
         *async_registry::get_current_coroutine() = outer_promise->_requester;
         return inner_awaitable.await_suspend(handle);
@@ -180,7 +179,7 @@ struct async {
     if (_handle) {
       auto& promise = _handle.promise();
       if (promise._continuation.exchange(
-              _handle.address(), std::memory_order_release) != nullptr) {
+              _handle.address(), std::memory_order_acq_rel) != nullptr) {
         _handle.destroy();
       }
       _handle = nullptr;
