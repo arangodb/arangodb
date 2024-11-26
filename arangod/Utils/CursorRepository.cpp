@@ -27,6 +27,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
 #include "Aql/QueryResult.h"
+#include "Async/async.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"

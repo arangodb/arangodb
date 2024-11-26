@@ -33,6 +33,10 @@
 #include <stack>
 
 namespace arangodb {
+
+template<typename>
+struct async;
+
 namespace network {
 class ConnectionPool;
 struct RequestOptions;
@@ -81,7 +85,7 @@ class EngineInfoContainerDBServerServerBased {
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
-  futures::Future<Result> buildEngines(
+  async<Result> buildEngines(
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
       MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
@@ -101,8 +105,7 @@ class EngineInfoContainerDBServerServerBased {
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
       MapRemoteToSnippet& snippetIds, ServerQueryIdList& serverToQueryId,
       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
-      std::vector<ServerID>& dbServers)
-      -> futures::Future<BuildEnginesInternalResult>;
+      std::vector<ServerID>& dbServers) -> async<BuildEnginesInternalResult>;
   /**
    * @brief Helper method to generate the Request to be send to a specific
    * database server. this request contains all the necessary information to

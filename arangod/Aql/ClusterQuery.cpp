@@ -32,6 +32,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/SharedQueryState.h"
+#include "Async/async.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
@@ -116,7 +117,7 @@ void ClusterQuery::buildTraverserEngines(velocypack::Slice traverserSlice,
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on a DB server.
 /// never call this on a single server or coordinator!
-futures::Future<futures::Unit> ClusterQuery::prepareFromVelocyPack(
+async<void> ClusterQuery::prepareFromVelocyPack(
     velocypack::Slice querySlice, velocypack::Slice collections,
     velocypack::Slice variables, velocypack::Slice snippets,
     velocypack::Slice traverserSlice, std::string const& user,
@@ -203,8 +204,7 @@ futures::Future<futures::Unit> ClusterQuery::prepareFromVelocyPack(
   enterState(QueryExecutionState::ValueType::PARSING);
 
   bool const planRegisters = !_queryString.empty();
-  auto instantiateSnippet =
-      [&](velocypack::Slice snippet) -> futures::Future<futures::Unit> {
+  auto instantiateSnippet = [&](velocypack::Slice snippet) -> async<void> {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);
 

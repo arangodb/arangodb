@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/TraverserEngineShardLists.h"
+#include "Async/async.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -300,7 +301,7 @@ bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(
 //   this methods a shutdown request is send to all DBServers.
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
-futures::Future<Result> EngineInfoContainerDBServerServerBased::buildEngines(
+async<Result> EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
@@ -367,8 +368,7 @@ auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     MapRemoteToSnippet& snippetIds, ServerQueryIdList& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
-    std::vector<ServerID>& dbServers)
-    -> futures::Future<BuildEnginesInternalResult> {
+    std::vector<ServerID>& dbServers) -> async<BuildEnginesInternalResult> {
   NetworkFeature const& nf =
       _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();

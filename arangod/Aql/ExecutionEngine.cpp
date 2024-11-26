@@ -48,6 +48,7 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
 #include "Assertions/ProdAssert.h"
+#include "Async/async.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
@@ -549,7 +550,7 @@ struct DistributedQueryInstanciator final
   ///        * In case the Network is broken, all non-reachable DBServers will
   ///        clean out their snippets after a TTL.
   ///        Returns the First Coordinator Engine, the one not in the registry.
-  futures::Future<Result> buildEngines() {
+  async<Result> buildEngines() {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
 
     // QueryIds are filled by responses of DBServer parts.
@@ -703,8 +704,9 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
 }
 
 // @brief create an execution engine from a plan
-futures::Future<futures::Unit> ExecutionEngine::instantiateFromPlan(
-    Query& query, ExecutionPlan& plan, bool planRegisters) {
+async<void> ExecutionEngine::instantiateFromPlan(Query& query,
+                                                 ExecutionPlan& plan,
+                                                 bool planRegisters) {
   auto const role = ServerState::instance()->getRole();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

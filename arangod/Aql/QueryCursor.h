@@ -26,8 +26,6 @@
 
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Futures/Future.h"
-#include "Futures/Unit.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
@@ -39,6 +37,11 @@
 #include <cstdint>
 #include <deque>
 #include <memory>
+
+namespace arangodb {
+template<typename>
+struct async;
+}
 
 namespace arangodb::aql {
 
@@ -103,7 +106,7 @@ class QueryStreamCursor final : public Cursor {
  public:
   static auto create(std::shared_ptr<Query> q, size_t batchSize, double ttl,
                      bool isRetriable)
-      -> futures::Future<std::unique_ptr<QueryStreamCursor>>;
+      -> async<std::unique_ptr<QueryStreamCursor>>;
 
   QueryStreamCursor(PrivateToken, std::shared_ptr<Query> q, size_t batchSize,
                     double ttl, bool isRetriable);
@@ -141,7 +144,7 @@ class QueryStreamCursor final : public Cursor {
   }
 
  private:
-  auto finishConstruction() -> futures::Future<futures::Unit>;
+  auto finishConstruction() -> async<void>;
 
   // Writes from _queryResults to builder. Removes copied blocks from
   // _queryResults and sets _queryResultPos appropriately. Relies on the caller

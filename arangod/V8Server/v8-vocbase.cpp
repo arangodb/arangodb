@@ -48,6 +48,7 @@
 #include "Aql/QueryList.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
+#include "Async/async.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
@@ -792,11 +793,12 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
-  query
-      ->prepareFromVelocyPack(
-          /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
-          /*snippets*/ snippetBuilder.slice())
-      .waitAndGet();
+  [&]() -> futures::Future<futures::Unit> {
+    co_return co_await query->prepareFromVelocyPack(
+        /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
+        /*snippets*/ snippetBuilder.slice());
+  }()
+               .waitAndGet();
 
   aql::QueryResult queryResult = query->executeSync();
 

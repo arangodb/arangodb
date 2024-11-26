@@ -35,11 +35,10 @@
 #include <utility>
 #include <vector>
 
-namespace arangodb::futures {
-template<typename T>
-class Future;
-struct Unit;
-}  // namespace arangodb::futures
+namespace arangodb {
+template<typename>
+struct async;
+}
 
 namespace arangodb::aql {
 
@@ -76,9 +75,8 @@ class ExecutionEngine {
   size_t asyncPrefetchSlotsLeased() const noexcept;
 
   // @brief create an execution engine from a plan
-  static futures::Future<futures::Unit> instantiateFromPlan(Query& query,
-                                                            ExecutionPlan& plan,
-                                                            bool planRegisters);
+  static async<void> instantiateFromPlan(Query& query, ExecutionPlan& plan,
+                                         bool planRegisters);
 
   /// @brief Prepares execution blocks for executing provided plan
   /// @param plan plan to execute, should be without cluster nodes. Only local

@@ -32,6 +32,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
+#include "Async/async.h"
 #include "Basics/ScopeGuard.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -151,7 +152,7 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // .............................................................................
 auto QueryStreamCursor::create(std::shared_ptr<Query> q, size_t batchSize,
                                double ttl, bool isRetriable)
-    -> futures::Future<std::unique_ptr<QueryStreamCursor>> {
+    -> async<std::unique_ptr<QueryStreamCursor>> {
   auto cursor = std::make_unique<QueryStreamCursor>(
       PrivateToken{}, std::move(q), batchSize, ttl, isRetriable);
   co_await cursor->finishConstruction();
@@ -168,7 +169,7 @@ QueryStreamCursor::QueryStreamCursor(PrivateToken, std::shared_ptr<Query> q,
       _finalization(false),
       _allowDirtyReads(false) {}
 
-auto QueryStreamCursor::finishConstruction() -> futures::Future<futures::Unit> {
+auto QueryStreamCursor::finishConstruction() -> async<void> {
   co_await _query->prepareQuery();
   _allowDirtyReads = _query->allowDirtyReads();  // is set by prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {

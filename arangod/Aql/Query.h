@@ -62,6 +62,9 @@ class CollectionNameResolver;
 class LogicalDataSource;
 class V8Executor;
 
+template<typename>
+struct async;
+
 namespace transaction {
 class Context;
 class Methods;
@@ -177,7 +180,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// every following call will be ignored.
   void ensureExecutionTime() noexcept;
 
-  futures::Future<futures::Unit> prepareQuery();
+  async<void> prepareQuery();
 
   /// @brief execute an AQL query
   ExecutionState execute(QueryResult& res);
@@ -206,9 +209,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief prepare a query out of some velocypack data.
   /// only to be used on single server or coordinator.
   /// never call this on a DB server!
-  futures::Future<futures::Unit> prepareFromVelocyPack(
-      velocypack::Slice querySlice, velocypack::Slice collections,
-      velocypack::Slice variables, velocypack::Slice snippets);
+  async<void> prepareFromVelocyPack(velocypack::Slice querySlice,
+                                    velocypack::Slice collections,
+                                    velocypack::Slice variables,
+                                    velocypack::Slice snippets);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;

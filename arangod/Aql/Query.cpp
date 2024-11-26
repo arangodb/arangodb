@@ -45,6 +45,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Timing.h"
+#include "Async/async.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
@@ -349,7 +350,7 @@ void Query::ensureExecutionTime() noexcept {
   }
 }
 
-futures::Future<futures::Unit> Query::prepareQuery() {
+async<void> Query::prepareQuery() {
   try {
     init(/*createProfile*/ true);
 
@@ -586,11 +587,11 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         TRI_ASSERT(!_prepareResult.valid());
         // will throw if it fails
-        auto prepare = [&]() -> futures::Future<futures::Unit> {
+        auto prepare = [this]() -> futures::Future<futures::Unit> {
           if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-            return prepareQuery();
+            co_return co_await prepareQuery();
           }
-          return futures::Future<futures::Unit>(futures::Unit{});
+          co_return;
         }();
         _executionPhase = ExecutionPhase::PREPARE;
         if (!prepare.isReady()) {
@@ -829,7 +830,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     // will throw if it fails
-    prepareQuery().waitAndGet();
+    [&]() -> futures::Future<futures::Unit> {
+      co_return co_await prepareQuery();
+    }()
+                 .waitAndGet();
 
     logAtStart();
 
@@ -2193,9 +2197,10 @@ void Query::debugKillQuery() {
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on single server or coordinator.
 /// never call this on a DB server!
-futures::Future<futures::Unit> Query::prepareFromVelocyPack(
-    velocypack::Slice querySlice, velocypack::Slice collections,
-    velocypack::Slice variables, velocypack::Slice snippets) {
+async<void> Query::prepareFromVelocyPack(velocypack::Slice querySlice,
+                                         velocypack::Slice collections,
+                                         velocypack::Slice variables,
+                                         velocypack::Slice snippets) {
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
@@ -2257,8 +2262,7 @@ futures::Future<futures::Unit> Query::prepareFromVelocyPack(
   enterState(QueryExecutionState::ValueType::PARSING);
 
   bool const planRegisters = !_queryString.empty();
-  auto instantiateSnippet =
-      [&](velocypack::Slice snippet) -> futures::Future<futures::Unit> {
+  auto instantiateSnippet = [&](velocypack::Slice snippet) -> async<void> {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);
 
