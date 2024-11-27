@@ -30,23 +30,22 @@ if len(sys.argv) > 3:
 main_log_file = Path(sys.argv[1])
 PID_TO_FN = load_testing_js_mappings(main_log_file)
 load_file(main_log_file, PID_TO_FN, filter_str)
-
 jobs = convert_pids_to_gantt(PID_TO_FN)
 
 df_load = get_load()
 df_jobs = pd.DataFrame(jobs)
 
-fig_gantt = px.timeline(df_jobs, x_start="Start", x_end="Finish", y="Task")
-fig_gantt.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom
+time_range = [
+    df_load["Date"][0],
+    df_load["Date"][len(df_load.index)-1]
+]
+print(time_range[1] - time_range[0])
+
 
 app = Dash()
-
 app.layout = [
     html.Div(children='Load to CI jobs'),
     html.Hr(),
-    # dcc.RadioItems(options=['pop', 'lifeExp', 'gdpPercap'], value='lifeExp', id='controls-and-radio-item'),
-    #dash_table.DataTable(data=df_jobs.to_dict('records'), page_size=6),
-    #dcc.Graph(figure={}, id='controls-and-graph')
     html.Div([
         html.H1(children='Testsystem Analyzer'),
 
@@ -54,36 +53,35 @@ app.layout = [
             Testsuites and their run times
         '''),
 
-        dcc.Graph(
-            id='gantt-chart',
-            figure=fig_gantt
-        ),
+        dcc.Graph(id='gantt-chart'),
     ]),
     html.Div([
         dcc.Graph(id='load-graph'),
         dcc.Checklist(
-            id="checklist",
+            id="loadgraph-checklist",
             options=["load", "netio"],
             value=[ "load", "netio"],
             inline=True
         )
     ]),
-
+    html.Div([
+        dcc.RangeSlider(0, 20, 1, value=[5, 15], id='date-range-slider'),
+        html.Div(id='output-container-range-slider')
+    ])
 ]
 
+@callback(
+    Output('output-container-range-slider', 'children'),
+    Input('date-range-slider', 'value'))
+def update_output(value):
+    return 'You have selected "{}"'.format(value)
 
 @app.callback(
     Output("load-graph", "figure"),
-    #Output("gantt-chart", "figure"),
-    Input("checklist", "value"))
-
-
-def update_line_chart(gauge):
-    #print(gauge)
-    #fig = go.Figure()
-    #fig.add_trace(go.Scatter(y=df_jobs["Date"], x=df_jobs["load"], mode='lines', name='Load'))
-    #fig = px.line(data_frame=df_load,
-    #        x="Date", y="load")
+    Input('date-range-slider', 'value'),
+    Input("loadgraph-checklist", "value"))
+def update_line_chart(time_range, gauge_select):
+    print(gauge_select)
     # Create figure with secondary y-axis
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -93,7 +91,7 @@ def update_line_chart(gauge):
         name="Load"), secondary_y=False,
     )
 
-    if 'netio' in gauge:
+    if 'netio' in gauge_select:
         fig.add_trace(
             go.Scatter(x=df_load['Date'], y=df_load['netio'], # replace with your own data source
                        name="NetIO"), secondary_y=True
@@ -112,26 +110,16 @@ def update_line_chart(gauge):
     fig.update_yaxes(
         title_text="<b>Net IO LO</b>",
         secondary_y=True)
-
     return fig
 
-
-# Add controls to build the interaction
-#@callback(
-    # Output(component_id='controls-and-graph', component_property='figure'),
-    #Input(component_id='controls-and-radio-item', component_property='value')
-    #)
-
-def update_graph(col_chosen):
-    print(df_jobs)
+@app.callback(
+    Output("gantt-chart", "figure"),
+    Input('date-range-slider', 'value'))
+def update_line_chart(time_range):
+    fig_gantt = px.timeline(df_jobs, x_start="Start", x_end="Finish", y="Task")
+    fig_gantt.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom
     return fig_gantt
-#    #fig1 = px.timeline(df_jobs, x_start="Start", x_end="Finish", y="Task")
-#    #fig1.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom up
-#    # fig = px.histogram(df_jobs, x='continent', y=col_chosen, histfunc='avg')
-#    load_df = get_load()
-#    # print(load_df)
-#    fig2 = px.scatter(load_df, x=load_df["Date"], y=load_df["load"])
-#    return  fig2
+
 
 
 if __name__ == '__main__':
