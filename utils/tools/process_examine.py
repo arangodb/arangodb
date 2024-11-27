@@ -2,8 +2,10 @@
 import json
 from pathlib import Path
 import collections
+import pandas as pd
 
-LOADS = {}
+LOAD_COLUMNS = ['Date', 'load']
+LOADS = pd.DataFrame(columns=LOAD_COLUMNS)
 MEMORY = {}
 TREE_TEXTS = []
 PARSED_LINES = []
@@ -59,6 +61,8 @@ def load_testing_js_mappings(main_log_file):
     return pid_to_fn
 
 def load_file(main_log_file, pid_to_fn, filter_str):
+    global LOADS
+    collect_loads = []
     with open(main_log_file, "r", encoding="utf-8") as jsonl_file:
         while True:
             line = jsonl_file.readline()
@@ -75,7 +79,10 @@ def load_file(main_log_file, pid_to_fn, filter_str):
             for process_id in parsed_slice[1]:
                 if process_id == "sys":
                     sys_stat = parsed_slice[1][process_id]
-                    LOADS[this_date] = sys_stat['load'][0]
+                    collect_loads.append({
+                            "Date": pd.to_datetime(this_date),
+                            "load": float(sys_stat['load'][0])
+                    })
                     MEMORY[this_date] = sys_stat['netio']['lo'][0]
                     # print(f"L {sys_stat['load'][0]:.1f} - {sys_stat['netio']['lo'][0]:,.3f}")
                     #print(json.dumps(parsed_slice[1][process_id], indent=4))
@@ -122,6 +129,8 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                         one_process['name'] = f"{name} - launch controller"
                     except ValueError as ex:
                         print(ex)
+    LOADS = pd.DataFrame(data=collect_loads)
+    # print(pd.to_datetime(LOADS['Date']))
 
 def convert_pids_to_gantt(PID_TO_FN):
     jobs = []
@@ -140,3 +149,13 @@ def convert_pids_to_gantt(PID_TO_FN):
 
 def get_load():
     return LOADS
+
+def append_dict_to_df(df, dict_to_append):
+    df = pd.concat([df, pd.DataFrame.from_records([dict_to_append])])
+    return df
+
+# Creating an empty dataframe
+#df = pd.DataFrame(columns=['a', 'b'])
+
+# Appending a row
+#df = append_dict_to_df(df,{ 'a': 1, 'b': 2 })
