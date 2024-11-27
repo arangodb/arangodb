@@ -133,12 +133,18 @@ const ConsolidationPolicyAccordionItem = () => {
   );
 };
 
+const compressionLabelsMap: {[key: string]: string} = {
+  "lz4": "LZ4",
+  "none":"None"
+};
+
 const PrimarySortAccordionItem = () => {
   const [primarySortField] = useField<PrimarySortType[] | undefined>(
     "primarySort"
   );
   const [primarySortCacheField] = useField("primarySortCache");
   const [primarySortCompressionField] = useField("primarySortCompression");
+  const primarySortCompressionLabel = compressionLabelsMap[primarySortCompressionField.value] ?? primarySortCompressionField.value;
   const isPrimarySortEmpty =
     primarySortField.value?.length === 0 || !primarySortField.value;
 
@@ -146,7 +152,7 @@ const PrimarySortAccordionItem = () => {
     <AccordionItem>
       <AccordionButton>
         <Box flex="1" textAlign="left">
-          Primary Sort (compression: {primarySortCompressionField.value}{primarySortCacheField.value ? ", cached" : ""})
+          Primary Sort (Compression: {primarySortCompressionLabel}{primarySortCacheField.value ? ", cached" : ""})
         </Box>
         <AccordionIcon />
       </AccordionButton>
@@ -161,7 +167,7 @@ const PrimarySortAccordionItem = () => {
                   <Box>
                     <Tag>{item.field}</Tag>
                   </Box>
-                  <Box>{item.asc ? "asc" : "desc"}</Box>
+                  <Box>{item.asc ? "Ascending" : "Descending"}</Box>
                   <Spacer />
                 </React.Fragment>
               );
@@ -201,7 +207,7 @@ const StoredValuesAccordionItem = () => {
                       return <Tag key={field}>{field}</Tag>;
                     })}
                   </Stack>
-                  <Box>compression: {item.compression}{item.cache && ", cached"}</Box>
+                  <Box>Compression: {compressionLabelsMap[item.compression] ?? item.compression}{item.cache && ", cached"}</Box>
                   <Spacer />
                 </React.Fragment>
               );

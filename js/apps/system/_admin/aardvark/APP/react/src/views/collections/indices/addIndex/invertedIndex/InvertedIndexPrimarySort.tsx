@@ -55,7 +55,7 @@ const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
           selectProps={{
             options: [
               {
-                label: "lz4",
+                label: "LZ4",
                 value: "lz4"
               },
               { label: "None", value: "none" }
@@ -72,7 +72,7 @@ const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
           tooltip={
             window.frontendConfig.isEnterprise
               ? undefined
-              : "Primary sort column caching is available in Enterprise plans."
+              : "Primary sort column caching is available in the Enterprise Edition."
           }
         />
         <Spacer />

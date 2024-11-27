@@ -28,6 +28,8 @@
 #include <source_location>
 #include <string>
 #include <thread>
+#include "Basics/threads-posix.h"
+#include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "fmt/format.h"
 #include "fmt/std.h"
@@ -45,15 +47,17 @@ namespace arangodb::async_registry {
 
 struct ThreadRegistry;
 
-struct Thread {
-  std::string name;
-  std::thread::id id;
-  bool operator==(Thread const&) const = default;
+struct ThreadId {
+  static auto current() noexcept -> ThreadId;
+  auto name() -> std::string;
+  TRI_tid_t posix_id;
+  pid_t kernel_id;
+  bool operator==(ThreadId const&) const = default;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, Thread& x) {
-  return f.object(x).fields(f.field("name", x.name),
-                            f.field("id", fmt::format("{}", x.id)));
+auto inspect(Inspector& f, ThreadId& x) {
+  return f.object(x).fields(f.field("LWPID", x.kernel_id),
+                            f.field("name", x.name()));
 }
 
 struct SourceLocationSnapshot {
@@ -87,43 +91,42 @@ auto inspect(Inspector& f, State& x) {
                                  State::Deleted, "Deleted");
 }
 
-using AsyncRequester = void*;
-using SyncRequester = std::thread::id;
+using PromiseId = void*;
 
-struct AsyncRequesterWrapper {
-  AsyncRequester item;
+struct PromiseIdWrapper {
+  PromiseId item;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, AsyncRequesterWrapper& x) {
-  return f.object(x).fields(
-      f.field("async", reinterpret_cast<intptr_t>(x.item)));
+auto inspect(Inspector& f, PromiseIdWrapper& x) {
+  return f.object(x).fields(f.field("promise", fmt::format("{}", x.item)));
 }
-struct SyncRequesterWrapper {
-  SyncRequester item;
+struct ThreadIdWrapper {
+  ThreadId item;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, SyncRequesterWrapper& x) {
-  return f.object(x).fields(f.field("sync", fmt::format("{}", x.item)));
+auto inspect(Inspector& f, ThreadIdWrapper& x) {
+  return f.object(x).fields(f.field("thread", x.item));
 }
-struct RequesterWrapper
-    : std::variant<SyncRequesterWrapper, AsyncRequesterWrapper> {};
+struct RequesterWrapper : std::variant<ThreadIdWrapper, PromiseIdWrapper> {};
 template<typename Inspector>
 auto inspect(Inspector& f, RequesterWrapper& x) {
   return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<AsyncRequesterWrapper>(),
-      inspection::inlineType<SyncRequesterWrapper>());
+      inspection::inlineType<PromiseIdWrapper>(),
+      inspection::inlineType<ThreadIdWrapper>());
 }
-struct Requester : std::variant<SyncRequester, AsyncRequester> {};
+struct Requester : std::variant<ThreadId, PromiseId> {
+  static auto current_thread() -> Requester;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, Requester& x) {
   if constexpr (!Inspector::isLoading) {  // only serialize
     RequesterWrapper tmp =
         std::visit(overloaded{
-                       [&](AsyncRequester waiter) {
-                         return RequesterWrapper{AsyncRequesterWrapper{waiter}};
+                       [&](PromiseId waiter) {
+                         return RequesterWrapper{PromiseIdWrapper{waiter}};
                        },
-                       [&](SyncRequester waiter) {
-                         return RequesterWrapper{SyncRequesterWrapper{waiter}};
+                       [&](ThreadId waiter) {
+                         return RequesterWrapper{ThreadIdWrapper{waiter}};
                        },
                    },
                    x);
@@ -133,7 +136,7 @@ auto inspect(Inspector& f, Requester& x) {
 
 struct PromiseSnapshot {
   void* id;
-  Thread thread;
+  ThreadId thread;
   SourceLocationSnapshot source_location;
   Requester requester;
   State state;
@@ -143,8 +146,8 @@ template<typename Inspector>
 auto inspect(Inspector& f, PromiseSnapshot& x) {
   return f.object(x).fields(f.field("owning_thread", x.thread),
                             f.field("source_location", x.source_location),
-                            f.field("id", reinterpret_cast<intptr_t>(x.id)),
-                            f.field("waiter", x.requester),
+                            f.field("id", fmt::format("{}", x.id)),
+                            f.field("requester", x.requester),
                             f.field("state", x.state));
 }
 struct Promise {
@@ -162,7 +165,7 @@ struct Promise {
                            .state = state.load()};
   }
 
-  Thread thread;
+  ThreadId thread;
 
   SourceLocation source_location;
   std::atomic<Requester> requester;
@@ -206,3 +209,7 @@ struct AddToAsyncRegistry {
 };
 
 }  // namespace arangodb::async_registry
+
+template<>
+struct fmt::formatter<arangodb::async_registry::ThreadId>
+    : arangodb::inspection::inspection_formatter {};

@@ -110,7 +110,7 @@ template<typename WaitType>
 struct FutureCoroutineTest : ::testing::Test {
   void SetUp() override {
     arangodb::async_registry::get_thread_registry().garbage_collect();
-    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::SyncRequester>(
+    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
         *arangodb::async_registry::get_current_coroutine()));
   }
 
@@ -169,9 +169,8 @@ TYPED_TEST(
     static auto awaited_by_awaited_fn(TestType test) -> Future<Unit> {
       auto promise = find_promise_by_name("awaited_by_awaited_fn");
       EXPECT_TRUE(promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<arangodb::async_registry::AsyncRequester>(
-              promise->requester));
+      EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::PromiseId>(
+          promise->requester));
       co_await test->wait;
 
       co_return;
@@ -179,9 +178,8 @@ TYPED_TEST(
     static auto awaited_fn(TestType test) -> Future<Unit> {
       auto promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<arangodb::async_registry::AsyncRequester>(
-              promise->requester));
+      EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::PromiseId>(
+          promise->requester));
 
       auto fn = Functions::awaited_by_awaited_fn(test);
       auto awaited_promise = find_promise_by_name("awaited_by_awaited_fn");
@@ -200,9 +198,8 @@ TYPED_TEST(
     static auto waiter_fn(TestType test) -> Future<Unit> {
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<arangodb::async_registry::SyncRequester>(
-              waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+          waiter_promise->requester));
 
       auto fn = Functions::awaited_fn(test);
 
@@ -221,9 +218,8 @@ TYPED_TEST(
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<arangodb::async_registry::SyncRequester>(
-              waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+          waiter_promise->requester));
 
       co_return;
     };
@@ -242,9 +238,8 @@ TYPED_TEST(FutureCoroutineTest,
     static auto awaited_fn(TestType test) -> Future<Unit> {
       auto promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<arangodb::async_registry::SyncRequester>(
-              promise->requester));
+      EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+          promise->requester));
 
       co_await test->wait;
 
@@ -253,15 +248,13 @@ TYPED_TEST(FutureCoroutineTest,
     static auto waiter_fn(Future<Unit>&& fn) -> Future<Unit> {
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<arangodb::async_registry::SyncRequester>(
-              waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+          waiter_promise->requester));
 
       auto awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<arangodb::async_registry::SyncRequester>(
-              waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+          waiter_promise->requester));
 
       co_await std::move(fn);
 
@@ -273,9 +266,8 @@ TYPED_TEST(FutureCoroutineTest,
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<arangodb::async_registry::SyncRequester>(
-              waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+          waiter_promise->requester));
 
       co_return;
     };
