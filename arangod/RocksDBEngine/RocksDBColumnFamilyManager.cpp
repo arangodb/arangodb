@@ -121,8 +121,8 @@ char const* RocksDBColumnFamilyManager::name(
 
 std::span<rocksdb::ColumnFamilyHandle*>
 RocksDBColumnFamilyManager::allHandles() {
-  std::size_t valid_size = _handles.size();
-  while (valid_size > 0 && _handles[valid_size] == nullptr) {
+  std::size_t valid_size{_handles.size()};
+  while (valid_size > 0 && _handles[valid_size - 1] == nullptr) {
     --valid_size;
   }
 
