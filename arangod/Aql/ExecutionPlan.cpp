@@ -701,7 +701,6 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls,
 /// @brief process a list of views in a VelocyPack
 void ExecutionPlan::extendCollectionsByViewsFromVelocyPack(
     aql::Collections& colls, velocypack::Slice viewsSlice) {
-
   if (!viewsSlice.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "json for views is not an array");
