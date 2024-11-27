@@ -205,7 +205,8 @@ async<void> ClusterQuery::prepareFromVelocyPack(
 
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](velocypack::Slice snippet) -> async<void> {
-    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
+    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet,
+                                                         /*simple*/ false);
     TRI_ASSERT(plan != nullptr);
 
     co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);

@@ -47,7 +47,7 @@ shell_client_multi priority=1500 parallelity=2 single suffix=http -- --http true
 shell_client_transaction,shell_client_transaction name=shell_client_transaction priority=750 single -- $EncryptionAtRest --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"}]
 shell_client_traffic,shell_client_traffic,shell_client_traffic,shell_client_traffic name=shell_client_traffic priority=250 parallelity=1 single -- --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"},{"http":true,"ssl":true,"suffix":"http-ssl"},{"http2":true,"ssl":true,"suffix":"http2-ssl"}]
 
-shell_client_aql buckets=19 priority=250  single --javascript.v8-max-heap=6144
+shell_client_aql buckets=19 priority=250  single --javascript.v8-max-heap=8192
 
 # C++ unit tests are executed in single env
 gtest_iresearch priority=1000 parallelity=3 size=medium single
@@ -88,12 +88,12 @@ shell_client_multi priority=1500 cluster suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 
 # different number of buckets in cluster
-shell_client_aql priority=1000 size=medium+ cluster buckets=20 --javascript.v8-max-heap=6144 -- --dumpAgencyOnError true
+shell_client_aql priority=1000 size=medium+ cluster buckets=20 --javascript.v8-max-heap=8192 -- --dumpAgencyOnError true
 shell_client priority=500 cluster size=medium+ buckets=20 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 #shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
 
-rta_makedata cluster parallelity=5
+rta_makedata cluster parallelity=6
 rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 --  --forceOneShard true
 
 # Common Tests
@@ -125,8 +125,8 @@ dump_maskings  enterprise size=medium -- --dumpAgencyOnError true
 dump_encrypted enterprise size=medium -- --dumpAgencyOnError true
 dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
 dump_mixed_single_cluster size=large -- --dumpAgencyOnError true
-dump_mixed_cluster_single suffix=_vpack size=medium -- --dumpAgencyOnError true --dumpVPack true
-dump_mixed_single_cluster suffix=_vpack size=large -- --dumpAgencyOnError true --dumpVPack true
+dump_mixed_cluster_single suffix=vpack size=medium -- --dumpAgencyOnError true --dumpVPack true
+dump_mixed_single_cluster suffix=vpack size=large -- --dumpAgencyOnError true --dumpVPack true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes single size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
 dump_with_crashes full cluster size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true

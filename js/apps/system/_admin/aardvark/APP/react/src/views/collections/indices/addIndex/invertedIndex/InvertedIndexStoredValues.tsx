@@ -31,7 +31,7 @@ export const InvertedIndexStoredValues = ({
 
 const compressionOptions = [
   {
-    label: "lz4",
+    label: "LZ4",
     value: "lz4"
   },
   { label: "None", value: "none" }
@@ -91,7 +91,7 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
                       tooltip={
                         window.frontendConfig.isEnterprise
                           ? undefined
-                          : "Field normalization value caching is available in Enterprise plans."
+                          : "Field normalization value caching is available in the Enterprise Edition."
                       }
                     />
                   </Box>

@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryPlanCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
@@ -1112,6 +1113,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     }
   }
 
+  vocbase().queryPlanCache().invalidate(guid());
+
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
     return ClusterCollectionMethods::updateCollectionProperties(vocbase(),
@@ -1155,6 +1158,8 @@ futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
   if (idx) {
     vocbase().versionTracker().track("create index");
   }
+  vocbase().queryPlanCache().invalidate(guid());
+
   co_return idx;
 }
 
@@ -1162,12 +1167,14 @@ futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
 Result LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
+  vocbase().queryPlanCache().invalidate(guid());
   aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
   Result res = _physical->dropIndex(iid);
 
   if (res.ok()) {
     vocbase().versionTracker().track("drop index");
+    vocbase().queryPlanCache().invalidate(guid());
   }
 
   return res;

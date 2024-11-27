@@ -28,6 +28,8 @@
 #include <source_location>
 #include <string>
 #include <thread>
+#include "Basics/threads-posix.h"
+#include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "fmt/format.h"
 #include "fmt/std.h"
@@ -45,15 +47,17 @@ namespace arangodb::async_registry {
 
 struct ThreadRegistry;
 
-struct Thread {
-  std::string name;
-  std::thread::id id;
-  bool operator==(Thread const&) const = default;
+struct ThreadId {
+  static auto current() noexcept -> ThreadId;
+  auto name() -> std::string;
+  TRI_tid_t posix_id;
+  pid_t kernel_id;
+  bool operator==(ThreadId const&) const = default;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, Thread& x) {
-  return f.object(x).fields(f.field("name", x.name),
-                            f.field("id", fmt::format("{}", x.id)));
+auto inspect(Inspector& f, ThreadId& x) {
+  return f.object(x).fields(f.field("LWPID", x.kernel_id),
+                            f.field("name", x.name()));
 }
 
 struct SourceLocationSnapshot {
@@ -87,61 +91,54 @@ auto inspect(Inspector& f, State& x) {
                                  State::Deleted, "Deleted");
 }
 
-using AsyncWaiter = void*;
-using SyncWaiter = std::thread::id;
-struct NoWaiter {
-  bool operator==(NoWaiter const&) const = default;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, NoWaiter& x) {
-  return f.object(x).fields();
-}
+using PromiseId = void*;
 
-struct AsyncWaiterTmp {
-  AsyncWaiter item;
+struct PromiseIdWrapper {
+  PromiseId item;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, AsyncWaiterTmp& x) {
-  return f.object(x).fields(
-      f.field("async", reinterpret_cast<intptr_t>(x.item)));
+auto inspect(Inspector& f, PromiseIdWrapper& x) {
+  return f.object(x).fields(f.field("promise", fmt::format("{}", x.item)));
 }
-struct SyncWaiterTmp {
-  SyncWaiter item;
+struct ThreadIdWrapper {
+  ThreadId item;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, SyncWaiterTmp& x) {
-  return f.object(x).fields(f.field("sync", fmt::format("{}", x.item)));
+auto inspect(Inspector& f, ThreadIdWrapper& x) {
+  return f.object(x).fields(f.field("thread", x.item));
 }
-struct WaiterTmp : std::variant<AsyncWaiterTmp, SyncWaiterTmp, NoWaiter> {};
+struct RequesterWrapper : std::variant<ThreadIdWrapper, PromiseIdWrapper> {};
 template<typename Inspector>
-auto inspect(Inspector& f, WaiterTmp& x) {
+auto inspect(Inspector& f, RequesterWrapper& x) {
   return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<NoWaiter>(),
-      inspection::inlineType<AsyncWaiterTmp>(),
-      inspection::inlineType<SyncWaiterTmp>());
+      inspection::inlineType<PromiseIdWrapper>(),
+      inspection::inlineType<ThreadIdWrapper>());
 }
-struct Waiter : std::variant<NoWaiter, AsyncWaiter, SyncWaiter> {};
+struct Requester : std::variant<ThreadId, PromiseId> {
+  static auto current_thread() -> Requester;
+};
 template<typename Inspector>
-auto inspect(Inspector& f, Waiter& x) {
+auto inspect(Inspector& f, Requester& x) {
   if constexpr (!Inspector::isLoading) {  // only serialize
-    WaiterTmp tmp = std::visit(
-        overloaded{
-            [&](AsyncWaiter waiter) {
-              return WaiterTmp{AsyncWaiterTmp{waiter}};
-            },
-            [&](SyncWaiter waiter) { return WaiterTmp{SyncWaiterTmp{waiter}}; },
-            [&](NoWaiter waiter) { return WaiterTmp{waiter}; },
-        },
-        x);
+    RequesterWrapper tmp =
+        std::visit(overloaded{
+                       [&](PromiseId waiter) {
+                         return RequesterWrapper{PromiseIdWrapper{waiter}};
+                       },
+                       [&](ThreadId waiter) {
+                         return RequesterWrapper{ThreadIdWrapper{waiter}};
+                       },
+                   },
+                   x);
     return f.apply(tmp);
   }
 }
 
 struct PromiseSnapshot {
   void* id;
-  Thread thread;
+  ThreadId thread;
   SourceLocationSnapshot source_location;
-  Waiter waiter = {NoWaiter{}};
+  Requester requester;
   State state;
   bool operator==(PromiseSnapshot const&) const = default;
 };
@@ -149,13 +146,13 @@ template<typename Inspector>
 auto inspect(Inspector& f, PromiseSnapshot& x) {
   return f.object(x).fields(f.field("owning_thread", x.thread),
                             f.field("source_location", x.source_location),
-                            f.field("id", reinterpret_cast<intptr_t>(x.id)),
-                            f.field("waiter", x.waiter),
+                            f.field("id", fmt::format("{}", x.id)),
+                            f.field("requester", x.requester),
                             f.field("state", x.state));
 }
 struct Promise {
   Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
-          std::source_location location);
+          Requester requester, std::source_location location);
   ~Promise() = default;
 
   auto mark_for_deletion() noexcept -> void;
@@ -164,14 +161,14 @@ struct Promise {
     return PromiseSnapshot{.id = id(),
                            .thread = thread,
                            .source_location = source_location.snapshot(),
-                           .waiter = waiter.load(),
+                           .requester = requester.load(),
                            .state = state.load()};
   }
 
-  Thread thread;
+  ThreadId thread;
 
   SourceLocation source_location;
-  std::atomic<Waiter> waiter = Waiter{NoWaiter{}};
+  std::atomic<Requester> requester;
   std::atomic<State> state = State::Running;
   // identifies the promise list it belongs to
   std::shared_ptr<ThreadRegistry> registry;
@@ -197,33 +194,10 @@ struct AddToAsyncRegistry {
   AddToAsyncRegistry& operator=(AddToAsyncRegistry&&) = delete;
   ~AddToAsyncRegistry();
 
-  auto set_promise_waiter(AsyncWaiter waiter) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->waiter.store({{waiter}});
-    }
-  }
-  auto set_promise_waiter(SyncWaiter waiter) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->waiter.store({{waiter}});
-    }
-  }
-  auto id() -> void* {
-    if (promise_in_registry != nullptr) {
-      return promise_in_registry->id();
-    } else {
-      return nullptr;
-    }
-  }
-  auto update_source_location(std::source_location loc) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->source_location.line.store(loc.line());
-    }
-  }
-  auto update_state(State state) {
-    if (promise_in_registry != nullptr) {
-      promise_in_registry->state.store(state);
-    }
-  }
+  auto id() -> void*;
+  auto update_source_location(std::source_location loc) -> void;
+  auto update_state(State state) -> std::optional<State>;
+  auto update_requester(Requester requester) -> void;
 
  private:
   struct noop {
@@ -235,3 +209,7 @@ struct AddToAsyncRegistry {
 };
 
 }  // namespace arangodb::async_registry
+
+template<>
+struct fmt::formatter<arangodb::async_registry::ThreadId>
+    : arangodb::inspection::inspection_formatter {};

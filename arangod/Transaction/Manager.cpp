@@ -1375,7 +1375,7 @@ bool Manager::garbageCollect(bool abortAll) {
   }
 
   for (TransactionId tid : toAbort) {
-    LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
+    LOG_TOPIC("6fbaf", WARN, Logger::TRANSACTIONS) << "garbage collecting "
                                                    << "transaction " << tid;
     try {
       Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
@@ -1387,7 +1387,7 @@ bool Manager::garbageCollect(bool abortAll) {
       if (res.fail() && !res.is(TRI_ERROR_TRANSACTION_ABORTED) &&
           !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED) &&
           !res.is(TRI_ERROR_LOCKED)) {
-        LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS)
+        LOG_TOPIC("0a07f", WARN, Logger::TRANSACTIONS)
             << "error while aborting "
                "transaction: "
             << res.errorMessage();

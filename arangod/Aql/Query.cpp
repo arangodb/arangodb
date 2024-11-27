@@ -41,11 +41,13 @@
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryInfoLoggerFeature.h"
 #include "Aql/QueryList.h"
+#include "Aql/QueryPlanCache.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Timing.h"
 #include "Async/async.h"
+#include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
@@ -350,15 +352,87 @@ void Query::ensureExecutionTime() noexcept {
   }
 }
 
+bool Query::tryLoadPlanFromCache() {
+  if (_queryOptions.usePlanCache) {
+    if (!canUsePlanCache()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELLIGIBLE_FOR_PLAN_CACHING);
+    }
+    // construct plan cache key
+    TRI_ASSERT(!_planCacheKey.has_value());
+    _planCacheKey.emplace(_vocbase.queryPlanCache().createCacheKey(
+        _queryString, bindParametersAsBuilder(), _queryOptions));
+
+    // look up query in query plan cache
+    auto cacheEntry = _vocbase.queryPlanCache().lookup(*_planCacheKey);
+    if (cacheEntry != nullptr) {
+      // entry found in plan cache
+
+      auto hasPermissions = std::invoke([&] {
+        // check if the current user has permissions on all the collections
+        ExecContext const& exec = ExecContext::current();
+
+        if (!exec.isSuperuser()) {
+          for (auto const& dataSource : cacheEntry->dataSources) {
+            if (!exec.canUseCollection(dataSource.second.name,
+                                       dataSource.second.level)) {
+              // cannot use query cache result because of permissions
+              return false;
+            }
+          }
+        }
+
+        return true;
+      });
+
+      if (!hasPermissions) {
+        return false;
+      }
+
+      _resourceMonitor->increaseMemoryUsage(cacheEntry->serializedPlan->size());
+      _planSliceCopy = cacheEntry->serializedPlan;
+
+      VPackSlice querySlice = VPackSlice(cacheEntry->serializedPlan->data());
+      VPackSlice collections = querySlice.get("collections");
+      VPackSlice variables = querySlice.get("variables");
+
+      QueryAnalyzerRevisions analyzersRevision;
+      auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
+      if (ADB_UNLIKELY(revisionRes.fail())) {
+        THROW_ARANGO_EXCEPTION(revisionRes);
+      }
+
+      prepareFromVelocyPack(querySlice, collections, variables,
+                            /*snippets*/ querySlice.get("nodes"),
+                            /*simpleSnippetFormat*/ true, analyzersRevision);
+
+      TRI_ASSERT(!_plans.empty());
+
+      auto& plan = _plans.front();
+      plan->findVarUsage();
+      plan->findCollectionAccessVariables();
+      plan->prepareTraversalOptions();
+
+      return true;
+    }
+  }
+  return false;
+}
+
 async<void> Query::prepareQuery() {
   try {
+    if (tryLoadPlanFromCache()) {
+      enterState(QueryExecutionState::ValueType::EXECUTION);
+      co_return;
+    }
+
+    std::unique_ptr<ExecutionPlan> plan;
     init(/*createProfile*/ true);
 
     enterState(QueryExecutionState::ValueType::PARSING);
 
-    std::unique_ptr<ExecutionPlan> plan = preparePlan();
+    plan = preparePlan();
+
     TRI_ASSERT(plan != nullptr);
-    plan->findVarUsage();
 
     TRI_ASSERT(_trx != nullptr);
     TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
@@ -369,34 +443,16 @@ async<void> Query::prepareQuery() {
         _queryOptions.profile >= ProfileLevel::Blocks &&
         ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
     if (keepPlan) {
-      auto serializeQueryData = [this](velocypack::Builder& builder) {
-        // set up collections
-        TRI_ASSERT(builder.isOpenObject());
-        builder.add(VPackValue("collections"));
-        collections().toVelocyPack(
-            builder, /*filter*/
-            [](std::string const& name, Collection const&) {
-              // exclude collections without names or with names that are just
-              // ids
-              return !(name.empty() ||
-                       (name.front() >= '0' && name.front() <= '9'));
-            });
-
-        // set up variables
-        TRI_ASSERT(builder.isOpenObject());
-        builder.add(VPackValue("variables"));
-        _ast->variables()->toVelocyPack(builder);
-
-        builder.add("isModificationQuery", VPackValue(isModificationQuery()));
-      };
-
       unsigned flags = ExecutionPlan::buildSerializationFlags(
           /*verbose*/ false, /*includeInternals*/ false,
           /*explainRegisters*/ false);
-      _planSliceCopy = std::make_unique<VPackBufferUInt8>();
+      _planSliceCopy = std::make_shared<VPackBufferUInt8>();
       try {
         VPackBuilder b(*_planSliceCopy);
-        plan->toVelocyPack(b, flags, serializeQueryData);
+        plan->toVelocyPack(
+            b, flags,
+            buildSerializeQueryDataCallback(
+                {.includeNumericIds = false, .includeViews = true}));
 
         TRI_IF_FAILURE("Query::serializePlans1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -447,10 +503,53 @@ async<void> Query::prepareQuery() {
   } catch (std::bad_alloc const&) {
     setResult({TRI_ERROR_OUT_OF_MEMORY});
     throw;
-  } catch (...) {
-    setResult({TRI_ERROR_INTERNAL});
+  } catch (std::exception const& ex) {
+    setResult({TRI_ERROR_INTERNAL, ex.what()});
     throw;
   }
+}
+
+void Query::storePlanInCache(ExecutionPlan& plan) {
+  plan.planRegisters(ExplainRegisterPlan::No);
+
+  TRI_ASSERT(_planCacheKey.has_value());
+  // TODO: verify these options
+  unsigned flags = ExecutionPlan::buildSerializationFlags(
+      /*verbosePlans*/ true, /*explainInternals*/ true,
+      /*explainRegisters*/ false);
+
+  velocypack::Builder serialized;
+  plan.toVelocyPack(serialized, flags,
+                    buildSerializeQueryDataCallback(
+                        {.includeNumericIds = true, .includeViews = false}));
+
+  auto dataSources = std::invoke([&]() {
+    std::unordered_map<std::string, QueryPlanCache::DataSourceEntry>
+        dataSources;
+    // add views
+    for (auto const& it : _queryDataSources) {
+      dataSources.try_emplace(it.first, QueryPlanCache::DataSourceEntry{
+                                            it.second, auth::Level::RO});
+    }
+    // collect transaction DataSources
+    _trx->state()->allCollections(
+        [&dataSources](TransactionCollection& trxCollection) -> bool {
+          auto const& c = trxCollection.collection();
+          auth::Level level =
+              trxCollection.accessType() == AccessMode::Type::READ
+                  ? auth::Level::RO
+                  : auth::Level::RW;
+          dataSources.try_emplace(
+              c->guid(), QueryPlanCache::DataSourceEntry{c->name(), level});
+          return true;  // continue traversal
+        });
+    return dataSources;
+  });
+
+  // store plan in query plan cache for future queries
+  std::ignore = _vocbase.queryPlanCache().store(
+      std::move(*_planCacheKey), std::move(dataSources), serialized.steal());
+  _planCacheKey.reset();
 }
 
 /// @brief prepare an AQL query, this is a preparation for execute, but
@@ -467,13 +566,25 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   Parser parser(*this, *_ast, _queryString);
   parser.parse();
 
+  // any usage of one of the following features make the query ineligible
+  // for query plan caching (at least for now):
+  if (_queryOptions.optimizePlanForCaching &&
+      (_ast->containsUpsertNode() ||
+       _ast->containsAttributeNameValueBindParameters() ||
+       _ast->containsCollectionNameValueBindParameters() ||
+       _ast->containsGraphNameValueBindParameters() ||
+       _ast->containsTraversalDepthValueBindParameters() ||
+       _ast->containsUpsertLookupValueBindParameters() || !_warnings.empty())) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELLIGIBLE_FOR_PLAN_CACHING);
+  }
+
   // put in collection and attribute name bind parameters (e.g. @@collection or
   // doc.@attr).
   _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
 
   _ast->injectBindParametersSecondStage(_bindParameters);
 
-  if (parser.ast()->containsUpsertNode()) {
+  if (_ast->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the
     // intermediate commit invalidates the read-own-write iterator required by
     // the subquery. Setting intermediateCommitSize and intermediateCommitCount
@@ -544,6 +655,30 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // validate that all bind parameters are in use
   _bindParameters.validateAllUsed();
 
+  plan->findVarUsage();
+
+  if (_planCacheKey.has_value()) {
+    TRI_ASSERT(_queryOptions.optimizePlanForCaching &&
+               _queryOptions.usePlanCache);
+
+    // if query parsing/optimization produces warnings. we must disable query
+    // plan caching.
+    // additionally, if the query contains a REMOTE_SINGLE/REMOTE_MULTIPLE node,
+    // we must also disable caching, because these node types do not have
+    // constructors for being created from serialized velocypack input
+    bool canCachePlan = _warnings.empty() &&
+                        !plan->contains(ExecutionNode::REMOTE_SINGLE) &&
+                        !plan->contains(ExecutionNode::REMOTE_MULTIPLE);
+
+    if (canCachePlan) {
+      // store result plan in query plan cache
+      storePlanInCache(*plan);
+    } else {
+      // do not store plan in cache
+      _planCacheKey.reset();
+    }
+  }
+
   return plan;
 }
 
@@ -559,7 +694,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
 
-    bool useQueryCache = canUseQueryCache();
+    bool useQueryCache = canUseResultsCache();
     switch (_executionPhase) {
       case ExecutionPhase::INITIALIZE: {
         if (useQueryCache) {
@@ -616,6 +751,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         _prepareResult.throwIfFailed();
 
         logAtStart();
+        if (_planCacheKey.has_value()) {
+          queryResult.planCacheKey = _planCacheKey->hash();
+        }
         // NOTE: If the options have a shorter lifetime than the builder, it
         // gets invalid (at least set() and close() are broken).
         queryResult.data = std::make_shared<VPackBuilder>(&vpackOptions());
@@ -695,6 +833,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // array to the query cache
         queryResult.data->close();
         queryResult.allowDirtyReads = _allowDirtyReads;
+        if (_planCacheKey.has_value()) {
+          queryResult.planCacheKey = _planCacheKey->hash();
+        }
 
         if (useQueryCache && !_allowDirtyReads && _warnings.empty()) {
           // Cannot cache dirty reads! Yes, the query cache is not used in
@@ -806,7 +947,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
   QueryResultV8 queryResult;
 
   try {
-    bool useQueryCache = canUseQueryCache();
+    bool useQueryCache = canUseResultsCache();
 
     if (useQueryCache) {
       // check the query cache for an existing result
@@ -941,6 +1082,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       throw;
     }
 
+    if (_planCacheKey.has_value()) {
+      queryResult.planCacheKey = _planCacheKey->hash();
+    }
     queryResult.v8Data = resArray;
     queryResult.context = _trx->transactionContext();
     queryResult.extra = std::make_shared<VPackBuilder>();
@@ -1037,7 +1181,12 @@ ExecutionState Query::finalize(velocypack::Builder& extras) {
       executionStats.toVelocyPack(extras, _queryOptions.fullCount);
     });
 
-    if (_planSliceCopy) {
+    bool keepPlan =
+        _planSliceCopy != nullptr &&
+        _queryOptions.profile >= ProfileLevel::Blocks &&
+        ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
+
+    if (keepPlan) {
       extras.add("plan", VPackSlice(_planSliceCopy->data()));
     }
   }
@@ -1084,13 +1233,58 @@ QueryResult Query::parse() {
 /// @brief explain an AQL query
 QueryResult Query::explain() {
   QueryResult result;
+  result.extra = std::make_shared<VPackBuilder>();
+
+  VPackOptions options;
+  options.checkAttributeUniqueness = false;
+  options.buildUnindexedArrays = true;
+  result.data = std::make_shared<VPackBuilder>(&options);
 
   try {
+    if (tryLoadPlanFromCache()) {
+      TRI_ASSERT(_planCacheKey.has_value());
+      TRI_ASSERT(_planSliceCopy != nullptr);
+
+      enterState(QueryExecutionState::ValueType::FINALIZATION);
+      result.data->add(VPackSlice(_planSliceCopy->data()));
+      {
+        VPackBuilder& b = *result.extra;
+        VPackObjectBuilder guard(&b, /*unindexed*/ true);
+        // warnings
+        TRI_ASSERT(_warnings.empty());
+        _warnings.toVelocyPack(b);
+        b.add(VPackValue("stats"));
+        {
+          // optimizer statistics
+          ensureExecutionTime();
+          VPackObjectBuilder guard(&b, /*unindexed*/ true);
+          Optimizer::Stats::toVelocyPackForCachedPlan(b);
+          b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
+          b.add("executionTime", VPackValue(executionTime()));
+        }
+        result.planCacheKey = _planCacheKey->hash();
+      }
+      return result;
+    }
+
     init(/*createProfile*/ false);
     enterState(QueryExecutionState::ValueType::PARSING);
 
     Parser parser(*this, *_ast, _queryString);
     parser.parse();
+
+    // any usage of one of the following features make the query ineligible
+    // for query plan caching (at least for now):
+    if (_queryOptions.optimizePlanForCaching &&
+        (_ast->containsUpsertNode() ||
+         _ast->containsAttributeNameValueBindParameters() ||
+         _ast->containsCollectionNameValueBindParameters() ||
+         _ast->containsGraphNameValueBindParameters() ||
+         _ast->containsTraversalDepthValueBindParameters() ||
+         _ast->containsUpsertLookupValueBindParameters() ||
+         !_warnings.empty())) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELLIGIBLE_FOR_PLAN_CACHING);
+    }
 
     // put in bind parameters
     parser.ast()->injectBindParametersFirstStage(_bindParameters,
@@ -1142,30 +1336,6 @@ QueryResult Query::explain() {
         _queryOptions.verbosePlans, _queryOptions.explainInternals,
         _queryOptions.explainRegisters == ExplainRegisterPlan::Yes);
 
-    auto serializeQueryData = [this](velocypack::Builder& builder) {
-      // set up collections
-      TRI_ASSERT(builder.isOpenObject());
-      builder.add(VPackValue("collections"));
-      collections().toVelocyPack(builder, /*filter*/ [](std::string const& name,
-                                                        Collection const&) {
-        // exclude collections without names or with names that are just ids
-        return !(name.empty() || (name.front() >= '0' && name.front() <= '9'));
-      });
-
-      // set up variables
-      TRI_ASSERT(builder.isOpenObject());
-      builder.add(VPackValue("variables"));
-      _ast->variables()->toVelocyPack(builder);
-
-      builder.add("isModificationQuery",
-                  VPackValue(_ast->containsModificationNode()));
-    };
-
-    VPackOptions options;
-    options.checkAttributeUniqueness = false;
-    options.buildUnindexedArrays = true;
-    result.data = std::make_shared<VPackBuilder>(&options);
-
     ResourceUsageScope scope(*_resourceMonitor);
 
     if (_queryOptions.allPlans) {
@@ -1179,7 +1349,10 @@ QueryResult Query::explain() {
 
         preparePlanForSerialization(pln);
 
-        pln->toVelocyPack(*result.data, flags, serializeQueryData);
+        pln->toVelocyPack(
+            *result.data, flags,
+            buildSerializeQueryDataCallback(
+                {.includeNumericIds = false, .includeViews = true}));
         TRI_IF_FAILURE("Query::serializePlans1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -1201,7 +1374,10 @@ QueryResult Query::explain() {
       TRI_ASSERT(bestPlan != nullptr);
 
       preparePlanForSerialization(bestPlan);
-      bestPlan->toVelocyPack(*result.data, flags, serializeQueryData);
+      bestPlan->toVelocyPack(
+          *result.data, flags,
+          buildSerializeQueryDataCallback(
+              {.includeNumericIds = false, .includeViews = true}));
 
       TRI_IF_FAILURE("Query::serializePlans1") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -1216,6 +1392,11 @@ QueryResult Query::explain() {
       // cachability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&
                        _warnings.empty() && _ast->root()->isCacheable());
+
+      if (_planCacheKey.has_value()) {
+        // store result plan in query plan cache
+        storePlanInCache(*bestPlan);
+      }
     }
 
     // the query object no owns the memory used by the plan(s)
@@ -1227,7 +1408,6 @@ QueryResult Query::explain() {
       THROW_ARANGO_EXCEPTION(commitResult);
     }
 
-    result.extra = std::make_shared<VPackBuilder>();
     {
       VPackBuilder& b = *result.extra;
       VPackObjectBuilder guard(&b, /*unindexed*/ true);
@@ -1435,6 +1615,44 @@ uint64_t Query::hash() {
   return _queryHash;
 }
 
+/// @brief whether or not the query plan cache can be used for the query
+bool Query::canUsePlanCache() const noexcept {
+  if (!_queryOptions.optimizePlanForCaching) {
+    return false;
+  }
+  if (_queryOptions.allPlans) {
+    // if we are required to return all plans, we cannot simply retrieve
+    // a single plan from the plan cache.
+    return false;
+  }
+  if (_queryOptions.explainRegisters == ExplainRegisterPlan::Yes) {
+    // if we are required to return register information, we cannot use a
+    // cached plan.
+    return false;
+  }
+  if (!_queryOptions.optimizerRules.empty()) {
+    // user-defined setting of optimizer rules. we don't want to
+    // distinguish between multiple plans for the same query but with
+    // different sets of optimizer rules, so we simply bail out here.
+    return false;
+  }
+#ifdef USE_ENTERPRISE
+  // declaring any inaccessible collections in the query options
+  // disables plan caching, because otherwise the inaccessible
+  // collections would need to become part of the cached plan.
+  if (!_queryOptions.inaccessibleCollections.empty()) {
+    return false;
+  }
+#endif
+  // restricting the query to certain shards via options disables
+  // plan caching.
+  if (!_queryOptions.restrictToShards.empty()) {
+    return false;
+  }
+
+  return true;
+}
+
 /// @brief log a query
 void Query::logAtStart() const {
   if (_queryString.empty() ||
@@ -1589,8 +1807,8 @@ uint64_t Query::calculateHash() const {
   return hashval ^ _bindParameters.hash();
 }
 
-/// @brief whether or not the query cache can be used for the query
-bool Query::canUseQueryCache() const {
+/// @brief whether or not the query results cache can be used for the query
+bool Query::canUseResultsCache() const {
   bool isCachingAllowed = !(_transactionContext->isStreaming() ||
                             _transactionContext->isTransactionJS()) ||
                           _transactionContext->isReadOnlyTransaction();
@@ -2090,6 +2308,9 @@ ExecutionState Query::cleanupTrxAndEngines() {
              "the locks time out.";
 
       for (auto const& [server, queryId, rebootId] : _serverQueryIds) {
+        // note: if the text structure of this message is changed, it is likely
+        // that some test in tests/js/client/shell/aql-failures-cluster.js also
+        // needs to be adjusted to honor the new message structure.
         auto msg = absl::StrCat(
             "Failed to send unlock request DELETE /_api/aql/finish/", queryId,
             " to server:", server, " in database ", vocbase().name());
@@ -2200,10 +2421,10 @@ void Query::debugKillQuery() {
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on single server or coordinator.
 /// never call this on a DB server!
-async<void> Query::prepareFromVelocyPack(velocypack::Slice querySlice,
-                                         velocypack::Slice collections,
-                                         velocypack::Slice variables,
-                                         velocypack::Slice snippets) {
+async<void> Query::prepareFromVelocyPack(
+    velocypack::Slice querySlice, velocypack::Slice collections,
+    velocypack::Slice variables, velocypack::Slice snippets,
+    bool simpleSnippetFormat, QueryAnalyzerRevisions const& analyzersRevision) {
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
@@ -2250,6 +2471,8 @@ async<void> Query::prepareFromVelocyPack(velocypack::Slice querySlice,
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
 
+  _allowDirtyReads = _trx->state()->options().allowDirtyReads;
+
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -2266,7 +2489,8 @@ async<void> Query::prepareFromVelocyPack(velocypack::Slice querySlice,
 
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](velocypack::Slice snippet) -> async<void> {
-    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
+    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet,
+                                                         simpleSnippetFormat);
     TRI_ASSERT(plan != nullptr);
 
     co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
@@ -2274,13 +2498,25 @@ async<void> Query::prepareFromVelocyPack(velocypack::Slice querySlice,
     co_return;
   };
 
-  for (auto pair : VPackObjectIterator(snippets, /*sequential*/ true)) {
-    co_await instantiateSnippet(pair.value);
-
+  if (simpleSnippetFormat) {
+    // a single snippet
+    co_await instantiateSnippet(snippets);
     TRI_ASSERT(!_snippets.empty());
     TRI_ASSERT(!_trx->state()->isDBServer() ||
                _snippets.back()->engineId() != 0);
+  } else {
+    // potentially multiple snippets, contained in an object with snippet ids as
+    // keys
+    for (auto pair : VPackObjectIterator(snippets, /*sequential*/ true)) {
+      co_await instantiateSnippet(pair.value);
+
+      TRI_ASSERT(!_snippets.empty());
+      TRI_ASSERT(!_trx->state()->isDBServer() ||
+                 _snippets.back()->engineId() != 0);
+    }
   }
+
+  TRI_ASSERT(!_snippets.empty());
 
   if (!_snippets.empty()) {
     TRI_ASSERT(_trx->state()->isDBServer() || _snippets[0]->engineId() == 0);
@@ -2453,4 +2689,41 @@ void Query::logSlow(QuerySerializationOptions const& options) const {
       << ", peak memory usage: " << resourceMonitor().peak()
       << ", exit code: " << result().errorNumber()
       << ", took: " << Logger::FIXED(executionTime()) << " s";
+}
+
+std::function<void(velocypack::Builder&)>
+Query::buildSerializeQueryDataCallback(
+    Query::CollectionSerializationFlags flags) const {
+  return [flags, this](velocypack::Builder& builder) {
+    // set up collections
+    TRI_ASSERT(builder.isOpenObject());
+    builder.add(VPackValue("collections"));
+    collections().toVelocyPack(
+        builder,
+        /*filter*/ [flags, this](std::string const& name, Collection const&) {
+          // exclude collections without names or with names that are just ids
+          if (name.empty()) {
+            return false;
+          }
+          if (!flags.includeNumericIds &&
+              (name.front() >= '0' && name.front() <= '9')) {
+            // exclude numeric collection ids from the serialization.
+            return false;
+          }
+          if (!flags.includeViews &&
+              this->resolver().getCollection(name) == nullptr) {
+            // collection does not exist. probably a view.
+            return false;
+          }
+          return true;
+        });
+
+    // set up variables
+    TRI_ASSERT(builder.isOpenObject());
+    builder.add(VPackValue("variables"));
+    _ast->variables()->toVelocyPack(builder);
+
+    builder.add("isModificationQuery",
+                VPackValue(_ast->containsModificationNode()));
+  };
 }

@@ -47,7 +47,8 @@ TEST_F(AsyncRegistryTest, registers_promise_on_same_thread) {
   Registry registry;
   auto thread_registry = registry.add_thread();
 
-  auto* promise = thread_registry->add_promise();
+  auto* promise = thread_registry->add_promise(Requester::current_thread(),
+                                               std::source_location::current());
 
   EXPECT_EQ(promises_in_registry(registry),
             std::vector<PromiseSnapshot>{promise->snapshot()});
@@ -62,7 +63,8 @@ TEST_F(AsyncRegistryTest, registers_promise_on_different_threads) {
   std::thread([&]() {
     auto thread_registry = registry.add_thread();
 
-    auto* promise = thread_registry->add_promise();
+    auto* promise = thread_registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
 
     EXPECT_EQ(promises_in_registry(registry),
               std::vector<PromiseSnapshot>{promise->snapshot()});
@@ -76,8 +78,10 @@ TEST_F(AsyncRegistryTest,
        iterates_over_promises_on_same_thread_in_reverse_order) {
   Registry registry;
   auto thread_registry = registry.add_thread();
-  auto* first_promise = thread_registry->add_promise();
-  auto* second_promise = thread_registry->add_promise();
+  auto* first_promise = thread_registry->add_promise(
+      Requester::current_thread(), std::source_location::current());
+  auto* second_promise = thread_registry->add_promise(
+      Requester::current_thread(), std::source_location::current());
 
   EXPECT_EQ(promises_in_registry(registry),
             (std::vector<PromiseSnapshot>{second_promise->snapshot(),
@@ -92,11 +96,13 @@ TEST_F(AsyncRegistryTest,
 TEST_F(AsyncRegistryTest, iterates_over_promises_on_differen_threads) {
   Registry registry;
   auto thread_registry = registry.add_thread();
-  auto* first_promise = thread_registry->add_promise();
+  auto* first_promise = thread_registry->add_promise(
+      Requester::current_thread(), std::source_location::current());
 
   std::thread([&]() {
     auto thread_registry = registry.add_thread();
-    auto* second_promise = thread_registry->add_promise();
+    auto* second_promise = thread_registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
 
     EXPECT_EQ(promises_in_registry(registry),
               (std::vector<PromiseSnapshot>{first_promise->snapshot(),
@@ -115,7 +121,8 @@ TEST_F(AsyncRegistryTest,
   Registry registry;
   auto thread_registry = registry.add_thread();
 
-  auto* promise = thread_registry->add_promise();
+  auto* promise = thread_registry->add_promise(Requester::current_thread(),
+                                               std::source_location::current());
   EXPECT_EQ(promises_in_registry(registry),
             (std::vector<PromiseSnapshot>{promise->snapshot()}));
 
@@ -132,7 +139,8 @@ TEST_F(AsyncRegistryTest, promises_on_removed_thread_are_still_iterated_over) {
   Promise* promise;
   {
     auto thread_registry = registry.add_thread();
-    promise = thread_registry->add_promise();
+    promise = thread_registry->add_promise(Requester::current_thread(),
+                                           std::source_location::current());
   }
   EXPECT_EQ(promises_in_registry(registry),
             (std::vector<PromiseSnapshot>{promise->snapshot()}));
@@ -150,7 +158,7 @@ TEST_F(
   std::thread([&]() {
     auto thread_registry_on_different_thread = registry.add_thread();
     promise = thread_registry_on_different_thread->add_promise(
-        std::source_location::current());
+        Requester::current_thread(), std::source_location::current());
   }).join();
 
   promise->mark_for_deletion();

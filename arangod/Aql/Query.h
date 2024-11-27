@@ -29,6 +29,7 @@
 #include "Aql/ExecutionStats.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
+#include "Aql/QueryPlanCache.h"
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
 #include "Basics/Guarded.h"
@@ -60,7 +61,9 @@ namespace arangodb {
 
 class CollectionNameResolver;
 class LogicalDataSource;
+#ifdef USE_V8
 class V8Executor;
+#endif
 
 template<typename>
 struct async;
@@ -79,7 +82,9 @@ struct ExecutionStats;
 struct QueryCacheResultEntry;
 class QueryList;
 struct QueryProfile;
+#ifdef USE_V8
 struct QueryResultV8;
+#endif
 class SharedQueryState;
 
 /// @brief an AQL query
@@ -175,11 +180,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// the start of finalize)
   double executionTime() const noexcept;
 
-  /// @brief make sure that the query execution time is set.
-  /// only the first call to this function will set the time.
-  /// every following call will be ignored.
-  void ensureExecutionTime() noexcept;
-
   async<void> prepareQuery();
 
   /// @brief execute an AQL query
@@ -209,10 +209,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief prepare a query out of some velocypack data.
   /// only to be used on single server or coordinator.
   /// never call this on a DB server!
-  async<void> prepareFromVelocyPack(velocypack::Slice querySlice,
-                                    velocypack::Slice collections,
-                                    velocypack::Slice variables,
-                                    velocypack::Slice snippets);
+  async<void> prepareFromVelocyPack(
+      velocypack::Slice querySlice, velocypack::Slice collections,
+      velocypack::Slice variables, velocypack::Slice snippets,
+      bool simpleSnippetFormat,
+      QueryAnalyzerRevisions const& analyzersRevision);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
@@ -307,14 +308,16 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   std::string extractQueryString(size_t maxLength, bool show) const;
 
  protected:
+  /// @brief make sure that the query execution time is set.
+  /// only the first call to this function will set the time.
+  /// every following call will be ignored.
+  void ensureExecutionTime() noexcept;
+
   /// @brief initializes the query
   void init(bool createProfile);
 
   void registerQueryInTransactionState();
   void unregisterQueryInTransactionState() noexcept;
-
-  /// @brief calculate a hash for the query, once
-  uint64_t hash();
 
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
@@ -322,12 +325,18 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// in the QueryRegistry.
   std::unique_ptr<ExecutionPlan> preparePlan();
 
+  /// @brief calculate a hash for the query, once
+  uint64_t hash();
+
   /// @brief calculate a hash value for the query string and bind
   /// parameters
   uint64_t calculateHash() const;
 
-  /// @brief whether or not the query cache can be used for the query
-  bool canUseQueryCache() const;
+  /// @brief whether or not the query results cache can be used for the query
+  bool canUseResultsCache() const;
+
+  /// @brief whether or not the query plan cache can be used for the query
+  bool canUsePlanCache() const noexcept;
 
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
@@ -343,6 +352,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   ExecutionState cleanupTrxAndEngines();
 
+  bool tryLoadPlanFromCache();
+  void storePlanInCache(ExecutionPlan& plan);
+
   // @brief injects vertex collections into all types of graph nodes:
   // ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH and
   // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not
@@ -355,6 +367,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   // log the end of a query (warnings only)
   void logAtEnd() const;
+
+  struct CollectionSerializationFlags {
+    bool includeNumericIds = true;
+    bool includeViews = true;
+  };
+  std::function<void(velocypack::Builder&)> buildSerializeQueryDataCallback(
+      CollectionSerializationFlags flags) const;
 
   enum class ExecutionPhase { INITIALIZE, PREPARE, EXECUTE, FINALIZE };
   friend auto toString(ExecutionPhase) -> std::string_view;
@@ -396,7 +415,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   std::vector<std::unique_ptr<ExecutionPlan>> _plans;
 
   /// plan serialized before instantiation, used for query profiling
-  std::unique_ptr<velocypack::UInt8Buffer> _planSliceCopy;
+  std::shared_ptr<velocypack::UInt8Buffer> _planSliceCopy;
 
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
@@ -440,6 +459,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief user that started the query
   std::string _user;
+
+  /// @brief optional plan cache key that was used to look up the query in the
+  /// plan cache. this will be result for storing the query plan later in the
+  /// cache
+  std::optional<QueryPlanCache::Key> _planCacheKey;
 
 #ifdef USE_V8
   /// @brief whether or not someone else has acquired a V8 executor for us

@@ -29,6 +29,7 @@
 #include <source_location>
 #include <thread>
 
+#include "Async/Registry/promise.h"
 #include "Futures/Exceptions.h"
 #include "Futures/Promise.h"
 #include "Futures/SharedState.h"
@@ -272,7 +273,7 @@ class [[nodiscard]] Future {
 
   /// Blocks until this Future is complete.
   void wait() {
-    set_promise_waiter(std::this_thread::get_id());
+    update_requester(async_registry::Requester::current_thread());
     detail::waitImpl(*this);
   }
 
@@ -312,7 +313,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    set_promise_waiter(future.id());
+    update_requester({future.id()});
     getState().setCallback([fn = std::forward<DF>(fn),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -343,7 +344,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    set_promise_waiter(future.id());
+    update_requester({future.id()});
     getState().setCallback([fn = std::forward<DF>(fn), pr = std::move(promise),
                             future_id = future.id()](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -351,7 +352,7 @@ class [[nodiscard]] Future {
       } else {
         try {
           auto f = std::invoke(std::forward<DF>(fn), std::move(t).get());
-          f.set_promise_waiter(future_id);
+          f.update_requester({future_id});
           std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
             pr.setTry(std::move(t));
           });
@@ -379,7 +380,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    set_promise_waiter(future.id());
+    update_requester({future.id()});
     getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       pr.setTry(detail::makeTryWith([&fn, &t] {
@@ -402,12 +403,12 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    set_promise_waiter(future.id());
+    update_requester({future.id()});
     getState().setCallback([fn = std::forward<F>(func), pr = std::move(promise),
                             future_id = future.id()](Try<T>&& t) mutable {
       try {
         auto f = std::invoke(std::forward<F>(fn), std::move(t));
-        f.set_promise_waiter(future_id);
+        f.update_requester({future_id});
         std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
           pr.setTry(std::move(t));
         });
@@ -442,7 +443,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    set_promise_waiter(future.id());
+    update_requester({future.id()});
     getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -476,7 +477,7 @@ class [[nodiscard]] Future {
 
     Promise<B> promise{std::move(loc)};
     auto future = promise.getFuture();
-    set_promise_waiter(future.id());
+    update_requester({future.id()});
     getState().setCallback([fn = std::forward<DF>(fn), pr = std::move(promise),
                             future_id = future.id()](Try<T>&& t) mutable {
       if (t.hasException()) {
@@ -485,7 +486,7 @@ class [[nodiscard]] Future {
         } catch (ET& e) {
           try {
             auto f = std::invoke(std::forward<DF>(fn), e);
-            f.set_promise_waiter(future_id);
+            f.update_requester({future_id});
             std::move(f).thenFinal([pr = std::move(pr)](Try<B>&& t) mutable {
               pr.setTry(std::move(t));
             });
@@ -502,14 +503,9 @@ class [[nodiscard]] Future {
     return future;
   }
 
-  auto set_promise_waiter(async_registry::AsyncWaiter waiter) {
+  auto update_requester(async_registry::Requester waiter) {
     if (_state != nullptr) {
-      _state->set_promise_waiter(waiter);
-    }
-  }
-  auto set_promise_waiter(async_registry::SyncWaiter waiter) {
-    if (_state != nullptr) {
-      _state->set_promise_waiter(waiter);
+      _state->update_requester(waiter);
     }
   }
   auto id() -> void* {
