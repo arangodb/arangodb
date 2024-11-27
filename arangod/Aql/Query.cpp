@@ -393,6 +393,9 @@ bool Query::tryLoadPlanFromCache() {
       VPackSlice querySlice = VPackSlice(cacheEntry->serializedPlan->data());
       VPackSlice collections = querySlice.get("collections");
       VPackSlice variables = querySlice.get("variables");
+      VPackSlice views = querySlice.get("views");
+
+      LOG_DEVEL << "Query plan loaded from cache: " << querySlice.toJson();
 
       QueryAnalyzerRevisions analyzersRevision;
       auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
@@ -400,7 +403,7 @@ bool Query::tryLoadPlanFromCache() {
         THROW_ARANGO_EXCEPTION(revisionRes);
       }
 
-      prepareFromVelocyPack(querySlice, collections, variables,
+      prepareFromVelocyPack(querySlice, collections, views, variables,
                             /*snippets*/ querySlice.get("nodes"),
                             /*simpleSnippetFormat*/ true, analyzersRevision);
 
@@ -450,8 +453,9 @@ void Query::prepareQuery() {
         VPackBuilder b(*_planSliceCopy);
         plan->toVelocyPack(
             b, flags,
-            buildSerializeQueryDataCallback(
-                {.includeNumericIds = false, .includeViews = true}));
+            buildSerializeQueryDataCallback({.includeNumericIds = false,
+                                             .includeViews = true,
+                                             .includeViewsSeparately = false}));
 
         TRI_IF_FAILURE("Query::serializePlans1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -518,9 +522,14 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
       /*explainRegisters*/ false);
 
   velocypack::Builder serialized;
-  plan.toVelocyPack(serialized, flags,
-                    buildSerializeQueryDataCallback(
-                        {.includeNumericIds = true, .includeViews = true}));
+  // Note that in this serialization it is crucial to include the numeric
+  // ids, otherwise the Plan can not be instantiated correctly, when this
+  // plan comes back from the query plan cache!
+  plan.toVelocyPack(
+      serialized, flags,
+      buildSerializeQueryDataCallback({.includeNumericIds = true,
+                                       .includeViews = false,
+                                       .includeViewsSeparately = true}));
 
   auto dataSources = std::invoke([&]() {
     std::unordered_map<std::string, QueryPlanCache::DataSourceEntry>
@@ -1321,8 +1330,9 @@ QueryResult Query::explain() {
 
         pln->toVelocyPack(
             *result.data, flags,
-            buildSerializeQueryDataCallback(
-                {.includeNumericIds = false, .includeViews = true}));
+            buildSerializeQueryDataCallback({.includeNumericIds = false,
+                                             .includeViews = true,
+                                             .includeViewsSeparately = false}));
         TRI_IF_FAILURE("Query::serializePlans1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -1346,8 +1356,9 @@ QueryResult Query::explain() {
       preparePlanForSerialization(bestPlan);
       bestPlan->toVelocyPack(
           *result.data, flags,
-          buildSerializeQueryDataCallback(
-              {.includeNumericIds = false, .includeViews = true}));
+          buildSerializeQueryDataCallback({.includeNumericIds = false,
+                                           .includeViews = true,
+                                           .includeViewsSeparately = false}));
 
       TRI_IF_FAILURE("Query::serializePlans1") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -2412,8 +2423,11 @@ void Query::debugKillQuery() {
 /// never call this on a DB server!
 void Query::prepareFromVelocyPack(
     velocypack::Slice querySlice, velocypack::Slice collections,
-    velocypack::Slice variables, velocypack::Slice snippets,
-    bool simpleSnippetFormat, QueryAnalyzerRevisions const& analyzersRevision) {
+    velocypack::Slice views, velocypack::Slice variables,
+    velocypack::Slice snippets, bool simpleSnippetFormat,
+    QueryAnalyzerRevisions const& analyzersRevision) {
+  // Note that the `views` slice can either be None or a list of views.
+  // Both usages are allowed and are used in the code!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
@@ -2439,6 +2453,10 @@ void Query::prepareFromVelocyPack(
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
   ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
+  if (views.isArray()) {
+    ExecutionPlan::extendCollectionsByViewsFromVelocyPack(_collections, views);
+  }
+
   _ast->variables()->fromVelocyPack(variables);
   // creating the plan may have produced some collections
   // we need to add them to the transaction now (otherwise the query will fail)
@@ -2689,6 +2707,23 @@ Query::buildSerializeQueryDataCallback(
           }
           return true;
         });
+    // Views separately, if requested:
+    if (flags.includeViewsSeparately) {
+      builder.add(VPackValue("views"));
+      collections().toVelocyPack(
+          builder,
+          /*filter*/ [flags, this](std::string const& name, Collection const&) {
+            if (name.empty()) {
+              return false;
+            }
+            if (!flags.includeNumericIds &&
+                (name.front() >= '0' && name.front() <= '9')) {
+              // exclude numeric collection ids from the serialization.
+              return false;
+            }
+            return this->resolver().getCollection(name) == nullptr;
+          });
+    }
 
     // set up variables
     TRI_ASSERT(builder.isOpenObject());
