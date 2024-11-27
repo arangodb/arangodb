@@ -24,6 +24,7 @@
 
 #include "RocksDBColumnFamilyManager.h"
 
+#include <span>
 #include <rocksdb/db.h>
 
 #include "Basics/debugging.h"
@@ -118,10 +119,14 @@ char const* RocksDBColumnFamilyManager::name(
   return "unknown";
 }
 
-std::array<rocksdb::ColumnFamilyHandle*,
-           RocksDBColumnFamilyManager::numberOfColumnFamilies> const&
+std::span<rocksdb::ColumnFamilyHandle*>
 RocksDBColumnFamilyManager::allHandles() {
-  return _handles;
+  std::size_t valid_size = _handles.size();
+  while (valid_size > 0 && _handles[valid_size] == nullptr) {
+    --valid_size;
+  }
+
+  return std::span(_handles.data(), valid_size);
 }
 
 }  // namespace arangodb

@@ -492,9 +492,9 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   emplace("zkd", zkdIndexFactory);
   emplace("mdi", mdiIndexFactory);
   emplace("mdi-prefixed", mdiPrefixedIndexFactory);
+  emplace("vector", vectorIndexFactory);
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
           iresearchInvertedIndexFactory);
-  emplace("vector", vectorIndexFactory);
 }
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>

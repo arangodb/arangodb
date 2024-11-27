@@ -914,6 +914,10 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   exit(exitCode);
 }
 
+bool RocksDBEngine::isVectorIndexEnabled() const {
+  return server().getFeature<VectorIndexFeature>().isVectorIndexEnabled();
+}
+
 namespace {
 
 struct RocksDBAsyncLogWriteBatcherMetricsImpl
@@ -1153,7 +1157,7 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
-  if (server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+  if (isVectorIndexEnabled()) {
     addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
   }
 
@@ -1224,13 +1228,13 @@ void RocksDBEngine::start() {
                                   cfHandles[8]);
   RocksDBColumnFamilyManager::set(
       RocksDBColumnFamilyManager::Family::MdiVPackIndex, cfHandles[9]);
-  TRI_ASSERT(RocksDBColumnFamilyManager::get(
-                 RocksDBColumnFamilyManager::Family::Definitions)
-                 ->GetID() == 0);
-  if (server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+  if (isVectorIndexEnabled()) {
     RocksDBColumnFamilyManager::set(
         RocksDBColumnFamilyManager::Family::VectorIndex, cfHandles[10]);
   }
+  TRI_ASSERT(RocksDBColumnFamilyManager::get(
+                 RocksDBColumnFamilyManager::Family::Definitions)
+                 ->GetID() == 0);
 
   // will crash the process if version does not match
   arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted,
@@ -3532,7 +3536,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   auto addIntAllCf = [&](std::string const& s) {
     int64_t sum = 0;
     std::string v;
-    for (auto cfh : RocksDBColumnFamilyManager::allHandles()) {
+    for (auto const cfh : RocksDBColumnFamilyManager::allHandles()) {
       v.clear();
       if (_db->GetProperty(cfh, s, &v)) {
         int64_t temp = basics::StringUtils::int64(v);
@@ -3731,6 +3735,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::MdiIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
+  if (isVectorIndexEnabled()) {
+    addCf(RocksDBColumnFamilyManager::Family::VectorIndex);
+  }
   builder.close();
 
   if (_throttleListener) {
