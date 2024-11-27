@@ -115,8 +115,8 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                     if pidstr in pid_to_fn:
                         if not "Task" in pid_to_fn[pidstr]:
                             pid_to_fn[pidstr]["Task"] = pid_to_fn[pidstr]['n']
-                            pid_to_fn[pidstr]["Start"] = this_date
-                        pid_to_fn[pidstr]["End"] = this_date
+                            pid_to_fn[pidstr]["Start"] = pd.to_datetime(this_date)
+                        pid_to_fn[pidstr]["End"] = pd.to_datetime(this_date)
                         one_process['name'] = pid_to_fn[pidstr]['n']
                     else:
                         try:
