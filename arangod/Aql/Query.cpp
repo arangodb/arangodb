@@ -395,8 +395,6 @@ bool Query::tryLoadPlanFromCache() {
       VPackSlice variables = querySlice.get("variables");
       VPackSlice views = querySlice.get("views");
 
-      LOG_DEVEL << "Query plan loaded from cache: " << querySlice.toJson();
-
       QueryAnalyzerRevisions analyzersRevision;
       auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
       if (ADB_UNLIKELY(revisionRes.fail())) {
