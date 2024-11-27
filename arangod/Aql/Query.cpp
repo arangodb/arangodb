@@ -2719,7 +2719,7 @@ Query::buildSerializeQueryDataCallback(
               // exclude numeric collection ids from the serialization.
               return false;
             }
-            return this->resolver().getCollection(name) == nullptr;
+            return this->resolver().getView(name) != nullptr;
           });
     }
 
