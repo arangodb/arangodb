@@ -403,6 +403,14 @@ auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(kSetupTimeout);
+  switch (_query.executeCallerWaiting()) {
+    case QueryContext::ExecuteCallerWaiting::Asynchronously: {
+      options.continuationLane = RequestLane::CLUSTER_AQL;
+    } break;
+    case QueryContext::ExecuteCallerWaiting::Synchronously: {
+      options.skipScheduler = true;
+    } break;
+  }
   network::addUserParameter(options, trx.username());
 
   TRI_IF_FAILURE("Query::setupTimeout") {
@@ -753,6 +761,14 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
 
   network::RequestOptions options;
   options.database = dbname;
+  switch (_query.executeCallerWaiting()) {
+    case QueryContext::ExecuteCallerWaiting::Asynchronously: {
+      options.continuationLane = RequestLane::CLUSTER_AQL;
+    } break;
+    case QueryContext::ExecuteCallerWaiting::Synchronously: {
+      options.skipScheduler = true;
+    } break;
+  }
   options.timeout = network::Timeout(10.0);  // Picked arbitrarily
 
   // Shutdown query snippets

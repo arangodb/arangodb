@@ -549,6 +549,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
 /// @brief execute an AQL query
 ExecutionState Query::execute(QueryResult& queryResult) {
+  _executeCallerWaiting = ExecuteCallerWaiting::Asynchronously;
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
@@ -774,6 +775,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
  * @return The result of this query. The result is always complete
  */
 QueryResult Query::executeSync() {
+  _executeCallerWaiting = ExecuteCallerWaiting::Synchronously;
   std::shared_ptr<SharedQueryState> ss;
 
   QueryResult queryResult;
@@ -796,6 +798,7 @@ QueryResult Query::executeSync() {
 #ifdef USE_V8
 // execute an AQL query: may only be called with an active V8 handle scope
 QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
+  _executeCallerWaiting = ExecuteCallerWaiting::Synchronously;
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
