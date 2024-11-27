@@ -63,6 +63,7 @@ def load_testing_js_mappings(main_log_file):
 def load_file(main_log_file, pid_to_fn, filter_str):
     global LOADS
     collect_loads = []
+    last_netio = None
     with open(main_log_file, "r", encoding="utf-8") as jsonl_file:
         while True:
             line = jsonl_file.readline()
@@ -79,9 +80,16 @@ def load_file(main_log_file, pid_to_fn, filter_str):
             for process_id in parsed_slice[1]:
                 if process_id == "sys":
                     sys_stat = parsed_slice[1][process_id]
+                    if not last_netio:
+                        netio = 0
+                    else:
+                        netio = sys_stat['netio']['lo'][0] - last_netio
+                    last_netio = sys_stat['netio']['lo'][0]
+
                     collect_loads.append({
                             "Date": pd.to_datetime(this_date),
-                            "load": float(sys_stat['load'][0])
+                            "load": float(sys_stat['load'][0]),
+                            "netio": float(netio)
                     })
                     MEMORY[this_date] = sys_stat['netio']['lo'][0]
                     # print(f"L {sys_stat['load'][0]:.1f} - {sys_stat['netio']['lo'][0]:,.3f}")
