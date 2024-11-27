@@ -205,6 +205,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// never call this on a DB server!
   void prepareFromVelocyPack(velocypack::Slice querySlice,
                              velocypack::Slice collections,
+                             velocypack::Slice views,
                              velocypack::Slice variables,
                              velocypack::Slice snippets,
                              bool simpleSnippetFormat,
@@ -366,6 +367,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   struct CollectionSerializationFlags {
     bool includeNumericIds = true;
     bool includeViews = true;
+    bool includeViewsSeparately = false;
   };
   std::function<void(velocypack::Builder&)> buildSerializeQueryDataCallback(
       CollectionSerializationFlags flags) const;

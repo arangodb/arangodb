@@ -595,6 +595,11 @@ function QueryPlanCacheTestSuite () {
         }
         assertTrue(res.hasOwnProperty("planCacheKey"));
         assertEqual([2], res.toArray());
+        // Now try to run the same query again to see if it works when the plan
+        // comes from the cache:
+        res = db._query(query, {value: 2}, options);
+        assertTrue(res.hasOwnProperty("planCacheKey"),
+          "planCacheKey missing, view query not cached");
       } finally {
         db._dropView(vn);
       }
