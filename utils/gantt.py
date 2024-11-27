@@ -34,15 +34,22 @@ jobs = convert_pids_to_gantt(PID_TO_FN)
 
 df_load = get_load()
 df_jobs = pd.DataFrame(jobs)
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 time_range = [
     df_load["Date"][0],
     df_load["Date"][len(df_load.index)-1]
 ]
-print(time_range[1] - time_range[0])
+styles = {
+    'pre': {
+        'border': 'thin lightgrey solid',
+        'overflowX': 'scroll'
+    }
+}
 
+RESOLUTION=60
+app = Dash(__name__, external_stylesheets=external_stylesheets)
 
-app = Dash()
 app.layout = [
     html.Div(children='Load to CI jobs'),
     html.Hr(),
@@ -64,45 +71,33 @@ app.layout = [
             inline=True
         )
     ]),
-    html.Div([
-        dcc.RangeSlider(0, 20, 1, value=[5, 15], id='date-range-slider'),
-        html.Div(id='output-container-range-slider')
+    html.Div(className='row', children=[
+        html.Div([
+            html.Pre(id='relayout-data', style=styles['pre']),
+        ], className='three columns')
     ])
 ]
 
-@callback(
-    Output('output-container-range-slider', 'children'),
-    Input('date-range-slider', 'value'))
-def update_output(value):
-    return 'You have selected "{}"'.format(value)
-
 @app.callback(
     Output("load-graph", "figure"),
-    Input('date-range-slider', 'value'),
     Input("loadgraph-checklist", "value"))
-def update_line_chart(time_range, gauge_select):
-    print(gauge_select)
+def update_line_chart(gauge_select):
     # Create figure with secondary y-axis
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-
     # Add traces
     fig.add_trace(
         go.Scatter(x=df_load['Date'], y=df_load['load'], # replace with your own data source
         name="Load"), secondary_y=False,
     )
-
     if 'netio' in gauge_select:
         fig.add_trace(
             go.Scatter(x=df_load['Date'], y=df_load['netio'], # replace with your own data source
                        name="NetIO"), secondary_y=True
         )
-
     # Add figure title
     fig.update_layout(title_text="Load graph")
-
     # Set x-axis title
     fig.update_xaxes(title_text="Date")
-
     # Set y-axes titles
     fig.update_yaxes(
         title_text="<b>Load</b>",
@@ -110,16 +105,65 @@ def update_line_chart(time_range, gauge_select):
     fig.update_yaxes(
         title_text="<b>Net IO LO</b>",
         secondary_y=True)
+
+    fig.update_layout(
+        xaxis=dict(
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=1,
+                         label="1m",
+                         step="month",
+                         stepmode="backward"),
+                    dict(count=6,
+                         label="6m",
+                         step="month",
+                         stepmode="backward"),
+                    dict(count=1,
+                         label="YTD",
+                         step="year",
+                         stepmode="todate"),
+                    dict(count=1,
+                         label="1y",
+                         step="year",
+                         stepmode="backward"),
+                    dict(step="all")
+                ])
+            ),
+            rangeslider=dict(
+                visible=True
+            ),
+            type="date"
+        )
+    )
+
     return fig
 
 @app.callback(
     Output("gantt-chart", "figure"),
-    Input('date-range-slider', 'value'))
-def update_line_chart(time_range):
-    fig_gantt = px.timeline(df_jobs, x_start="Start", x_end="Finish", y="Task")
+    Input('load-graph', 'relayoutData'))
+def update_line_chart(relayoutData):
+    date_range = []
+    if relayoutData and not 'autosize' in relayoutData:
+        if "xaxis.range" in relayoutData:
+            date_range = [
+                pd.to_datetime(relayoutData['xaxis.range'][0]),
+                pd.to_datetime(relayoutData['xaxis.range'][1]),
+            ]
+        if "xaxis.range[0]" in relayoutData:
+            date_range = [
+                pd.to_datetime(relayoutData['xaxis.range[0]']),
+                pd.to_datetime(relayoutData['xaxis.range[1]']),
+            ]
+        fig_gantt = px.timeline(df_jobs[
+            (df_jobs["Start"] <= date_range[0]) & (df_jobs["Finish"] >= date_range[1]) |
+            (df_jobs["Start"] >= date_range[1]) & (df_jobs["Finish"] <  date_range[1]) |
+            (df_jobs["Start"] >  date_range[0])  & (df_jobs["Finish"] <= date_range[0]) |
+            (df_jobs["Start"] >  date_range[0])  & (df_jobs["Finish"] <  date_range[1])
+        ], x_start="Start", x_end="Finish", y="Task")
+    else:
+        fig_gantt = px.timeline(df_jobs, x_start="Start", x_end="Finish", y="Task")
     fig_gantt.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom
     return fig_gantt
-
 
 
 if __name__ == '__main__':
