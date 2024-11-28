@@ -358,6 +358,9 @@ function launchInShellBG  (file) {
   if (isCov) {
     timeout *= 4; // quadruple the timeout
   }
+  if (isSan) {
+    timeout *= 2; // quadruple the timeout
+  }
   let moreArgs = {
     'server.database': arango.getDatabaseName(),
     'server.request-timeout': timeout,
