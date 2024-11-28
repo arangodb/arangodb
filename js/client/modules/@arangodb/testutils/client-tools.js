@@ -468,8 +468,8 @@ function joinBGShells (options, clients, waitFor, cn) {
           client.failed = failed;
           client.done = true;
         }
-        if (status.status === 'TERMINATED') {
-          if (status.exit === 0) {
+        if (client.status === 'TERMINATED') {
+          if (client.exit === 0) {
             IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
             client.failed = false;
           } else {
