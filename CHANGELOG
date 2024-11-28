@@ -182,7 +182,6 @@ devel
 * Fix leader resignation race in coordinator, which lead to forgotten
   collection read locks on dbservers, which in turn could lead to deadlocks
   in the cluster.
->>>>>>> devel
 
 * Fix shard synchronisation race where after a shard move the new
   leader informs followers before it updates Current in the Agency. In
