@@ -76,7 +76,7 @@ struct RocksDBColumnFamilyManager {
 
   /// We purposefully cut off the handles still set to nullptr, since they were
   /// not initialized
-  /// TODO find better solution that propagets changes to how many column
+  /// TODO find better solution that propagates changes to how many column
   /// families there are on start time
   static std::span<rocksdb::ColumnFamilyHandle*> allHandles();
 

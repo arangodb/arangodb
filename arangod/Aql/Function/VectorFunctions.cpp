@@ -17,6 +17,8 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Functions.h"
