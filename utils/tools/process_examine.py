@@ -2,13 +2,15 @@
 import json
 from pathlib import Path
 import collections
-import pandas as pd
+#import pandas as pd
+import polars as pd
+from datetime import datetime
 
-LOAD_COLUMNS = ['Date', 'load']
-LOADS = pd.DataFrame(columns=LOAD_COLUMNS)
+LOADS = pd.DataFrame()
 MEMORY = {}
 TREE_TEXTS = []
 PARSED_LINES = []
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 
 def get_parent_name(processes, ppid):
     key = f"p{ppid}"
@@ -71,7 +73,7 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                 break
             parsed_slice = json.loads(line)
             PARSED_LINES.append(parsed_slice)
-            this_date = parsed_slice[0];
+            this_date = datetime.strptime(parsed_slice[0], DATE_FORMAT)
             # tree = collections.defaultdict(list)
             if filter_str and parsed_slice[0].find(filter_str) < 0:
                 continue
@@ -85,9 +87,8 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                     else:
                         netio = sys_stat['netio']['lo'][0] - last_netio
                     last_netio = sys_stat['netio']['lo'][0]
-
                     collect_loads.append({
-                            "Date": pd.to_datetime(this_date),
+                            "Date": this_date,
                             "load": float(sys_stat['load'][0]),
                             "netio": float(netio)
                     })
@@ -115,8 +116,8 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                     if pidstr in pid_to_fn:
                         if not "Task" in pid_to_fn[pidstr]:
                             pid_to_fn[pidstr]["Task"] = pid_to_fn[pidstr]['n']
-                            pid_to_fn[pidstr]["Start"] = pd.to_datetime(this_date)
-                        pid_to_fn[pidstr]["End"] = pd.to_datetime(this_date)
+                            pid_to_fn[pidstr]["Start"] = this_date
+                        pid_to_fn[pidstr]["End"] = this_date
                         one_process['name'] = pid_to_fn[pidstr]['n']
                     else:
                         try:
