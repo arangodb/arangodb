@@ -35,7 +35,7 @@ let db = arangodb.db;
 
 let { versionHas } = require('@arangodb/test-helper');
 
-const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage'));
+const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const {
   launchSnippetInBG,
   joinBGShells,
