@@ -4129,13 +4129,16 @@ bool RocksDBEngine::checkExistingDB(
         RocksDBColumnFamilyManager::Family::MdiIndex);
     auto const mdiVPackIndexName = RocksDBColumnFamilyManager::name(
         RocksDBColumnFamilyManager::Family::MdiVPackIndex);
+    auto const vectorVPackIndexName = RocksDBColumnFamilyManager::name(
+        RocksDBColumnFamilyManager::Family::VectorIndex);
 
     for (auto const& it : cfFamilies) {
       auto it2 = std::find(existingColumnFamilies.begin(),
                            existingColumnFamilies.end(), it.name);
       if (it2 == existingColumnFamilies.end()) {
         if (it.name == replicatedLogsName || it.name == mdiIndexName ||
-            it.name == mdiVPackIndexName) {
+            it.name == mdiVPackIndexName ||
+            (isVectorIndexEnabled() && it.name == vectorVPackIndexName)) {
           LOG_TOPIC("293c3", INFO, Logger::STARTUP)
               << "column family " << it.name
               << " is missing and will be created.";

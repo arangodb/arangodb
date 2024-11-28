@@ -306,7 +306,8 @@ class IResearchOrderTest
                           false);  // required for IResearchFeature
     features.emplace_back(
         server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
-    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
+                          false);
     {
       auto& feature =
           features
