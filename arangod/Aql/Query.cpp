@@ -354,7 +354,7 @@ void Query::ensureExecutionTime() noexcept {
 bool Query::tryLoadPlanFromCache() {
   if (_queryOptions.usePlanCache) {
     if (!canUsePlanCache()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELLIGIBLE_FOR_PLAN_CACHING);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELIGIBLE_FOR_PLAN_CACHING);
     }
     // construct plan cache key
     TRI_ASSERT(!_planCacheKey.has_value());
@@ -581,7 +581,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
        _ast->containsGraphNameValueBindParameters() ||
        _ast->containsTraversalDepthValueBindParameters() ||
        _ast->containsUpsertLookupValueBindParameters() || !_warnings.empty())) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELLIGIBLE_FOR_PLAN_CACHING);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELIGIBLE_FOR_PLAN_CACHING);
   }
 
   // put in collection and attribute name bind parameters (e.g. @@collection or
@@ -1259,7 +1259,7 @@ QueryResult Query::explain() {
          _ast->containsTraversalDepthValueBindParameters() ||
          _ast->containsUpsertLookupValueBindParameters() ||
          !_warnings.empty())) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELLIGIBLE_FOR_PLAN_CACHING);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELIGIBLE_FOR_PLAN_CACHING);
     }
 
     // put in bind parameters
