@@ -20,6 +20,8 @@
 // / limitations under the License.
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+/// @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
@@ -72,7 +74,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
         type: "vector",
         fields: ["vector"],
         inBackground: false,
-        params: { metric: "l2", dimensions: dimension, nLists: 10 },
+        params: { metric: "l2", dimension, nLists: 10 },
       });
     },
 
