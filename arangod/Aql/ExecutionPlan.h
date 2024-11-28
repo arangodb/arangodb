@@ -87,6 +87,10 @@ class ExecutionPlan {
   static void getCollectionsFromVelocyPack(aql::Collections& colls,
                                            velocypack::Slice slice);
 
+  /// @brief process the list of collections in a VelocyPack
+  static void extendCollectionsByViewsFromVelocyPack(aql::Collections& colls,
+                                                     velocypack::Slice slice);
+
   /// @brief create an execution plan from VelocyPack
   static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(
       Ast* ast, velocypack::Slice slice, bool simpleSnippetFormat);

@@ -793,7 +793,8 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   query->prepareFromVelocyPack(
-      /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
+      /*querySlice*/ VPackSlice::emptyObjectSlice(), collections,
+      VPackSlice::noneSlice(), variables,
       /*snippets*/ queryBuilder.slice().get("nodes"), /*simple*/ true,
       analyzersRevision);
 
