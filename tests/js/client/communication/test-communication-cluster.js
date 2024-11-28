@@ -126,7 +126,7 @@ function CommunicationSuite() {
       db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
       let tries = 0;
       let done = 0;
-      const waitFor = isInstr ? 80 * 4 : 80;
+      const waitFor = isInstr ? 80 * 7 : 80;
       joinBGShells(IM.options, clients, waitFor, cn);
 
       assertEqual(1 + clients.length, db[cn].count());
