@@ -3,12 +3,12 @@ from pathlib import Path
 import sys
 from dash import Dash, html, dash_table, dcc, callback, Output, Input
 import plotly.express as px
-import pandas as pd
+#import pandas as pd
+import polars as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from datetime import datetime
 
-#print(dir(px))
-#print(dir(dcc))
 from tools.process_examine import (
     LOADS,
     MEMORY,
@@ -21,6 +21,8 @@ from tools.process_examine import (
     get_load,
     append_dict_to_df,
 )
+
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 
 filter_str = None
 if len(sys.argv) > 2:
@@ -38,7 +40,7 @@ external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 time_range = [
     df_load["Date"][0],
-    df_load["Date"][len(df_load.index)-1]
+    df_load["Date"][len(df_load)-1]
 ]
 styles = {
     'pre': {
@@ -146,20 +148,20 @@ def update_line_chart(relayoutData):
     if relayoutData and not 'autosize' in relayoutData:
         if "xaxis.range" in relayoutData:
             date_range = [
-                pd.to_datetime(relayoutData['xaxis.range'][0]),
-                pd.to_datetime(relayoutData['xaxis.range'][1]),
+                datetime.strptime(relayoutData['xaxis.range'][0], DATE_FORMAT),
+                datetime.strptime(relayoutData['xaxis.range'][1], DATE_FORMAT),
             ]
         if "xaxis.range[0]" in relayoutData:
             date_range = [
-                pd.to_datetime(relayoutData['xaxis.range[0]']),
-                pd.to_datetime(relayoutData['xaxis.range[1]']),
+                datetime.strptime(relayoutData['xaxis.range[0]'], DATE_FORMAT),
+                datetime.strptime(relayoutData['xaxis.range[1]'], DATE_FORMAT),
             ]
-        fig_gantt = px.timeline(df_jobs[
+        fig_gantt = px.timeline(df_jobs.filter(
             (df_jobs["Start"] <= date_range[0]) & (df_jobs["Finish"] >= date_range[1]) |
             (df_jobs["Start"] >= date_range[1]) & (df_jobs["Finish"] <  date_range[1]) |
-            (df_jobs["Start"] >  date_range[0])  & (df_jobs["Finish"] <= date_range[0]) |
-            (df_jobs["Start"] >  date_range[0])  & (df_jobs["Finish"] <  date_range[1])
-        ], x_start="Start", x_end="Finish", y="Task")
+            (df_jobs["Start"] >  date_range[0]) & (df_jobs["Finish"] <= date_range[0]) |
+            (df_jobs["Start"] >  date_range[0]) & (df_jobs["Finish"] <  date_range[1]))
+        , x_start="Start", x_end="Finish", y="Task")
     else:
         fig_gantt = px.timeline(df_jobs, x_start="Start", x_end="Finish", y="Task")
     fig_gantt.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom
