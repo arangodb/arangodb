@@ -303,7 +303,7 @@ function testSuite() {
       // Now until all jobs are done:
       let startTime = time();
       const isCov = require("@arangodb/test-helper").versionHas('coverage');
-      const timeout = (isCov) ? 90*5 : 90;
+      const timeout = (isCov) ? 90*10 : 90;
       while (true) {
         status = arango.GET("/_admin/shutdown");
         if (status.lowPrioQueuedRequests === 0 &&

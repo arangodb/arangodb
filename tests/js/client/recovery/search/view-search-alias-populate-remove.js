@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail */
+/* global runSetup, print, assertEqual, assertTrue, assertFalse, assertNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -27,6 +27,9 @@
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
+let IM = global.instanceManager;
+
+
 
 if (runSetup === true) {
   'use strict';
@@ -44,10 +47,16 @@ if (runSetup === true) {
 
   for (let i = 0; i < 80000; i++) {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i, _key: "doc_" + i });
+    if (IM.options.isInstrumented && i % 100 === 0) {
+      print('.');
+    }
   }
 
   for (let i = 10000; i < 40000; i++) {
     c.remove("doc_" + i);
+    if (IM.options.isInstrumented && i % 100 === 0) {
+      print('.');
+    }
   }
 
   c.save({ name: "crashme" }, { waitForSync: true });

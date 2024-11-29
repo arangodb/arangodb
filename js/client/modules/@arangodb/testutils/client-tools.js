@@ -33,7 +33,9 @@ const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 const { sanHandler } = require('@arangodb/testutils/san-file-handler');
 const executeExternal = internal.executeExternal;
-const isCov = require("@arangodb/test-helper").versionHas('coverage');
+const { versionHas } = require("@arangodb/test-helper");
+const isCov = versionHas('coverage');
+const isSan = versionHas('tsan') || versionHas('aulsan');
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -316,6 +318,9 @@ function makeArgsArangosh (options) {
   if (isCov) {
     args['server.request-timeout'] = 1200 * 4; // quadruple the default
   }
+  if (isSan) {
+    args['server.request-timeout'] = 1200 * 2; // double the default
+  }
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
   }
@@ -352,6 +357,9 @@ function launchInShellBG  (file) {
   let timeout = 30;
   if (isCov) {
     timeout *= 4; // quadruple the timeout
+  }
+  if (isSan) {
+    timeout *= 2; // quadruple the timeout
   }
   let moreArgs = {
     'server.database': arango.getDatabaseName(),
@@ -463,9 +471,14 @@ function joinBGShells (options, clients, waitFor, cn) {
           client.failed = failed;
           client.done = true;
         }
-        if (client.status.status === 'TERMINATED' && client.status.exit === 0) {
-          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
-          client.failed = false;
+        if (client.status === 'TERMINATED') {
+          if (client.exit === 0) {
+            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+            client.failed = false;
+          } else {
+            IM.options.cleanup = false;
+            client.failed = true;
+          }
         }
       }
     });
