@@ -129,6 +129,11 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 
     builder.add("cached", VPackValue(_cached));
 
+    if (_result.planCacheKey.has_value()) {
+      builder.add("planCacheKey",
+                  VPackValue(std::to_string(_result.planCacheKey.value())));
+    }
+
     handleNextBatchIdValue(builder, hasNext());
 
     if (!hasNext() && !isRetriable()) {
