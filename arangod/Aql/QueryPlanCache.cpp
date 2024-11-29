@@ -99,7 +99,7 @@ size_t QueryPlanCache::Value::memoryUsage() const noexcept {
   for (auto const& it : dataSources) {
     total += 32 + it.first.size() + it.second.name.size();
   }
-  total += serializedPlan->size();
+  total += serializedPlan.byteSize();
   return total;
 }
 
@@ -175,7 +175,7 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
 bool QueryPlanCache::store(
     QueryPlanCache::Key&& key,
     std::unordered_map<std::string, DataSourceEntry>&& dataSources,
-    std::shared_ptr<velocypack::UInt8Buffer> serializedPlan) {
+    velocypack::SharedSlice serializedPlan) {
   auto value = std::make_shared<Value>(
       std::move(dataSources), std::move(serializedPlan), TRI_microtime(), 0);
   size_t memoryUsage = key.memoryUsage() + value->memoryUsage();

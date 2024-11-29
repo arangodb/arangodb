@@ -204,8 +204,8 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
                                                scheduler)) {}
 
 Query::~Query() {
-  if (_planSliceCopy != nullptr) {
-    _resourceMonitor->decreaseMemoryUsage(_planSliceCopy->size());
+  if (!_planSliceCopy.isNone()) {
+    _resourceMonitor->decreaseMemoryUsage(_planSliceCopy.byteSize());
   }
 
   // In the most derived class needs to explicitly call 'destroy()'
@@ -387,30 +387,9 @@ bool Query::tryLoadPlanFromCache() {
         return false;
       }
 
-      _resourceMonitor->increaseMemoryUsage(cacheEntry->serializedPlan->size());
+      _resourceMonitor->increaseMemoryUsage(
+          cacheEntry->serializedPlan.byteSize());
       _planSliceCopy = cacheEntry->serializedPlan;
-
-      VPackSlice querySlice = VPackSlice(cacheEntry->serializedPlan->data());
-      VPackSlice collections = querySlice.get("collections");
-      VPackSlice variables = querySlice.get("variables");
-      VPackSlice views = querySlice.get("views");
-
-      QueryAnalyzerRevisions analyzersRevision;
-      auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
-      if (ADB_UNLIKELY(revisionRes.fail())) {
-        THROW_ARANGO_EXCEPTION(revisionRes);
-      }
-
-      prepareFromVelocyPack(querySlice, collections, views, variables,
-                            /*snippets*/ querySlice.get("nodes"),
-                            /*simpleSnippetFormat*/ true, analyzersRevision);
-
-      TRI_ASSERT(!_plans.empty());
-
-      auto& plan = _plans.front();
-      plan->findVarUsage();
-      plan->findCollectionAccessVariables();
-      plan->prepareTraversalOptions();
 
       return true;
     }
@@ -421,6 +400,21 @@ bool Query::tryLoadPlanFromCache() {
 void Query::prepareQuery() {
   try {
     if (tryLoadPlanFromCache()) {
+      auto const querySlice = _planSliceCopy.slice();
+      auto const collections = querySlice.get("collections");
+      auto const variables = querySlice.get("variables");
+      auto const views = querySlice.get("views");
+      auto const snippets = querySlice.get("nodes");
+      prepareFromVelocyPack(querySlice, collections, views, variables,
+                            snippets);
+      instantiatePlan(snippets);
+
+      TRI_ASSERT(!_plans.empty());
+
+      auto& plan = _plans.front();
+      plan->findVarUsage();
+      plan->findCollectionAccessVariables();
+      plan->prepareTraversalOptions();
       enterState(QueryExecutionState::ValueType::EXECUTION);
       return;
     }
@@ -446,24 +440,24 @@ void Query::prepareQuery() {
       unsigned flags = ExecutionPlan::buildSerializationFlags(
           /*verbose*/ false, /*includeInternals*/ false,
           /*explainRegisters*/ false);
-      _planSliceCopy = std::make_shared<VPackBufferUInt8>();
       try {
-        VPackBuilder b(*_planSliceCopy);
+        auto b = velocypack::Builder();
         plan->toVelocyPack(
             b, flags,
             buildSerializeQueryDataCallback({.includeNumericIds = false,
                                              .includeViews = true,
                                              .includeViewsSeparately = false}));
+        _planSliceCopy = std::move(b).sharedSlice();
 
         TRI_IF_FAILURE("Query::serializePlans1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        _resourceMonitor->increaseMemoryUsage(_planSliceCopy->size());
+        _resourceMonitor->increaseMemoryUsage(_planSliceCopy.byteSize());
       } catch (std::exception const& ex) {
         // must clear _planSliceCopy here so that the destructor of
         // Query doesn't subtract the memory used by _planSliceCopy
         // without us having it tracked properly here.
-        _planSliceCopy.reset();
+        _planSliceCopy = {};
         LOG_TOPIC("006c7", ERR, Logger::QUERIES)
             << "unable to convert execution plan to vpack: " << ex.what();
         throw;
@@ -554,7 +548,8 @@ void Query::storePlanInCache(ExecutionPlan& plan) {
 
   // store plan in query plan cache for future queries
   std::ignore = _vocbase.queryPlanCache().store(
-      std::move(*_planCacheKey), std::move(dataSources), serialized.steal());
+      std::move(*_planCacheKey), std::move(dataSources),
+      std::move(serialized).sharedSlice());
   _planCacheKey.reset();
 }
 
@@ -1158,12 +1153,12 @@ ExecutionState Query::finalize(velocypack::Builder& extras) {
     });
 
     bool keepPlan =
-        _planSliceCopy != nullptr &&
+        !_planSliceCopy.isNone() &&
         _queryOptions.profile >= ProfileLevel::Blocks &&
         ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
 
     if (keepPlan) {
-      extras.add("plan", VPackSlice(_planSliceCopy->data()));
+      extras.add("plan", _planSliceCopy.slice());
     }
   }
 
@@ -1219,10 +1214,10 @@ QueryResult Query::explain() {
   try {
     if (tryLoadPlanFromCache()) {
       TRI_ASSERT(_planCacheKey.has_value());
-      TRI_ASSERT(_planSliceCopy != nullptr);
+      TRI_ASSERT(!_planSliceCopy.isNone());
 
       enterState(QueryExecutionState::ValueType::FINALIZATION);
-      result.data->add(VPackSlice(_planSliceCopy->data()));
+      result.data->add(_planSliceCopy);
       {
         VPackBuilder& b = *result.extra;
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
@@ -2419,11 +2414,11 @@ void Query::debugKillQuery() {
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on single server or coordinator.
 /// never call this on a DB server!
-void Query::prepareFromVelocyPack(
-    velocypack::Slice querySlice, velocypack::Slice collections,
-    velocypack::Slice views, velocypack::Slice variables,
-    velocypack::Slice snippets, bool simpleSnippetFormat,
-    QueryAnalyzerRevisions const& analyzersRevision) {
+void Query::prepareFromVelocyPack(velocypack::Slice querySlice,
+                                  velocypack::Slice collections,
+                                  velocypack::Slice views,
+                                  velocypack::Slice variables,
+                                  velocypack::Slice snippets) {
   // Note that the `views` slice can either be None or a list of views.
   // Both usages are allowed and are used in the code!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -2491,34 +2486,23 @@ void Query::prepareFromVelocyPack(
   }
 
   enterState(QueryExecutionState::ValueType::PARSING);
+}
 
+void Query::instantiatePlan(velocypack::Slice snippets) {
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](velocypack::Slice snippet) {
-    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet,
-                                                         simpleSnippetFormat);
+    auto plan =
+        ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet, true);
     TRI_ASSERT(plan != nullptr);
 
     ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
   };
 
-  if (simpleSnippetFormat) {
-    // a single snippet
-    instantiateSnippet(snippets);
-    TRI_ASSERT(!_snippets.empty());
-    TRI_ASSERT(!_trx->state()->isDBServer() ||
-               _snippets.back()->engineId() != 0);
-  } else {
-    // potentially multiple snippets, contained in an object with snippet ids as
-    // keys
-    for (auto pair : VPackObjectIterator(snippets, /*sequential*/ true)) {
-      instantiateSnippet(pair.value);
-
-      TRI_ASSERT(!_snippets.empty());
-      TRI_ASSERT(!_trx->state()->isDBServer() ||
-                 _snippets.back()->engineId() != 0);
-    }
-  }
+  // a single snippet
+  instantiateSnippet(snippets);
+  TRI_ASSERT(!_snippets.empty());
+  TRI_ASSERT(!_trx->state()->isDBServer() || _snippets.back()->engineId() != 0);
 
   TRI_ASSERT(!_snippets.empty());
 
