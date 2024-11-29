@@ -31,6 +31,7 @@
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryPlanCache.h"
+#include "Async/async.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -401,6 +402,7 @@ class ClusterInfo::SyncerThread final
 
  private:
   auto call() noexcept -> std::optional<consensus::index_t>;
+  async<void> goOverAllIndexes();
   futures::Future<futures::Unit> fetchUpdates();
 
   std::mutex _m;
@@ -5857,14 +5859,9 @@ void ClusterInfo::SyncerThread::waitForNews() noexcept {
   }
 }
 
-void ClusterInfo::SyncerThread::run() {
-  auto const sendNewsCb = [this](auto&&) noexcept { sendNews(); };
-
+async<void> ClusterInfo::SyncerThread::goOverAllIndexes() {
   for (auto nextIndex = consensus::index_t{1}; !isStopping(); ++nextIndex) {
-    _agencyCache.waitFor(nextIndex, AgencyCache::Executor::Direct)
-        .thenFinal(sendNewsCb);
-
-    waitForNews();
+    co_await _agencyCache.waitFor(nextIndex, AgencyCache::Executor::Direct);
 
     // We update on every change; our _f (loadPlan/loadCurrent) decide for
     // themselves whether they need to do a real update. This way they can at
@@ -5874,6 +5871,8 @@ void ClusterInfo::SyncerThread::run() {
     }
   }
 }
+
+void ClusterInfo::SyncerThread::run() { goOverAllIndexes(); }
 
 futures::Future<Result> ClusterInfo::waitForCurrent(
     consensus::index_t raftIndex) {
