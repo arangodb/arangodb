@@ -303,6 +303,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// returns "<hidden>" regardless of maxLength
   std::string extractQueryString(size_t maxLength, bool show) const;
 
+  std::optional<QueryPlanCache::Key> planCacheKey() const noexcept {
+    return _planCacheKey;
+  }
+
  protected:
   /// @brief make sure that the query execution time is set.
   /// only the first call to this function will set the time.

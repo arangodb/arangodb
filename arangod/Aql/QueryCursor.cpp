@@ -474,6 +474,12 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
 
   builder.add("cached", VPackValue(false));
 
+  if (_query->planCacheKey().has_value()) {
+    builder.add(
+        "planCacheKey",
+        VPackValue(std::to_string(_query->planCacheKey().value().hash())));
+  }
+
   if (!hasMore) {
     TRI_ASSERT(!_extrasBuffer.empty());
     builder.add("extra", VPackSlice(_extrasBuffer.data()));
