@@ -136,13 +136,13 @@ std::shared_ptr<QueryPlanCache::Value const> QueryPlanCache::lookup(
     QueryPlanCache::Key const& key) {
   std::shared_lock guard(_mutex);
   if (auto it = _entries.find(key); it != _entries.end()) {
-    // increase numUsed counter of current entry.
+    // increase hits counter of current entry.
     // when entry is older than _invalidationTime, we intentionally wipe
     // the entry from the cache and return a nullptr. this is done so
     // that somehow outdated entries get replaced with fresh entries
     // eventually
     if ((*it).second->dateCreated + _invalidationTime > TRI_microtime()) {
-      (*it).second->numUsed.fetch_add(1, std::memory_order_relaxed);
+      (*it).second->hits.fetch_add(1, std::memory_order_relaxed);
       if (_numberOfHitsMetric != nullptr) {
         _numberOfHitsMetric->count();
       }
@@ -284,8 +284,7 @@ void QueryPlanCache::toVelocyPack(
 
     builder.add("created", VPackValue(TRI_StringTimeStamp(
                                value.dateCreated, Logger::getUseLocalTime())));
-    builder.add("numUsed",
-                VPackValue(value.numUsed.load(std::memory_order_relaxed)));
+    builder.add("hits", VPackValue(value.hits.load(std::memory_order_relaxed)));
     builder.add("memoryUsage",
                 VPackValue(it.first.memoryUsage() + it.second->memoryUsage()));
 

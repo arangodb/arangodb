@@ -128,7 +128,7 @@ class QueryPlanCache {
     // plan cache later.
     double dateCreated;
 
-    std::atomic<size_t> numUsed;
+    std::atomic<size_t> hits;
   };
 
   QueryPlanCache(QueryPlanCache const&) = delete;

@@ -4,6 +4,8 @@ devel
 * During AQL setup, the Coordinator will no longer block threads while waiting
   for DBServers to finish the query instantiation.
 
+* Fix view usage in cached query plans.
+
 * Make it an error if usePlanCache is set to true but the query is not 
   eligible for query plan caching. This is better for debugging.
 
