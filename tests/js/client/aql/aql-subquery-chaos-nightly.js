@@ -170,6 +170,7 @@ function ahuacatlSubqueryChaos() {
   return {
     testSpecificQueries: function () {
       for (const [key, value] of Object.entries(specificQueries)) {
+        print(`${Date()} : ${key} => ${value}`);
         if (value.hasOwnProperty("queryString")) {
           const opts = value.testOptions || {};
           ct.testQuery(value, opts);
@@ -187,6 +188,9 @@ function ahuacatlSubqueryChaos() {
 
     testSomeSubqueryChaos: function () {
       for (let i = 0; i < numberOfQueriesGenerated; i++) {
+        if (i %10 === 0) {
+          print(`${Date()} : ${i}`);
+        }
         ct.testQueryWithSeed({
           numberSubqueries: randomDepth(),
           seed: Math.trunc(Math.random() * 1e8),
@@ -198,6 +202,9 @@ function ahuacatlSubqueryChaos() {
 
     testSomeSubqueryModificationChaos: function () {
       for (let i = 0; i < numberOfQueriesGenerated; i++) {
+        if (i %10 === 0) {
+          print(`${Date()} : ${i}`);
+        }
         ct.testModifyingQueryWithSeed({
           numberSubqueries: randomModificationDepth(),
           seed: Math.trunc(Math.random() * 1e8),
