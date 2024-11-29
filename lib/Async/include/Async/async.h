@@ -145,7 +145,7 @@ struct async_promise<void> : async_promise_base<void> {
 };
 
 template<typename T>
-struct async {
+struct [[nodiscard]] async {
   using promise_type = async_promise<T>;
 
   auto operator co_await() && {
