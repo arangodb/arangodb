@@ -758,7 +758,6 @@ RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f,
     f.result().throwIfFailed();  // just throw the error upwards
     return f.waitAndGet();
   }
-  adoptLock = true;  // force this for testing
   _lockAdopted = adoptLock;
   TRI_ASSERT(_executionCounter == 0);
   _executionCounter = 2;
