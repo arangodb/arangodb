@@ -299,7 +299,7 @@ std::shared_ptr<velocypack::UInt8Buffer> QueryPlanCache::filterBindParameters(
   // we intentionally ignore all value bind parameters here
   velocypack::Builder result;
   result.openObject();
-  if (source != nullptr) {
+  if (source != nullptr && source->slice().isObject()) {
     for (auto it : VPackObjectIterator(source->slice())) {
       if (it.key.stringView().starts_with('@')) {
         // collection name bind parameter
