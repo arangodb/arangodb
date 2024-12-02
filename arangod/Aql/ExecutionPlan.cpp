@@ -1957,7 +1957,7 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
 
   if (offset->type != NODE_TYPE_VALUE || count->type != NODE_TYPE_VALUE) {
     if (_ast->query().queryOptions().usePlanCache) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELLIGIBLE_FOR_PLAN_CACHING);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELIGIBLE_FOR_PLAN_CACHING);
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
