@@ -209,11 +209,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief prepare a query out of some velocypack data.
   /// only to be used on single server or coordinator.
   /// never call this on a DB server!
-  void prepareFromVelocyPack(velocypack::Slice querySlice,
-                             velocypack::Slice collections,
-                             velocypack::Slice views,
-                             velocypack::Slice variables,
-                             velocypack::Slice snippets);
+  void prepareFromVelocyPackWithoutInstantiate(velocypack::Slice querySlice,
+                                               velocypack::Slice collections,
+                                               velocypack::Slice views,
+                                               velocypack::Slice variables,
+                                               velocypack::Slice snippets);
 
   async<void> instantiatePlan(velocypack::Slice snippets);
 

@@ -126,7 +126,8 @@ async<void> ClusterQuery::prepareFromVelocyPack(
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   LOG_TOPIC("45493", DEBUG, Logger::QUERIES)
-      << elapsedSince(_startTime) << " ClusterQuery::prepareFromVelocyPack"
+      << elapsedSince(_startTime)
+      << " ClusterQuery::prepareFromVelocyPackWithoutInstantiate"
       << " this: " << (uintptr_t)this;
 
   // track memory usage
@@ -209,6 +210,10 @@ async<void> ClusterQuery::prepareFromVelocyPack(
                                                          /*simple*/ false);
     TRI_ASSERT(plan != nullptr);
 
+    // Note that instantiateFromPlan only does something async on a Coordinator.
+    // Maybe it makes sense to split it into two different functions, which
+    // might also make it clearer which code runs on a Coordinator, and which
+    // runs on a DBServer.
     co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
     co_return;

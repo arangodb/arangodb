@@ -406,8 +406,8 @@ async<void> Query::prepareQuery() {
       auto const variables = querySlice.get("variables");
       auto const views = querySlice.get("views");
       auto const snippets = querySlice.get("nodes");
-      prepareFromVelocyPack(querySlice, collections, views, variables,
-                            snippets);
+      prepareFromVelocyPackWithoutInstantiate(querySlice, collections, views,
+                                              variables, snippets);
       co_await instantiatePlan(snippets);
 
       TRI_ASSERT(!_plans.empty());
@@ -2440,17 +2440,17 @@ void Query::debugKillQuery() {
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on single server or coordinator.
 /// never call this on a DB server!
-void Query::prepareFromVelocyPack(velocypack::Slice querySlice,
-                                  velocypack::Slice collections,
-                                  velocypack::Slice views,
-                                  velocypack::Slice variables,
-                                  velocypack::Slice snippets) {
+void Query::prepareFromVelocyPackWithoutInstantiate(
+    velocypack::Slice querySlice, velocypack::Slice collections,
+    velocypack::Slice views, velocypack::Slice variables,
+    velocypack::Slice snippets) {
   // Note that the `views` slice can either be None or a list of views.
   // Both usages are allowed and are used in the code!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
-      << elapsedSince(_startTime) << " Query::prepareFromVelocyPack"
+      << elapsedSince(_startTime)
+      << " Query::prepareFromVelocyPackWithoutInstantiate"
       << " this: " << (uintptr_t)this;
 
   // track memory usage
