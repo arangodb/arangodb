@@ -35,7 +35,7 @@ let db = arangodb.db;
 
 let { versionHas } = require('@arangodb/test-helper');
 
-const isCov = versionHas('coverage');
+const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const {
   launchSnippetInBG,
   joinBGShells,
@@ -126,7 +126,7 @@ function CommunicationSuite() {
       db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
       let tries = 0;
       let done = 0;
-      const waitFor = isCov ? 80 * 4 : 80;
+      const waitFor = isInstr ? 80 * 7 : 80;
       joinBGShells(IM.options, clients, waitFor, cn);
 
       assertEqual(1 + clients.length, db[cn].count());
@@ -429,7 +429,7 @@ function GenericAqlSetupPathSuite(type) {
       });
 
       debug("waiting for all test clients");
-      const waitFor = isCov ? 60 * 4 : 60;
+      const waitFor = isInstr ? 60 * 4 : 60;
       joinBGShells(IM.options, clients, waitFor, cn);
       assertEqual(clients.length, db[cn].count());
       let stats = {};

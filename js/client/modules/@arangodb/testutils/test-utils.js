@@ -126,6 +126,9 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
   // if we filter, we don't care about the other filters below:
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
     whichFilter.filter = 'testcase';
+    if (typeof options.test === 'number') {
+      options.test = `${options.test}`;
+    }
     if (typeof options.test === 'string') {
       return testname.search(options.test) >= 0;
     } else {
