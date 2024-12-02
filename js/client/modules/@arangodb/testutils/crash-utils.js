@@ -527,7 +527,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
         instanceInfo.coreFilePattern = fs.join(instanceInfo.coreDirectory, file);
       }
     });
-    if (instanceInfo.coreDirectory === null) {
+    if (instanceInfo.coreFilePattern === null) {
       print(m);
       return;
     }
@@ -719,10 +719,14 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       if (instanceInfo.hasOwnProperty('rootDir') &&
           fs.exists(instanceInfo.rootDir) &&
           fs.exists(instanceInfo.rootDir + "/tmp")) {
+        print("searching tmp directory for minidumps");
         let corefiles = fs.listTree(instanceInfo.rootDir + "/tmp").filter(fn => {
+          print("=> " + fn);
           return fn.search(".dmp") >= 0;
         });
         if (corefiles.length > 0) {
+          print("found these possible minidumps:");
+          print(corefiles);
           instanceInfo.coreFilePattern = corefiles[0];
           hint = analyzeCoreDumpWindows(instanceInfo);
           return;
