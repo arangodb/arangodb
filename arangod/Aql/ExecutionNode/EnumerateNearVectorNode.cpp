@@ -51,7 +51,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     ExecutionPlan* plan, arangodb::aql::ExecutionNodeId id,
     Variable const* inVariable, Variable const* oldDocumentVariable,
     Variable const* documentOutVariable, Variable const* distanceOutVariable,
-    std::size_t limit, std::size_t offset, aql::Collection const* collection,
+    std::size_t limit, bool ascending, std::size_t offset,
+    aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
@@ -60,6 +61,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _documentOutVariable(documentOutVariable),
       _distanceOutVariable(distanceOutVariable),
       _limit(limit),
+      _ascending(ascending),
       _offset(offset),
       _index(std::move(indexHandle)) {}
 
@@ -115,7 +117,7 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
                                               bool withDependencies) const {
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
-      _distanceOutVariable, _limit, _offset, collection(), _index);
+      _distanceOutVariable, _limit, _ascending, _offset, collection(), _index);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
@@ -183,6 +185,10 @@ void EnumerateNearVectorNode::replaceVariables(
   _inVariable = Variable::replace(_inVariable, replacements);
   _documentOutVariable = Variable::replace(_documentOutVariable, replacements);
   _distanceOutVariable = Variable::replace(_distanceOutVariable, replacements);
+}
+
+bool EnumerateNearVectorNode::isAscending() const noexcept {
+  return _ascending;
 }
 
 }  // namespace arangodb::aql

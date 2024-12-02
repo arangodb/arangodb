@@ -47,7 +47,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           Variable const* oldDocumentVariable,
                           Variable const* documentOutVariable,
                           Variable const* distanceOutVariable,
-                          std::size_t limit, std::size_t offset,
+                          std::size_t limit, bool ascending, std::size_t offset,
                           aql::Collection const* collection,
                           transaction::Methods::IndexHandle indexHandle);
 
@@ -73,6 +73,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   transaction::Methods::IndexHandle const& index() const { return _index; }
 
+  bool isAscending() const noexcept;
+
  protected:
   CostEstimate estimateCost() const override;
 
@@ -93,6 +95,9 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   /// @brief contains the limit, this node only produces the top k results
   std::size_t _limit;
+
+  // @brief specifies which order is set for enumerate
+  std::size_t _ascending;
 
   /// @brief contains the offset, this skips offset number of results
   std::size_t _offset;

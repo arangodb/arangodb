@@ -94,27 +94,29 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
   return outVariable == attributeAccessResult.first;
 }
 
-AstNode const* getApproxNearExpression(
+std::pair<AstNode const*, bool> getApproxNearExpression(
     auto const* sortNode, std::unique_ptr<ExecutionPlan>& plan,
     std::shared_ptr<Index> const& vectorIndex) {
   auto const& sortFields = sortNode->elements();
   // since vector index can be created only on single attribute the check is
   // simple
   if (sortFields.size() != 1) {
-    return nullptr;
+    return {nullptr, false};
   }
   auto const& sortField = sortFields[0];
+  bool ascending = sortField.ascending;
+
   switch (vectorIndex->getVectorIndexDefinition().metric) {
     // L2 metric can only be in ascending order
     case SimilarityMetric::kL2:
       if (!sortField.ascending) {
-        return nullptr;
+        return {nullptr, ascending};
       }
       break;
     // Cosine similarity can only be in descending order
     case SimilarityMetric::kCosine:
       if (sortField.ascending) {
-        return nullptr;
+        return {nullptr, ascending};
       }
       break;
   }
@@ -122,28 +124,28 @@ AstNode const* getApproxNearExpression(
   // check if SORT node contains APPROX function
   auto const* executionNode = plan->getVarSetBy(sortField.var->id);
   if (executionNode == nullptr || executionNode->getType() != EN::CALCULATION) {
-    return nullptr;
+    return {nullptr, ascending};
   }
   auto const* calculationNode =
       ExecutionNode::castTo<CalculationNode const*>(executionNode);
   auto const* calculationNodeExpression = calculationNode->expression();
   if (calculationNodeExpression == nullptr) {
-    return nullptr;
+    return {nullptr, ascending};
   }
   AstNode const* calculationNodeExpressionNode =
       calculationNodeExpression->node();
   if (calculationNodeExpressionNode == nullptr ||
       calculationNodeExpressionNode->type != AstNodeType::NODE_TYPE_FCALL) {
-    return nullptr;
+    return {nullptr, ascending};
   }
   if (auto const functionName =
           aql::functions::getFunctionName(*calculationNodeExpressionNode);
       !checkFunctionNameMatchesIndexMetric(
           functionName, vectorIndex->getVectorIndexDefinition())) {
-    return nullptr;
+    return {nullptr, ascending};
   }
 
-  return calculationNodeExpressionNode;
+  return {calculationNodeExpressionNode, ascending};
 }
 
 AstNode* getApproxNearAttributeExpression(
@@ -241,7 +243,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
 
     for (auto const& index : vectorIndexes) {
-      auto const* approxNearExpression =
+      auto const [approxNearExpression, ascending] =
           getApproxNearExpression(sortNode, plan, index);
       if (approxNearExpression == nullptr) {
         LOG_RULE << "Query expression not valid";
@@ -273,8 +275,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
-          documentIdVariable, distanceVariable, limit, limitNode->offset(),
-          enumerateCollectionNode->collection(), index);
+          documentIdVariable, distanceVariable, limit, ascending,
+          limitNode->offset(), enumerateCollectionNode->collection(), index);
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(

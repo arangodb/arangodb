@@ -41,6 +41,7 @@
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateListNode.h"
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
+#include "Aql/ExecutionNode/MaterializeNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
@@ -3791,8 +3792,12 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
 //
 // In an ideal world the node itself would know how to compute these parameters
 // for GatherNode (sortMode, parallelism, and elements), and we'd just ask it.
+//
+// firstDependency servers to indicate what was the first dependency to the
+// execution node before it got unlinked and linked with remote nodes
 auto insertGatherNode(
     ExecutionPlan& plan, ExecutionNode* node,
+    ExecutionNode const* firstDependency,
     SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries)
     -> GatherNode* {
   TRI_ASSERT(node);
@@ -3853,29 +3858,36 @@ auto insertGatherNode(
       }
       return gatherNode;
     }
-    case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
-      auto elements = SortElementVector{};
-      auto const* envNode =
-          ExecutionNode::castTo<EnumerateNearVectorNode const*>(node);
-      auto const* collection = envNode->collection();
-      TRI_ASSERT(collection != nullptr);
-      auto numberOfShards = collection->numberOfShards();
+    case ExecutionNode::MATERIALIZE: {
+      if (firstDependency != nullptr &&
+          firstDependency->getType() == ExecutionNode::ENUMERATE_NEAR_VECTORS) {
+        auto elements = SortElementVector{};
+        auto const* enumerateNearVectorNode =
+            ExecutionNode::castTo<EnumerateNearVectorNode const*>(
+                firstDependency);
+        auto const* collection = enumerateNearVectorNode->collection();
+        TRI_ASSERT(collection != nullptr);
+        auto numberOfShards = collection->numberOfShards();
 
-      Variable const* sortVariable = envNode->distanceOutVariable();
-      bool const isSortAscending = true;
-      elements.push_back(
-          SortElement::createWithPath(sortVariable, isSortAscending, {}));
+        Variable const* sortVariable =
+            enumerateNearVectorNode->distanceOutVariable();
+        elements.push_back(SortElement::createWithPath(
+            sortVariable, enumerateNearVectorNode->isAscending(), {}));
 
-      auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
-      auto parallelism = GatherNode::evaluateParallelism(*collection);
+        auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
+        auto parallelism = GatherNode::evaluateParallelism(*collection);
 
-      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode,
-                                               parallelism);
+        gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode,
+                                                 parallelism);
 
-      if (!elements.empty() && numberOfShards != 1) {
-        gatherNode->elements(elements);
+        if (!elements.empty() && numberOfShards != 1) {
+          gatherNode->elements(elements);
+        }
+        return gatherNode;
       }
-      return gatherNode;
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(),
+                                               GatherNode::SortMode::Default);
+      break;
     }
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
@@ -3937,6 +3949,17 @@ auto insertGatherNode(
 void arangodb::aql::insertScatterGatherSnippet(
     ExecutionPlan& plan, ExecutionNode* at,
     SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries) {
+  // EnumerateNearVectorNode always comes with MaterializeNode, therefore we
+  // must intercept it before we unlink the nodes and check the firstDependency
+  // For now this is a special check done only for EnumerateNearVectorNode
+  auto const* firstDependency = std::invoke([at]() -> ExecutionNode const* {
+    if (at->getType() == ExecutionNode::MATERIALIZE) {
+      return at->getFirstDependency();
+    }
+
+    return nullptr;
+  });
+
   // TODO: necessary?
   TRI_vocbase_t* vocbase = extractVocbaseFromNode(at);
   auto const isRootNode = plan.isRoot(at);
@@ -3968,7 +3991,7 @@ void arangodb::aql::insertScatterGatherSnippet(
   remoteNode->addDependency(at);
 
   // GATHER needs some setup, so this happens in a separate function
-  auto gatherNode = insertGatherNode(plan, at, subqueries);
+  auto gatherNode = insertGatherNode(plan, at, firstDependency, subqueries);
   TRI_ASSERT(gatherNode);
   TRI_ASSERT(remoteNode);
   gatherNode->addDependency(remoteNode);
