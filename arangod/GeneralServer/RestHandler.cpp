@@ -761,35 +761,30 @@ RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f,
   _lockAdopted = adoptLock;
   TRI_ASSERT(_executionCounter == 0);
   _executionCounter = 2;
-  std::move(f).thenFinal(withLogContext([self = shared_from_this(),
-                                         adoptLock](futures::Try<RestStatus>&&
-                                                        t) noexcept -> void {
-    // auto guard = adoptLock ? std::lock_guard(self->_executionMutex,
-    // std::adopt_lock) : std::lock_guard(self->_executionMutex);
-    auto guard =
-        adoptLock
-            ? std::unique_lock(self->_executionMutex, std::adopt_lock)
-            : std::unique_lock(
-                  self->_executionMutex,
-                  std::defer_lock);  // TODO defer lock with adoptLock==false,
-                                     // or acquire the lock?
-    if (t.hasException()) {
-      self->handleExceptionPtr(std::move(t).exception());
-      self->_followupRestStatus = RestStatus::DONE;
-    } else {
-      self->_followupRestStatus = t.get();
-      if (t.get() == RestStatus::WAITING) {
-        return;  // rest handler will be woken up externally
-      }
-    }
-    if (--self->_executionCounter == 0) {
-      TRI_ASSERT(adoptLock == guard.owns_lock());
-      if (guard.owns_lock()) {
-        guard.unlock();
-      }
-      self->wakeupHandler();
-    }
-  }));
+  std::move(f).thenFinal(
+      withLogContext([self = shared_from_this(), adoptLock](
+                         futures::Try<RestStatus>&& t) noexcept -> void {
+        auto guard =
+            adoptLock
+                ? std::unique_lock(self->_executionMutex, std::adopt_lock)
+                : std::unique_lock(self->_executionMutex, std::defer_lock);
+        if (t.hasException()) {
+          self->handleExceptionPtr(std::move(t).exception());
+          self->_followupRestStatus = RestStatus::DONE;
+        } else {
+          self->_followupRestStatus = t.get();
+          if (t.get() == RestStatus::WAITING) {
+            return;  // rest handler will be woken up externally
+          }
+        }
+        if (--self->_executionCounter == 0) {
+          TRI_ASSERT(adoptLock == guard.owns_lock());
+          if (guard.owns_lock()) {
+            guard.unlock();
+          }
+          self->wakeupHandler();
+        }
+      }));
   return --_executionCounter == 0 ? _followupRestStatus : RestStatus::WAITING;
 }
 

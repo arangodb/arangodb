@@ -686,7 +686,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
 /// @brief execute an AQL query
 ExecutionState Query::execute(QueryResult& queryResult) {
-  _executeCallerWaiting = ExecuteCallerWaiting::Asynchronously;
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
@@ -2105,7 +2104,14 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   network::RequestOptions options;
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(120.0);  // Picked arbitrarily
-  options.continuationLane = RequestLane::CLUSTER_INTERNAL;
+  switch (query.executeCallerWaiting()) {
+    case QueryContext::ExecuteCallerWaiting::Asynchronously:
+      options.continuationLane = RequestLane::CLUSTER_INTERNAL;
+      break;
+    case QueryContext::ExecuteCallerWaiting::Synchronously:
+      options.skipScheduler = true;
+      break;
+  }
 
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);

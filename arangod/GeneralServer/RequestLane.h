@@ -190,4 +190,6 @@ constexpr inline RequestPriority PriorityRequestLane(RequestLane lane) {
 
 std::ostream& operator<<(std::ostream&, arangodb::RequestLane const& lane);
 
+std::string to_string(RequestLane);
+
 }  // namespace arangodb
