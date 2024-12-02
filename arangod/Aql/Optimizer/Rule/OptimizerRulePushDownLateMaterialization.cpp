@@ -83,6 +83,20 @@ bool extractRelevantAttributes(
           sub->getSubquery()->getSingleton(), &var, "", false, attributes);
     }
 
+    case arangodb::aql::ExecutionNode::INDEX: {
+      auto const* index = ExecutionNode::castTo<IndexNode*>(node);
+      bool notUsingFullDocument{true};
+      if (index->hasFilter()) {
+        notUsingFullDocument = Ast::getReferencedAttributesRecursive(
+            index->filter()->node(), &var, "", attributes,
+            node->plan()->getAst()->query().resourceMonitor());
+      }
+      return notUsingFullDocument &&
+             Ast::getReferencedAttributesRecursive(
+                 index->condition()->root(), &var, "", attributes,
+                 node->plan()->getAst()->query().resourceMonitor());
+    }
+
     default:
       return false;
   }
@@ -97,7 +111,7 @@ bool checkPossibleProjection(ExecutionPlan* plan,
   }
 
   containers::FlatHashSet<aql::AttributeNamePath> attributes;
-  bool notUsingFullDocument =
+  bool const notUsingFullDocument =
       extractRelevantAttributes(other, matNode->outVariable(), attributes);
   if (!notUsingFullDocument) {
     LOG_RULE << "CALCULATION USES FULL DOCUMENT";
@@ -114,7 +128,7 @@ bool checkPossibleProjection(ExecutionPlan* plan,
     LOG_RULE << "ATTEMPT TO ADD PROJECTIONS TO INDEX NODE";
     auto* indexNode = ExecutionNode::castTo<IndexNode*>(matOriginNode);
     TRI_ASSERT(indexNode->isLateMaterialized());
-    auto index = indexNode->getSingleIndex();
+    auto const index = indexNode->getSingleIndex();
     if (index == nullptr) {
       return false;
     }
@@ -145,7 +159,7 @@ bool checkPossibleProjection(ExecutionPlan* plan,
     auto& indexes = joinNode->getIndexInfos();
 
     // find the index with the out variable of the materializer
-    auto idx =
+    auto const idx =
         std::find_if(indexes.begin(), indexes.end(), [&](auto const& idx) {
           return idx.outVariable->id == matNode->outVariable().id;
         });
@@ -173,6 +187,23 @@ bool checkPossibleProjection(ExecutionPlan* plan,
   return false;
 }
 
+bool checkIndexNode(ExecutionPlan* plan,
+                    materialize::MaterializeNode const* matNode,
+                    ExecutionNode* other) {
+  auto const* indexNode = ExecutionNode::castTo<IndexNode*>(other);
+
+  // TODO: We should also check the condition to make this rule more specific
+  // As we can have a unique index with multiple fields and we can only move
+  // past the index node if all the fields are considered
+  auto const index = indexNode->getSingleIndex();
+  if (index == nullptr || !(index->fields().size() == 1 && index->unique())) {
+    return false;
+  }
+
+  LOG_RULE << "DETECTED UNIQUE INDEX";
+  return checkPossibleProjection(plan, matNode, other);
+}
+
 bool canMovePastNode(ExecutionPlan* plan,
                      materialize::MaterializeNode const* matNode,
                      ExecutionNode* other) {
@@ -186,6 +217,8 @@ bool canMovePastNode(ExecutionPlan* plan,
     case EN::CALCULATION:
     case EN::SUBQUERY:
       return checkPossibleProjection(plan, matNode, other);
+    case EN::INDEX:
+      return checkIndexNode(plan, matNode, other);
     default:
       break;
   }
