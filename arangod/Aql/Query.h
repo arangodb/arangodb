@@ -209,11 +209,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief prepare a query out of some velocypack data.
   /// only to be used on single server or coordinator.
   /// never call this on a DB server!
-  async<void> prepareFromVelocyPack(
-      velocypack::Slice querySlice, velocypack::Slice collections,
-      velocypack::Slice views, velocypack::Slice variables,
-      velocypack::Slice snippets, bool simpleSnippetFormat,
-      QueryAnalyzerRevisions const& analyzersRevision);
+  void prepareFromVelocyPack(velocypack::Slice querySlice,
+                             velocypack::Slice collections,
+                             velocypack::Slice views,
+                             velocypack::Slice variables,
+                             velocypack::Slice snippets);
+
+  async<void> instantiatePlan(velocypack::Slice snippets);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
@@ -416,7 +418,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   std::vector<std::unique_ptr<ExecutionPlan>> _plans;
 
   /// plan serialized before instantiation, used for query profiling
-  std::shared_ptr<velocypack::UInt8Buffer> _planSliceCopy;
+  velocypack::SharedSlice _planSliceCopy;
 
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is
