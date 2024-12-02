@@ -56,7 +56,7 @@ function VectorIndexL2TestSuite() {
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
-            collection = db._create(collName);
+            collection = db._create(collName, {numberOfShards: 3});
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
@@ -332,6 +332,7 @@ function VectorIndexL2TestSuite() {
             assertEqual(5, results.length);
         },
 
+        // TODO run with projection then it fails
         testApproxL2WithDoubleLoop: function() {
             const query = aql`
                 FOR docOuter IN ${collection}
@@ -585,7 +586,7 @@ function VectorIndexCosineTestSuite() {
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
-            collection = db._create(collName);
+            collection = db._create(collName, {numberOfShards: 3});
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
@@ -741,7 +742,7 @@ function MultipleVectorIndexesOnField() {
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
-            collection = db._create(collName);
+            collection = db._create(collName, {numberOfShards: 3});
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
