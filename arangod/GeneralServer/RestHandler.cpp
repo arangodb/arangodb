@@ -734,41 +734,25 @@ void RestHandler::generateError(arangodb::Result const& r) {
 }
 
 RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
-  if (f.isReady()) {             // fast-path out
-    f.result().throwIfFailed();  // just throw the error upwards
-    return RestStatus::DONE;
-  }
-  TRI_ASSERT(_executionCounter == 0);
-  _executionCounter = 2;
-  std::move(f).thenFinal(withLogContext(
-      [self = shared_from_this()](futures::Try<futures::Unit>&& t) -> void {
-        if (t.hasException()) {
-          self->handleExceptionPtr(std::move(t).exception());
-        }
-        if (--self->_executionCounter == 0) {
-          self->wakeupHandler();
-        }
-      }));
-  return --_executionCounter == 0 ? RestStatus::DONE : RestStatus::WAITING;
+  return waitForFuture(
+      std::move(f).thenValue([](futures::Unit) { return RestStatus::DONE; }));
 }
 
-RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f,
-                                      bool adoptLock) {
+RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
   if (f.isReady()) {             // fast-path out
     f.result().throwIfFailed();  // just throw the error upwards
     return f.waitAndGet();
   }
-  adoptLock = true;  // force this for testing; TODO remove
-  _lockAdopted = adoptLock;
+  TRI_ASSERT(!_lockAdopted);
+  // We adopt the _executionMutex. Setting this informs the function that locked
+  // it (either runHandler or wakeupHandler) about that.
+  _lockAdopted = true;
   TRI_ASSERT(_executionCounter == 0);
   _executionCounter = 2;
   std::move(f).thenFinal(
-      withLogContext([self = shared_from_this(), adoptLock](
+      withLogContext([self = shared_from_this()](
                          futures::Try<RestStatus>&& t) noexcept -> void {
-        auto guard =
-            adoptLock
-                ? std::unique_lock(self->_executionMutex, std::adopt_lock)
-                : std::unique_lock(self->_executionMutex, std::defer_lock);
+        auto guard = std::unique_lock(self->_executionMutex, std::adopt_lock);
         if (t.hasException()) {
           self->handleExceptionPtr(std::move(t).exception());
           self->_followupRestStatus = RestStatus::DONE;
@@ -779,10 +763,7 @@ RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f,
           }
         }
         if (--self->_executionCounter == 0) {
-          TRI_ASSERT(adoptLock == guard.owns_lock());
-          if (guard.owns_lock()) {
-            guard.unlock();
-          }
+          guard.unlock();
           self->wakeupHandler();
         }
       }));

@@ -161,8 +161,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void generateError(arangodb::Result const&);
 
   [[nodiscard]] RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
-  [[nodiscard]] RestStatus waitForFuture(futures::Future<RestStatus>&& f,
-                                         bool adoptLock = false);
+  [[nodiscard]] RestStatus waitForFuture(futures::Future<RestStatus>&& f);
 
   enum class HandlerState : uint8_t {
     PREPARE = 0,

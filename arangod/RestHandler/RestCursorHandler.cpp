@@ -666,10 +666,8 @@ RestStatus RestCursorHandler::createQueryCursor() {
   }
 
   TRI_ASSERT(_query == nullptr);
-  return waitForFuture(
-      registerQueryOrCursor(
-          body, transaction::OperationOriginAQL{"running AQL query"}),
-      true);
+  return waitForFuture(registerQueryOrCursor(
+      body, transaction::OperationOriginAQL{"running AQL query"}));
 }
 
 /// @brief shows the batch given by <batch-id> if it's the last cached batch
