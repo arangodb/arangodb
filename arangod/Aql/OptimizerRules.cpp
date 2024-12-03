@@ -3867,7 +3867,6 @@ auto insertGatherNode(
       if (maybeEnumerateNearVectorNode != nullptr &&
           maybeEnumerateNearVectorNode->getType() ==
               ExecutionNode::ENUMERATE_NEAR_VECTORS) {
-
         auto const* enumerateNearVectorNode =
             ExecutionNode::castTo<EnumerateNearVectorNode const*>(
                 maybeEnumerateNearVectorNode);
