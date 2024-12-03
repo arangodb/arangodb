@@ -98,6 +98,7 @@ void EnumerateNearVectorsExecutor::searchResults() {
   std::tie(_labels, _distances) = vectorIndex->readBatch(
       _inputRowConverted, mthds, &_trx, _collection->getCollection(), 1,
       _infos.getNubmerOfResults());
+  LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
 
 void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {

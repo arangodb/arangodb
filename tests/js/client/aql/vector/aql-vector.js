@@ -518,6 +518,7 @@ function VectorIndexL2TestSuite() {
             const queryWithSkip = aql`
             FOR docOuter IN ${collection}
             FILTER docOuter.nonVector < 10 
+            SORT docOuter.nonVector
             LET neighbours = (FOR docInner IN ${collection}
               LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector)
               SORT dist
@@ -528,6 +529,7 @@ function VectorIndexL2TestSuite() {
             const queryWithoutSkip = aql`
               FOR docOuter IN ${collection}
               FILTER docOuter.nonVector < 10 
+              SORT docOuter.nonVector
               LET neighbours = (FOR docInner IN ${collection}
                 LET dist = APPROX_NEAR_L2(docInner.vector, docOuter.vector)
                 SORT dist
