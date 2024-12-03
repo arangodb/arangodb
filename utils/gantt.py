@@ -145,7 +145,9 @@ def update_line_chart(gauge_select):
     Input('load-graph', 'relayoutData'))
 def update_line_chart(relayoutData):
     date_range = []
-    if relayoutData and not 'autosize' in relayoutData:
+    if (relayoutData and
+        not 'autosize' in relayoutData and
+        not 'xaxis.autorange' in relayoutData):
         if "xaxis.range" in relayoutData:
             date_range = [
                 datetime.strptime(relayoutData['xaxis.range'][0], DATE_FORMAT),
