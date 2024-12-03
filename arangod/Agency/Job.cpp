@@ -593,19 +593,17 @@ std::vector<size_t> idxsort(const std::vector<T>& v) {
 }
 
 std::vector<std::string> sortedShardList(Node const& shards) {
-  std::vector<size_t> sids;
+  std::vector<size_t> sids_int;
+  std::vector<std::string> sids_string;
   auto const& shardMap = shards.children();
   for (auto const& shard : shardMap) {
-    sids.push_back(StringUtils::uint64(shard.first.substr(1)));
+    sids_int.emplace_back(StringUtils::uint64(shard.first.substr(1)));
+    sids_string.emplace_back(shard.first);
   }
-
-  std::vector<size_t> idx(idxsort(sids));
-  std::vector<std::string> sorted;
-  for (auto const& i : idx) {
-    auto x = shardMap.begin();
-    std::advance(x, i);
-    sorted.push_back(x->first);
-  }
+  std::vector<size_t> const idx(idxsort(sids_int));
+  std::vector<std::string> sorted(sids_int.size());
+  std::transform(idx.cbegin(), idx.cend(), sorted.begin(),
+                 [&sids_string](size_t const id) { return sids_string[id]; });
 
   return sorted;
 }
