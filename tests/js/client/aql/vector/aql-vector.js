@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -275,16 +275,19 @@ function VectorIndexL2TestSuite() {
 
                 // Assert gather node is sorted
                 if (isCluster) {
-
                     const gatherNodes = plan.nodes.filter(function(n) {
                         return n.type === "GatherNode";
                     });
                     assertEqual(1, gatherNodes.length);
+
+                    let gatherNode = gatherNodes[0];
+                    assertEqual(1, gatherNode.elements.length);
+                    assertTrue(gatherNode.elements[0].ascending);
                 }
 
                 const results = db._query(query, bindVars).toArray();
                 // Assert that results are deterministic
-                if (i != 0) {
+                if (i !== 0) {
                     for (let j = 0; j < previousResult.length; ++j) {
                         assertEqual(previousResult[j].key, results[j].key);
                     }
@@ -700,17 +703,20 @@ function VectorIndexCosineTestSuite() {
 
                 // Assert gather node is sorted
                 if (isCluster) {
-
                     const gatherNodes = plan.nodes.filter(function(n) {
                         return n.type === "GatherNode";
                     });
                     assertEqual(1, gatherNodes.length);
+
+                    let gatherNode = gatherNodes[0];
+                    assertEqual(1, gatherNode.elements.length);
+                    assertFalse(gatherNode.elements[0].ascending);
                 }
 
                 const results = db._query(query, bindVars).toArray();
 
                 // Assert that results are deterministic
-                if (i != 0) {
+                if (i !== 0) {
                     for (let j = 0; j < previousResult.length; ++j) {
                         assertEqual(previousResult[j].key, results[j].key);
                     }
