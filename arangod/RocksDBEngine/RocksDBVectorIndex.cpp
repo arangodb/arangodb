@@ -275,8 +275,20 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 }
 
 /// @brief Test if this index matches the definition
-bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& /*info*/) const {
-  return false;
+bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
+  // check if we have the same parameter
+  if (!RocksDBIndex::matchesDefinition(info)) {
+    return false;
+  }
+
+  UserVectorIndexDefinition definition;
+  velocypack::deserialize(info.get("params"), definition);
+
+  if (definition != _definition) {
+    return false;
+  }
+
+  return true;
 }
 
 void RocksDBVectorIndex::toVelocyPack(
@@ -383,6 +395,11 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   std::vector<float> input;
   input.reserve(_definition.dimension);
 
+  LOG_TOPIC("b161b", INFO, Logger::FIXME)
+      << "[shard=" << _collection.name() << ", index=" << _iid.id()
+      << "] Loading " << trainingDataSize << " vectors of dimension "
+      << _definition.dimension << " for training.";
+
   while (counter < trainingDataSize && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
 
@@ -408,12 +425,18 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     ++counter;
   }
 
+  LOG_TOPIC("a162b", INFO, Logger::FIXME)
+      << "[shard=" << _collection.name() << ", index=" << _iid.id()
+      << "] Loaded " << counter
+      << " vectors of dimension. Start training process.";
+
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
   }
   flatIndex.train(counter, trainingData.data());
-  LOG_TOPIC("a160b", INFO, Logger::ROCKSDB)
-      << "Finished training for vector index";
+  LOG_TOPIC("a160b", INFO, Logger::FIXME)
+      << "[shard=" << _collection.name() << ", index=" << _iid.id()
+      << "] Finished training";
 
   // Update vector definition data with quantizier data
   _trainedData = std::visit(

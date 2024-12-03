@@ -64,6 +64,8 @@ struct UserVectorIndexDefinition {
   std::int64_t nLists;
   int trainingIterations;
 
+  bool operator==(UserVectorIndexDefinition const&) const noexcept = default;
+
   template<class Inspector>
   friend inline auto inspect(Inspector& f, UserVectorIndexDefinition& x) {
     return f.object(x).fields(
