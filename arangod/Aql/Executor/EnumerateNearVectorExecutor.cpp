@@ -96,7 +96,7 @@ void EnumerateNearVectorsExecutor::searchResults() {
 
   std::tie(_labels, _distances) = vectorIndex->readBatch(
       _inputRowConverted, mthds, &_trx, _collection->getCollection(), 1,
-      _infos.getNubmerOfResults());
+      _infos.getNumberOfResults());
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
 
@@ -105,11 +105,11 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
   auto const distOutId = _infos.outDistancesReg;
 
   while (!output.isFull() &&
-         _currentProcessedResultCount < _infos.getNubmerOfResults()) {
+         _currentProcessedResultCount < _infos.getNumberOfResults()) {
     // there are no results anymore for this input, so we can skip to next input
     // row
     if (_labels[_currentProcessedResultCount] == -1) {
-      _currentProcessedResultCount = _infos.getNubmerOfResults();
+      _currentProcessedResultCount = _infos.getNumberOfResults();
       break;
     }
     output.moveValueInto(
@@ -123,7 +123,7 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
     ++_currentProcessedResultCount;
   }
 
-  if (_currentProcessedResultCount == _infos.getNubmerOfResults()) {
+  if (_currentProcessedResultCount == _infos.getNumberOfResults()) {
     _resultsAreProcessed = true;
   }
 }
@@ -141,7 +141,7 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       searchResults();
     }
     fillOutput(output);
-    if (_currentProcessedResultCount == _infos.getNubmerOfResults()) {
+    if (_currentProcessedResultCount == _infos.getNumberOfResults()) {
       inputRange.advanceDataRow();
       _initialized = false;
       break;

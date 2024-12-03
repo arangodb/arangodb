@@ -64,7 +64,7 @@ struct EnumerateNearVectorsExecutorInfos {
   ~EnumerateNearVectorsExecutorInfos() = default;
 
   // total number of result per one query point
-  std::size_t getNubmerOfResults() const noexcept { return topK + offset; }
+  std::size_t getNumberOfResults() const noexcept { return topK + offset; }
 
   /// @brief register to store local document id
   RegisterId const inputReg;
