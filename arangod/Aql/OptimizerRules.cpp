@@ -64,6 +64,7 @@
 #include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/ExecutionNode/SubqueryStartExecutionNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/ExecutionNode/MaterializeNode.h"
 #include "Aql/ExecutionNode/UpdateNode.h"
 #include "Aql/ExecutionNode/UpsertNode.h"
 #include "Aql/ExecutionNode/WindowNode.h"
@@ -3797,7 +3798,6 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
 // execution node before it got unlinked and linked with remote nodes
 auto insertGatherNode(
     ExecutionPlan& plan, ExecutionNode* node,
-    ExecutionNode const* firstDependency,
     SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries)
     -> GatherNode* {
   TRI_ASSERT(node);
@@ -3859,12 +3859,19 @@ auto insertGatherNode(
       return gatherNode;
     }
     case ExecutionNode::MATERIALIZE: {
-      if (firstDependency != nullptr &&
-          firstDependency->getType() == ExecutionNode::ENUMERATE_NEAR_VECTORS) {
-        auto elements = SortElementVector{};
+      auto const* materializeNode =
+          ExecutionNode::castTo<materialize::MaterializeNode const*>(node);
+      auto const* maybeEnumerateNearVectorNode =
+          plan.getVarSetBy(materializeNode->outVariable().id);
+
+      if (maybeEnumerateNearVectorNode != nullptr &&
+          maybeEnumerateNearVectorNode->getType() ==
+              ExecutionNode::ENUMERATE_NEAR_VECTORS) {
+
         auto const* enumerateNearVectorNode =
             ExecutionNode::castTo<EnumerateNearVectorNode const*>(
-                firstDependency);
+                maybeEnumerateNearVectorNode);
+        auto elements = SortElementVector{};
         auto const* collection = enumerateNearVectorNode->collection();
         TRI_ASSERT(collection != nullptr);
         auto numberOfShards = collection->numberOfShards();
@@ -3949,17 +3956,6 @@ auto insertGatherNode(
 void arangodb::aql::insertScatterGatherSnippet(
     ExecutionPlan& plan, ExecutionNode* at,
     SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries) {
-  // EnumerateNearVectorNode always comes with MaterializeNode, therefore we
-  // must intercept it before we unlink the nodes and check the firstDependency
-  // For now this is a special check done only for EnumerateNearVectorNode
-  auto const* firstDependency = std::invoke([at]() -> ExecutionNode const* {
-    if (at->getType() == ExecutionNode::MATERIALIZE) {
-      return at->getFirstDependency();
-    }
-
-    return nullptr;
-  });
-
   // TODO: necessary?
   TRI_vocbase_t* vocbase = extractVocbaseFromNode(at);
   auto const isRootNode = plan.isRoot(at);
@@ -3991,7 +3987,7 @@ void arangodb::aql::insertScatterGatherSnippet(
   remoteNode->addDependency(at);
 
   // GATHER needs some setup, so this happens in a separate function
-  auto gatherNode = insertGatherNode(plan, at, firstDependency, subqueries);
+  auto gatherNode = insertGatherNode(plan, at, subqueries);
   TRI_ASSERT(gatherNode);
   TRI_ASSERT(remoteNode);
   gatherNode->addDependency(remoteNode);
