@@ -2,25 +2,25 @@
 import json
 from pathlib import Path
 import collections
-#import pandas as pd
-import polars as pd
+import pandas as pd
+#import polars as pd
 from datetime import datetime
 
 from arango import ArangoClient, exceptions
 
+LOADS_COL_NAME="load"
+JOBS_COL_NAME="jobs"
 CLIENT = ArangoClient(hosts="http://localhost:8529")
 SYS_DB = CLIENT.db("_system", username="root", password="")
 try:
-    LOADS_COL = SYS_DB.create_collection("load")
+    LOADS_COL = SYS_DB.create_collection(LOADS_COL_NAME)
 except exceptions.CollectionCreateError:
-    LOADS_COL = SYS_DB["load"]
-    LOADS_COL.truncate()
+    LOADS_COL = SYS_DB[LOADS_COL_NAME]
 LOADS_COL.add_index({'type': 'persistent', 'fields': ['timestamp'], 'unique': False})
 try:
-    JOBS_COL = SYS_DB.create_collection("jobs")
+    JOBS_COL = SYS_DB.create_collection(JOBS_COL_NAME)
 except exceptions.CollectionCreateError:
-    JOBS_COL = SYS_DB["jobs"]
-    JOBS_COL.truncate()
+    JOBS_COL = SYS_DB[JOBS_COL_NAME]
 
 
 LOADS = pd.DataFrame()
@@ -78,10 +78,16 @@ def load_testing_js_mappings(main_log_file):
                 parsed_slice = json.loads(line)
                 pid_to_fn[f"p{parsed_slice['pid']}"] = {'n': Path(parsed_slice["logfile"]).name}
     return pid_to_fn
-def aggregate_sub_metrics(testing_pid, processes):
+
+def aggregate_sub_metrics(testing_pid, processes, full_slice):
     testing = processes[testing_pid]
+    name = testing['process'][0]['name']
     if not 'children' in testing:
-        print(f"skipping {testing['process'][0]['name']}")
+        print(f"skipping {name}")
+        full_slice[len(full_slice) - 1][name] = {
+            'raw': [],
+            'sum': []
+        }
         return
     children = testing['children']
     i = 0
@@ -104,7 +110,7 @@ def aggregate_sub_metrics(testing_pid, processes):
     testing['subsums']['no_threads'] = [0]
     for child in children:
         for key in testing['subsums'].keys():
-            if key is 'no_threads':
+            if key == 'no_threads':
                 no_threads = len(processes[child].keys()) -1
                 testing['subsums_raw'][key].append(no_threads)
                 testing['subsums'][key][0] += no_threads
@@ -112,19 +118,49 @@ def aggregate_sub_metrics(testing_pid, processes):
                 testing['subsums_raw'][key].append(processes[child]['process'][0][key])
                 if hasattr(processes[child]['process'][0][key], '__len__'):
                     for i, _ in enumerate(processes[child]['process'][0][key]):
-                        if len(testing['subsums_raw'][key]) < i:
-                            testing['subsums_raw'][key][i] = processes[child]['process'][0][key][i]
+                        if len(testing['subsums'][key]) < i:
+                            testing['subsums'][key][i] = processes[child]['process'][0][key][i]
                         else:
-                            testing['subsums_raw'][key].append(processes[child]['process'][0][key][i])
+                            testing['subsums'][key].append(processes[child]['process'][0][key][i])
                 else:
-                    if len(testing['subsums_raw'][key]) == 0:
-                        testing['subsums_raw'][key] = [processes[child]['process'][0][key]]
+                    if len(testing['subsums'][key]) == 0:
+                        testing['subsums'][key] = [processes[child]['process'][0][key]]
                     else:
-                        testing['subsums_raw'][key][0] += processes[child]['process'][0][key]
-#    print(testing['subsums'])
+                        testing['subsums'][key][0] += processes[child]['process'][0][key]
+    full_slice[len(full_slice) - 1][name] = {
+        'raw': testing['subsums_raw'],
+        'sum': testing['subsums']
+    }
+
+def jobs_db_overview():
+    cursor = SYS_DB.aql.execute(
+        "FOR doc IN @@col RETURN doc",
+        bind_vars={"@col": JOBS_COL_NAME},
+        batch_size=9999)
+    print(cursor.empty())
+    return [
+        {
+            "Task": doc["Task"],
+            "Start": pd.to_datetime(doc["Start"]),
+            "Finish": pd.to_datetime(doc["Finish"]),
+        } for doc in cursor]
+
+def load_db_overview():
+    cursor = SYS_DB.aql.execute(
+        """
+        FOR doc IN @@col RETURN {
+          'Date': doc.date,
+          'load': doc.sys_stat.load[0],
+          'netio': doc.sys_stat.last_netio
+        }
+        """,
+        bind_vars={"@col": LOADS_COL_NAME})
+    return [doc for doc in cursor]
 
 def load_file(main_log_file, pid_to_fn, filter_str):
     global LOADS
+    LOADS_COL.truncate()
+    JOBS_COL.truncate()
     LOADS_COL_cache = []
     collect_loads = []
     last_netio = None
@@ -157,6 +193,7 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                     else:
                         netio = sys_stat['netio']['lo'][0] - last_netio
                     last_netio = sys_stat['netio']['lo'][0]
+                    sys_stat['last_netio'] = last_netio
                     collect_loads.append({
                             "Date": this_date,
                             "load": float(sys_stat['load'][0]),
@@ -217,13 +254,15 @@ def load_file(main_log_file, pid_to_fn, filter_str):
             #print(dir(PARSED_LINES))
             if sys_id:
                 del parsed_slice[1][sys_id]
+            parsed_slice.append({})
             for testing_pid in testing_tasks:
-                aggregate_sub_metrics(testing_pid, parsed_slice[1])
+                aggregate_sub_metrics(testing_pid, parsed_slice[1], parsed_slice)
             LOADS_COL_cache.append({
                 "date": this_date_str,
                 "sys_stat": sys_stat,
                 "processes": parsed_slice,
-                "testing_pids": testing_tasks
+                "testing_pids": testing_tasks,
+                "testing_summary": parsed_slice[len(parsed_slice)-1]
                 })
             if len(LOADS_COL_cache) == 100:
                 LOADS_COL.insert(LOADS_COL_cache)
@@ -251,7 +290,7 @@ def convert_pids_to_gantt(PID_TO_FN):
     return jobs
 
 def get_load():
-    return LOADS
+    return load_db_overview()
 
 def append_dict_to_df(df, dict_to_append):
     df = pd.concat([df, pd.DataFrame.from_records([dict_to_append])])
