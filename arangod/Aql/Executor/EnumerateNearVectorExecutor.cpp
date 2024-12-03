@@ -143,7 +143,8 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     fillOutput(output);
     if (_currentProcessedResultCount == _infos.getNubmerOfResults()) {
       inputRange.advanceDataRow();
-      return {ExecutorState::DONE, {}, output.getClientCall()};
+      _initialized = false;
+      break;
     }
   }
 
@@ -191,6 +192,7 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
       skipped = ExecutionBlock::SkipAllSize();
       inputRange.advanceDataRow();
       _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      _initialized = false;
       continue;
     }
 
@@ -201,6 +203,7 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
         _resultsAreProcessed = true;
         inputRange.advanceDataRow();
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        _initialized = false;
         call.didSkip(skipped);
         continue;
       }
@@ -220,6 +223,7 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
     skipped = ExecutionBlock::SkipAllSize();
     inputRange.advanceDataRow();
+    _initialized = false;
     call.didSkip(skipped);
     _state = ExecutorState::DONE;
   }

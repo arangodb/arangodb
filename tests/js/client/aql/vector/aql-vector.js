@@ -355,26 +355,25 @@ function VectorIndexL2TestSuite() {
             assertEqual(5, results.length);
         },
 
-        // TODO run with projection then it fails
-        /*        testApproxL2WithDoubleLoop: function() {*/
-        /*const query = aql`*/
-        /*FOR docOuter IN ${collection}*/
-        /*FOR docInner IN ${collection}*/
-        /*SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)*/
-        /*LIMIT 5 RETURN docInner*/
-        /*`;*/
+        testApproxL2WithDoubleLoop: function() {
+            const query = aql`
+              FOR docOuter IN ${collection}
+              FOR docInner IN ${collection}
+              SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)
+              LIMIT 5 RETURN docInner
+              `;
 
-        /*const plan = db*/
-        /*._createStatement(query)*/
-        /*.explain().plan;*/
-        /*const indexNodes = plan.nodes.filter(function(n) {*/
-        /*return n.type === "EnumerateNearVectorNode";*/
-        /*});*/
-        /*assertEqual(1, indexNodes.length);*/
+            const plan = db
+                ._createStatement(query)
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
 
-        /*const results = db._query(query).toArray();*/
-        /*assertEqual(5, results.length);*/
-        /*},*/
+            const results = db._query(query).toArray();
+            assertEqual(5, results.length);
+        },
 
         testApproxL2WithFullCount: function() {
             const query =
