@@ -78,10 +78,7 @@ namespace arangodb::aql {
 
 SortedRowsStorageBackendMemory::SortedRowsStorageBackendMemory(
     SortExecutorInfos& infos)
-    : _infos(infos),
-      _returnNext(0),
-      _memoryUsageForInputBlocks(0),
-      _sealed(false) {}
+    : _infos(infos), _returnNext(0), _memoryUsageForInputBlocks(0) {}
 
 SortedRowsStorageBackendMemory::~SortedRowsStorageBackendMemory() {
   _infos.getResourceMonitor().decreaseMemoryUsage(currentMemoryUsage());
@@ -89,8 +86,6 @@ SortedRowsStorageBackendMemory::~SortedRowsStorageBackendMemory() {
 
 ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
     AqlItemBlockInputRange& inputRange) {
-  TRI_ASSERT(!_sealed);
-
   ExecutorState state = ExecutorState::HASMORE;
 
   auto inputBlock = inputRange.getBlock();
@@ -125,6 +120,10 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
     TRI_ASSERT(input.isInitialized());
   }
 
+  if (inputRange.upstreamState() == ExecutorState::DONE) {
+    doSorting();
+  }
+
   guard.steal();
 
   return state;
@@ -136,7 +135,6 @@ bool SortedRowsStorageBackendMemory::hasReachedCapacityLimit() const noexcept {
 }
 
 bool SortedRowsStorageBackendMemory::hasMore() const {
-  TRI_ASSERT(_sealed);
   return _returnNext < _rowIndexes.size();
 }
 
@@ -155,11 +153,7 @@ void SortedRowsStorageBackendMemory::skipOutputRow() noexcept {
   ++_returnNext;
 }
 
-void SortedRowsStorageBackendMemory::seal() {
-  TRI_ASSERT(!_sealed);
-  doSorting();
-  _sealed = true;
-}
+void SortedRowsStorageBackendMemory::seal() { doSorting(); }
 
 void SortedRowsStorageBackendMemory::spillOver(
     SortedRowsStorageBackend& other) {

@@ -66,7 +66,6 @@ class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
 
   size_t _returnNext;
   size_t _memoryUsageForInputBlocks;
-  bool _sealed;
 };
 
 }  // namespace arangodb::aql
