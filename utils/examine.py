@@ -25,6 +25,3 @@ main_log_file = Path(sys.argv[1])
 PID_TO_FN = load_testing_js_mappings(main_log_file)
 load_file(main_log_file, PID_TO_FN, filter_str)
 
-
-if __name__ == '__main__':
-    app.run(debug=True)
