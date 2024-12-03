@@ -6,10 +6,27 @@ import collections
 import polars as pd
 from datetime import datetime
 
+from arango import ArangoClient, exceptions
+
+CLIENT = ArangoClient(hosts="http://localhost:8529")
+SYS_DB = CLIENT.db("_system", username="root", password="")
+try:
+    LOADS_COL = SYS_DB.create_collection("load")
+except exceptions.CollectionCreateError:
+    LOADS_COL = SYS_DB["load"]
+    LOADS_COL.truncate()
+LOADS_COL.add_index({'type': 'persistent', 'fields': ['timestamp'], 'unique': False})
+try:
+    JOBS_COL = SYS_DB.create_collection("jobs")
+except exceptions.CollectionCreateError:
+    JOBS_COL = SYS_DB["jobs"]
+    JOBS_COL.truncate()
+
+
 LOADS = pd.DataFrame()
 MEMORY = {}
 TREE_TEXTS = []
-PARSED_LINES = []
+PARSED_LINES = pd.DataFrame()
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 
 def get_parent_name(processes, ppid):
@@ -61,27 +78,80 @@ def load_testing_js_mappings(main_log_file):
                 parsed_slice = json.loads(line)
                 pid_to_fn[f"p{parsed_slice['pid']}"] = {'n': Path(parsed_slice["logfile"]).name}
     return pid_to_fn
+def aggregate_sub_metrics(testing_pid, processes):
+    testing = processes[testing_pid]
+    if not 'children' in testing:
+        print(f"skipping {testing['process'][0]['name']}")
+        return
+    children = testing['children']
+    i = 0
+    while i < len(children):
+        if 'children' in processes[children[i]]:
+            children += processes[children[i]]['children']
+        i += 1
+    sums = {
+        'percent': [],
+        'iocounters': [],
+        'ctxSwitches': [],
+        'numfds': [],
+        'cpu_times': [],
+        'meminfo': [],
+        'netcons': [],
+        'no_threads': [],
+    }
+    testing['subsums_raw'] = sums.copy()
+    testing['subsums'] = sums.copy()
+    testing['subsums']['no_threads'] = [0]
+    for child in children:
+        for key in testing['subsums'].keys():
+            if key is 'no_threads':
+                no_threads = len(processes[child].keys()) -1
+                testing['subsums_raw'][key].append(no_threads)
+                testing['subsums'][key][0] += no_threads
+            else:
+                testing['subsums_raw'][key].append(processes[child]['process'][0][key])
+                if hasattr(processes[child]['process'][0][key], '__len__'):
+                    for i, _ in enumerate(processes[child]['process'][0][key]):
+                        if len(testing['subsums_raw'][key]) < i:
+                            testing['subsums_raw'][key][i] = processes[child]['process'][0][key][i]
+                        else:
+                            testing['subsums_raw'][key].append(processes[child]['process'][0][key][i])
+                else:
+                    if len(testing['subsums_raw'][key]) == 0:
+                        testing['subsums_raw'][key] = [processes[child]['process'][0][key]]
+                    else:
+                        testing['subsums_raw'][key][0] += processes[child]['process'][0][key]
+#    print(testing['subsums'])
 
 def load_file(main_log_file, pid_to_fn, filter_str):
     global LOADS
+    LOADS_COL_cache = []
     collect_loads = []
     last_netio = None
+    line_count = 1;
+    #print(1)
+    #pd.read_ndjson(main_log_file)
+    #print(2)
     with open(main_log_file, "r", encoding="utf-8") as jsonl_file:
         while True:
             line = jsonl_file.readline()
             if len(line) == 0:
                 break
             parsed_slice = json.loads(line)
-            PARSED_LINES.append(parsed_slice)
-            this_date = datetime.strptime(parsed_slice[0], DATE_FORMAT)
+            this_date_str = parsed_slice[0]
+            this_date = datetime.strptime(this_date_str, DATE_FORMAT)
             # tree = collections.defaultdict(list)
             if filter_str and parsed_slice[0].find(filter_str) < 0:
                 continue
             #print(parsed_slice[0])
             #print(json.dumps(parsed_slice, indent=4))
+            testing_tasks = []
+            sys_stat = None
+            sys_id = None
             for process_id in parsed_slice[1]:
                 if process_id == "sys":
                     sys_stat = parsed_slice[1][process_id]
+                    sys_id = process_id
                     if not last_netio:
                         netio = 0
                     else:
@@ -97,6 +167,11 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                     #print(json.dumps(parsed_slice[1][process_id], indent=4))
                     continue
                 one_process = parsed_slice[1][process_id]['process'][0]
+                if 'ppid' in one_process and one_process['ppid'] > 1:
+                    parent = parsed_slice[1][f"p{one_process['ppid']}"]
+                    if not 'children' in parent:
+                        parent['children'] = []
+                    parent['children'].append(process_id)
                 #print(json.dumps(one_process, indent=4))
                 name = one_process['name']
                 if name == 'arangod':
@@ -116,9 +191,10 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                     if pidstr in pid_to_fn:
                         if not "Task" in pid_to_fn[pidstr]:
                             pid_to_fn[pidstr]["Task"] = pid_to_fn[pidstr]['n']
-                            pid_to_fn[pidstr]["Start"] = this_date
-                        pid_to_fn[pidstr]["End"] = this_date
+                            pid_to_fn[pidstr]["Start"] = this_date_str
+                        pid_to_fn[pidstr]["End"] = this_date_str
                         one_process['name'] = pid_to_fn[pidstr]['n']
+                        testing_tasks.append(pidstr)
                     else:
                         try:
                             n = one_process['cmdline'].index('--')
@@ -138,8 +214,26 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                         one_process['name'] = f"{name} - launch controller"
                     except ValueError as ex:
                         print(ex)
+            #print(dir(PARSED_LINES))
+            if sys_id:
+                del parsed_slice[1][sys_id]
+            for testing_pid in testing_tasks:
+                aggregate_sub_metrics(testing_pid, parsed_slice[1])
+            LOADS_COL_cache.append({
+                "date": this_date_str,
+                "sys_stat": sys_stat,
+                "processes": parsed_slice,
+                "testing_pids": testing_tasks
+                })
+            if len(LOADS_COL_cache) == 100:
+                LOADS_COL.insert(LOADS_COL_cache)
+                LOADS_COL_cache = []
+    LOADS_COL.insert(LOADS_COL_cache)
     LOADS = pd.DataFrame(data=collect_loads)
+    JOBS_COL.insert(convert_pids_to_gantt(pid_to_fn))
     # print(pd.to_datetime(LOADS['Date']))
+
+
 
 def convert_pids_to_gantt(PID_TO_FN):
     jobs = []
