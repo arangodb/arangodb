@@ -69,7 +69,6 @@ void EnumerateNearVectorsExecutor::fillInput(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
         basics::StringUtils::concatT("query point must be a vector, but is a ",
                                      value.getTypeString()));
-    _initialized = true;
   }
 
   auto const dimension = _infos.index->getVectorIndexDefinition().dimension;
@@ -77,7 +76,7 @@ void EnumerateNearVectorsExecutor::fillInput(
   std::size_t vectorComponentsCount{0};
   for (arangodb::velocypack::ArrayIterator itr(value.slice()); itr.valid();
        ++itr, ++vectorComponentsCount) {
-    _inputRowConverted.push_back(itr.value().getDouble());
+    _inputRowConverted.push_back(itr.value().getNumericValue<double>());
   }
 
   if (vectorComponentsCount != dimension) {

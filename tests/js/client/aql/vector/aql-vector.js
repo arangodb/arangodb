@@ -300,6 +300,38 @@ function VectorIndexL2TestSuite() {
             }
         },
 
+        testApproxL2SeachWithMixedComponentsVector: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " LET dist = APPROX_NEAR_L2(d.vector, @qp) " +
+                "SORT dist LIMIT 3 " +
+                "RETURN {key: d._key, dist}";
+
+            let changedRandomPoint = JSON.parse(JSON.stringify(randomPoint));
+            changedRandomPoint[0] = 0;
+            changedRandomPoint[1] = 1;
+            changedRandomPoint[2] = -1;
+
+            const bindVars = {
+                qp: changedRandomPoint
+            };
+            const plan = db
+                ._createStatement({
+                    query,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+
+            assertEqual(1, indexNodes.length);
+
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(3, results.length);
+        },
+
         testApproxL2Commutation: function() {
             const queryFirst =
                 "FOR d IN " +

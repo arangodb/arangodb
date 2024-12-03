@@ -56,7 +56,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
       db._createDatabase(dbName);
       db._useDatabase(dbName);
 
-      collection = db._create(collName);
+      collection = db._create(collName, {numberOfShards: 3});
 
       let docs = [];
       let gen = randomNumberGeneratorFloat(seed);
@@ -93,6 +93,21 @@ function VectorIndexCreateAndRemoveTestSuite() {
       collection.insert(docs);
 
       assertEqual(collection.count(), insertedDocsCount * 2);
+    },
+
+    testInsertVectorWithMixOfIntergerAndDoubleComponents: function () {
+      let docs = [];
+      let gen = randomNumberGeneratorFloat(seed);
+      let vector = Array.from({ length: dimension }, () => gen());
+      vector[0] = 0;
+      vector[1] = 1;
+      vector[2] = 2;
+      vector[3] = -1;
+
+      docs.push({ vector });
+      collection.insert(docs);
+
+      assertEqual(collection.count(), insertedDocsCount + 1);
     },
 
     testInsertPointsChangesSearchResults: function () {
