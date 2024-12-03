@@ -34,26 +34,30 @@ const database = "BatchMaterializeIndexDB";
 const collection = "MyTestCollection";
 const emptyCollection = "MyTestCollectionEmpty";
 const smallCollection = "MyTestCollectionSmall";
+const singleShardCollection = "MySingleShardCollection";
 
 const batchMaterializeRule = "batch-materialize-documents";
 
 function IndexBatchMaterializeTestSuite() {
 
-  function makeCollection(name) {
-    const c = db._create(name, {numberOfShards: 3});
+  function makeCollection(name, numOfShards = 3) {
+    const c = db._create(name, {numberOfShards: numOfShards});
+    if (numOfShards === 1) {
+      c.ensureIndex({type: "persistent", fields: ["v"], unique: true});
+    }
     c.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["b", "z"]});
     c.ensureIndex({type: "persistent", fields: ["y"]});
     c.ensureIndex({type: "persistent", fields: ["z", "w"]});
     c.ensureIndex({type: "persistent", fields: ["u", "_key"], unique: true});
     c.ensureIndex({type: "persistent", fields: ["p", "values[*].y"], unique: false});
-
+  
     return c;
   }
 
   function fillCollection(c, n) {
     let docs = [];
     for (let i = 0; i < n; i++) {
-      docs.push({x: i, y: 2 * i, z: 2 * i + 1, w: i % 10, u: i, b: i + 1, p: i, q: i, r: i});
+      docs.push({x: i, y: 2 * i, z: 2 * i + 1, w: i % 10, u: i, b: i + 1, p: i, q: i, r: i, v: i});
     }
     c.insert(docs);
   }
@@ -112,6 +116,39 @@ function IndexBatchMaterializeTestSuite() {
     }
   }
 
+  function parseExplainationAndExecuteQuery(query, options = {}) {
+    try {
+      const plan = db._createStatement({query, options}).explain().plan;
+      const nodes = plan.nodes.map(n => n.type);
+      const firstIndexNodeIndex = nodes.indexOf("IndexNode");
+      const secondIndexNodeIndex = nodes.indexOf("IndexNode", firstIndexNodeIndex+1);
+
+      assertNotEqual(firstIndexNodeIndex, -1);
+      assertNotEqual(secondIndexNodeIndex, -1);
+      assertNotEqual(firstIndexNodeIndex, secondIndexNodeIndex);
+
+      const firstIndexNode = plan.nodes[firstIndexNodeIndex];
+      const secondIndexNode = plan.nodes[secondIndexNodeIndex];
+
+      const firstMaterializeNodeIndex = nodes.indexOf("MaterializeNode");
+      const secondMaterializeNodeIndex = nodes.indexOf("MaterializeNode", firstMaterializeNodeIndex+1);
+
+      assertNotEqual(firstMaterializeNodeIndex, -1);
+      assertNotEqual(secondMaterializeNodeIndex, -1);
+      assertNotEqual(firstMaterializeNodeIndex, secondMaterializeNodeIndex);
+      
+      const firstMaterializeNode = plan.nodes[firstMaterializeNodeIndex];
+      const secondMaterializeNode = plan.nodes[secondMaterializeNodeIndex];
+
+      checkResult(query, false, options);
+
+      return {firstIndexNode, secondIndexNode, firstMaterializeNode, secondMaterializeNode};
+    } catch (e) {
+      db._explain(query);
+      throw e;
+    }
+  }
+
   return {
     setUpAll: function () {
       db._createDatabase(database);
@@ -119,9 +156,11 @@ function IndexBatchMaterializeTestSuite() {
       makeCollection(emptyCollection);
       const s = makeCollection(smallCollection);
       const c = makeCollection(collection);
+      const ssc = makeCollection(singleShardCollection, 1);
 
       fillCollection(s, 10);
       fillCollection(c, 5000);
+      fillCollection(ssc, 5000);
     },
 
     tearDownAll: function () {
@@ -380,6 +419,66 @@ function IndexBatchMaterializeTestSuite() {
         assertEqual(normalize(indexNode.projections), []);
         assertEqual(normalize(materializeNode.projections), []);
       }
+    },
+
+    testMaterializationNonUniqueIndex: function () {
+      // Non-unique index do not allow for a certain, further push of the materialization step,
+      // so keep this as is
+      const query = `
+        FOR dx IN ${collection}
+          FOR dy IN ${collection}
+            FILTER dx.x > 1 AND dx.x == dy.x
+            RETURN [dy, dx]
+      `;
+      const { firstIndexNode, secondIndexNode, firstMaterializeNode, secondMaterializeNode } 
+        = parseExplainationAndExecuteQuery(query);
+      
+      // it should be index->materialize->index->materialize
+      assertEqual(firstIndexNode.id, firstMaterializeNode.dependencies[0]);
+      assertEqual(secondIndexNode.id, secondMaterializeNode.dependencies[0]);
+    },
+
+    testMaterializationUniqueIndex: function() {
+      // Materialization can happen lower if we do not have further dependencies to any of the docs attributes
+      // that could not be covered by the unique index.
+      // this can only work on single shard collections as this only triggers if there is a unique index with a single field.
+      const query = `
+        FOR dx IN ${singleShardCollection}
+          FOR dy IN ${singleShardCollection}
+            FILTER dx.v > 1 AND dx.v == dy.v
+            RETURN [dx, dy]
+      `;
+      const { firstIndexNode, secondIndexNode, firstMaterializeNode, secondMaterializeNode } 
+        = parseExplainationAndExecuteQuery(query);
+      
+      
+      if (internal.isEnterprise() || !internal.isCluster()) {
+        // it should be index->index->materialize->materialize
+        assertEqual(firstIndexNode.id, secondIndexNode.dependencies[0]);
+        assertEqual(secondIndexNode.id, firstMaterializeNode.dependencies[0]);
+        assertEqual(firstMaterializeNode.id, secondMaterializeNode.dependencies[0]);
+      } else {
+        // Cluster on community version behaves differently and does not apply this improvment.
+        // should behave the same as `testMaterializationTupleUniqueIndex`
+        assertEqual(firstIndexNode.id, firstMaterializeNode.dependencies[0]);
+        assertEqual(secondIndexNode.id, secondMaterializeNode.dependencies[0]);
+      }
+    },
+
+    testMaterializationTupleUniqueIndex: function() {
+      // Materialization can not move past if the index consists of multiple fields
+      const query = `
+        FOR dx IN ${collection}
+          FOR dy IN ${collection}
+            FILTER dx.u > 1 AND dx.u == dy.u
+            RETURN [dx, dy]
+      `;
+      const { firstIndexNode, secondIndexNode, firstMaterializeNode, secondMaterializeNode } 
+        = parseExplainationAndExecuteQuery(query);
+      
+      // it should be index->materialize->index->materialize
+      assertEqual(firstIndexNode.id, firstMaterializeNode.dependencies[0]);
+      assertEqual(secondIndexNode.id, secondMaterializeNode.dependencies[0]);
     },
 
     testMaterializeIndexScanSubqueryFullDoc: function() {

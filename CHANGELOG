@@ -37,6 +37,8 @@ devel
   ````
   This returns the top 10 nearest neighbors to `@queryVector`.
 
+* Fix delivery of planCacheKey attribute for batched and streaming cursors.
+
 * Fix view usage in cached query plans.
 
 * Make it an error if usePlanCache is set to true but the query is not 
