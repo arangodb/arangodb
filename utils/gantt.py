@@ -14,6 +14,7 @@ from tools.process_examine import (
     MEMORY,
     TREE_TEXTS,
     PARSED_LINES,
+    GAUGES,
     load_file,
     load_testing_js_mappings,
     build_process_tree,
@@ -24,7 +25,7 @@ from tools.process_examine import (
     load_db_overview,
     load_db_stacked_jobs,
 )
-
+CURRENT_TESTS = ['none']
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 load = get_load()
 #print(load)
@@ -77,6 +78,8 @@ app.layout = [
     ]),
     html.Div([
         dcc.Graph(id='stacked-area-resource-cpu'),
+        dcc.Dropdown(GAUGES, GAUGES[0], id='choose_gauge'),
+        dcc.Dropdown(CURRENT_TESTS, 'test', id='choose_test')
     ]),
 ]
 
@@ -171,10 +174,12 @@ def update_line_chart(relayoutData):
 
 @app.callback(
     Output("stacked-area-resource-cpu", "figure"),
-    Input('load-graph', 'relayoutData'))
-def update_stacked_cpu_chart(relayoutData):
+    Output("choose_test", "options"),
+    Input('load-graph', 'relayoutData'),
+    Input('choose_gauge', 'value'))
+def update_stacked_cpu_chart(relayoutData, chosen_gauge):
+    global CURRENT_TESTS
     x=['Winter', 'Spring', 'Summer', 'Fall']
-    print(relayoutData)
     fig = go.Figure()
     if (relayoutData and
         not 'autosize' in relayoutData and
@@ -189,41 +194,23 @@ def update_stacked_cpu_chart(relayoutData):
                 pd.to_datetime(relayoutData['xaxis.range[0]']),
                 pd.to_datetime(relayoutData['xaxis.range[1]']),
             ]
-        info = load_db_stacked_jobs(date_range)
+        info = load_db_stacked_jobs(date_range, chosen_gauge)
         df = pd.DataFrame(info[1])
-        #print(df)
-        #print(dir(px))
-        return (px.area(
-            df,
-            x="Date",
-            y=info[0],
-            # mode='lines',
-            #stackgroup=info[0],
-        ))
-        #fig.add_trace(go.Scatter(
-        #    x=x, y=[40, 60, 40, 10],
-        #    hoverinfo='x+y',
-        #    mode='lines',
-        #    line=dict(width=0.5, color='rgb(131, 90, 241)'),
-        #    stackgroup='one' # define stack group
-        #))
-        #fig.add_trace(go.Scatter(
-        #    x=x, y=[20, 10, 10, 60],
-        #    hoverinfo='x+y',
-        #    mode='lines',
-        #    line=dict(width=0.5, color='rgb(111, 231, 219)'),
-        #    stackgroup='one'
-        #))
-        #fig.add_trace(go.Scatter(
-        #    x=x, y=[40, 30, 50, 30],
-        #    hoverinfo='x+y',
-        #    mode='lines',
-        #    line=dict(width=0.5, color='rgb(184, 247, 212)'),
-        #    stackgroup='one'
-        #))
-
+        CURRENT_TESTS=info[0]
+        fig = go.Figure()
+        for column in info[0]:
+            fig.add_trace(go.Scatter(
+                x=df["Date"], y=df[column],
+                hoverinfo='x+y',
+                mode='lines',
+                line=dict(width=0.5#, color='rgb(131, 90, 241)'
+                          ),
+                stackgroup='one', # define stack group
+                name=column
+            ))
+        fig.update_layout(yaxis_range=(0, 100))
+        return (fig, CURRENT_TESTS)
     fig.update_layout(yaxis_range=(0, 100))
-    return fig
-
+    return (fig, CURRENT_TESTS)
 if __name__ == '__main__':
     app.run(debug=True)
