@@ -22,16 +22,17 @@ from tools.process_examine import (
     append_dict_to_df,
     jobs_db_overview,
     load_db_overview,
+    load_db_stacked_jobs,
 )
 
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 load = get_load()
 #print(load)
 jobs = jobs_db_overview()
-print(jobs)
+#print(jobs)
 df_load = pd.DataFrame(load)
 df_jobs = pd.DataFrame(jobs)
-print(df_jobs)
+#print(df_jobs)
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 # print(df_load)
@@ -58,7 +59,6 @@ app.layout = [
         html.Div(children='''
             Testsuites and their run times
         '''),
-
         dcc.Graph(id='gantt-chart'),
     ]),
     html.Div([
@@ -74,7 +74,10 @@ app.layout = [
         html.Div([
             html.Pre(id='relayout-data', style=styles['pre']),
         ], className='three columns')
-    ])
+    ]),
+    html.Div([
+        dcc.Graph(id='stacked-area-resource-cpu'),
+    ]),
 ]
 
 @app.callback(
@@ -166,6 +169,61 @@ def update_line_chart(relayoutData):
     fig_gantt.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom
     return fig_gantt
 
+@app.callback(
+    Output("stacked-area-resource-cpu", "figure"),
+    Input('load-graph', 'relayoutData'))
+def update_stacked_cpu_chart(relayoutData):
+    x=['Winter', 'Spring', 'Summer', 'Fall']
+    print(relayoutData)
+    fig = go.Figure()
+    if (relayoutData and
+        not 'autosize' in relayoutData and
+        not 'xaxis.autorange' in relayoutData):
+        if "xaxis.range" in relayoutData:
+            date_range = [
+                pd.to_datetime(relayoutData['xaxis.range'][0]),
+                pd.to_datetime(relayoutData['xaxis.range'][1]),
+            ]
+        if "xaxis.range[0]" in relayoutData:
+            date_range = [
+                pd.to_datetime(relayoutData['xaxis.range[0]']),
+                pd.to_datetime(relayoutData['xaxis.range[1]']),
+            ]
+        info = load_db_stacked_jobs(date_range)
+        df = pd.DataFrame(info[1])
+        #print(df)
+        #print(dir(px))
+        return (px.area(
+            df,
+            x="Date",
+            y=info[0],
+            # mode='lines',
+            #stackgroup=info[0],
+        ))
+        #fig.add_trace(go.Scatter(
+        #    x=x, y=[40, 60, 40, 10],
+        #    hoverinfo='x+y',
+        #    mode='lines',
+        #    line=dict(width=0.5, color='rgb(131, 90, 241)'),
+        #    stackgroup='one' # define stack group
+        #))
+        #fig.add_trace(go.Scatter(
+        #    x=x, y=[20, 10, 10, 60],
+        #    hoverinfo='x+y',
+        #    mode='lines',
+        #    line=dict(width=0.5, color='rgb(111, 231, 219)'),
+        #    stackgroup='one'
+        #))
+        #fig.add_trace(go.Scatter(
+        #    x=x, y=[40, 30, 50, 30],
+        #    hoverinfo='x+y',
+        #    mode='lines',
+        #    line=dict(width=0.5, color='rgb(184, 247, 212)'),
+        #    stackgroup='one'
+        #))
+
+    fig.update_layout(yaxis_range=(0, 100))
+    return fig
 
 if __name__ == '__main__':
     app.run(debug=True)
