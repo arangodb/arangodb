@@ -137,7 +137,6 @@ def jobs_db_overview():
         "FOR doc IN @@col RETURN doc",
         bind_vars={"@col": JOBS_COL_NAME},
         batch_size=9999)
-    print(cursor.empty())
     return [
         {
             "Task": doc["Task"],
@@ -156,6 +155,54 @@ def load_db_overview():
         """,
         bind_vars={"@col": LOADS_COL_NAME})
     return [doc for doc in cursor]
+
+def load_db_stacked_jobs(date_range):
+    cursor = SYS_DB.aql.execute(
+        """
+        FOR doc IN @@col
+          FILTER doc.date > @date_start && doc.date < @date_end
+          RETURN {
+          'Date': doc.date,
+          'testing_summary': doc.testing_summary
+        }
+        """,
+        bind_vars={
+            "@col": LOADS_COL_NAME,
+            "date_start": str(date_range[0]),
+            "date_end": str(date_range[1])
+        })
+    res = [doc for doc in cursor]
+    tests_running = []
+    for one_slice in res:
+        for one_test in one_slice['testing_summary'].keys():
+            if one_test not in tests_running:
+                tests_running.append(one_test)
+    ret = []
+    print(tests_running)
+    last_value={}
+    for one_slice in res:
+        one_res = { "Date": one_slice['Date'] }
+        for one_test in tests_running:
+            if one_test in last_value:
+                one_res[one_test] = last_value[one_test]
+            else:
+                one_res[one_test] = 0.0
+            if one_test in one_slice['testing_summary']:
+                one_test_item = one_slice['testing_summary'][one_test]['sum']
+                if len(one_test_item) > 0:
+                    #print(1)
+                    #print(one_test_item)
+                    #print(2)
+                    #print(one_test_item['cpu_times'])
+                    val = one_test_item['cpu_times'][0][0]
+                    if one_test in last_value:
+                        one_res[one_test] = val - last_value[one_test]
+                    last_value[one_test] = val
+                else:
+                    print(f"no {one_test} data")
+        ret.append(one_res)
+    print(ret)
+    return (tests_running, ret)
 
 def load_file(main_log_file, pid_to_fn, filter_str):
     global LOADS
