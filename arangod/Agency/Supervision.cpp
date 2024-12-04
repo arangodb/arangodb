@@ -2672,8 +2672,8 @@ auto parseSomethingFromNode(Node const& n) -> T {
 }
 
 template<typename T>
-auto parseIfExists(Node const& root,
-                   std::string const& url) -> std::optional<T> {
+auto parseIfExists(Node const& root, std::string const& url)
+    -> std::optional<T> {
   if (auto node = root.get(url); node.has_value()) {
     return parseSomethingFromNode<T>(node->get());
   }
@@ -2731,10 +2731,11 @@ auto replicatedLogOwnerGone(Node const& snapshot, Node const& node,
   return true;
 }
 
-auto handleReplicatedLog(
-    Node const& snapshot, Node const& targetNode, std::string const& dbName,
-    std::string const& idString, ParticipantsHealth const& health,
-    arangodb::agency::envelope envelope) -> arangodb::agency::envelope try {
+auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
+                         std::string const& dbName, std::string const& idString,
+                         ParticipantsHealth const& health,
+                         arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope try {
   if (replicatedLogOwnerGone(snapshot, targetNode, dbName, idString)) {
     auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
     return methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
