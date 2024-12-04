@@ -533,16 +533,26 @@ class ClusterInfo::SyncerThread final
   void beginShutdown() override;
   void run() override;
   bool start();
-  bool notify();
+  void sendNews();
 
  private:
-  std::mutex _m;
-  std::condition_variable _cv;
-  bool _news;
+  class Synchronization {
+   public:
+    void sendNews() noexcept;
+    void waitForNews() noexcept;
+
+   private:
+    std::mutex _m;
+    std::condition_variable _cv;
+    bool _news;
+  };
+
   std::string _section;
   std::function<void()> _f;
   AgencyCallbackRegistry* _cr;
   std::shared_ptr<AgencyCallback> _acb;
+  std::shared_ptr<Synchronization> _synchronization =
+      std::make_shared<Synchronization>();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1963,7 +1973,7 @@ void ClusterInfo::loadPlan() {
     if (heartbeatThread) {
       // In the unittests, there is no heartbeat thread, and we do not need to
       // notify
-      heartbeatThread->notify();
+      heartbeatThread->sendNews();
     }
   }
 
@@ -2228,7 +2238,7 @@ void ClusterInfo::loadCurrent() {
     if (heartbeatThread) {
       // In the unittests, there is no heartbeat thread, and we do not need to
       // notify
-      heartbeatThread->notify();
+      heartbeatThread->sendNews();
     }
   }
 
@@ -7297,6 +7307,12 @@ void ClusterInfo::shutdownSyncers() {
 }
 
 void ClusterInfo::waitForSyncersToStop() {
+  if (_planSyncer) {
+    _planSyncer->sendNews();
+  }
+  if (_curSyncer) {
+    _curSyncer->sendNews();
+  }
   drainSyncers();
 
   auto start = std::chrono::steady_clock::now();
@@ -7367,24 +7383,25 @@ ClusterInfo::SyncerThread::SyncerThread(Server& server,
 
 ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 
-bool ClusterInfo::SyncerThread::notify() {
-  std::lock_guard<std::mutex> lck(_m);
-  _news = true;
-  _cv.notify_one();
-  return _news;
-}
+void ClusterInfo::SyncerThread::sendNews() { _synchronization->sendNews(); }
 
-void ClusterInfo::SyncerThread::beginShutdown() {
-  using namespace std::chrono_literals;
-
-  // set the shutdown state in parent class
-  Thread::beginShutdown();
+void ClusterInfo::SyncerThread::Synchronization::sendNews() {
   {
     std::lock_guard<std::mutex> lck(_m);
-    _news = false;
+    _news = true;
   }
   _cv.notify_one();
 }
+
+void ClusterInfo::SyncerThread::Synchronization::waitForNews() noexcept {
+  {
+    std::unique_lock lk(_m);
+    _cv.wait(lk, [&] { return _news; });
+    _news = false;
+  }
+}
+
+void ClusterInfo::SyncerThread::beginShutdown() { Thread::beginShutdown(); }
 
 bool ClusterInfo::SyncerThread::start() {
   ThreadNameFetcher nameFetcher;
@@ -7405,7 +7422,7 @@ void ClusterInfo::SyncerThread::run() {
               << "Plan Version is not a number! " << result.toJson();
           return false;
         }
-        return notify();
+        return _synchronization->sendNews();
       };
 
   auto acb = std::make_shared<AgencyCallback>(server(), _section + "/Version",
@@ -7439,21 +7456,9 @@ void ClusterInfo::SyncerThread::run() {
   // such time, that we are ready to receive. Under no circumstances can we
   // assume that this first call can be neglected.
   call();
-  for (std::unique_lock lk{_m}; !isStopping();) {
-    if (!_news) {
-      // The timeout is strictly speaking not needed.
-      // However, we really do not want to be caught in here in production.
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _cv.wait(lk);
-#else
-      _cv.wait_for(lk, std::chrono::milliseconds{100});
-#endif
-    }
-    if (std::exchange(_news, false)) {
-      lk.unlock();
-      call();
-      lk.lock();
-    }
+  while (!isStopping()) {
+    _synchronization->waitForNews();
+    call();
   }
 
   try {
