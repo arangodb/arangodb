@@ -1769,11 +1769,16 @@ void Supervision::cleanupFinishedAndFailedJobs() {
   // /Target/Failed. We can be rather generous here since old
   // snapshots and log entries are kept for much longer.
   // We only keep up to 500 finished jobs and 1000 failed jobs.
+  // Note that we must not throw away failed jobs which are subjobs
+  // of a larger job (e.g. MoveShard jobs in the context of a
+  // CleanOutServer job), or else the larger job can no longer
+  // detect any failures!
 
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
 
   auto cleanup = [&](std::string const& prefix, size_t limit) {
+    auto const& pendingJobs = *snapshot().hasAsChildren(pendingPrefix);
     auto const& jobs = *snapshot().hasAsChildren(prefix);
     if (jobs.size() <= 2 * limit) {
       return;
@@ -1782,6 +1787,18 @@ void Supervision::cleanupFinishedAndFailedJobs() {
     std::vector<keyDate> v;
     v.reserve(jobs.size());
     for (auto const& p : jobs) {
+      // Let's first see if this is a subjob of a larger job:
+      auto pos = p.first.find('-');
+      if (pos != std::string::npos) {
+        auto const& parent = p.first.substr(0, pos);
+        if (pendingJobs.find(parent) != nullptr) {
+          LOG_TOPIC("99887", TRACE, Logger::SUPERVISION)
+              << "Skipping removal of subjob " << p.first << " of parent "
+              << parent << " since the parent is still pending.";
+          continue;  // this is a subjob, and its parent is still pending, let's
+                     // keep it
+        }
+      }
       auto created = p.second->hasAsString("timeCreated");
       if (created) {
         v.emplace_back(p.first, *created);

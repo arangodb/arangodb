@@ -1,6 +1,11 @@
 devel
 -----
 
+* Don't cleanup failed agency jobs if they are subjobs of pending jobs.
+  This avoids a bug in CleanOutServer jobs, where such a job could complete
+  seemingly successfully despite the fact that some MoveShard jobs had 
+  actually failed. This fixes BTS-2022.
+
 * Put in more diagnostics and avoid a crash in follower on commit of a
   transaction in case a collection is already gone (BTS-2033).
 
