@@ -533,12 +533,12 @@ class ClusterInfo::SyncerThread final
   void beginShutdown() override;
   void run() override;
   bool start();
-  void sendNews();
+  bool sendNews();
 
  private:
   class Synchronization {
    public:
-    void sendNews() noexcept;
+    bool sendNews() noexcept;
     void waitForNews() noexcept;
 
    private:
@@ -1973,7 +1973,7 @@ void ClusterInfo::loadPlan() {
     if (heartbeatThread) {
       // In the unittests, there is no heartbeat thread, and we do not need to
       // notify
-      heartbeatThread->sendNews();
+      heartbeatThread->notify();
     }
   }
 
@@ -2238,7 +2238,7 @@ void ClusterInfo::loadCurrent() {
     if (heartbeatThread) {
       // In the unittests, there is no heartbeat thread, and we do not need to
       // notify
-      heartbeatThread->sendNews();
+      heartbeatThread->notify();
     }
   }
 
@@ -7376,21 +7376,23 @@ ClusterInfo::SyncerThread::SyncerThread(Server& server,
                                         std::function<void()> const& f,
                                         AgencyCallbackRegistry* cregistry)
     : arangodb::ServerThread<Server>(server, section + "Syncer"),
-      _news(false),
       _section(section),
       _f(f),
       _cr(cregistry) {}
 
 ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 
-void ClusterInfo::SyncerThread::sendNews() { _synchronization->sendNews(); }
+bool ClusterInfo::SyncerThread::sendNews() {
+  return _synchronization->sendNews();
+}
 
-void ClusterInfo::SyncerThread::Synchronization::sendNews() {
+bool ClusterInfo::SyncerThread::Synchronization::sendNews() noexcept {
   {
     std::lock_guard<std::mutex> lck(_m);
     _news = true;
   }
   _cv.notify_one();
+  return true;
 }
 
 void ClusterInfo::SyncerThread::Synchronization::waitForNews() noexcept {
