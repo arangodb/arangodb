@@ -63,7 +63,7 @@ def build_process_tree(parsed_slice, start_pid):
             # print(struct)
     tree_dump = get_process_tree_recursive(parsed_slice[1], start_pid, tree)
     #TREE_TEXTS.append(tree_dump)
-    print(tree_dump)
+    # print(tree_dump)
     return tree_dump
 
 def load_testing_js_mappings(main_log_file):
@@ -83,7 +83,7 @@ def aggregate_sub_metrics(testing_pid, processes, full_slice):
     testing = processes[testing_pid]
     name = testing['process'][0]['name']
     if not 'children' in testing:
-        print(f"skipping {name}")
+        #print(f"skipping {name}")
         full_slice[len(full_slice) - 1][name] = {
             'raw': [],
             'sum': []
@@ -156,7 +156,29 @@ def load_db_overview():
         bind_vars={"@col": LOADS_COL_NAME})
     return [doc for doc in cursor]
 
-def load_db_stacked_jobs(date_range):
+GAUGES = [
+    "cpu_times_user",
+    "cpu_times_system",
+    "cpu_percent",
+    "memory_rss",
+    "memory_vir",
+    "no_threads",
+]
+def get_chosen_value(which, one_test_item):
+    if which == GAUGES[0]: # cpu_times_user
+        return one_test_item['cpu_times'][0][0]
+    elif which == GAUGES[1]: #cpu_times_system
+        return one_test_item['cpu_times'][0][1]
+    elif which == GAUGES[2]: #cpu_percent
+        return one_test_item['percent'][0]
+    elif which == GAUGES[3]: #memory_rss
+        return one_test_item['meminfo'][0][0]
+    elif which == GAUGES[4]: #meminfo_vir
+        return one_test_item['meminfo'][0][1]
+    elif which == GAUGES[5]: #no_threads
+        return one_test_item['no_threads'][0]
+
+def load_db_stacked_jobs(date_range, which):
     cursor = SYS_DB.aql.execute(
         """
         FOR doc IN @@col
@@ -178,7 +200,6 @@ def load_db_stacked_jobs(date_range):
             if one_test not in tests_running:
                 tests_running.append(one_test)
     ret = []
-    print(tests_running)
     last_value={}
     for one_slice in res:
         one_res = { "Date": one_slice['Date'] }
@@ -190,18 +211,18 @@ def load_db_stacked_jobs(date_range):
             if one_test in one_slice['testing_summary']:
                 one_test_item = one_slice['testing_summary'][one_test]['sum']
                 if len(one_test_item) > 0:
-                    #print(1)
-                    #print(one_test_item)
-                    #print(2)
-                    #print(one_test_item['cpu_times'])
-                    val = one_test_item['cpu_times'][0][0]
-                    if one_test in last_value:
-                        one_res[one_test] = val - last_value[one_test]
+                    val =get_chosen_value(which, one_test_item)
                     last_value[one_test] = val
                 else:
                     print(f"no {one_test} data")
+        total = 0.0
+        for one_test in tests_running:
+            total += one_res[one_test]
+        for one_test in tests_running:
+            if one_res[one_test] != 0.0:
+                one_res[one_test] = (one_res[one_test] / total ) * 100
+
         ret.append(one_res)
-    print(ret)
     return (tests_running, ret)
 
 def load_file(main_log_file, pid_to_fn, filter_str):
