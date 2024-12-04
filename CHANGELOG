@@ -37,6 +37,9 @@ devel
   ````
   This returns the top 10 nearest neighbors to `@queryVector`.
 
+* Put in more diagnostics and avoid a crash in follower on commit of a
+  transaction in case a collection is already gone (BTS-2033).
+
 * Fix delivery of planCacheKey attribute for batched and streaming cursors.
 
 * Fix view usage in cached query plans.
