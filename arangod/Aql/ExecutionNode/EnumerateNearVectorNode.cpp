@@ -45,6 +45,7 @@ constexpr std::string_view kDistanceOutVariable = "distanceOutVariable";
 constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
 constexpr std::string_view kLimit = "limit";
 constexpr std::string_view kOffset = "offset";
+constexpr std::string_view knProbe = "nProbe";
 }  // namespace
 
 EnumerateNearVectorNode::EnumerateNearVectorNode(
@@ -157,6 +158,9 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
 
   builder.add(kLimit, VPackValue(_limit));
   builder.add(kOffset, VPackValue(_offset));
+  if (_nProbe) {
+    builder.add(knProbe, *_nProbe);
+  }
 
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
@@ -179,6 +183,10 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _limit(base.get(kLimit).getNumericValue<std::size_t>()),
       _offset(base.get(kOffset).getNumericValue<std::size_t>()) {
   std::string iid = base.get("index").get("id").copyString();
+
+  if (auto ns = base.get(knProbe); ns.isNumber()) {
+    _nProbe = ns.getNumericValue<std::size_t>();
+  }
 
   _index = collection()->indexByIdentifier(iid);
 }
