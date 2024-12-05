@@ -71,6 +71,10 @@ class SortNode : public ExecutionNode {
   /// @brief whether or not the sort is stable
   bool isStable() const noexcept { return _stable; }
 
+  void setNumberOfTopGroupedElements(size_t number) {
+    _numberOfTopGroupedElements = number;
+  }
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine) const override;

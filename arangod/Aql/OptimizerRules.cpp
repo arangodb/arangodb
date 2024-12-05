@@ -3156,6 +3156,16 @@ struct SortToIndexNode final
     return true;  // always abort further searching here
   }
 
+  void deleteSortNode(IndexNode* indexNode) {
+    // sort condition is fully covered by index... now we can remove the
+    // sort node from the plan
+    _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+    // we need to have a sorted result later on, so we will need a sorted
+    // GatherNode in the cluster
+    indexNode->needsGatherNodeSort(true);
+    _modified = true;
+  }
+
   bool handleIndexNode(IndexNode* indexNode) {
     if (_sortNode == nullptr) {
       return true;
@@ -3207,7 +3217,6 @@ struct SortToIndexNode final
 
     // if we get here, we either have one index or multiple indexes on the same
     // attributes
-    bool handled = false;
 
     if (indexes.size() == 1 && isSorted) {
       // if we have just a single index and we can use it for the filtering
@@ -3241,43 +3250,44 @@ struct SortToIndexNode final
     }
 
     if (indexCoversSortCondition) {
-      // sort condition is fully covered by index... now we can remove the
-      // sort node from the plan
-      _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-      // we need to have a sorted result later on, so we will need a sorted
-      // GatherNode in the cluster
-      indexNode->needsGatherNodeSort(true);
-      _modified = true;
-      handled = true;
-    }
+      deleteSortNode(indexNode);
+    } else if (index->type() == Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      // TODO why is this not a persistent index?
+      auto numberOfCoveredAttributes =
+          sortCondition.coveredAttributes(outVariable, fields);
+      if (isOnlyAttributeAccess && isSorted && !isSparse &&
+          sortCondition.isUnidirectional() &&
+          sortCondition.isAscending() == indexNode->options().ascending &&
+          numberOfCoveredAttributes > 0) {
+        auto sortNode = _plan->getNodeById(_sortNode->id());
+        ((SortNode*)sortNode)
+            ->setNumberOfTopGroupedElements(numberOfCoveredAttributes);
+        _modified = true;
+      }
+    } else {
+      if (isOnlyAttributeAccess && indexes.size() == 1) {
+        // special case... the index cannot be used for sorting, but we only
+        // compare with equality lookups.
+        // now check if the equality lookup attributes are the same as
+        // the index attributes
+        auto root = cond->root();
 
-    if (!handled && isOnlyAttributeAccess && indexes.size() == 1) {
-      // special case... the index cannot be used for sorting, but we only
-      // compare with equality lookups.
-      // now check if the equality lookup attributes are the same as
-      // the index attributes
-      auto root = cond->root();
+        if (root != nullptr) {
+          auto condNode = root->getMember(0);
 
-      if (root != nullptr) {
-        auto condNode = root->getMember(0);
+          if (condNode->isOnlyEqualityMatch()) {
+            // now check if the index fields are the same as the sort condition
+            // fields e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1,
+            // c.value2
+            size_t const numCovered =
+                sortCondition.coveredAttributes(outVariable, fields);
 
-        if (condNode->isOnlyEqualityMatch()) {
-          // now check if the index fields are the same as the sort condition
-          // fields e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1,
-          // c.value2
-          size_t const numCovered =
-              sortCondition.coveredAttributes(outVariable, fields);
-
-          if (numCovered == sortCondition.numAttributes() &&
-              sortCondition.isUnidirectional() &&
-              (isSorted || fields.size() >= sortCondition.numAttributes())) {
-            // no need to sort
-            _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-            indexNode->setAscending(sortCondition.isAscending());
-            // we need to have a sorted result later on, so we will need a
-            // sorted GatherNode in the cluster
-            indexNode->needsGatherNodeSort(true);
-            _modified = true;
+            if (numCovered == sortCondition.numAttributes() &&
+                sortCondition.isUnidirectional() &&
+                (isSorted || fields.size() >= sortCondition.numAttributes())) {
+              deleteSortNode(indexNode);
+              indexNode->setAscending(sortCondition.isAscending());
+            }
           }
         }
       }
