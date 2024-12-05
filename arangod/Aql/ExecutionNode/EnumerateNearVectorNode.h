@@ -48,6 +48,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           Variable const* documentOutVariable,
                           Variable const* distanceOutVariable,
                           std::size_t limit, bool ascending, std::size_t offset,
+                          std::optional<std::size_t> nProbe,
                           aql::Collection const* collection,
                           transaction::Methods::IndexHandle indexHandle);
 
@@ -101,6 +102,9 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   /// @brief contains the offset, this skips offset number of results
   std::size_t _offset;
+
+  /// @brief contains the offset, this skips offset number of results
+  std::optional<std::size_t> _nProbe;
 
   /// @brief selected index for vector search
   transaction::Methods::IndexHandle _index;
