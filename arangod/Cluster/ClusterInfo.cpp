@@ -7418,13 +7418,13 @@ bool ClusterInfo::SyncerThread::start() {
 void ClusterInfo::SyncerThread::run() {
   // Syncer thread is not destroyed. So we assume it is fine to capture this
   std::function<bool(VPackSlice result)> update =  // for format
-      [this](VPackSlice result) {
+      [this, synchronization = _synchronization](VPackSlice result) {
         if (!result.isNumber()) {
           LOG_TOPIC("d068f", ERR, Logger::CLUSTER)
               << "Plan Version is not a number! " << result.toJson();
           return false;
         }
-        return _synchronization->sendNews();
+        return synchronization->sendNews();
       };
 
   auto acb = std::make_shared<AgencyCallback>(server(), _section + "/Version",
