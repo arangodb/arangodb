@@ -34,6 +34,7 @@
 
 #include <velocypack/Slice.h>
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 
@@ -127,6 +128,8 @@ class SortNode : public ExecutionNode {
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
   SortElementVector _elements;
+
+  size_t _numberOfTopGroupedElements = 0;
 
   /// whether or not the sort is stable
   bool _stable;

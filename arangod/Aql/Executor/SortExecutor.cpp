@@ -43,7 +43,8 @@ SortExecutorInfos::SortExecutorInfos(
     AqlItemBlockManager& manager, QueryContext& query,
     TemporaryStorageFeature& tempStorage, velocypack::Options const* options,
     ResourceMonitor& resourceMonitor, size_t spillOverThresholdNumRows,
-    size_t spillOverThresholdMemoryUsage, bool stable)
+    size_t spillOverThresholdMemoryUsage, bool stable,
+    size_t numberOfTopGroupedElements)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
@@ -56,7 +57,8 @@ SortExecutorInfos::SortExecutorInfos(
       _sortRegisters(std::move(sortRegisters)),
       _spillOverThresholdNumRows(spillOverThresholdNumRows),
       _spillOverThresholdMemoryUsage(spillOverThresholdMemoryUsage),
-      _stable(stable) {
+      _stable(stable),
+      _numberOfTopGroupedElements(numberOfTopGroupedElements) {
   TRI_ASSERT(!_sortRegisters.empty());
 }
 
@@ -94,6 +96,10 @@ AqlItemBlockManager& SortExecutorInfos::itemBlockManager() noexcept {
 TemporaryStorageFeature&
 SortExecutorInfos::getTemporaryStorageFeature() noexcept {
   return _tempStorage;
+}
+
+size_t SortExecutorInfos::numberOfTopGroupedElements() noexcept {
+  return _numberOfTopGroupedElements;
 }
 
 QueryContext& SortExecutorInfos::getQuery() const noexcept { return _query; }

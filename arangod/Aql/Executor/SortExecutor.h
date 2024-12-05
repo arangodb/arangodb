@@ -71,7 +71,8 @@ class SortExecutorInfos {
                     velocypack::Options const* options,
                     ResourceMonitor& resourceMonitor,
                     size_t spillOverThresholdNumRows,
-                    size_t spillOverThresholdMemoryUsage, bool stable);
+                    size_t spillOverThresholdMemoryUsage, bool stable,
+                    size_t numberOfTopGroupedElements);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -102,6 +103,8 @@ class SortExecutorInfos {
 
   [[nodiscard]] TemporaryStorageFeature& getTemporaryStorageFeature() noexcept;
 
+  [[nodiscard]] size_t numberOfTopGroupedElements() noexcept;
+
   QueryContext& getQuery() const noexcept;
 
  private:
@@ -118,6 +121,7 @@ class SortExecutorInfos {
   size_t _spillOverThresholdNumRows;
   size_t _spillOverThresholdMemoryUsage;
   bool _stable;
+  size_t _numberOfTopGroupedElements;
 };
 
 /**
