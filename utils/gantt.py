@@ -10,10 +10,6 @@ from plotly.subplots import make_subplots
 from datetime import datetime
 
 from tools.process_examine import (
-    LOADS,
-    MEMORY,
-    TREE_TEXTS,
-    PARSED_LINES,
     GAUGES,
     load_file,
     load_testing_js_mappings,
@@ -24,6 +20,7 @@ from tools.process_examine import (
     jobs_db_overview,
     load_db_overview,
     load_db_stacked_jobs,
+    load_db_stacked_test,
 )
 CURRENT_TESTS = ['none']
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
@@ -77,9 +74,13 @@ app.layout = [
         ], className='three columns')
     ]),
     html.Div([
-        dcc.Graph(id='stacked-area-resource-cpu'),
-        dcc.Dropdown(GAUGES, GAUGES[0], id='choose_gauge'),
+        dcc.Graph(id='stacked-area-resource-all-tests'),
+        dcc.Dropdown(GAUGES, GAUGES[0], id='choose_gauge_all_tests'),
         dcc.Dropdown(CURRENT_TESTS, 'test', id='choose_test')
+    ]),
+    html.Div([
+        dcc.Graph(id='stacked-area-resource-one-testing'),
+        dcc.Dropdown(GAUGES, GAUGES[0], id='choose_gauge_one_test'),
     ]),
 ]
 
@@ -173,26 +174,25 @@ def update_line_chart(relayoutData):
     return fig_gantt
 
 @app.callback(
-    Output("stacked-area-resource-cpu", "figure"),
+    Output("stacked-area-resource-all-tests", "figure"),
     Output("choose_test", "options"),
     Input('load-graph', 'relayoutData'),
-    Input('choose_gauge', 'value'))
-def update_stacked_cpu_chart(relayoutData, chosen_gauge):
+    Input('choose_gauge_all_tests', 'value'))
+def update_stacked_alltests_chart(time_range_raw, chosen_gauge):
     global CURRENT_TESTS
-    x=['Winter', 'Spring', 'Summer', 'Fall']
     fig = go.Figure()
-    if (relayoutData and
-        not 'autosize' in relayoutData and
-        not 'xaxis.autorange' in relayoutData):
-        if "xaxis.range" in relayoutData:
+    if (time_range_raw and
+        not 'autosize' in time_range_raw and
+        not 'xaxis.autorange' in time_range_raw):
+        if "xaxis.range" in time_range_raw:
             date_range = [
-                pd.to_datetime(relayoutData['xaxis.range'][0]),
-                pd.to_datetime(relayoutData['xaxis.range'][1]),
+                pd.to_datetime(time_range_raw['xaxis.range'][0]),
+                pd.to_datetime(time_range_raw['xaxis.range'][1]),
             ]
-        if "xaxis.range[0]" in relayoutData:
+        if "xaxis.range[0]" in time_range_raw:
             date_range = [
-                pd.to_datetime(relayoutData['xaxis.range[0]']),
-                pd.to_datetime(relayoutData['xaxis.range[1]']),
+                pd.to_datetime(time_range_raw['xaxis.range[0]']),
+                pd.to_datetime(time_range_raw['xaxis.range[1]']),
             ]
         info = load_db_stacked_jobs(date_range, chosen_gauge)
         df = pd.DataFrame(info[1])
@@ -212,5 +212,49 @@ def update_stacked_cpu_chart(relayoutData, chosen_gauge):
         return (fig, CURRENT_TESTS)
     fig.update_layout(yaxis_range=(0, 100))
     return (fig, CURRENT_TESTS)
+
+@app.callback(
+    Output("stacked-area-resource-one-testing", "figure"),
+    Input("choose_test", "value"),
+    Input('load-graph', 'relayoutData'),
+    Input('choose_gauge_one_test', 'value'))
+def update_stacked_onetest_chart(chosen_test, time_range_raw, chosen_gauge):
+    global CURRENT_TESTS
+    fig = go.Figure()
+    if (chosen_test and chosen_test != ['none'] and
+        time_range_raw and
+        not 'autosize' in time_range_raw and
+        not 'xaxis.autorange' in time_range_raw):
+        choosen_pid = df_jobs[df_jobs["Task"] == chosen_test]["PID"].values[0]
+        if "xaxis.range" in time_range_raw:
+            date_range = [
+                pd.to_datetime(time_range_raw['xaxis.range'][0]),
+                pd.to_datetime(time_range_raw['xaxis.range'][1]),
+            ]
+        if "xaxis.range[0]" in time_range_raw:
+            date_range = [
+                pd.to_datetime(time_range_raw['xaxis.range[0]']),
+                pd.to_datetime(time_range_raw['xaxis.range[1]']),
+            ]
+        info = load_db_stacked_test(date_range, choosen_pid, chosen_gauge)
+        df = pd.DataFrame(info[1])
+        CURRENT_TESTS=info[0]
+        fig = go.Figure()
+        for column in info[0]:
+            fig.add_trace(go.Scatter(
+                x=df["Date"], y=df[column],
+                hoverinfo='x+y',
+                mode='lines',
+                line=dict(width=0.5#, color='rgb(131, 90, 241)'
+                          ),
+                stackgroup='one', # define stack group
+                name=column
+            ))
+        fig.update_layout(yaxis_range=(0, 100))
+        return fig
+    fig.update_layout(yaxis_range=(0, 100))
+    return fig
+
+
 if __name__ == '__main__':
     app.run(debug=True)

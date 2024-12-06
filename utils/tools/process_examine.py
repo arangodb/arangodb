@@ -16,17 +16,13 @@ try:
     LOADS_COL = SYS_DB.create_collection(LOADS_COL_NAME)
 except exceptions.CollectionCreateError:
     LOADS_COL = SYS_DB[LOADS_COL_NAME]
-LOADS_COL.add_index({'type': 'persistent', 'fields': ['timestamp'], 'unique': False})
+LOADS_COL.add_index({'type': 'persistent', 'fields': ['timestamp', 'testing_pids'], 'unique': False})
 try:
     JOBS_COL = SYS_DB.create_collection(JOBS_COL_NAME)
 except exceptions.CollectionCreateError:
     JOBS_COL = SYS_DB[JOBS_COL_NAME]
 
 
-LOADS = pd.DataFrame()
-MEMORY = {}
-TREE_TEXTS = []
-PARSED_LINES = pd.DataFrame()
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 
 def get_parent_name(processes, ppid):
@@ -62,7 +58,6 @@ def build_process_tree(parsed_slice, start_pid):
             tree[one_process['ppid']].append(one_process['pid'])
             # print(struct)
     tree_dump = get_process_tree_recursive(parsed_slice[1], start_pid, tree)
-    #TREE_TEXTS.append(tree_dump)
     # print(tree_dump)
     return tree_dump
 
@@ -128,6 +123,7 @@ def aggregate_sub_metrics(testing_pid, processes, full_slice):
                     else:
                         testing['subsums'][key][0] += processes[child]['process'][0][key]
     full_slice[len(full_slice) - 1][name] = {
+        'pid': testing_pid,
         'raw': testing['subsums_raw'],
         'sum': testing['subsums']
     }
@@ -142,6 +138,7 @@ def jobs_db_overview():
             "Task": doc["Task"],
             "Start": pd.to_datetime(doc["Start"]),
             "Finish": pd.to_datetime(doc["Finish"]),
+            "PID": doc["PID"]
         } for doc in cursor]
 
 def load_db_overview():
@@ -177,7 +174,7 @@ def get_chosen_value(which, one_test_item):
         return one_test_item['meminfo'][0][1]
     elif which == GAUGES[5]: #no_threads
         return one_test_item['no_threads'][0]
-
+    raise Exception(f"invalid gauge: {which}")
 def load_db_stacked_jobs(date_range, which):
     cursor = SYS_DB.aql.execute(
         """
@@ -225,17 +222,75 @@ def load_db_stacked_jobs(date_range, which):
         ret.append(one_res)
     return (tests_running, ret)
 
+def get_process_chosen_value(which, one_test_item):
+    if which == GAUGES[0]: # cpu_times_user
+        return one_test_item['cpu_times'][0]
+    elif which == GAUGES[1]: #cpu_times_system
+        return one_test_item['cpu_times'][1]
+    elif which == GAUGES[2]: #cpu_percent
+        return one_test_item['percent']
+    elif which == GAUGES[3]: #memory_rss
+        return one_test_item['meminfo'][0]
+    elif which == GAUGES[4]: #meminfo_vir
+        return one_test_item['meminfo'][1]
+    elif which == GAUGES[5]: #no_threads
+        return one_test_item['no_threads']
+    raise Exception(f"invalid gauge: {which}")
+
+def load_db_stacked_test(date_range, which_test_pid, chosen_gauge):
+    cursor = SYS_DB.aql.execute(
+        """
+        FOR doc IN @@col
+          FILTER (
+            doc.date > @date_start &&
+            doc.date < @date_end &&
+            @which_pid IN doc.testing_pids
+          )
+          LIMIT 5000
+          RETURN doc
+        """,
+        bind_vars={
+            "@col": LOADS_COL_NAME,
+            "date_start": str(date_range[0]),
+            "date_end": str(date_range[1]),
+            "which_pid": str(which_test_pid),
+        })
+    res = [doc for doc in cursor]
+    print('rrr')
+    print(len(res))
+    tests_running = []
+    ret = []
+    procnames = []
+    for one_slice in res:
+        one_res = { "Date": one_slice['date'] }
+        proc = one_slice['processes'][1][which_test_pid]
+        if 'children' in proc:
+            for child_pid in proc['children']:
+                child = one_slice['processes'][1][child_pid]['process']
+                val = get_process_chosen_value(chosen_gauge, child[0])
+                procname = f"{child[0]['name']} {child_pid}"
+                one_res[procname] = val
+                if procname not in procnames:
+                    procnames.append(procname)
+        total = 0.0
+        for procname in procnames:
+            if procname in one_res:
+                total += one_res[procname]
+        for procname in procnames:
+            if procname in one_res:
+                one_res[procname] = (one_res[procname] / total ) * 100
+            else:
+                one_res[procname] = 0.0
+        ret.append(one_res)
+    return procnames, ret
+
 def load_file(main_log_file, pid_to_fn, filter_str):
-    global LOADS
     LOADS_COL.truncate()
     JOBS_COL.truncate()
     LOADS_COL_cache = []
     collect_loads = []
     last_netio = None
     line_count = 1;
-    #print(1)
-    #pd.read_ndjson(main_log_file)
-    #print(2)
     with open(main_log_file, "r", encoding="utf-8") as jsonl_file:
         while True:
             line = jsonl_file.readline()
@@ -247,8 +302,6 @@ def load_file(main_log_file, pid_to_fn, filter_str):
             # tree = collections.defaultdict(list)
             if filter_str and parsed_slice[0].find(filter_str) < 0:
                 continue
-            #print(parsed_slice[0])
-            #print(json.dumps(parsed_slice, indent=4))
             testing_tasks = []
             sys_stat = None
             sys_id = None
@@ -267,9 +320,6 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                             "load": float(sys_stat['load'][0]),
                             "netio": float(netio)
                     })
-                    MEMORY[this_date] = sys_stat['netio']['lo'][0]
-                    # print(f"L {sys_stat['load'][0]:.1f} - {sys_stat['netio']['lo'][0]:,.3f}")
-                    #print(json.dumps(parsed_slice[1][process_id], indent=4))
                     continue
                 one_process = parsed_slice[1][process_id]['process'][0]
                 if 'ppid' in one_process and one_process['ppid'] > 1:
@@ -277,10 +327,8 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                     if not 'children' in parent:
                         parent['children'] = []
                     parent['children'].append(process_id)
-                #print(json.dumps(one_process, indent=4))
                 name = one_process['name']
                 if name == 'arangod':
-                    #print(json.dumps(one_process, indent=4))
                     try:
                         n = one_process['cmdline'].index('--cluster.my-role')
                         one_process['name'] = f"{name} - {one_process['cmdline'][n+1]}"
@@ -291,7 +339,6 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                         except ValueError:
                             one_process['name'] = f"{name} - SINGLE"
                 elif name == 'arangosh':
-                    # print(json.dumps(one_process, indent=4))
                     pidstr = f"p{one_process['pid']}"
                     if pidstr in pid_to_fn:
                         if not "Task" in pid_to_fn[pidstr]:
@@ -319,7 +366,6 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                         one_process['name'] = f"{name} - launch controller"
                     except ValueError as ex:
                         print(ex)
-            #print(dir(PARSED_LINES))
             if sys_id:
                 del parsed_slice[1][sys_id]
             parsed_slice.append({})
@@ -336,9 +382,7 @@ def load_file(main_log_file, pid_to_fn, filter_str):
                 LOADS_COL.insert(LOADS_COL_cache)
                 LOADS_COL_cache = []
     LOADS_COL.insert(LOADS_COL_cache)
-    LOADS = pd.DataFrame(data=collect_loads)
     JOBS_COL.insert(convert_pids_to_gantt(pid_to_fn))
-    # print(pd.to_datetime(LOADS['Date']))
 
 
 
@@ -351,7 +395,8 @@ def convert_pids_to_gantt(PID_TO_FN):
             jobs.append({
                 "Task": tsk["Task"],
                 "Start": tsk["Start"],
-                "Finish": tsk["End"]
+                "Finish": tsk["End"],
+                "PID": one_pid
             })
         #else:
         #    print(f"skipping {one_pid} => {PID_TO_FN[one_pid]}")
