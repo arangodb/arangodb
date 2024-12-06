@@ -26,18 +26,21 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FloatingPoint.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "Indexes/VectorIndexDefinition.h"
 #include "IResearch/IResearchCommon.h"
+#include "Inspection/VPack.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
@@ -45,6 +48,7 @@
 #include <absl/strings/str_cat.h>
 
 #include <limits.h>
+#include <velocypack/Value.h>
 
 #include <regex>
 #include <string_view>
@@ -178,6 +182,12 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     if (value.isArray() &&
         !basics::VelocyPackHelper::equal(
             value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
+      return false;
+    }
+  } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
+    // check if the parameters are the same
+    if (!basics::VelocyPackHelper::equal(lhs.get("params"), rhs.get("params"),
+                                         false)) {
       return false;
     }
   }
@@ -353,17 +363,20 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
 /// same for both storage engines
 std::vector<std::string_view> IndexFactory::supportedIndexes() const {
-  return {"primary",
-          "edge",
-          "hash",
-          "skiplist",
-          "ttl",
-          "persistent",
-          "geo",
-          "fulltext",
-          "mdi",
-          "mdi-prefixed",
-          arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
+  return {
+      "primary",
+      "edge",
+      "hash",
+      "skiplist",
+      "ttl",
+      "persistent",
+      "geo",
+      "fulltext",
+      "mdi",
+      "mdi-prefixed",
+      arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
+      "vector",
+  };
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>
@@ -874,7 +887,9 @@ Result IndexFactory::enhanceJsonIndexMdi(VPackSlice definition,
   }
 
   return res;
-}  /// @brief enhances the json of a mdi
+}
+
+/// @brief enhances the json of a mdi
 Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
                                                  VPackBuilder& builder,
                                                  bool create) {
@@ -882,6 +897,41 @@ Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
   if (res.ok()) {
     res = processIndexSortedPrefixFields(definition, builder, 1, 32, create,
                                          true);
+  }
+
+  return res;
+}
+
+/// @brief enhances the json of a vector
+Result IndexFactory::enhanceJsonIndexVector(
+    arangodb::velocypack::Slice definition,
+    arangodb::velocypack::Builder& builder, bool create) {
+  auto const paramsSlice = definition.get("params");
+  UserVectorIndexDefinition vectorIndexDefinition;
+  if (auto const res =
+          velocypack::deserializeWithStatus(paramsSlice, vectorIndexDefinition);
+      !res.ok()) {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  fmt::format("error: {}, path: {}", res.error(), res.path()));
+  }
+
+  if (definition.get("unique").isTrue()) {
+    return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
+  }
+
+  builder.add(VPackValue("params"));
+  velocypack::serialize(builder, vectorIndexDefinition);
+  Result const res =
+      processIndexFields(definition, builder, 1, 1, create,
+                         /*allowExpansion*/ false, /*allowSubAttributes*/ true,
+                         /*allowIdAttribute*/ false);
+  if (res.ok()) {
+    // Vector index can be sparse
+    processIndexSparseFlag(definition, builder, create);
+
+    processIndexInBackground(definition, builder);
+
+    processIndexParallelism(definition, builder);
   }
 
   return res;

@@ -306,21 +306,6 @@ auto convertDouble(double const x) -> zkd::byte_string {
   return zkd::into_zero_leading_fixed_length_byte_string(x);
 }
 
-auto accessDocumentPath(VPackSlice doc,
-                        std::vector<basics::AttributeName> const& path)
-    -> VPackSlice {
-  for (auto&& attrib : path) {
-    TRI_ASSERT(attrib.shouldExpand == false);
-    if (!doc.isObject()) {
-      return VPackSlice::noneSlice();
-    }
-
-    doc = doc.get(attrib.name);
-  }
-
-  return doc;
-}
-
 ResultT<zkd::byte_string> readDocumentKey(
     VPackSlice doc,
     std::vector<std::vector<basics::AttributeName>> const& fields) {
@@ -328,7 +313,7 @@ ResultT<zkd::byte_string> readDocumentKey(
   v.reserve(fields.size());
 
   for (auto const& path : fields) {
-    VPackSlice value = accessDocumentPath(doc, path);
+    VPackSlice value = rocksutils::accessDocumentPath(doc, path);
     if (!value.isNumber<double>()) {
       return {TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE};
     }

@@ -53,6 +53,7 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "RestServer/VectorIndexFeature.h"
 #ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
 #endif
@@ -166,6 +167,7 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
   server.addFeature<SystemDatabaseFeature>(true);
   server.addFeature<InitDatabaseFeature>(true, std::vector<size_t>{});
   server.addFeature<ViewTypesFeature>(false);  // true ??
+  server.addFeature<VectorIndexFeature>(true);
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE

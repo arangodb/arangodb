@@ -28,10 +28,8 @@
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/datetime.h"
-#include "Basics/debugging.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -444,6 +442,9 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE) {
     return TRI_IDX_TYPE_INVERTED_INDEX;
   }
+  if (type == "vector") {
+    return TRI_IDX_TYPE_VECTOR_INDEX;
+  }
   return TRI_IDX_TYPE_UNKNOWN;
 }
 
@@ -488,6 +489,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "mdi-prefixed";
     case TRI_IDX_TYPE_INVERTED_INDEX:
       return arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data();
+    case TRI_IDX_TYPE_VECTOR_INDEX:
+      return "vector";
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }
@@ -1017,6 +1020,13 @@ bool Index::covers(aql::Projections& projections) const {
 }
 
 bool Index::canWarmup() const noexcept { return false; }
+
+UserVectorIndexDefinition const& Index::getVectorIndexDefinition() {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "Requesting vector index definition on a non-vector index");
+}
 
 Result Index::warmup() {
   // we should never be called in the base class.

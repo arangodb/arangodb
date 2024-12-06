@@ -65,6 +65,16 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### faiss
+
+* Name: faiss
+* Version: 1.9.0
+* Date: 2024-10-04
+* Project Home:https://github.com/facebookresearch/faiss/
+* License: https://github.com/facebookresearch/faiss/blob/main/LICENSE 
+* License Name: MIT License
+* License Id: MIT
+
 ### fasthash
 
 * Name: fasthash
@@ -478,6 +488,36 @@ which is mainly developed by ArangoDB, too.
 The iresearch library itself makes use of several other components with
 different licenses. The full list of components and their licenses
 can be found [here](https://github.com/arangodb/arangodb/blob/devel/3rdParty/iresearch/THIRD_PARTY_README.md).
+
+## Libraries used by faiss
+
+### OpenMP implementation by LLVM
+
+* Name: OpenMP
+* Version: 16.0.6
+* Date: 2023-06-14
+* Project Home: https://github.com/llvm/llvm-project
+* License: https://github.com/llvm/llvm-project/blob/main/LICENSE.TXT
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
+
+### LAPACK
+
+* Name: LAPACK
+* Version: 3.10.0
+* Date: 2021-06-28
+* Project Home: https://www.netlib.org/lapack/
+* License: https://www.netlib.org/lapack/LICENSE.txt
+* License Comment: The license used for the software is the modified BSD license
+
+### Fortran
+
+* Name: gfortran
+* Version: 11.4.0 
+* Date: 2023-05-29
+* Project Home: https://gcc.gnu.org/wiki/GFortran
+* License: https://moinmo.in/GPL
+* License Id: GPLv2
 
 ## Programs
 

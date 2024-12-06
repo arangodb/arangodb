@@ -9,6 +9,7 @@ target_sources(arango_aql PRIVATE
   DocumentProducingNode.cpp  
   EnumerateCollectionNode.cpp
   EnumerateListNode.cpp
+  EnumerateNearVectorNode.cpp
   EnumeratePathsNode.cpp
   ExecutionNode.cpp
   FilterNode.cpp
@@ -32,8 +33,8 @@ target_sources(arango_aql PRIVATE
   ReturnNode.cpp
   ScatterNode.cpp
   ShortestPathNode.cpp
-  SingleRemoteOperationNode.cpp  
-  SingletonNode.cpp 
+  SingleRemoteOperationNode.cpp
+  SingletonNode.cpp
   SortNode.cpp
   SubqueryEndExecutionNode.cpp
   SubqueryNode.cpp

@@ -1082,6 +1082,7 @@ bool isInInnerLoopOrSubquery(aql::ExecutionNode const& node) {
     }
     switch (dep->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::ENUMERATE_NEAR_VECTORS:
       case aql::ExecutionNode::INDEX:
       case aql::ExecutionNode::JOIN:
       case aql::ExecutionNode::TRAVERSAL:
@@ -1116,6 +1117,7 @@ bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
     }
     switch (setter->getType()) {
       case aql::ExecutionNode::ENUMERATE_COLLECTION:
+      case aql::ExecutionNode::ENUMERATE_NEAR_VECTORS:
       case aql::ExecutionNode::ENUMERATE_LIST:
       case aql::ExecutionNode::SUBQUERY:
       case aql::ExecutionNode::SUBQUERY_END:
