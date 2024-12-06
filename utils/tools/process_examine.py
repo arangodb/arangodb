@@ -175,7 +175,7 @@ def get_chosen_value(which, one_test_item):
     elif which == GAUGES[5]: #no_threads
         return one_test_item['no_threads'][0]
     raise Exception(f"invalid gauge: {which}")
-def load_db_stacked_jobs(date_range, which):
+def load_db_stacked_jobs(date_range, which, relative):
     cursor = SYS_DB.aql.execute(
         """
         FOR doc IN @@col
@@ -212,12 +212,13 @@ def load_db_stacked_jobs(date_range, which):
                     last_value[one_test] = val
                 else:
                     print(f"no {one_test} data")
-        total = 0.0
-        for one_test in tests_running:
-            total += one_res[one_test]
-        for one_test in tests_running:
-            if one_res[one_test] != 0.0:
-                one_res[one_test] = (one_res[one_test] / total ) * 100
+        if relative:
+            total = 0.0
+            for one_test in tests_running:
+                total += one_res[one_test]
+            for one_test in tests_running:
+                if one_res[one_test] != 0.0:
+                    one_res[one_test] = (one_res[one_test] / total ) * 100
 
         ret.append(one_res)
     return (tests_running, ret)
@@ -237,7 +238,7 @@ def get_process_chosen_value(which, one_test_item):
         return one_test_item['no_threads']
     raise Exception(f"invalid gauge: {which}")
 
-def load_db_stacked_test(date_range, which_test_pid, chosen_gauge):
+def load_db_stacked_test(date_range, which_test_pid, chosen_gauge, relative):
     cursor = SYS_DB.aql.execute(
         """
         FOR doc IN @@col
@@ -256,8 +257,6 @@ def load_db_stacked_test(date_range, which_test_pid, chosen_gauge):
             "which_pid": str(which_test_pid),
         })
     res = [doc for doc in cursor]
-    print('rrr')
-    print(len(res))
     tests_running = []
     ret = []
     procnames = []
@@ -273,14 +272,19 @@ def load_db_stacked_test(date_range, which_test_pid, chosen_gauge):
                 if procname not in procnames:
                     procnames.append(procname)
         total = 0.0
-        for procname in procnames:
-            if procname in one_res:
-                total += one_res[procname]
-        for procname in procnames:
-            if procname in one_res:
-                one_res[procname] = (one_res[procname] / total ) * 100
-            else:
-                one_res[procname] = 0.0
+        if relative:
+            for procname in procnames:
+                if procname in one_res:
+                    total += one_res[procname]
+            for procname in procnames:
+                if procname in one_res:
+                    one_res[procname] = (one_res[procname] / total ) * 100
+                else:
+                    one_res[procname] = 0.0
+        else:
+            for procname in procnames:
+                if procname not in one_res:
+                    one_res[procname] = 0.0
         ret.append(one_res)
     return procnames, ret
 
