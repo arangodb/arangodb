@@ -33,6 +33,7 @@
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Basics/BoundedChannel.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
@@ -44,6 +45,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
+#include <omp.h>
 #include "Indexes/Index.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
@@ -490,6 +492,200 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
 UserVectorIndexDefinition const&
 RocksDBVectorIndex::getVectorIndexDefinition() {
   return getDefinition();
+}
+
+namespace {
+
+void readVectorFromDocument(velocypack::Slice doc,
+                            std::vector<basics::AttributeName> const& path,
+                            std::vector<float>& output) try {
+  auto v = rocksutils::accessDocumentPath(doc, path);
+
+  for (auto d : VPackArrayIterator(v)) {
+    output.push_back(d.getDouble());
+  }
+} catch (velocypack::Exception const& e) {
+  LOG_DEVEL << "INVALID VECTOR IN DOC " << doc.toJson();
+  throw;  // TODO handle vpack errors
+}
+
+}  // namespace
+
+#define LOG_INGESTION LOG_DEVEL_IF(false)
+
+Result RocksDBVectorIndex::ingestVectors(
+    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> documentIterator) {
+  // Ingestion Strategy
+  // We have three thread groups:
+  // 1. Reader - read documents and extract the vector data from them
+  // 2. Encoder - use the faiss index to encode the vectors
+  // 3. Writer - collect encoded vectors into write batches and write them to
+  // disk The number of threads in each group can be configured. Also, each
+  // stage communicates with the next stage via a bounded queue. This limits the
+  // amount of excess work and makes sure that the bottleneck is never starving
+  // of work.
+  LOG_INGESTION << __func__
+                << " BEGIN iter->valid = " << documentIterator->Valid();
+  auto flatIndex = createFaissIndex(_quantizer, _definition);
+
+  struct DocumentVectors {
+    std::vector<LocalDocumentId> docIds;
+    // dim * docIds.size() vectors
+    std::vector<float> vectors;
+  };
+
+  struct EncodedVectors {
+    std::vector<LocalDocumentId> docIds;
+    std::unique_ptr<faiss::idx_t[]> lists;
+    std::unique_ptr<uint8_t[]> codes;
+  };
+
+  struct BlockCounters {
+    uint64_t readProduceBlocked{0};
+    uint64_t encodeProduceBlocked{0};
+    uint64_t encodeConsumeBlocked{0};
+    uint64_t writeConsumeBlocked{0};
+  } counters;
+
+  BoundedChannel<DocumentVectors> documentChannel{5};
+  BoundedChannel<EncodedVectors> encodedChannel{5};
+
+  auto encodeVectors = [&]() {
+    BoundedChannelProducerGuard guard(encodedChannel);
+    // This trivially parallelizes
+    while (true) {
+      auto [item, blocked] = documentChannel.pop();
+      if (item == nullptr) {
+        return;
+      }
+
+      counters.encodeConsumeBlocked += blocked;
+      auto n = item->docIds.size();
+      float* x = item->vectors.data();
+      std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
+      flatIndex.quantizer->assign(n, x, coarse_idx.get());
+      auto code_size = flatIndex.code_size;
+      std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
+
+      // TODO: since we only use IVTFlat this is just copying the data.
+      //  Probably we want to use some PQ encoding later on.
+      flatIndex.encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
+
+      auto encoded = std::make_unique<EncodedVectors>();
+      encoded->docIds = std::move(item->docIds);
+      encoded->lists = std::move(coarse_idx);
+      encoded->codes = std::move(flat_codes);
+
+      LOG_INGESTION << "ENCODE encoded " << encoded->docIds.size()
+                    << " vectors";
+      auto [shouldStop, pushBlocked] = encodedChannel.push(std::move(encoded));
+      counters.encodeProduceBlocked += pushBlocked;
+      if (shouldStop) {
+        break;
+      }
+    }
+  };
+
+  constexpr auto documentPerBatch = 8000;
+
+  auto readDocuments = [&] {
+    // This is a simple implementation, using a single thread.
+    // If reading becomes the bottleneck, we can always adapt the parallel index
+    // reader code
+
+    BoundedChannelProducerGuard guard(documentChannel);
+
+    auto prepareBatch = [&] {
+      auto batch = std::make_unique<DocumentVectors>();
+      batch->docIds.reserve(documentPerBatch);
+      batch->vectors.reserve(documentPerBatch * _definition.dimension);
+      return batch;
+    };
+
+    std::unique_ptr<DocumentVectors> batch = prepareBatch();
+    while (documentIterator->Valid()) {
+      LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
+      VPackSlice doc = RocksDBValue::data(documentIterator->value());
+      readVectorFromDocument(doc, _fields[0], batch->vectors);
+      batch->docIds.push_back(docId);
+      documentIterator->Next();
+
+      if (batch->docIds.size() == documentPerBatch) {
+        LOG_INGESTION << "READ done with batch " << documentPerBatch;
+        auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
+        counters.readProduceBlocked += blocked;
+
+        if (shouldStop) {
+          return;
+        }
+        batch = prepareBatch();
+      }
+    }
+
+    if (batch) {
+      LOG_INGESTION << "READ producing final batch size="
+                    << batch->docIds.size();
+      std::ignore = documentChannel.push(std::move(batch));
+    }
+  };
+
+  auto writeDocuments = [&] {
+    // This parallelized trivially already
+    rocksdb::WriteBatch batch;
+    while (true) {
+      auto [item, blocked] = encodedChannel.pop();
+      if (item == nullptr) {
+        break;
+      }
+
+      counters.writeConsumeBlocked += blocked;
+      batch.Clear();
+
+      RocksDBKey key;
+
+      for (size_t k = 0; k < item->docIds.size(); k++) {
+        key.constructVectorIndexValue(objectId(), item->lists[k],
+                                      item->docIds[k]);
+
+        auto const value = RocksDBValue::VectorIndexValue(
+            reinterpret_cast<const char*>(item->codes.get() +
+                                          k * flatIndex.code_size),
+            flatIndex.code_size);
+        batch.Put(_cf, key.string(), value.string());
+      }
+
+      LOG_INGESTION << "[WRITE] writing " << item->docIds.size()
+                    << " encoded vectors, batch size = " << batch.Count();
+
+      rocksdb::WriteOptions ro;
+      rootDB->Write(ro, &batch);
+    }
+  };
+
+  std::vector<std::jthread> _threads;
+
+  constexpr auto numReaders = 1;
+  constexpr auto numEncoders = 8;
+  constexpr auto numWriters = 2;
+
+  auto startNThreads = [&](auto& func, size_t n) {
+    for (size_t k = 0; k < n; k++) {
+      _threads.emplace_back(func);
+    }
+  };
+
+  startNThreads(readDocuments, numReaders);
+  startNThreads(encodeVectors, numEncoders);
+  startNThreads(writeDocuments, numWriters);
+
+  LOG_INGESTION << "ALL THREADS STARTED!";
+
+  _threads.clear();
+  LOG_DEVEL << "ALL THREADS DONE! " << counters.readProduceBlocked << " <--> "
+            << counters.encodeConsumeBlocked << " "
+            << counters.encodeProduceBlocked << " <--> "
+            << counters.writeConsumeBlocked;
+  return Result();
 }
 
 }  // namespace arangodb
