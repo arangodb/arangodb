@@ -3251,8 +3251,8 @@ struct SortToIndexNode final
 
     if (indexCoversSortCondition) {
       deleteSortNode(indexNode);
-    } else if (index->type() == Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-      // TODO why is this not a persistent index?
+    } else if (index->type() ==
+               Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
       auto numberOfCoveredAttributes =
           sortCondition.coveredAttributes(outVariable, fields);
       if (isOnlyAttributeAccess && isSorted && !isSparse &&

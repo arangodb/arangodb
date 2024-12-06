@@ -82,7 +82,9 @@ namespace arangodb::aql {
 
 SortedRowsStorageBackendMemory::SortedRowsStorageBackendMemory(
     SortExecutorInfos& infos)
-    : _infos(infos), _returnNext(0), _memoryUsageForInputBlocks(0) {}
+    : _infos(infos), _returnNext(0), _memoryUsageForInputBlocks(0) {
+  _infos.getResourceMonitor().increaseMemoryUsage(currentMemoryUsage());
+}
 
 SortedRowsStorageBackendMemory::~SortedRowsStorageBackendMemory() {
   _infos.getResourceMonitor().decreaseMemoryUsage(currentMemoryUsage());
@@ -103,11 +105,11 @@ GroupedValues SortedRowsStorageBackendMemory::groupedValuesForRow(
   return GroupedValues{_infos.vpackOptions(), groupedValues};
 }
 
-ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
+void SortedRowsStorageBackendMemory::consumeInputRange(
     AqlItemBlockInputRange& inputRange) {
-  ExecutorState state = ExecutorState::HASMORE;
   if (inputRange.upstreamState() == ExecutorState::DONE) {
-    return ExecutorState::DONE;
+    startNewGroup({});
+    return;
   }
 
   auto inputBlock = inputRange.getBlock();
@@ -124,8 +126,7 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
     size_t newCapacity = _currentGroup.size() + numDataRows;
 
     // may throw
-    guard.increase((newCapacity - _currentGroup.capacity()) *
-                   sizeof(SortedRowsStorageBackendMemory::RowIndex));
+    guard.increase((newCapacity - _currentGroup.capacity()) * sizeof(RowIndex));
 
     _currentGroup.reserve(newCapacity);
   }
@@ -135,6 +136,9 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
   // make sure that previous group was already fully consumed
   TRI_ASSERT(!hasMore());
 
+  // identify very first row
+  auto firstRow = _inputBlocks.size() == 1 ? true : false;
+
   while (inputRange.hasDataRow()) {
     auto rowId =
         std::make_pair(static_cast<std::uint32_t>(_inputBlocks.size() - 1),
@@ -142,45 +146,40 @@ ExecutorState SortedRowsStorageBackendMemory::consumeInputRange(
 
     auto grouped_values = groupedValuesForRow(rowId);
 
-    if (grouped_values == _groupedValuesOfPreviousRow) {
-      _currentGroup.emplace_back(rowId);
-
-      std::tie(state, input) =
-          inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-      TRI_ASSERT(input.isInitialized());
-
-      // if this was the last inputRange
-      if (state == ExecutorState::DONE) {
-        updateFinishedGroup();
-        guard.steal();
-        return state;
-      }
-
-    } else {
+    if (grouped_values != _groupedValuesOfPreviousRow && !firstRow) {
       // finish group and return
-      updateFinishedGroup();
-      guard.decrease((_currentGroup.capacity() - 1) * sizeof(RowIndex));
-      _currentGroup = std::vector<RowIndex>{rowId};
+      startNewGroup({rowId});
       _groupedValuesOfPreviousRow = grouped_values;
-      std::tie(state, input) =
+      auto [state, input] =
           inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
       TRI_ASSERT(input.isInitialized());
       guard.steal();
-      return state;
+      return;
     }
+
+    firstRow = false;
+    _currentGroup.emplace_back(rowId);
+
+    auto [state, input] =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    TRI_ASSERT(input.isInitialized());
   }
 
   guard.steal();
-
-  return state;
 }
 
-void SortedRowsStorageBackendMemory::updateFinishedGroup() {
+void SortedRowsStorageBackendMemory::startNewGroup(
+    std::vector<RowIndex>&& newGroup) {
   ResourceUsageScope guard(_infos.getResourceMonitor());
+  // we overwrite finished group
+  _finishedGroup = std::move(_currentGroup);
   _infos.getResourceMonitor().decreaseMemoryUsage(_finishedGroup.capacity() *
                                                   sizeof(RowIndex));
-  _finishedGroup = std::move(_currentGroup);
   sortFinishedGroup();
+
+  _currentGroup = newGroup;
+  _infos.getResourceMonitor().increaseMemoryUsage(newGroup.capacity() *
+                                                  sizeof(RowIndex));
   _returnNext = 0;
 }
 
@@ -208,8 +207,6 @@ void SortedRowsStorageBackendMemory::skipOutputRow() noexcept {
   TRI_ASSERT(hasMore());
   ++_returnNext;
 }
-
-void SortedRowsStorageBackendMemory::seal() {}
 
 void SortedRowsStorageBackendMemory::spillOver(
     SortedRowsStorageBackend& other) {

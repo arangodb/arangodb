@@ -33,8 +33,7 @@ class SortedRowsStorageBackend {
   virtual ~SortedRowsStorageBackend() = default;
 
   // add more input to the storage backend
-  virtual ExecutorState consumeInputRange(
-      AqlItemBlockInputRange& inputRange) = 0;
+  virtual void consumeInputRange(AqlItemBlockInputRange& inputRange) = 0;
 
   virtual bool hasReachedCapacityLimit() const noexcept = 0;
 
@@ -48,10 +47,6 @@ class SortedRowsStorageBackend {
 
   // skip an output row. requires hasMore()
   virtual void skipOutputRow() noexcept = 0;
-
-  // seal the storage backend. after that, no more input
-  // data must be added
-  virtual void seal() = 0;
 
   virtual void spillOver(SortedRowsStorageBackend& other) = 0;
 };

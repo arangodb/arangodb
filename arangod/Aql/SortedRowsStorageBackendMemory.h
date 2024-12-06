@@ -59,14 +59,13 @@ class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
   explicit SortedRowsStorageBackendMemory(SortExecutorInfos& infos);
   ~SortedRowsStorageBackendMemory();
 
-  ExecutorState consumeInputRange(AqlItemBlockInputRange& inputRange) final;
+  void consumeInputRange(AqlItemBlockInputRange& inputRange) final;
 
   bool hasReachedCapacityLimit() const noexcept final;
 
   bool hasMore() const final;
   void produceOutputRow(OutputAqlItemRow& output) final;
   void skipOutputRow() noexcept final;
-  void seal() final;
   void spillOver(SortedRowsStorageBackend& other) final;
 
   // uint32_t in this vector is a reasonable trade-off between performance and
@@ -79,7 +78,7 @@ class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
   void sortFinishedGroup();
   size_t currentMemoryUsage() const noexcept;
   GroupedValues groupedValuesForRow(RowIndex const& rowId);
-  void updateFinishedGroup();
+  void startNewGroup(std::vector<RowIndex>&& newGroup);
 
   SortExecutorInfos& _infos;
 

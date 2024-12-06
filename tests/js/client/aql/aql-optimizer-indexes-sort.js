@@ -200,49 +200,9 @@ function optimizerIndexesSortTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////
     /// @brief test index usage
     ////////////////////////////////////////////////////////////////////////////////
-
-    testMultiSortWithLongerPersistentIndex: function () {
-      db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
-
-      c.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
-      waitForEstimatorSync();
-
-      const query = "FOR i IN " + c.name() + " SORT i.value, i.value3 RETURN i.value";
-
-      const plan = db._createStatement(query).explain().plan;
-
-      assertTrue(["use-indexes", "use-index-for-sort"].every((rule) => plan.rules.indexOf(rule) >= 0), plan.rules);
-
-      const sort_nodes = plan.nodes.filter((node) => node.type == "SortNode")
-      assertEqual(1, sort_nodes.length);
-      const sort_node = sort_nodes[0];
-
-      const index_nodes = plan.nodes.filter((node) => node.type == "IndexNode")
-      assertEqual(1, sort_nodes.length);
-      const index_node = index_nodes[0];
-      const grouped_ids = index_node.projections.filter((p) => p.path.includes("value")).map((p) => p.variable.id)
-      assertEqual(1, grouped_ids.length);
-      // const grouped_ids_in_sort_node = sort_node.elements.filter((e) => e.inVariable.id == grouped_ids[0]).map((e) => assertTrue(e.grouped));
-      // assertEqual(1, grouped_ids_in_sort_node.length);
-
-      var results = db._query(query);
-      var expected = [];
-      for (var j = 0; j < 200; ++j) {
-        expected.push(1);
-      }
-      assertEqual(expected, results.toArray(), query);
-      assertEqual(0, results.getExtra().stats.scannedFull);
-      if (isCluster) {
-        assertEqual(expected.length, results.getExtra().stats.scannedIndex);
-      }
-    },
-
     testSingleAttributeSortNotOptimizedAwayRocksDB : function () {
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 

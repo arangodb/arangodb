@@ -46,7 +46,7 @@ SortedRowsStorageBackendStaged::SortedRowsStorageBackendStaged(
 
 SortedRowsStorageBackendStaged::~SortedRowsStorageBackendStaged() = default;
 
-ExecutorState SortedRowsStorageBackendStaged::consumeInputRange(
+void SortedRowsStorageBackendStaged::consumeInputRange(
     AqlItemBlockInputRange& inputRange) {
   if (_backends[_currentBackend]->hasReachedCapacityLimit()) {
     if (_currentBackend >= _backends.size() + 1) {
@@ -59,10 +59,7 @@ ExecutorState SortedRowsStorageBackendStaged::consumeInputRange(
     ++_currentBackend;
   }
 
-  ExecutorState state =
-      _backends[_currentBackend]->consumeInputRange(inputRange);
-
-  return state;
+  _backends[_currentBackend]->consumeInputRange(inputRange);
 }
 
 bool SortedRowsStorageBackendStaged::hasReachedCapacityLimit() const noexcept {
@@ -80,10 +77,6 @@ void SortedRowsStorageBackendStaged::produceOutputRow(
 
 void SortedRowsStorageBackendStaged::skipOutputRow() noexcept {
   _backends[_currentBackend]->skipOutputRow();
-}
-
-void SortedRowsStorageBackendStaged::seal() {
-  _backends[_currentBackend]->seal();
 }
 
 void SortedRowsStorageBackendStaged::spillOver(
