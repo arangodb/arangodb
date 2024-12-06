@@ -34,16 +34,17 @@ namespace arangodb {
 
 // Number of training iterations, in faiss it is 25 by default
 static constexpr int kdefaultTrainingIterations{25};
+static constexpr int kdefaultNProbe{1};
 
 struct SearchParameters {
-  std::optional<std::int64_t> nProbe;
+  std::int64_t nProbe{kdefaultNProbe};
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, SearchParameters& x) {
     return f.object(x).fields(
         f.field("nProbe", x.nProbe)
             .invariant([](auto value) -> inspection::Status {
-              if (value.has_value() && *value < 1) {
+              if (value < 1) {
                 return {"nProbe must be 1 or greater!"};
               }
               return inspection::Status::Success{};

@@ -85,7 +85,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   }
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
-      std::vector<float>& inputs, std::optional<std::size_t> nProbe,
+      std::vector<float>& inputs, SearchParameters const& searchParameters,
       RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
       std::shared_ptr<LogicalCollection> collection, std::size_t count,
       std::size_t topK);

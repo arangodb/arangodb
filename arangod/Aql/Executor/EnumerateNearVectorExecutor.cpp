@@ -95,7 +95,7 @@ void EnumerateNearVectorsExecutor::searchResults() {
       RocksDBTransactionState::toMethods(&_trx, _collection->id());
 
   std::tie(_labels, _distances) = vectorIndex->readBatch(
-      _inputRowConverted, _infos.nProbe, mthds, &_trx,
+      _inputRowConverted, _infos.searchParameters, mthds, &_trx,
       _collection->getCollection(), 1, _infos.getNumberOfResults());
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
