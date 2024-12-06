@@ -92,6 +92,8 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
+  Result ingestVectors(rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator>);
+
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
