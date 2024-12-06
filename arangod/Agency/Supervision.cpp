@@ -1837,7 +1837,7 @@ void Supervision::cleanupFinishedAndFailedJobs() {
       auto pos = p.first.find('-');
       if (pos != std::string::npos) {
         auto const& parent = p.first.substr(0, pos);
-        if (pendingJobs.find(parent) != nullptr) {
+        if (pendingJobs.find(parent) != pendingJobs.end()) {
           LOG_TOPIC("99887", TRACE, Logger::SUPERVISION)
               << "Skipping removal of subjob " << p.first << " of parent "
               << parent << " since the parent is still pending.";
