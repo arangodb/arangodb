@@ -237,6 +237,10 @@ RocksDBIndexIVFFlat createFaissIndex(auto& quantitizer,
       quantitizer);
 }
 
+#define LOG_VECTOR_INDEX(lid, level, topic) \
+  LOG_TOPIC((lid), level, topic)            \
+      << "[shard=" << _collection.name() << ", index=" << _iid.id() << "] "
+
 RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                        arangodb::velocypack::Slice info)
     : RocksDBIndex(iid, coll, info,
@@ -397,9 +401,8 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   std::vector<float> input;
   input.reserve(_definition.dimension);
 
-  LOG_TOPIC("b161b", INFO, Logger::FIXME)
-      << "[shard=" << _collection.name() << ", index=" << _iid.id()
-      << "] Loading " << trainingDataSize << " vectors of dimension "
+  LOG_VECTOR_INDEX("b161b", INFO, Logger::FIXME)
+      << "Loading " << trainingDataSize << " vectors of dimension "
       << _definition.dimension << " for training.";
 
   while (counter < trainingDataSize && it->Valid()) {
@@ -427,18 +430,15 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     ++counter;
   }
 
-  LOG_TOPIC("a162b", INFO, Logger::FIXME)
-      << "[shard=" << _collection.name() << ", index=" << _iid.id()
-      << "] Loaded " << counter
-      << " vectors of dimension. Start training process.";
+  LOG_VECTOR_INDEX("a162b", INFO, Logger::FIXME)
+      << "Loaded " << counter << " vectors. Start training process on "
+      << _definition.nLists << " centroids.";
 
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
   }
   flatIndex.train(counter, trainingData.data());
-  LOG_TOPIC("a160b", INFO, Logger::FIXME)
-      << "[shard=" << _collection.name() << ", index=" << _iid.id()
-      << "] Finished training";
+  LOG_VECTOR_INDEX("a160b", INFO, Logger::FIXME) << "Finished training.";
 
   // Update vector definition data with quantizier data
   _trainedData = std::visit(
@@ -550,6 +550,15 @@ Result RocksDBVectorIndex::ingestVectors(
   BoundedChannel<DocumentVectors> documentChannel{5};
   BoundedChannel<EncodedVectors> encodedChannel{5};
 
+  constexpr auto numReaders = 1;
+  constexpr auto numEncoders = 8;
+  constexpr auto numWriters = 2;
+
+  constexpr auto documentPerBatch = 8000;
+
+  std::atomic<std::size_t> countBatches{0};
+  std::atomic<std::size_t> countDocuments{0};
+
   auto encodeVectors = [&]() {
     BoundedChannelProducerGuard guard(encodedChannel);
     // This trivially parallelizes
@@ -561,6 +570,9 @@ Result RocksDBVectorIndex::ingestVectors(
 
       counters.encodeConsumeBlocked += blocked;
       auto n = item->docIds.size();
+      countBatches += 1;
+      countDocuments += n;
+
       float* x = item->vectors.data();
       std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
       flatIndex.quantizer->assign(n, x, coarse_idx.get());
@@ -586,12 +598,12 @@ Result RocksDBVectorIndex::ingestVectors(
     }
   };
 
-  constexpr auto documentPerBatch = 8000;
-
   auto readDocuments = [&] {
     // This is a simple implementation, using a single thread.
     // If reading becomes the bottleneck, we can always adapt the parallel index
     // reader code
+    static_assert(numReaders == 1,
+                  "this code is not prepared for multiple reads");
 
     BoundedChannelProducerGuard guard(documentChannel);
 
@@ -664,15 +676,15 @@ Result RocksDBVectorIndex::ingestVectors(
 
   std::vector<std::jthread> _threads;
 
-  constexpr auto numReaders = 1;
-  constexpr auto numEncoders = 8;
-  constexpr auto numWriters = 2;
-
   auto startNThreads = [&](auto& func, size_t n) {
     for (size_t k = 0; k < n; k++) {
       _threads.emplace_back(func);
     }
   };
+
+  LOG_VECTOR_INDEX("71c45", INFO, Logger::FIXME)
+      << "Ingesting vectors into index. Threads: num-readers=" << numReaders
+      << " num-encoders=" << numEncoders << " numWriters=" << numWriters;
 
   startNThreads(readDocuments, numReaders);
   startNThreads(encodeVectors, numEncoders);
@@ -681,10 +693,13 @@ Result RocksDBVectorIndex::ingestVectors(
   LOG_INGESTION << "ALL THREADS STARTED!";
 
   _threads.clear();
-  LOG_DEVEL << "ALL THREADS DONE! " << counters.readProduceBlocked << " <--> "
-            << counters.encodeConsumeBlocked << " "
-            << counters.encodeProduceBlocked << " <--> "
-            << counters.writeConsumeBlocked;
+  LOG_TOPIC("41658", INFO, Logger::FIXME)
+      << "Ingestion done. Encoded " << countDocuments << " vectors in "
+      << countBatches
+      << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
+      << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
+      << " " << counters.writeConsumeBlocked;
+
   return Result();
 }
 
