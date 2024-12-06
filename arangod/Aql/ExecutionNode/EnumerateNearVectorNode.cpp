@@ -45,6 +45,7 @@ constexpr std::string_view kDistanceOutVariable = "distanceOutVariable";
 constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
 constexpr std::string_view kLimit = "limit";
 constexpr std::string_view kOffset = "offset";
+constexpr std::string_view knProbe = "nProbe";
 }  // namespace
 
 EnumerateNearVectorNode::EnumerateNearVectorNode(
@@ -52,7 +53,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     Variable const* inVariable, Variable const* oldDocumentVariable,
     Variable const* documentOutVariable, Variable const* distanceOutVariable,
     std::size_t limit, bool ascending, std::size_t offset,
-    aql::Collection const* collection,
+    std::optional<std::size_t> nProbe, aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
@@ -63,6 +64,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _limit(limit),
       _ascending(ascending),
       _offset(offset),
+      _nProbe(nProbe),
       _index(std::move(indexHandle)) {}
 
 ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
@@ -105,7 +107,8 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 
   auto executorInfos = EnumerateNearVectorsExecutorInfos(
       inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
-      engine.getQuery(), _collectionAccess.collection(), _limit, _offset);
+      engine.getQuery(), _collectionAccess.collection(), _limit, _offset,
+      _nProbe);
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
@@ -117,7 +120,8 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
                                               bool withDependencies) const {
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
-      _distanceOutVariable, _limit, _ascending, _offset, collection(), _index);
+      _distanceOutVariable, _limit, _ascending, _offset, _nProbe, collection(),
+      _index);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
@@ -154,6 +158,9 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
 
   builder.add(kLimit, VPackValue(_limit));
   builder.add(kOffset, VPackValue(_offset));
+  if (_nProbe) {
+    builder.add(knProbe, *_nProbe);
+  }
 
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
@@ -176,6 +183,10 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _limit(base.get(kLimit).getNumericValue<std::size_t>()),
       _offset(base.get(kOffset).getNumericValue<std::size_t>()) {
   std::string iid = base.get("index").get("id").copyString();
+
+  if (auto ns = base.get(knProbe); ns.isNumber()) {
+    _nProbe = ns.getNumericValue<std::size_t>();
+  }
 
   _index = collection()->indexByIdentifier(iid);
 }
