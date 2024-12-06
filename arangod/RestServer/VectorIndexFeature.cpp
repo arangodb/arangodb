@@ -43,7 +43,7 @@ void VectorIndexFeature::collectOptions(
       .setIntroducedIn(31200)
       .setLongDescription(
           R"(Turn on experimental vector index features. If this is enabled
-dowgrading from this version will no longer be possible.)");
+downgrading from this version will no longer be possible.)");
 }
 
 bool VectorIndexFeature::isVectorIndexEnabled() const {

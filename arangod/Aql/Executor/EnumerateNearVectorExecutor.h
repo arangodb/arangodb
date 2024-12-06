@@ -126,6 +126,9 @@ class EnumerateNearVectorsExecutor {
   bool _initialized{false};
   bool _resultsAreProcessed{false};
   std::size_t _currentProcessedResultCount{0};
+  // needed to enable fullCount to work
+  std::size_t _processedInputs{0};
+
   Infos const& _infos;
   transaction::Methods _trx;
   aql::Collection const* _collection;
