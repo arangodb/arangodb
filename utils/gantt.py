@@ -23,6 +23,7 @@ from tools.process_examine import (
     load_db_stacked_test,
 )
 CURRENT_TESTS = ['none']
+RELABS = ['relative', 'absolute']
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 load = get_load()
 #print(load)
@@ -74,11 +75,13 @@ app.layout = [
         ], className='three columns')
     ]),
     html.Div([
+        dcc.Dropdown(RELABS, RELABS[0], id='choose_gauge_relative'),
         dcc.Graph(id='stacked-area-resource-all-tests'),
         dcc.Dropdown(GAUGES, GAUGES[0], id='choose_gauge_all_tests'),
         dcc.Dropdown(CURRENT_TESTS, 'test', id='choose_test')
     ]),
     html.Div([
+        dcc.Dropdown(RELABS, RELABS[0], id='choose_gauge_one_relative'),
         dcc.Graph(id='stacked-area-resource-one-testing'),
         dcc.Dropdown(GAUGES, GAUGES[0], id='choose_gauge_one_test'),
     ]),
@@ -177,8 +180,9 @@ def update_line_chart(relayoutData):
     Output("stacked-area-resource-all-tests", "figure"),
     Output("choose_test", "options"),
     Input('load-graph', 'relayoutData'),
-    Input('choose_gauge_all_tests', 'value'))
-def update_stacked_alltests_chart(time_range_raw, chosen_gauge):
+    Input('choose_gauge_all_tests', 'value'),
+    Input('choose_gauge_relative', 'value'))
+def update_stacked_alltests_chart(time_range_raw, chosen_gauge, relative):
     global CURRENT_TESTS
     fig = go.Figure()
     if (time_range_raw and
@@ -194,7 +198,8 @@ def update_stacked_alltests_chart(time_range_raw, chosen_gauge):
                 pd.to_datetime(time_range_raw['xaxis.range[0]']),
                 pd.to_datetime(time_range_raw['xaxis.range[1]']),
             ]
-        info = load_db_stacked_jobs(date_range, chosen_gauge)
+        relative = relative == RELABS[0]
+        info = load_db_stacked_jobs(date_range, chosen_gauge, relative)
         df = pd.DataFrame(info[1])
         CURRENT_TESTS=info[0]
         fig = go.Figure()
@@ -205,7 +210,7 @@ def update_stacked_alltests_chart(time_range_raw, chosen_gauge):
                 mode='lines',
                 line=dict(width=0.5#, color='rgb(131, 90, 241)'
                           ),
-                stackgroup='one', # define stack group
+                stackgroup='one' if relative else None, # define stack group
                 name=column
             ))
         fig.update_layout(yaxis_range=(0, 100))
@@ -217,8 +222,9 @@ def update_stacked_alltests_chart(time_range_raw, chosen_gauge):
     Output("stacked-area-resource-one-testing", "figure"),
     Input("choose_test", "value"),
     Input('load-graph', 'relayoutData'),
-    Input('choose_gauge_one_test', 'value'))
-def update_stacked_onetest_chart(chosen_test, time_range_raw, chosen_gauge):
+    Input('choose_gauge_one_test', 'value'),
+    Input('choose_gauge_one_relative', 'value'))
+def update_stacked_onetest_chart(chosen_test, time_range_raw, chosen_gauge, relative):
     global CURRENT_TESTS
     fig = go.Figure()
     if (chosen_test and chosen_test != ['none'] and
@@ -236,8 +242,13 @@ def update_stacked_onetest_chart(chosen_test, time_range_raw, chosen_gauge):
                 pd.to_datetime(time_range_raw['xaxis.range[0]']),
                 pd.to_datetime(time_range_raw['xaxis.range[1]']),
             ]
-        info = load_db_stacked_test(date_range, choosen_pid, chosen_gauge)
+        relative = relative == RELABS[0]
+        info = load_db_stacked_test(date_range,
+                                    choosen_pid,
+                                    chosen_gauge,
+                                    relative)
         df = pd.DataFrame(info[1])
+        print(df)
         CURRENT_TESTS=info[0]
         fig = go.Figure()
         for column in info[0]:
@@ -247,7 +258,7 @@ def update_stacked_onetest_chart(chosen_test, time_range_raw, chosen_gauge):
                 mode='lines',
                 line=dict(width=0.5#, color='rgb(131, 90, 241)'
                           ),
-                stackgroup='one', # define stack group
+                stackgroup='one' if relative else None, # define stack group
                 name=column
             ))
         fig.update_layout(yaxis_range=(0, 100))
