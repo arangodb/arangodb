@@ -151,6 +151,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
+#include "RestServer/VectorIndexFeature.h"
 #ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"

@@ -146,6 +146,7 @@ auto arangodb::aql::toString(GatherNode::SortMode mode) noexcept
       case SHORTEST_PATH:
       case ENUMERATE_PATHS:
       case INDEX:
+      case ENUMERATE_NEAR_VECTORS:
       case ENUMERATE_COLLECTION: {
         auto const* cNode = castTo<CollectionAccessingNode const*>(node);
         if (!cNode->isUsedAsSatellite() &&

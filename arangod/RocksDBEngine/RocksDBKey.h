@@ -31,6 +31,8 @@
 #include "VocBase/voc-types.h"
 #include "Zkd/ZkdHelper.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <iosfwd>
 #include <string>
 #include <string_view>
@@ -192,6 +194,14 @@ class RocksDBKey {
                               LocalDocumentId documentId);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for vector index
+  //////////////////////////////////////////////////////////////////////////////
+  void constructVectorIndexValue(uint64_t indexId, std::size_t listNumber);
+
+  void constructVectorIndexValue(uint64_t indexId, std::size_t listNumber,
+                                 LocalDocumentId documentId);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for revision tree for a collection
   //////////////////////////////////////////////////////////////////////////////
   void constructLogEntry(uint64_t objectId, replication2::LogIndex idx);
@@ -301,7 +311,6 @@ class RocksDBKey {
   /// @brief Extracts the mdi value
   ///
   /// May be called only on mdi values
-  //////////////////////////////////////////////////////////////////////////////
   static zkd::byte_string_view mdiVPackIndexCurveValue(
       rocksdb::Slice const& slice);
   static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(
@@ -309,6 +318,7 @@ class RocksDBKey {
   static zkd::byte_string_view mdiIndexCurveValue(rocksdb::Slice const& slice);
   static zkd::byte_string_view mdiUniqueIndexCurveValue(
       rocksdb::Slice const& slice);
+  static std::size_t vectorVPackIndexListValue(rocksdb::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts log index from key
@@ -379,6 +389,7 @@ class RocksDBKey {
                                                        size_t size);
   static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(char const* data,
                                                              size_t size);
+  static std::size_t vectorVPackIndexListValue(char const* data, size_t size);
 
  private:
   static const char _stringSeparator;

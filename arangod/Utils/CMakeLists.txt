@@ -3,7 +3,8 @@ add_library(arango_utils STATIC
   ExecContext.cpp
   OperationOptions.cpp
   SupportInfoBuilder.cpp
-  UrlHelper.cpp)
+  UrlHelper.cpp
+)
 
 if (NOT USE_ENTERPRISE)
   target_sources(arango_utils PRIVATE

@@ -64,6 +64,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/VectorIndexFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -250,6 +251,9 @@ struct IResearchExpressionFilterTest
                           false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);
+    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
+                          false);
+
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
