@@ -439,7 +439,6 @@ function VectorIndexL2TestSuite() {
             const results = queryResults.toArray();
             assertEqual(results.length, 3);
 
-            print(queryResults.getExtra());
             const stats = queryResults.getExtra().stats;
             assertEqual(stats.fullCount, 500);
         },
