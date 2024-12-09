@@ -112,7 +112,7 @@ function deadlock (options) {
 function subQueryChaos (options) {
   let testCases;
   let name = 'shell_client_subquerychaos';
-  testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
+  testCases = tu.scanTestPaths(testPaths.chaos_subq, options);
   testCases = tu.splitBuckets(options, testCases);
 
   let rc = new trs.runLocalInArangoshRunner(options, name, {}).run(testCases);
