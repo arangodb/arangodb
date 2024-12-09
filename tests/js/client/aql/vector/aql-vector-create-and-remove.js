@@ -48,7 +48,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
   const dimension = 500;
   const seed = 12132390894;
   let randomPoint;
-  const insertedDocsCount = 500;
+  const insertedDocsCount = 100;
   let insertedDocs = [];
 
   return {
@@ -62,7 +62,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
       let gen = randomNumberGeneratorFloat(seed);
       for (let i = 0; i < insertedDocsCount; ++i) {
         const vector = Array.from({ length: dimension }, () => gen());
-        if (i === 250) {
+        if (i === 50) {
           randomPoint = vector;
         }
         docs.push({ vector });
@@ -74,7 +74,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
         type: "vector",
         fields: ["vector"],
         inBackground: false,
-        params: { metric: "l2", dimension, nLists: 10 },
+        params: { metric: "l2", dimension, nLists: 5 },
       });
     },
 

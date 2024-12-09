@@ -123,9 +123,19 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
 }
 
 CostEstimate EnumerateNearVectorNode::estimateCost() const {
-  // TODO(jbajic) check if it is accurate
+  // TODO(jbajic) add nLists and nProbe parameters into play
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  estimate.estimatedNrItems *= _limit;
+
+  if (transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
+      trx.status() == transaction::Status::RUNNING) {
+    estimate.estimatedNrItems = std::min(
+        _limit,
+        estimate.estimatedNrItems *
+            collection()->count(&trx, transaction::CountType::kTryCache));
+  } else {
+    estimate.estimatedNrItems = _limit;
+  }
+  estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
 
