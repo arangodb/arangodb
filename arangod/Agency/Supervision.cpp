@@ -1808,26 +1808,27 @@ void Supervision::handleJobs() {
   failBrokenHotbackupTransferJobs();
 }
 
-// Guarded by caller
-void Supervision::cleanupFinishedAndFailedJobs() {
-  // This deletes old Supervision jobs in /Target/Finished and
-  // /Target/Failed. We can be rather generous here since old
-  // snapshots and log entries are kept for much longer.
-  // We only keep up to 500 finished jobs and 1000 failed jobs.
-  // Note that we must not throw away failed jobs which are subjobs
-  // of a larger job (e.g. MoveShard jobs in the context of a
-  // CleanOutServer job), or else the larger job can no longer
-  // detect any failures!
+bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+    Node const& snapshot, std::shared_ptr<VPackBuilder> envelope,
+    bool doFinished) {
+  // This deletes old Supervision jobs in /Target/Finished (doFinished=true)
+  // or /Target/Failed (doFinished=false). We can be rather generous
+  // here since old snapshots and log entries are kept for much longer.
+  // We only keep up to 500 finished jobs and 1000 failed jobs. Note
+  // that we must not throw away failed jobs which are subjobs of a
+  // larger job (e.g. MoveShard jobs in the context of a CleanOutServer
+  // job), or else the larger job can no longer detect any failures!
+  // Returns true if there is something to do, false otherwise.
 
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
 
-  auto cleanup = [&](std::string const& prefix, size_t limit) {
-    auto const& jobs = snapshot().hasAsChildren(prefix).value().get();
+  auto cleanup = [&](std::string const& prefix, size_t limit) -> bool {
     auto const& pendingJobs =
-        snapshot().hasAsChildren(pendingPrefix).value().get();
+        snapshot.hasAsChildren(pendingPrefix).value().get();
+    auto const& jobs = snapshot.hasAsChildren(prefix).value().get();
     if (jobs.size() <= 2 * limit) {
-      return;
+      return false;
     }
     typedef std::pair<std::string, std::string> keyDate;
     std::vector<keyDate> v;
@@ -1861,8 +1862,8 @@ void Supervision::cleanupFinishedAndFailedJobs() {
                                              << " old jobs"
                                                 " in "
                                              << prefix;
-    VPackBuilder trx;  // We build a transaction here
-    {                  // Pair for operation, no precondition here
+    {  // Pair for operation, no precondition here
+      VPackBuilder& trx(*envelope);
       VPackArrayBuilder guard1(&trx);
       {
         VPackObjectBuilder guard2(&trx);
@@ -1875,11 +1876,49 @@ void Supervision::cleanupFinishedAndFailedJobs() {
         }
       }
     }
-    singleWriteTransaction(_agent, trx, false);  // do not care about the result
+    return true;
   };
 
-  cleanup(finishedPrefix, maximalFinishedJobs);
-  cleanup(failedPrefix, maximalFailedJobs);
+  if (doFinished) {
+    return cleanup(finishedPrefix, maximalFinishedJobs);
+  } else {
+    return cleanup(failedPrefix, maximalFailedJobs);
+  }
+}
+
+// Guarded by caller
+void Supervision::cleanupFinishedAndFailedJobs() {
+  auto envelope = std::make_shared<VPackBuilder>();
+  bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+      snapshot(), envelope, true);
+  if (sthTodo) {
+    LOG_DEVEL << "Transaction built: " << envelope->toJson();
+    write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
+
+    if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION)
+          << "Failed to remove old transfer jobs or locks: "
+          << envelope->toJson();
+    }
+    singleWriteTransaction(_agent, *envelope,
+                           false);  // do not care about the result
+  };
+
+  envelope->clear();
+  sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+      snapshot(), envelope, false);
+  if (sthTodo) {
+    LOG_DEVEL << "Transaction 2 built: " << envelope->toJson();
+    write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
+
+    if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION)
+          << "Failed to remove old transfer jobs or locks: "
+          << envelope->toJson();
+    }
+    singleWriteTransaction(_agent, *envelope,
+                           false);  // do not care about the result
+  };
 }
 
 // Guarded by caller
@@ -2672,8 +2711,8 @@ auto parseSomethingFromNode(Node const& n) -> T {
 }
 
 template<typename T>
-auto parseIfExists(Node const& root, std::string const& url)
-    -> std::optional<T> {
+auto parseIfExists(Node const& root,
+                   std::string const& url) -> std::optional<T> {
   if (auto node = root.get(url); node.has_value()) {
     return parseSomethingFromNode<T>(node->get());
   }
@@ -2731,11 +2770,10 @@ auto replicatedLogOwnerGone(Node const& snapshot, Node const& node,
   return true;
 }
 
-auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
-                         std::string const& dbName, std::string const& idString,
-                         ParticipantsHealth const& health,
-                         arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope try {
+auto handleReplicatedLog(
+    Node const& snapshot, Node const& targetNode, std::string const& dbName,
+    std::string const& idString, ParticipantsHealth const& health,
+    arangodb::agency::envelope envelope) -> arangodb::agency::envelope try {
   if (replicatedLogOwnerGone(snapshot, targetNode, dbName, idString)) {
     auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
     return methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
