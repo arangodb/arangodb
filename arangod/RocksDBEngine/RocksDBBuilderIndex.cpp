@@ -54,6 +54,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "RocksDBVectorIndex.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -345,6 +346,12 @@ static Result fillIndex(
   rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
+
+  if (ridx.type() == arangodb::Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    it->Seek(bounds.start());
+    return dynamic_cast<RocksDBVectorIndex&>(ridx).ingestVectors(rootDB,
+                                                                 std::move(it));
+  }
 
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 #ifdef USE_ENTERPRISE
