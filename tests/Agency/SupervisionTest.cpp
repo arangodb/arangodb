@@ -451,11 +451,11 @@ static void makeHotbackupTransferJob(Node& snapshot, size_t year, size_t id,
       createNode(st.c_str());
 }
 
-static void makeFailedMoveShardJob(NodePtr& snapshot, size_t year,
+static void makeFailedMoveShardJob(Node& snapshot, size_t year,
                                    std::string const& id, char const* job) {
   std::string st = std::string(job) + "\"timeCreated\": \"" +
                    std::to_string(year) + "-02-25T12:38:29Z\"\n}";
-  snapshot = snapshot->placeAt("/Target/Failed/" + id, createNode(st.c_str()));
+  snapshot.getOrCreate("/Target/Failed/" + id) = createNode(st.c_str());
 }
 
 TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
@@ -1013,10 +1013,11 @@ TEST_F(SupervisionTestClass, cleanup_failed_jobs) {
   "type": "moveShard",
 )=");
   };
+  _snapshot.getOrCreate("/Target/Pending") = createNode(R"=( { })=");
 
   auto envelope = std::make_shared<VPackBuilder>();
   bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
-      *_snapshot, envelope, false);
+      _snapshot, envelope, false);
   EXPECT_TRUE(sthTodo);
   VPackSlice content = envelope->slice();
   EXPECT_TRUE(content.isArray());
@@ -1055,7 +1056,7 @@ TEST_F(SupervisionTestClass, not_cleanup_failed_sub_jobs) {
 )=");
   };
 
-  _snapshot = _snapshot->placeAt("/Target/Pending/1234567", createNode(R"=(
+  _snapshot.getOrCreate("/Target/Pending/1234567") = createNode(R"=(
 {
   "creator": "16020029",
   "server": "PRMR-5e5faae8-6955-4cc9-88d6-d483486d6374",
@@ -1064,10 +1065,10 @@ TEST_F(SupervisionTestClass, not_cleanup_failed_sub_jobs) {
   "timeStarted": "2024-12-09T10:22:22Z",
   "type": "cleanOutServer"
 }
-)="));
+)=");
 
   auto envelope = std::make_shared<VPackBuilder>();
   bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
-      *_snapshot, envelope, false);
+      _snapshot, envelope, false);
   EXPECT_FALSE(sthTodo);
 }
