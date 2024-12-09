@@ -1,6 +1,8 @@
 devel
 -----
 
+* Do check for replication version 2 in a safe way. This fixes BTS-2040.
+
 * Put in more diagnostics and avoid a crash in follower on commit of a
   transaction in case a collection is already gone (BTS-2033).
 
