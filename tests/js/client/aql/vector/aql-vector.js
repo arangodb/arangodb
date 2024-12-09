@@ -435,8 +435,12 @@ function VectorIndexL2TestSuite() {
             });
             assertEqual(1, indexNodes.length);
 
-            const results = db._query(query, bindVars, options).toArray();
+            const queryResults = db._query(query, bindVars, options);
+            const results = queryResults.toArray();
             assertEqual(results.length, 3);
+
+            const stats = queryResults.getExtra().stats;
+            assertEqual(stats.fullCount, 500);
         },
 
         testApproxL2Skipping: function() {
@@ -502,11 +506,19 @@ function VectorIndexL2TestSuite() {
             });
             assertEqual(1, indexNodes.length);
 
-            const resultsWithSkip = db._query(queryWithSkip, bindVars, options).toArray();
-            const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars, options).toArray();
+            const queryResultsWithSkip = db._query(queryWithSkip, bindVars, options);
+            const resultsWithSkip = queryResultsWithSkip.toArray();
+            const statsWithSkip = queryResultsWithSkip.getExtra().stats;
+
+            const queryResultsWithoutSkip = db._query(queryWithoutSkip, bindVars, options);
+            const resultsWithoutSkip = queryResultsWithoutSkip.toArray();
+            const statsWithoutSkip = queryResultsWithoutSkip.getExtra().stats;
 
             assertEqual(resultsWithSkip.length, 5);
             assertEqual(resultsWithoutSkip.length, 8);
+
+            assertEqual(statsWithSkip.fullCount, 500);
+            assertEqual(statsWithoutSkip.fullCount, 500);
 
             assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
         },
