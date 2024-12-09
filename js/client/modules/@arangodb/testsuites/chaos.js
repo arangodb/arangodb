@@ -115,8 +115,7 @@ function subQueryChaos (options) {
   testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
   testCases = tu.splitBuckets(options, testCases);
 
-  let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
-  options.cleanup = options.cleanup && opts.cleanup;
+  let rc = new trs.runLocalInArangoshRunner(options, name, {}).run(testCases);
   return rc;
 }
 
