@@ -1811,7 +1811,10 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
               [](keyDate const& a, keyDate const& b) -> bool {
                 return a.second < b.second;
               });
-    size_t toBeDeleted = v.size() - limit;  // known to be positive
+    if (v.size() < limit) {
+      return false;
+    }
+    size_t toBeDeleted = v.size() - limit;
     LOG_TOPIC("98451", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted
                                              << " old jobs"
                                                 " in "
@@ -1866,7 +1869,7 @@ void Supervision::cleanupFinishedAndFailedJobs() {
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
-      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION)
+      LOG_TOPIC("1232e", INFO, Logger::SUPERVISION)
           << "Failed to remove old transfer jobs or locks: "
           << envelope->toJson();
     }
@@ -2073,7 +2076,7 @@ void Supervision::cleanupHotbackupTransferJobs() {
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
-      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION)
+      LOG_TOPIC("1232d", INFO, Logger::SUPERVISION)
           << "Failed to remove old transfer jobs or locks: "
           << envelope->toJson();
     }
