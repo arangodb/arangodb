@@ -116,7 +116,7 @@ function IndexBatchMaterializeTestSuite() {
     }
   }
 
-  function parseExplainationAndExecuteQuery(query, options = {}) {
+  function parseExplanationAndExecuteQuery(query, options = {}) {
     try {
       const plan = db._createStatement({query, options}).explain().plan;
       const nodes = plan.nodes.map(n => n.type);
@@ -431,7 +431,7 @@ function IndexBatchMaterializeTestSuite() {
             RETURN [dy, dx]
       `;
       const { firstIndexNode, secondIndexNode, firstMaterializeNode, secondMaterializeNode } 
-        = parseExplainationAndExecuteQuery(query);
+        = parseExplanationAndExecuteQuery(query);
       
       // it should be index->materialize->index->materialize
       assertEqual(firstIndexNode.id, firstMaterializeNode.dependencies[0]);
@@ -449,19 +449,65 @@ function IndexBatchMaterializeTestSuite() {
             RETURN [dx, dy]
       `;
       const { firstIndexNode, secondIndexNode, firstMaterializeNode, secondMaterializeNode } 
-        = parseExplainationAndExecuteQuery(query);
-      
-      
+        = parseExplanationAndExecuteQuery(query);
+
       if (internal.isEnterprise() || !internal.isCluster()) {
         // it should be index->index->materialize->materialize
         assertEqual(firstIndexNode.id, secondIndexNode.dependencies[0]);
         assertEqual(secondIndexNode.id, firstMaterializeNode.dependencies[0]);
         assertEqual(firstMaterializeNode.id, secondMaterializeNode.dependencies[0]);
       } else {
-        // Cluster on community version behaves differently and does not apply this improvment.
+        // Cluster on community version behaves differently and does not apply this improvement.
         // should behave the same as `testMaterializationTupleUniqueIndex`
         assertEqual(firstIndexNode.id, firstMaterializeNode.dependencies[0]);
         assertEqual(secondIndexNode.id, secondMaterializeNode.dependencies[0]);
+      }
+    },
+
+    testMaterializationNonUniqueIndexWithOption: function() {
+      const queryOptionTrue = `
+        FOR dx IN ${singleShardCollection}
+          FOR dy IN ${singleShardCollection} OPTIONS { pushDownMaterialization: true }
+            FILTER dx.x > 1 AND dx.x == dy.x
+            RETURN [dx, dy]
+      `;
+      const ot
+          = parseExplanationAndExecuteQuery(queryOptionTrue);
+
+      const queryOptionFalse = `
+        FOR dx IN ${collection}
+          FOR dy IN ${collection} OPTIONS { pushDownMaterialization: false}
+            FILTER dx.x > 1 AND dx.x == dy.x
+            RETURN [dy, dx]
+      `;
+      const of
+          = parseExplanationAndExecuteQuery(queryOptionFalse);
+
+      if (internal.isEnterprise() || !internal.isCluster()) {
+        // Option True
+        // it should be index->index->materialize->materialize
+        assertEqual(ot.firstIndexNode.id, ot.secondIndexNode.dependencies[0]);
+        assertEqual(ot.secondIndexNode.id, ot.firstMaterializeNode.dependencies[0]);
+        assertEqual(ot.firstMaterializeNode.id, ot.secondMaterializeNode.dependencies[0]);
+
+        // Option False
+        // it should be the same as with the turned on option.
+        assertNotEqual(of.firstIndexNode.id, of.secondIndexNode.dependencies[0]);
+        assertNotEqual(of.secondIndexNode.id, of.firstMaterializeNode.dependencies[0]);
+        assertNotEqual(of.firstMaterializeNode.id, of.secondMaterializeNode.dependencies[0]);
+
+        // it should be index->materialize->index->materialize
+        assertEqual(of.firstIndexNode.id, of.firstMaterializeNode.dependencies[0]);
+        assertEqual(of.secondIndexNode.id, of.secondMaterializeNode.dependencies[0]);
+      } else {
+        // Cluster on community version behaves differently and does not apply this improvement.
+        // should behave the same as `testMaterializationTupleUniqueIndex`
+        // The option should not affect the behaviour
+        assertEqual(ot.firstIndexNode.id, ot.firstMaterializeNode.dependencies[0]);
+        assertEqual(ot.secondIndexNode.id, ot.secondMaterializeNode.dependencies[0]);
+
+        assertEqual(of.firstIndexNode.id, of.firstMaterializeNode.dependencies[0]);
+        assertEqual(of.secondIndexNode.id, of.secondMaterializeNode.dependencies[0]);
       }
     },
 
@@ -474,7 +520,7 @@ function IndexBatchMaterializeTestSuite() {
             RETURN [dx, dy]
       `;
       const { firstIndexNode, secondIndexNode, firstMaterializeNode, secondMaterializeNode } 
-        = parseExplainationAndExecuteQuery(query);
+        = parseExplanationAndExecuteQuery(query);
       
       // it should be index->materialize->index->materialize
       assertEqual(firstIndexNode.id, firstMaterializeNode.dependencies[0]);
