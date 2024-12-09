@@ -158,7 +158,9 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
 
   builder.add(kLimit, VPackValue(_limit));
   builder.add(kOffset, VPackValue(_offset));
-  builder.add(knProbe, _searchParameters.nProbe);
+  if (_searchParameters.nProbe) {
+    builder.add(knProbe, *_searchParameters.nProbe);
+  }
 
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
