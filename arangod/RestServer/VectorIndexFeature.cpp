@@ -40,7 +40,7 @@ void VectorIndexFeature::collectOptions(
                   "Turn on experimental vector index feature.",
                   new options::BooleanParameter(&_useVectorIndex),
                   options::makeFlags())
-      .setIntroducedIn(31200)
+      .setIntroducedIn(31204)
       .setLongDescription(
           R"(Turn on experimental vector index features. If this is enabled
 downgrading from this version will no longer be possible.)");
