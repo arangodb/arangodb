@@ -47,7 +47,7 @@ struct EnumerateNearVectorsExecutorInfos {
       RegisterId inNmDocId, RegisterId outDocRegId, RegisterId outDistanceRegId,
       transaction::Methods::IndexHandle index, QueryContext& queryContext,
       aql::Collection const* collection, std::size_t topK, std::size_t offset,
-      std::optional<std::size_t> nProbe)
+      SearchParameters searchParameters)
       : inputReg(inNmDocId),
         outDocumentIdReg(outDocRegId),
         outDistancesReg(outDistanceRegId),
@@ -56,7 +56,7 @@ struct EnumerateNearVectorsExecutorInfos {
         collection(collection),
         topK(topK),
         offset(offset),
-        nProbe(nProbe) {}
+        searchParameters(searchParameters) {}
 
   EnumerateNearVectorsExecutorInfos() = delete;
   EnumerateNearVectorsExecutorInfos(EnumerateNearVectorsExecutorInfos&&) =
@@ -80,7 +80,7 @@ struct EnumerateNearVectorsExecutorInfos {
   aql::Collection const* collection;
   std::size_t topK;
   std::size_t offset;
-  std::optional<std::size_t> nProbe;
+  SearchParameters searchParameters;
 };
 
 class EnumerateNearVectorsExecutor {

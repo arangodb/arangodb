@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////optimizerulevectorinde
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -151,7 +151,7 @@ std::pair<AstNode const*, bool> getApproxNearExpression(
 
 // Currently this only returns nProbe, in the future it might be possible to
 // set other search parameters
-std::optional<std::size_t> getNProbe(
+SearchParameters getSearchParameters(
     auto const* calculationNodeExpressionNode) {
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
@@ -172,10 +172,10 @@ std::optional<std::size_t> getNProbe(
           fmt::format("error parsing searchParameters: {}!", res.error()));
     }
 
-    return searchParameters.nProbe;
+    return searchParameters;
   }
 
-  return std::nullopt;
+  return {};
 }
 
 AstNode* getApproxNearAttributeExpression(
@@ -286,7 +286,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
         continue;
       }
 
-      auto nProbe = getNProbe(approxNearExpression);
+      auto searchParameters = getSearchParameters(approxNearExpression);
 
       // replace the collection enumeration with the enumerate near node
       // furthermore, we have to remove the calculation node
@@ -308,7 +308,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit, ascending,
-          limitNode->offset(), std::move(nProbe),
+          limitNode->offset(), std::move(searchParameters),
           enumerateCollectionNode->collection(), index);
 
       auto* materializer =
