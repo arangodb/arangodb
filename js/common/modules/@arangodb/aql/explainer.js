@@ -1829,6 +1829,7 @@ function processQuery(query, explain, planIndex) {
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
       case 'SortNode':
+        // TODO
         return keyword('SORT') + ' ' + node.elements.map(function (node) {
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
         }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
