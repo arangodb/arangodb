@@ -1,5 +1,7 @@
 devel
 -----
+* Changed the priority of WebUI request to prevent endless loading if the
+  server is under load
 
 * Truncate error messages by rclone for TransferJobs to avoid excessive
   memory use in the agency. Keep only 10 finished TransferJobs in agency.
