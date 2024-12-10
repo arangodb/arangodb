@@ -246,7 +246,6 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   } else {
     if (_definition.factory) {
       std::shared_ptr<faiss::Index> index;
-      faiss::index_factory_verbose = 100;
       index.reset(faiss::index_factory(
           _definition.dimension, _definition.factory->c_str(),
           metricToFaissMetric(_definition.metric)));
