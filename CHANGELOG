@@ -1,6 +1,11 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* Don't cleanup failed agency jobs if they are subjobs of pending jobs.
+  This avoids a bug in CleanOutServer jobs, where such a job could complete
+  seemingly successfully despite the fact that some MoveShard jobs had 
+  actually failed. This fixes BTS-2022.
+
 * Upgraded OpenSSL to 3.4.0.
 
 * Fix shard synchronisation race where after a shard move the new
