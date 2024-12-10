@@ -1811,7 +1811,7 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
               [](keyDate const& a, keyDate const& b) -> bool {
                 return a.second < b.second;
               });
-    if (v.size() < limit) {
+    if (v.size() <= limit) {
       return false;
     }
     size_t toBeDeleted = v.size() - limit;
