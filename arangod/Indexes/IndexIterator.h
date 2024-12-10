@@ -462,6 +462,9 @@ struct IndexIteratorOptions {
   bool waitForSync = false;
   /// @brief iterator will be used with late materialization
   bool forLateMaterialization{false};
+  /// @brief forces the materialize node past this index, even if its not a
+  /// unique one
+  bool pushDownMaterialization{false};
 };
 
 /// index estimate map, defined here because it was convenient

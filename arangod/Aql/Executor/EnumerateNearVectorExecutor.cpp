@@ -58,7 +58,7 @@ void EnumerateNearVectorsExecutor::fillInput(
     AqlItemBlockInputRange& inputRange) {
   auto docRegId = _infos.inputReg;
 
-  auto [state, _inputRow] =
+  std::tie(_state, _inputRow) =
       inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
   AqlValue value = _inputRow.getValue(docRegId);
@@ -85,6 +85,7 @@ void EnumerateNearVectorsExecutor::fillInput(
         fmt::format("a vector must be of dimension {}, but is {}", dimension,
                     vectorComponentsCount));
   }
+  ++_processedInputs;
 }
 
 void EnumerateNearVectorsExecutor::searchResults() {
@@ -160,15 +161,13 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                << call.needSkipMore()
                << ", hasInputRange: " << inputRange.hasDataRow()
                << ", resultsAreProcessed: " << _resultsAreProcessed;
-  while (call.needSkipMore() &&
-         (inputRange.hasDataRow() || !_resultsAreProcessed)) {
+  while (call.needSkipMore()) {
     // get an input row first, if necessary
     if (!_inputRow.isInitialized() && !_initialized) {
       std::tie(_state, _inputRow) = inputRange.peekDataRow();
 
-      if (_inputRow.isInitialized()) {
+      if (inputRange.hasDataRow()) {
         fillInput(inputRange);
-        searchResults();
       } else {
         break;
       }
@@ -180,20 +179,15 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     if (call.getOffset() == 0) {
       TRI_ASSERT(call.needsFullCount())
           << "if we need to skip and skip is 0 fullCount must be true";
-      LOG_INTERNAL << "needsFullCount is set";
 
-      skipped = ExecutionBlock::SkipAllSize();
+      auto fullCount =
+          _collection->count(&_trx, transaction::CountType::kNormal);
+      skipped = fullCount - _processedInputs * _infos.getNumberOfResults();
+      LOG_INTERNAL << "needsFullCount is set, fullCount: " << fullCount
+                   << " processed inputs: " << _processedInputs
+                   << " skipping now: " << skipped;
+      call.didSkip(skipped);
       break;
-    }
-
-    if (call.getOffset() == 0) {
-      TRI_ASSERT(call.needsFullCount());
-      // we are done
-      skipped = ExecutionBlock::SkipAllSize();
-      inputRange.advanceDataRow();
-      _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-      _initialized = false;
-      continue;
     }
 
     while (call.getOffset() > 0) {
@@ -201,7 +195,6 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
         // we are done, since faiss return -1 for nonexistent results
         skipped = ExecutionBlock::SkipAllSize();
         _resultsAreProcessed = true;
-        inputRange.advanceDataRow();
         _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
         _initialized = false;
         call.didSkip(skipped);
@@ -218,18 +211,15 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   }
 
   if (call.needsFullCount() && _resultsAreProcessed) {
-    LOG_INTERNAL << "we have fullCount and all resultsAreProcessed, this is "
+    LOG_INTERNAL << "we have fullCount and all results are processed, this is "
                     "possible after produceRows";
     _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    skipped = ExecutionBlock::SkipAllSize();
-    inputRange.advanceDataRow();
-    _initialized = false;
-    call.didSkip(skipped);
+    // We don't want to initialize anything else
     _state = ExecutorState::DONE;
   }
 
-  auto state = std::invoke([&]() {
-    if (_inputRow.isInitialized() && !_resultsAreProcessed) {
+  auto const state = std::invoke([&]() {
+    if (_inputRow.isInitialized() || !_resultsAreProcessed) {
       return ExecutorState::HASMORE;
     }
     return _state;

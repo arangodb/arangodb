@@ -108,6 +108,7 @@ void iterateBounds(rocksdb::TransactionDB* db, RocksDBKeyBounds const& bounds,
   }
 }
 
+// TODO extend get in Slice to accept vector of AttributeName
 inline auto accessDocumentPath(VPackSlice doc,
                                std::vector<basics::AttributeName> const& path)
     -> VPackSlice {
