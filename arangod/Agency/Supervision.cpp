@@ -1824,8 +1824,7 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
   constexpr size_t maximalFailedJobs = 1000;
 
   auto cleanup = [&](std::string const& prefix, size_t limit) -> bool {
-    auto const& pendingJobs =
-        snapshot.hasAsChildren(pendingPrefix).value().get();
+    auto pendingJobs = snapshot.hasAsChildren(pendingPrefix);
     auto const& jobs = snapshot.hasAsChildren(prefix).value().get();
     if (jobs.size() <= 2 * limit) {
       return false;
@@ -1838,12 +1837,15 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
       auto pos = p.first.find('-');
       if (pos != std::string::npos) {
         auto const& parent = p.first.substr(0, pos);
-        if (pendingJobs.find(parent) != pendingJobs.end()) {
-          LOG_TOPIC("99887", TRACE, Logger::SUPERVISION)
-              << "Skipping removal of subjob " << p.first << " of parent "
-              << parent << " since the parent is still pending.";
-          continue;  // this is a subjob, and its parent is still pending, let's
-                     // keep it
+        if (pendingJobs.has_value()) {
+          auto const& pj = pendingJobs.value().get();
+          if (pj.find(parent) != pj.end()) {
+            LOG_TOPIC("99887", TRACE, Logger::SUPERVISION)
+                << "Skipping removal of subjob " << p.first << " of parent "
+                << parent << " since the parent is still pending.";
+            continue;  // this is a subjob, and its parent is still pending,
+                       // let's keep it
+          }
         }
       }
       auto created = p.second->hasAsString("timeCreated");
@@ -2469,7 +2471,8 @@ void Supervision::restoreBrokenAnalyzersRevision(
   write_ret_t res = _agent->write(envelope.slice());
   if (!res.successful()) {
     LOG_TOPIC("e43cb", DEBUG, Logger::SUPERVISION)
-        << "failed to restore broken analyzers revision in agency. Will retry. "
+        << "failed to restore broken analyzers revision in agency. Will "
+           "retry. "
         << envelope.toJson();
   }
 }
@@ -2600,8 +2603,8 @@ void Supervision::checkBrokenCollections() {
                 snapshot(), coordinatorID, rebootID, coordinatorFound);
 
             if (!keepResource) {
-              // index creation still ongoing, but started by a coordinator that
-              // has failed by now. delete this index
+              // index creation still ongoing, but started by a coordinator
+              // that has failed by now. delete this index
               deleteBrokenIndex(_agent, dbpair.first, collectionPair.first,
                                 planIndex, coordinatorID, rebootID,
                                 coordinatorFound);
@@ -2714,8 +2717,8 @@ auto parseSomethingFromNode(Node const& n) -> T {
 }
 
 template<typename T>
-auto parseIfExists(Node const& root,
-                   std::string const& url) -> std::optional<T> {
+auto parseIfExists(Node const& root, std::string const& url)
+    -> std::optional<T> {
   if (auto node = root.get(url); node.has_value()) {
     return parseSomethingFromNode<T>(node->get());
   }
@@ -2773,10 +2776,11 @@ auto replicatedLogOwnerGone(Node const& snapshot, Node const& node,
   return true;
 }
 
-auto handleReplicatedLog(
-    Node const& snapshot, Node const& targetNode, std::string const& dbName,
-    std::string const& idString, ParticipantsHealth const& health,
-    arangodb::agency::envelope envelope) -> arangodb::agency::envelope try {
+auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
+                         std::string const& dbName, std::string const& idString,
+                         ParticipantsHealth const& health,
+                         arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope try {
   if (replicatedLogOwnerGone(snapshot, targetNode, dbName, idString)) {
     auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
     return methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
@@ -3305,10 +3309,9 @@ void Supervision::shrinkCluster() {
      * fullfilled we should add a follower to the plan
      * When seeing more servers in Current than replicationFactor we should
      * remove a server.
-     * RemoveServer then should be changed so that it really just kills a server
-     * after a while...
-     * this way we would have implemented changing the replicationFactor and
-     * have an awesome new feature
+     * RemoveServer then should be changed so that it really just kills a
+     *server after a while... this way we would have implemented changing the
+     *replicationFactor and have an awesome new feature
      **/
     // Find greatest replication factor among all collections
     uint64_t maxReplFact = 1;
@@ -3329,8 +3332,8 @@ void Supervision::shrinkCluster() {
 
     // mop: do not account any failedservers in this calculation..the ones
     // having
-    // a state of failed still have data of interest to us! We wait indefinitely
-    // for them to recover or for the user to remove them
+    // a state of failed still have data of interest to us! We wait
+    // indefinitely for them to recover or for the user to remove them
     if (maxReplFact < availServers.size()) {
       // Clean out as long as number of available servers is bigger
       // than maxReplFactor and bigger than targeted number of db servers
