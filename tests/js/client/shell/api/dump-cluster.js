@@ -215,6 +215,20 @@ function DumpAPI() {
       ctx.drop();
     },
 
+    testSimpleProjectionsNonExistentPath: function () {
+      const servers = getShardsByServer(collection);
+      const server = Object.keys(servers)[0];
+      const ctx = createContext(server, {shards: servers[server], projections: {"foo": ["value"],
+          "unknown": ["some", "non-existent", "path"]}});
+
+      for (const [doc, shard] of ctx.read()) {
+        assertEqual(Object.keys(doc), ["foo"]);
+        assertTrue(typeof doc.foo === 'number');
+        assertEqual(doc.unknown, undefined);
+      }
+      ctx.drop();
+    },
+
     testProjectionsId: function () {
       const servers = getShardsByServer(collection);
       const server = Object.keys(servers)[0];

@@ -272,6 +272,7 @@ ERROR_QUERY_FUNCTION_INVALID_NAME,1580,"invalid user function name","Will be rai
 ERROR_QUERY_FUNCTION_INVALID_CODE,1581,"invalid user function code","Will be raised when a user function is registered with invalid code."
 ERROR_QUERY_FUNCTION_NOT_FOUND,1582,"user function '%s()' not found","Will be raised when a user function is accessed but not found."
 ERROR_QUERY_FUNCTION_RUNTIME_ERROR,1583,"user function runtime error: %s","Will be raised when a user function throws a runtime exception."
+ERROR_QUERY_NOT_ELIGIBLE_FOR_PLAN_CACHING,1584,"query is not eligible for plan caching","Will be raised when a query is not eligible for plan caching and yet, the usePlanCache option was set to true."
 
 ################################################################################
 ## AQL query registry errors

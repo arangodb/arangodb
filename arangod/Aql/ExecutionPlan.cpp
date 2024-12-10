@@ -698,6 +698,23 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls,
   }
 }
 
+/// @brief process a list of views in a VelocyPack
+void ExecutionPlan::extendCollectionsByViewsFromVelocyPack(
+    aql::Collections& colls, velocypack::Slice viewsSlice) {
+  if (!viewsSlice.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "json for views is not an array");
+  }
+
+  for (auto view : VPackArrayIterator(viewsSlice)) {
+    colls.add(basics::VelocyPackHelper::checkAndGetStringValue(view, "name"),
+              AccessMode::fromString(
+                  arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+                      view, "type")),
+              aql::Collection::Hint::None);
+  }
+}
+
 /// @brief create an execution plan from VelocyPack
 std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
     Ast* ast, velocypack::Slice slice, bool simpleSnippetFormat) {
@@ -1939,9 +1956,13 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
   auto count = node->getMember(1);
 
   if (offset->type != NODE_TYPE_VALUE || count->type != NODE_TYPE_VALUE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
-        "LIMIT offset/count values must be constant numeric values");
+    if (_ast->query().queryOptions().usePlanCache) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELIGIBLE_FOR_PLAN_CACHING);
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
+          "LIMIT offset/count values must be constant numeric values");
+    }
   }
 
   TRI_ASSERT(offset->type == NODE_TYPE_VALUE);

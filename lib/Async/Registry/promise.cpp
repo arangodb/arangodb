@@ -25,9 +25,20 @@
 
 #include "Async/Registry/registry_variable.h"
 #include "Async/Registry/thread_registry.h"
+#include "Basics/Thread.h"
 #include "Inspection/Format.h"
 
 using namespace arangodb::async_registry;
+
+auto ThreadId::current() noexcept -> ThreadId {
+  return ThreadId{.posix_id = arangodb::Thread::currentThreadId(),
+                  .kernel_id = arangodb::Thread::currentKernelThreadId()};
+}
+auto ThreadId::name() -> std::string {
+  return std::string{ThreadNameFetcher{posix_id}.get()};
+}
+
+auto Requester::current_thread() -> Requester { return {ThreadId::current()}; }
 
 Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
                  Requester requester, std::source_location entry_point)
@@ -44,7 +55,7 @@ auto Promise::mark_for_deletion() noexcept -> void {
 
 AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc)
     : promise_in_registry{get_thread_registry().add_promise(
-          std::move(loc), *get_current_coroutine())} {}
+          *get_current_coroutine(), std::move(loc))} {}
 AddToAsyncRegistry::~AddToAsyncRegistry() {
   if (promise_in_registry != nullptr) {
     promise_in_registry->mark_for_deletion();

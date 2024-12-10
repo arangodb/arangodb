@@ -24,7 +24,7 @@
 /// @author Andrei Lobov
 /// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
-let IM = global.instanceManager;
+var IM = global.instanceManager;
 
 (function() {
   var db = require("@arangodb").db;

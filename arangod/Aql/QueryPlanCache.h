@@ -28,6 +28,7 @@
 #include "Metrics/Fwd.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/SharedSlice.h>
 
 #include <atomic>
 #include <functional>
@@ -121,14 +122,14 @@ class QueryPlanCache {
     std::unordered_map<std::string, DataSourceEntry> dataSources;
 
     // The query plan velocypack. guaranteed to be a non-nullptr.
-    std::shared_ptr<velocypack::UInt8Buffer> serializedPlan;
+    velocypack::SharedSlice serializedPlan;
 
     // Timestamp when this plan was cached. currently not used, but
     // could be used when analyzing/exposing the contents of the query
     // plan cache later.
     double dateCreated;
 
-    std::atomic<size_t> numUsed;
+    std::atomic<size_t> hits;
   };
 
   QueryPlanCache(QueryPlanCache const&) = delete;
@@ -151,7 +152,7 @@ class QueryPlanCache {
   // could not be stored (e.g. due to sizing constraints).
   bool store(Key&& key,
              std::unordered_map<std::string, DataSourceEntry>&& dataSources,
-             std::shared_ptr<velocypack::UInt8Buffer> serializedPlan);
+             velocypack::SharedSlice serializedPlan);
 
   Key createCacheKey(QueryString const& queryString,
                      std::shared_ptr<velocypack::Builder> const& bindVars,

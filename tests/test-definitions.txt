@@ -29,7 +29,7 @@ endpoints priority=250 single -- --skipEndpointsIpv6 true
 
 recovery priority=2000 buckets=8 parallelity=3 size=small single
 # cluster
-recovery_cluster priority=2000 cluster buckets=8 --
+recovery_cluster priority=2000 cluster buckets=8 -- --extremeVerbosity true 
 
 recovery_server priority=2000 buckets=3 parallelity=3 size=small single
 
@@ -47,7 +47,7 @@ shell_client_multi priority=1500 parallelity=2 single suffix=http -- --http true
 shell_client_transaction,shell_client_transaction name=shell_client_transaction priority=750 single -- $EncryptionAtRest --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"}]
 shell_client_traffic,shell_client_traffic,shell_client_traffic,shell_client_traffic name=shell_client_traffic priority=250 parallelity=1 single -- --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"},{"http":true,"ssl":true,"suffix":"http-ssl"},{"http2":true,"ssl":true,"suffix":"http2-ssl"}]
 
-shell_client_aql buckets=19 priority=250  single --javascript.v8-max-heap=8192
+shell_client_aql buckets=19 priority=250  single
 
 # C++ unit tests are executed in single env
 gtest_iresearch priority=1000 parallelity=3 size=medium single
@@ -64,6 +64,7 @@ rta_makedata single
 
 arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
 chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
+chaos_subq !coverage full priority=1000 size=medium+ --javascript.v8-max-heap=8192 -- --dumpAgencyOnError true
 deadlock cluster !coverage -- --dumpAgencyOnError true
 restart priority=1000 size=medium cluster -- --dumpAgencyOnError true --forceJson true
 
@@ -88,7 +89,7 @@ shell_client_multi priority=1500 cluster suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 
 # different number of buckets in cluster
-shell_client_aql priority=1000 size=medium+ cluster buckets=20 --javascript.v8-max-heap=8192 -- --dumpAgencyOnError true
+shell_client_aql priority=1000 size=medium+ cluster buckets=20 -- --dumpAgencyOnError true
 shell_client priority=500 cluster size=medium+ buckets=20 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 #shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
@@ -149,6 +150,7 @@ replication_random priority=1000 single full
 # Full Cluster Tests
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
 chaos !coverage full cluster priority=9600 size=large -- --dumpAgencyOnError true --skipNightly false
+chaos_subq  !coverage full cluster priority=1000 size=medium+ --javascript.v8-max-heap=8192 -- --dumpAgencyOnError true
 resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true
 resilience_transactions full cluster priority=500 -- --dumpAgencyOnError true
