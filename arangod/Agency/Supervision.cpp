@@ -1779,7 +1779,7 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
   constexpr size_t maximalFailedJobs = 1000;
 
   auto cleanup = [&](std::string const& prefix, size_t limit) -> bool {
-    auto const& pendingJobs = *snapshot.hasAsChildren(pendingPrefix);
+    auto const* pendingJobs = snapshot.hasAsChildren(pendingPrefix);
     auto const& jobs = *snapshot.hasAsChildren(prefix);
     if (jobs.size() <= 2 * limit) {
       return false;
@@ -1792,7 +1792,7 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
       auto pos = p.first.find('-');
       if (pos != std::string::npos) {
         auto const& parent = p.first.substr(0, pos);
-        if (pendingJobs.find(parent) != nullptr) {
+        if (pendingJobs != nullptr && pendingJobs->find(parent) != nullptr) {
           LOG_TOPIC("99887", TRACE, Logger::SUPERVISION)
               << "Skipping removal of subjob " << p.first << " of parent "
               << parent << " since the parent is still pending.";
