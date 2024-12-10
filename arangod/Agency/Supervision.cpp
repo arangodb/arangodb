@@ -1811,7 +1811,7 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
               [](keyDate const& a, keyDate const& b) -> bool {
                 return a.second < b.second;
               });
-    if (v.size() < limit) {
+    if (v.size() <= limit) {
       return false;
     }
     size_t toBeDeleted = v.size() - limit;
@@ -1883,9 +1883,9 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
     Node const& snapshot, std::shared_ptr<VPackBuilder> envelope) {
   // This deletes old Hotbackup transfer jobs in
   // /Target/HotBackup/TransferJobs according to their time stamp.
-  // We keep at most 100 transfer jobs which are completed.
+  // We keep at most 10 transfer jobs which are completed.
   // We also delete old hotbackup transfer job locks if needed.
-  constexpr uint64_t maximalNumberTransferJobs = 100;
+  constexpr uint64_t maximalNumberTransferJobs = 10;
   constexpr char const* prefix = HOTBACKUP_TRANSFER_JOBS;
 
   auto static const noJobs = Node::Children{};

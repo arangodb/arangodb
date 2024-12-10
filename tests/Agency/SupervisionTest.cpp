@@ -500,9 +500,9 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 1);
   content = content[0];
-  EXPECT_EQ(content.length(), 100);
-  // We expect the first 100 jobs to be deleted:
-  for (size_t i = 0; i < 100; ++i) {
+  EXPECT_EQ(content.length(), 190);
+  // We expect the first 190 jobs to be deleted:
+  for (size_t i = 0; i < 190; ++i) {
     std::string jobId =
         "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
     VPackSlice guck = content.get(jobId);
@@ -534,9 +534,9 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 1);
   content = content[0];
-  EXPECT_EQ(content.length(), 100);
-  // We expect the first 100 jobs to be deleted:
-  for (size_t i = 0; i < 100; ++i) {
+  EXPECT_EQ(content.length(), 190);
+  // We expect the first 190 jobs to be deleted:
+  for (size_t i = 0; i < 190; ++i) {
     std::string jobId =
         "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
     VPackSlice guck = content.get(jobId);
@@ -714,11 +714,19 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_diverse) {
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 1);
   content = content[0];
-  EXPECT_EQ(content.length(), 5);
+  EXPECT_EQ(content.length(), 95);
   // We expect the oldest suitable jobs to be deleted:
   for (size_t i = 0; i < 5; ++i) {
     std::string jobId =
         "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
+    VPackSlice guck = content.get(jobId);
+    EXPECT_TRUE(guck.isObject());
+    EXPECT_TRUE(guck.hasKey("op"));
+    EXPECT_EQ(guck.get("op").copyString(), "delete");
+  }
+  for (size_t i = 0; i < 90; ++i) {
+    std::string jobId =
+        "/Target/HotBackup/TransferJobs/" + std::to_string(2000000 + i);
     VPackSlice guck = content.get(jobId);
     EXPECT_TRUE(guck.isObject());
     EXPECT_TRUE(guck.hasKey("op"));
