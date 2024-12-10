@@ -45,15 +45,25 @@ class OurLessThan {
   OurLessThan(
       velocypack::Options const* options,
       std::vector<SharedAqlItemBlockPtr> const& input,  // from _inputBlocks
-      std::vector<SortRegister> const&
-          sortRegisters) noexcept  // from _infos.sortRegisters()
-      : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
+      std::vector<SortRegister> const& sortRegisters,
+      size_t
+          numberOfTopGroupedElements) noexcept  // from _infos.sortRegisters()
+      : _vpackOptions(options),
+        _input(input),
+        _sortRegisters(sortRegisters),
+        _numberOfTopGroupedElements(numberOfTopGroupedElements) {}
 
   bool operator()(SortedRowsStorageBackendMemory::RowIndex const& a,
                   SortedRowsStorageBackendMemory::RowIndex const& b) const {
     auto const& left = _input[a.first].get();   // row
     auto const& right = _input[b.first].get();  // row
+    size_t count = 0;
     for (auto const& reg : _sortRegisters) {
+      if (count < _numberOfTopGroupedElements) {
+        // register is already sorted
+        count++;
+        continue;
+      }
       AqlValue const& lhs = left->getValueReference(
           a.second, reg.reg);  // value of row at register
       AqlValue const& rhs = right->getValueReference(
@@ -65,6 +75,7 @@ class OurLessThan {
       } else if (cmp > 0) {
         return !reg.asc;
       }
+      count++;
     }
 
     return false;
@@ -74,6 +85,7 @@ class OurLessThan {
   velocypack::Options const* _vpackOptions;
   std::vector<SharedAqlItemBlockPtr> const& _input;
   std::vector<SortRegister> const& _sortRegisters;
+  size_t _numberOfTopGroupedElements;
 };  // OurLessThan
 
 }  // namespace
@@ -108,13 +120,18 @@ GroupedValues SortedRowsStorageBackendMemory::groupedValuesForRow(
 void SortedRowsStorageBackendMemory::consumeInputRange(
     AqlItemBlockInputRange& inputRange) {
   if (inputRange.upstreamState() == ExecutorState::DONE) {
+    // TODO only do this when _current is not empty
     startNewGroup({});
     return;
   }
+  auto firstRow = false;
 
   auto inputBlock = inputRange.getBlock();
   if (inputBlock != nullptr &&
       (_inputBlocks.empty() || _inputBlocks.back() != inputBlock)) {
+    if (_inputBlocks.empty()) {
+      firstRow = true;
+    }
     _inputBlocks.emplace_back(inputBlock);
     _memoryUsageForInputBlocks += inputBlock->getMemoryUsage();
   }
@@ -136,9 +153,6 @@ void SortedRowsStorageBackendMemory::consumeInputRange(
   // make sure that previous group was already fully consumed
   TRI_ASSERT(!hasMore());
 
-  // identify very first row
-  auto firstRow = _inputBlocks.size() == 1 ? true : false;
-
   while (inputRange.hasDataRow()) {
     auto rowId =
         std::make_pair(static_cast<std::uint32_t>(_inputBlocks.size() - 1),
@@ -158,11 +172,18 @@ void SortedRowsStorageBackendMemory::consumeInputRange(
     }
 
     firstRow = false;
+    _groupedValuesOfPreviousRow = grouped_values;
     _currentGroup.emplace_back(rowId);
 
     auto [state, input] =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
+
+    if (inputRange.upstreamState() == ExecutorState::DONE) {
+      startNewGroup({});
+      guard.steal();
+      return;
+    }
   }
 
   guard.steal();
@@ -171,15 +192,16 @@ void SortedRowsStorageBackendMemory::consumeInputRange(
 void SortedRowsStorageBackendMemory::startNewGroup(
     std::vector<RowIndex>&& newGroup) {
   ResourceUsageScope guard(_infos.getResourceMonitor());
-  // we overwrite finished group
-  _finishedGroup = std::move(_currentGroup);
+  // we overwrite finished group, therefore decrease by its memory usage (before
+  // updating it)
   _infos.getResourceMonitor().decreaseMemoryUsage(_finishedGroup.capacity() *
                                                   sizeof(RowIndex));
+  _finishedGroup = std::move(_currentGroup);
   sortFinishedGroup();
 
-  _currentGroup = newGroup;
   _infos.getResourceMonitor().increaseMemoryUsage(newGroup.capacity() *
                                                   sizeof(RowIndex));
+  _currentGroup = std::move(newGroup);
   _returnNext = 0;
 }
 
@@ -251,9 +273,9 @@ void SortedRowsStorageBackendMemory::sortFinishedGroup() {
 
   // comparison function
   OurLessThan ourLessThan(_infos.vpackOptions(), _inputBlocks,
-                          _infos.sortRegisters());
+                          _infos.sortRegisters(),
+                          _infos.numberOfTopGroupedElements());
   if (_infos.stable()) {
-    // TODO need to sort only by non-grouped registers
     std::stable_sort(_finishedGroup.begin(), _finishedGroup.end(), ourLessThan);
   } else {
     std::sort(_finishedGroup.begin(), _finishedGroup.end(), ourLessThan);
