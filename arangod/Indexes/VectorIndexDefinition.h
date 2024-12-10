@@ -79,6 +79,8 @@ struct UserVectorIndexDefinition {
   std::uint64_t trainingIterations;
   std::uint64_t defaultNProbe;
 
+  std::optional<std::string> factory;
+
   bool operator==(UserVectorIndexDefinition const&) const noexcept = default;
 
   template<class Inspector>
@@ -92,7 +94,7 @@ struct UserVectorIndexDefinition {
               return inspection::Status::Success{};
             }),
         f.field("metric", x.metric), f.field("nLists", x.nLists),
-        f.field("nLists", x.nLists),
+        f.field("nLists", x.nLists), f.field("factory", x.factory),
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)

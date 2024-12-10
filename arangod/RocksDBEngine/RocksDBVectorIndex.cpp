@@ -52,9 +52,11 @@
 #include "faiss/IndexFlat.h"
 #include "faiss/IndexIVFFlat.h"
 #include "faiss/MetricType.h"
+#include "faiss/index_factory.h"
 #include "faiss/utils/distances.h"
 #include "faiss/index_io.h"
 #include "faiss/impl/io.h"
+#include "faiss/IndexIVFPQ.h"
 
 namespace arangodb {
 
@@ -242,19 +244,44 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                                  _faissIndex->code_size),
         true /* faiss owns the inverted list */);
   } else {
-    auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
-      switch (_definition.metric) {
-        case arangodb::SimilarityMetric::kL2:
-          return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
-        case arangodb::SimilarityMetric::kCosine:
-          return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
-      }
-    });
+    if (_definition.factory) {
+      std::shared_ptr<faiss::Index> index;
+      faiss::index_factory_verbose = 100;
+      index.reset(faiss::index_factory(
+          _definition.dimension, _definition.factory->c_str(),
+          metricToFaissMetric(_definition.metric)));
 
-    _faissIndex = std::make_unique<faiss::IndexIVFFlat>(
-        quantizer.get(), _definition.dimension, _definition.nLists,
-        metricToFaissMetric(_definition.metric));
-    _faissIndex->own_fields = nullptr != quantizer.release();
+      _faissIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
+      if (_faissIndex == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "Index definition not supported. Expected IVF index.");
+      }
+
+      if (std::size_t(_definition.nLists) != _faissIndex->nlist) {
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_BAD_PARAMETER,
+            "The nLists parameter has to agree with the actual nlists implied "
+            "by the factory string (which is %zu)",
+            _faissIndex->nlist);
+      }
+
+      _definition.nLists = _faissIndex->nlist;
+    } else {
+      auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
+        switch (_definition.metric) {
+          case arangodb::SimilarityMetric::kL2:
+            return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
+          case arangodb::SimilarityMetric::kCosine:
+            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
+        }
+      });
+
+      _faissIndex = std::make_unique<faiss::IndexIVFFlat>(
+          quantizer.get(), _definition.dimension, _definition.nLists,
+          metricToFaissMetric(_definition.metric));
+      _faissIndex->own_fields = nullptr != quantizer.release();
+    }
   }
 }
 
