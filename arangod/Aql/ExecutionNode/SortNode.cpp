@@ -56,7 +56,17 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice base,
       _elements(std::move(elements)),
       _stable(stable),
       _reinsertInCluster(true),
-      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
+      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {
+  VPackSlice groupedElementsSlice = base.get("groupedElements");
+  if (!groupedElementsSlice.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "unexpected value for SortNode grouped elements");
+  }
+  _groupedElements.reserve(groupedElementsSlice.length());
+  for (VPackSlice it : VPackArrayIterator(groupedElementsSlice)) {
+    _groupedElements.emplace(it.getNumericValue<uint32_t>());
+  }
+}
 
 /// @brief doToVelocyPack, for SortNode
 void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -65,6 +75,13 @@ void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _elements) {
       it.toVelocyPack(nodes);
+    }
+  }
+  nodes.add(VPackValue("groupedElements"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& it : _groupedElements) {
+      nodes.add(VPackValue(it));
     }
   }
   nodes.add("stable", VPackValue(_stable));
