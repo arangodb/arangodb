@@ -7296,14 +7296,14 @@ void ClusterInfo::drainSyncers() {
 }
 
 void ClusterInfo::shutdownSyncers() {
-  drainSyncers();
-
   if (_planSyncer != nullptr) {
     _planSyncer->beginShutdown();
   }
   if (_curSyncer != nullptr) {
     _curSyncer->beginShutdown();
   }
+
+  drainSyncers();
 }
 
 void ClusterInfo::waitForSyncersToStop() {
