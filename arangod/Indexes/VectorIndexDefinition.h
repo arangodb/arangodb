@@ -65,14 +65,10 @@ inline auto inspect(Inspector& f, SimilarityMetric& x) {
 
 struct TrainedData {
   std::vector<std::uint8_t> codeData;
-  std::int64_t numberOfCentroids;
-  std::size_t codeSize;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, TrainedData& x) {
-    return f.object(x).fields(f.field("codeData", x.codeData),
-                              f.field("numberOfCentroids", x.numberOfCentroids),
-                              f.field("codeSize", x.codeSize));
+    return f.object(x).fields(f.field("codeData", x.codeData));
   }
 };
 
