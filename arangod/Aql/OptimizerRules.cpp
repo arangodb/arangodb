@@ -3260,8 +3260,7 @@ struct SortToIndexNode final
           sortCondition.isAscending() == indexNode->options().ascending &&
           numberOfCoveredAttributes > 0) {
         auto sortNode = _plan->getNodeById(_sortNode->id());
-        ((SortNode*)sortNode)
-            ->setNumberOfTopGroupedElements(numberOfCoveredAttributes);
+        ((SortNode*)sortNode)->setGroupedElements(numberOfCoveredAttributes);
         _modified = true;
       }
     } else {

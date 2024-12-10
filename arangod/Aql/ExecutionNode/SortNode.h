@@ -71,8 +71,11 @@ class SortNode : public ExecutionNode {
   /// @brief whether or not the sort is stable
   bool isStable() const noexcept { return _stable; }
 
-  void setNumberOfTopGroupedElements(size_t number) {
-    _numberOfTopGroupedElements = number;
+  void setGroupedElements(size_t numberOfTopGroupedElements) {
+    TRI_ASSERT(numberOfTopGroupedElements <= _elements.size());
+    for (auto const& element : _elements) {
+      _groupedElements.emplace(element.var->id);
+    }
   }
 
   /// @brief creates corresponding ExecutionBlock
@@ -133,7 +136,7 @@ class SortNode : public ExecutionNode {
   /// (true = ascending | false = descending)
   SortElementVector _elements;
 
-  size_t _numberOfTopGroupedElements = 0;
+  std::unordered_set<VariableId> _groupedElements;
 
   /// whether or not the sort is stable
   bool _stable;

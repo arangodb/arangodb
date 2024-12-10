@@ -44,7 +44,7 @@ SortExecutorInfos::SortExecutorInfos(
     TemporaryStorageFeature& tempStorage, velocypack::Options const* options,
     ResourceMonitor& resourceMonitor, size_t spillOverThresholdNumRows,
     size_t spillOverThresholdMemoryUsage, bool stable,
-    size_t numberOfTopGroupedElements)
+    std::unordered_set<VariableId> groupedElements)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
@@ -58,7 +58,7 @@ SortExecutorInfos::SortExecutorInfos(
       _spillOverThresholdNumRows(spillOverThresholdNumRows),
       _spillOverThresholdMemoryUsage(spillOverThresholdMemoryUsage),
       _stable(stable),
-      _numberOfTopGroupedElements(numberOfTopGroupedElements) {
+      _groupedElements(std::move(groupedElements)) {
   TRI_ASSERT(!_sortRegisters.empty());
 }
 
@@ -99,7 +99,7 @@ SortExecutorInfos::getTemporaryStorageFeature() noexcept {
 }
 
 size_t SortExecutorInfos::numberOfTopGroupedElements() noexcept {
-  return _numberOfTopGroupedElements;
+  return _groupedElements.size();
 }
 
 QueryContext& SortExecutorInfos::getQuery() const noexcept { return _query; }

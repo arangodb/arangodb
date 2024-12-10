@@ -72,7 +72,7 @@ class SortExecutorInfos {
                     ResourceMonitor& resourceMonitor,
                     size_t spillOverThresholdNumRows,
                     size_t spillOverThresholdMemoryUsage, bool stable,
-                    size_t numberOfTopGroupedElements);
+                    std::unordered_set<VariableId> groupedElements);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -121,7 +121,7 @@ class SortExecutorInfos {
   size_t _spillOverThresholdNumRows;
   size_t _spillOverThresholdMemoryUsage;
   bool _stable;
-  size_t _numberOfTopGroupedElements;
+  std::unordered_set<VariableId> _groupedElements;
 };
 
 /**

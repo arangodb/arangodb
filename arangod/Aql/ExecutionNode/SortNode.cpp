@@ -193,7 +193,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
       &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
       engine.getQuery().queryOptions().spillOverThresholdNumRows,
       engine.getQuery().queryOptions().spillOverThresholdMemoryUsage, _stable,
-      _numberOfTopGroupedElements);
+      _groupedElements);
   if (sorterType() == SorterType::kStandard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
