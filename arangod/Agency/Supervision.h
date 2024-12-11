@@ -77,6 +77,13 @@ void cleanupHotbackupTransferJobsFunctional(
 void failBrokenHotbackupTransferJobsFunctional(
     Node const& snapshot, std::shared_ptr<VPackBuilder> envelope);
 
+// This is the functional version which actually does the work, it is
+// called by the private method Supervision::cleanupFinishedAndFailedJobs
+// and the unit tests:
+bool cleanupFinishedOrFailedJobsFunctional(
+    Node const& snapshot, std::shared_ptr<VPackBuilder> envelope,
+    bool doFinished);
+
 class Supervision : public ServerThread<ArangodServer> {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;

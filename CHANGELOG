@@ -1,5 +1,18 @@
 devel
 -----
+* Changed the priority of WebUI request to prevent endless loading if the
+  server is under load
+
+* Truncate error messages by rclone for TransferJobs to avoid excessive
+  memory use in the agency. Keep only 10 finished TransferJobs in agency.
+  This fixes BTS-2041.
+
+* Don't cleanup failed agency jobs if they are subjobs of pending jobs.
+  This avoids a bug in CleanOutServer jobs, where such a job could complete
+  seemingly successfully despite the fact that some MoveShard jobs had 
+  actually failed. This fixes BTS-2022.
+
+* Do check for replication version 2 in a safe way. This fixes BTS-2040.
 
 * Add a vector index based on faiss implementation. The current vector index 
   implementation supports the L2 and cosine metrics. To create a vector index,
