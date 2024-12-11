@@ -143,7 +143,6 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
     fillOutput(output);
     if (_currentProcessedResultCount == _infos.getNumberOfResults()) {
-      inputRange.advanceDataRow();
       _initialized = false;
       break;
     }
