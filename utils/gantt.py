@@ -69,11 +69,6 @@ app.layout = [
             inline=True
         )
     ]),
-    html.Div(className='row', children=[
-        html.Div([
-            html.Pre(id='relayout-data', style=styles['pre']),
-        ], className='three columns')
-    ]),
     html.Div([
         dcc.Dropdown(RELABS, RELABS[0], id='choose_gauge_relative'),
         dcc.Graph(id='stacked-area-resource-all-tests'),
@@ -85,6 +80,16 @@ app.layout = [
         dcc.Graph(id='stacked-area-resource-one-testing'),
         dcc.Dropdown(GAUGES, GAUGES[0], id='choose_gauge_one_test'),
     ]),
+    html.Div(id='single-processes'),
+    html.Div(
+        className='row',
+        children=[
+            html.Div([
+                html.Pre(id='relayout-data', style=styles['pre']),
+            ]),
+        ],
+        style= {'display': 'block'}
+    ),
 ]
 
 @app.callback(
@@ -175,6 +180,14 @@ def update_line_chart(relayoutData):
         fig_gantt = px.timeline(df_jobs, x_start="Start", x_end="Finish", y="Task")
     fig_gantt.update_yaxes(autorange="reversed") # otherwise tasks are listed from the bottom
     return fig_gantt
+
+#@app.callback(
+#    # Output('load-graph', 'relayoutData'),
+#    Input("gantt-chart", "figure"))
+#def update_line_chart_2(relayoutData):
+# no clue how to make sense of that.
+#    print(relayoutData)
+
 
 @app.callback(
     Output("stacked-area-resource-all-tests", "figure"),
