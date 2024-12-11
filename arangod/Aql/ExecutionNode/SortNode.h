@@ -34,6 +34,7 @@
 
 #include <velocypack/Slice.h>
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 
@@ -69,6 +70,18 @@ class SortNode : public ExecutionNode {
 
   /// @brief whether or not the sort is stable
   bool isStable() const noexcept { return _stable; }
+
+  void setGroupedElements(size_t numberOfTopGroupedElements) {
+    TRI_ASSERT(numberOfTopGroupedElements <= _elements.size());
+    size_t count = 0;
+    for (auto const& element : _elements) {
+      if (count >= numberOfTopGroupedElements) {
+        break;
+      }
+      _groupedElements.emplace(element.var->id);
+      count++;
+    }
+  }
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -127,6 +140,8 @@ class SortNode : public ExecutionNode {
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
   SortElementVector _elements;
+
+  std::unordered_set<VariableId> _groupedElements;
 
   /// whether or not the sort is stable
   bool _stable;

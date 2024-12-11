@@ -34,19 +34,38 @@
 namespace arangodb::aql {
 class SortExecutorInfos;
 
+/**
+   Values of all grouped registers in a row
+ */
+struct GroupedValues {
+  velocypack::Options const* compare_options;
+  std::vector<AqlValue> values;
+  bool operator==(GroupedValues const& other) const {
+    if (values.size() != other.values.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < values.size(); i++) {
+      if (AqlValue::Compare(compare_options, values[i], other.values[i],
+                            true) != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
 class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
  public:
   explicit SortedRowsStorageBackendMemory(SortExecutorInfos& infos);
   ~SortedRowsStorageBackendMemory();
 
-  ExecutorState consumeInputRange(AqlItemBlockInputRange& inputRange) final;
+  void consumeInputRange(AqlItemBlockInputRange& inputRange) final;
 
   bool hasReachedCapacityLimit() const noexcept final;
 
   bool hasMore() const final;
   void produceOutputRow(OutputAqlItemRow& output) final;
   void skipOutputRow() noexcept final;
-  void seal() final;
   void spillOver(SortedRowsStorageBackend& other) final;
 
   // uint32_t in this vector is a reasonable trade-off between performance and
@@ -56,17 +75,20 @@ class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
   using RowIndex = std::pair<uint32_t, uint32_t>;
 
  private:
-  void doSorting();
+  void sortFinishedGroup();
   size_t currentMemoryUsage() const noexcept;
+  GroupedValues groupedValuesForRow(RowIndex const& rowId);
+  void startNewGroup(std::vector<RowIndex>&& newGroup);
 
   SortExecutorInfos& _infos;
 
   std::vector<SharedAqlItemBlockPtr> _inputBlocks;
-  std::vector<RowIndex> _rowIndexes;
+  std::vector<RowIndex> _currentGroup = {};
+  std::vector<RowIndex> _finishedGroup = {};
+  GroupedValues _groupedValuesOfPreviousRow = {};
 
-  size_t _returnNext;
+  size_t _returnNext = 0;
   size_t _memoryUsageForInputBlocks;
-  bool _sealed;
 };
 
 }  // namespace arangodb::aql

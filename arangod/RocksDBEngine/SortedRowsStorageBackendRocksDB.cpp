@@ -66,8 +66,12 @@ SortedRowsStorageBackendRocksDB::~SortedRowsStorageBackendRocksDB() {
   }
 }
 
-aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
+void SortedRowsStorageBackendRocksDB::consumeInputRange(
     aql::AqlItemBlockInputRange& inputRange) {
+  if (_gotAllInput) {
+    return;
+  }
+
   if (_context == nullptr) {
     // create context on the fly
     _context = _tempStorage.getSortedRowsStorageContext(_memoryTracker);
@@ -85,7 +89,6 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
   // we build
   RocksDBKey rocksDBKey;
 
-  aql::ExecutorState state = aql::ExecutorState::HASMORE;
   aql::InputAqlItemRow input{aql::CreateInvalidInputRowHint{}};
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -130,12 +133,19 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    std::tie(state, input) =
+    auto [state, input] =
         inputRange.nextDataRow(aql::AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
   }
 
-  return state;
+  if (inputRange.upstreamState() == aql::ExecutorState::DONE) {
+    _gotAllInput = true;
+    TRI_ASSERT(_iterator == nullptr);
+    _context->ingestAll();
+    _iterator = _context->getIterator();
+  }
+
+  return;
 }
 
 bool SortedRowsStorageBackendRocksDB::hasReachedCapacityLimit() const noexcept {
@@ -144,6 +154,9 @@ bool SortedRowsStorageBackendRocksDB::hasReachedCapacityLimit() const noexcept {
 }
 
 bool SortedRowsStorageBackendRocksDB::hasMore() const {
+  if (!_gotAllInput) {
+    return false;
+  }
   TRI_ASSERT(_iterator != nullptr);
   return _iterator->Valid();
 }
@@ -170,14 +183,6 @@ void SortedRowsStorageBackendRocksDB::produceOutputRow(
 void SortedRowsStorageBackendRocksDB::skipOutputRow() noexcept {
   TRI_ASSERT(hasMore());
   _iterator->Next();
-}
-
-void SortedRowsStorageBackendRocksDB::seal() {
-  TRI_ASSERT(_iterator == nullptr);
-
-  _context->ingestAll();
-
-  _iterator = _context->getIterator();
 }
 
 void SortedRowsStorageBackendRocksDB::spillOver(
