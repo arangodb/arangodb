@@ -90,13 +90,15 @@ shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 
 # different number of buckets in cluster
 shell_client_aql priority=1000 size=medium+ cluster buckets=20 -- --dumpAgencyOnError true
-shell_client_aql_vector priority=1000 size=medium+ cluster buckets=1 --javascript.v8-max-heap=6144 -- --dumpAgencyOnError true
 shell_client priority=500 cluster size=medium+ buckets=20 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 #shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
 
 rta_makedata cluster parallelity=6
 rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 --  --forceOneShard true
+
+# shell aql vector index tests
+shell_client_aql_vector priority=1000 size=medium+ cluster buckets=1 -- --dumpAgencyOnError true
 
 # Common Tests
 
