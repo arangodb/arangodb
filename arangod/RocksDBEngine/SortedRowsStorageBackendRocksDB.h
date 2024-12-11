@@ -56,7 +56,7 @@ class SortedRowsStorageBackendRocksDB final
   bool hasMore() const final;
   void produceOutputRow(aql::OutputAqlItemRow& output) final;
   void skipOutputRow() noexcept final;
-  void spillOver(aql::SortedRowsStorageBackend& other) final;
+  bool spillOver(aql::SortedRowsStorageBackend& other) final;
 
  private:
   void cleanup();

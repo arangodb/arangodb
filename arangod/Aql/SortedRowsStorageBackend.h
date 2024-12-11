@@ -48,7 +48,7 @@ class SortedRowsStorageBackend {
   // skip an output row. requires hasMore()
   virtual void skipOutputRow() noexcept = 0;
 
-  virtual void spillOver(SortedRowsStorageBackend& other) = 0;
+  virtual bool spillOver(SortedRowsStorageBackend& other) = 0;
 };
 
 }  // namespace arangodb::aql

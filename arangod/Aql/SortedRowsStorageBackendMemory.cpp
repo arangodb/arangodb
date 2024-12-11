@@ -230,40 +230,46 @@ void SortedRowsStorageBackendMemory::skipOutputRow() noexcept {
   ++_returnNext;
 }
 
-void SortedRowsStorageBackendMemory::spillOver(
+bool SortedRowsStorageBackendMemory::spillOver(
     SortedRowsStorageBackend& other) {
-  // TODO
-  TRI_ASSERT(false);
-  // if (_rowIndexes.empty()) {
-  //   return;
-  // }
+  // if we have a grouped sort, we could have already produced rows and / or
+  // have additional (sorted) data in _finishedGroup instead of only in
+  // _currentGroup
+  if (_infos.numberOfTopGroupedElements() > 0) {
+    return false;
+  }
 
-  // std::uint32_t lastBlockId = _rowIndexes[0].first;
-  // std::uint32_t startRow = _rowIndexes[0].second;
+  if (_currentGroup.empty()) {
+    return true;
+  }
 
-  // for (size_t i = 0; i < _rowIndexes.size(); ++i) {
-  //   // if row i starts new block or is the very last row
-  //   if (_rowIndexes[i].first != lastBlockId || i == _rowIndexes.size() - 1) {
-  //     // emit block from lastBlockId to startRow, endRow
-  //     aql::AqlItemBlockInputRange inputRange(
-  //         aql::MainQueryState::HASMORE, 0, _inputBlocks[lastBlockId],
-  //         startRow);
+  std::uint32_t lastBlockId = _currentGroup[0].first;
+  std::uint32_t startRow = _currentGroup[0].second;
 
-  //     // TODO make sure the full inputRange is consumed
-  //     other.consumeInputRange(inputRange);
+  for (size_t i = 0; i < _currentGroup.size(); ++i) {
+    // if row i starts new block or is the very last row
+    if (_currentGroup[i].first != lastBlockId ||
+        i == _currentGroup.size() - 1) {
+      // emit block from lastBlockId to startRow, endRow
+      aql::AqlItemBlockInputRange inputRange(
+          aql::MainQueryState::HASMORE, 0, _inputBlocks[lastBlockId], startRow);
 
-  //     lastBlockId = _rowIndexes[i].first;
-  //     startRow = _rowIndexes[i].second;
-  //   }
-  // }
+      // TODO make sure the full inputRange is consumed
+      other.consumeInputRange(inputRange);
 
-  // // reset our own state, so we can give back memory
-  // _infos.getResourceMonitor().decreaseMemoryUsage(currentMemoryUsage());
-  // _inputBlocks = {};
-  // _rowIndexes.clear();
-  // _rowIndexes.shrink_to_fit();
-  // TRI_ASSERT(currentMemoryUsage() == 0);
-  // _memoryUsageForInputBlocks = 0;
+      lastBlockId = _currentGroup[i].first;
+      startRow = _currentGroup[i].second;
+    }
+  }
+
+  // reset our own state, so we can give back memory
+  _infos.getResourceMonitor().decreaseMemoryUsage(currentMemoryUsage());
+  _inputBlocks = {};
+  _currentGroup.clear();
+  _currentGroup.shrink_to_fit();
+  TRI_ASSERT(currentMemoryUsage() == 0);
+  _memoryUsageForInputBlocks = 0;
+  return true;
 }
 
 void SortedRowsStorageBackendMemory::sortFinishedGroup() {

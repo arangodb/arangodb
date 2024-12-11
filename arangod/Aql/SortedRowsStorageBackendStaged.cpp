@@ -55,7 +55,12 @@ void SortedRowsStorageBackendStaged::consumeInputRange(
           "reached capacity limit for storing intermediate results");
     }
 
-    _backends[_currentBackend]->spillOver(*_backends[_currentBackend + 1]);
+    if (!_backends[_currentBackend]->spillOver(
+            *_backends[_currentBackend + 1])) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_RESOURCE_LIMIT,
+          "reached capacity limit for storing intermediate results");
+    }
     ++_currentBackend;
   }
 
@@ -79,11 +84,12 @@ void SortedRowsStorageBackendStaged::skipOutputRow() noexcept {
   _backends[_currentBackend]->skipOutputRow();
 }
 
-void SortedRowsStorageBackendStaged::spillOver(
+bool SortedRowsStorageBackendStaged::spillOver(
     SortedRowsStorageBackend& other) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "unexpected call to SortedRowsStorageBackendStaged::spillOver");
+  return false;
 }
 
 }  // namespace arangodb::aql

@@ -185,12 +185,13 @@ void SortedRowsStorageBackendRocksDB::skipOutputRow() noexcept {
   _iterator->Next();
 }
 
-void SortedRowsStorageBackendRocksDB::spillOver(
+bool SortedRowsStorageBackendRocksDB::spillOver(
     SortedRowsStorageBackend& other) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "unexpected call to SortedRowsStorageBackendRocksDB::spillOver");
+  return false;
 }
 
 void SortedRowsStorageBackendRocksDB::cleanup() {

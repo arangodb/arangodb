@@ -45,7 +45,7 @@ class SortedRowsStorageBackendStaged final : public SortedRowsStorageBackend {
   bool hasMore() const final;
   void produceOutputRow(OutputAqlItemRow& output) final;
   void skipOutputRow() noexcept final;
-  void spillOver(SortedRowsStorageBackend& other) final;
+  bool spillOver(SortedRowsStorageBackend& other) final;
 
  private:
   std::vector<std::unique_ptr<SortedRowsStorageBackend>> _backends;

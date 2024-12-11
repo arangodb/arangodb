@@ -66,7 +66,7 @@ class SortedRowsStorageBackendMemory final : public SortedRowsStorageBackend {
   bool hasMore() const final;
   void produceOutputRow(OutputAqlItemRow& output) final;
   void skipOutputRow() noexcept final;
-  void spillOver(SortedRowsStorageBackend& other) final;
+  bool spillOver(SortedRowsStorageBackend& other) final;
 
   // uint32_t in this vector is a reasonable trade-off between performance and
   // amount of data. With this values we can sort up to ~ 4.000.000.000 times
