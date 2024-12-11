@@ -64,6 +64,7 @@ class AgencyFeature : public ArangodFeature {
   uint64_t _maxAppendSize;
   double _supervisionGracePeriod;
   double _supervisionOkThreshold;
+  double _supervisionExpiredServersGracePeriod;
   uint64_t _supervisionDelayAddFollower;
   uint64_t _supervisionDelayFailedFollower;
   bool _failedLeaderAddsFollower;

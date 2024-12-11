@@ -211,6 +211,7 @@ class ClusterFeature : public ArangodFeature {
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms,
                             uint64_t maxFailsBeforeWarning,
+                            double noHeartbeatDelayBeforeShutdown,
                             std::string const& endpoints);
 
  private:
@@ -284,6 +285,8 @@ class ClusterFeature : public ArangodFeature {
   Scheduler::WorkHandle _connectivityCheck;
   metrics::Counter* _connectivityCheckFailsCoordinators = nullptr;
   metrics::Counter* _connectivityCheckFailsDBServers = nullptr;
+
+  double _noHeartbeatDelayBeforeShutdown = 1800;  // seconds
 };
 
 }  // namespace arangodb

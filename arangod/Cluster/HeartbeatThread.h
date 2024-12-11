@@ -64,7 +64,8 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
   HeartbeatThread(Server&, AgencyCallbackRegistry*, std::chrono::microseconds,
-                  uint64_t maxFailsBeforeWarning);
+                  uint64_t maxFailsBeforeWarning,
+                  double noHeartbeatDelayBeforeShutdown);
   ~HeartbeatThread();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -242,6 +243,16 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   //////////////////////////////////////////////////////////////////////////////
 
   std::atomic<uint64_t> _numFails;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief time of last successful heartbeat sent
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::mutex _lastSuccessfulHeartbeatSentMutex;
+  std::optional<std::chrono::steady_clock::time_point>
+      _lastSuccessfulHeartbeatSent;
+  bool _doneHeartbeatShutdown;
+  double _noHeartbeatDelayBeforeShutdown;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief last successfully dispatched version

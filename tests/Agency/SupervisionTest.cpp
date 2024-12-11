@@ -27,6 +27,7 @@
 #include "Agency/Job.h"
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
+#include "Basics/TimeString.h"
 #include "Mocks/Servers.h"
 
 #include "gtest/gtest.h"
@@ -1089,4 +1090,167 @@ TEST_F(SupervisionTestClass, not_cleanup_failed_sub_jobs) {
   bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
       *_snapshot, envelope, false);
   EXPECT_FALSE(sthTodo);
+}
+
+namespace {
+
+NodePtr createServerInPlan(NodePtr& snapshot, std::string const& name) {
+  return snapshot->placeAt("/Plan/" + name, createNode(R"=(
+  "none"
+  )="));
+}
+
+NodePtr createServerInServersRegistered(NodePtr& snapshot,
+                                        std::string const& name) {
+  return snapshot->placeAt("/Current/ServersRegistered" + name, createNode(R"=(
+  {
+    "numberOfCores": 32,
+    "timestamp": "2024-12-11T13:01:24Z",
+    "host": "1a00546e9ae740aeadf30f0090f43b8d",
+    "version": 31204,
+    "physicalMemory": 67108737024,
+    "versionString": "3.12.4-devel",
+    "engine": "rocksdb",
+    "endpoint": "tcp://localhost:8530",
+    "advertisedEndpoint": "",
+    "extendedNamesDatabases": true
+  } 
+  )="));
+}
+
+NodePtr createServerInHealth(NodePtr& snapshot, std::string const& name,
+                             std::string const& status,
+                             std::string const& timestamp,
+                             std::string const& lastAckedTime) {
+  std::string json = R"=(
+  {
+    "Version": "3.12.4-devel",
+    "Engine": "rocksdb",
+    "SyncStatus": "SERVING",
+    "Endpoint": "tcp://localhost:8530",
+    "ShortName": "Coordinator0003",
+    "Host": "1a00546e9ae740aeadf30f0090f43b8d",
+    "SyncTime": "2024-12-11T13:06:26Z",
+    "Timestamp": ")=" +
+                     timestamp + R"=(",
+    "LastAckedTime": ")=" +
+                     lastAckedTime + R"=(",
+    "Status": "FAILED"
+  }
+  )=";
+  return snapshot->placeAt("/Supervision/Health/" + name,
+                           createNode(json.c_str()));
+}
+
+NodePtr createEmptyPlanCollections(NodePtr& snapshot) {
+  return snapshot->placeAt("/Plan/Collections", createNode(R"=(
+  {
+  }
+  )="));
+}
+
+}  // namespace
+
+TEST_F(SupervisionTestClass, cleanup_expired_coordinator) {
+  _snapshot = createServerInPlan(_snapshot, "Coordinators/CRDN-1");
+  _snapshot = createServerInServersRegistered(_snapshot, "CRDN-1");
+  _snapshot =
+      createServerInHealth(_snapshot, "CRDN-1", "FAILED",
+                           "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
+
+  NodePtr transient;
+  transient =
+      createServerInHealth(transient, "CRDN-1", "FAILED",
+                           "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
+  auto map = arangodb::consensus::deletionCandidates(*_snapshot, *transient,
+                                                     "Coordinators", 60);
+  EXPECT_EQ(map.size(), 1);
+  EXPECT_EQ(map.begin()->first, "CRDN-1");
+}
+
+TEST_F(SupervisionTestClass, dont_cleanup_non_expired_coordinator) {
+  _snapshot = createServerInPlan(_snapshot, "Coordinators/CRDN-1");
+  _snapshot = createServerInServersRegistered(_snapshot, "CRDN-1");
+  _snapshot =
+      createServerInHealth(_snapshot, "CRDN-1", "GOOD",
+                           timepointToString(std::chrono::system_clock::now()),
+                           "2024-12-11T13:06:27Z");
+
+  NodePtr transient;
+  transient =
+      createServerInHealth(transient, "CRDN-1", "FAILED",
+                           "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
+  auto map = arangodb::consensus::deletionCandidates(*_snapshot, *transient,
+                                                     "Coordinators", 60);
+  EXPECT_EQ(map.size(), 0);
+}
+
+TEST_F(SupervisionTestClass, dont_cleanup_non_expired_coordinator2) {
+  _snapshot = createServerInPlan(_snapshot, "Coordinators/CRDN-1");
+  _snapshot = createServerInServersRegistered(_snapshot, "CRDN-1");
+  _snapshot =
+      createServerInHealth(_snapshot, "CRDN-1", "GOOD", "2024-12-11T13:06:27Z",
+                           "2024-12-11T13:06:27Z");
+
+  NodePtr transient;
+  transient = createServerInHealth(
+      transient, "CRDN-1", "FAILED", "2024-12-11T13:06:27Z",
+      timepointToString(std::chrono::system_clock::now()));
+  auto map = arangodb::consensus::deletionCandidates(*_snapshot, *transient,
+                                                     "Coordinators", 60);
+  EXPECT_EQ(map.size(), 0);
+}
+
+TEST_F(SupervisionTestClass, cleanup_expired_dbserver) {
+  NodePtr snapshot;
+  snapshot = createServerInPlan(snapshot, "DBServers/PRMR-1");
+  snapshot = createServerInServersRegistered(snapshot, "PRMR-1");
+  snapshot =
+      createServerInHealth(snapshot, "PRMR-1", "FAILED", "2024-12-11T13:06:27Z",
+                           "2024-12-11T13:06:27Z");
+
+  snapshot = createEmptyPlanCollections(snapshot);
+  NodePtr transient;
+  transient =
+      createServerInHealth(transient, "PRMR-1", "FAILED",
+                           "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
+  auto map = arangodb::consensus::deletionCandidates(*snapshot, *transient,
+                                                     "DBServers", 60);
+  EXPECT_EQ(map.size(), 1);
+  EXPECT_EQ(map.begin()->first, "PRMR-1");
+}
+
+TEST_F(SupervisionTestClass, dont_cleanup_non_expired_dbserver) {
+  NodePtr snapshot;
+  snapshot = createServerInPlan(snapshot, "DBServers/PRMR-1");
+  snapshot = createServerInServersRegistered(snapshot, "PRMR-1");
+  snapshot =
+      createServerInHealth(snapshot, "PRMR-1", "GOOD",
+                           timepointToString(std::chrono::system_clock::now()),
+                           "2024-12-11T13:06:27Z");
+  snapshot = createEmptyPlanCollections(snapshot);
+  NodePtr transient;
+  transient =
+      createServerInHealth(transient, "PRMR-1", "FAILED",
+                           "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
+  auto map = arangodb::consensus::deletionCandidates(*snapshot, *transient,
+                                                     "DBServers", 60);
+  EXPECT_EQ(map.size(), 0);
+}
+
+TEST_F(SupervisionTestClass, dont_cleanup_non_expired_dbserver2) {
+  NodePtr snapshot;
+  snapshot = createServerInPlan(snapshot, "DBServers/PRMR-1");
+  snapshot = createServerInServersRegistered(snapshot, "PRMR-1");
+  snapshot =
+      createServerInHealth(snapshot, "PRMR-1", "GOOD", "2024-12-11T13:06:27Z",
+                           "2024-12-11T13:06:27Z");
+  snapshot = createEmptyPlanCollections(snapshot);
+  NodePtr transient;
+  transient = createServerInHealth(
+      transient, "PRMR-1", "FAILED", "2024-12-11T13:06:27Z",
+      timepointToString(std::chrono::system_clock::now()));
+  auto map = arangodb::consensus::deletionCandidates(*snapshot, *transient,
+                                                     "DBServers", 60);
+  EXPECT_EQ(map.size(), 0);
 }

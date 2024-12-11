@@ -49,6 +49,8 @@ std::string const config_t::supervisionGracePeriodStr =
     "supervision grace period";
 std::string const config_t::supervisionOkThresholdStr =
     "supervision ok threshold";
+std::string const config_t::supervisionExpiredServersGracePeriodStr =
+    "supervision expired servers grace period";
 std::string const config_t::supervisionDelayAddFollowerStr =
     "supervision delay add follower job time";
 std::string const config_t::supervisionDelayFailedFollowerStr =
@@ -75,6 +77,7 @@ config_t::config_t()
       _compactionKeepSize(50000),
       _supervisionGracePeriod(15.0),
       _supervisionOkThreshold(5.0),
+      _supervisionExpiredServersGracePeriod(3600.0),
       _supervisionDelayAddFollower(0),
       _supervisionDelayFailedFollower(0),
       _supervisionFailedLeaderAddsFollower(true),
@@ -86,7 +89,8 @@ config_t::config_t()
 config_t::config_t(std::string const& rid, size_t as, double minp, double maxp,
                    std::string const& e, std::vector<std::string> const& g,
                    bool s, bool st, bool w, double f, uint64_t c, uint64_t k,
-                   double p, double o, uint64_t q, uint64_t r, bool t, size_t a)
+                   double p, double o, uint64_t q, uint64_t r, bool t, size_t a,
+                   double u)
     : _recoveryId(rid),
       _agencySize(as),
       _minPing(minp),
@@ -102,6 +106,7 @@ config_t::config_t(std::string const& rid, size_t as, double minp, double maxp,
       _compactionKeepSize(k),
       _supervisionGracePeriod(p),
       _supervisionOkThreshold(o),
+      _supervisionExpiredServersGracePeriod(u),
       _supervisionDelayAddFollower(q),
       _supervisionDelayFailedFollower(r),
       _supervisionFailedLeaderAddsFollower(t),
@@ -136,6 +141,8 @@ config_t& config_t::operator=(config_t const& other) {
   _compactionKeepSize = other._compactionKeepSize;
   _supervisionGracePeriod = other._supervisionGracePeriod;
   _supervisionOkThreshold = other._supervisionOkThreshold;
+  _supervisionExpiredServersGracePeriod =
+      other._supervisionExpiredServersGracePeriod;
   _supervisionDelayAddFollower = other._supervisionDelayAddFollower;
   _supervisionDelayFailedFollower = other._supervisionDelayFailedFollower;
   _supervisionFailedLeaderAddsFollower =
@@ -166,6 +173,8 @@ config_t& config_t::operator=(config_t&& other) {
   _compactionKeepSize = std::move(other._compactionKeepSize);
   _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
   _supervisionOkThreshold = std::move(other._supervisionOkThreshold);
+  _supervisionExpiredServersGracePeriod =
+      std::move(other._supervisionExpiredServersGracePeriod);
   _supervisionDelayAddFollower = std::move(other._supervisionDelayAddFollower);
   _supervisionDelayFailedFollower =
       std::move(other._supervisionDelayFailedFollower);
@@ -190,6 +199,11 @@ double config_t::supervisionGracePeriod() const {
 double config_t::supervisionOkThreshold() const {
   READ_LOCKER(readLocker, _lock);
   return _supervisionOkThreshold;
+}
+
+double config_t::supervisionExpiredServersGracePeriod() const {
+  READ_LOCKER(readLocker, _lock);
+  return _supervisionExpiredServersGracePeriod;
 }
 
 uint64_t config_t::supervisionDelayAddFollower() const {
@@ -492,6 +506,8 @@ void config_t::toBuilder(VPackBuilder& builder) const {
     builder.add(compactionKeepSizeStr, VPackValue(_compactionKeepSize));
     builder.add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
     builder.add(supervisionOkThresholdStr, VPackValue(_supervisionOkThreshold));
+    builder.add(supervisionExpiredServersGracePeriodStr,
+                VPackValue(_supervisionExpiredServersGracePeriod));
     builder.add(supervisionDelayAddFollowerStr,
                 VPackValue(_supervisionDelayAddFollower));
     builder.add(supervisionDelayFailedFollowerStr,
@@ -745,6 +761,10 @@ void config_t::updateConfiguration(velocypack::Slice other) {
   if (other.hasKey(supervisionOkThresholdStr)) {
     _supervisionOkThreshold =
         other.get(supervisionOkThresholdStr).getNumber<double>();
+  }
+  if (other.hasKey(supervisionExpiredServersGracePeriodStr)) {
+    _supervisionExpiredServersGracePeriod =
+        other.get(supervisionExpiredServersGracePeriodStr).getNumber<double>();
   }
   if (other.hasKey(supervisionDelayAddFollowerStr)) {
     _supervisionDelayAddFollower =

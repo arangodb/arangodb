@@ -443,6 +443,25 @@ different servers do not execute their connectivity checks all at the
 same time.
 Setting this option to a value of zero disables these connectivity checks.")")
       .setIntroducedIn(31104);
+
+  options
+      ->addOption("--cluster.no-heartbeat-delay-before-shutdown",
+                  "The delay (in seconds) before shutting down a coordinator "
+                  "if no heartbeat can be sent.",
+                  new DoubleParameter(&_noHeartbeatDelayBeforeShutdown),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer))
+      .setLongDescription(
+          R"(Setting this option to a value greater than zero will
+let a coordinator which cannot send a heartbeat to the agency for the specified time
+shut down. This is necessary to prevent that a coordinator survives longer than the
+agency supervision has patience before it removes the coordinator from the agency
+meta data. Without this it would be possible that a coordinator is still running
+transactions and committing them, which could, for example, render hotbackups
+inconsistent.)")
+      .setIntroducedIn(31204);
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -733,7 +752,8 @@ DECLARE_COUNTER(arangodb_network_connectivity_failures_dbservers_total,
 void ClusterFeature::start() {
   // return if cluster is disabled
   if (!_enableCluster) {
-    startHeartbeatThread(nullptr, 5000, 5, std::string());
+    startHeartbeatThread(nullptr, 5000, 5, _noHeartbeatDelayBeforeShutdown,
+                         std::string());
     return;
   }
 
@@ -869,7 +889,7 @@ void ClusterFeature::start() {
   }
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5,
-                       endpoints);
+                       _noHeartbeatDelayBeforeShutdown, endpoints);
   _clusterInfo->startSyncers();
 
   comm.increment("Current/Version");
@@ -1031,10 +1051,12 @@ void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
 /// @brief common routine to start heartbeat with or without cluster active
 void ClusterFeature::startHeartbeatThread(
     AgencyCallbackRegistry* agencyCallbackRegistry, uint64_t interval_ms,
-    uint64_t maxFailsBeforeWarning, std::string const& endpoints) {
+    uint64_t maxFailsBeforeWarning, double noHeartbeatDelayBeforeShutdown,
+    std::string const& endpoints) {
   _heartbeatThread = std::make_shared<HeartbeatThread>(
       server(), agencyCallbackRegistry,
-      std::chrono::microseconds(interval_ms * 1000), maxFailsBeforeWarning);
+      std::chrono::microseconds(interval_ms * 1000), maxFailsBeforeWarning,
+      noHeartbeatDelayBeforeShutdown);
 
   if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
     // failure only occures in cluster mode.
