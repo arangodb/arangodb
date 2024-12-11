@@ -73,8 +73,13 @@ class SortNode : public ExecutionNode {
 
   void setGroupedElements(size_t numberOfTopGroupedElements) {
     TRI_ASSERT(numberOfTopGroupedElements <= _elements.size());
+    size_t count = 0;
     for (auto const& element : _elements) {
+      if (count >= numberOfTopGroupedElements) {
+        break;
+      }
       _groupedElements.emplace(element.var->id);
+      count++;
     }
   }
 

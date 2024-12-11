@@ -80,8 +80,8 @@ void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("groupedElements"));
   {
     VPackArrayBuilder guard(&nodes);
-    for (auto const& it : _groupedElements) {
-      nodes.add(VPackValue(it));
+    for (VariableId const& id : _groupedElements) {
+      nodes.add(VPackValue(id));
     }
   }
   nodes.add("stable", VPackValue(_stable));
@@ -242,6 +242,16 @@ void SortNode::replaceVariables(
   for (auto& variable : _elements) {
     variable.var = Variable::replace(variable.var, replacements);
   }
+  auto newGroupedElements = std::unordered_set<VariableId>{};
+  for (auto const& groupedVariable : _groupedElements) {
+    auto it = replacements.find(groupedVariable);
+    if (it == replacements.end()) {
+      newGroupedElements.emplace(groupedVariable);
+    } else {
+      newGroupedElements.emplace(it->second->id);
+    }
+  }
+  _groupedElements = newGroupedElements;
 }
 
 void SortNode::replaceAttributeAccess(ExecutionNode const* self,
@@ -251,6 +261,13 @@ void SortNode::replaceAttributeAccess(ExecutionNode const* self,
                                       size_t /*index*/) {
   for (auto& it : _elements) {
     it.replaceAttributeAccess(searchVariable, attribute, replaceVariable);
+  }
+  if (attribute.empty()) {
+    auto it = _groupedElements.find(searchVariable->id);
+    if (it != _groupedElements.end()) {
+      _groupedElements.erase(searchVariable->id);
+      _groupedElements.emplace(replaceVariable->id);
+    }
   }
 }
 
