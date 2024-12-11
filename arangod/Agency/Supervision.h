@@ -84,6 +84,10 @@ bool cleanupFinishedOrFailedJobsFunctional(
     Node const& snapshot, std::shared_ptr<VPackBuilder> envelope,
     bool doFinished);
 
+std::unordered_map<ServerID, std::string> deletionCandidates(
+    Node const& snapshot, Node const& transient, std::string const& type,
+    double gracePeriod);
+
 class Supervision : public ServerThread<ArangodServer> {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;

@@ -1363,9 +1363,11 @@ std::string Supervision::serverHealth(std::string_view serverName) const {
 //      Remove coordinator everywhere
 //      Remove DB server everywhere, if not leader of a shard
 
-std::unordered_map<ServerID, std::string> deletionCandidates(
-    Node const& snapshot, Node const& transient, std::string const& type,
-    double gracePeriod) {
+std::unordered_map<ServerID, std::string>
+arangodb::consensus::deletionCandidates(Node const& snapshot,
+                                        Node const& transient,
+                                        std::string const& type,
+                                        double gracePeriod) {
   using namespace std::chrono;
   std::unordered_map<ServerID, std::string> serverList;
   std::string const planPath = "/Plan/" + type;
