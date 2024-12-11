@@ -326,6 +326,7 @@ class Supervision : public ServerThread<ArangodServer> {
   std::atomic<uint64_t> _delayAddFollower;
   std::atomic<uint64_t> _delayFailedFollower;
   std::atomic<bool> _failedLeaderAddsFollower;
+  std::atomic<double> _expiredServersGracePeriod;
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;
