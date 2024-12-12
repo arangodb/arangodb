@@ -117,6 +117,10 @@ class EnumerateNearVectorsExecutor {
 
   void fillOutput(OutputAqlItemRow& output);
 
+  bool hasResults() const noexcept;
+
+  uint64_t skipOutput(AqlCall::Limit toSkip) noexcept;
+
   InputAqlItemRow _inputRow;
   std::vector<float> _inputRowConverted;
   ExecutorState _state{ExecutorState::HASMORE};
@@ -124,7 +128,6 @@ class EnumerateNearVectorsExecutor {
   std::vector<float> _distances;
   std::vector<VectorIndexLabelId> _labels;
   bool _initialized{false};
-  bool _resultsAreProcessed{false};
   std::size_t _currentProcessedResultCount{0};
   // needed to enable fullCount to work
   std::size_t _processedInputs{0};
