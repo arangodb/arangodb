@@ -508,7 +508,7 @@ void readVectorFromDocument(velocypack::Slice doc,
   auto v = rocksutils::accessDocumentPath(doc, path);
 
   for (auto d : VPackArrayIterator(v)) {
-    output.push_back(d.getDouble());
+    output.push_back(d.getNumericValue<double>());
   }
 } catch (velocypack::Exception const& e) {
   LOG_DEVEL << "INVALID VECTOR IN DOC " << doc.toJson();
