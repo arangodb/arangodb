@@ -49,8 +49,7 @@ using Stats = NoStats;
 
 EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
                                                            Infos& infos)
-    : _inputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _infos(infos),
+    : _infos(infos),
       _trx(_infos.queryContext.newTrxContext()),
       _collection(_infos.collection) {}
 
@@ -100,7 +99,8 @@ void EnumerateNearVectorsExecutor::searchResults() {
   std::tie(_labels, _distances) = vectorIndex->readBatch(
       _inputRowConverted, mthds, &_trx, _collection->getCollection(), 1,
       _infos.getNumberOfResults());
-  _initialized = true;
+  _currentProcessedResultCount = 0;
+  TRI_ASSERT(hasResults());
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
 
@@ -126,9 +126,8 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
 
     ++_currentProcessedResultCount;
   }
-  if (_currentProcessedResultCount == _infos.getNumberOfResults()) {
-    _initialized = false;
-  }
+  TRI_ASSERT(hasResults() !=
+             (_currentProcessedResultCount == _infos.getNumberOfResults()));
 }
 
 std::uint64_t EnumerateNearVectorsExecutor::skipOutput(
@@ -147,9 +146,8 @@ std::uint64_t EnumerateNearVectorsExecutor::skipOutput(
 
     ++_currentProcessedResultCount;
   }
-  if (_currentProcessedResultCount == _infos.getNumberOfResults()) {
-    _initialized = false;
-  }
+  TRI_ASSERT(hasResults() !=
+             (_currentProcessedResultCount == _infos.getNumberOfResults()));
 
   return skipped;
 }
@@ -207,11 +205,11 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     skipped += remainingRows * colCount;
     call.didSkip(skipped);
 
-//    LOG_INTERNAL << fmt::format(
-//        "skipped={}, remainingRows={}, currentProcessed={}, nr={}, state={}, "
-//        "hasResults={}, call={}",
-//        skipped, remainingRows, _currentProcessedResultCount,
-//        _infos.getNumberOfResults(), state(), hasResults(), to_string(call));
+    //    LOG_INTERNAL << fmt::format(
+    //        "skipped={}, remainingRows={}, currentProcessed={}, nr={},
+    //        state={}, " "hasResults={}, call={}", skipped, remainingRows,
+    //        _currentProcessedResultCount, _infos.getNumberOfResults(),
+    //        state(), hasResults(), to_string(call));
 
     auto upstreamCall = AqlCall{};
     // upstreamCall.fullCount = true;
@@ -224,8 +222,7 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 }
 
 bool EnumerateNearVectorsExecutor::hasResults() const noexcept {
-  return _initialized &&
-         _currentProcessedResultCount < _infos.getNumberOfResults();
+  return _currentProcessedResultCount < _infos.getNumberOfResults();
 }
 
 template class ExecutionBlockImpl<EnumerateNearVectorsExecutor>;

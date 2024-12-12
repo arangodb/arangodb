@@ -121,19 +121,20 @@ class EnumerateNearVectorsExecutor {
 
   uint64_t skipOutput(AqlCall::Limit toSkip) noexcept;
 
-  InputAqlItemRow _inputRow;
+  Infos const& _infos;
+  transaction::Methods _trx;
+  aql::Collection const* _collection;
+
+  InputAqlItemRow _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   std::vector<float> _inputRowConverted;
   ExecutorState _state{ExecutorState::HASMORE};
 
   std::vector<float> _distances;
   std::vector<VectorIndexLabelId> _labels;
-  bool _initialized{false};
-  std::size_t _currentProcessedResultCount{0};
+  // setting this to getNumberOfResults makes it an invalid index into
+  // _distances and/or _labels, and therefore marks them as invalid.
+  std::size_t _currentProcessedResultCount = _infos.getNumberOfResults();
   // needed to enable fullCount to work
   std::size_t _processedInputs{0};
-
-  Infos const& _infos;
-  transaction::Methods _trx;
-  aql::Collection const* _collection;
 };
 }  // namespace arangodb::aql
