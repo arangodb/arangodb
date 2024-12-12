@@ -715,7 +715,7 @@ Result RocksDBVectorIndex::ingestVectors(
               flatIndex.code_size);
           status = batch.Put(_cf, key.string(), value.string());
           if (not status.ok()) {
-            setResult(rocksutils::convertStatus(status));
+            THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
           }
         }
 
@@ -725,7 +725,7 @@ Result RocksDBVectorIndex::ingestVectors(
         rocksdb::WriteOptions ro;
         status = rootDB->Write(ro, &batch);
         if (not status.ok()) {
-          setResult(rocksutils::convertStatus(status));
+          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
         }
       });
     }
