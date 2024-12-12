@@ -616,33 +616,46 @@ Result RocksDBVectorIndex::ingestVectors(
     }
   };
 
-  auto extractDocumentVector = [&](velocypack::Slice doc,
-                                   std::vector<basics::AttributeName> const&
-                                       path,
-                                   std::vector<float>& output) {
-    auto v = rocksutils::accessDocumentPath(doc, path);
-    if (!v.isArray()) {
-      THROW_ARANGO_EXCEPTION_FORMAT(
-          TRI_ERROR_TYPE_ERROR,
-          "array expected for vector attribute for document %s",
-          v.get("_key").toJson().c_str());
-    }
-    if (v.length() != _definition.dimension) {
-      THROW_ARANGO_EXCEPTION_FORMAT(
-          TRI_ERROR_TYPE_ERROR,
-          "provided vector is not of matching dimension for document %s",
-          v.get("_key").toJson().c_str());
-    }
-    for (auto d : VPackArrayIterator(v)) {
-      if (not d.isNumber<double>()) {
-        THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_TYPE_ERROR,
-            "vector contains data not representable as double for document %s",
-            v.get("_key").toJson().c_str());
-      }
-      output.push_back(d.getNumericValue<double>());
-    }
-  };
+  auto extractDocumentVector =
+      [&](velocypack::Slice doc, std::vector<basics::AttributeName> const& path,
+          std::vector<float>& output) {
+        try {
+          auto v = rocksutils::accessDocumentPath(doc, path);
+          if (!v.isArray()) {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+                TRI_ERROR_TYPE_ERROR,
+                "array expected for vector attribute for document %s",
+                transaction::helpers::extractKeyFromDocument(doc)
+                    .copyString()
+                    .c_str());
+          }
+          if (v.length() != _definition.dimension) {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+                TRI_ERROR_TYPE_ERROR,
+                "provided vector is not of matching dimension for document %s",
+                transaction::helpers::extractKeyFromDocument(doc)
+                    .copyString()
+                    .c_str());
+          }
+          for (auto d : VPackArrayIterator(v)) {
+            if (not d.isNumber<double>()) {
+              THROW_ARANGO_EXCEPTION_FORMAT(
+                  TRI_ERROR_TYPE_ERROR,
+                  "vector contains data not representable as double for "
+                  "document %s",
+                  transaction::helpers::extractKeyFromDocument(doc)
+                      .copyString()
+                      .c_str());
+            }
+            output.push_back(d.getNumericValue<double>());
+          }
+        } catch (velocypack::Exception const& e) {
+          LOG_DEVEL << doc.toJson();
+          THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_TYPE_ERROR,
+              "deserialization error when accessing a document: %s", e.what());
+        }
+      };
 
   auto readDocuments = [&] {
     // This is a simple implementation, using a single thread.
@@ -750,12 +763,18 @@ Result RocksDBVectorIndex::ingestVectors(
   LOG_INGESTION << "ALL THREADS STARTED!";
 
   _threads.clear();
-  LOG_TOPIC("41658", INFO, Logger::FIXME)
-      << "Ingestion done. Encoded " << countDocuments << " vectors in "
-      << countBatches
-      << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
-      << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
-      << " " << counters.writeConsumeBlocked;
+  if (firstError.ok()) {
+    LOG_VECTOR_INDEX("41658", INFO, Logger::FIXME)
+        << "Ingestion done. Encoded " << countDocuments << " vectors in "
+        << countBatches
+        << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
+        << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
+        << " " << counters.writeConsumeBlocked;
+
+  } else {
+    LOG_VECTOR_INDEX("96a80", ERR, Logger::FIXME)
+        << "Ingestion failed: " << firstError;
+  }
 
   return firstError;
 }
