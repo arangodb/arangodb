@@ -449,7 +449,8 @@ Setting this option to a value of zero disables these connectivity checks.")")
           "--cluster.no-heartbeat-delay-before-shutdown",
           "The delay (in seconds) before shutting down a coordinator "
           "if no heartbeat can be sent. Set to 0 to deactivate this shutdown",
-          new DoubleParameter(&_noHeartbeatDelayBeforeShutdown),
+          new DoubleParameter(&_noHeartbeatDelayBeforeShutdown, 1.0, 0.0,
+                              std::numeric_limits<double>::max(), true, true),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator,
