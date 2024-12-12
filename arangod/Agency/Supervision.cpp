@@ -211,6 +211,7 @@ Supervision::Supervision(ArangodServer& server,
       _okThreshold(5.),
       _delayAddFollower(0),
       _delayFailedFollower(0),
+      _expiredServersGracePeriod(3600),
       _jobId(0),
       _jobIdMax(0),
       _lastUpdateIndex(0),
@@ -1362,8 +1363,11 @@ std::string Supervision::serverHealth(std::string_view serverName) const {
 //      Remove coordinator everywhere
 //      Remove DB server everywhere, if not leader of a shard
 
-std::unordered_map<ServerID, std::string> deletionCandidates(
-    Node const& snapshot, Node const& transient, std::string const& type) {
+std::unordered_map<ServerID, std::string>
+arangodb::consensus::deletionCandidates(Node const& snapshot,
+                                        Node const& transient,
+                                        std::string const& type,
+                                        double gracePeriod) {
   using namespace std::chrono;
   std::unordered_map<ServerID, std::string> serverList;
   std::string const planPath = "/Plan/" + type;
@@ -1375,22 +1379,29 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
       auto const& transientHeartbeat =
           transient.get("/Supervision/Health/" + serverId.first);
       try {
-        // Do we have a transient heartbeat younger than a day?
+        // Do we have a transient heartbeat younger than the gracePeriod?
+        // Note that we take the LastAckedTime value here, since this is
+        // the time we have last seen a new heartbeat from that server
+        // here in this agency leader.
         if (transientHeartbeat) {
           auto const t = stringToTimepoint(
-              transientHeartbeat->get("Timestamp")->getString().value());
-          if (t > system_clock::now() - hours(24)) {
+              transientHeartbeat->get("LastAckedTime")->getString().value());
+          if (t > system_clock::now() -
+                      seconds(static_cast<uint64_t>(gracePeriod))) {
             continue;
           }
         }
-        // Else do we have a persistent heartbeat younger than a day?
+        // Else do we have a persistent heartbeat younger than the gracePeriod?
+        // Note that we take the Timestamp value here, since this is the
+        // time of the last persisted status change of that server.
         auto const& persistentHeartbeat =
             snapshot.get("/Supervision/Health/" + serverId.first);
         if (persistentHeartbeat) {
           persistedTimeStamp =
               persistentHeartbeat->get("Timestamp")->getString().value();
           auto const t = stringToTimepoint(persistedTimeStamp);
-          if (t > system_clock::now() - hours(24)) {
+          if (t > system_clock::now() -
+                      seconds(static_cast<uint64_t>(gracePeriod))) {
             continue;
           }
         } else {
@@ -1406,6 +1417,8 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
 
       // We are still here?
       serverList.emplace(serverId.first, persistedTimeStamp);
+      LOG_TOPIC("66521", INFO, Logger::SUPERVISION)
+          << "Removing expired server: " << serverId.first;
     }
   }
 
@@ -1443,7 +1456,8 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
 
 void Supervision::cleanupExpiredServers(Node const& snapshot,
                                         Node const& transient) {
-  auto servers = deletionCandidates(snapshot, transient, "DBServers");
+  auto servers = deletionCandidates(snapshot, transient, "DBServers",
+                                    _expiredServersGracePeriod);
   auto const& currentDatabases = *snapshot.get("Current/Databases");
 
   VPackBuilder del;
@@ -1493,7 +1507,8 @@ void Supervision::cleanupExpiredServers(Node const& snapshot,
   }
 
   trxs.clear();
-  servers = deletionCandidates(snapshot, transient, "Coordinators");
+  servers = deletionCandidates(snapshot, transient, "Coordinators",
+                               _expiredServersGracePeriod);
   {
     VPackArrayBuilder t(&trxs);
     for (auto const& server : servers) {
@@ -1849,7 +1864,6 @@ void Supervision::cleanupFinishedAndFailedJobs() {
   bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
       snapshot(), envelope, true);
   if (sthTodo) {
-    LOG_DEVEL << "Transaction built: " << envelope->toJson();
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
@@ -1865,7 +1879,6 @@ void Supervision::cleanupFinishedAndFailedJobs() {
   sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
       snapshot(), envelope, false);
   if (sthTodo) {
-    LOG_DEVEL << "Transaction 2 built: " << envelope->toJson();
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
@@ -3450,6 +3463,8 @@ bool Supervision::start(Agent* agent) {
   _delayFailedFollower = _agent->config().supervisionDelayFailedFollower();
   _failedLeaderAddsFollower =
       _agent->config().supervisionFailedLeaderAddsFollower();
+  _expiredServersGracePeriod =
+      _agent->config().supervisionExpiredServersGracePeriod();
   return start();
 }
 
