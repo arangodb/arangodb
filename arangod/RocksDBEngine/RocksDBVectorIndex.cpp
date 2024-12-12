@@ -500,23 +500,6 @@ RocksDBVectorIndex::getVectorIndexDefinition() {
   return getDefinition();
 }
 
-namespace {
-
-void readVectorFromDocument(velocypack::Slice doc,
-                            std::vector<basics::AttributeName> const& path,
-                            std::vector<float>& output) try {
-  auto v = rocksutils::accessDocumentPath(doc, path);
-
-  for (auto d : VPackArrayIterator(v)) {
-    output.push_back(d.getDouble());
-  }
-} catch (velocypack::Exception const& e) {
-  LOG_DEVEL << "INVALID VECTOR IN DOC " << doc.toJson();
-  throw;  // TODO handle vpack errors
-}
-
-}  // namespace
-
 #define LOG_INGESTION LOG_DEVEL_IF(false)
 
 Result RocksDBVectorIndex::ingestVectors(
@@ -565,6 +548,36 @@ Result RocksDBVectorIndex::ingestVectors(
   std::atomic<std::size_t> countBatches{0};
   std::atomic<std::size_t> countDocuments{0};
 
+  std::atomic<bool> hasError;
+  Result firstError;
+
+  auto setResult = [&](Result result) {
+    if (result.fail()) {
+      if (hasError.exchange(true) == false) {
+        firstError = std::move(result);
+      }
+    }
+  };
+
+  auto errorExceptionHandler = [&](auto&& fn) noexcept {
+    try {
+      auto constexpr returnsResult = requires {
+        { fn() } -> std::convertible_to<Result>;
+      };
+
+      if constexpr (returnsResult) {
+        setResult(fn());
+      }
+      else {
+        fn();
+      }
+    } catch (basics::Exception const& e) {
+      setResult({e.code(), e.message()});
+    } catch (std::exception const& e) {
+      setResult({TRI_ERROR_INTERNAL, e.what()});
+    }
+  };
+
   auto encodeVectors = [&]() {
     BoundedChannelProducerGuard guard(encodedChannel);
     // This trivially parallelizes
@@ -574,35 +587,81 @@ Result RocksDBVectorIndex::ingestVectors(
         return;
       }
 
-      counters.encodeConsumeBlocked += blocked;
-      auto n = item->docIds.size();
-      countBatches += 1;
-      countDocuments += n;
+      bool shouldStop = false;
+      errorExceptionHandler([&] {
+        counters.encodeConsumeBlocked += blocked;
+        auto n = item->docIds.size();
+        countBatches += 1;
+        countDocuments += n;
 
-      float* x = item->vectors.data();
-      std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
-      flatIndex.quantizer->assign(n, x, coarse_idx.get());
-      auto code_size = flatIndex.code_size;
-      std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
+        float* x = item->vectors.data();
+        std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
+        flatIndex.quantizer->assign(n, x, coarse_idx.get());
+        auto code_size = flatIndex.code_size;
+        std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
 
-      // TODO: since we only use IVTFlat this is just copying the data.
-      //  Probably we want to use some PQ encoding later on.
-      flatIndex.encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
+        // TODO: since we only use IVTFlat this is just copying the data.
+        //  Probably we want to use some PQ encoding later on.
+        flatIndex.encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
 
-      auto encoded = std::make_unique<EncodedVectors>();
-      encoded->docIds = std::move(item->docIds);
-      encoded->lists = std::move(coarse_idx);
-      encoded->codes = std::move(flat_codes);
+        auto encoded = std::make_unique<EncodedVectors>();
+        encoded->docIds = std::move(item->docIds);
+        encoded->lists = std::move(coarse_idx);
+        encoded->codes = std::move(flat_codes);
 
-      LOG_INGESTION << "ENCODE encoded " << encoded->docIds.size()
-                    << " vectors";
-      auto [shouldStop, pushBlocked] = encodedChannel.push(std::move(encoded));
-      counters.encodeProduceBlocked += pushBlocked;
+        LOG_INGESTION << "ENCODE encoded " << encoded->docIds.size()
+                      << " vectors";
+        bool pushBlocked = false;
+        std::tie(shouldStop, pushBlocked) =
+            encodedChannel.push(std::move(encoded));
+        counters.encodeProduceBlocked += pushBlocked;
+      });
       if (shouldStop) {
         break;
       }
     }
   };
+
+  auto extractDocumentVector =
+      [&](velocypack::Slice doc, std::vector<basics::AttributeName> const& path,
+          std::vector<float>& output) {
+        try {
+          auto v = rocksutils::accessDocumentPath(doc, path);
+          if (!v.isArray()) {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+                TRI_ERROR_TYPE_ERROR,
+                "array expected for vector attribute for document %s",
+                transaction::helpers::extractKeyFromDocument(doc)
+                    .copyString()
+                    .c_str());
+          }
+          if (v.length() != _definition.dimension) {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+                TRI_ERROR_TYPE_ERROR,
+                "provided vector is not of matching dimension for document %s",
+                transaction::helpers::extractKeyFromDocument(doc)
+                    .copyString()
+                    .c_str());
+          }
+          for (auto d : VPackArrayIterator(v)) {
+            if (not d.isNumber<double>()) {
+              THROW_ARANGO_EXCEPTION_FORMAT(
+                  TRI_ERROR_TYPE_ERROR,
+                  "vector contains data not representable as double for "
+                  "document %s",
+                  transaction::helpers::extractKeyFromDocument(doc)
+                      .copyString()
+                      .c_str());
+            }
+            output.push_back(d.getNumericValue<double>());
+          }
+        } catch (velocypack::Exception const& e) {
+          LOG_DEVEL << doc.toJson();
+          THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_TYPE_ERROR,
+              "deserialization error when accessing a document: %s", e.what());
+        }
+      };
 
   auto readDocuments = [&] {
     // This is a simple implementation, using a single thread.
@@ -611,40 +670,42 @@ Result RocksDBVectorIndex::ingestVectors(
     static_assert(numReaders == 1,
                   "this code is not prepared for multiple reads");
 
-    BoundedChannelProducerGuard guard(documentChannel);
+    errorExceptionHandler([&] {
+      BoundedChannelProducerGuard guard(documentChannel);
 
-    auto prepareBatch = [&] {
-      auto batch = std::make_unique<DocumentVectors>();
-      batch->docIds.reserve(documentPerBatch);
-      batch->vectors.reserve(documentPerBatch * _definition.dimension);
-      return batch;
-    };
+      auto prepareBatch = [&] {
+        auto batch = std::make_unique<DocumentVectors>();
+        batch->docIds.reserve(documentPerBatch);
+        batch->vectors.reserve(documentPerBatch * _definition.dimension);
+        return batch;
+      };
 
-    std::unique_ptr<DocumentVectors> batch = prepareBatch();
-    while (documentIterator->Valid()) {
-      LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
-      VPackSlice doc = RocksDBValue::data(documentIterator->value());
-      readVectorFromDocument(doc, _fields[0], batch->vectors);
-      batch->docIds.push_back(docId);
-      documentIterator->Next();
+      std::unique_ptr<DocumentVectors> batch = prepareBatch();
+      while (documentIterator->Valid() && not hasError.load()) {
+        LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
+        VPackSlice doc = RocksDBValue::data(documentIterator->value());
+        extractDocumentVector(doc, _fields[0], batch->vectors);
+        batch->docIds.push_back(docId);
+        documentIterator->Next();
 
-      if (batch->docIds.size() == documentPerBatch) {
-        LOG_INGESTION << "READ done with batch " << documentPerBatch;
-        auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
-        counters.readProduceBlocked += blocked;
+        if (batch->docIds.size() == documentPerBatch) {
+          LOG_INGESTION << "READ done with batch " << documentPerBatch;
+          auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
+          counters.readProduceBlocked += blocked;
 
-        if (shouldStop) {
-          return;
+          if (shouldStop) {
+            return;
+          }
+          batch = prepareBatch();
         }
-        batch = prepareBatch();
       }
-    }
 
-    if (batch) {
-      LOG_INGESTION << "READ producing final batch size="
-                    << batch->docIds.size();
-      std::ignore = documentChannel.push(std::move(batch));
-    }
+      if (batch) {
+        LOG_INGESTION << "READ producing final batch size="
+                      << batch->docIds.size();
+        std::ignore = documentChannel.push(std::move(batch));
+      }
+    });
   };
 
   auto writeDocuments = [&] {
@@ -656,27 +717,36 @@ Result RocksDBVectorIndex::ingestVectors(
         break;
       }
 
-      counters.writeConsumeBlocked += blocked;
-      batch.Clear();
+      errorExceptionHandler([&] {
+        counters.writeConsumeBlocked += blocked;
+        batch.Clear();
 
-      RocksDBKey key;
+        RocksDBKey key;
+        rocksdb::Status status;
 
-      for (size_t k = 0; k < item->docIds.size(); k++) {
-        key.constructVectorIndexValue(objectId(), item->lists[k],
-                                      item->docIds[k]);
+        for (size_t k = 0; k < item->docIds.size(); k++) {
+          key.constructVectorIndexValue(objectId(), item->lists[k],
+                                        item->docIds[k]);
 
-        auto const value = RocksDBValue::VectorIndexValue(
-            reinterpret_cast<const char*>(item->codes.get() +
-                                          k * flatIndex.code_size),
-            flatIndex.code_size);
-        batch.Put(_cf, key.string(), value.string());
-      }
+          auto const value = RocksDBValue::VectorIndexValue(
+              reinterpret_cast<const char*>(item->codes.get() +
+                                            k * flatIndex.code_size),
+              flatIndex.code_size);
+          status = batch.Put(_cf, key.string(), value.string());
+          if (not status.ok()) {
+            THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
+          }
+        }
 
-      LOG_INGESTION << "[WRITE] writing " << item->docIds.size()
-                    << " encoded vectors, batch size = " << batch.Count();
+        LOG_INGESTION << "[WRITE] writing " << item->docIds.size()
+                      << " encoded vectors, batch size = " << batch.Count();
 
-      rocksdb::WriteOptions ro;
-      rootDB->Write(ro, &batch);
+        rocksdb::WriteOptions ro;
+        status = rootDB->Write(ro, &batch);
+        if (not status.ok()) {
+          THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
+        }
+      });
     }
   };
 
@@ -699,14 +769,20 @@ Result RocksDBVectorIndex::ingestVectors(
   LOG_INGESTION << "ALL THREADS STARTED!";
 
   _threads.clear();
-  LOG_TOPIC("41658", INFO, Logger::FIXME)
-      << "Ingestion done. Encoded " << countDocuments << " vectors in "
-      << countBatches
-      << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
-      << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
-      << " " << counters.writeConsumeBlocked;
+  if (firstError.ok()) {
+    LOG_VECTOR_INDEX("41658", INFO, Logger::FIXME)
+        << "Ingestion done. Encoded " << countDocuments << " vectors in "
+        << countBatches
+        << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
+        << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
+        << " " << counters.writeConsumeBlocked;
 
-  return Result();
+  } else {
+    LOG_VECTOR_INDEX("96a80", ERR, Logger::FIXME)
+        << "Ingestion failed: " << firstError;
+  }
+
+  return firstError;
 }
 
 }  // namespace arangodb
