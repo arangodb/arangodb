@@ -804,7 +804,7 @@ void HeartbeatThread::runCoordinator() {
         break;
       }
 
-      {
+      if (_noHeartbeatDelayBeforeShutdown >= 1.0) {
         std::lock_guard<std::mutex> guard(_lastSuccessfulHeartbeatSentMutex);
         if (_lastSuccessfulHeartbeatSent.has_value()) {
           auto diff = std::chrono::steady_clock::now() -

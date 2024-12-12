@@ -445,14 +445,15 @@ Setting this option to a value of zero disables these connectivity checks.")")
       .setIntroducedIn(31104);
 
   options
-      ->addOption("--cluster.no-heartbeat-delay-before-shutdown",
-                  "The delay (in seconds) before shutting down a coordinator "
-                  "if no heartbeat can be sent.",
-                  new DoubleParameter(&_noHeartbeatDelayBeforeShutdown),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnDBServer))
+      ->addOption(
+          "--cluster.no-heartbeat-delay-before-shutdown",
+          "The delay (in seconds) before shutting down a coordinator "
+          "if no heartbeat can be sent. Set to 0 to deactivate this shutdown",
+          new DoubleParameter(&_noHeartbeatDelayBeforeShutdown),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnDBServer))
       .setLongDescription(
           R"(Setting this option to a value greater than zero will
 let a coordinator which cannot send a heartbeat to the agency for the specified time
