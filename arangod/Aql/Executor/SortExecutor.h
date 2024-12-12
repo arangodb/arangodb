@@ -72,7 +72,7 @@ class SortExecutorInfos {
                     ResourceMonitor& resourceMonitor,
                     size_t spillOverThresholdNumRows,
                     size_t spillOverThresholdMemoryUsage, bool stable,
-                    std::unordered_set<VariableId> groupedElements);
+                    std::vector<RegisterId> groupedRegisters);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
@@ -103,7 +103,7 @@ class SortExecutorInfos {
 
   [[nodiscard]] TemporaryStorageFeature& getTemporaryStorageFeature() noexcept;
 
-  [[nodiscard]] size_t numberOfTopGroupedElements() noexcept;
+  [[nodiscard]] std::vector<RegisterId> const& groupedRegisters() noexcept;
 
   QueryContext& getQuery() const noexcept;
 
@@ -121,7 +121,7 @@ class SortExecutorInfos {
   size_t _spillOverThresholdNumRows;
   size_t _spillOverThresholdMemoryUsage;
   bool _stable;
-  std::unordered_set<VariableId> _groupedElements;
+  std::vector<RegisterId> _groupedRegisters;
 };
 
 /**

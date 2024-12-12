@@ -54,7 +54,8 @@ class SortNode : public ExecutionNode {
            bool stable);
 
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice base,
-           SortElementVector elements, bool stable);
+           SortElementVector elements, SortElementVector groupedElements,
+           bool stable);
 
   /// @brief if non-zero, limits the number of elements that the node will
   /// return
@@ -73,14 +74,17 @@ class SortNode : public ExecutionNode {
 
   void setGroupedElements(size_t numberOfTopGroupedElements) {
     TRI_ASSERT(numberOfTopGroupedElements <= _elements.size());
+    SortElementVector newElements;
     size_t count = 0;
     for (auto const& element : _elements) {
-      if (count >= numberOfTopGroupedElements) {
-        break;
+      if (count < numberOfTopGroupedElements) {
+        _groupedElements.emplace_back(element);
+      } else {
+        newElements.emplace_back(element);
       }
-      _groupedElements.emplace(element.var->id);
       count++;
     }
+    _elements = newElements;
   }
 
   /// @brief creates corresponding ExecutionBlock
@@ -141,7 +145,7 @@ class SortNode : public ExecutionNode {
   /// (true = ascending | false = descending)
   SortElementVector _elements;
 
-  std::unordered_set<VariableId> _groupedElements;
+  SortElementVector _groupedElements;
 
   /// whether or not the sort is stable
   bool _stable;

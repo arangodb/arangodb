@@ -501,7 +501,8 @@ class ExecutionNode {
   virtual CostEstimate estimateCost() const = 0;
 
   /// @brief factory for sort elements, used by SortNode and GatherNode
-  static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
+  static void getSortElements(std::string_view slice_name,
+                              SortElementVector& elements, ExecutionPlan* plan,
                               velocypack::Slice slice, std::string_view which);
 
   RegisterId variableToRegisterId(Variable const*) const;

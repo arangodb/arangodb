@@ -1831,7 +1831,7 @@ function processQuery(query, explain, planIndex) {
       case 'SortNode':
         const groupedElements = node.groupedElements.length > 0 ?
           '; ' + keyword('GROUPED BY') + ' '
-          + node.groupedElements.map((id) => variable('#' + id.toString())).join(', ') : '';
+          + node.groupedElements.map((element) => variableName(element.inVariable)).join(', ') : '';
         return keyword('SORT') + ' '
           + node.elements.map((node) => variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC')).join(', ')
           + groupedElements

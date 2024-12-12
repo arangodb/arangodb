@@ -45,25 +45,15 @@ class OurLessThan {
   OurLessThan(
       velocypack::Options const* options,
       std::vector<SharedAqlItemBlockPtr> const& input,  // from _inputBlocks
-      std::vector<SortRegister> const& sortRegisters,
-      size_t
-          numberOfTopGroupedElements) noexcept  // from _infos.sortRegisters()
-      : _vpackOptions(options),
-        _input(input),
-        _sortRegisters(sortRegisters),
-        _numberOfTopGroupedElements(numberOfTopGroupedElements) {}
+      std::vector<SortRegister> const&
+          sortRegisters) noexcept  // from _infos.sortRegisters()
+      : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
   bool operator()(SortedRowsStorageBackendMemory::RowIndex const& a,
                   SortedRowsStorageBackendMemory::RowIndex const& b) const {
     auto const& left = _input[a.first].get();   // row
     auto const& right = _input[b.first].get();  // row
-    size_t count = 0;
     for (auto const& reg : _sortRegisters) {
-      if (count < _numberOfTopGroupedElements) {
-        // register is already sorted
-        count++;
-        continue;
-      }
       AqlValue const& lhs = left->getValueReference(
           a.second, reg.reg);  // value of row at register
       AqlValue const& rhs = right->getValueReference(
@@ -75,7 +65,6 @@ class OurLessThan {
       } else if (cmp > 0) {
         return !reg.asc;
       }
-      count++;
     }
 
     return false;
@@ -85,7 +74,6 @@ class OurLessThan {
   velocypack::Options const* _vpackOptions;
   std::vector<SharedAqlItemBlockPtr> const& _input;
   std::vector<SortRegister> const& _sortRegisters;
-  size_t _numberOfTopGroupedElements;
 };  // OurLessThan
 
 }  // namespace
@@ -106,13 +94,8 @@ GroupedValues SortedRowsStorageBackendMemory::groupedValuesForRow(
     RowIndex const& rowId) {
   auto row = _inputBlocks[rowId.first].get();
   std::vector<AqlValue> groupedValues;
-  size_t count = 0;
-  for (auto const& reg : _infos.sortRegisters()) {
-    if (count >= _infos.numberOfTopGroupedElements()) {
-      break;
-    }
-    groupedValues.push_back(row->getValueReference(rowId.second, reg.reg));
-    count++;
+  for (auto const& registerId : _infos.groupedRegisters()) {
+    groupedValues.push_back(row->getValueReference(rowId.second, registerId));
   }
   return GroupedValues{_infos.vpackOptions(), groupedValues};
 }
@@ -235,7 +218,7 @@ bool SortedRowsStorageBackendMemory::spillOver(
   // if we have a grouped sort, we could have already produced rows and / or
   // have additional (sorted) data in _finishedGroup instead of only in
   // _currentGroup
-  if (_infos.numberOfTopGroupedElements() > 0) {
+  if (_infos.groupedRegisters().size() > 0) {
     return false;
   }
 
@@ -279,8 +262,7 @@ void SortedRowsStorageBackendMemory::sortFinishedGroup() {
 
   // comparison function
   OurLessThan ourLessThan(_infos.vpackOptions(), _inputBlocks,
-                          _infos.sortRegisters(),
-                          _infos.numberOfTopGroupedElements());
+                          _infos.sortRegisters());
   if (_infos.stable()) {
     std::stable_sort(_finishedGroup.begin(), _finishedGroup.end(), ourLessThan);
   } else {

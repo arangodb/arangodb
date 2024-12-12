@@ -51,22 +51,14 @@ SortNode::SortNode(ExecutionPlan* plan, ExecutionNodeId id,
       _reinsertInCluster(true) {}
 
 SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice base,
-                   SortElementVector elements, bool stable)
+                   SortElementVector elements,
+                   SortElementVector groupedElements, bool stable)
     : ExecutionNode(plan, base),
       _elements(std::move(elements)),
+      _groupedElements(std::move(groupedElements)),
       _stable(stable),
       _reinsertInCluster(true),
-      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {
-  VPackSlice groupedElementsSlice = base.get("groupedElements");
-  if (!groupedElementsSlice.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "unexpected value for SortNode grouped elements");
-  }
-  _groupedElements.reserve(groupedElementsSlice.length());
-  for (VPackSlice it : VPackArrayIterator(groupedElementsSlice)) {
-    _groupedElements.emplace(it.getNumericValue<uint32_t>());
-  }
-}
+      _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
 
 /// @brief doToVelocyPack, for SortNode
 void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -80,8 +72,8 @@ void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("groupedElements"));
   {
     VPackArrayBuilder guard(&nodes);
-    for (VariableId const& id : _groupedElements) {
-      nodes.add(VPackValue(id));
+    for (auto const& it : _groupedElements) {
+      it.toVelocyPack(nodes);
     }
   }
   nodes.add("stable", VPackValue(_stable));
@@ -197,6 +189,13 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     sortRegs.emplace_back(id, element);
     inputRegs.emplace(id);
   }
+  std::vector<RegisterId> groupedRegisters;
+  for (auto const& element : _groupedElements) {
+    auto it = getRegisterPlan()->varInfo.find(element.var->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    RegisterId id = it->second.registerId;
+    groupedRegisters.emplace_back(id);
+  }
 
   auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
   auto executorInfos = SortExecutorInfos(
@@ -210,7 +209,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
       &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
       engine.getQuery().queryOptions().spillOverThresholdNumRows,
       engine.getQuery().queryOptions().spillOverThresholdMemoryUsage, _stable,
-      _groupedElements);
+      groupedRegisters);
   if (sorterType() == SorterType::kStandard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -242,16 +241,10 @@ void SortNode::replaceVariables(
   for (auto& variable : _elements) {
     variable.var = Variable::replace(variable.var, replacements);
   }
-  auto newGroupedElements = std::unordered_set<VariableId>{};
-  for (auto const& groupedVariable : _groupedElements) {
-    auto it = replacements.find(groupedVariable);
-    if (it == replacements.end()) {
-      newGroupedElements.emplace(groupedVariable);
-    } else {
-      newGroupedElements.emplace(it->second->id);
-    }
+  auto newGroupedElements = std::vector<Variable>{};
+  for (auto& groupedVariable : _groupedElements) {
+    groupedVariable.var = Variable::replace(groupedVariable.var, replacements);
   }
-  _groupedElements = newGroupedElements;
 }
 
 void SortNode::replaceAttributeAccess(ExecutionNode const* self,
@@ -263,10 +256,8 @@ void SortNode::replaceAttributeAccess(ExecutionNode const* self,
     it.replaceAttributeAccess(searchVariable, attribute, replaceVariable);
   }
   if (attribute.empty()) {
-    auto it = _groupedElements.find(searchVariable->id);
-    if (it != _groupedElements.end()) {
-      _groupedElements.erase(searchVariable->id);
-      _groupedElements.emplace(replaceVariable->id);
+    for (auto& it : _groupedElements) {
+      it.replaceAttributeAccess(searchVariable, attribute, replaceVariable);
     }
   }
 }
@@ -274,6 +265,9 @@ void SortNode::replaceAttributeAccess(ExecutionNode const* self,
 /// @brief getVariablesUsedHere, modifying the set in-place
 void SortNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto& p : _elements) {
+    vars.emplace(p.var);
+  }
+  for (auto& p : _groupedElements) {
     vars.emplace(p.var);
   }
 }
