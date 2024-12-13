@@ -285,7 +285,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       SortElementVector elements;
       getSortElements("elements", elements, plan, slice, "SortNode");
       SortElementVector groupedElements;
-      getSortElements("groupedElements", elements, plan, slice, "SortNode");
+      getSortElements("groupedElements", groupedElements, plan, slice,
+                      "SortNode");
       return new SortNode(plan, slice, elements, groupedElements,
                           slice.get("stable").getBoolean());
     }
