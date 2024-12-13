@@ -35,7 +35,6 @@ const {
   getCtrlCoordinators,
   versionHas
 } = require('@arangodb/test-helper');
-print(versionHas)
 function testSuite() {
   let cn = "UnitTestSoftShutdown";
 
