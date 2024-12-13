@@ -35,8 +35,7 @@ const {
   getCtrlCoordinators,
   versionHas
 } = require('@arangodb/test-helper');
-const isCov = versionHas('coverage');
-
+print(versionHas)
 function testSuite() {
   let cn = "UnitTestSoftShutdown";
 
@@ -279,7 +278,7 @@ function testSuite() {
       let op = `require("internal").wait(1); return 1;`;
 
       let jobs = [];
-      const jobCount = (isCov) ? 32 : 128;
+      const jobCount = (versionHas('coverage')) ? 32 : 128;
       for (let i = 0; i < jobCount; ++i) {
         // that is more than we have threads, so there should be a queue
         let resp = arango.POST_RAW("/_admin/execute", op, {"x-arango-async":"store"});
