@@ -289,7 +289,7 @@ void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
         << "We are not in a state where we expect a response";
     return;
   }
-  LOG_PREGEL("08142", WARN) << fmt::format(
+  LOG_PREGEL("08142", INFO) << fmt::format(
       "finishedWorkerStartup, got response from {}.", graphLoaded.sender);
 
   _totalVerticesCount += graphLoaded.vertexCount;
@@ -332,7 +332,7 @@ void Conductor::finishedWorkerStep(GlobalSuperStepFinished const& data) {
   // this will wait for a response from each worker
   _statistics.accumulateMessageStats(data.sender, data.messageStats);
   _ensureUniqueResponse(data.sender);
-  LOG_PREGEL("faeb0", WARN)
+  LOG_PREGEL("faeb0", INFO)
       << fmt::format("finishedWorkerStep, got response from {}.", data.sender);
   // wait for the last worker to respond
   if (_respondedServers.size() != _dbServers.size()) {
@@ -564,7 +564,7 @@ ErrorCode Conductor::_finalizeWorkers() {
 void Conductor::finishedWorkerFinalize(Finished const& data) {
   std::lock_guard guard{_callbackMutex};
 
-  LOG_PREGEL("60f0c", WARN) << fmt::format(
+  LOG_PREGEL("60f0c", INFO) << fmt::format(
       "finishedWorkerFinalize, got response from {}.", data.sender);
 
   _ensureUniqueResponse(data.sender);
