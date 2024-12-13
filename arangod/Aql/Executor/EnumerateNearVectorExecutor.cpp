@@ -49,8 +49,7 @@ using Stats = NoStats;
 
 EnumerateNearVectorsExecutor::EnumerateNearVectorsExecutor(Fetcher& /*unused*/,
                                                            Infos& infos)
-    : _inputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _infos(infos),
+    : _infos(infos),
       _trx(_infos.queryContext.newTrxContext()),
       _collection(_infos.collection) {}
 
@@ -86,6 +85,8 @@ void EnumerateNearVectorsExecutor::fillInput(
                     vectorComponentsCount));
   }
   ++_processedInputs;
+
+  searchResults();
 }
 
 void EnumerateNearVectorsExecutor::searchResults() {
@@ -96,8 +97,10 @@ void EnumerateNearVectorsExecutor::searchResults() {
       RocksDBTransactionState::toMethods(&_trx, _collection->id());
 
   std::tie(_labels, _distances) = vectorIndex->readBatch(
-      _inputRowConverted, _infos.searchParameters, mthds, &_trx,
-      _collection->getCollection(), 1, _infos.getNumberOfResults());
+      _inputRowConverted, _infos.searchParameters, mthds, &_trx, _collection->getCollection(), 1,
+      _infos.getNumberOfResults());
+  _currentProcessedResultCount = 0;
+  TRI_ASSERT(hasResults());
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;
 }
 
@@ -123,113 +126,106 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
 
     ++_currentProcessedResultCount;
   }
+  TRI_ASSERT(hasResults() !=
+             (_currentProcessedResultCount == _infos.getNumberOfResults()));
+  // Must clear the input so the readBatch in RocksDBVectorIndex has the correct
+  // size
+  _inputRowConverted.clear();
+}
 
-  if (_currentProcessedResultCount == _infos.getNumberOfResults()) {
-    _resultsAreProcessed = true;
+std::uint64_t EnumerateNearVectorsExecutor::skipOutput(
+    AqlCall::Limit toSkip) noexcept {
+  auto skipped = 0;
+
+  while (skipped < toSkip &&
+         _currentProcessedResultCount < _infos.getNumberOfResults()) {
+    // there are no results anymore for this input, so we can skip to next input
+    // row
+    if (_labels[_currentProcessedResultCount] == -1) {
+      _currentProcessedResultCount = _infos.getNumberOfResults();
+      break;
+    }
+    ++skipped;
+
+    ++_currentProcessedResultCount;
   }
+  TRI_ASSERT(hasResults() !=
+             (_currentProcessedResultCount == _infos.getNumberOfResults()));
+
+  return skipped;
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall>
 EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output) {
   LOG_INTERNAL << "hasDataRow: " << inputRange.hasDataRow();
-  while (!output.isFull()) {
-    if (!_initialized) {
-      if (!_inputRow.isInitialized()) {
-        fillInput(inputRange);
-      }
-
-      searchResults();
+  while (!output.isFull() && (inputRange.hasDataRow() || hasResults())) {
+    if (!hasResults()) {
+      fillInput(inputRange);
     }
-    fillOutput(output);
-    if (_currentProcessedResultCount == _infos.getNumberOfResults()) {
-      inputRange.advanceDataRow();
-      _initialized = false;
-      break;
+    if (hasResults()) {
+      fillOutput(output);
     }
   }
 
-  return {inputRange.upstreamState(), {}, output.getClientCall()};
+  return {inputRange.upstreamState(), {}, /*output.getClientCall()*/ {}};
 }
 
 [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall>
 EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                             AqlCall& call) {
-  std::size_t skipped{0};
-  LOG_INTERNAL << "call: " << call << " fullCount: " << std::boolalpha
-               << call.fullCount << " needSkipMore: " << std::boolalpha
-               << call.needSkipMore()
-               << ", hasInputRange: " << inputRange.hasDataRow()
-               << ", resultsAreProcessed: " << _resultsAreProcessed;
-  while (call.needSkipMore()) {
-    // get an input row first, if necessary
-    if (!_inputRow.isInitialized() && !_initialized) {
-      std::tie(_state, _inputRow) = inputRange.peekDataRow();
-
-      if (inputRange.hasDataRow()) {
+  auto state = [&] {
+    auto state = inputRange.upstreamState();
+    if (hasResults()) {
+      state = ExecutorState::HASMORE;
+    }
+    return state;
+  };
+  if (call.getOffset() > 0) {
+    auto skipped = std::uint64_t{};
+    while (call.needSkipMore() && (inputRange.hasDataRow() || hasResults())) {
+      if (!hasResults()) {
         fillInput(inputRange);
-      } else {
-        break;
+      }
+      if (hasResults()) {
+        auto skippedLocal = skipOutput(call.getOffset());
+        skipped += skippedLocal;
+        call.didSkip(skippedLocal);
       }
     }
 
-    LOG_INTERNAL << "offset: " << call.getOffset()
-                 << ", _currentProcessedResultCount: "
-                 << _currentProcessedResultCount;
-    if (call.getOffset() == 0) {
-      TRI_ASSERT(call.needsFullCount())
-          << "if we need to skip and skip is 0 fullCount must be true";
+    return {state(), {}, skipped, {}};
+  } else if (call.needSkipMore()) {
+    TRI_ASSERT(call.needsFullCount());
+    auto const colCount =
+        _collection->count(&_trx, transaction::CountType::kNormal);
+    auto skipped = skipOutput(AqlCall::Infinity{});
+    skipped += (colCount - _infos.getNumberOfResults());
+    TRI_ASSERT(!hasResults());
+    auto remainingRows = inputRange.countAndSkipAllRemainingDataRows();
+    // remainingRows += inputRange.skipAll();
+    // TODO call _collection->count only once
+    skipped += remainingRows * colCount;
+    call.didSkip(skipped);
 
-      auto fullCount =
-          _collection->count(&_trx, transaction::CountType::kNormal);
-      skipped = fullCount - _processedInputs * _infos.getNumberOfResults();
-      LOG_INTERNAL << "needsFullCount is set, fullCount: " << fullCount
-                   << " processed inputs: " << _processedInputs
-                   << " skipping now: " << skipped;
-      call.didSkip(skipped);
-      break;
-    }
+    //    LOG_INTERNAL << fmt::format(
+    //        "skipped={}, remainingRows={}, currentProcessed={}, nr={},
+    //        state={}, " "hasResults={}, call={}", skipped, remainingRows,
+    //        _currentProcessedResultCount, _infos.getNumberOfResults(),
+    //        state(), hasResults(), to_string(call));
 
-    while (call.getOffset() > 0) {
-      if (_labels[_currentProcessedResultCount] == -1) {
-        // we are done, since faiss return -1 for nonexistent results
-        skipped = ExecutionBlock::SkipAllSize();
-        _resultsAreProcessed = true;
-        _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-        _initialized = false;
-        call.didSkip(skipped);
-        continue;
-      }
-      LOG_INTERNAL << "Skipping one, current: " << _currentProcessedResultCount;
-      ++_currentProcessedResultCount;
-      skipped += 1;
-      call.didSkip(1);
-    }
+    auto upstreamCall = AqlCall{};
+    // upstreamCall.fullCount = true;
+    // upstreamCall.hardLimit = std::uint64_t{0};
 
-    LOG_INTERNAL << "done with checking searchResults offset: "
-                 << call.getOffset();
+    return {state(), {}, skipped, upstreamCall};
   }
 
-  if (call.needsFullCount() && _resultsAreProcessed) {
-    LOG_INTERNAL << "we have fullCount and all results are processed, this is "
-                    "possible after produceRows";
-    _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    // We don't want to initialize anything else
-    _state = ExecutorState::DONE;
-  }
+  return {state(), {}, 0, {}};
+}
 
-  auto const state = std::invoke([&]() {
-    if (_inputRow.isInitialized() || !_resultsAreProcessed) {
-      return ExecutorState::HASMORE;
-    }
-    return _state;
-  });
-
-  AqlCall upstreamCall;
-  LOG_INTERNAL << "state: " << state << ", skipped: " << skipped
-               << ", upstreamCall: " << upstreamCall
-               << ", resultsAreProcessed: " << _resultsAreProcessed;
-  return {state, {}, skipped, upstreamCall};
+bool EnumerateNearVectorsExecutor::hasResults() const noexcept {
+  return _currentProcessedResultCount < _infos.getNumberOfResults();
 }
 
 template class ExecutionBlockImpl<EnumerateNearVectorsExecutor>;
