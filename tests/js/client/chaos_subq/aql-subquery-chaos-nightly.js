@@ -170,7 +170,7 @@ function ahuacatlSubqueryChaos() {
   return {
     testSpecificQueries: function () {
       for (const [key, value] of Object.entries(specificQueries)) {
-        print(`${Date()} : ${key} => ${value}`);
+        print(`${Date()} : ${key} => ${JSON.stringify(value)}`);
         if (value.hasOwnProperty("queryString")) {
           const opts = value.testOptions || {};
           ct.testQuery(value, opts);
@@ -198,6 +198,7 @@ function ahuacatlSubqueryChaos() {
           throwOnMismatch: true,
         });
       }
+      require("internal").wait(0, true);
     },
 
     testSomeSubqueryModificationChaos: function () {
@@ -212,6 +213,7 @@ function ahuacatlSubqueryChaos() {
           throwOnMismatch: true,
         });
       }
+      require("internal").wait(0, true);
     },
   };
 }

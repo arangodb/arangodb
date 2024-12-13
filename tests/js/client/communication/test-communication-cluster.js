@@ -188,7 +188,7 @@ function CommunicationSuite() {
       };
 
       // run the suite for 5 minutes
-      runTests(tests, 5 * 60);
+      runTests(tests, 5 * 60 * (isInstr ? 2 : 1));
     },
   };
 }

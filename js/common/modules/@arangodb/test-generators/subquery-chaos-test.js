@@ -316,7 +316,7 @@ function runQuery(query, queryOptions, testOptions) {
 function testQuery(query, testOptions) {
   /* Print query string */
   if (testOptions.printQuery === true) {
-    console.log(`testing query: ${query.queryString}`);
+    console.log(`testing query: ${JSON.stringify(query.queryString)}`);
   }
 
   /* Run query with all optimizations */
