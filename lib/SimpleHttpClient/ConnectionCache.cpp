@@ -105,26 +105,40 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
       for (auto it = connectionsForEndpoint.rbegin();
            it != connectionsForEndpoint.rend(); ++it) {
         auto& candidate = (*it);
-        if (candidate->getEndpoint()->encryption() !=
+        if (candidate.connection->getEndpoint()->encryption() !=
                 Endpoint::EncryptionType::NONE &&
-            static_cast<SslClientConnection*>(candidate.get())->sslProtocol() !=
-                sslProtocol) {
+            static_cast<SslClientConnection*>(candidate.connection.get())
+                    ->sslProtocol() != sslProtocol) {
           // different SSL protocol
           continue;
         }
 
-        TRI_ASSERT(candidate->getEndpoint()->specification() == endpoint);
+        TRI_ASSERT(candidate.connection->getEndpoint()->specification() ==
+                   endpoint);
 
-        // found a suitable candidate
-        connection = std::move(candidate);
-        TRI_ASSERT(connection != nullptr);
-
+        if (std::chrono::steady_clock::now() - candidate.lastUsed <
+            std::chrono::seconds(_options.idleConnectionTimeout)) {
+          // found a suitable candidate
+          connection = std::move(candidate.connection);
+          TRI_ASSERT(connection != nullptr);
+          // intentionally fall through here!
+        }
+        // If the connection is too old, we fell through here with `connection`
+        // still being a nullptr. In that case, we will remove the connection
+        // and move on:
         if (it != connectionsForEndpoint.rbegin()) {
           // fill the gap
           (*it) = std::move(connectionsForEndpoint.back());
+          connectionsForEndpoint.pop_back();
+          // Iterator still valid!
+        } else {
+          connectionsForEndpoint.pop_back();
+          // `it` is now invalid, so we need to update it:
+          it = connectionsForEndpoint.rbegin();
         }
-        connectionsForEndpoint.pop_back();
-        break;
+        if (connection != nullptr) {
+          break;
+        }
       }
     }
 
@@ -189,7 +203,9 @@ void ConnectionCache::release(
     // this may create the vector at _connections[endpoint]
     auto& connectionsForEndpoint = _connections[endpoint];
     if (connectionsForEndpoint.size() < _options.maxConnectionsPerEndpoint) {
-      connectionsForEndpoint.emplace_back(std::move(connection));
+      connectionsForEndpoint.emplace_back(
+          ConnInfo{.connection = std::move(connection),
+                   .lastUsed = std::chrono::steady_clock::now()});
     }
   }
 } catch (...) {

@@ -40,7 +40,7 @@ TEST(ConnectionCacheTest, testEmpty) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 30});
 
   auto const& connections = cache.connections();
   EXPECT_EQ(0, connections.size());
@@ -52,7 +52,7 @@ TEST(ConnectionCacheTest, testAcquireInvalidEndpoint) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 30});
 
   ConnectionLease lease;
   EXPECT_EQ(nullptr, lease._connection);
@@ -76,7 +76,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnection) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 30});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -103,7 +103,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 30});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -133,7 +133,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 30});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -193,7 +193,7 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 30});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -220,7 +220,7 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
 
     EXPECT_NE(connections.find(endpoint), connections.end());
     EXPECT_EQ(1, connections.find(endpoint)->second.size());
-    EXPECT_EQ(gc1, connections.find(endpoint)->second[0].get());
+    EXPECT_EQ(gc1, connections.find(endpoint)->second[0].connection.get());
   }
 
   cache.release(std::move(lease2._connection), true);
@@ -231,8 +231,8 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
 
     EXPECT_NE(connections.find(endpoint), connections.end());
     EXPECT_EQ(2, connections.find(endpoint)->second.size());
-    EXPECT_EQ(gc1, connections.find(endpoint)->second[0].get());
-    EXPECT_EQ(gc2, connections.find(endpoint)->second[1].get());
+    EXPECT_EQ(gc1, connections.find(endpoint)->second[0].connection.get());
+    EXPECT_EQ(gc2, connections.find(endpoint)->second[1].connection.get());
   }
 }
 
@@ -242,7 +242,7 @@ TEST(ConnectionCacheTest, testDifferentEndpoints) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 30});
 
   std::string endpoint1 = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
   std::string endpoint2 = Endpoint::unifiedForm("tcp://127.0.0.1:12345");
@@ -281,7 +281,7 @@ TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 30});
 
   std::string endpoint1 = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
   std::string endpoint2 = Endpoint::unifiedForm("ssl://127.0.0.1:9999");
@@ -320,7 +320,7 @@ TEST(ConnectionCacheTest, testDropSuperfluous) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{3});
+      ConnectionCache::Options{3, 30});
 
   std::string endpoint1 = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
   std::string endpoint2 = Endpoint::unifiedForm("tcp://127.0.0.1:12345");
