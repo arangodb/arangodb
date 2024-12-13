@@ -103,13 +103,15 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
       auto& connectionsForEndpoint = (*it).second;
 
       for (auto it = connectionsForEndpoint.rbegin();
-           it != connectionsForEndpoint.rend(); ++it) {
+           it != connectionsForEndpoint.rend();
+           /* intentionally empty! */) {
         auto& candidate = (*it);
         if (candidate.connection->getEndpoint()->encryption() !=
                 Endpoint::EncryptionType::NONE &&
             static_cast<SslClientConnection*>(candidate.connection.get())
                     ->sslProtocol() != sslProtocol) {
           // different SSL protocol
+          ++it;
           continue;
         }
 
@@ -123,18 +125,22 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
           TRI_ASSERT(connection != nullptr);
           // intentionally fall through here!
         }
-        // If the connection is too old, we fell through here with `connection`
-        // still being a nullptr. In that case, we will remove the connection
-        // and move on:
+        // If the connection is too old, we fell through here with
+        // `connection` still being a nullptr. In that case, we will
+        // remove the connection and move on:
         if (it != connectionsForEndpoint.rbegin()) {
           // fill the gap
           (*it) = std::move(connectionsForEndpoint.back());
           connectionsForEndpoint.pop_back();
-          // Iterator still valid!
+          // Iterator still valid but pointing to a connection we have
+          // already looked at:
+          ++it;
         } else {
           connectionsForEndpoint.pop_back();
           // `it` is now invalid, so we need to update it:
           it = connectionsForEndpoint.rbegin();
+          // No need to ++it here, since this is the next one to look at
+          // (or indeed connectionsForEndpoint.rend()).
         }
         if (connection != nullptr) {
           break;
