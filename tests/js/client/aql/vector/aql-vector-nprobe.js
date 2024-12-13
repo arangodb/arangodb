@@ -130,6 +130,17 @@ function VectorIndexL2NprobeTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
+            const plan = db
+                ._createStatement({
+                    query: queryWithNProbe,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
+            assertEqual(100, indexNodes[0].searchParameters.nProbe);
 
             const resultsWithoutNProbe = db._query(queryWithoutNProbe, bindVars).toArray();
             const resultsWithNProbe = db._query(queryWithNProbe, bindVars).toArray();
