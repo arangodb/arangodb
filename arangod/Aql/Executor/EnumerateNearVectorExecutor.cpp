@@ -128,6 +128,9 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
   }
   TRI_ASSERT(hasResults() !=
              (_currentProcessedResultCount == _infos.getNumberOfResults()));
+  // Must clear the input so the readBatch in RocksDBVectorIndex has the correct
+  // size
+  _inputRowConverted.clear();
 }
 
 std::uint64_t EnumerateNearVectorsExecutor::skipOutput(
