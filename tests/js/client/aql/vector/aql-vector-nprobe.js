@@ -120,19 +120,19 @@ function VectorIndexL2NprobeTestSuite() {
             const queryWithoutNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.unIndexedVector, @qp) LIMIT 5 RETURN {key: d._key}";
+                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN {key: d._key}";
             const queryWithNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.unIndexedVector, @qp, {nProbe: 100}) " +
-                "LIMIT 5 RETURN {key: d._key}";
+                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 100}) " +
+                " LIMIT 5 RETURN {key: d._key}";
 
             const bindVars = {
-                qp: randomPoint,
+                qp: randomPoint
             };
 
             const resultsWithoutNProbe = db._query(queryWithoutNProbe, bindVars).toArray();
-            const resultsWithNProbe = db._query(queryWithoutNProbe, bindVars).toArray();
+            const resultsWithNProbe = db._query(queryWithNProbe, bindVars).toArray();
             assertNotEqual(resultsWithoutNProbe, resultsWithNProbe);
         },
     };
@@ -141,3 +141,4 @@ function VectorIndexL2NprobeTestSuite() {
 jsunity.run(VectorIndexL2NprobeTestSuite);
 
 return jsunity.done();
+
