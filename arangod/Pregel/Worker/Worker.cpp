@@ -139,7 +139,7 @@ Worker<V, E, M>::~Worker() {
 // @brief load the initial worker data, call conductor eventually
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
-  LOG_PREGEL("52070", WARN) << fmt::format(
+  LOG_PREGEL("52070", INFO) << fmt::format(
       "Worker for execution number {} is loading", _config->executionNumber());
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
@@ -151,7 +151,7 @@ void Worker<V, E, M>::setupWorker() {
   loader->load().thenFinal([self, this](auto&& r) {
     _magazine = r.get();
 
-    LOG_PREGEL("52062", WARN)
+    LOG_PREGEL("52062", INFO)
         << fmt::format("Worker for execution number {} has finished loading.",
                        _config->executionNumber());
     auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
