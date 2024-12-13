@@ -167,7 +167,8 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     // return if group is finished or input is finished
     _storageBackend->consumeInputRange(inputRange);
     if (!_storageBackend->hasMore()) {
-      break;
+      return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
+              std::move(upstreamCall)};
     }
     while (call.needSkipMore() && _storageBackend->hasMore()) {
       _storageBackend->skipOutputRow();

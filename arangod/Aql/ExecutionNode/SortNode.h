@@ -48,14 +48,13 @@ class SortNode : public ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  enum class SorterType { kStandard, kConstrainedHeap };
+  enum class SorterType { kStandard, kGrouped, kConstrainedHeap };
 
   SortNode(ExecutionPlan* plan, ExecutionNodeId id, SortElementVector elements,
            bool stable);
 
   SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice base,
-           SortElementVector elements, SortElementVector groupedElements,
-           bool stable);
+           SortElementVector elements, bool stable);
 
   /// @brief if non-zero, limits the number of elements that the node will
   /// return
@@ -72,19 +71,9 @@ class SortNode : public ExecutionNode {
   /// @brief whether or not the sort is stable
   bool isStable() const noexcept { return _stable; }
 
-  void setGroupedElements(size_t numberOfTopGroupedElements) {
+  void setGroupedElements(uint64_t numberOfTopGroupedElements) {
     TRI_ASSERT(numberOfTopGroupedElements <= _elements.size());
-    SortElementVector newElements;
-    size_t count = 0;
-    for (auto const& element : _elements) {
-      if (count < numberOfTopGroupedElements) {
-        _groupedElements.emplace_back(element);
-      } else {
-        newElements.emplace_back(element);
-      }
-      count++;
-    }
-    _elements = newElements;
+    _numberOfTopGroupedElements = numberOfTopGroupedElements;
   }
 
   /// @brief creates corresponding ExecutionBlock
@@ -145,7 +134,7 @@ class SortNode : public ExecutionNode {
   /// (true = ascending | false = descending)
   SortElementVector _elements;
 
-  SortElementVector _groupedElements;
+  uint64_t _numberOfTopGroupedElements;
 
   /// whether or not the sort is stable
   bool _stable;

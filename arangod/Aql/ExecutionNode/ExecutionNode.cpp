@@ -238,17 +238,16 @@ void ExecutionNode::addParent(ExecutionNode* ep) {
 }
 
 /// @brief factory for sort elements, used by SortNode and GatherNode
-void ExecutionNode::getSortElements(std::string_view slice_name,
-                                    SortElementVector& elements,
+void ExecutionNode::getSortElements(SortElementVector& elements,
                                     ExecutionPlan* plan,
                                     arangodb::velocypack::Slice slice,
                                     std::string_view which) {
-  VPackSlice elementsSlice = slice.get(slice_name);
+  VPackSlice elementsSlice = slice.get("elements");
 
   if (!elementsSlice.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        absl::StrCat("unexpected value for ", which, " ", slice_name));
+        absl::StrCat("unexpected value for ", which, " elements"));
   }
 
   elements.reserve(elementsSlice.length());
@@ -283,11 +282,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new SubqueryNode(plan, slice);
     case SORT: {
       SortElementVector elements;
-      getSortElements("elements", elements, plan, slice, "SortNode");
-      SortElementVector groupedElements;
-      getSortElements("groupedElements", groupedElements, plan, slice,
-                      "SortNode");
-      return new SortNode(plan, slice, elements, groupedElements,
+      getSortElements(elements, plan, slice, "SortNode");
+      return new SortNode(plan, slice, elements,
                           slice.get("stable").getBoolean());
     }
     case COLLECT: {
@@ -381,7 +377,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new RemoteNode(plan, slice);
     case GATHER: {
       SortElementVector elements;
-      getSortElements("elements", elements, plan, slice, "GatherNode");
+      getSortElements(elements, plan, slice, "GatherNode");
       return new GatherNode(plan, slice, elements);
     }
     case SCATTER:

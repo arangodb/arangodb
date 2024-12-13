@@ -51,11 +51,11 @@ SortNode::SortNode(ExecutionPlan* plan, ExecutionNodeId id,
       _reinsertInCluster(true) {}
 
 SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice base,
-                   SortElementVector elements,
-                   SortElementVector groupedElements, bool stable)
+                   SortElementVector elements, bool stable)
     : ExecutionNode(plan, base),
       _elements(std::move(elements)),
-      _groupedElements(std::move(groupedElements)),
+      _numberOfTopGroupedElements(
+          base.get("numberOfTopGroupedElements").getNumber<uint64_t>()),
       _stable(stable),
       _reinsertInCluster(true),
       _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
@@ -69,13 +69,8 @@ void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
       it.toVelocyPack(nodes);
     }
   }
-  nodes.add(VPackValue("groupedElements"));
-  {
-    VPackArrayBuilder guard(&nodes);
-    for (auto const& it : _groupedElements) {
-      it.toVelocyPack(nodes);
-    }
-  }
+  nodes.add("numberOfTopGroupedElements",
+            VPackValue(_numberOfTopGroupedElements));
   nodes.add("stable", VPackValue(_stable));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("strategy", VPackValue(sorterTypeName(sorterType())));
@@ -190,11 +185,15 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     inputRegs.emplace(id);
   }
   std::vector<RegisterId> groupedRegisters;
-  for (auto const& element : _groupedElements) {
-    auto it = getRegisterPlan()->varInfo.find(element.var->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    RegisterId id = it->second.registerId;
-    groupedRegisters.emplace_back(id);
+  size_t count = 0;
+  for (auto const& element : _elements) {
+    if (count < _numberOfTopGroupedElements) {
+      auto it = getRegisterPlan()->varInfo.find(element.var->id);
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      RegisterId id = it->second.registerId;
+      groupedRegisters.emplace_back(id);
+    }
+    count++;
   }
 
   auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
@@ -210,12 +209,20 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
       engine.getQuery().queryOptions().spillOverThresholdNumRows,
       engine.getQuery().queryOptions().spillOverThresholdMemoryUsage, _stable,
       groupedRegisters);
-  if (sorterType() == SorterType::kStandard) {
-    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-  } else {
-    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  switch (sorterType()) {
+    case SorterType::kStandard: {
+      return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    }
+    case SorterType::kGrouped: {
+      // TODO create a separate GroupSortExecutor
+      return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    }
+    case SorterType::kConstrainedHeap: {
+      return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
+    }
   }
 }
 
@@ -241,10 +248,6 @@ void SortNode::replaceVariables(
   for (auto& variable : _elements) {
     variable.var = Variable::replace(variable.var, replacements);
   }
-  auto newGroupedElements = std::vector<Variable>{};
-  for (auto& groupedVariable : _groupedElements) {
-    groupedVariable.var = Variable::replace(groupedVariable.var, replacements);
-  }
 }
 
 void SortNode::replaceAttributeAccess(ExecutionNode const* self,
@@ -255,11 +258,6 @@ void SortNode::replaceAttributeAccess(ExecutionNode const* self,
   for (auto& it : _elements) {
     it.replaceAttributeAccess(searchVariable, attribute, replaceVariable);
   }
-  if (attribute.empty()) {
-    for (auto& it : _groupedElements) {
-      it.replaceAttributeAccess(searchVariable, attribute, replaceVariable);
-    }
-  }
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
@@ -267,14 +265,16 @@ void SortNode::getVariablesUsedHere(VarSet& vars) const {
   for (auto& p : _elements) {
     vars.emplace(p.var);
   }
-  for (auto& p : _groupedElements) {
-    vars.emplace(p.var);
-  }
 }
 
 SortNode::SorterType SortNode::sorterType() const noexcept {
-  return (!isStable() && _limit > 0) ? SorterType::kConstrainedHeap
-                                     : SorterType::kStandard;
+  if (!isStable() && _limit > 0) {
+    return SorterType::kConstrainedHeap;
+  }
+  if (_numberOfTopGroupedElements > 0) {
+    return SorterType::kGrouped;
+  }
+  return SorterType::kStandard;
 }
 
 size_t SortNode::getMemoryUsedBytes() const { return sizeof(*this); }
@@ -284,7 +284,8 @@ std::string_view SortNode::sorterTypeName(SorterType type) noexcept {
     case SorterType::kConstrainedHeap:
       return "constrained-heap";
     case SorterType::kStandard:
-    default:
-      return "standard";
+      return "constrained-heap";
+    case SorterType::kGrouped:
+      return "grouped";
   }
 }
