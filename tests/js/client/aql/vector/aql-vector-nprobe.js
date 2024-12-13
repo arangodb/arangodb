@@ -100,16 +100,27 @@ function VectorIndexL2NprobeTestSuite() {
             const queryWithoutNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.unIndexedVector, @qp) LIMIT 5 RETURN {key: d._key}";
+                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN {key: d._key}";
             const queryWithNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.unIndexedVector, @qp, {nProbe: 1}) " +
+                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 1}) " +
                 "LIMIT 5 RETURN {key: d._key}";
 
             const bindVars = {
                 qp: randomPoint,
             };
+            const plan = db
+                ._createStatement({
+                    query: queryWithNProbe,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
+            assertEqual(1, indexNodes[0].searchParameters.nProbe);
 
             const resultsWithoutNProbe = db._query(queryWithoutNProbe, bindVars).toArray();
             const resultsWithNProbe = db._query(queryWithoutNProbe, bindVars).toArray();
