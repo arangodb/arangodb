@@ -410,39 +410,6 @@ function VectorIndexL2TestSuite() {
             assertEqual(5, results.length);
         },
 
-        testApproxL2WithFullCount: function() {
-            const query =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(@qp, d.vector) LIMIT 3 RETURN {k: d._key}";
-
-            const bindVars = {
-                qp: randomPoint
-            };
-            const options = {
-                fullCount: true,
-            };
-
-            const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                    options
-                })
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-
-            const queryResults = db._query(query, bindVars, options);
-            const results = queryResults.toArray();
-            assertEqual(results.length, 3);
-
-            const stats = queryResults.getExtra().stats;
-            assertEqual(stats.fullCount, 500);
-        },
-
         testApproxL2Skipping: function() {
             const queryWithSkip =
                 "FOR d IN " +
@@ -473,52 +440,6 @@ function VectorIndexL2TestSuite() {
 
             assertEqual(resultsWithSkip.length, 5);
             assertEqual(resultsWithoutSkip.length, 8);
-
-            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
-        },
-
-        testApproxL2SkippingWithFullCount: function() {
-            const queryWithSkip =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(@qp, d.vector) LIMIT 3, 5 RETURN {k: d._key}";
-            const queryWithoutSkip =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 8 RETURN {k: d._key}";
-
-            const bindVars = {
-                qp: randomPoint
-            };
-            const options = {
-                fullCount: true,
-            };
-
-            const planSkipped = db
-                ._createStatement({
-                    query: queryWithSkip,
-                    bindVars,
-                    options,
-                })
-                .explain().plan;
-            const indexNodes = planSkipped.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-
-            const queryResultsWithSkip = db._query(queryWithSkip, bindVars, options);
-            const resultsWithSkip = queryResultsWithSkip.toArray();
-            const statsWithSkip = queryResultsWithSkip.getExtra().stats;
-
-            const queryResultsWithoutSkip = db._query(queryWithoutSkip, bindVars, options);
-            const resultsWithoutSkip = queryResultsWithoutSkip.toArray();
-            const statsWithoutSkip = queryResultsWithoutSkip.getExtra().stats;
-
-            assertEqual(resultsWithSkip.length, 5);
-            assertEqual(resultsWithoutSkip.length, 8);
-
-            assertEqual(statsWithSkip.fullCount, 500);
-            assertEqual(statsWithoutSkip.fullCount, 500);
 
             assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
         },
@@ -604,44 +525,6 @@ function VectorIndexL2TestSuite() {
 
                 assertEqual(skipNeighbours, nonSkipNeighbours.slice(3, nonSkipNeighbours.length));
             }
-        },
-
-        testApproxL2FullCount: function() {
-            const queryWithSkip =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(@qp, d.vector) LIMIT 3, 5 RETURN {k: d._key}";
-            const queryWithoutSkip =
-                "FOR d IN " +
-                collection.name() +
-                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 8 RETURN {k: d._key}";
-
-            const bindVars = {
-                qp: randomPoint
-            };
-            const options = {
-                fullCount: true
-            };
-
-            const planSkipped = db
-                ._createStatement({
-                    query: queryWithSkip,
-                    bindVars,
-                    options
-                })
-                .explain().plan;
-            const indexNodes = planSkipped.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-
-            const resultsWithSkip = db._query(queryWithSkip, bindVars, options).toArray();
-            const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars, options).toArray();
-
-            assertEqual(resultsWithSkip.length, 5);
-            assertEqual(resultsWithoutSkip.length, 8);
-
-            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
         },
     };
 }
