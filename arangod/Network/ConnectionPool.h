@@ -68,9 +68,9 @@ class ConnectionPool final {
     Metrics metrics;
     // note: clusterInfo can remain a nullptr in unit tests
     ClusterInfo* clusterInfo = nullptr;
-    uint64_t maxOpenConnections = 1024;     /// max number of connections
-    uint64_t idleConnectionMilli = 120000;  /// unused connection lifetime
-    unsigned int numIOThreads = 1;          /// number of IO threads
+    uint64_t maxOpenConnections = 1024;    /// max number of connections
+    uint64_t idleConnectionMilli = 30000;  /// unused connection lifetime
+    unsigned int numIOThreads = 1;         /// number of IO threads
     bool verifyHosts = false;
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
     // name must remain valid for the lifetime of the Config object.
