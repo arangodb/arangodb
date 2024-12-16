@@ -174,7 +174,7 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
          loadableVertexShards]() -> Magazine<V, E> {
           auto result = Magazine<V, E>{};
 
-          LOG_PREGEL("8633a", WARN)
+          LOG_PREGEL("8633a", INFO)
               << fmt::format("Starting vertex loader number {}", futureN);
 
           while (true) {

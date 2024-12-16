@@ -1897,7 +1897,6 @@ void Supervision::cleanupFinishedAndFailedJobs() {
   bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
       snapshot(), envelope, true);
   if (sthTodo) {
-    LOG_DEVEL << "Transaction built: " << envelope->toJson();
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
@@ -1913,7 +1912,6 @@ void Supervision::cleanupFinishedAndFailedJobs() {
   sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
       snapshot(), envelope, false);
   if (sthTodo) {
-    LOG_DEVEL << "Transaction 2 built: " << envelope->toJson();
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {

@@ -33,6 +33,9 @@ const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 const { sanHandler } = require('@arangodb/testutils/san-file-handler');
 const executeExternal = internal.executeExternal;
+const { versionHas } = require("@arangodb/test-helper");
+const isCov = versionHas('coverage');
+const isSan = versionHas('tsan') || versionHas('aulsan');
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -307,6 +310,12 @@ function makeArgsArangosh (options) {
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
 
+  if (isCov) {
+    args['server.request-timeout'] = 1200 * 4; // quadruple the default
+  }
+  if (isSan) {
+    args['server.request-timeout'] = 1200 * 2; // double the default
+  }
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
   }
@@ -340,6 +349,10 @@ function launchInShellBG  (file) {
   let IM = global.instanceManager;
   let args = makeArgsArangosh(IM.options);
   const logFile = `file://${file}.log`;
+  let timeout = 30;
+  if (isCov || isSan) {
+    timeout *= 6; // quadruple the timeout
+  }
   let moreArgs = {
     'server.database': arango.getDatabaseName(),
     'server.request-timeout': '30',
