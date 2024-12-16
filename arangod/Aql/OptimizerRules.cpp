@@ -3147,7 +3147,7 @@ struct SortToIndexNode final
         if (coveredAttributes == sortCondition.numAttributes()) {
           // if the index covers the complete sort condition, we can also remove
           // the sort node
-          n->needsGatherNodeSort(true);
+          n->needsGatherNodeSort(_sortNode->elements());
           _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
         }
       }
@@ -3246,7 +3246,7 @@ struct SortToIndexNode final
       _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
       // we need to have a sorted result later on, so we will need a sorted
       // GatherNode in the cluster
-      indexNode->needsGatherNodeSort(true);
+      indexNode->needsGatherNodeSort(_sortNode->elements());
       _modified = true;
       handled = true;
     }
@@ -3276,7 +3276,7 @@ struct SortToIndexNode final
             indexNode->setAscending(sortCondition.isAscending());
             // we need to have a sorted result later on, so we will need a
             // sorted GatherNode in the cluster
-            indexNode->needsGatherNodeSort(true);
+            indexNode->needsGatherNodeSort(_sortNode->elements());
             _modified = true;
           }
         }
@@ -3346,6 +3346,7 @@ struct SortToIndexNode final
         }
         _sortNode = ExecutionNode::castTo<SortNode*>(en);
         for (auto& it : _sortNode->elements()) {
+          TRI_ASSERT(it.attributePath.empty());
           _sorts.emplace_back(it.var, it.ascending);
         }
         return false;
@@ -3816,8 +3817,6 @@ auto insertGatherNode(
       TRI_ASSERT(collection != nullptr);
       auto numberOfShards = collection->numberOfShards();
 
-      Variable const* sortVariable = idxNode->outVariable();
-      bool isSortAscending = idxNode->options().ascending;
       auto allIndexes = idxNode->getIndexes();
       TRI_ASSERT(!allIndexes.empty());
 
@@ -3826,10 +3825,7 @@ auto insertGatherNode(
       // also check if we actually need to bother about the sortedness of the
       // result, or if we use the index for filtering only
       if (first->isSorted() && idxNode->needsGatherNodeSort()) {
-        for (auto const& path : first->fieldNames()) {
-          elements.push_back(
-              SortElement::createWithPath(sortVariable, isSortAscending, path));
-        }
+        elements = idxNode->getSortElements();
         for (auto const& it : allIndexes) {
           if (first != it) {
             elements.clear();
