@@ -218,6 +218,16 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // convenience and testing
   builder.add("strategy", VPackValue(strategyName(strategy())));
   builder.add("needsGatherNodeSort", VPackValue(needsGatherNodeSort()));
+  // "sortElements" is never read back by C++ code, but it is exposed for
+  // testing only.
+  if (!_sortElements.empty()) {
+    {
+      VPackArrayBuilder guard(&builder, "sortElements");
+      for (auto const& it : _sortElements) {
+        it.toVelocyPack(builder);
+      }
+    }
+  }
 
   // this attribute is never read back by arangod, but it is used a lot
   // in tests, so it can't be removed easily
