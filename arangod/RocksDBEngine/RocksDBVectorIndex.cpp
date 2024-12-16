@@ -299,7 +299,8 @@ void RocksDBVectorIndex::toVelocyPack(
   builder.add(VPackValue("params"));
   velocypack::serialize(builder, _definition);
 
-  if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals)) {
+  if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals) and
+      !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
     builder.add(VPackValue("trainedData"));
     velocypack::serialize(builder, *_trainedData);
   }

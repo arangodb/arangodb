@@ -169,8 +169,9 @@ Result DBServerAgencySync::getLocalCollections(
 
         // generate a collection definition identical to that which would be
         // persisted in the case of SingleServer
+        // except that we ignore trainedData from vector index
         auto res = collection->properties(
-            collections, LogicalDataSource::Serialization::Persistence);
+            collections, LogicalDataSource::Serialization::Maintenance);
         if (res.fail()) {
           return res;
         }
