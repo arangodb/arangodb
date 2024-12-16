@@ -235,6 +235,10 @@ function VectorIndexFullCountTestSuite() {
     };
 }
 
+/// The test suite with vector index not having enough
+// documents in single nList will not return true full count in collection but how much
+// it actually produced.
+// Check more details in EnumerateNearVectorExucutor file
 function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
     let collection;
     let randomPoint;
@@ -258,7 +262,7 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
                     length: dimension
                 }, () => gen());
                 if (i === numberOfDocs / 2) {
-                  randomPoint = vector;
+                    randomPoint = vector;
                 }
                 docs.push({
                     vector
@@ -316,9 +320,7 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
             assertEqual(results.length, 1);
 
             const stats = queryResults.getExtra().stats;
-            print(stats);
-            print("Collection has " + collection.count() + " docs");
-            assertEqual(stats.fullCount, numberOfDocs);
+            assertEqual(stats.fullCount, 1);
         },
 
         testApproxL2FullCountNotEnoughResultsWithSkipping: function() {
@@ -349,16 +351,15 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
 
             const queryResults = db._query(query, bindVars, options);
             const results = queryResults.toArray();
-            assertEqual(results.length, 1);
+            assertEqual(results.length, 0);
 
             const stats = queryResults.getExtra().stats;
-            print(stats);
-            assertEqual(stats.fullCount, numberOfDocs);
+            assertEqual(stats.fullCount, 1);
         },
 
         testApproxL2FullCountDoubleLoop: function() {
             const query = `
-                FOR qp in @iters
+                FOR qp in 0..3
                     FOR d IN ${collection.name()}
                     SORT APPROX_NEAR_L2(@qp, d.vector)
                 LIMIT 10
@@ -368,7 +369,6 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
             // {1,2,3},{1,2,3},{1,2,3},1|,2,3,1,2,3
             const bindVars = {
                 qp: randomPoint,
-                iters: 3
             };
             const options = {
                 fullCount: true,
@@ -388,12 +388,10 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
 
             const queryResults = db._query(query, bindVars, options);
             const results = queryResults.toArray();
-            assertEqual(results.length, 1);
+            assertEqual(results.length, 4);
 
             const stats = queryResults.getExtra().stats;
-            print(stats);
-            print("Collection has " + collection.count() + " docs");
-            assertEqual(stats.fullCount, numberOfDocs);
+            assertEqual(stats.fullCount, 4);
         },
     };
 }
