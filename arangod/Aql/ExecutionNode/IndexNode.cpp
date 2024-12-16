@@ -220,7 +220,7 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   builder.add("needsGatherNodeSort", VPackValue(needsGatherNodeSort()));
   // "sortElements" is never read back by C++ code, but it is exposed for
   // testing only.
-  if (!_sortElements.empty()) {
+  if (needsGatherNodeSort()) {
     {
       VPackArrayBuilder guard(&builder, "sortElements");
       for (auto const& it : _sortElements) {

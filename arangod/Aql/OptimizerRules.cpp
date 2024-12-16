@@ -3831,28 +3831,30 @@ auto insertGatherNode(
                                                parallelism);
     } break;
     case ExecutionNode::INDEX: {
-      auto elements = SortElementVector{};
       auto idxNode = ExecutionNode::castTo<IndexNode const*>(node);
       auto collection = idxNode->collection();
       TRI_ASSERT(collection != nullptr);
       auto numberOfShards = collection->numberOfShards();
 
-      auto allIndexes = idxNode->getIndexes();
-      TRI_ASSERT(!allIndexes.empty());
+      auto elements = [&] {
+        auto allIndexes = idxNode->getIndexes();
+        TRI_ASSERT(!allIndexes.empty());
 
-      // Using Index for sort only works if all indexes are equal.
-      auto const& first = allIndexes[0];
-      // also check if we actually need to bother about the sortedness of the
-      // result, or if we use the index for filtering only
-      if (first->isSorted() && idxNode->needsGatherNodeSort()) {
-        elements = idxNode->getSortElements();
-        for (auto const& it : allIndexes) {
-          if (first != it) {
-            elements.clear();
-            break;
+        // Using Index for sort only works if all indexes are equal.
+        auto const& first = allIndexes[0];
+
+        // also check if we actually need to bother about the sortedness of the
+        // result, or if we use the index for filtering only
+        if (first->isSorted() && idxNode->needsGatherNodeSort()) {
+          for (auto const& it : allIndexes) {
+            if (first != it) {
+              return SortElementVector{};
+            }
           }
         }
-      }
+
+        return idxNode->getSortElements();
+      }();
 
       auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
       auto parallelism = GatherNode::evaluateParallelism(*collection);
