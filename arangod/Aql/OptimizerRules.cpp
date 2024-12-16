@@ -3081,6 +3081,23 @@ struct SortToIndexNode final
     }
   }
 
+  SortElementVector makeIndexSortElements(SortCondition const& sortCondition,
+                                          Variable const* outVariable) {
+    TRI_ASSERT(sortCondition.isOnlyAttributeAccess());
+    SortElementVector elements;
+    elements.reserve(sortCondition.numAttributes());
+    for (auto const& field : sortCondition.sortFields()) {
+      std::vector<std::string> path;
+      path.reserve(field.attributes.size());
+      std::transform(field.attributes.begin(), field.attributes.end(),
+                     std::back_inserter(path),
+                     [](auto const& a) { return a.name; });
+      elements.push_back(
+          SortElement::createWithPath(outVariable, field.order, path));
+    }
+    return elements;
+  }
+
   bool handleEnumerateCollectionNode(
       EnumerateCollectionNode* enumerateCollectionNode) {
     if (_sortNode == nullptr) {
@@ -3147,7 +3164,8 @@ struct SortToIndexNode final
         if (coveredAttributes == sortCondition.numAttributes()) {
           // if the index covers the complete sort condition, we can also remove
           // the sort node
-          n->needsGatherNodeSort(_sortNode->elements());
+          n->needsGatherNodeSort(
+              makeIndexSortElements(sortCondition, outVariable));
           _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
         }
       }
@@ -3246,7 +3264,8 @@ struct SortToIndexNode final
       _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
       // we need to have a sorted result later on, so we will need a sorted
       // GatherNode in the cluster
-      indexNode->needsGatherNodeSort(_sortNode->elements());
+      indexNode->needsGatherNodeSort(
+          makeIndexSortElements(sortCondition, outVariable));
       _modified = true;
       handled = true;
     }
@@ -3276,7 +3295,8 @@ struct SortToIndexNode final
             indexNode->setAscending(sortCondition.isAscending());
             // we need to have a sorted result later on, so we will need a
             // sorted GatherNode in the cluster
-            indexNode->needsGatherNodeSort(_sortNode->elements());
+            indexNode->needsGatherNodeSort(
+                makeIndexSortElements(sortCondition, outVariable));
             _modified = true;
           }
         }
