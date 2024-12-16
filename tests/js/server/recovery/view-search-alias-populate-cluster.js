@@ -158,12 +158,12 @@ function recoverySuite() {
           break;
         }
       }
-      assertEqual(figures.numDocs, 501);
-      assertEqual(figures.numLiveDocs, 501);
-      assertEqual(figures.numPrimaryDocs, 501);
-      assertTrue(figures.numSegments >= 1);
-      assertTrue(figures.numFiles >= 6);
-      assertTrue(figures.indexSize > 0);
+      assertEqual(figures.numDocs, 501, JSON.stringify(figures));
+      assertEqual(figures.numLiveDocs, 501, JSON.stringify(figures));
+      assertEqual(figures.numPrimaryDocs, 501, JSON.stringify(figures));
+      assertTrue(figures.numSegments >= 1, JSON.stringify(figures));
+      assertTrue(figures.numFiles >= 6, JSON.stringify(figures));
+      assertTrue(figures.indexSize > 0, JSON.stringify(figures));
     }
   };
 }
