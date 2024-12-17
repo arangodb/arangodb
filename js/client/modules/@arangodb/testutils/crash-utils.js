@@ -105,6 +105,7 @@ function filterStack(stack, filters) {
 
 function readGdbFileFiltered(gdbOutputFile, options) {
   try {
+    internal.wait(0.1, true);
     const filters = JSON.parse(fs.read(
       fs.join(pu.JS_DIR,
               'client/modules/@arangodb/testutils',
@@ -454,6 +455,7 @@ function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
 
 function readCdbFileFiltered(cdbOutputFile) {
   try {
+    internal.wait(0.1, true);
     const filters = JSON.parse(fs.read(
       fs.join(pu.JS_DIR,
               'client/modules/@arangodb/testutils',
