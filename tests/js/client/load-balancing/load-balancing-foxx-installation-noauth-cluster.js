@@ -71,7 +71,7 @@ function sendRequest(method, endpoint, body, usePrimary) {
       body,
       method,
       url: `${coordinators[i]}${endpoint}`,
-      options: { timeout: timeout}
+      timeout: timeout
     };
     res = request(envelope);
   } catch (err) {
