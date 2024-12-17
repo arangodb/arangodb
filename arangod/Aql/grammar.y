@@ -1369,6 +1369,9 @@ collect_statement:
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
+        if ($3 != nullptr) {
+            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'KEEP' with 'INTO' and projection expression", yylloc.first_line, yylloc.first_column);
+        }
         ::checkCollectVariables(parser, "INTO", $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
         
