@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/ConstrainedSortExecutor.h"
+#include "Aql/Executor/GroupedSortExecutor.h"
 #include "Aql/Executor/SortExecutor.h"
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
@@ -197,29 +198,48 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   }
 
   auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
-  auto executorInfos = SortExecutorInfos(
-      registerInfos.numberOfInputRegisters(),
-      registerInfos.numberOfOutputRegisters(), registerInfos.registersToClear(),
-      std::move(sortRegs), _limit, engine.itemBlockManager(), engine.getQuery(),
-      engine.getQuery()
-          .vocbase()
-          .server()
-          .getFeature<TemporaryStorageFeature>(),
-      &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
-      engine.getQuery().queryOptions().spillOverThresholdNumRows,
-      engine.getQuery().queryOptions().spillOverThresholdMemoryUsage, _stable,
-      groupedRegisters);
   switch (sorterType()) {
     case SorterType::kStandard: {
+      auto executorInfos = SortExecutorInfos(
+          registerInfos.numberOfInputRegisters(),
+          registerInfos.numberOfOutputRegisters(),
+          registerInfos.registersToClear(), std::move(sortRegs), _limit,
+          engine.itemBlockManager(), engine.getQuery(),
+          engine.getQuery()
+              .vocbase()
+              .server()
+              .getFeature<TemporaryStorageFeature>(),
+          &engine.getQuery().vpackOptions(),
+          engine.getQuery().resourceMonitor(),
+          engine.getQuery().queryOptions().spillOverThresholdNumRows,
+          engine.getQuery().queryOptions().spillOverThresholdMemoryUsage,
+          _stable, groupedRegisters);
       return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     case SorterType::kGrouped: {
-      // TODO create a separate GroupSortExecutor
-      return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+      return std::make_unique<ExecutionBlockImpl<GroupedSortExecutor>>(
+          &engine, this, std::move(registerInfos),
+          GroupedSortExecutorInfos{std::move(sortRegs),
+                                   std::move(groupedRegisters), _stable,
+                                   &engine.getQuery().vpackOptions(),
+                                   engine.getQuery().resourceMonitor()});
     }
     case SorterType::kConstrainedHeap: {
+      auto executorInfos = SortExecutorInfos(
+          registerInfos.numberOfInputRegisters(),
+          registerInfos.numberOfOutputRegisters(),
+          registerInfos.registersToClear(), std::move(sortRegs), _limit,
+          engine.itemBlockManager(), engine.getQuery(),
+          engine.getQuery()
+              .vocbase()
+              .server()
+              .getFeature<TemporaryStorageFeature>(),
+          &engine.getQuery().vpackOptions(),
+          engine.getQuery().resourceMonitor(),
+          engine.getQuery().queryOptions().spillOverThresholdNumRows,
+          engine.getQuery().queryOptions().spillOverThresholdMemoryUsage,
+          _stable, groupedRegisters);
       return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     }

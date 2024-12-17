@@ -37,6 +37,8 @@ function optimizerIndexesGroupSortTestSuite() {
 
   const create_collection = function () {
     db._drop("UnitTestsCollection");
+    // TODO make it work with shards
+    // return db._create("UnitTestsCollection", { "numberOfShards": 9 });
     return db._create("UnitTestsCollection");
   };
   const copy_collection = function (collection_name) {
@@ -100,11 +102,11 @@ function optimizerIndexesGroupSortTestSuite() {
         collection.ensureIndex({ type: "persistent", fields: ["first_index_field", "second_index_field"] });
         waitForEstimatorSync();
 
-        const query = "FOR i IN @@collection SORT i.first_index_field, i.non_indexed_field RETURN [i.first_index_field, i.non_indexed_field, i.second_index_field]";
+        const query = "FOR i IN @@collection SORT i.first_index_field, i.non_indexed_field RETURN {first_index_field: i.first_index_field, non_indexed_field: i.non_indexed_field, second_index_field: i.second_index_field}";
         let plan = query_plan(query, collection.name());
-        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
-        assertTrue(sort_node_does_a_group_sort(plan), plan.nodes)
-        assertEqual(execute(query, collection.name()), expected_results(query, collection.name()), query);
+        assertTrue(query_plan_uses_index_for_sorting(plan), row_count + ': ' + plan.rules);
+        assertTrue(sort_node_does_a_group_sort(plan), row_count + ': ' + plan.nodes)
+        assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), row_count + ': ' + query);
       }
     },
 
