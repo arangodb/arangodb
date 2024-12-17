@@ -134,7 +134,7 @@ class SortNode : public ExecutionNode {
   /// (true = ascending | false = descending)
   SortElementVector _elements;
 
-  uint64_t _numberOfTopGroupedElements;
+  uint64_t _numberOfTopGroupedElements = 0;
 
   /// whether or not the sort is stable
   bool _stable;
