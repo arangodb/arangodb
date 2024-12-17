@@ -355,11 +355,8 @@ function launchInShellBG  (file) {
   let args = makeArgsArangosh(IM.options);
   const logFile = `file://${file}.log`;
   let timeout = 30;
-  if (isCov) {
-    timeout *= 4; // quadruple the timeout
-  }
-  if (isSan) {
-    timeout *= 2; // quadruple the timeout
+  if (isCov || isSan) {
+    timeout *= 6; // quadruple the timeout
   }
   let moreArgs = {
     'server.database': arango.getDatabaseName(),

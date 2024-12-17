@@ -64,7 +64,7 @@ rta_makedata single
 
 arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
 chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
-chaos_subq !coverage full priority=1000 size=medium+ --javascript.v8-max-heap=8192 -- --dumpAgencyOnError true
+chaos_subq !coverage full priority=1000 size=medium+ --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
 deadlock cluster !coverage -- --dumpAgencyOnError true
 restart priority=1000 size=medium cluster -- --dumpAgencyOnError true --forceJson true
 
@@ -150,7 +150,7 @@ replication_random priority=1000 single full
 # Full Cluster Tests
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
 chaos !coverage full cluster priority=9600 size=large -- --dumpAgencyOnError true --skipNightly false
-chaos_subq  !coverage full cluster priority=1000 size=medium+ --javascript.v8-max-heap=8192 -- --dumpAgencyOnError true
+chaos_subq  !coverage full cluster priority=1000 size=medium+ --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
 resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true
 resilience_transactions full cluster priority=500 -- --dumpAgencyOnError true

@@ -63,7 +63,6 @@ IndexNode::IndexNode(
       CollectionAccessingNode(collection),
       _indexes(indexes),
       _condition(std::move(condition)),
-      _needsGatherNodeSort(false),
       _allCoveredByOneIndex(allCoveredByOneIndex),
       _options(opts),
       _outNonMaterializedDocId(nullptr) {
@@ -79,8 +78,6 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       DocumentProducingNode(plan, base),
       CollectionAccessingNode(plan, base),
       _indexes(),
-      _needsGatherNodeSort(basics::VelocyPackHelper::getBooleanValue(
-          base, "needsGatherNodeSort", false)),
       _options(),
       _outNonMaterializedDocId(aql::Variable::varFromVPack(
           plan->getAst(), base, "outNmDocId", true)) {
@@ -220,7 +217,17 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // "strategy" is not read back by the C++ code, but it is exposed for
   // convenience and testing
   builder.add("strategy", VPackValue(strategyName(strategy())));
-  builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
+  builder.add("needsGatherNodeSort", VPackValue(needsGatherNodeSort()));
+  // "sortElements" is never read back by C++ code, but it is exposed for
+  // testing only.
+  if (needsGatherNodeSort()) {
+    {
+      VPackArrayBuilder guard(&builder, "sortElements");
+      for (auto const& it : _sortElements) {
+        it.toVelocyPack(builder);
+      }
+    }
+  }
 
   // this attribute is never read back by arangod, but it is used a lot
   // in tests, so it can't be removed easily
@@ -480,7 +487,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan,
                                        _indexes, _allCoveredByOneIndex,
                                        _condition->clone(), _options);
 
-  c->needsGatherNodeSort(_needsGatherNodeSort);
+  c->needsGatherNodeSort(getSortElements());
   c->_outNonMaterializedDocId = _outNonMaterializedDocId;
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
@@ -628,10 +635,10 @@ void IndexNode::setLimit(uint64_t value) noexcept { _options.limit = value; }
 
 bool IndexNode::hasLimit() const noexcept { return _options.limit != 0; }
 
-bool IndexNode::needsGatherNodeSort() const { return _needsGatherNodeSort; }
+bool IndexNode::needsGatherNodeSort() const { return !_sortElements.empty(); }
 
-void IndexNode::needsGatherNodeSort(bool value) {
-  _needsGatherNodeSort = value;
+void IndexNode::needsGatherNodeSort(SortElementVector value) {
+  _sortElements = std::move(value);
 }
 
 std::vector<Variable const*> IndexNode::getVariablesSetHere() const {

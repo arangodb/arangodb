@@ -1,5 +1,19 @@
 devel
 -----
+
+* If a coordinator cannot send a heartbeat to the agency, it will shut down
+  itself after 30 mins (configurable by the startup option
+  `--cluster.no-heartbeat-delay-before-shutdown` whose default is 1800.
+  This is to ensure that servers which are automatically cleaned up,
+  because they are away for too long cannot disturb hotbackups by running
+  transactions.
+
+* Reduce the time until an expired server is removed from the agency to 1h 
+  (from 24h). This helps with BTS-2039 and thus helps hotbackups to go
+  through in more cases when coordinators have crashed. The time is
+  configurable with the `--agency.supervision-expired-servers-grace-time`
+  command line option.
+
 * Changed the priority of WebUI request to prevent endless loading if the
   server is under load
 
@@ -11,6 +25,9 @@ devel
   This avoids a bug in CleanOutServer jobs, where such a job could complete
   seemingly successfully despite the fact that some MoveShard jobs had 
   actually failed. This fixes BTS-2022.
+
+* Disallow the KEEP keyword in conjunction with INTO var = expr when doing
+  COLLECT in an AQL query. The KEEP clause had no effect.
 
 * Do check for replication version 2 in a safe way. This fixes BTS-2040.
 

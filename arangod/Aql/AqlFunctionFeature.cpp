@@ -66,11 +66,8 @@ void AqlFunctionFeature::prepare() {
 
 void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
-  _functionNames.doUnderLock([&](auto& functions) {
-    TRI_ASSERT(!functions.contains(func.name));
-    // add function to the map
-    functions.try_emplace(func.name, func);
-  });
+  _functionNames.doUnderLock(
+      [&](auto& functions) { functions.try_emplace(func.name, func); });
 }
 
 void AqlFunctionFeature::addAlias(std::string const& alias,
