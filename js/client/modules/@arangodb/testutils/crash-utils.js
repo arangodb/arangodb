@@ -720,14 +720,15 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
           fs.exists(instanceInfo.rootDir) &&
           fs.exists(instanceInfo.rootDir + "/tmp")) {
         print("searching tmp directory for minidumps");
-        let corefiles = fs.listTree(instanceInfo.rootDir + "/tmp").filter(fn => {
+        let searchdir = fs.join(instanceInfo.rootDir, "tmp");
+        let corefiles = fs.listTree(searchdir).filter(fn => {
           print("=> " + fn);
           return fn.search(".dmp") >= 0;
         });
         if (corefiles.length > 0) {
           print("found these possible minidumps:");
           print(corefiles);
-          instanceInfo.coreFilePattern = corefiles[0];
+          instanceInfo.coreFilePattern = fs.join(searchdir, corefiles[0]);
           hint = analyzeCoreDumpWindows(instanceInfo);
           return;
         }
