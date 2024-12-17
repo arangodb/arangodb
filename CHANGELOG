@@ -26,6 +26,9 @@ devel
   seemingly successfully despite the fact that some MoveShard jobs had 
   actually failed. This fixes BTS-2022.
 
+* Disallow the KEEP keyword in conjunction with INTO var = expr when doing
+  COLLECT in an AQL query. The KEEP clause had no effect.
+
 * Do check for replication version 2 in a safe way. This fixes BTS-2040.
 
 * Put in more diagnostics and avoid a crash in follower on commit of a
