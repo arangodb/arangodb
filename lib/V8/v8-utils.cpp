@@ -888,6 +888,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         timeout = TRI_ObjectToDouble(
             isolate, TRI_GetProperty(context, isolate, options, "timeout"));
+        LOG_TOPIC("66666", TRACE, arangodb::Logger::FIXME)
+          << "Timeout: " << timeout;
       }
     }
     timeout = correctTimeoutToExecutionDeadlineS(timeout);
