@@ -148,12 +148,12 @@ void StorageBackend::startNewGroup(std::vector<RowIndex>&& newGroup) {
   // we overwrite finished group, therefore decrease by its memory usage (before
   // updating it)
   _infos.getResourceMonitor().decreaseMemoryUsage(_finishedGroup.capacity() *
-                                             sizeof(RowIndex));
+                                                  sizeof(RowIndex));
   _finishedGroup = std::move(_currentGroup);
   sortFinishedGroup();
 
   _infos.getResourceMonitor().increaseMemoryUsage(newGroup.capacity() *
-                                             sizeof(RowIndex));
+                                                  sizeof(RowIndex));
   _currentGroup = std::move(newGroup);
   _returnNext = 0;
 }
