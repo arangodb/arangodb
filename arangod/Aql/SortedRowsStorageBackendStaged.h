@@ -39,13 +39,14 @@ class SortedRowsStorageBackendStaged final : public SortedRowsStorageBackend {
       std::unique_ptr<SortedRowsStorageBackend> backend2);
   ~SortedRowsStorageBackendStaged();
 
-  void consumeInputRange(AqlItemBlockInputRange& inputRange) final;
+  ExecutorState consumeInputRange(AqlItemBlockInputRange& inputRange) final;
 
   bool hasReachedCapacityLimit() const noexcept final;
   bool hasMore() const final;
   void produceOutputRow(OutputAqlItemRow& output) final;
   void skipOutputRow() noexcept final;
-  bool spillOver(SortedRowsStorageBackend& other) final;
+  void seal() final;
+  void spillOver(SortedRowsStorageBackend& other) final;
 
  private:
   std::vector<std::unique_ptr<SortedRowsStorageBackend>> _backends;

@@ -39,6 +39,8 @@
 #include "Aql/SortRegister.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Inspection/JsonPrintInspector.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/TemporaryStorageFeature.h"
 
 using namespace arangodb::basics;
@@ -185,17 +187,6 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     sortRegs.emplace_back(id, element);
     inputRegs.emplace(id);
   }
-  std::vector<RegisterId> groupedRegisters;
-  size_t count = 0;
-  for (auto const& element : _elements) {
-    if (count < _numberOfTopGroupedElements) {
-      auto it = getRegisterPlan()->varInfo.find(element.var->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      RegisterId id = it->second.registerId;
-      groupedRegisters.emplace_back(id);
-    }
-    count++;
-  }
 
   auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
   switch (sorterType()) {
@@ -213,11 +204,22 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
           engine.getQuery().resourceMonitor(),
           engine.getQuery().queryOptions().spillOverThresholdNumRows,
           engine.getQuery().queryOptions().spillOverThresholdMemoryUsage,
-          _stable, groupedRegisters);
+          _stable);
       return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     case SorterType::kGrouped: {
+      std::vector<RegisterId> groupedRegisters;
+      size_t count = 0;
+      for (auto const& element : _elements) {
+        if (count < _numberOfTopGroupedElements) {
+          auto it = getRegisterPlan()->varInfo.find(element.var->id);
+          TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+          RegisterId id = it->second.registerId;
+          groupedRegisters.emplace_back(id);
+        }
+        count++;
+      }
       return std::make_unique<ExecutionBlockImpl<GroupedSortExecutor>>(
           &engine, this, std::move(registerInfos),
           GroupedSortExecutorInfos{std::move(sortRegs),
@@ -239,7 +241,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
           engine.getQuery().resourceMonitor(),
           engine.getQuery().queryOptions().spillOverThresholdNumRows,
           engine.getQuery().queryOptions().spillOverThresholdMemoryUsage,
-          _stable, groupedRegisters);
+          _stable);
       return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     }

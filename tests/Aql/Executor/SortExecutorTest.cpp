@@ -98,7 +98,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
         1, 1, {}, std::move(sortRegisters),
         /*limit (ignored for default sort)*/ 0, manager(), *fakedQuery,
         *tempStorage, vpackOptions, monitor, /*spillOverThresholdNumRows*/ 1000,
-        /*spillOverThresholdMemoryUsage*/ 1024 * 1024, false, {});
+        /*spillOverThresholdMemoryUsage*/ 1024 * 1024, false);
   }
 
   auto makeSubqueryRegisterInfos(size_t nestingLevel) -> RegisterInfos {

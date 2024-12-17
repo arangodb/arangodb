@@ -50,13 +50,15 @@ class SortedRowsStorageBackendRocksDB final
 
   ~SortedRowsStorageBackendRocksDB();
 
-  void consumeInputRange(aql::AqlItemBlockInputRange& inputRange) final;
+  aql::ExecutorState consumeInputRange(
+      aql::AqlItemBlockInputRange& inputRange) final;
 
   bool hasReachedCapacityLimit() const noexcept final;
   bool hasMore() const final;
   void produceOutputRow(aql::OutputAqlItemRow& output) final;
   void skipOutputRow() noexcept final;
-  bool spillOver(aql::SortedRowsStorageBackend& other) final;
+  void seal() final;
+  void spillOver(aql::SortedRowsStorageBackend& other) final;
 
  private:
   void cleanup();
@@ -74,8 +76,6 @@ class SortedRowsStorageBackendRocksDB final
   size_t _rowNumberForInsert;
 
   RocksDBMethodsMemoryTracker _memoryTracker;
-
-  bool _gotAllInput = false;
 };
 
 }  // namespace arangodb

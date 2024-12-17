@@ -43,8 +43,7 @@ SortExecutorInfos::SortExecutorInfos(
     AqlItemBlockManager& manager, QueryContext& query,
     TemporaryStorageFeature& tempStorage, velocypack::Options const* options,
     ResourceMonitor& resourceMonitor, size_t spillOverThresholdNumRows,
-    size_t spillOverThresholdMemoryUsage, bool stable,
-    std::vector<RegisterId> groupedRegisters)
+    size_t spillOverThresholdMemoryUsage, bool stable)
     : _numInRegs(nrInputRegisters),
       _numOutRegs(nrOutputRegisters),
       _registersToClear(registersToClear.begin(), registersToClear.end()),
@@ -57,8 +56,7 @@ SortExecutorInfos::SortExecutorInfos(
       _sortRegisters(std::move(sortRegisters)),
       _spillOverThresholdNumRows(spillOverThresholdNumRows),
       _spillOverThresholdMemoryUsage(spillOverThresholdMemoryUsage),
-      _stable(stable),
-      _groupedRegisters(std::move(groupedRegisters)) {
+      _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
 }
 
@@ -98,10 +96,6 @@ SortExecutorInfos::getTemporaryStorageFeature() noexcept {
   return _tempStorage;
 }
 
-std::vector<RegisterId> const& SortExecutorInfos::groupedRegisters() noexcept {
-  return _groupedRegisters;
-}
-
 QueryContext& SortExecutorInfos::getQuery() const noexcept { return _query; }
 
 size_t SortExecutorInfos::spillOverThresholdNumRows() const noexcept {
@@ -131,56 +125,48 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   AqlCall upstreamCall{};
 
-  // fill with rest from before
-  while (!output.isFull() && _storageBackend->hasMore()) {
-    _storageBackend->produceOutputRow(output);
+  if (!_inputReady) {
+    ExecutorState state = _storageBackend->consumeInputRange(inputRange);
+    if (inputRange.upstreamState() == ExecutorState::HASMORE) {
+      return {state, NoStats{}, std::move(upstreamCall)};
+    }
+    _storageBackend->seal();
+    _inputReady = true;
   }
 
-  while (!output.isFull()) {
-    // return if group is finished or input is finished
-    _storageBackend->consumeInputRange(inputRange);
-    if (!_storageBackend->hasMore()) {
-      return {inputRange.upstreamState(), NoStats{}, std::move(upstreamCall)};
-    }
-    while (!output.isFull() && _storageBackend->hasMore()) {
-      _storageBackend->produceOutputRow(output);
-    }
+  while (!output.isFull() && _storageBackend->hasMore()) {
+    _storageBackend->produceOutputRow(output);
   }
 
   if (_storageBackend->hasMore()) {
     return {ExecutorState::HASMORE, NoStats{}, std::move(upstreamCall)};
   }
-  return {inputRange.upstreamState(), NoStats{}, std::move(upstreamCall)};
+  return {ExecutorState::DONE, NoStats{}, std::move(upstreamCall)};
 }
 
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   AqlCall upstreamCall{};
 
-  // fill with rest from before
+  if (!_inputReady) {
+    ExecutorState state = _storageBackend->consumeInputRange(inputRange);
+    if (inputRange.upstreamState() == ExecutorState::HASMORE) {
+      return {state, NoStats{}, 0, std::move(upstreamCall)};
+    }
+    _storageBackend->seal();
+    _inputReady = true;
+  }
+
   while (call.needSkipMore() && _storageBackend->hasMore()) {
     _storageBackend->skipOutputRow();
     call.didSkip(1);
-  }
-
-  while (call.needSkipMore()) {
-    // return if group is finished or input is finished
-    _storageBackend->consumeInputRange(inputRange);
-    if (!_storageBackend->hasMore()) {
-      return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
-              std::move(upstreamCall)};
-    }
-    while (call.needSkipMore() && _storageBackend->hasMore()) {
-      _storageBackend->skipOutputRow();
-      call.didSkip(1);
-    }
   }
 
   if (_storageBackend->hasMore()) {
     return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(),
             std::move(upstreamCall)};
   }
-  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(),
+  return {ExecutorState::DONE, NoStats{}, call.getSkipCount(),
           std::move(upstreamCall)};
 }
 

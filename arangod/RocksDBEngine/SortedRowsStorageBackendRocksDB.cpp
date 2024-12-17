@@ -66,12 +66,8 @@ SortedRowsStorageBackendRocksDB::~SortedRowsStorageBackendRocksDB() {
   }
 }
 
-void SortedRowsStorageBackendRocksDB::consumeInputRange(
+aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
     aql::AqlItemBlockInputRange& inputRange) {
-  if (_gotAllInput) {
-    return;
-  }
-
   if (_context == nullptr) {
     // create context on the fly
     _context = _tempStorage.getSortedRowsStorageContext(_memoryTracker);
@@ -89,6 +85,7 @@ void SortedRowsStorageBackendRocksDB::consumeInputRange(
   // we build
   RocksDBKey rocksDBKey;
 
+  aql::ExecutorState state = aql::ExecutorState::HASMORE;
   aql::InputAqlItemRow input{aql::CreateInvalidInputRowHint{}};
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -133,19 +130,12 @@ void SortedRowsStorageBackendRocksDB::consumeInputRange(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto [state, input] =
+    std::tie(state, input) =
         inputRange.nextDataRow(aql::AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
   }
 
-  if (inputRange.upstreamState() == aql::ExecutorState::DONE) {
-    _gotAllInput = true;
-    TRI_ASSERT(_iterator == nullptr);
-    _context->ingestAll();
-    _iterator = _context->getIterator();
-  }
-
-  return;
+  return state;
 }
 
 bool SortedRowsStorageBackendRocksDB::hasReachedCapacityLimit() const noexcept {
@@ -154,9 +144,6 @@ bool SortedRowsStorageBackendRocksDB::hasReachedCapacityLimit() const noexcept {
 }
 
 bool SortedRowsStorageBackendRocksDB::hasMore() const {
-  if (!_gotAllInput) {
-    return false;
-  }
   TRI_ASSERT(_iterator != nullptr);
   return _iterator->Valid();
 }
@@ -185,13 +172,20 @@ void SortedRowsStorageBackendRocksDB::skipOutputRow() noexcept {
   _iterator->Next();
 }
 
-bool SortedRowsStorageBackendRocksDB::spillOver(
+void SortedRowsStorageBackendRocksDB::seal() {
+  TRI_ASSERT(_iterator == nullptr);
+
+  _context->ingestAll();
+
+  _iterator = _context->getIterator();
+}
+
+void SortedRowsStorageBackendRocksDB::spillOver(
     SortedRowsStorageBackend& other) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "unexpected call to SortedRowsStorageBackendRocksDB::spillOver");
-  return false;
 }
 
 void SortedRowsStorageBackendRocksDB::cleanup() {
