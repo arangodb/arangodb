@@ -82,7 +82,10 @@ function recoverySuite () {
       // check debug symbols
       // it is a bit compiler- and optimization-level-dependent what
       // symbols we get
-      let expected = [ /std::terminate/, /TerminateDebugging/, /JS_DebugTerminate/ ];
+      let expected = [ /std::terminate/,
+                       /TerminateDebugging/,
+                       /JS_DebugTerminate/,
+                       / arangodb::CrashHandler::crash/ ];
       let matches = 0;
       lines.forEach(function(line) {
         expected.forEach(function(ex) {

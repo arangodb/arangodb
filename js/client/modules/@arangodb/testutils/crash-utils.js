@@ -105,6 +105,7 @@ function filterStack(stack, filters) {
 
 function readGdbFileFiltered(gdbOutputFile, options) {
   try {
+    internal.wait(0.1, true);
     const filters = JSON.parse(fs.read(
       fs.join(pu.JS_DIR,
               'client/modules/@arangodb/testutils',
@@ -454,6 +455,7 @@ function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
 
 function readCdbFileFiltered(cdbOutputFile) {
   try {
+    internal.wait(0.1, true);
     const filters = JSON.parse(fs.read(
       fs.join(pu.JS_DIR,
               'client/modules/@arangodb/testutils',
@@ -720,14 +722,15 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
           fs.exists(instanceInfo.rootDir) &&
           fs.exists(instanceInfo.rootDir + "/tmp")) {
         print("searching tmp directory for minidumps");
-        let corefiles = fs.listTree(instanceInfo.rootDir + "/tmp").filter(fn => {
+        let searchdir = fs.join(instanceInfo.rootDir, "tmp");
+        let corefiles = fs.listTree(searchdir).filter(fn => {
           print("=> " + fn);
           return fn.search(".dmp") >= 0;
         });
         if (corefiles.length > 0) {
           print("found these possible minidumps:");
           print(corefiles);
-          instanceInfo.coreFilePattern = corefiles[0];
+          instanceInfo.coreFilePattern = fs.join(searchdir, corefiles[0]);
           hint = analyzeCoreDumpWindows(instanceInfo);
           return;
         }
