@@ -21,9 +21,7 @@ GroupedSortExecutorInfos::GroupedSortExecutorInfos(
       _resourceMonitor{resourceMonitor} {}
 
 GroupedSortExecutor::GroupedSortExecutor(Fetcher&, Infos& infos)
-    : _storageBackend{group_sort::StorageBackend(infos)} {
-  LOG_DEVEL << "group sort executor";
-}
+    : _storageBackend{group_sort::StorageBackend(infos)} {}
 
 std::tuple<ExecutorState, NoStats, AqlCall> GroupedSortExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
