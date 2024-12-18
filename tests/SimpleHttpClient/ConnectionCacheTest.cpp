@@ -354,3 +354,50 @@ TEST(ConnectionCacheTest, testDropSuperfluous) {
     EXPECT_EQ(3, connections.find(endpoint2)->second.size());
   }
 }
+
+TEST(ConnectionCacheTest, testSameEndpointMultipleLeasesOverExpiry) {
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
+
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{5, 3});
+
+  std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
+
+  ConnectionLease lease1 = cache.acquire(endpoint, 10.0, 30.0, 10, 0);
+  EXPECT_NE(nullptr, lease1._connection);
+  httpclient::GeneralClientConnection* gc1 = lease1._connection.get();
+  gc1->connect();  // will fail, but that's ok, this produces error details!
+
+  {
+    auto const& connections = cache.connections();
+    EXPECT_EQ(0, connections.size());
+  }
+
+  cache.release(std::move(lease1._connection), true);
+
+  // Connection now in cache, wait for expiry:
+  std::this_thread::sleep_for(std::chrono::seconds(5));
+  // Connection is now expired!
+
+  {
+    auto const& connections = cache.connections();
+    EXPECT_EQ(1, connections.size());
+
+    EXPECT_NE(connections.find(endpoint), connections.end());
+    EXPECT_EQ(1, connections.find(endpoint)->second.size());
+    EXPECT_EQ(gc1, connections.find(endpoint)->second[0].connection.get());
+  }
+
+  lease1 = cache.acquire(endpoint, 10.0, 30.0, 10, 0);
+
+  // We expect a new connection without error details:
+  EXPECT_TRUE(lease1._connection->getErrorDetails().empty());
+  {
+    auto const& connections = cache.connections();
+    EXPECT_EQ(1, connections.size());
+    EXPECT_EQ(0, connections.find(endpoint)->second.size());
+  }
+}
+

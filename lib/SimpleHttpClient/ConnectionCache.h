@@ -73,7 +73,8 @@ class ConnectionCache {
   struct Options {
     explicit Options(size_t maxConnectionsPerEndpoint,
                      uint32_t idleConnectionTimeout)
-        : maxConnectionsPerEndpoint(maxConnectionsPerEndpoint) {}
+        : maxConnectionsPerEndpoint(maxConnectionsPerEndpoint),
+          idleConnectionTimeout(idleConnectionTimeout) {}
 
     size_t maxConnectionsPerEndpoint;
     uint32_t idleConnectionTimeout = 120;  // seconds
