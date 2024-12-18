@@ -91,19 +91,19 @@ jsUnity.results.fail = function (index, testName, message) {
   var newtime = jsUnity.env.getDate();
 
   ++testCount;
-
+  let now = newtime.toISOString();
   if (RESULTS[testName] === undefined) {
     if (testCount === 1) {
-      print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " + currentSuiteName +
+      print(now + internal.COLORS.COLOR_RED + " [   FAILED   ] " + currentSuiteName +
            internal.COLORS.COLOR_RESET + " (setUpAll: " + (jsUnity.env.getDate() - STARTTEST) + "ms)");
 
       ENDTEST = newtime;
     }
     print(internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
     if (RESULTS.hasOwnProperty('message')) {
-      RESULTS['message'] += "\n" + currentSuiteName + " - failed at: " + message;
+      RESULTS['message'] += `\n${now}\n${currentSuiteName} - failed at: ${message}`;
     } else {
-      RESULTS['message'] = currentSuiteName + " - failed at: " + message;
+      RESULTS['message'] = `${now}\n${currentSuiteName} - failed at: ${message}`;
     }
     return;
   }
