@@ -95,9 +95,8 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
     return SortExecutorInfos(
-        1, 1, {}, std::move(sortRegisters),
-        /*limit (ignored for default sort)*/ 0, manager(), *fakedQuery,
-        *tempStorage, vpackOptions, monitor, /*spillOverThresholdNumRows*/ 1000,
+        std::move(sortRegisters), manager(), *fakedQuery, *tempStorage,
+        vpackOptions, monitor, /*spillOverThresholdNumRows*/ 1000,
         /*spillOverThresholdMemoryUsage*/ 1024 * 1024, false);
   }
 
