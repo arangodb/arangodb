@@ -306,7 +306,7 @@ std::string_view SortNode::sorterTypeName(SorterType type) noexcept {
     case SorterType::kConstrainedHeap:
       return "constrained-heap";
     case SorterType::kStandard:
-      return "constrained-heap";
+      return "standard";
     case SorterType::kGrouped:
       return "grouped";
   }

@@ -37,9 +37,7 @@ function optimizerIndexesGroupSortTestSuite() {
 
   const create_collection = function () {
     db._drop("UnitTestsCollection");
-    // TODO make it work with shards
-    // return db._create("UnitTestsCollection", { "numberOfShards": 9 });
-    return db._create("UnitTestsCollection");
+    return db._create("UnitTestsCollection", { "numberOfShards": 9 });
   };
   const copy_collection = function (collection_name) {
     db._drop("UnitTestsExpectedCollection");
