@@ -697,19 +697,6 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
     {
       VPackObjectBuilder o(&sy);
-      sy.add(LAST_LOG_TICK, VPackValue(lastLogTick));
-      sy.add(VPackValue(COLLECTIONS));
-      {
-        VPackArrayBuilder a(&sy);
-        for (auto const& i : syncer->getProcessedCollections()) {
-          VPackObjectBuilder e(&sy);
-          sy.add(ID, VPackValue(i.first.id()));
-          sy.add(NAME, VPackValue(i.second));
-        }
-      }
-    }
-    {
-      VPackObjectBuilder o(&sy);
       sy.add(LAST_LOG_TICK, VPackValue(syncer->getLastLogTick()));
       sy.add(VPackValue(COLLECTIONS));
       {
