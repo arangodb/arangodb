@@ -400,4 +400,3 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeasesOverExpiry) {
     EXPECT_EQ(0, connections.find(endpoint)->second.size());
   }
 }
-
