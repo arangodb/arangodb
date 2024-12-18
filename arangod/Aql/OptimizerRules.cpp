@@ -207,7 +207,7 @@ void replaceGatherNodeVariables(
       // no match. now check all our replacements and compare how
       // their sources are actually calculated (e.g. #2 may mean
       // "foo.bar")
-      cmp = it.toString();
+      cmp = it.toVarAccessString();
       for (auto const& it3 : replacements) {
         auto setter = plan->getVarSetBy(it3.first->id);
         if (setter == nullptr || setter->getType() != EN::CALCULATION) {
@@ -4677,8 +4677,9 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             collectNode->groupVariables(copy);
 
             replaceGatherNodeVariables(plan.get(), gatherNode, replacements);
-          } else if (  //! collectNode->groupVariables().empty() &&
-              !collectNode->hasOutVariable()) {
+          } else if (!collectNode->hasOutVariable() ||
+                     collectNode->getOptions()
+                         .aggregateIntoExpressionOnDBServers) {
             // clone a COLLECT v1 = expr, v2 = expr ... operation from the
             // coordinator to the DB server(s), and leave an aggregate COLLECT
             // node on the coordinator for total aggregation
@@ -4714,9 +4715,22 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               outVars.emplace_back(GroupVarInfo{out, it.inVar});
             }
 
+            Variable const* expressionVariable = nullptr;
+            Variable const* outVariable = nullptr;
+
+            bool const aggregateOutVariablesOnDBServers =
+                collectNode->getOptions().aggregateIntoExpressionOnDBServers &&
+                collectNode->hasOutVariable();
+
+            if (aggregateOutVariablesOnDBServers) {
+              outVariable =
+                  plan->getAst()->variables()->createTemporaryVariable();
+              expressionVariable = collectNode->expressionVariable();
+            }
+
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
-                dbServerAggVars, nullptr, nullptr,
+                dbServerAggVars, expressionVariable, outVariable,
                 std::vector<std::pair<Variable const*, std::string>>{},
                 collectNode->variableMap());
 
@@ -4740,6 +4754,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               it.inVar = dbServerAggVars[j].outVar;
               it.type = Aggregator::runOnCoordinatorAs(it.type);
               ++j;
+            }
+
+            if (aggregateOutVariablesOnDBServers) {
+              TRI_ASSERT(outVariable != nullptr);
+              collectNode->setMergeListsAggregation(outVariable);
             }
 
             removeGatherNodeSort = (dbCollectNode->aggregationMethod() !=

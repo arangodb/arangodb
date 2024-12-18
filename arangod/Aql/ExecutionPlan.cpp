@@ -1234,6 +1234,12 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
               handled = true;
             }
           }
+        } else if (name == "aggregateIntoExpressionOnDBServers") {
+          auto value = member->getMember(0);
+          if (value->isBoolValue()) {
+            options.aggregateIntoExpressionOnDBServers = value->getBoolValue();
+            handled = true;
+          }
         }
         if (!handled) {
           invalidOptionAttribute(_ast->query(), "unknown", "COLLECT", name);
