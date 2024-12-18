@@ -62,10 +62,7 @@ class SortedRowsStorageBackend;
 
 class SortExecutorInfos {
  public:
-  SortExecutorInfos(RegisterCount nrInputRegisters,
-                    RegisterCount nrOutputRegisters,
-                    RegIdFlatSet const& registersToClear,
-                    std::vector<SortRegister> sortRegisters, std::size_t limit,
+  SortExecutorInfos(std::vector<SortRegister> sortRegisters,
                     AqlItemBlockManager& manager, QueryContext& query,
                     TemporaryStorageFeature& tempStorage,
                     velocypack::Options const* options,
@@ -78,37 +75,32 @@ class SortExecutorInfos {
   SortExecutorInfos(SortExecutorInfos const&) = delete;
   ~SortExecutorInfos() = default;
 
-  [[nodiscard]] RegisterCount numberOfInputRegisters() const;
-
-  [[nodiscard]] RegisterCount numberOfOutputRegisters() const;
-
-  [[nodiscard]] RegIdFlatSet const& registersToClear() const;
-
-  [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
-
-  [[nodiscard]] std::vector<SortRegister> const& sortRegisters() const noexcept;
-
-  [[nodiscard]] ResourceMonitor& getResourceMonitor() const;
-
-  [[nodiscard]] bool stable() const;
-
-  [[nodiscard]] size_t limit() const noexcept;
-
-  [[nodiscard]] size_t spillOverThresholdNumRows() const noexcept;
-
-  [[nodiscard]] size_t spillOverThresholdMemoryUsage() const noexcept;
-
-  [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept;
-
-  [[nodiscard]] TemporaryStorageFeature& getTemporaryStorageFeature() noexcept;
-
-  QueryContext& getQuery() const noexcept;
+  [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept {
+    return _vpackOptions;
+  }
+  [[nodiscard]] std::vector<SortRegister> const& sortRegisters()
+      const noexcept {
+    return _sortRegisters;
+  }
+  [[nodiscard]] ResourceMonitor& getResourceMonitor() const {
+    return _resourceMonitor;
+  }
+  [[nodiscard]] bool stable() const { return _stable; }
+  [[nodiscard]] size_t spillOverThresholdNumRows() const noexcept {
+    return _spillOverThresholdNumRows;
+  }
+  [[nodiscard]] size_t spillOverThresholdMemoryUsage() const noexcept {
+    return _spillOverThresholdMemoryUsage;
+  }
+  [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept {
+    return _manager;
+  }
+  [[nodiscard]] TemporaryStorageFeature& getTemporaryStorageFeature() noexcept {
+    return _tempStorage;
+  }
+  [[nodiscard]] QueryContext& getQuery() const noexcept { return _query; }
 
  private:
-  RegisterCount _numInRegs;
-  RegisterCount _numOutRegs;
-  RegIdFlatSet _registersToClear;
-  std::size_t _limit;
   AqlItemBlockManager& _manager;
   TemporaryStorageFeature& _tempStorage;
   QueryContext& _query;

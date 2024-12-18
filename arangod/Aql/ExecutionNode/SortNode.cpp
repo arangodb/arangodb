@@ -191,22 +191,19 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
   switch (sorterType()) {
     case SorterType::kStandard: {
-      auto executorInfos = SortExecutorInfos(
-          registerInfos.numberOfInputRegisters(),
-          registerInfos.numberOfOutputRegisters(),
-          registerInfos.registersToClear(), std::move(sortRegs), _limit,
-          engine.itemBlockManager(), engine.getQuery(),
-          engine.getQuery()
-              .vocbase()
-              .server()
-              .getFeature<TemporaryStorageFeature>(),
-          &engine.getQuery().vpackOptions(),
-          engine.getQuery().resourceMonitor(),
-          engine.getQuery().queryOptions().spillOverThresholdNumRows,
-          engine.getQuery().queryOptions().spillOverThresholdMemoryUsage,
-          _stable);
       return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+          &engine, this, std::move(registerInfos),
+          SortExecutorInfos(
+              std::move(sortRegs), engine.itemBlockManager(), engine.getQuery(),
+              engine.getQuery()
+                  .vocbase()
+                  .server()
+                  .getFeature<TemporaryStorageFeature>(),
+              &engine.getQuery().vpackOptions(),
+              engine.getQuery().resourceMonitor(),
+              engine.getQuery().queryOptions().spillOverThresholdNumRows,
+              engine.getQuery().queryOptions().spillOverThresholdMemoryUsage,
+              _stable));
     }
     case SorterType::kGrouped: {
       std::vector<RegisterId> groupedRegisters;
@@ -228,22 +225,14 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
                                    engine.getQuery().resourceMonitor()});
     }
     case SorterType::kConstrainedHeap: {
-      auto executorInfos = SortExecutorInfos(
-          registerInfos.numberOfInputRegisters(),
-          registerInfos.numberOfOutputRegisters(),
-          registerInfos.registersToClear(), std::move(sortRegs), _limit,
-          engine.itemBlockManager(), engine.getQuery(),
-          engine.getQuery()
-              .vocbase()
-              .server()
-              .getFeature<TemporaryStorageFeature>(),
-          &engine.getQuery().vpackOptions(),
-          engine.getQuery().resourceMonitor(),
-          engine.getQuery().queryOptions().spillOverThresholdNumRows,
-          engine.getQuery().queryOptions().spillOverThresholdMemoryUsage,
-          _stable);
       return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+          &engine, this, std::move(registerInfos),
+          ConstraintSortExecutorInfos(
+              registerInfos.numberOfOutputRegisters(),
+              registerInfos.registersToClear(), std::move(sortRegs), _limit,
+              engine.itemBlockManager(), engine.getQuery(),
+              &engine.getQuery().vpackOptions(),
+              engine.getQuery().resourceMonitor()));
     }
   }
 }
