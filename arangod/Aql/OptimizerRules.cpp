@@ -4717,6 +4717,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
 
             Variable const* expressionVariable = nullptr;
             Variable const* outVariable = nullptr;
+            std::vector<std::pair<Variable const*, std::string>> keepVariables;
 
             bool const aggregateOutVariablesOnDBServers =
                 collectNode->getOptions().aggregateIntoExpressionOnDBServers &&
@@ -4726,13 +4727,13 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               outVariable =
                   plan->getAst()->variables()->createTemporaryVariable();
               expressionVariable = collectNode->expressionVariable();
+              keepVariables = collectNode->keepVariables();
             }
 
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
                 dbServerAggVars, expressionVariable, outVariable,
-                std::vector<std::pair<Variable const*, std::string>>{},
-                collectNode->variableMap());
+                std::move(keepVariables), collectNode->variableMap());
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);

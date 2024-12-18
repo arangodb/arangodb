@@ -846,4 +846,5 @@ void CollectNode::setMergeListsAggregation(Variable const* outVariable) {
 
   // clear out variable and expression variable
   _outVariable = _expressionVariable = nullptr;
+  _keepVariables.clear();
 }
