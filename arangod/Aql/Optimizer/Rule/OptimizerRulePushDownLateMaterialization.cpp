@@ -195,8 +195,19 @@ bool checkIndexNode(ExecutionPlan* plan,
   // TODO: We should also check the condition to make this rule more specific
   // As we can have a unique index with multiple fields and we can only move
   // past the index node if all the fields are considered
-  auto const index = indexNode->getSingleIndex();
-  if (index == nullptr || !(index->fields().size() == 1 && index->unique())) {
+
+  bool const eligibleForPushDownMaterialization = [&] {
+    if (indexNode->options().pushDownMaterialization) {
+      return true;
+    }
+    auto const index = indexNode->getSingleIndex();
+    if (index == nullptr || !(index->fields().size() == 1 && index->unique())) {
+      return false;
+    }
+    return true;
+  }();
+
+  if (!eligibleForPushDownMaterialization) {
     return false;
   }
 

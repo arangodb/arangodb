@@ -397,19 +397,26 @@ class ClusterInfo::SyncerThread final
   void run() override;
   bool start();
   void sendNews() noexcept;
-  void waitForNews() noexcept;
 
  private:
   auto call() noexcept -> std::optional<consensus::index_t>;
   futures::Future<futures::Unit> fetchUpdates();
+  class Synchronization {
+   public:
+    void sendNews() noexcept;
+    void waitForNews() noexcept;
 
-  std::mutex _m;
-  std::condition_variable _cv;
-  bool _news;
+   private:
+    std::mutex _m;
+    std::condition_variable _cv;
+    bool _news;
+  };
 
   std::string _section;
   std::function<consensus::index_t()> _f;
   AgencyCache& _agencyCache;
+  std::shared_ptr<Synchronization> _synchronization =
+      std::make_shared<Synchronization>();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5842,6 +5849,10 @@ auto ClusterInfo::SyncerThread::call() noexcept
 }
 
 void ClusterInfo::SyncerThread::sendNews() noexcept {
+  _synchronization->sendNews();
+}
+
+void ClusterInfo::SyncerThread::Synchronization::sendNews() noexcept {
   {
     std::lock_guard lk(_m);
     _news = true;
@@ -5849,7 +5860,7 @@ void ClusterInfo::SyncerThread::sendNews() noexcept {
   _cv.notify_one();
 }
 
-void ClusterInfo::SyncerThread::waitForNews() noexcept {
+void ClusterInfo::SyncerThread::Synchronization::waitForNews() noexcept {
   {
     std::unique_lock lk(_m);
     _cv.wait(lk, [&] { return _news; });
@@ -5858,13 +5869,15 @@ void ClusterInfo::SyncerThread::waitForNews() noexcept {
 }
 
 void ClusterInfo::SyncerThread::run() {
-  auto const sendNewsCb = [this](auto&&) noexcept { sendNews(); };
+  auto const sendNewsCb = [sync = _synchronization](auto&&) noexcept {
+    sync->sendNews();
+  };
 
   for (auto nextIndex = consensus::index_t{1}; !isStopping(); ++nextIndex) {
     _agencyCache.waitFor(nextIndex, AgencyCache::Executor::Direct)
         .thenFinal(sendNewsCb);
 
-    waitForNews();
+    _synchronization->waitForNews();
 
     // We update on every change; our _f (loadPlan/loadCurrent) decide for
     // themselves whether they need to do a real update. This way they can at
