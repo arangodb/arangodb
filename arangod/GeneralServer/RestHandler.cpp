@@ -399,8 +399,9 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   }
 } catch (...) {
   // we can only get here if putting together an error response or an
-  // error log message failed with an exception. there is nothing we
-  // can do here to signal this problem.
+  // error log message failed with an exception.
+  ADB_PROD_ASSERT(false) << "Exception during exception handling; probably out "
+                            "of memory. Aborting.";
 }
 
 void RestHandler::runHandlerStateMachine() {
@@ -514,12 +515,19 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {
 /// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
   auto guard = std::unique_lock(_executionMutex);
-  _lockAdopted = false;
+  auto const lockId = ++_lockOwnedById;
   if (_state == HandlerState::PAUSED) {
-    runHandlerStateMachine();
-  }
-  if (_lockAdopted) {
-    guard.release();
+    try {
+      runHandlerStateMachine();
+    } catch (...) {
+      // There should be no exception thrown after the lock has been adopted by
+      // waitForFuture.
+      TRI_ASSERT(lockId == _lockOwnedById);
+      throw;
+    }
+    if (lockId != _lockOwnedById) {
+      guard.release();
+    }
   }
   return _state == HandlerState::PAUSED;
 }
@@ -739,20 +747,21 @@ RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
 }
 
 RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
+  TRI_ASSERT(_executionMutex.is_locked());
   if (f.isReady()) {             // fast-path out
     f.result().throwIfFailed();  // just throw the error upwards
     return f.waitAndGet();
   }
-  TRI_ASSERT(!_lockAdopted);
   // We adopt the _executionMutex. Setting this informs the function that locked
   // it (either runHandler or wakeupHandler) about that.
-  _lockAdopted = true;
+  auto const lockId = ++_lockOwnedById;
+  auto guard = std::unique_lock(_executionMutex, std::adopt_lock);
   TRI_ASSERT(_executionCounter == 0);
   _executionCounter = 2;
-  std::move(f).thenFinal(
-      withLogContext([self = shared_from_this()](
-                         futures::Try<RestStatus>&& t) noexcept -> void {
-        auto guard = std::unique_lock(self->_executionMutex, std::adopt_lock);
+  std::move(f).thenFinal(withLogContext(
+      [self = shared_from_this(), guard = std::move(guard),
+       lockId](futures::Try<RestStatus>&& t) mutable noexcept -> void {
+        TRI_ASSERT(lockId == self->_lockOwnedById);
         if (t.hasException()) {
           self->handleExceptionPtr(std::move(t).exception());
           self->_followupRestStatus = RestStatus::DONE;
@@ -763,6 +772,7 @@ RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
           }
         }
         if (--self->_executionCounter == 0) {
+          // the wakeup handler will take the lock itself.
           guard.unlock();
           self->wakeupHandler();
         }
@@ -790,9 +800,16 @@ void RestHandler::runHandler(
   TRI_ASSERT(_state == HandlerState::PREPARE);
   _sendResponseCallback = std::move(responseCallback);
   auto guard = std::unique_lock(_executionMutex);
-  _lockAdopted = false;
-  runHandlerStateMachine();
-  if (_lockAdopted) {
+  auto const lockId = ++_lockOwnedById;
+  try {
+    runHandlerStateMachine();
+  } catch (...) {
+    // There should be no exception thrown after the lock has been adopted by
+    // waitForFuture.
+    TRI_ASSERT(lockId == _lockOwnedById);
+    throw;
+  }
+  if (lockId != _lockOwnedById) {
     guard.release();
   }
 }

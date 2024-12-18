@@ -202,10 +202,14 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestStatistics::Item _statistics;
 
  private:
-  mutable basics::UnshackledMutex _executionMutex;
-  mutable bool _lockAdopted = false;
-  mutable std::atomic_uint8_t _executionCounter{0};
-  mutable RestStatus _followupRestStatus;
+  basics::UnshackledMutex _executionMutex{};
+  // an ever-increasing id, marking the owning function frame of the
+  // _executionMutex. this allows waitForFuture() to adopt the lock acquired by
+  // one of runHandler(), wakeupHandler(), or waitForFuture(), and allows the
+  // previous owner to release instead of unlock.
+  uint64_t _lockOwnedById{};
+  std::atomic_uint8_t _executionCounter{0};
+  RestStatus _followupRestStatus;
 
   std::function<void(rest::RestHandler*)> _sendResponseCallback;
 
