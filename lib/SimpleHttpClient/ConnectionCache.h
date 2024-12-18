@@ -76,7 +76,7 @@ class ConnectionCache {
         : maxConnectionsPerEndpoint(maxConnectionsPerEndpoint) {}
 
     size_t maxConnectionsPerEndpoint;
-    uint32_t idleConnectionTimeout = 30;  // seconds
+    uint32_t idleConnectionTimeout = 120;  // seconds
   };
 
   ConnectionCache(application_features::CommunicationFeaturePhase& comm,
