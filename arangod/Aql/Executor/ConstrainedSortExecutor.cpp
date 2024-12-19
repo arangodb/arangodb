@@ -39,6 +39,20 @@
 
 namespace arangodb::aql {
 
+ConstraintSortExecutorInfos::ConstraintSortExecutorInfos(
+    RegisterCount nrOutputRegisters, RegIdFlatSet const& registersToClear,
+    std::vector<SortRegister> sortRegisters, std::size_t limit,
+    AqlItemBlockManager& manager, QueryContext& query,
+    velocypack::Options const* options, ResourceMonitor& resourceMonitor)
+    : _numOutRegs{nrOutputRegisters},
+      _registersToClear{registersToClear.begin(), registersToClear.end()},
+      _limit{limit},
+      _manager{manager},
+      _query{query},
+      _vpackOptions{options},
+      _resourceMonitor{resourceMonitor},
+      _sortRegisters{std::move(sortRegisters)} {}
+
 namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
@@ -144,8 +158,8 @@ auto initRegsToKeep(RegisterCount size) -> RegIdFlatSetStack {
 
 }  // namespace
 
-ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher,
-                                                 SortExecutorInfos& infos)
+ConstrainedSortExecutor::ConstrainedSortExecutor(
+    Fetcher& fetcher, ConstraintSortExecutorInfos& infos)
     : _infos(infos),
       _returnNext(0),
       _rowsPushed(0),

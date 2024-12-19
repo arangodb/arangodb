@@ -68,13 +68,6 @@ class GroupedSortExecutorTest : public AqlExecutorTestCaseWithParam<SplitType> {
   Variable sortVar{"mySortVar", 0, false, resourceMonitor};
 };
 
-using SplitType =
-    std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
-template<size_t... vs>
-const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
-const SplitType splitStep = SplitType{step};
-
 INSTANTIATE_TEST_CASE_P(GroupedSortExecutorTest, GroupedSortExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>,
                                           splitIntoBlocks<3, 4>, splitStep<1>,
