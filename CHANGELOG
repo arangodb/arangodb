@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fail queries using `APPROX_NEAR` functions but not applying vector
+  index.
+
 * Enable passing `nProbe` as additional search parameter for APPROX_NEAR
   vector functions. `nProbe` defines how many neighboring lists to look into,
   it is a trade off between more correct results and time it takes to fetch
