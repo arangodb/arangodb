@@ -2980,6 +2980,112 @@ struct SortToIndexNode final
     _filters.emplace_back();
   }
 
+  /// @brief gets the attributes from the filter conditions that will have a
+  /// constant value (e.g. doc.value == 123) or than can be proven to be != null
+  void getSpecialAttributes(
+      AstNode const* node, Variable const* variable,
+      std::vector<std::vector<arangodb::basics::AttributeName>>&
+          constAttributes,
+      ::arangodb::containers::HashSet<
+          std::vector<arangodb::basics::AttributeName>>& nonNullAttributes)
+      const {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      // recurse into both sides
+      getSpecialAttributes(node->getMemberUnchecked(0), variable,
+                           constAttributes, nonNullAttributes);
+      getSpecialAttributes(node->getMemberUnchecked(1), variable,
+                           constAttributes, nonNullAttributes);
+      return;
+    }
+
+    if (!node->isComparisonOperator()) {
+      return;
+    }
+
+    TRI_ASSERT(node->isComparisonOperator());
+
+    AstNode const* lhs = node->getMemberUnchecked(0);
+    AstNode const* rhs = node->getMemberUnchecked(1);
+    AstNode const* check = nullptr;
+
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      if (lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // const value == doc.value
+        check = rhs;
+      } else if (rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // doc.value == const value
+        check = lhs;
+      }
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_NE) {
+      if (lhs->isNullValue() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // null != doc.value
+        check = rhs;
+      } else if (rhs->isNullValue() &&
+                 lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // doc.value != null
+        check = lhs;
+      }
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_LT &&
+               lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // const value < doc.value
+      check = rhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_LE &&
+               lhs->isConstant() && !lhs->isNullValue() &&
+               rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // const value <= doc.value
+      check = rhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_GT &&
+               rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // doc.value > const value
+      check = lhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_GE &&
+               rhs->isConstant() && !rhs->isNullValue() &&
+               lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // doc.value >= const value
+      check = lhs;
+    }
+
+    if (check == nullptr) {
+      // condition is useless for us
+      return;
+    }
+
+    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
+        result;
+
+    if (check->isAttributeAccessForVariable(result, false) &&
+        result.first == variable) {
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+        // found a constant value
+        constAttributes.emplace_back(std::move(result.second));
+      } else {
+        // all other cases handle non-null attributes
+        nonNullAttributes.emplace(std::move(result.second));
+      }
+    }
+  }
+
+  void processCollectionAttributes(
+      Variable const* variable,
+      std::vector<std::vector<arangodb::basics::AttributeName>>&
+          constAttributes,
+      ::arangodb::containers::HashSet<
+          std::vector<arangodb::basics::AttributeName>>& nonNullAttributes)
+      const {
+    // resolve all FILTER variables into their appropriate filter conditions
+    TRI_ASSERT(!_filters.empty());
+    for (auto const& filter : _filters.back()) {
+      TRI_ASSERT(filter.isRegularRegister());
+      auto it = _variableDefinitions.find(filter.value());
+      if (it != _variableDefinitions.end()) {
+        // AND-combine all filter conditions we found, and fill constAttributes
+        // and nonNullAttributes as we go along
+        getSpecialAttributes((*it).second, variable, constAttributes,
+                             nonNullAttributes);
+      }
+    }
+  }
+
   SortElementVector makeIndexSortElements(SortCondition const& sortCondition,
                                           Variable const* outVariable) {
     TRI_ASSERT(sortCondition.isOnlyAttributeAccess());
@@ -2995,6 +3101,82 @@ struct SortToIndexNode final
           SortElement::createWithPath(outVariable, field.order, path));
     }
     return elements;
+  }
+
+  bool handleEnumerateCollectionNode(
+      EnumerateCollectionNode* enumerateCollectionNode) {
+    if (_sortNode == nullptr) {
+      return true;
+    }
+
+    if (enumerateCollectionNode->isInInnerLoop()) {
+      // index node contained in an outer loop. must not optimize away the sort!
+      return true;
+    }
+
+    // figure out all attributes from the FILTER conditions that have a constant
+    // value and/or that cannot be null
+    std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
+    ::arangodb::containers::HashSet<
+        std::vector<arangodb::basics::AttributeName>>
+        nonNullAttributes;
+    processCollectionAttributes(enumerateCollectionNode->outVariable(),
+                                constAttributes, nonNullAttributes);
+
+    SortCondition sortCondition(_plan, _sorts, constAttributes,
+                                nonNullAttributes, _variableDefinitions);
+
+    if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
+        sortCondition.isUnidirectional()) {
+      // we have found a sort condition, which is unidirectional
+      // now check if any of the collection's indexes covers it
+
+      Variable const* outVariable = enumerateCollectionNode->outVariable();
+      std::vector<transaction::Methods::IndexHandle> usedIndexes;
+      size_t coveredAttributes = 0;
+
+      Collection const* coll = enumerateCollectionNode->collection();
+      TRI_ASSERT(coll != nullptr);
+      size_t numDocs =
+          coll->count(&_plan->getAst()->query().trxForOptimization(),
+                      transaction::CountType::kTryCache);
+
+      bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(
+          *coll, &sortCondition, outVariable, numDocs,
+          enumerateCollectionNode->hint(), usedIndexes, coveredAttributes);
+      if (canBeUsed) {
+        // If this bit is set, then usedIndexes has length exactly one
+        // and contains the best index found.
+        auto condition = std::make_unique<Condition>(_plan->getAst());
+        condition->normalize(_plan);
+        TRI_ASSERT(usedIndexes.size() == 1);
+        IndexIteratorOptions opts;
+        opts.ascending = sortCondition.isAscending();
+        opts.useCache = false;
+        auto n = _plan->createNode<IndexNode>(
+            _plan, _plan->nextId(), enumerateCollectionNode->collection(),
+            outVariable, usedIndexes,
+            false,  // here we could always assume false as there is no lookup
+                    // condition here
+            std::move(condition), opts);
+
+        enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
+        enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan, *n);
+
+        _plan->replaceNode(enumerateCollectionNode, n);
+        _modified = true;
+
+        if (coveredAttributes == sortCondition.numAttributes()) {
+          // if the index covers the complete sort condition, we can also remove
+          // the sort node
+          n->needsGatherNodeSort(
+              makeIndexSortElements(sortCondition, outVariable));
+          _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+        }
+      }
+    }
+
+    return true;  // always abort further searching here
   }
 
   void deleteSortNode(IndexNode* indexNode, SortCondition& sortCondition) {
@@ -3207,7 +3389,8 @@ struct SortToIndexNode final
       case EN::INDEX:
         return handleIndexNode(ExecutionNode::castTo<IndexNode*>(en));
       case EN::ENUMERATE_COLLECTION:
-        return false;
+        return handleEnumerateCollectionNode(
+            ExecutionNode::castTo<EnumerateCollectionNode*>(en));
 
       default: {
         // should not reach this point
