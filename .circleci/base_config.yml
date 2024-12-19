@@ -326,8 +326,10 @@ jobs:
             arch="<<parameters.arch>>"
             if test "$arch" == "x64"; then
               LAPACK_LIB_PATH="/usr/lib/x86_64-linux-gnu/lapack/liblapack.a"
+              BLAS_LIB_PATH="/usr/lib/x86_64-linux-gnu/blas/libblas.a"
             else
               LAPACK_LIB_PATH="/usr/lib/aarch64-linux-gnu/lapack/liblapack.a"
+              BLAS_LIB_PATH="/usr/lib/aarch64-linux-gnu/blas/libblas.a"
             fi
 
             cmake --preset << parameters.preset >> \
@@ -340,7 +342,8 @@ jobs:
               -DOPENSSL_ROOT_DIR=/opt \
               -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
               -DCMAKE_INSTALL_PREFIX=/ \
-              -DLAPACK_LIBRARIES="$LAPACK_LIB_PATH"
+              -DLAPACK_LIBRARIES="$LAPACK_LIB_PATH" \
+              -DBLAS_LIBRARIES="$BLAS_LIB_PATH"
       - run:
           name: Build
           command: |
