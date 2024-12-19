@@ -170,8 +170,9 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 // then the limit is set to. E.g. If nLists is set to the number of documents,
 // meaning every list in faiss index would have 1 document = centroid, and
 // the limit is 3, nProbe is 1, fullCount true, then the maximum number of docs
-// produced can be 1, but the fullCount  returned will not be valid since we cannot
-// produce more documents then the limit, and we will not enter skipRowsRange
+// produced can be 1, but the fullCount  returned will not be valid since we
+// cannot produce more documents then the limit, and we will not enter
+// skipRowsRange
 [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall>
 EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                             AqlCall& call) {
