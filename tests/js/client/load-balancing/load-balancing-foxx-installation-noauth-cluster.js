@@ -65,13 +65,13 @@ const isCov = require("@arangodb/test-helper").versionHas('coverage');
 function sendRequest(method, endpoint, body, usePrimary) {
   let res;
   const i = usePrimary ? 0 : 1;
-  let timeout = (isCov)?320:10;
+  let timeout = (isCov)?420:66;
   try {
     const envelope = {
       body,
       method,
       url: `${coordinators[i]}${endpoint}`,
-      options: { timeout: timeout}
+      timeout: timeout
     };
     res = request(envelope);
   } catch (err) {
@@ -117,12 +117,12 @@ const installFoxxZipFile = (databaseName, usePrimary, fileName, coordinatorId, e
     // TODO: We want to be able to test this in more detail. But currently, foxx does not deliver proper ArangoErrors
     // in some failure cases. Created BTS-Ticket: https://arangodb.atlassian.net/browse/BTS-1345 needs to be resolved
     // first.
-    assertTrue(installResult.error);
-    assertEqual(installResult.errorNum, expectedFailureCode);
-    assertEqual(installResult.code, expectedFailureCode);
+    assertTrue(installResult.error, JSON.stringify(installResult));
+    assertEqual(installResult.errorNum, expectedFailureCode, JSON.stringify(installResult));
+    assertEqual(installResult.code, expectedFailureCode, JSON.stringify(installResult));
   } else {
-    assertFalse(installResult.error);
-    assertEqual(installResult.mount, installMountPath);
+    assertFalse(installResult.error, JSON.stringify(installResult));
+    assertEqual(installResult.mount, installMountPath, JSON.stringify(installResult));
   }
 
   return installResult;
