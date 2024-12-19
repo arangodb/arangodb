@@ -106,19 +106,11 @@ function VectorIndexL2TestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                })
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(0, indexNodes.length);
-
-            const results = db._query(query, bindVars).toArray();
-            assertEqual(5, results.length);
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
         },
 
         testApproxL2OnNonVectorField: function() {
@@ -130,19 +122,11 @@ function VectorIndexL2TestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                })
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(0, indexNodes.length);
-
-            const results = db._query(query, bindVars).toArray();
-            assertEqual(5, results.length);
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
         },
 
         testApproxL2WrongInputDimension: function() {
@@ -210,19 +194,11 @@ function VectorIndexL2TestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                })
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(0, indexNodes.length);
-
-            const results = db._query(query, bindVars).toArray();
-            assertEqual(500, results.length);
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
         },
 
         testApproxL2DescendingOrder: function() {
@@ -235,16 +211,11 @@ function VectorIndexL2TestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                })
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(0, indexNodes.length);
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
         },
 
         testApproxL2MultipleTopK: function() {
@@ -587,19 +558,11 @@ function VectorIndexCosineTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db
-                ._createStatement({
-                    query,
-                    bindVars,
-                })
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(0, indexNodes.length);
-
-            const results = db._query(query, bindVars).toArray();
-            assertEqual(5, results.length);
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
         },
 
         testApproxCosineMultipleTopK: function() {
