@@ -75,6 +75,10 @@ struct CollectOptions final {
   /// @brief if true, then the CollectMethod must not be changed after
   /// being set. if false, the CollectMethod can still change later.
   bool fixed;
+
+  /// @brief whether aggregation of collects output should be moved to
+  /// dbservers.
+  bool aggregateIntoExpressionOnDBServers{true};
 };
 
 struct GroupVarInfo final {

@@ -81,6 +81,10 @@ devel
 
 * Fix view usage in cached query plans.
 
+* Optimized COLLECT queries by pushing collection of INTO values onto database
+  servers and aggregate on the coordinator. This can be disabled by setting
+  the option `aggregateIntoExpressionOnDBServers` to false.
+
 * Make it an error if usePlanCache is set to true but the query is not 
   eligible for query plan caching. This is better for debugging.
 

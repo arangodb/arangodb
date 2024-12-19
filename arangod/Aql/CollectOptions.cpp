@@ -44,6 +44,10 @@ CollectOptions::CollectOptions(velocypack::Slice slice)
   if (VPackSlice v = slice.get("fixed"); v.isBoolean()) {
     fixed = v.isTrue();
   }
+  if (VPackSlice v = slice.get("aggregateIntoExpressionOnDBServers");
+      v.isBoolean()) {
+    aggregateIntoExpressionOnDBServers = v.isTrue();
+  }
 
   TRI_ASSERT(method != CollectMethod::kUndefined || !fixed);
 }
@@ -78,6 +82,8 @@ void CollectOptions::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("method", VPackValue(methodToString(method)));
   builder.add("fixed", VPackValue(fixed));
+  builder.add("aggregateIntoExpressionOnDBServers",
+              VPackValue(aggregateIntoExpressionOnDBServers));
 }
 
 /// @brief get the aggregation method from a string
