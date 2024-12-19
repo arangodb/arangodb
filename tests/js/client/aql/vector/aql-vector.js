@@ -877,3 +877,4 @@ jsunity.run(VectorIndexCosineTestSuite);
 jsunity.run(MultipleVectorIndexesOnField);
 
 return jsunity.done();
+
