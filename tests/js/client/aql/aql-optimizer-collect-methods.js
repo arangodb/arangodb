@@ -365,7 +365,7 @@ function optimizerCollectMethodsTestSuite () {
         }
       });
         
-      assertEqual(1, aggregateNodes);
+      assertEqual(isCluster ? 2 : 1, aggregateNodes);
       assertEqual(1, sortNodes);
 
       let result = db._query(query).toArray();
@@ -425,7 +425,7 @@ function optimizerCollectMethodsTestSuite () {
           }
         });
        
-        assertEqual((isCluster && !hasInto) ? 2 : 1, aggregateNodes);
+        assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(query[1] === 'hash' ? 1 : 0, sortNodes);
       });
     },
@@ -463,7 +463,7 @@ function optimizerCollectMethodsTestSuite () {
           }
         });
         
-        assertEqual((isCluster && !hasInto) ? 2 : 1, aggregateNodes);
+        assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(1, sortNodes);
       });
     },
