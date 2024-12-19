@@ -99,7 +99,7 @@ function optimizerIndexesGroupSortTestSuite() {
         collection.ensureIndex({ type: "persistent", fields: ["first_index_field", "second_index_field"] });
         waitForEstimatorSync();
 
-        const query = "FOR doc IN @@collection SORT doc.first_index_field, doc.non_indexed_field RETURN doc";
+        const query = "FOR doc IN @@collection SORT doc.first_index_field, doc.non_indexed_field RETURN [doc.first_index_field, doc.non_indexed_field, doc.second_index_field]";
         let plan = query_plan(query, collection.name());
         assertTrue(query_plan_uses_index_for_sorting(plan), row_count + ': ' + plan.rules);
         assertTrue(sort_node_does_a_group_sort(plan), row_count + ': ' + plan.nodes);
