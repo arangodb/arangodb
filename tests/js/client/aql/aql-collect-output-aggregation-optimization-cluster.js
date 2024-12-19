@@ -34,8 +34,9 @@ const numDocuments = 10000;
 const modulus = [1, 10, 100, 1000];
 
 const checkOptimization = function (plan) {
-
-  const [dbCollect, remote, collect] = plan.nodes.filter(x => ["RemoteNode", "CollectNode"].indexOf(x.type) !== -1);
+  const nodes = plan.nodes.filter(x => ["RemoteNode", "CollectNode"].indexOf(x.type) !== -1);
+  assertEqual(nodes.length, 3);
+  const [dbCollect, remote, collect] = nodes;
   assertEqual(dbCollect.type, "CollectNode");
   assertEqual(remote.type, "RemoteNode");
   assertEqual(collect.type, "CollectNode");
@@ -46,8 +47,9 @@ const checkOptimization = function (plan) {
 };
 
 const checkNotOptimized = function (plan) {
-
-  const [remote, collect] = plan.nodes.filter(x => ["RemoteNode", "CollectNode"].indexOf(x.type) !== -1);
+  const nodes = plan.nodes.filter(x => ["RemoteNode", "CollectNode"].indexOf(x.type) !== -1);
+  assertEqual(nodes.length, 2);
+  const [remote, collect] = nodes;
   assertEqual(remote.type, "RemoteNode");
   assertEqual(collect.type, "CollectNode");
 
