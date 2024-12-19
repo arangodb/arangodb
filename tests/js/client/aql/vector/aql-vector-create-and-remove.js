@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertNotEqual */
+/*global fail, assertEqual, assertTrue, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -32,7 +32,7 @@ const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 const db = require("internal").db;
 const {
-  randomNumberGeneratorFloat,
+    randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 
 const dbName = "vectorDb";
@@ -44,122 +44,249 @@ const indexName = "vectorIndex";
 ////////////////////////////////////////////////////////////////////////////////
 
 function VectorIndexCreateAndRemoveTestSuite() {
-  let collection;
-  const dimension = 500;
-  const seed = 12132390894;
-  let randomPoint;
-  const insertedDocsCount = 100;
-  let insertedDocs = [];
+    let collection;
+    const dimension = 500;
+    const seed = 12132390894;
+    let randomPoint;
+    const insertedDocsCount = 100;
+    let insertedDocs = [];
 
-  return {
-    setUp: function () {
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
+    return {
+        setUp: function() {
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
 
-      collection = db._create(collName, {numberOfShards: 3});
+            collection = db._create(collName, {
+                numberOfShards: 3
+            });
 
-      let docs = [];
-      let gen = randomNumberGeneratorFloat(seed);
-      for (let i = 0; i < insertedDocsCount; ++i) {
-        const vector = Array.from({ length: dimension }, () => gen());
-        if (i === 50) {
-          randomPoint = vector;
-        }
-        docs.push({ vector });
-      }
-      insertedDocs = db.coll.insert(docs);
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < insertedDocsCount; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                if (i === 50) {
+                    randomPoint = vector;
+                }
+                docs.push({
+                    vector
+                });
+            }
+            insertedDocs = db.coll.insert(docs);
 
-      collection.ensureIndex({
-        name: "vector_l2",
-        type: "vector",
-        fields: ["vector"],
-        inBackground: false,
-        params: { metric: "l2", dimension, nLists: 5 },
-      });
-    },
+            collection.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension,
+                    nLists: 5
+                },
+            });
+        },
 
-    tearDown: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(dbName);
-    },
+        tearDown: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
 
-    testInsertPoints: function () {
-      let docs = [];
-      let gen = randomNumberGeneratorFloat(seed);
-      for (let i = 0; i < insertedDocsCount; ++i) {
-        const vector = Array.from({ length: dimension }, () => gen());
-        docs.push({ vector });
-      }
-      collection.insert(docs);
+        testInsertPoints: function() {
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < insertedDocsCount; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                docs.push({
+                    vector
+                });
+            }
+            collection.insert(docs);
 
-      assertEqual(collection.count(), insertedDocsCount * 2);
-    },
+            assertEqual(collection.count(), insertedDocsCount * 2);
+        },
 
-    testInsertVectorWithMixOfIntergerAndDoubleComponents: function () {
-      let docs = [];
-      let gen = randomNumberGeneratorFloat(seed);
-      let vector = Array.from({ length: dimension }, () => gen());
-      vector[0] = 0;
-      vector[1] = 1;
-      vector[2] = 2;
-      vector[3] = -1;
+        testInsertVectorWithMixOfIntergerAndDoubleComponents: function() {
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            let vector = Array.from({
+                length: dimension
+            }, () => gen());
+            vector[0] = 0;
+            vector[1] = 1;
+            vector[2] = 2;
+            vector[3] = -1;
 
-      docs.push({ vector });
-      collection.insert(docs);
+            docs.push({
+                vector
+            });
+            collection.insert(docs);
 
-      assertEqual(collection.count(), insertedDocsCount + 1);
-    },
+            assertEqual(collection.count(), insertedDocsCount + 1);
+        },
 
-    testInsertPointsChangesSearchResults: function () {
-      const query = "FOR d IN " +
-        collection.name() +
-        " SORT APPROX_NEAR_L2(d.nonVector, @qp) " +
-        "LIMIT 5 RETURN d";
+        testInsertPointsChangesSearchResults: function() {
+            const query = "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_L2(d.nonVector, @qp) " +
+                "LIMIT 5 RETURN d";
 
-      const bindVars = { qp: randomPoint };
-      const closesDocKeysPreInsert = db._query(query, bindVars).toArray().map(item => ({_key: item._key}));
-      assertEqual(5, closesDocKeysPreInsert.length);
+            const bindVars = {
+                qp: randomPoint
+            };
+            const closesDocKeysPreInsert = db._query(query, bindVars).toArray().map(item => ({
+                _key: item._key
+            }));
+            assertEqual(5, closesDocKeysPreInsert.length);
 
-      let docs = [];
-      for (let i = 0; i < 10; ++i) {
-        docs.push({ vector: randomPoint });
-      }
-      collection.insert(docs);
+            let docs = [];
+            for (let i = 0; i < 10; ++i) {
+                docs.push({
+                    vector: randomPoint
+                });
+            }
+            collection.insert(docs);
 
-      const closesDocKeysPostInsert = db._query(query, bindVars).toArray().map(item => ({_key: item._key}));
-      assertEqual(5, closesDocKeysPostInsert.length);
+            const closesDocKeysPostInsert = db._query(query, bindVars).toArray().map(item => ({
+                _key: item._key
+            }));
+            assertEqual(5, closesDocKeysPostInsert.length);
 
-      assertNotEqual(closesDocKeysPreInsert, closesDocKeysPostInsert);
-    },
+            assertNotEqual(closesDocKeysPreInsert, closesDocKeysPostInsert);
+        },
 
-    testRemovePoints: function () {
-      const docsToRemove = insertedDocs.slice(0, insertedDocs.length / 2).map(item => ({"_key": item._key}));
+        testRemovePoints: function() {
+            const docsToRemove = insertedDocs.slice(0, insertedDocs.length / 2).map(item => ({
+                "_key": item._key
+            }));
 
-      collection.remove(docsToRemove);
+            collection.remove(docsToRemove);
 
-      assertEqual(collection.count(), insertedDocsCount / 2);
-    },
+            assertEqual(collection.count(), insertedDocsCount / 2);
+        },
 
-    testRemoveChangesSearchResults: function() {
-      const query = "FOR d IN " +
-        collection.name() +
-        " SORT APPROX_NEAR_L2(d.nonVector, @qp) " +
-        "LIMIT 5 RETURN d";
+        testRemoveChangesSearchResults: function() {
+            const query = "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_L2(d.nonVector, @qp) " +
+                "LIMIT 5 RETURN d";
 
-      const bindVars = { qp: randomPoint };
-      const closesDocKeysPreRemove = db._query(query, bindVars).toArray().map(item => ({_key: item._key}));
-      assertEqual(5, closesDocKeysPreRemove.length);
-      
-      collection.remove(closesDocKeysPreRemove);
+            const bindVars = {
+                qp: randomPoint
+            };
+            const closesDocKeysPreRemove = db._query(query, bindVars).toArray().map(item => ({
+                _key: item._key
+            }));
+            assertEqual(5, closesDocKeysPreRemove.length);
 
-      const closesDocKeysPostRemove = db._query(query, bindVars).toArray().map(item => ({_key: item._key}));
-      assertEqual(5, closesDocKeysPostRemove.length);
+            collection.remove(closesDocKeysPreRemove);
 
-      assertNotEqual(closesDocKeysPreRemove, closesDocKeysPostRemove);
-    },
-  };
+            const closesDocKeysPostRemove = db._query(query, bindVars).toArray().map(item => ({
+                _key: item._key
+            }));
+            assertEqual(5, closesDocKeysPostRemove.length);
+
+            assertNotEqual(closesDocKeysPreRemove, closesDocKeysPostRemove);
+        },
+    };
 }
 
+
+function VectorIndexTestCreationWithVectors() {
+    let collection;
+    const dimension = 500;
+    const seed = 12132390894;
+
+    return {
+        setUp: function() {
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, {
+                numberOfShards: 3
+            });
+        },
+
+        tearDown: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+
+        testCreateVectorIndexWithVectorsContainingIntegersAndDoubles: function() {
+            let gen = randomNumberGeneratorFloat(seed);
+
+            let docs = [];
+            for (let i = 0; i < 10; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                vector[0] = 0;
+                docs.push({
+                    vector
+                });
+            }
+            collection.insert(docs);
+
+            try {
+                let result = collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
+            } catch (e) {
+                assertEqual(undefined, e);
+            }
+        },
+
+        testCreateVectorIndexWithDifferentDimensionVectors: function() {
+            let gen = randomNumberGeneratorFloat(seed);
+
+            let docs = [];
+            for (let i = 0; i < 10; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                docs.push({
+                    vector
+                });
+            }
+            collection.insert(docs);
+
+            try {
+                let result = collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension - 10,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
+                fail();
+            } catch (e) {
+                assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code,
+                    e.errorNum);
+            }
+        },
+    };
+}
+
+
 jsunity.run(VectorIndexCreateAndRemoveTestSuite);
+jsunity.run(VectorIndexTestCreationWithVectors);
 
 return jsunity.done();
