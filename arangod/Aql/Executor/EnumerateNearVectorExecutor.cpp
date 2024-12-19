@@ -70,6 +70,10 @@ void EnumerateNearVectorsExecutor::fillInput(
                                      value.getTypeString()));
   }
 
+  // Must clear the input so the readBatch in RocksDBVectorIndex has the correct
+  // size
+  _inputRowConverted.clear();
+
   auto const dimension = _infos.index->getVectorIndexDefinition().dimension;
   _inputRowConverted.reserve(dimension);
   std::size_t vectorComponentsCount{0};
@@ -108,12 +112,11 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
   auto const docOutId = _infos.outDocumentIdReg;
   auto const distOutId = _infos.outDistancesReg;
 
-  while (!output.isFull() &&
-         _currentProcessedResultCount < _infos.getNumberOfResults()) {
+  while (!output.isFull() && _currentProcessedResultCount < _labels.size()) {
     // there are no results anymore for this input, so we can skip to next input
     // row
     if (_labels[_currentProcessedResultCount] == -1) {
-      _currentProcessedResultCount = _infos.getNumberOfResults();
+      _labels.resize(_currentProcessedResultCount);
       break;
     }
     output.moveValueInto(
@@ -126,31 +129,23 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
 
     ++_currentProcessedResultCount;
   }
-  TRI_ASSERT(hasResults() !=
-             (_currentProcessedResultCount == _infos.getNumberOfResults()));
-  // Must clear the input so the readBatch in RocksDBVectorIndex has the correct
-  // size
-  _inputRowConverted.clear();
 }
 
 std::uint64_t EnumerateNearVectorsExecutor::skipOutput(
     AqlCall::Limit toSkip) noexcept {
   auto skipped = 0;
 
-  while (skipped < toSkip &&
-         _currentProcessedResultCount < _infos.getNumberOfResults()) {
+  while (skipped < toSkip && _currentProcessedResultCount < _labels.size()) {
     // there are no results anymore for this input, so we can skip to next input
     // row
     if (_labels[_currentProcessedResultCount] == -1) {
-      _currentProcessedResultCount = _infos.getNumberOfResults();
+      _labels.resize(_currentProcessedResultCount);
       break;
     }
-    ++skipped;
 
+    ++skipped;
     ++_currentProcessedResultCount;
   }
-  TRI_ASSERT(hasResults() !=
-             (_currentProcessedResultCount == _infos.getNumberOfResults()));
 
   return skipped;
 }
@@ -171,15 +166,21 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   return {inputRange.upstreamState(), {}, /*output.getClientCall()*/ {}};
 }
 
+// The fullCount will not behave as expected when there is less data produced
+// then the limit is set to. E.g. If nLists is set to the number of documents,
+// meaning every list in faiss index would have 1 document = centroid, and
+// the limit is 3, nProbe is 1, fullCount true, then the maximum number of docs
+// produced can be 1, but the fullCount  returned will not be valid since we
+// cannot produce more documents then the limit, and we will not enter
+// skipRowsRange
 [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall>
 EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                             AqlCall& call) {
   auto state = [&] {
-    auto state = inputRange.upstreamState();
     if (hasResults()) {
-      state = ExecutorState::HASMORE;
+      return ExecutorState::HASMORE;
     }
-    return state;
+    return inputRange.upstreamState();
   };
   if (call.getOffset() > 0) {
     auto skipped = std::uint64_t{};
@@ -197,26 +198,22 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
     return {state(), {}, skipped, {}};
   } else if (call.needSkipMore()) {
     TRI_ASSERT(call.needsFullCount());
-    auto const colCount =
-        _collection->count(&_trx, transaction::CountType::kNormal);
     auto skipped = skipOutput(AqlCall::Infinity{});
-    skipped += (colCount - _infos.getNumberOfResults());
+    skipped += (_collectionCount - _currentProcessedResultCount);
+
     TRI_ASSERT(!hasResults());
     auto remainingRows = inputRange.countAndSkipAllRemainingDataRows();
-    // remainingRows += inputRange.skipAll();
-    // TODO call _collection->count only once
-    skipped += remainingRows * colCount;
+    skipped += remainingRows * _collectionCount;
     call.didSkip(skipped);
 
-    //    LOG_INTERNAL << fmt::format(
-    //        "skipped={}, remainingRows={}, currentProcessed={}, nr={},
-    //        state={}, " "hasResults={}, call={}", skipped, remainingRows,
-    //        _currentProcessedResultCount, _infos.getNumberOfResults(),
-    //        state(), hasResults(), to_string(call));
+    LOG_INTERNAL << fmt::format(
+        "skipped={}, remainingRows={}, currentProcessed={}, nr={}, state={}, "
+        "hasResults={}, call={}, colCount={}",
+        skipped, remainingRows, _currentProcessedResultCount,
+        _infos.getNumberOfResults(), state(), hasResults(), to_string(call),
+        _collectionCount);
 
     auto upstreamCall = AqlCall{};
-    // upstreamCall.fullCount = true;
-    // upstreamCall.hardLimit = std::uint64_t{0};
 
     return {state(), {}, skipped, upstreamCall};
   }
@@ -225,7 +222,7 @@ EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 }
 
 bool EnumerateNearVectorsExecutor::hasResults() const noexcept {
-  return _currentProcessedResultCount < _infos.getNumberOfResults();
+  return _currentProcessedResultCount < _labels.size();
 }
 
 template class ExecutionBlockImpl<EnumerateNearVectorsExecutor>;

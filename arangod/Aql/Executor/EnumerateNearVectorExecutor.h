@@ -134,10 +134,10 @@ class EnumerateNearVectorsExecutor {
 
   std::vector<float> _distances;
   std::vector<VectorIndexLabelId> _labels;
-  // setting this to getNumberOfResults makes it an invalid index into
-  // _distances and/or _labels, and therefore marks them as invalid.
-  std::size_t _currentProcessedResultCount = _infos.getNumberOfResults();
+  std::size_t _currentProcessedResultCount{0};
   // needed to enable fullCount to work
   std::size_t _processedInputs{0};
+  std::size_t _collectionCount{
+      _collection->count(&_trx, transaction::CountType::kNormal)};
 };
 }  // namespace arangodb::aql

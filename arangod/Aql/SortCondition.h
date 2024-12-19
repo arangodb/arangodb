@@ -99,7 +99,6 @@ class SortCondition {
   std::tuple<Variable const*, AstNode const*, bool> field(
       size_t position) const;
 
- private:
   struct SortField {
     Variable const* variable;
     std::vector<arangodb::basics::AttributeName> attributes;
@@ -107,6 +106,9 @@ class SortCondition {
     bool order;
   };
 
+  std::vector<SortField> const& sortFields() const noexcept { return _fields; }
+
+ private:
   ExecutionPlan* _plan;
 
   /// @brief fields used in the sort conditions
