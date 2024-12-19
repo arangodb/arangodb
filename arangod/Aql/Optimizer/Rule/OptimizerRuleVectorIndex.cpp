@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////optimizerulevectorinde
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -39,6 +39,7 @@
 #include "Assertions/Assert.h"
 #include "Indexes/Index.h"
 #include "Indexes/VectorIndexDefinition.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
@@ -148,13 +149,42 @@ std::pair<AstNode const*, bool> getApproxNearExpression(
   return {calculationNodeExpressionNode, ascending};
 }
 
+// Currently this only returns nProbe, in the future it might be possible to
+// set other search parameters
+SearchParameters getSearchParameters(
+    auto const* calculationNodeExpressionNode) {
+  auto const* approxFunctionParameters =
+      calculationNodeExpressionNode->getMember(0);
+
+  if (approxFunctionParameters->numMembers() == 3 &&
+      approxFunctionParameters->getMemberUnchecked(2)->isObject()) {
+    auto const searchParametersNode =
+        approxFunctionParameters->getMemberUnchecked(2);
+
+    SearchParameters searchParameters;
+    VPackBuilder builder;
+    searchParametersNode->toVelocyPackValue(builder);
+    if (auto const res = velocypack::deserializeWithStatus(builder.slice(),
+                                                           searchParameters);
+        !res.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          fmt::format("error parsing searchParameters: {}!", res.error()));
+    }
+
+    return searchParameters;
+  }
+
+  return {};
+}
+
 AstNode* getApproxNearAttributeExpression(
     auto const* calculationNodeExpressionNode,
     std::shared_ptr<Index> const& vectorIndex, const auto* outVariable) {
   // one of the params must be a documentField and the other a query point
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
-  TRI_ASSERT(approxFunctionParameters->numMembers() == 2)
+  TRI_ASSERT(approxFunctionParameters->numMembers() > 1)
       << "There can be only two arguments to APPROX_NEAR"
       << ", currently there are "
       << calculationNodeExpressionNode->numMembers();
@@ -256,6 +286,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
         continue;
       }
 
+      auto searchParameters = getSearchParameters(approxNearExpression);
+
       // replace the collection enumeration with the enumerate near node
       // furthermore, we have to remove the calculation node
       const auto* documentVariable = enumerateCollectionNode->outVariable();
@@ -276,7 +308,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit, ascending,
-          limitNode->offset(), enumerateCollectionNode->collection(), index);
+          limitNode->offset(), std::move(searchParameters),
+          enumerateCollectionNode->collection(), index);
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(

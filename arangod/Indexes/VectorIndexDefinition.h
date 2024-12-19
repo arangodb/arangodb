@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <optional>
 #include <vector>
 #include <cstdint>
 
@@ -32,7 +33,24 @@
 namespace arangodb {
 
 // Number of training iterations, in faiss it is 25 by default
-static constexpr int kdefaultTrainingIterations{25};
+static constexpr std::uint64_t kdefaultTrainingIterations{25};
+static constexpr std::uint64_t kdefaultNProbe{1};
+
+struct SearchParameters {
+  std::optional<std::int64_t> nProbe;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, SearchParameters& x) {
+    return f.object(x).fields(
+        f.field("nProbe", x.nProbe)
+            .invariant([](auto value) -> inspection::Status {
+              if (value.has_value() && *value < 1) {
+                return {"nProbe must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }));
+  }
+};
 
 enum class SimilarityMetric : std::uint8_t {
   kL2,
@@ -62,7 +80,8 @@ struct UserVectorIndexDefinition {
   std::uint64_t dimension;
   SimilarityMetric metric;
   std::int64_t nLists;
-  int trainingIterations;
+  std::uint64_t trainingIterations;
+  std::uint64_t defaultNProbe;
 
   bool operator==(UserVectorIndexDefinition const&) const noexcept = default;
 
@@ -77,8 +96,17 @@ struct UserVectorIndexDefinition {
               return inspection::Status::Success{};
             }),
         f.field("metric", x.metric), f.field("nLists", x.nLists),
+        f.field("nLists", x.nLists),
         f.field("trainingIterations", x.trainingIterations)
-            .fallback(kdefaultTrainingIterations));
+            .fallback(kdefaultTrainingIterations),
+        f.field("defaultNProbe", x.defaultNProbe)
+            .fallback(kdefaultNProbe)
+            .invariant([](auto value) -> inspection::Status {
+              if (value == 0) {
+                return {"defaultNProbe must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }));
   }
 };
 

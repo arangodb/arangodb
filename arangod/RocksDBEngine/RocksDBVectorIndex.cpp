@@ -314,6 +314,7 @@ void RocksDBVectorIndex::toVelocyPack(
 
 std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
 RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
+                              SearchParameters const& searchParameters,
                               RocksDBMethods* rocksDBMethods,
                               transaction::Methods* trx,
                               std::shared_ptr<LogicalCollection> collection,
@@ -327,6 +328,11 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   auto flatIndex = createFaissIndex(_quantizer, _definition);
   RocksDBInvertedLists ril(this, collection.get(), trx, rocksDBMethods, _cf,
                            _definition.nLists, flatIndex.code_size);
+  if (searchParameters.nProbe) {
+    flatIndex.nprobe = *searchParameters.nProbe;
+  } else {
+    flatIndex.nprobe = _definition.defaultNProbe;
+  }
   flatIndex.replace_invlists(&ril);
 
   std::vector<float> distances(topK * count);
