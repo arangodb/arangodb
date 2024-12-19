@@ -66,7 +66,7 @@ ReplicationFeature::ReplicationFeature(Server& server)
       _autoRepairRevisionTrees(true),
       _connectionCache{
           server.getFeature<application_features::CommunicationFeaturePhase>(),
-          httpclient::ConnectionCache::Options{5}},
+          httpclient::ConnectionCache::Options{5, 120}},
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),
