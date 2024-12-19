@@ -89,7 +89,10 @@ class LogicalDataSource {
     // object will be saved in storage engine
     PersistenceWithInProgress,
     // object will be replicated or dumped/restored
-    Inventory
+    Inventory,
+    // object contains all data except trainedData from vector
+    // indexes
+    Maintenance,
   };
 
   //////////////////////////////////////////////////////////////////////////////

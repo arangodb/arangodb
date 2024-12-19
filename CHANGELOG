@@ -1,5 +1,7 @@
 devel
 -----
+* Introduce new level of index serialization `Maintenance` that excludes
+  trainedData in vector index.
 
 * Add a vector index based on faiss implementation. The current vector index 
   implementation supports the L2 and cosine metrics. To create a vector index,

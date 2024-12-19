@@ -725,8 +725,11 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                       Serialization ctx, bool) const {
   TRI_ASSERT(_sharding != nullptr);
-  bool const forPersistence = (ctx == Serialization::Persistence ||
-                               ctx == Serialization::PersistenceWithInProgress);
+  bool const forMaintance = ctx == Serialization::Maintenance;
+  bool const forPersistence =
+      (ctx == Serialization::Persistence ||
+       ctx == Serialization::PersistenceWithInProgress || forMaintance);
+
   bool const showInProgress = (ctx == Serialization::PersistenceWithInProgress);
   // We write into an open object
   TRI_ASSERT(build.isOpenObject());
@@ -773,6 +776,11 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   if (forPersistence) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
+  if (forMaintance) {
+    indexFlags = Index::makeFlags(Index::Serialize::Internals,
+                                  Index::Serialize::Maintenance);
+  }
+
   auto filter = [indexFlags, forPersistence, showInProgress](
                     Index const* idx, decltype(Index::makeFlags())& flags) {
     if ((forPersistence || !idx->isHidden()) &&
