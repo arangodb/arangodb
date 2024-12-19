@@ -288,11 +288,11 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
          left.skippedRows == right.skippedRows;
 }
 
-auto operator<<(std::ostream& out,
-                arangodb::aql::AqlCall::LimitPrinter const& limit)
+auto operator<<(std::ostream& out, AqlCall::LimitPrinter const& limit)
     -> std::ostream&;
 
-auto operator<<(std::ostream& out, arangodb::aql::AqlCall const& call)
-    -> std::ostream&;
+auto operator<<(std::ostream& out, AqlCall const& call) -> std::ostream&;
+
+auto to_string(AqlCall const& call) -> std::string;
 
 }  // namespace arangodb::aql
