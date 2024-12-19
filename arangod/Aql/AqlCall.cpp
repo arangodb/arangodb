@@ -285,8 +285,8 @@ auto AqlCall::requestLessDataThan(AqlCall const& other) const noexcept -> bool {
   return needsFullCount() == other.needsFullCount();
 }
 
-auto aql::operator<<(std::ostream& out,
-                     AqlCall::LimitPrinter const& printer) -> std::ostream& {
+auto aql::operator<<(std::ostream& out, AqlCall::LimitPrinter const& printer)
+    -> std::ostream& {
   return std::visit(
       overload{[&out](size_t const& i) -> std::ostream& { return out << i; },
                [&out](AqlCall::Infinity const&) -> std::ostream& {
@@ -301,10 +301,4 @@ auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {
              << ", hardLimit: " << AqlCall::LimitPrinter(call.hardLimit)
              << ", fullCount: " << std::boolalpha << call.fullCount
              << ", skipCount: " << call.getSkipCount() << " }";
-}
-
-auto aql::to_string(const AqlCall& call) -> std::string {
-  auto ss = std::stringstream{};
-  ss << call;
-  return ss.str();
 }
