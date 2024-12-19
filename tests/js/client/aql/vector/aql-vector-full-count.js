@@ -359,7 +359,7 @@ function VectorIndexFullCountWithNotEnoughNListsTestSuite() {
 
         testApproxL2FullCountDoubleLoop: function() {
             const query = `
-                FOR qp in 0..3
+                FOR i in 0..3
                     FOR d IN ${collection.name()}
                     SORT APPROX_NEAR_L2(@qp, d.vector)
                 LIMIT 10

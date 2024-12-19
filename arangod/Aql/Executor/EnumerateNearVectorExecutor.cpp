@@ -70,6 +70,10 @@ void EnumerateNearVectorsExecutor::fillInput(
                                      value.getTypeString()));
   }
 
+  // Must clear the input so the readBatch in RocksDBVectorIndex has the correct
+  // size
+  _inputRowConverted.clear();
+
   auto const dimension = _infos.index->getVectorIndexDefinition().dimension;
   _inputRowConverted.reserve(dimension);
   std::size_t vectorComponentsCount{0};
@@ -125,9 +129,6 @@ void EnumerateNearVectorsExecutor::fillOutput(OutputAqlItemRow& output) {
 
     ++_currentProcessedResultCount;
   }
-  // Must clear the input so the readBatch in RocksDBVectorIndex has the correct
-  // size
-  _inputRowConverted.clear();
 }
 
 std::uint64_t EnumerateNearVectorsExecutor::skipOutput(
@@ -166,19 +167,19 @@ EnumerateNearVectorsExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 }
 
 // The fullCount will not behave as expected when there is less data produced
-// then the limit is. E.g. If nLists is 1, limit is 3, nProbe is 1, fullCount
-// true then the maximum number of docs produces can be 1, but the fullCount
-// returned will not be valid since we cannot produce more documents then the
-// limit, and we will not enter skipRowsRange
+// then the limit is set to. E.g. If nLists is set to the number of documents,
+// meaning every list in faiss index would have 1 document = centroid, and
+// the limit is 3, nProbe is 1, fullCount true, then the maximum number of docs
+// produced can be 1, but the fullCount  returned will not be valid since we cannot
+// produce more documents then the limit, and we will not enter skipRowsRange
 [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall>
 EnumerateNearVectorsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                                             AqlCall& call) {
   auto state = [&] {
-    auto state = inputRange.upstreamState();
     if (hasResults()) {
-      state = ExecutorState::HASMORE;
+      return ExecutorState::HASMORE;
     }
-    return state;
+    return inputRange.upstreamState();
   };
   if (call.getOffset() > 0) {
     auto skipped = std::uint64_t{};
