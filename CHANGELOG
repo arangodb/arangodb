@@ -1,6 +1,12 @@
 devel
 -----
 
+* Improve the use-index-for-sort optimizer rule: If there is a persistent
+  index which starts with the same fields as the sort fields, the index
+  can be used for sorting these first fields that are covered by the index.
+  Subsequent rows with the same value in these fields are then sorted by
+  the rest of the sorting fields using a new grouped sort executor.
+
 * If a coordinator cannot send a heartbeat to the agency, it will shut down
   itself after 30 mins (configurable by the startup option
   `--cluster.no-heartbeat-delay-before-shutdown` whose default is 1800.
