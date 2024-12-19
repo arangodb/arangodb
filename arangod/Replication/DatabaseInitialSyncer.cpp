@@ -316,7 +316,11 @@ arangodb::Result fetchRevisions(
           .param("batchId", std::to_string(config.batch.id))
           .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
       reqOptions.database = config.vocbase.name();
-      reqOptions.timeout = arangodb::network::Timeout(25.0);
+      // We take a relatively generous timeout here, because we have seen
+      // cases in which the leader was under heavy load or RocksDB had
+      // a compaction debt or the user has relatively large documents,
+      // in which case a batch of 5000 can be relatively large.
+      reqOptions.timeout = arangodb::network::Timeout(900.0);
       auto buffer = requestBuilder.steal();
       auto f = arangodb::network::sendRequestRetry(
           pool, config.leader.endpoint, arangodb::fuerte::RestVerb::Put, path,
@@ -472,7 +476,11 @@ arangodb::Result fetchRevisions(
             .param("serverId", state.localServerIdString)
             .param("batchId", std::to_string(config.batch.id))
             .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
-        reqOptions.timeout = arangodb::network::Timeout(25.0);
+        // We take a relatively generous timeout here, because we have seen
+        // cases in which the leader was under heavy load or RocksDB had
+        // a compaction debt or the user has relatively large documents,
+        // in which case a batch of 5000 can be relatively large.
+        reqOptions.timeout = arangodb::network::Timeout(900.0);
         reqOptions.database = config.vocbase.name();
         auto buffer = requestBuilder.steal();
         auto f = arangodb::network::sendRequestRetry(

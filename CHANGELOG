@@ -1,6 +1,13 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* Introduce expiry time for idle TCP/IP connections in the ConnectionCache
+  (for `SimpleHttpClient`) with a default of 120s. This is to prevent
+  errors in replication caused by cloud environments terminating
+  connections. Also add retries in a few places. Also increase the
+  timeout in initial sync to transfer up to 5000 documents from 25s to
+  900s. This addresses BTS-2011, BTS-2042 and BTS-2035.
+
 * Don't cleanup failed agency jobs if they are subjobs of pending jobs.
   This avoids a bug in CleanOutServer jobs, where such a job could complete
   seemingly successfully despite the fact that some MoveShard jobs had 

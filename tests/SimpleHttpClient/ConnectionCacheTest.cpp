@@ -40,7 +40,7 @@ TEST(ConnectionCacheTest, testEmpty) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 120});
 
   auto const& connections = cache.connections();
   EXPECT_EQ(0, connections.size());
@@ -52,7 +52,7 @@ TEST(ConnectionCacheTest, testAcquireInvalidEndpoint) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 120});
 
   ConnectionLease lease;
   EXPECT_EQ(nullptr, lease._connection);
@@ -76,7 +76,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnection) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 120});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -103,7 +103,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseClosedConnectionForce) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 120});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -133,7 +133,7 @@ TEST(ConnectionCacheTest, testAcquireAndReleaseRepeat) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 120});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -193,7 +193,7 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 120});
 
   std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
 
@@ -220,7 +220,7 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
 
     EXPECT_NE(connections.find(endpoint), connections.end());
     EXPECT_EQ(1, connections.find(endpoint)->second.size());
-    EXPECT_EQ(gc1, connections.find(endpoint)->second[0].get());
+    EXPECT_EQ(gc1, connections.find(endpoint)->second[0].connection.get());
   }
 
   cache.release(std::move(lease2._connection), true);
@@ -231,8 +231,8 @@ TEST(ConnectionCacheTest, testSameEndpointMultipleLeases) {
 
     EXPECT_NE(connections.find(endpoint), connections.end());
     EXPECT_EQ(2, connections.find(endpoint)->second.size());
-    EXPECT_EQ(gc1, connections.find(endpoint)->second[0].get());
-    EXPECT_EQ(gc2, connections.find(endpoint)->second[1].get());
+    EXPECT_EQ(gc1, connections.find(endpoint)->second[0].connection.get());
+    EXPECT_EQ(gc2, connections.find(endpoint)->second[1].connection.get());
   }
 }
 
@@ -242,7 +242,7 @@ TEST(ConnectionCacheTest, testDifferentEndpoints) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 120});
 
   std::string endpoint1 = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
   std::string endpoint2 = Endpoint::unifiedForm("tcp://127.0.0.1:12345");
@@ -281,7 +281,7 @@ TEST(ConnectionCacheTest, testSameEndpointDifferentProtocols) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{5});
+      ConnectionCache::Options{5, 120});
 
   std::string endpoint1 = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
   std::string endpoint2 = Endpoint::unifiedForm("ssl://127.0.0.1:9999");
@@ -320,7 +320,7 @@ TEST(ConnectionCacheTest, testDropSuperfluous) {
 
   ConnectionCache cache(
       server.getFeature<application_features::CommunicationFeaturePhase>(),
-      ConnectionCache::Options{3});
+      ConnectionCache::Options{3, 120});
 
   std::string endpoint1 = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
   std::string endpoint2 = Endpoint::unifiedForm("tcp://127.0.0.1:12345");
@@ -352,5 +352,51 @@ TEST(ConnectionCacheTest, testDropSuperfluous) {
 
     EXPECT_NE(connections.find(endpoint2), connections.end());
     EXPECT_EQ(3, connections.find(endpoint2)->second.size());
+  }
+}
+
+TEST(ConnectionCacheTest, testSameEndpointMultipleLeasesOverExpiry) {
+  ArangodServer server(nullptr, nullptr);
+  server.addFeature<application_features::CommunicationFeaturePhase>();
+
+  ConnectionCache cache(
+      server.getFeature<application_features::CommunicationFeaturePhase>(),
+      ConnectionCache::Options{5, 3});
+
+  std::string endpoint = Endpoint::unifiedForm("tcp://127.0.0.1:9999");
+
+  ConnectionLease lease1 = cache.acquire(endpoint, 10.0, 30.0, 10, 0);
+  EXPECT_NE(nullptr, lease1._connection);
+  httpclient::GeneralClientConnection* gc1 = lease1._connection.get();
+  gc1->connect();  // will fail, but that's ok, this produces error details!
+
+  {
+    auto const& connections = cache.connections();
+    EXPECT_EQ(0, connections.size());
+  }
+
+  cache.release(std::move(lease1._connection), true);
+
+  // Connection now in cache, wait for expiry:
+  std::this_thread::sleep_for(std::chrono::seconds(5));
+  // Connection is now expired!
+
+  {
+    auto const& connections = cache.connections();
+    EXPECT_EQ(1, connections.size());
+
+    EXPECT_NE(connections.find(endpoint), connections.end());
+    EXPECT_EQ(1, connections.find(endpoint)->second.size());
+    EXPECT_EQ(gc1, connections.find(endpoint)->second[0].connection.get());
+  }
+
+  lease1 = cache.acquire(endpoint, 10.0, 30.0, 10, 0);
+
+  // We expect a new connection without error details:
+  EXPECT_TRUE(lease1._connection->getErrorDetails().empty());
+  {
+    auto const& connections = cache.connections();
+    EXPECT_EQ(1, connections.size());
+    EXPECT_EQ(0, connections.find(endpoint)->second.size());
   }
 }
