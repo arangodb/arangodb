@@ -1158,7 +1158,7 @@ TEST_F(SupervisionTestClass, cleanup_expired_coordinator) {
       createServerInHealth(_snapshot, "CRDN-1", "FAILED",
                            "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
 
-  NodePtr transient;
+  NodePtr transient = createNode("{}");
   transient =
       createServerInHealth(transient, "CRDN-1", "FAILED",
                            "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
@@ -1176,7 +1176,7 @@ TEST_F(SupervisionTestClass, dont_cleanup_non_expired_coordinator) {
                            timepointToString(std::chrono::system_clock::now()),
                            "2024-12-11T13:06:27Z");
 
-  NodePtr transient;
+  NodePtr transient = createNode("{}");
   transient =
       createServerInHealth(transient, "CRDN-1", "FAILED",
                            "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
@@ -1192,7 +1192,7 @@ TEST_F(SupervisionTestClass, dont_cleanup_non_expired_coordinator2) {
       createServerInHealth(_snapshot, "CRDN-1", "GOOD", "2024-12-11T13:06:27Z",
                            "2024-12-11T13:06:27Z");
 
-  NodePtr transient;
+  NodePtr transient = createNode("{}");
   transient = createServerInHealth(
       transient, "CRDN-1", "FAILED", "2024-12-11T13:06:27Z",
       timepointToString(std::chrono::system_clock::now()));
@@ -1202,7 +1202,7 @@ TEST_F(SupervisionTestClass, dont_cleanup_non_expired_coordinator2) {
 }
 
 TEST_F(SupervisionTestClass, cleanup_expired_dbserver) {
-  NodePtr snapshot;
+  NodePtr snapshot = createNode("{}");
   snapshot = createServerInPlan(snapshot, "DBServers/PRMR-1");
   snapshot = createServerInServersRegistered(snapshot, "PRMR-1");
   snapshot =
@@ -1210,7 +1210,7 @@ TEST_F(SupervisionTestClass, cleanup_expired_dbserver) {
                            "2024-12-11T13:06:27Z");
 
   snapshot = createEmptyPlanCollections(snapshot);
-  NodePtr transient;
+  NodePtr transient = createNode("{}");
   transient =
       createServerInHealth(transient, "PRMR-1", "FAILED",
                            "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
@@ -1221,7 +1221,7 @@ TEST_F(SupervisionTestClass, cleanup_expired_dbserver) {
 }
 
 TEST_F(SupervisionTestClass, dont_cleanup_non_expired_dbserver) {
-  NodePtr snapshot;
+  NodePtr snapshot = createNode("{}");
   snapshot = createServerInPlan(snapshot, "DBServers/PRMR-1");
   snapshot = createServerInServersRegistered(snapshot, "PRMR-1");
   snapshot =
@@ -1229,7 +1229,7 @@ TEST_F(SupervisionTestClass, dont_cleanup_non_expired_dbserver) {
                            timepointToString(std::chrono::system_clock::now()),
                            "2024-12-11T13:06:27Z");
   snapshot = createEmptyPlanCollections(snapshot);
-  NodePtr transient;
+  NodePtr transient = createNode("{}");
   transient =
       createServerInHealth(transient, "PRMR-1", "FAILED",
                            "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
@@ -1239,14 +1239,14 @@ TEST_F(SupervisionTestClass, dont_cleanup_non_expired_dbserver) {
 }
 
 TEST_F(SupervisionTestClass, dont_cleanup_non_expired_dbserver2) {
-  NodePtr snapshot;
+  NodePtr snapshot = createNode("{}");
   snapshot = createServerInPlan(snapshot, "DBServers/PRMR-1");
   snapshot = createServerInServersRegistered(snapshot, "PRMR-1");
   snapshot =
       createServerInHealth(snapshot, "PRMR-1", "GOOD", "2024-12-11T13:06:27Z",
                            "2024-12-11T13:06:27Z");
   snapshot = createEmptyPlanCollections(snapshot);
-  NodePtr transient;
+  NodePtr transient = createNode("{}");
   transient = createServerInHealth(
       transient, "PRMR-1", "FAILED", "2024-12-11T13:06:27Z",
       timepointToString(std::chrono::system_clock::now()));
