@@ -838,6 +838,11 @@ involved attributes are covered by inverted indexes.)");
 avoid unnecessary reads.)");
 #endif
 
+  registerRule("use-vector-index", useVectorIndexRule,
+               OptimizerRule::useVectorIndexForSort,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Apply vector index.)");
+
   registerRule(
       "immutable-search-condition", iresearch::immutableSearchCondition,
       OptimizerRule::immutableSearchConditionRule,

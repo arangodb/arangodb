@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/GatherNode.h"
@@ -81,7 +82,7 @@ using namespace arangodb::basics;
 namespace {
 
 /// @brief NodeType to string mapping
-frozen::unordered_map<int, std::string_view, 36> const kTypeNames{
+frozen::unordered_map<int, std::string_view, 37> const kTypeNames{
     {static_cast<int>(ExecutionNode::SINGLETON), "SingletonNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_COLLECTION),
      "EnumerateCollectionNode"},
@@ -124,6 +125,8 @@ frozen::unordered_map<int, std::string_view, 36> const kTypeNames{
     {static_cast<int>(ExecutionNode::OFFSET_INFO_MATERIALIZE),
      "OffsetMaterializeNode"},
     {static_cast<int>(ExecutionNode::JOIN), "JoinNode"},
+    {static_cast<int>(ExecutionNode::ENUMERATE_NEAR_VECTORS),
+     "EnumerateNearVectorNode"},
 };
 
 }  // namespace
@@ -441,10 +444,11 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new WindowNode(plan, slice, std::move(bounds), rangeVar,
                             aggregateVariables);
     }
-    default: {
-      // should not reach this point
+    case ENUMERATE_NEAR_VECTORS:
+      return new EnumerateNearVectorNode(plan, slice);
+    // should never reach this point
+    default:
       TRI_ASSERT(false);
-    }
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1595,6 +1599,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case TRAVERSAL:
     case INDEX:
     case JOIN:
+    case ENUMERATE_NEAR_VECTORS:
     case SHORTEST_PATH:
     case ENUMERATE_PATHS:
     case REMOTE_SINGLE:
