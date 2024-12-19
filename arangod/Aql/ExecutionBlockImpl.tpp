@@ -114,6 +114,7 @@ class DistinctCollectExecutor;
 class EnumerateCollectionExecutor;
 class EnumerateListExecutor;
 class EnumerateListObjectExecutor;
+class GroupedSortExecutor;
 }  // namespace aql
 
 namespace graph {
@@ -821,6 +822,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   AccuWindowExecutor, WindowExecutor, IndexExecutor,
                   EnumerateCollectionExecutor, DistinctCollectExecutor,
                   ConstrainedSortExecutor, CountCollectExecutor,
+                  GroupedSortExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                   TestLambdaSkipExecutor,
 #endif

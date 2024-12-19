@@ -127,6 +127,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Executor/ExecutorTestHelper.cpp
   Aql/Executor/FilterExecutorTest.cpp
   Aql/Executor/GatherExecutorCommonTest.cpp
+  Aql/Executor/GroupedSortExecutorTest.cpp
   Aql/Executor/HashedCollectExecutorTest.cpp
   Aql/Executor/IdExecutorTest.cpp
   Aql/Executor/InsertExecutorTest.cpp
