@@ -1,6 +1,10 @@
 devel
 -----
 
+* Test a collection before it is leased out from the ConnectionCache.
+  This helps to detect stale TCP/IP or TLS connections residing in the 
+  ConnectionCache and thus prevents network failures due to delays.
+
 * Introduce expiry time for idle TCP/IP connections in the ConnectionCache
   (for `SimpleHttpClient`) with a default of 120s. This is to prevent
   errors in replication caused by cloud environments terminating

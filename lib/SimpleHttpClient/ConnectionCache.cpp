@@ -143,7 +143,11 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
           // (or indeed connectionsForEndpoint.rend()).
         }
         if (connection != nullptr) {
-          break;
+          // Try to test the connection:
+          if (connection->test_idle_connection()) {
+            break;
+          }
+          connection.reset();
         }
       }
     }
