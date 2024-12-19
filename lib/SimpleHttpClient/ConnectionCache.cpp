@@ -118,8 +118,8 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
         TRI_ASSERT(candidate.connection->getEndpoint()->specification() ==
                    endpoint);
 
-        if (std::chrono::steady_clock::now() - candidate.lastUsed <
-            std::chrono::seconds(_options.idleConnectionTimeout)) {
+        auto age = std::chrono::steady_clock::now() - candidate.lastUsed;
+        if (age < std::chrono::seconds(_options.idleConnectionTimeout)) {
           // found a suitable candidate
           connection = std::move(candidate.connection);
           TRI_ASSERT(connection != nullptr);
@@ -143,7 +143,15 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
           // (or indeed connectionsForEndpoint.rend()).
         }
         if (connection != nullptr) {
-          break;
+          // Try to test the connection:
+          if (age < std::chrono::seconds(3) ||
+              connection->test_idle_connection()) {
+            break;
+          }
+          LOG_TOPIC("17273", DEBUG, Logger::COMMUNICATION)
+              << "Connection for endpoint " << endpoint
+              << " failed test, closing it";
+          connection.reset();
         }
       }
     }

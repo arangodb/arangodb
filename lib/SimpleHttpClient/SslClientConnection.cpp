@@ -667,3 +667,11 @@ bool SslClientConnection::cleanUpSocketFlags() {
   }
   return true;
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the connection is still OK
+//////////////////////////////////////////////////////////////////////////////
+
+bool SslClientConnection::test_idle_connection() {
+  return TRI_socket_test_idle_connection(_socket);
+}
