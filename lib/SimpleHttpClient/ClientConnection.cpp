@@ -198,3 +198,11 @@ bool ClientConnection::readable() {
 
   return false;
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return whether the connection is still OK
+//////////////////////////////////////////////////////////////////////////////
+
+bool ClientConnection::test_idle_connection() {
+  return TRI_socket_test_idle_connection(_socket);
+}

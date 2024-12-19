@@ -83,6 +83,37 @@ class ClientConnection final : public GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   bool readable() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief checks whether or not an idle TCP/IP connection is still alive
+  /// This method is intended to be used for TCP/IP connections only and only
+  /// on known idle connections (see below)!
+  /// If the kernel is aware of the fact that the connection is broken,
+  /// this is not immediately visible to the application with any read or
+  /// write operation. Therefore, if a connection has been idle for some time,
+  /// it might have been broken without the application noticing it. This
+  /// can for example happen if the connection is taken from a connection
+  /// cache. This method does a non-invasive non-blocking `recv` call to see
+  /// if the connection is still alive. Interpretation of results:
+  ///   If the recv call returns 0, the connection is broken. In this case we
+  ///   return `false`.
+  ///   If the recv call returns -1, the connection is still alive and errno
+  ///   is set to EAGAIN == EWOULDBLOCK. In this case we return `true`.
+  ///   If something has been received on the socket, the recv call will return
+  ///   a positive number. In this case we return `false` as well, since we
+  ///   are assuming the the connection is idle and bad things would happen
+  ///   if we continue to use it anyway. This includes the following important
+  ///   case: If the connection is actually a TLS connection, the other side
+  ///   might have sent a "Notify: Close" TLS message to close the connection.
+  ///   If the connection was in a connection cache and thus has not read
+  ///   data recently, the TLS layer might not have noticed the close message.
+  ///   As a consequence the actual TCP/IP connection is not yet closed, but
+  ///   it is dead in the water, since the very next time we try to read or
+  ///   write data, the TLS layer will notice the close message and close the
+  ///   connection right away.
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool test_idle_connection() override;
 };
 }  // namespace httpclient
 }  // namespace arangodb
