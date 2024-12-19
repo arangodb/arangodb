@@ -325,13 +325,19 @@ class Index {
     Internals = 8,
     /// @brief serialize for inventory
     Inventory = 16,
+    /// @brief serialize for maintenance work
+    /// This mode should be used to indicate which
+    /// data should be transferred in maintenance service
+    /// For now this is same as Internals mode except for
+    /// vector index where we ignore trainedData
+    Maintenance = 32,
   };
 
   /// @brief helper for building flags
   template<typename... Args>
   static inline constexpr std::underlying_type<Serialize>::type makeFlags(
       Serialize flag, Args... args) {
-    return static_cast<std::underlying_type<Serialize>::type>(flag) +
+    return static_cast<std::underlying_type<Serialize>::type>(flag) |
            makeFlags(args...);
   }
 
