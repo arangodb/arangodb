@@ -51,8 +51,8 @@ var jsUnity = exports.jsUnity = (function () {
       internal.print(a.shift());
 
       var outputWithoutNewline = internal.stopCaptureMode();
-      return outputWithoutNewline.substr(0, outputWithoutNewline.length - 1);
-    });
+      return outputWithoutNewline.substr(0, outputWithoutNewline.length - 1) ;
+    }) + "\n At date:" + jsUnity.env.getDate().toISOString();
 
   }
 
