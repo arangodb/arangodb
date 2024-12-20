@@ -278,7 +278,6 @@ function VectorIndexTestCreationWithVectors() {
                 });
                 fail();
             } catch (e) {
-                print(e)
                 assertEqual(errors.ERROR_BAD_PARAMETER.code,
                     e.errorNum);
             }
