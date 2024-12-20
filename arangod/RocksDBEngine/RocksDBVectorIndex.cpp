@@ -49,11 +49,24 @@
 #include "Indexes/Index.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "faiss/IndexFlat.h"
 #include "faiss/IndexIVFFlat.h"
 #include "faiss/MetricType.h"
+#include "faiss/index_factory.h"
 #include "faiss/utils/distances.h"
+#include "faiss/index_io.h"
+#include "faiss/impl/io.h"
+#include "faiss/IndexIVFPQ.h"
 
 namespace arangodb {
+
+// This assertion must hold for faiss::idx_t to be used
+static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
+              "Faiss id and LocalDocumentId must be of same size");
+
+// This assertion is that faiss::idx_t is the same type as std::int64_t
+static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
+              "Faiss idx_t base type is no longer int64_t");
 
 faiss::MetricType metricToFaissMetric(SimilarityMetric const metric) {
   switch (metric) {
@@ -111,16 +124,8 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
 
 struct RocksDBInvertedLists : faiss::InvertedLists {
   RocksDBInvertedLists(RocksDBVectorIndex* index, LogicalCollection* collection,
-                       transaction::Methods* trx,
-                       RocksDBMethods* rocksDBMethods,
-                       rocksdb::ColumnFamilyHandle* cf, std::size_t nlist,
-                       size_t codeSize)
-      : InvertedLists(nlist, codeSize),
-        _index(index),
-        _collection(collection),
-        _trx(trx),
-        _rocksDBMethods(rocksDBMethods),
-        _cf(cf) {
+                       std::size_t nlist, size_t codeSize)
+      : InvertedLists(nlist, codeSize), _index(index), _collection(collection) {
     use_iterator = true;
     assert(status.ok());
   }
@@ -143,26 +148,7 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
   size_t add_entries(std::size_t listNumber, std::size_t nEntry,
                      faiss::idx_t const* ids,
                      std::uint8_t const* code) override {
-    for (std::size_t i = 0; i < nEntry; i++) {
-      RocksDBKey rocksdbKey;
-      // Can we get away with saving LocalDocumentID in key, maybe we need to
-      // the use IdSelector in options during search
-      auto const docId = LocalDocumentId(*(ids + i));
-      rocksdbKey.constructVectorIndexValue(_index->objectId(), listNumber,
-                                           docId);
-
-      auto const value = RocksDBValue::VectorIndexValue(
-          reinterpret_cast<const char*>(code + i * code_size), code_size);
-      auto const status =
-          _rocksDBMethods->PutUntracked(_cf, rocksdbKey, value.string());
-
-      if (!status.ok()) {
-        // Here we need to throw since there is no way to return the status
-        auto const res = rocksutils::convertStatus(status);
-        THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
-      }
-    }
-    return 0;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   void update_entries(std::size_t /*listNumber*/, std::size_t /*offset*/,
@@ -176,32 +162,19 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
   }
 
   void remove_id(size_t list_no, faiss::idx_t id) {
-    RocksDBKey rocksdbKey;
-    // Can we get away with saving LocalDocumentID in key, maybe we need to
-    // the use IdSelector in options during search
-    auto const docId = LocalDocumentId(id);
-    rocksdbKey.constructVectorIndexValue(_index->objectId(), list_no, docId);
-    auto status = _rocksDBMethods->Delete(_cf, rocksdbKey);
-
-    if (!status.ok()) {
-      // Here we need to throw since there is no way to return the status
-      auto const res = rocksutils::convertStatus(status);
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
-    }
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  faiss::InvertedListsIterator* get_iterator(
-      std::size_t listNumber, void* /*inverted_list_context*/) const override {
-    return new RocksDBInvertedListsIterator(_index, _collection, _trx,
+  faiss::InvertedListsIterator* get_iterator(std::size_t listNumber,
+                                             void* context) const override {
+    auto trx = static_cast<transaction::Methods*>(context);
+    return new RocksDBInvertedListsIterator(_index, _collection, trx,
                                             listNumber, this->code_size);
   }
 
  private:
   RocksDBVectorIndex* _index;
   LogicalCollection* _collection;
-  transaction::Methods* _trx;
-  RocksDBMethods* _rocksDBMethods;
-  rocksdb::ColumnFamilyHandle* _cf;
 };
 
 struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
@@ -256,27 +229,58 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     velocypack::deserialize(data, _trainedData.emplace());
   }
 
-  _quantizer =
-      std::invoke([this]() -> std::variant<faiss::IndexFlat, faiss::IndexFlatL2,
-                                           faiss::IndexFlatIP> {
+  if (_trainedData) {
+    faiss::VectorIOReader reader;
+    // TODO prevent this copy, but instead implement own IOReader, reading
+    // directly from the
+    //  training data.
+    reader.data = _trainedData->codeData;
+    _faissIndex = std::unique_ptr<faiss::IndexIVF>{
+        dynamic_cast<faiss::IndexIVF*>(faiss::read_index(&reader))};
+    ADB_PROD_ASSERT(_faissIndex != nullptr);
+
+    _faissIndex->replace_invlists(
+        new RocksDBInvertedLists(this, &coll, _definition.nLists,
+                                 _faissIndex->code_size),
+        true /* faiss owns the inverted list */);
+  } else {
+    if (_definition.factory) {
+      std::shared_ptr<faiss::Index> index;
+      index.reset(faiss::index_factory(
+          _definition.dimension, _definition.factory->c_str(),
+          metricToFaissMetric(_definition.metric)));
+
+      _faissIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
+      if (_faissIndex == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "Index definition not supported. Expected IVF index.");
+      }
+
+      if (std::size_t(_definition.nLists) != _faissIndex->nlist) {
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_BAD_PARAMETER,
+            "The nLists parameter has to agree with the actual nlists implied "
+            "by the factory string (which is %zu)",
+            _faissIndex->nlist);
+      }
+
+      _definition.nLists = _faissIndex->nlist;
+    } else {
+      auto quantizer = std::invoke([this]() -> std::unique_ptr<faiss::Index> {
         switch (_definition.metric) {
           case arangodb::SimilarityMetric::kL2:
-            return {faiss::IndexFlatL2(_definition.dimension)};
+            return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
           case arangodb::SimilarityMetric::kCosine:
-            return {faiss::IndexFlatIP(_definition.dimension)};
+            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
         }
       });
-  if (_trainedData) {
-    std::visit(
-        [this](auto&& quant) {
-          quant.ntotal = _trainedData->numberOfCentroids;
-          quant.codes = _trainedData->codeData;
-          quant.code_size = _trainedData->codeSize;
-          quant.d = _definition.dimension;
-          quant.metric_type = metricToFaissMetric(_definition.metric);
-          quant.is_trained = true;
-        },
-        _quantizer);
+
+      _faissIndex = std::make_unique<faiss::IndexIVFFlat>(
+          quantizer.get(), _definition.dimension, _definition.nLists,
+          metricToFaissMetric(_definition.metric));
+      _faissIndex->own_fields = nullptr != quantizer.release();
+    }
   }
 }
 
@@ -325,24 +329,19 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
       << ", dimension: " << _definition.dimension
       << ", inputs size: " << inputs.size();
 
-  auto flatIndex = createFaissIndex(_quantizer, _definition);
-  RocksDBInvertedLists ril(this, collection.get(), trx, rocksDBMethods, _cf,
-                           _definition.nLists, flatIndex.code_size);
-  if (searchParameters.nProbe) {
-    flatIndex.nprobe = *searchParameters.nProbe;
-  } else {
-    flatIndex.nprobe = _definition.defaultNProbe;
-  }
-  flatIndex.replace_invlists(&ril);
-
   std::vector<float> distances(topK * count);
   std::vector<faiss::idx_t> labels(topK * count);
 
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, count, inputs.data());
   }
-  flatIndex.search(count, inputs.data(), topK, distances.data(), labels.data(),
-                   nullptr);
+
+  faiss::SearchParametersIVF searchParametersIvf;
+  searchParametersIvf.nprobe =
+      searchParameters.nProbe.value_or(_definition.defaultNProbe);
+  searchParametersIvf.inverted_list_context = trx;
+  _faissIndex->search(count, inputs.data(), topK, distances.data(),
+                      labels.data(), &searchParametersIvf);
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
   if (_definition.metric == SimilarityMetric::kL2) {
@@ -353,21 +352,11 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   return {std::move(labels), std::move(distances)};
 }
 
-/// @brief inserts a document into the index
-Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
-                                  RocksDBMethods* methods,
-                                  LocalDocumentId documentId,
-                                  velocypack::Slice doc,
-                                  OperationOptions const& /*options*/,
-                                  bool /*performChecks*/) {
+Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice doc,
+                                                  std::vector<float>& input) {
   TRI_ASSERT(_fields.size() == 1);
-  auto flatIndex = createFaissIndex(_quantizer, _definition);
-  RocksDBInvertedLists ril(this, nullptr, nullptr, methods, _cf,
-                           _definition.nLists, flatIndex.code_size);
-  flatIndex.replace_invlists(&ril);
-
   VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
-  std::vector<float> input;
+  input.clear();
   input.reserve(_definition.dimension);
   if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
     return {TRI_ERROR_BAD_PARAMETER, res.error()};
@@ -380,15 +369,39 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
                         input.size(), _definition.dimension)};
   }
 
-  auto const docId = static_cast<faiss::idx_t>(documentId.id());
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
-  try {
-    flatIndex.add_with_ids(1, input.data(), &docId);
-  } catch (basics::Exception& e) {
-    return {e.code(), e.message()};
+
+  return {};
+}
+
+/// @brief inserts a document into the index
+Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
+                                  RocksDBMethods* methods,
+                                  LocalDocumentId documentId,
+                                  velocypack::Slice doc,
+                                  OperationOptions const& /*options*/,
+                                  bool /*performChecks*/) {
+  std::vector<float> input;
+  if (auto res = readDocumentVectorData(doc, input); res.fail()) {
+    return res;
   }
+
+  faiss::idx_t listId{0};
+  TRI_ASSERT(_faissIndex->quantizer != nullptr);
+  _faissIndex->quantizer->assign(1, input.data(), &listId);
+
+  RocksDBKey rocksdbKey;
+  rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
+  auto status = methods->Delete(_cf, rocksdbKey);
+
+  std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[_faissIndex->code_size]);
+
+  _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
+
+  auto const value = RocksDBValue::VectorIndexValue(
+      reinterpret_cast<const char*>(flat_codes.get()), _faissIndex->code_size);
 
   return {};
 }
@@ -396,14 +409,9 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                                       rocksdb::Slice upper,
                                       RocksDBMethods* methods) {
-  auto flatIndex = createFaissIndex(_quantizer, _definition);
-  RocksDBInvertedLists ril(this, &_collection, nullptr, methods, _cf,
-                           _definition.nLists, flatIndex.code_size);
-  flatIndex.replace_invlists(&ril);
-
   std::int64_t counter{0};
   std::int64_t trainingDataSize =
-      flatIndex.cp.max_points_per_centroid * _definition.nLists;
+      _faissIndex->cp.max_points_per_centroid * _definition.nLists;
   std::vector<float> trainingData;
   std::vector<float> input;
   input.reserve(_definition.dimension);
@@ -414,20 +422,9 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
 
   while (counter < trainingDataSize && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
-
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
-    VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
-    if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
-                                     "vector must be array of numbers!");
-    }
-
-    if (input.size() != static_cast<std::size_t>(_definition.dimension)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,
-          fmt::format(
-              "vector length must be of size {}, same as index dimension!",
-              _definition.dimension));
+    if (auto res = readDocumentVectorData(doc, input); res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     trainingData.insert(trainingData.end(), input.begin(), input.end());
@@ -444,17 +441,18 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   if (_definition.metric == SimilarityMetric::kCosine) {
     faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
   }
-  flatIndex.train(counter, trainingData.data());
+  _faissIndex->train(counter, trainingData.data());
   LOG_VECTOR_INDEX("a160b", INFO, Logger::FIXME) << "Finished training.";
 
   // Update vector definition data with quantizier data
-  _trainedData = std::visit(
-      [](auto&& quant) {
-        return TrainedData{.codeData = quant.codes,
-                           .numberOfCentroids = quant.ntotal,
-                           .codeSize = quant.code_size};
-      },
-      _quantizer);
+  faiss::VectorIOWriter writer;
+  faiss::write_index(_faissIndex.get(), &writer);
+  _trainedData.emplace().codeData = std::move(writer.data);
+
+  _faissIndex->replace_invlists(
+      new RocksDBInvertedLists(this, &collection(), _definition.nLists,
+                               _faissIndex->code_size),
+      true /* faiss owns the inverted list */);
 }
 
 /// @brief removes a document from the index
@@ -463,34 +461,22 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
-  TRI_ASSERT(_fields.size() == 1);
-  auto flatIndex = createFaissIndex(_quantizer, _definition);
-  RocksDBInvertedLists ril(this, nullptr, nullptr, methods, _cf,
-                           _definition.nLists, flatIndex.code_size);
-  flatIndex.replace_invlists(&ril);
-
-  VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
   std::vector<float> input;
-  input.reserve(_definition.dimension);
-  if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
-    return {TRI_ERROR_BAD_PARAMETER, res.error()};
-  }
-  TRI_ASSERT(input.size() == static_cast<std::size_t>(_definition.dimension));
-
-  if (input.size() != static_cast<std::size_t>(_definition.dimension)) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            "input vector does not have correct dimension"};
+  if (auto res = readDocumentVectorData(doc, input); res.fail()) {
+    return res;
   }
 
-  if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
-  }
-  auto const docId = static_cast<faiss::idx_t>(documentId.id());
+  faiss::idx_t listId{0};
+  TRI_ASSERT(_faissIndex->quantizer != nullptr);
+  _faissIndex->quantizer->assign(1, input.data(), &listId);
+  RocksDBKey rocksdbKey;
+  rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
+  auto status = methods->Delete(_cf, rocksdbKey);
 
-  try {
-    flatIndex.remove_id(input, docId);
-  } catch (basics::Exception& e) {
-    return {e.code(), e.message()};
+  if (!status.ok()) {
+    // Here we need to throw since there is no way to return the status
+    auto const res = rocksutils::convertStatus(status);
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
 
   return {};
@@ -516,7 +502,6 @@ Result RocksDBVectorIndex::ingestVectors(
   // of work.
   LOG_INGESTION << __func__
                 << " BEGIN iter->valid = " << documentIterator->Valid();
-  auto flatIndex = createFaissIndex(_quantizer, _definition);
 
   struct DocumentVectors {
     std::vector<LocalDocumentId> docIds;
@@ -597,13 +582,13 @@ Result RocksDBVectorIndex::ingestVectors(
 
         float* x = item->vectors.data();
         std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
-        flatIndex.quantizer->assign(n, x, coarse_idx.get());
-        auto code_size = flatIndex.code_size;
+        _faissIndex->quantizer->assign(n, x, coarse_idx.get());
+        auto code_size = _faissIndex->code_size;
         std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
 
         // TODO: since we only use IVTFlat this is just copying the data.
         //  Probably we want to use some PQ encoding later on.
-        flatIndex.encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
+        _faissIndex->encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
 
         auto encoded = std::make_unique<EncodedVectors>();
         encoded->docIds = std::move(item->docIds);
@@ -728,11 +713,10 @@ Result RocksDBVectorIndex::ingestVectors(
         for (size_t k = 0; k < item->docIds.size(); k++) {
           key.constructVectorIndexValue(objectId(), item->lists[k],
                                         item->docIds[k]);
-
           auto const value = RocksDBValue::VectorIndexValue(
               reinterpret_cast<const char*>(item->codes.get() +
-                                            k * flatIndex.code_size),
-              flatIndex.code_size);
+                                            k * _faissIndex->code_size),
+              _faissIndex->code_size);
           status = batch.Put(_cf, key.string(), value.string());
           if (not status.ok()) {
             THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
@@ -770,6 +754,7 @@ Result RocksDBVectorIndex::ingestVectors(
   LOG_INGESTION << "ALL THREADS STARTED!";
 
   _threads.clear();
+
   if (firstError.ok()) {
     LOG_VECTOR_INDEX("41658", INFO, Logger::FIXME)
         << "Ingestion done. Encoded " << countDocuments << " vectors in "
@@ -777,7 +762,6 @@ Result RocksDBVectorIndex::ingestVectors(
         << " batches. Pipeline skew: " << counters.readProduceBlocked << " "
         << counters.encodeConsumeBlocked << " " << counters.encodeProduceBlocked
         << " " << counters.writeConsumeBlocked;
-
   } else {
     LOG_VECTOR_INDEX("96a80", ERR, Logger::FIXME)
         << "Ingestion failed: " << firstError;
