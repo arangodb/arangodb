@@ -77,6 +77,8 @@ function VectorIndexL2NprobeTestSuite() {
             }
             collection.insert(docs);
 
+            // big number of nLists causes that results are spread across
+            // multiple nLists and makes probability of returning all the results with 1 nProbe lower
             collection.ensureIndex({
                 name: "vector_l2",
                 type: "vector",
@@ -85,7 +87,7 @@ function VectorIndexL2NprobeTestSuite() {
                 params: {
                     metric: "l2",
                     dimension: dimension,
-                    nLists: 500,
+                    nLists: 300,
                     trainingIterations: 10,
                 },
             });
@@ -100,16 +102,27 @@ function VectorIndexL2NprobeTestSuite() {
             const queryWithoutNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.unIndexedVector, @qp) LIMIT 5 RETURN {key: d._key}";
+                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN {key: d._key}";
             const queryWithNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.unIndexedVector, @qp, {nProbe: 1}) " +
+                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 1}) " +
                 "LIMIT 5 RETURN {key: d._key}";
 
             const bindVars = {
                 qp: randomPoint,
             };
+            const plan = db
+                ._createStatement({
+                    query: queryWithNProbe,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
+            assertEqual(1, indexNodes[0].searchParameters.nProbe);
 
             const resultsWithoutNProbe = db._query(queryWithoutNProbe, bindVars).toArray();
             const resultsWithNProbe = db._query(queryWithoutNProbe, bindVars).toArray();
@@ -120,19 +133,30 @@ function VectorIndexL2NprobeTestSuite() {
             const queryWithoutNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.unIndexedVector, @qp) LIMIT 5 RETURN {key: d._key}";
+                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN {key: d._key}";
             const queryWithNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.unIndexedVector, @qp, {nProbe: 100}) " +
-                "LIMIT 5 RETURN {key: d._key}";
+                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 100}) " +
+                " LIMIT 5 RETURN {key: d._key}";
 
             const bindVars = {
-                qp: randomPoint,
+                qp: randomPoint
             };
+            const plan = db
+                ._createStatement({
+                    query: queryWithNProbe,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
+            assertEqual(100, indexNodes[0].searchParameters.nProbe);
 
             const resultsWithoutNProbe = db._query(queryWithoutNProbe, bindVars).toArray();
-            const resultsWithNProbe = db._query(queryWithoutNProbe, bindVars).toArray();
+            const resultsWithNProbe = db._query(queryWithNProbe, bindVars).toArray();
             assertNotEqual(resultsWithoutNProbe, resultsWithNProbe);
         },
     };
@@ -140,4 +164,3 @@ function VectorIndexL2NprobeTestSuite() {
 
 jsunity.run(VectorIndexL2NprobeTestSuite);
 
-return jsunity.done();

@@ -210,7 +210,7 @@ void replaceGatherNodeVariables(
       // no match. now check all our replacements and compare how
       // their sources are actually calculated (e.g. #2 may mean
       // "foo.bar")
-      cmp = it.toString();
+      cmp = it.toVarAccessString();
       for (auto const& it3 : replacements) {
         auto setter = plan->getVarSetBy(it3.first->id);
         if (setter == nullptr || setter->getType() != EN::CALCULATION) {
@@ -3086,6 +3086,23 @@ struct SortToIndexNode final
     }
   }
 
+  SortElementVector makeIndexSortElements(SortCondition const& sortCondition,
+                                          Variable const* outVariable) {
+    TRI_ASSERT(sortCondition.isOnlyAttributeAccess());
+    SortElementVector elements;
+    elements.reserve(sortCondition.numAttributes());
+    for (auto const& field : sortCondition.sortFields()) {
+      std::vector<std::string> path;
+      path.reserve(field.attributes.size());
+      std::transform(field.attributes.begin(), field.attributes.end(),
+                     std::back_inserter(path),
+                     [](auto const& a) { return a.name; });
+      elements.push_back(
+          SortElement::createWithPath(outVariable, field.order, path));
+    }
+    return elements;
+  }
+
   bool handleEnumerateCollectionNode(
       EnumerateCollectionNode* enumerateCollectionNode) {
     if (_sortNode == nullptr) {
@@ -3152,7 +3169,8 @@ struct SortToIndexNode final
         if (coveredAttributes == sortCondition.numAttributes()) {
           // if the index covers the complete sort condition, we can also remove
           // the sort node
-          n->needsGatherNodeSort(true);
+          n->needsGatherNodeSort(
+              makeIndexSortElements(sortCondition, outVariable));
           _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
         }
       }
@@ -3251,7 +3269,8 @@ struct SortToIndexNode final
       _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
       // we need to have a sorted result later on, so we will need a sorted
       // GatherNode in the cluster
-      indexNode->needsGatherNodeSort(true);
+      indexNode->needsGatherNodeSort(
+          makeIndexSortElements(sortCondition, outVariable));
       _modified = true;
       handled = true;
     }
@@ -3281,7 +3300,8 @@ struct SortToIndexNode final
             indexNode->setAscending(sortCondition.isAscending());
             // we need to have a sorted result later on, so we will need a
             // sorted GatherNode in the cluster
-            indexNode->needsGatherNodeSort(true);
+            indexNode->needsGatherNodeSort(
+                makeIndexSortElements(sortCondition, outVariable));
             _modified = true;
           }
         }
@@ -3353,6 +3373,7 @@ struct SortToIndexNode final
         }
         _sortNode = ExecutionNode::castTo<SortNode*>(en);
         for (auto& it : _sortNode->elements()) {
+          TRI_ASSERT(it.attributePath.empty());
           _sorts.emplace_back(it.var, it.ascending);
         }
         return false;
@@ -3819,33 +3840,30 @@ auto insertGatherNode(
                                                parallelism);
     } break;
     case ExecutionNode::INDEX: {
-      auto elements = SortElementVector{};
       auto idxNode = ExecutionNode::castTo<IndexNode const*>(node);
       auto collection = idxNode->collection();
       TRI_ASSERT(collection != nullptr);
       auto numberOfShards = collection->numberOfShards();
 
-      Variable const* sortVariable = idxNode->outVariable();
-      bool isSortAscending = idxNode->options().ascending;
-      auto allIndexes = idxNode->getIndexes();
-      TRI_ASSERT(!allIndexes.empty());
+      auto elements = [&] {
+        auto allIndexes = idxNode->getIndexes();
+        TRI_ASSERT(!allIndexes.empty());
 
-      // Using Index for sort only works if all indexes are equal.
-      auto const& first = allIndexes[0];
-      // also check if we actually need to bother about the sortedness of the
-      // result, or if we use the index for filtering only
-      if (first->isSorted() && idxNode->needsGatherNodeSort()) {
-        for (auto const& path : first->fieldNames()) {
-          elements.push_back(
-              SortElement::createWithPath(sortVariable, isSortAscending, path));
-        }
-        for (auto const& it : allIndexes) {
-          if (first != it) {
-            elements.clear();
-            break;
+        // Using Index for sort only works if all indexes are equal.
+        auto const& first = allIndexes[0];
+
+        // also check if we actually need to bother about the sortedness of the
+        // result, or if we use the index for filtering only
+        if (first->isSorted() && idxNode->needsGatherNodeSort()) {
+          for (auto const& it : allIndexes) {
+            if (first != it) {
+              return SortElementVector{};
+            }
           }
         }
-      }
+
+        return idxNode->getSortElements();
+      }();
 
       auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
       auto parallelism = GatherNode::evaluateParallelism(*collection);
@@ -4705,8 +4723,9 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             collectNode->groupVariables(copy);
 
             replaceGatherNodeVariables(plan.get(), gatherNode, replacements);
-          } else if (  //! collectNode->groupVariables().empty() &&
-              !collectNode->hasOutVariable()) {
+          } else if (!collectNode->hasOutVariable() ||
+                     collectNode->getOptions()
+                         .aggregateIntoExpressionOnDBServers) {
             // clone a COLLECT v1 = expr, v2 = expr ... operation from the
             // coordinator to the DB server(s), and leave an aggregate COLLECT
             // node on the coordinator for total aggregation
@@ -4742,11 +4761,25 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               outVars.emplace_back(GroupVarInfo{out, it.inVar});
             }
 
+            Variable const* expressionVariable = nullptr;
+            Variable const* outVariable = nullptr;
+            std::vector<std::pair<Variable const*, std::string>> keepVariables;
+
+            bool const aggregateOutVariablesOnDBServers =
+                collectNode->getOptions().aggregateIntoExpressionOnDBServers &&
+                collectNode->hasOutVariable();
+
+            if (aggregateOutVariablesOnDBServers) {
+              outVariable =
+                  plan->getAst()->variables()->createTemporaryVariable();
+              expressionVariable = collectNode->expressionVariable();
+              keepVariables = collectNode->keepVariables();
+            }
+
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
-                dbServerAggVars, nullptr, nullptr,
-                std::vector<std::pair<Variable const*, std::string>>{},
-                collectNode->variableMap());
+                dbServerAggVars, expressionVariable, outVariable,
+                std::move(keepVariables), collectNode->variableMap());
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -4768,6 +4801,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               it.inVar = dbServerAggVars[j].outVar;
               it.type = Aggregator::runOnCoordinatorAs(it.type);
               ++j;
+            }
+
+            if (aggregateOutVariablesOnDBServers) {
+              TRI_ASSERT(outVariable != nullptr);
+              collectNode->setMergeListsAggregation(outVariable);
             }
 
             removeGatherNodeSort = (dbCollectNode->aggregationMethod() !=

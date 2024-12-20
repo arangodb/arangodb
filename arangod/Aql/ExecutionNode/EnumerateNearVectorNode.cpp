@@ -33,8 +33,10 @@
 #include "Aql/Collection.h"
 #include "Aql/Executor/EnumerateNearVectorExecutor.h"
 #include "Aql/Query.h"
+#include "Basics/Exceptions.h"
 #include "Indexes/Index.h"
 #include "Aql/Ast.h"
+#include "Inspection/VPack.h"
 
 namespace arangodb::aql {
 
@@ -45,7 +47,7 @@ constexpr std::string_view kDistanceOutVariable = "distanceOutVariable";
 constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
 constexpr std::string_view kLimit = "limit";
 constexpr std::string_view kOffset = "offset";
-constexpr std::string_view knProbe = "nProbe";
+constexpr std::string_view kSearchParameters = "searchParameters";
 }  // namespace
 
 EnumerateNearVectorNode::EnumerateNearVectorNode(
@@ -168,9 +170,9 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
 
   builder.add(kLimit, VPackValue(_limit));
   builder.add(kOffset, VPackValue(_offset));
-  if (_searchParameters.nProbe) {
-    builder.add(knProbe, *_searchParameters.nProbe);
-  }
+
+  builder.add(VPackValue(kSearchParameters));
+  builder.add(velocypack::serialize(_searchParameters));
 
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
@@ -194,8 +196,11 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _offset(base.get(kOffset).getNumericValue<std::size_t>()) {
   std::string iid = base.get("index").get("id").copyString();
 
-  if (auto ns = base.get(knProbe); ns.isNumber()) {
-    _searchParameters.nProbe = ns.getNumericValue<std::int64_t>();
+  if (auto const res = velocypack::deserializeWithStatus(
+          base.get(kSearchParameters), _searchParameters);
+      !res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "Deserialization of searchParameters has failed!");
   }
 
   _index = collection()->indexByIdentifier(iid);

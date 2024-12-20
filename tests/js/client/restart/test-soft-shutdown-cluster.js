@@ -32,9 +32,9 @@ const db = require("internal").db;
 const time = internal.time;
 const wait = internal.wait;
 const {
-  getCtrlCoordinators
+  getCtrlCoordinators,
+  versionHas
 } = require('@arangodb/test-helper');
-
 function testSuite() {
   let cn = "UnitTestSoftShutdown";
 
@@ -277,7 +277,8 @@ function testSuite() {
       let op = `require("internal").wait(1); return 1;`;
 
       let jobs = [];
-      for (let i = 0; i < 128; ++i) {
+      const jobCount = (versionHas('coverage')) ? 16 : 128;
+      for (let i = 0; i < jobCount; ++i) {
         // that is more than we have threads, so there should be a queue
         let resp = arango.POST_RAW("/_admin/execute", op, {"x-arango-async":"store"});
         jobs.push(resp.headers["x-arango-async-id"]);

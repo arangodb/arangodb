@@ -309,7 +309,8 @@ void RocksDBVectorIndex::toVelocyPack(
   builder.add(VPackValue("params"));
   velocypack::serialize(builder, _definition);
 
-  if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals)) {
+  if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals) &&
+      !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
     builder.add(VPackValue("trainedData"));
     velocypack::serialize(builder, *_trainedData);
   }
@@ -323,7 +324,7 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
                               std::shared_ptr<LogicalCollection> collection,
                               std::size_t count, std::size_t topK) {
   TRI_ASSERT(topK * count == (inputs.size() / _definition.dimension) * topK)
-      << "Number of components does not match vectors dimesnions, topK: "
+      << "Number of components does not match vectors dimensions, topK: "
       << topK << ", count: " << count
       << ", dimension: " << _definition.dimension
       << ", inputs size: " << inputs.size();
