@@ -164,3 +164,4 @@ function VectorIndexL2NprobeTestSuite() {
 
 jsunity.run(VectorIndexL2NprobeTestSuite);
 
+return jsunity.done();
