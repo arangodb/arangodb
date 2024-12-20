@@ -458,6 +458,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
       return false;
     case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -505,6 +506,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
       return false;
     case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -524,6 +526,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
     case ExecutionNode::COLLECT:
       return true;
     case ExecutionNode::SINGLETON:
@@ -838,4 +841,13 @@ std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
     v.emplace_back(_outVariable);
   }
   return v;
+}
+
+void CollectNode::setMergeListsAggregation(Variable const* outVariable) {
+  _aggregateVariables.emplace_back(
+      AggregateVarInfo{_outVariable, outVariable, "MERGE_LISTS"});
+
+  // clear out variable and expression variable
+  _outVariable = _expressionVariable = nullptr;
+  _keepVariables.clear();
 }

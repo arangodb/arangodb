@@ -24,11 +24,12 @@
 
 #include "RocksDBKey.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "Zkd/ZkdHelper.h"
 
+#include <cstdint>
 #include <iostream>
 
 using namespace arangodb;
@@ -145,6 +146,36 @@ void RocksDBKey::constructMdiIndexValue(uint64_t indexId,
   auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
                              value.size()};
   _buffer->append(sv.data(), sv.size());
+  uint64ToPersistent(*_buffer, documentId.id());
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
+                                           std::uint64_t listNumber) {
+  _type = RocksDBEntryType::VectorVPackIndexValue;
+  // Key contains: indexId(uint64_t) + listNumber(uint64_t)
+  size_t keyLength = sizeof(uint64_t) + sizeof(std::uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+
+  uint64ToPersistent(*_buffer, indexId);
+  uint64ToPersistent(*_buffer, listNumber);
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
+                                           std::uint64_t listNumber,
+                                           LocalDocumentId documentId) {
+  _type = RocksDBEntryType::VectorVPackIndexValue;
+  // Key contains: indexId(uint64_t) + listNumber(uint64_t) +
+  // documentId(uint64_t)
+  size_t keyLength = sizeof(uint64_t) + sizeof(std::uint64_t) +
+                     sizeof(LocalDocumentId::BaseType);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+
+  uint64ToPersistent(*_buffer, indexId);
+  uint64ToPersistent(*_buffer, listNumber);
   uint64ToPersistent(*_buffer, documentId.id());
   TRI_ASSERT(_buffer->size() == keyLength);
 }
@@ -629,6 +660,21 @@ zkd::byte_string_view RocksDBKey::mdiIndexCurveValue(
 zkd::byte_string_view RocksDBKey::mdiUniqueIndexCurveValue(
     const rocksdb::Slice& slice) {
   return mdiUniqueIndexCurveValue(slice.data(), slice.size());
+}
+
+std::uint64_t RocksDBKey::vectorVPackIndexListValue(
+    rocksdb::Slice const& slice) {
+  return vectorVPackIndexListValue(slice.data(), slice.size());
+}
+
+std::uint64_t RocksDBKey::vectorVPackIndexListValue(char const* data,
+                                                    std::uint64_t size) {
+  TRI_ASSERT(data != nullptr);
+  constexpr auto vectorIndexKeySize =
+      sizeof(std::uint64_t) + sizeof(std::uint64_t) + sizeof(std::uint64_t);
+  TRI_ASSERT(size == vectorIndexKeySize);
+
+  return uint64FromPersistent(data + size - sizeof(std::uint64_t));
 }
 
 namespace arangodb {

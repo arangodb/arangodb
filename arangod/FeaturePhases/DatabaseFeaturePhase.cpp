@@ -47,6 +47,7 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ArangodServer& server)
   startsAfter<SystemDatabaseFeature, ArangodServer>();
   startsAfter<transaction::ManagerFeature, ArangodServer>();
   startsAfter<ViewTypesFeature, ArangodServer>();
+  startsAfter<VectorIndexFeature, ArangodServer>();
 }
 
 }  // namespace arangodb::application_features
