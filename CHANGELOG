@@ -14,6 +14,10 @@ devel
   RETURN {key: doc._key, distance}
   ````
 
+* Test a collection before it is leased out from the ConnectionCache.
+  This helps to detect stale TCP/IP or TLS connections residing in the 
+  ConnectionCache and thus prevents network failures due to delays.
+
 * Add a vector index based on faiss implementation. The current vector index 
   implementation supports the L2 and cosine metrics. To create a vector index,
   the vector field(s) in the collection must already be populated with data. Here is an
