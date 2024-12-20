@@ -64,6 +64,10 @@ function optimizerIndexesGroupSortTestSuite() {
     if (sort_node.numberOfTopGroupedElements !== numberOfGroupedElements) {
       return false;
     }
+    // for a group sort there is at least one element that is sorted by
+    if (sort_node.elements.length <= numberOfGroupedElements) {
+      return false;
+    }
     return true;
   };
   const execute = function (query, collection_name) {
@@ -91,15 +95,15 @@ function optimizerIndexesGroupSortTestSuite() {
         collection.insert(Array.from({ length: row_count }, (_, index) => index).map(i => {
           let random_val = Math.floor(Math.random() * 10);
           return {
-            first_index_field: i % 9,
-            non_indexed_field: row_count - i - 1,
-            second_index_field: random_val
+            a: i % 9,
+            x: row_count - i - 1,
+            b: random_val
           };
         }));
-        collection.ensureIndex({ type: "persistent", fields: ["first_index_field", "second_index_field"] });
+        collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
         waitForEstimatorSync();
 
-        const query = "FOR doc IN @@collection SORT doc.first_index_field, doc.non_indexed_field RETURN [doc.first_index_field, doc.non_indexed_field, doc.second_index_field]";
+        const query = "FOR doc IN @@collection SORT doc.a, doc.x RETURN [doc.a, doc.x, doc.b]";
         let plan = query_plan(query, collection.name());
         assertTrue(query_plan_uses_index_for_sorting(plan), row_count + ': ' + plan.rules);
         assertTrue(sort_node_does_a_group_sort(plan), row_count + ': ' + plan.nodes);
@@ -113,35 +117,43 @@ function optimizerIndexesGroupSortTestSuite() {
 
     test_uses_index_when_sort_registers_start_with_index_fields: function () {
       const collection = create_collection();
-      collection.ensureIndex({ type: "persistent", fields: ["first_index_field", "second_index_field", "third_index_field"] });
+      collection.insert(Array.from({ length: 10 }, (_, index) => index).map(i => {
+        let random_val = Math.floor(Math.random() * 10);
+        return {
+          a: i % 9,
+          x: 100 - i - 1,
+          b: random_val,
+          c: i
+        };
+      }));
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
       waitForEstimatorSync();
 
-      let plan = query_plan("FOR doc IN @@collection SORT doc.first_index_field RETURN doc", collection.name());
-      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
-      // here the index is already doing all the sorting, therefore no group sort is required
-      assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
+      // queries that are fully covered by index, no additional sorting needed
+      let queries = [
+        "FOR doc IN @@collection SORT doc.a RETURN [doc.a]",
+        "FOR doc IN @@collection SORT doc.a, doc.b RETURN [doc.a, doc.x, doc.b, doc.c]",
+        "FOR doc IN @@collection SORT doc.a, doc.b, doc.c RETURN [doc.a, doc.x, doc.b, doc.c]"
+      ];
+      for (let query of queries) {
+        let plan = query_plan(query, collection.name());
+        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+        // here the index is already doing all the sorting, therefore no group sort is required
+        assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
+        assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+      }
 
-      plan = query_plan("FOR doc IN @@collection SORT doc.first_index_field, doc.second_index_field RETURN doc", collection.name());
-      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
-      // here the index is already doing all the sorting, therefore no group sort is required
-      assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
-
-      plan = query_plan("FOR doc IN @@collection SORT doc.first_index_field, doc.second_index_field, doc.third_index_field RETURN doc", collection.name());
-      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
-      // here the index is already doing all the sorting, therefore no group sort is required
-      assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
-
-      plan = query_plan("FOR doc IN @@collection SORT doc.first_index_field, doc.non_indexed_field RETURN doc", collection.name());
-      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
-      assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
-
-      plan = query_plan("FOR doc IN @@collection SORT doc.first_index_field, doc.non_indexed_field, doc.second_index_field RETURN doc", collection.name());
-      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
-      assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
-
-      plan = query_plan("FOR doc IN @@collection SORT doc.first_index_field, doc.second_index_field, doc.non_indexed_field RETURN doc", collection.name());
-      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
-      assertTrue(sort_node_does_a_group_sort(plan, 2), plan.nodes);
+      queries = [
+        [1, "FOR doc IN @@collection SORT doc.a, doc.x RETURN [doc.a, doc.x, doc.b, doc.c]"],
+        [1, "FOR doc IN @@collection SORT doc.a, doc.x, doc.b RETURN [doc.a, doc.x, doc.b, doc.c]"],
+         [2, "FOR doc IN @@collection SORT doc.a, doc.b, doc.x RETURN [doc.a, doc.x, doc.b, doc.c]"]
+      ];
+      for (let [numberOfGroupedElements, query] of queries) {
+        let plan = query_plan(query, collection.name());
+        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+        assertTrue(sort_node_does_a_group_sort(plan, numberOfGroupedElements), plan.nodes);
+        assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+      }
     },
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -150,14 +162,26 @@ function optimizerIndexesGroupSortTestSuite() {
 
     test_does_not_use_index_when_sort_registers_are_not_in_same_order_as_index: function () {
       const collection = create_collection();
-      collection.ensureIndex({ type: "persistent", fields: ["first_index_field", "second_index_field"] });
+      collection.insert(Array.from({ length: 100 }, (_, index) => index).map(i => {
+        let random_val = Math.floor(Math.random() * 10);
+        return {
+          a: i % 9,
+          x: 100 - i - 1,
+          b: random_val
+        };
+      }));
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
       waitForEstimatorSync();
 
-      let plan = query_plan("FOR doc IN @@collection SORT doc.second_index_field RETURN doc", collection.name());
+      let query = "FOR doc IN @@collection SORT doc.b RETURN [doc.a, doc.x, doc.b]";
+      let plan = query_plan(query, collection.name());
       assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
+      assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
 
-      plan = query_plan("FOR doc IN @@collection SORT doc.second_index_field, doc.first_index_field RETURN doc", collection.name());
+      query = "FOR doc IN @@collection SORT doc.b, doc.a RETURN [doc.a, doc.x, doc.b]";
+      plan = query_plan(query, collection.name());
       assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
+      assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
     },
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -166,21 +190,21 @@ function optimizerIndexesGroupSortTestSuite() {
 
     test_sorting_in_different_direction: function () {
       const collection = create_collection();
-      collection.ensureIndex({ type: "persistent", fields: ["first_index_field", "second_index_field", "third_index_field"] });
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
       waitForEstimatorSync();
 
       // all desc should work
-      let plan = query_plan("FOR doc IN @@collection SORT doc.first_index_field DESC, doc.non_indexed_field DESC RETURN doc", collection.name());
+      let plan = query_plan("FOR doc IN @@collection SORT doc.a DESC, doc.x DESC RETURN doc", collection.name());
       assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
       assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
 
       // TODO all sorted index fields desc should work (currently does not work)
-      plan = query_plan("FOR doc IN @@collection SORT doc.first_index_field DESC, doc.non_indexed_field ASC RETURN doc", collection.name());
+      plan = query_plan("FOR doc IN @@collection SORT doc.a DESC, doc.x ASC RETURN doc", collection.name());
       assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules); // TODO should be true
       // assertTrue(sort_node_does_a_group_sort(plan), plan.nodes); // TODO should work
 
       // combined desc and asc in index fields should not work
-      plan = query_plan("FOR doc IN @@collection SORT doc.first_index_field ASC, doc.second_index_field DESC, doc.non_indexed_field DESC RETURN doc", collection.name());
+      plan = query_plan("FOR doc IN @@collection SORT doc.a ASC, doc.b DESC, doc.x DESC RETURN doc", collection.name());
       assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
     },
 

@@ -1833,7 +1833,7 @@ function processQuery(query, explain, planIndex) {
           '; ' + keyword('GROUPED BY') + ' '
           + node.elements.slice(0, node.numberOfTopGroupedElements).map((element) => variableName(element.inVariable)).join(', ') : '';
         return keyword('SORT') + ' '
-          + node.elements.slice(node.numberOfTopGroupedElements, -1).map((node) => variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC')).join(', ')
+          + node.elements.slice(node.numberOfTopGroupedElements, node.elements.length).map((node) => variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC')).join(', ')
           + groupedElements
           + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
       case 'LimitNode':
