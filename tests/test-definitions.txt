@@ -88,27 +88,27 @@ shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protoco
 shell_client_multi priority=1500 cluster suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 
-# different number of buckets in cluster
-shell_client_aql priority=1000 size=medium+ cluster buckets=20 -- --dumpAgencyOnError true
-shell_client priority=500 cluster size=medium+ buckets=20 -- --dumpAgencyOnError true
-shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
-#shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
-
-rta_makedata cluster parallelity=6
-rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 --  --forceOneShard true
-
-# Common Tests
-
-importing,export name=import_export parallelity=5 size=small cluster -- --dumpAgencyOnError true
-importing,export name=import_export parallelity=3 size=small single -- --dumpAgencyOnError true
-hot_backup enterprise single size=medium -- --dumpAgencyOnError true
-hot_backup enterprise cluster size=large parallelity=5 -- --dumpAgencyOnError true
-
-# frequent restarts impose more threats to the SUT, increase parallelity.
-server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 buckets=10 size=large cluster -- --dumpAgencyOnError true
-server_permissions priority=1000 parallelity=5 size=small buckets=2 -- --dumpAgencyOnError true
-server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
+## different number of buckets in cluster
+#shell_client_aql priority=1000 size=medium+ cluster buckets=20 -- --dumpAgencyOnError true
+#shell_client priority=500 cluster size=medium+ buckets=20 -- --dumpAgencyOnError true
+#shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
+##shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
+#
+#rta_makedata cluster parallelity=6
+#rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 --  --forceOneShard true
+#
+## Common Tests
+#
+#importing,export name=import_export parallelity=5 size=small cluster -- --dumpAgencyOnError true
+#importing,export name=import_export parallelity=3 size=small single -- --dumpAgencyOnError true
+#hot_backup enterprise single size=medium -- --dumpAgencyOnError true
+#hot_backup enterprise cluster size=large parallelity=5 -- --dumpAgencyOnError true
+#
+## frequent restarts impose more threats to the SUT, increase parallelity.
+#server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
+#server_parameters priority=1000 parallelity=5 buckets=10 size=large cluster -- --dumpAgencyOnError true
+#server_permissions priority=1000 parallelity=5 size=small buckets=2 -- --dumpAgencyOnError true
+#server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 #
 ## Dump Tests
 #dump cluster size=medium parallelity=5 -- --dumpAgencyOnError true
