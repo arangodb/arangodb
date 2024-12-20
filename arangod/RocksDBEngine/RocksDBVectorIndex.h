@@ -22,9 +22,6 @@
 
 #pragma once
 
-#include <faiss/invlists/InvertedLists.h>
-#include <faiss/IndexFlat.h>
-#include <faiss/IndexIVFFlat.h>
 #include <type_traits>
 
 #include "RocksDBIndex.h"
@@ -33,7 +30,11 @@
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
-#include "faiss/MetricType.h"
+#include <faiss/MetricType.h>
+
+namespace faiss {
+struct IndexIVF;
+}  // namespace faiss
 
 namespace arangodb {
 class LogicalCollection;
@@ -43,17 +44,6 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
-
-using Quantizer =
-    std::variant<faiss::IndexFlat, faiss::IndexFlatL2, faiss::IndexFlatIP>;
-
-// This assertion must hold for faiss::idx_t to be used
-static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
-              "Faiss id and LocalDocumentId must be of same size");
-
-// This assertion is that faiss::idx_t is the same type as std::int64_t
-static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
-              "Faiss idx_t base type is no longer int64_t");
 
 using VectorIndexLabelId = faiss::idx_t;
 
@@ -94,6 +84,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   Result ingestVectors(rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator>);
 
+  Result readDocumentVectorData(velocypack::Slice doc,
+                                std::vector<float>& vector);
+
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
@@ -105,7 +98,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
  private:
   UserVectorIndexDefinition _definition;
-  Quantizer _quantizer;
+  std::shared_ptr<faiss::IndexIVF> _faissIndex;
   std::optional<TrainedData> _trainedData;
 };
 
