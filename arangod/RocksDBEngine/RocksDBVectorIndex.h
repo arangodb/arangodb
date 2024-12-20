@@ -85,11 +85,14 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   }
 
   std::pair<std::vector<VectorIndexLabelId>, std::vector<float>> readBatch(
-      std::vector<float>& inputs, RocksDBMethods* rocksDBMethods,
-      transaction::Methods* trx, std::shared_ptr<LogicalCollection> collection,
-      std::size_t count, std::size_t topK);
+      std::vector<float>& inputs, SearchParameters const& searchParameters,
+      RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
+      std::shared_ptr<LogicalCollection> collection, std::size_t count,
+      std::size_t topK);
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+
+  Result ingestVectors(rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator>);
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,

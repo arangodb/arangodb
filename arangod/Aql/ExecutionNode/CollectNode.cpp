@@ -842,3 +842,12 @@ std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
   }
   return v;
 }
+
+void CollectNode::setMergeListsAggregation(Variable const* outVariable) {
+  _aggregateVariables.emplace_back(
+      AggregateVarInfo{_outVariable, outVariable, "MERGE_LISTS"});
+
+  // clear out variable and expression variable
+  _outVariable = _expressionVariable = nullptr;
+  _keepVariables.clear();
+}
