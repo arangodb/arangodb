@@ -27,6 +27,7 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
+const randomNumberGeneratorInt = require("@arangodb/testutils/seededRandom");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -36,7 +37,7 @@ function optimizerIndexesGroupSortTestSuite() {
 
   const create_collection = function () {
     db._drop("UnitTestsCollection");
-    return db._create("UnitTestsCollection", {"numberOfShards": 9});
+    return db._create("UnitTestsCollection", { "numberOfShards": 9 });
   };
   const copy_collection = function (collection_name) {
     db._drop("UnitTestsExpectedCollection");
@@ -46,7 +47,7 @@ function optimizerIndexesGroupSortTestSuite() {
   };
   const query_plan = function (query, collection_name) {
     const stmt = db._createStatement(query);
-    stmt.bind({"@collection": collection_name});
+    stmt.bind({ "@collection": collection_name });
     return stmt.explain().plan;
   };
   const query_plan_uses_index_for_sorting = function (plan) {
@@ -71,12 +72,14 @@ function optimizerIndexesGroupSortTestSuite() {
     return true;
   };
   const execute = function (query, collection_name) {
-    return db._query(query, {"@collection": collection_name}).toArray();
+    return db._query(query, { "@collection": collection_name }).toArray();
   };
   const expected_results = function (query, collection_name) {
     const c_expected = copy_collection(collection_name);
-    return db._query(query, {"@collection": c_expected.name()}).toArray();
+    return db._query(query, { "@collection": c_expected.name() }).toArray();
   };
+
+  const seed = 18430991235;
 
   return {
 
@@ -90,17 +93,17 @@ function optimizerIndexesGroupSortTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     test_indexed_group_sort_gives_same_results_as_unindexed_sort: function () {
+      let randomNumber = randomNumberGeneratorInt(seed);
       for (let row_count of [1, 2, 10, 100, 800, 1000, 1001, 2501, 10000]) {
         const collection = create_collection();
-        collection.insert(Array.from({length: row_count}, (_, index) => index).map(i => {
-          let random_val = Math.floor(Math.random() * 10);
+        collection.insert(Array.from({ length: row_count }, (_, index) => index).map(i => {
           return {
             a: i % 9,
             x: row_count - i - 1,
-            b: random_val
+            b: randomNumber()
           };
         }));
-        collection.ensureIndex({type: "persistent", fields: ["a", "b"]});
+        collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
         waitForEstimatorSync();
 
         const query = "FOR doc IN @@collection SORT doc.a, doc.x RETURN [doc.a, doc.x, doc.b]";
@@ -116,17 +119,17 @@ function optimizerIndexesGroupSortTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     test_uses_index_when_sort_registers_start_with_index_fields: function () {
+      let randomNumber = randomNumberGeneratorInt(seed);
       const collection = create_collection();
-      collection.insert(Array.from({length: 10}, (_, index) => index).map(i => {
-        let random_val = Math.floor(Math.random() * 10);
+      collection.insert(Array.from({ length: 10 }, (_, index) => index).map(i => {
         return {
           a: i % 9,
           x: 100 - i - 1,
-          b: random_val,
+          b: randomNumber(),
           c: i
         };
       }));
-      collection.ensureIndex({type: "persistent", fields: ["a", "b", "c"]});
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
       waitForEstimatorSync();
 
       // queries that are fully covered by index, no additional sorting needed
@@ -161,24 +164,24 @@ function optimizerIndexesGroupSortTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     test_does_not_use_index_when_sort_registers_are_not_in_same_order_as_index: function () {
+      let randomNumber = randomNumberGeneratorInt(seed);
       const collection = create_collection();
-      collection.insert(Array.from({length: 100}, (_, index) => index).map(i => {
-        let random_val = Math.floor(Math.random() * 10);
+      collection.insert(Array.from({ length: 100 }, (_, index) => index).map(i => {
         return {
           a: i % 9,
           x: 100 - i - 1,
-          b: random_val
+          b: randomNumber()
         };
       }));
-      collection.ensureIndex({type: "persistent", fields: ["a", "b"]});
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
       waitForEstimatorSync();
 
-      let query = "FOR doc IN @@collection SORT doc.b RETURN [doc.a, doc.x, doc.b]";
+      let query = "FOR doc IN @@collection SORT doc.b RETURN [doc.b]";
       let plan = query_plan(query, collection.name());
       assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
       assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
 
-      query = "FOR doc IN @@collection SORT doc.b, doc.a RETURN [doc.a, doc.x, doc.b]";
+      query = "FOR doc IN @@collection SORT doc.b, doc.a RETURN [doc.b, doc.a]";
       plan = query_plan(query, collection.name());
       assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
       assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
@@ -190,7 +193,7 @@ function optimizerIndexesGroupSortTestSuite() {
 
     test_sorting_in_different_direction: function () {
       const collection = create_collection();
-      collection.ensureIndex({type: "persistent", fields: ["a", "b", "c"]});
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
       waitForEstimatorSync();
 
       // all desc should work
@@ -221,8 +224,8 @@ function optimizerIndexesGroupSortMultiTestSuite() {
 
   const permute = function* (permutation) {
     var length = permutation.length,
-        c = new Array(length).fill(0),
-        i = 1, k, p;
+      c = new Array(length).fill(0),
+      i = 1, k, p;
 
     yield permutation.slice();
     while (i < length) {
@@ -269,8 +272,8 @@ function optimizerIndexesGroupSortMultiTestSuite() {
       db._createDatabase(database);
       db._useDatabase(database);
 
-      const c = db._create(collection, {numberOfShards: 3});
-      c.ensureIndex({type: 'persistent', fields: coveredFields});
+      const c = db._create(collection, { numberOfShards: 3 });
+      c.ensureIndex({ type: 'persistent', fields: coveredFields });
       const query = fields.map(f => `FOR ${f} IN 1..${numberOfSteps}`).join(" ") + " INSERT {" + fields.join(",") + `} INTO ${collection}`;
       db._query(query);
     },
@@ -304,11 +307,11 @@ function optimizerIndexesGroupSortMultiTestSuite() {
       // first check that the result is correct
       for (let k = 1; k < result.length; k++) {
         assertTrue(compareDocuments(sortFields, result[k - 1], result[k]),
-            `sort keys = ${sortFields}, docA = ${JSON.stringify(result[k - 1])}, docB = ${JSON.stringify(result[k])}`);
+          `sort keys = ${sortFields}, docA = ${JSON.stringify(result[k - 1])}, docB = ${JSON.stringify(result[k])}`);
       }
 
       // check if we use the correct group sort
-      const plan = db._createStatement({query}).explain().plan;
+      const plan = db._createStatement({ query }).explain().plan;
       const sortNodes = plan.nodes.filter(x => x.type === "SortNode");
 
       const commonPrefix = computeCommonPrefix(sortFields, coveredFields);
