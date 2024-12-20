@@ -933,6 +933,35 @@ struct AggregatorBitXOr : public AggregatorBitFunction<BitFunctionXOr> {
       : AggregatorBitFunction(opts) {}
 };
 
+struct AggregatorMergeLists : public Aggregator {
+  explicit AggregatorMergeLists(velocypack::Options const* opts)
+      : Aggregator(opts) {}
+
+  ~AggregatorMergeLists() { reset(); }
+
+  // cppcheck-suppress virtualCallInConstructor
+  void reset() override final { builder.clear(); }
+
+  void reduce(AqlValue const& cmpValue) override {
+    AqlValueMaterializer materializer(_vpackOptions);
+    VPackSlice s = materializer.slice(cmpValue);
+    if (!builder.isOpenArray()) {
+      builder.openArray();
+    }
+    builder.add(VPackArrayIterator(s));
+  }
+
+  AqlValue get() const override final {
+    if (!builder.isOpenArray()) {
+      builder.openArray();
+    }
+    builder.close();
+    return AqlValue(builder.slice());
+  }
+
+  mutable arangodb::velocypack::Builder builder;
+};
+
 /// @brief all available aggregators with their meta data
 std::unordered_map<std::string_view, AggregatorInfo> const aggregators = {
     {"LENGTH",
@@ -1031,6 +1060,9 @@ std::unordered_map<std::string_view, AggregatorInfo> const aggregators = {
     {"BIT_XOR",
      {std::make_shared<GenericFactory<AggregatorBitXOr>>(), doesRequireInput,
       official, "BIT_XOR", "BIT_XOR"}},
+    {"MERGE_LISTS",
+     {std::make_shared<GenericFactory<AggregatorMergeLists>>(),
+      doesRequireInput, internalOnly, "", "MERGE_LISTS"}},
 };
 
 /// @brief aliases (user-visible) for aggregation functions
