@@ -145,15 +145,9 @@ class CountCollectExecutorTest
   }
 };
 
-template<size_t... vs>
-const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
-const SplitType splitStep = SplitType{step};
-
 INSTANTIATE_TEST_CASE_P(CountCollectExecutor, CountCollectExecutorTest,
-                        ::testing::Values(SplitType{std::monostate()},
-                                          splitStep<1>, splitIntoBlocks<2, 3>,
-                                          splitStep<2>));
+                        ::testing::Values(noSplit, splitStep<1>,
+                                          splitIntoBlocks<2, 3>, splitStep<2>));
 
 TEST_P(CountCollectExecutorTest, empty_input) {
   makeExecutorTestHelper<1, 1>()

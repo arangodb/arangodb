@@ -37,18 +37,12 @@
 namespace arangodb::aql {
 
 SortExecutorInfos::SortExecutorInfos(
-    RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
-    RegIdFlatSet const& registersToClear,
-    std::vector<SortRegister> sortRegisters, std::size_t limit,
-    AqlItemBlockManager& manager, QueryContext& query,
-    TemporaryStorageFeature& tempStorage, velocypack::Options const* options,
-    ResourceMonitor& resourceMonitor, size_t spillOverThresholdNumRows,
-    size_t spillOverThresholdMemoryUsage, bool stable)
-    : _numInRegs(nrInputRegisters),
-      _numOutRegs(nrOutputRegisters),
-      _registersToClear(registersToClear.begin(), registersToClear.end()),
-      _limit(limit),
-      _manager(manager),
+    std::vector<SortRegister> sortRegisters, AqlItemBlockManager& manager,
+    QueryContext& query, TemporaryStorageFeature& tempStorage,
+    velocypack::Options const* options, ResourceMonitor& resourceMonitor,
+    size_t spillOverThresholdNumRows, size_t spillOverThresholdMemoryUsage,
+    bool stable)
+    : _manager(manager),
       _tempStorage(tempStorage),
       _query(query),
       _vpackOptions(options),
@@ -59,54 +53,6 @@ SortExecutorInfos::SortExecutorInfos(
       _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
 }
-
-RegisterCount SortExecutorInfos::numberOfInputRegisters() const {
-  return _numInRegs;
-}
-
-RegisterCount SortExecutorInfos::numberOfOutputRegisters() const {
-  return _numOutRegs;
-}
-
-RegIdFlatSet const& SortExecutorInfos::registersToClear() const {
-  return _registersToClear;
-}
-
-std::vector<SortRegister> const& SortExecutorInfos::sortRegisters()
-    const noexcept {
-  return _sortRegisters;
-}
-
-bool SortExecutorInfos::stable() const { return _stable; }
-
-velocypack::Options const* SortExecutorInfos::vpackOptions() const noexcept {
-  return _vpackOptions;
-}
-
-arangodb::ResourceMonitor& SortExecutorInfos::getResourceMonitor() const {
-  return _resourceMonitor;
-}
-
-AqlItemBlockManager& SortExecutorInfos::itemBlockManager() noexcept {
-  return _manager;
-}
-
-TemporaryStorageFeature&
-SortExecutorInfos::getTemporaryStorageFeature() noexcept {
-  return _tempStorage;
-}
-
-QueryContext& SortExecutorInfos::getQuery() const noexcept { return _query; }
-
-size_t SortExecutorInfos::spillOverThresholdNumRows() const noexcept {
-  return _spillOverThresholdNumRows;
-}
-
-size_t SortExecutorInfos::spillOverThresholdMemoryUsage() const noexcept {
-  return _spillOverThresholdMemoryUsage;
-}
-
-size_t SortExecutorInfos::limit() const noexcept { return _limit; }
 
 SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos) : _infos(infos) {
   _storageBackend = std::make_unique<SortedRowsStorageBackendMemory>(_infos);
