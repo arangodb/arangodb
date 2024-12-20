@@ -397,8 +397,6 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
 
   std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[_faissIndex->code_size]);
 
-  // TODO: since we only use IVTFlat this is just copying the data.
-  //  Probably we want to use some PQ encoding later on.
   _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
 
   auto const value = RocksDBValue::VectorIndexValue(

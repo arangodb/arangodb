@@ -8,7 +8,14 @@ import sys
 import os
 import multiprocessing as mp
 import requests
+import logging
 
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s.%(msecs)03d %(levelname)s %(module)s - %(funcName)s: %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+)
 
 # Test Script for the vector index
 # Uses hdf5 datasets from this repository
@@ -19,27 +26,25 @@ import requests
 #   --endpoint http://localhost:8529 --number-of-shards 3 --index.metric l2 --index.factory IVF3800_HNSW32,PQ480x8 \
 #   --index.nlists 3800  --drop-collection --nprobe 1 2 4 8 16 32 64 128 256
 
-def log(msg):
-    print(datetime.datetime.now().isoformat(), msg)
 
-
-def import_vectors(endpoints, auth, collection, database, data, number_of_threads=32):
+def import_vectors(endpoints, auth, collection, database, data, number_of_workers=32):
     total_size = len(data)
 
-    log(f"Importing {total_size} vectors")
+    logging.info(f"Importing {total_size} vectors")
 
     def check_status(response):
         if response.status_code != 202:
             raise RuntimeError(f"Writing documents failed: status={response.status_code}, response={response.text}")
 
-    def write_parts(p):
-        ep = endpoints[p % len(endpoints)]
+    def write_parts(worked_id):
+        ep = endpoints[worked_id % len(endpoints)]
         url = os.path.join(ep, f"_db/{database}/_api/document/{collection}?silent=true")
 
         docs = []
-        i = p * total_size // number_of_threads
-        for v in data[p * total_size // number_of_threads:(p + 1) * total_size // number_of_threads]:
-            docs.append({"v": v.tolist(), "i": i})
+        number_of_docs_per_worker = total_size // number_of_workers
+        i = worked_id * number_of_docs_per_worker
+        for value in data[worked_id * number_of_docs_per_worker:(worked_id + 1) * number_of_docs_per_worker]:
+            docs.append({"v": value.tolist(), "i": i})
             i += 1
 
             if len(docs) == 1000:
@@ -55,19 +60,19 @@ def import_vectors(endpoints, auth, collection, database, data, number_of_thread
 
     start = datetime.datetime.now()
 
-    for k in range(number_of_threads):
+    for k in range(number_of_workers):
         t = mp.Process(target=write_parts, args=[k])
         t.start()
         threads.append(t)
 
-    log(f"Started {number_of_threads} import threads.")
+    logging.info(f"Started {number_of_workers} import workers.")
     for t in threads:
         t.join()
         if t.exitcode != 0:
             raise RuntimeError("Child process failed")
 
     duration = datetime.datetime.now() - start
-    log(f"Import done - took {duration}")
+    logging.info(f"Import done - took {duration}")
 
 
 def parse_hdf5_file(file):
@@ -132,7 +137,7 @@ def drop_collection(ep, auth, collection, database):
     if response.status_code not in [200, 404]:
         raise RuntimeError(f"failed to drop collection: {response.text}")
     if response.status_code == 200:
-        log("Dropped existing collection")
+        logging.info("Dropped existing collection")
 
 
 def create_collection(ep, auth, collection, database, number_of_shards):
@@ -142,7 +147,7 @@ def create_collection(ep, auth, collection, database, number_of_shards):
 
     if response.status_code != 200:
         raise RuntimeError(f"failed to create collection: {response.text}")
-    log("Collection created")
+    logging.info("Collection created")
 
 
 def ensure_index(ep, auth, collection, database, metric, nlists, dim, factory):
@@ -162,7 +167,7 @@ def ensure_index(ep, auth, collection, database, metric, nlists, dim, factory):
     if factory is not None:
         index_definition["params"]["factory"] = factory
 
-    log(f"Start creating vector index, definition = {index_definition}")
+    logging.info(f"Start creating vector index, definition = {index_definition}")
     start = datetime.datetime.now()
     response = requests.post(os.path.join(ep, f"_db/{database}/_api/index?collection={collection}"), auth=auth,
                              json=index_definition)
@@ -205,7 +210,7 @@ def run_single_test(ep, auth, collection, database, metric, test_vector, neighbo
     result = run_query(ep, auth, database, query, {"q": test_vector.tolist()})
     total_time = time.perf_counter() - start
 
-    found_neighbors = set((n for n, d in result))
+    found_neighbors = set((n for n, _ in result))
     actual_neighbors = set(neighbors)
 
     true_positives = found_neighbors.intersection(actual_neighbors)
@@ -248,7 +253,7 @@ def real_main():
     train, test, neighbors, distances = parse_hdf5_file(args["input"])
 
     dim = len(train[0])
-    log(f"Dataset dimension is {dim}")
+    logging.info(f"Dataset dimension is {dim}")
 
     collection = args["collection"]
     database = args["database"]
