@@ -217,5 +217,5 @@ std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(
   TRI_ASSERT(position < _fields.size());
 
   SortField const& field = _fields[position];
-  return std::make_tuple(field.variable, field.node, field.order);
+  return std::make_tuple(field.variable, field.node, field.asc);
 }

@@ -103,7 +103,7 @@ class SortCondition {
     Variable const* variable;
     std::vector<arangodb::basics::AttributeName> attributes;
     AstNode const* node;
-    bool order;
+    bool asc;
   };
 
   std::vector<SortField> const& sortFields() const noexcept { return _fields; }

@@ -3098,7 +3098,7 @@ struct SortToIndexNode final
                      std::back_inserter(path),
                      [](auto const& a) { return a.name; });
       elements.push_back(
-          SortElement::createWithPath(outVariable, field.order, path));
+          SortElement::createWithPath(outVariable, field.asc, path));
     }
     return elements;
   }
