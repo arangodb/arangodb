@@ -54,6 +54,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "RocksDBVectorIndex.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -346,6 +347,12 @@ static Result fillIndex(
       RocksDBColumnFamilyManager::Family::Documents);
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
+  if (ridx.type() == arangodb::Index::TRI_IDX_TYPE_VECTOR_INDEX) {
+    it->Seek(bounds.start());
+    return dynamic_cast<RocksDBVectorIndex&>(ridx).ingestVectors(rootDB,
+                                                                 std::move(it));
+  }
+
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 #ifdef USE_ENTERPRISE
   if (arangodb::rocksutils::rocksDBEndianness == RocksDBEndianness::Little &&
@@ -368,6 +375,59 @@ static Result fillIndex(
                                 std::move(it), std::move(progress));
 #endif
   return res;
+}
+
+void RocksDBBuilderIndex::beforeCreate() {
+  RocksDBIndex* internal = _wrapped.get();
+  TRI_ASSERT(_wrapped.get() != nullptr);
+  rocksdb::Snapshot const* snap = nullptr;
+
+  auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
+  rocksdb::DB* db = engine.db()->GetRootDB();
+
+  auto& metric = _collection.vocbase()
+                     .server()
+                     .getFeature<metrics::MetricsFeature>()
+                     .serverStatistics()
+                     ._transactionsStatistics._restTransactionsMemoryUsage;
+  RocksDBMethodsMemoryTracker memoryTracker(
+      nullptr, &metric,
+      /*granularity*/ RocksDBMethodsMemoryTracker::kDefaultGranularity);
+
+  rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
+  RocksDBBatchedMethods methods(&batch, memoryTracker);
+
+  // From fillIndex
+  auto const mode =
+      snap == nullptr ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
+  LogicalCollection const& coll = internal->collection();
+  transaction::Options trxOpts;
+  trxOpts.requiresReplication = false;
+  auto const origin = transaction::OperationOriginREST{"preparing index"};
+  trx::BuilderTrx trx(
+      transaction::StandaloneContext::create(coll.vocbase(), origin), coll,
+      mode, trxOpts);
+  if (mode == AccessMode::Type::EXCLUSIVE) {
+    trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
+  }
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
+
+  auto const* rcoll = static_cast<RocksDBCollection const*>(
+      internal->collection().getPhysical());
+  auto const bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
+  rocksdb::Slice upper(bounds.end());
+
+  rocksdb::ReadOptions ro(/*cksum*/ false, /*cache*/ false);
+  ro.snapshot = snap;
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
+
+  rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, docCF));
+
+  it->Seek(bounds.start());
+  _wrapped->prepareIndex(std::move(it), upper, &methods);
 }
 
 Result RocksDBBuilderIndex::fillIndexForeground(

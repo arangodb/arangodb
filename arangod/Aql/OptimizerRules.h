@@ -415,4 +415,7 @@ void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void pushLimitIntoIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                             OptimizerRule const&);
 
+void useVectorIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                        OptimizerRule const&);
+
 }  // namespace arangodb::aql
