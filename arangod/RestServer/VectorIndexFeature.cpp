@@ -31,9 +31,6 @@ VectorIndexFeature::VectorIndexFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
-#if ARANGODB_ENABLE_MAINTAINER_MODE
-  _useVectorIndex = true;
-#endif
 }
 
 void VectorIndexFeature::collectOptions(
