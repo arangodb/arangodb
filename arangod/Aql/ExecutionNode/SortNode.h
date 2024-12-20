@@ -34,6 +34,7 @@
 
 #include <velocypack/Slice.h>
 
+#include <cstddef>
 #include <string>
 #include <string_view>
 
@@ -47,7 +48,7 @@ class SortNode : public ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  enum class SorterType { kStandard, kConstrainedHeap };
+  enum class SorterType { kStandard, kGrouped, kConstrainedHeap };
 
   SortNode(ExecutionPlan* plan, ExecutionNodeId id, SortElementVector elements,
            bool stable);
@@ -69,6 +70,11 @@ class SortNode : public ExecutionNode {
 
   /// @brief whether or not the sort is stable
   bool isStable() const noexcept { return _stable; }
+
+  void setGroupedElements(uint64_t numberOfTopGroupedElements) {
+    TRI_ASSERT(numberOfTopGroupedElements <= _elements.size());
+    _numberOfTopGroupedElements = numberOfTopGroupedElements;
+  }
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -127,6 +133,8 @@ class SortNode : public ExecutionNode {
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
   SortElementVector _elements;
+
+  uint64_t _numberOfTopGroupedElements = 0;
 
   /// whether or not the sort is stable
   bool _stable;
