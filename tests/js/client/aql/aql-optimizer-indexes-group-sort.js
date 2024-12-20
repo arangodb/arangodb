@@ -27,7 +27,7 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
-const randomNumberGeneratorInt = require("@arangodb/testutils/seededRandom");
+const { randomNumberGeneratorInt } = require("@arangodb/testutils/seededRandom");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
