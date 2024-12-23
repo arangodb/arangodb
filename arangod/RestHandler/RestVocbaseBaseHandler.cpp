@@ -216,7 +216,6 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
               .share()) {
   TRI_ASSERT(request->requestContext());
 }
-}
 
 auto RestVocbaseBaseHandler::prepareExecute(bool isContinue)
     -> std::vector<std::shared_ptr<LogContext::Values>> {

@@ -43,6 +43,9 @@ namespace arangodb {
 namespace rest {
 class RestHandler;
 }
+// TODO remove RestCursorHandler after replacing RestHandler's runHandler
+//      function with the one from RestCursorHandler.
+class RestCursorHandler;
 
 /// @brief LogContext allows to add thread-local contextual information which
 /// will automatically be included in all log messages.
@@ -130,6 +133,9 @@ class LogContext {
     // ScopedValues to be created in some inner function where they might cause
     // significant performance overhead.
     friend class arangodb::rest::RestHandler;
+    // TODO remove RestCursorHandler after replacing RestHandler's runHandler
+    //      function with the one from RestCursorHandler.
+    friend class arangodb::RestCursorHandler;
 
     friend struct LogContextTest;
   };

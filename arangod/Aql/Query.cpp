@@ -768,7 +768,7 @@ auto Query::execute(QueryResult& queryResult)
         //      a callback on a new scheduler thread that possibly just
         //      increases a counter is unnecessarily complicated.
         sharedState()->setWakeupHandler(
-            withLogContext([&] { return wakeupCounter.notify(); }));
+            withLogContext([&] { return suspensionSemaphore.notify(); }));
         auto guard = arangodb::scopeGuard(
             [&]() noexcept { sharedState()->resetWakeupHandler(); });
 
@@ -783,7 +783,7 @@ auto Query::execute(QueryResult& queryResult)
           while (state == ExecutionState::WAITING) {
             // Get the number of wakeups. We execute the query up to that many
             // times before suspending again.
-            auto n = co_await wakeupCounter.await();
+            auto n = co_await suspensionSemaphore.await();
             for (auto i = 0; i < n && state == ExecutionState::WAITING; ++i) {
               auto skipped = SkipResult{};
               std::tie(state, skipped, block) = engine->execute(::defaultStack);
@@ -869,10 +869,10 @@ auto Query::execute(QueryResult& queryResult)
           queryResult.extra = std::make_shared<VPackBuilder>();
         }
 
-        auto semaphore = WakeupCounter{};
+        auto suspensionSemaphore = SuspensionSemaphore{};
         // TODO get an awaitable from the sharedstate instead, if possible
         sharedState()->setWakeupHandler(
-            withLogContext([&] { return semaphore.notify(); }));
+            withLogContext([&] { return suspensionSemaphore.notify(); }));
         auto guard = arangodb::scopeGuard(
             [&]() noexcept { sharedState()->resetWakeupHandler(); });
 
@@ -882,7 +882,7 @@ auto Query::execute(QueryResult& queryResult)
           state = finalize(*queryResult.extra);
           TRI_ASSERT(state != ExecutionState::HASMORE);
           if (state == ExecutionState::WAITING) {
-            co_await semaphore.await();
+            co_await suspensionSemaphore.await();
           }
         }
         bool isCachingAllowed = !_transactionContext->isStreaming() ||
