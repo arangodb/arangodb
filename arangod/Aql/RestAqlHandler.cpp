@@ -474,13 +474,13 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
   return RestStatus::DONE;
 }
 
-void RestAqlHandler::prepareExecute(bool isContinue) {
-  RestVocbaseBaseHandler::prepareExecute(isContinue);
+auto RestAqlHandler::prepareExecute(bool isContinue)
+    -> std::vector<std::shared_ptr<LogContext::Values>> {
+  auto vector = RestVocbaseBaseHandler::prepareExecute(isContinue);
   if (_logContextQueryIdValue != nullptr) {
-    TRI_ASSERT(_logContextQueryIdEntry == nullptr);
-    _logContextQueryIdEntry =
-        LogContext::Current::pushValues(_logContextQueryIdValue);
+    vector.emplace_back(_logContextQueryIdValue);
   }
+  return vector;
 }
 
 // executes the handler

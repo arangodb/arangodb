@@ -33,7 +33,9 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
 #include "Async/async.h"
+#include "Async/SuspensionSemaphore.h"
 #include "Basics/ScopeGuard.h"
+#include "Logger/LogContext.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -91,11 +93,11 @@ uint64_t QueryResultCursor::memoryUsage() const noexcept {
 /// @brief return the cursor size
 size_t QueryResultCursor::count() const { return _iterator.size(); }
 
-std::pair<ExecutionState, Result> QueryResultCursor::dump(
-    VPackBuilder& builder) {
+auto QueryResultCursor::dump(VPackBuilder& builder)
+    -> async<std::pair<ExecutionState, Result>> {
   // This cursor cannot block, result already there.
   auto res = dumpSync(builder);
-  return {ExecutionState::DONE, res};
+  co_return {ExecutionState::DONE, res};
 }
 
 Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
@@ -249,8 +251,8 @@ uint64_t QueryStreamCursor::memoryUsage() const noexcept {
   return value;
 }
 
-std::pair<ExecutionState, Result> QueryStreamCursor::dump(
-    VPackBuilder& builder) {
+auto QueryStreamCursor::dump(VPackBuilder& builder)
+    -> async<std::pair<ExecutionState, Result>> {
   TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumped") {
     debugKillQuery();
   }
@@ -268,7 +270,7 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(
       << "executing query " << _id << ": '"
       << _query->queryString().extract(1024) << "'";
 
-  auto guard = scopeGuard([&]() noexcept {
+  auto const guardV8Executor = scopeGuard([&]() noexcept {
     try {
       if (_query) {
         _query->exitV8Executor();
@@ -278,43 +280,58 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(
           << "Failed to exit V8 context: " << ex.what();
     }
   });
+  auto suspensionSemaphore = SuspensionSemaphore{};
+  // TODO Get an awaitable from the SharedState instead: Having it execute a
+  //      callback on a new scheduler thread that possibly just increases a
+  //      counter is unnecessarily complicated.
+  setWakeupHandler(
+      withLogContext([&] { return suspensionSemaphore.notify(); }));
+  auto const guardWakeupHandler =
+      arangodb::scopeGuard([&]() noexcept { resetWakeupHandler(); });
 
   try {
-    ExecutionState state = prepareDump();
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+    auto state = ExecutionState::WAITING;
+    // Skip the first await.
+    suspensionSemaphore.notify();
+    while (state == ExecutionState::WAITING) {
+      // Get the number of wakeups. We execute the query up to that many times
+      // before suspending again.
+      auto n = co_await suspensionSemaphore.await();
+      for (auto i = 0; i < n && state == ExecutionState::WAITING; ++i) {
+        state = prepareDump();
+      }
     }
 
     // writeResult will perform async finalize
-    return {writeResult(builder), TRI_ERROR_NO_ERROR};
+    co_return {writeResult(builder), TRI_ERROR_NO_ERROR};
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
-    return {
+    co_return {
         ExecutionState::DONE,
         Result(ex.code(), absl::StrCat("AQL: ", ex.message(),
                                        QueryExecutionState::toStringWithPrefix(
                                            _query->state())))};
   } catch (std::bad_alloc const&) {
     this->setDeleted();
-    return {ExecutionState::DONE,
-            Result(TRI_ERROR_OUT_OF_MEMORY,
-                   absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                                QueryExecutionState::toStringWithPrefix(
-                                    _query->state())))};
+    co_return {ExecutionState::DONE,
+               Result(TRI_ERROR_OUT_OF_MEMORY,
+                      absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                                   QueryExecutionState::toStringWithPrefix(
+                                       _query->state())))};
   } catch (std::exception const& ex) {
     this->setDeleted();
-    return {
+    co_return {
         ExecutionState::DONE,
         Result(TRI_ERROR_INTERNAL,
                absl::StrCat(ex.what(), QueryExecutionState::toStringWithPrefix(
                                            _query->state())))};
   } catch (...) {
     this->setDeleted();
-    return {ExecutionState::DONE,
-            Result(TRI_ERROR_INTERNAL,
-                   absl::StrCat(TRI_errno_string(TRI_ERROR_INTERNAL),
-                                QueryExecutionState::toStringWithPrefix(
-                                    _query->state())))};
+    co_return {ExecutionState::DONE,
+               Result(TRI_ERROR_INTERNAL,
+                      absl::StrCat(TRI_errno_string(TRI_ERROR_INTERNAL),
+                                   QueryExecutionState::toStringWithPrefix(
+                                       _query->state())))};
   }
 }
 

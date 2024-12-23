@@ -36,8 +36,8 @@ class RestSimpleHandler : public RestCursorHandler {
                     aql::QueryRegistry*);
 
  public:
-  RestStatus execute() override final;
-  char const* name() const override final { return "RestSimpleHandler"; }
+  auto executeAsync() -> futures::Future<futures::Unit> final;
+  char const* name() const final { return "RestSimpleHandler"; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -47,7 +47,7 @@ class RestSimpleHandler : public RestCursorHandler {
   ///        queryResult.
   //////////////////////////////////////////////////////////////////////////////
 
-  RestStatus handleQueryResult() override final;
+  auto handleQueryResult() -> async<void> final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle result of a remove-by-keys query
@@ -65,13 +65,13 @@ class RestSimpleHandler : public RestCursorHandler {
   /// @brief execute a batch remove operation
   //////////////////////////////////////////////////////////////////////////////
 
-  futures::Future<RestStatus> removeByKeys(VPackSlice const&);
+  auto removeByKeys(VPackSlice const&) -> async<void>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute a batch lookup operation
   //////////////////////////////////////////////////////////////////////////////
 
-  futures::Future<RestStatus> lookupByKeys(VPackSlice const&);
+  auto lookupByKeys(VPackSlice const&) -> async<void>;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

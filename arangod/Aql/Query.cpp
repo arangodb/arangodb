@@ -47,6 +47,7 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/Timing.h"
 #include "Async/async.h"
+#include "Async/SuspensionSemaphore.h"
 #include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
@@ -685,7 +686,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 }
 
 /// @brief execute an AQL query
-ExecutionState Query::execute(QueryResult& queryResult) {
+auto Query::execute(QueryResult& queryResult)
+    -> futures::Future<futures::Unit> {
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
@@ -716,41 +718,20 @@ ExecutionState Query::execute(QueryResult& queryResult) {
               // Note: cached queries were never done with dirty reads,
               // so we can always hand out the result here without extra
               // HTTP header.
-              return ExecutionState::DONE;
+              co_return;
             }
             // if no permissions, fall through to regular querying
           }
         }
 
-        TRI_ASSERT(!_prepareResult.valid());
-        // will throw if it fails
-        auto prepare = [this]() -> futures::Future<futures::Unit> {
-          if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-            co_return co_await prepareQuery();
-          }
-          co_return;
-        }();
-        _executionPhase = ExecutionPhase::PREPARE;
-        if (!prepare.isReady()) {
-          std::move(prepare).thenFinal(
-              [this, sqs = sharedState()](auto&& tryResult) {
-                sqs->executeAndWakeup([this, tryResult = std::move(tryResult)] {
-                  _prepareResult = std::move(tryResult);
-                  TRI_ASSERT(_prepareResult.valid());
-                  return true;
-                });
-              });
-          return ExecutionState::WAITING;
-        } else {
-          _prepareResult = std::move(prepare).result();
-          TRI_ASSERT(_prepareResult.valid());
+        if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
+                      // will throw if it fails
+          co_await prepareQuery();
         }
+        _executionPhase = ExecutionPhase::PREPARE;
       }
         [[fallthrough]];
       case ExecutionPhase::PREPARE: {
-        TRI_ASSERT(_prepareResult.valid());
-        _prepareResult.throwIfFailed();
-
         logAtStart();
         if (_planCacheKey.has_value()) {
           queryResult.planCacheKey = _planCacheKey->hash();
@@ -782,15 +763,33 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // this is the RegisterId our results can be found in
         RegisterId const resultRegister = engine->resultRegister();
 
+        auto suspensionSemaphore = SuspensionSemaphore{};
+        // TODO Get an awaitable from the SharedState instead: Having it execute
+        //      a callback on a new scheduler thread that possibly just
+        //      increases a counter is unnecessarily complicated.
+        sharedState()->setWakeupHandler(
+            withLogContext([&] { return wakeupCounter.notify(); }));
+        auto guard = arangodb::scopeGuard(
+            [&]() noexcept { sharedState()->resetWakeupHandler(); });
+
         // We loop as long as we are having ExecState::DONE returned
         // In case of WAITING we return, this function is repeatable!
         // In case of HASMORE we loop
         while (true) {
-          auto const& [state, skipped, block] = engine->execute(::defaultStack);
-          // The default call asks for No skips.
-          TRI_ASSERT(skipped.nothingSkipped());
-          if (state == ExecutionState::WAITING) {
-            return state;
+          auto state = ExecutionState::WAITING;
+          auto block = SharedAqlItemBlockPtr{};
+          // Skip the first await.
+          suspensionSemaphore.notify();
+          while (state == ExecutionState::WAITING) {
+            // Get the number of wakeups. We execute the query up to that many
+            // times before suspending again.
+            auto n = co_await wakeupCounter.await();
+            for (auto i = 0; i < n && state == ExecutionState::WAITING; ++i) {
+              auto skipped = SkipResult{};
+              std::tie(state, skipped, block) = engine->execute(::defaultStack);
+              // The default call asks for no skips.
+              TRI_ASSERT(skipped.nothingSkipped());
+            }
           }
 
           // block == nullptr => state == DONE
@@ -828,6 +827,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           if (state == ExecutionState::DONE) {
             break;
           }
+          TRI_ASSERT(state == ExecutionState::HASMORE);
         }
 
         // must close result array here because it must be passed as a closed
@@ -868,8 +868,23 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         if (!queryResult.extra) {
           queryResult.extra = std::make_shared<VPackBuilder>();
         }
+
+        auto semaphore = WakeupCounter{};
+        // TODO get an awaitable from the sharedstate instead, if possible
+        sharedState()->setWakeupHandler(
+            withLogContext([&] { return semaphore.notify(); }));
+        auto guard = arangodb::scopeGuard(
+            [&]() noexcept { sharedState()->resetWakeupHandler(); });
+
         // will set warnings, stats, profile and cleanup plan and engine
-        auto state = finalize(*queryResult.extra);
+        auto state = ExecutionState::HASMORE;
+        while (state != ExecutionState::DONE) {
+          state = finalize(*queryResult.extra);
+          TRI_ASSERT(state != ExecutionState::HASMORE);
+          if (state == ExecutionState::WAITING) {
+            co_await semaphore.await();
+          }
+        }
         bool isCachingAllowed = !_transactionContext->isStreaming() ||
                                 _trx->state()->isReadOnlyTransaction();
         if (state == ExecutionState::DONE && _cacheEntry != nullptr &&
@@ -878,7 +893,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
         }
 
-        return state;
+        co_return;
       }
     }
     // We should not be able to get here
@@ -904,7 +919,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     queryResult.reset(result());
   }
 
-  return ExecutionState::DONE;
+  co_return;
 }
 
 /**
@@ -918,23 +933,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
  */
 QueryResult Query::executeSync() {
   _executeCallerWaiting = ExecuteCallerWaiting::Synchronously;
-  std::shared_ptr<SharedQueryState> ss;
-
   QueryResult queryResult;
-  do {
-    auto state = execute(queryResult);
-    if (state != ExecutionState::WAITING) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return queryResult;
-    }
-
-    if (!ss) {
-      ss = sharedState();
-    }
-
-    TRI_ASSERT(ss != nullptr);
-    ss->waitForAsyncWakeup();
-  } while (true);
+  execute(queryResult).waitAndGet();
+  return queryResult;
 }
 
 #ifdef USE_V8

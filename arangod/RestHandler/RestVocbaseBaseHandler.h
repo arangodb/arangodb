@@ -129,9 +129,8 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
     _context.cancel();
   }
 
-  void prepareExecute(bool isContinue) override;
-
-  void shutdownExecute(bool isFinalized) noexcept override;
+  [[nodiscard]] auto prepareExecute(bool isContinue)
+      -> std::vector<std::shared_ptr<LogContext::Values>> override;
 
  protected:
   /// @brief returns the short id of the server which should handle this request
@@ -206,7 +205,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
  private:
   std::shared_ptr<LogContext::Values> _scopeVocbaseValues;
-  LogContext::EntryPtr _logContextVocbaseEntry;
 };
 
 }  // namespace arangodb

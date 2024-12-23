@@ -70,8 +70,8 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   size_t count() const override final;
 
-  std::pair<aql::ExecutionState, Result> dump(
-      velocypack::Builder& result) override final;
+  auto dump(velocypack::Builder& result)
+      -> async<std::pair<aql::ExecutionState, Result>> override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 
@@ -124,8 +124,10 @@ class QueryStreamCursor final : public Cursor {
 
   size_t count() const override final { return 0; }
 
-  std::pair<ExecutionState, Result> dump(
-      velocypack::Builder& result) override final;
+  // must not return WAITING
+  // TODO change the type of ExecutionState
+  auto dump(velocypack::Builder& result)
+      -> async<std::pair<ExecutionState, Result>> override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 

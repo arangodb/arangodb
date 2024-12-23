@@ -183,7 +183,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   async<void> prepareQuery();
 
   /// @brief execute an AQL query
-  ExecutionState execute(QueryResult& res);
+  auto execute(QueryResult& res) -> futures::Future<futures::Unit>;
 
   /// @brief execute an AQL query and block this thread in case we
   ///        need to wait.
@@ -509,10 +509,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief was this query killed (can only be set once)
   std::atomic<bool> _queryKilled;
-
-  // This holds a possible exception of prepareQuery, so it can be re-thrown at
-  // the right moment.
-  futures::Try<futures::Unit> _prepareResult;
 };
 
 }  // namespace aql

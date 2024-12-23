@@ -420,7 +420,8 @@ void RestHandler::runHandlerStateMachine() {
   while (true) {
     switch (_state) {
       case HandlerState::PREPARE:
-        prepareEngine();
+        // TODO
+        std::ignore = prepareEngine();
         break;
 
       case HandlerState::EXECUTE: {
@@ -483,7 +484,8 @@ void RestHandler::runHandlerStateMachine() {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-void RestHandler::prepareEngine() {
+auto RestHandler::prepareEngine()
+    -> std::vector<std::shared_ptr<LogContext::Values>> {
   // set end immediately so we do not get negative statistics
   _statistics.SET_REQUEST_START_END();
 
@@ -492,13 +494,13 @@ void RestHandler::prepareEngine() {
 
     Exception err(TRI_ERROR_REQUEST_CANCELED);
     handleError(err);
-    return;
+    return {};
   }
 
   try {
-    prepareExecute(false);
+    auto logScope = prepareExecute(false);
     _state = HandlerState::EXECUTE;
-    return;
+    return logScope;
   } catch (Exception const& ex) {
     handleError(ex);
   } catch (std::exception const& ex) {
@@ -510,15 +512,15 @@ void RestHandler::prepareEngine() {
   }
 
   _state = HandlerState::FAILED;
+  return {};
 }
 
-void RestHandler::prepareExecute(bool isContinue) {
-  _logContextEntry = LogContext::Current::pushValues(_logContextScopeValues);
+auto RestHandler::prepareExecute(bool isContinue)
+    -> std::vector<std::shared_ptr<LogContext::Values>> {
+  return {_logContextScopeValues};
 }
 
-void RestHandler::shutdownExecute(bool isFinalized) noexcept {
-  LogContext::Current::popEntry(_logContextEntry);
-}
+void RestHandler::shutdownExecute(bool isFinalized) noexcept {}
 
 /// Execute the rest handler state machine. Retry the wakeup,
 /// returns true if _state == PAUSED, false otherwise
@@ -551,7 +553,8 @@ void RestHandler::executeEngine(bool isContinue) {
     if (isContinue) {
       // only need to run prepareExecute() again when we are continuing
       // otherwise prepareExecute() was already run in the PREPARE phase
-      prepareExecute(true);
+      // TODO
+      std::ignore = prepareExecute(true);
       result = continueExecute();
     } else {
       result = execute();
@@ -756,7 +759,6 @@ RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
 }
 
 RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
-  TRI_ASSERT(_executionMutex.is_locked());
   if (f.isReady()) {             // fast-path out
     f.result().throwIfFailed();  // just throw the error upwards
     return f.waitAndGet();

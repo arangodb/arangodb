@@ -103,7 +103,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 
   /// Execute the rest handler state machine
-  void runHandler(std::function<void(rest::RestHandler*)> responseCallback);
+  virtual void runHandler(
+      std::function<void(rest::RestHandler*)> responseCallback);
 
   /// Execute the rest handler state machine. Retry the wakeup,
   /// returns true if _state == PAUSED, false otherwise
@@ -123,7 +124,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RequestLane determineRequestLane();
 
-  virtual void prepareExecute(bool isContinue);
+  [[nodiscard]] virtual auto prepareExecute(bool isContinue)
+      -> std::vector<std::shared_ptr<LogContext::Values>>;
   virtual RestStatus execute();
   virtual futures::Future<futures::Unit> executeAsync();
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
@@ -176,10 +178,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// handler state machine
   HandlerState state() const { return _state; }
 
- private:
+ protected:  // TODO make private again
   void runHandlerStateMachine();
 
-  void prepareEngine();
+  [[nodiscard]] auto prepareEngine()
+      -> std::vector<std::shared_ptr<LogContext::Values>>;
   /// @brief Executes the RestHandler
   ///        May set the state to PAUSED, FINALIZE or FAILED
   ///        If isContinue == true it will call continueExecute()
@@ -201,7 +204,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ArangodServer& _server;
   RequestStatistics::Item _statistics;
 
- private:
+ protected:  // TODO make private again
   basics::UnshackledMutex _executionMutex{};
   // an ever-increasing id, marking the owning function frame of the
   // _executionMutex. this allows waitForFuture() to adopt the lock acquired by
@@ -211,6 +214,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::atomic_uint8_t _executionCounter{0};
   RestStatus _followupRestStatus;
 
+ public:  // TODO remove public
   std::function<void(rest::RestHandler*)> _sendResponseCallback;
 
   uint64_t _handlerId;
@@ -228,7 +232,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestLane _lane;
 
   std::shared_ptr<LogContext::Values> _logContextScopeValues;
-  LogContext::EntryPtr _logContextEntry;
 
  protected:
   metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;
