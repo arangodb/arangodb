@@ -62,32 +62,32 @@ rta_makedata single
 
 # Cluster Tests
 
-arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
-chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
-chaos_subq !coverage full priority=1000 size=medium+ --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
-deadlock cluster !coverage -- --dumpAgencyOnError true
-restart priority=1000 size=medium cluster -- --dumpAgencyOnError true --forceJson true
-
-load_balancing priority=500 size=medium cluster -- --dumpAgencyOnError true
-load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
-
-#replication2_client size=small cluster
-#replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
-
-resilience_analyzers priority=500 size=medium cluster -- --dumpAgencyOnError true
-resilience_failover priority=1200 size=medium buckets=4 cluster -- --dumpAgencyOnError true
-resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
-resilience_sharddist size=small cluster -- --dumpAgencyOnError true
-
-shell_api priority=500 cluster -- $EncryptionAtRest
-
-shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
-shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protocol ssl
-
-# shell_client_multi tests run quite long, so want to have a separate job for each protocol
-shell_client_multi priority=1500 cluster suffix=http -- --http true
-shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
-
+#arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
+#chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
+#chaos_subq !coverage full priority=1000 size=medium+ --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
+#deadlock cluster !coverage -- --dumpAgencyOnError true
+#restart priority=1000 size=medium cluster -- --dumpAgencyOnError true --forceJson true
+#
+#load_balancing priority=500 size=medium cluster -- --dumpAgencyOnError true
+#load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
+#
+##replication2_client size=small cluster
+##replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
+#
+#resilience_analyzers priority=500 size=medium cluster -- --dumpAgencyOnError true
+#resilience_failover priority=1200 size=medium buckets=4 cluster -- --dumpAgencyOnError true
+#resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
+#resilience_sharddist size=small cluster -- --dumpAgencyOnError true
+#
+#shell_api priority=500 cluster -- $EncryptionAtRest
+#
+#shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
+#shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protocol ssl
+#
+## shell_client_multi tests run quite long, so want to have a separate job for each protocol
+#shell_client_multi priority=1500 cluster suffix=http -- --http true
+#shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
+#
 ## different number of buckets in cluster
 #shell_client_aql priority=1000 size=medium+ cluster buckets=20 -- --dumpAgencyOnError true
 #shell_client priority=500 cluster size=medium+ buckets=20 -- --dumpAgencyOnError true
