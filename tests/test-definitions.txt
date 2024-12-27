@@ -62,23 +62,23 @@ rta_makedata single
 
 # Cluster Tests
 
-#arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
-#chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
-#chaos_subq !coverage full priority=1000 size=medium+ --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
-#deadlock cluster !coverage -- --dumpAgencyOnError true
-#restart priority=1000 size=medium cluster -- --dumpAgencyOnError true --forceJson true
-#
-#load_balancing priority=500 size=medium cluster -- --dumpAgencyOnError true
-#load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
-#
-##replication2_client size=small cluster
-##replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
-#
-#resilience_analyzers priority=500 size=medium cluster -- --dumpAgencyOnError true
-#resilience_failover priority=1200 size=medium buckets=4 cluster -- --dumpAgencyOnError true
-#resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
-#resilience_sharddist size=small cluster -- --dumpAgencyOnError true
-#
+arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
+chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
+chaos_subq !coverage full priority=1000 size=medium+ --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
+deadlock cluster !coverage -- --dumpAgencyOnError true
+restart priority=1000 size=medium cluster -- --dumpAgencyOnError true --forceJson true
+
+load_balancing priority=500 size=medium cluster -- --dumpAgencyOnError true
+load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
+
+#replication2_client size=small cluster
+#replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
+
+resilience_analyzers priority=500 size=medium cluster -- --dumpAgencyOnError true
+resilience_failover priority=1200 size=medium buckets=4 cluster -- --dumpAgencyOnError true
+resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
+resilience_sharddist size=small cluster -- --dumpAgencyOnError true
+
 #shell_api priority=500 cluster -- $EncryptionAtRest
 #
 #shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
