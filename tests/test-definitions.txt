@@ -103,35 +103,35 @@ importing,export name=import_export parallelity=5 size=small cluster -- --dumpAg
 importing,export name=import_export parallelity=3 size=small single -- --dumpAgencyOnError true
 hot_backup enterprise single size=medium -- --dumpAgencyOnError true
 hot_backup enterprise cluster size=large parallelity=5 -- --dumpAgencyOnError true
-#
-## frequent restarts impose more threats to the SUT, increase parallelity.
-#server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
-#server_parameters priority=1000 parallelity=5 buckets=10 size=large cluster -- --dumpAgencyOnError true
-#server_permissions priority=1000 parallelity=5 size=small buckets=2 -- --dumpAgencyOnError true
-#server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
-#
-## Dump Tests
-#dump cluster size=medium parallelity=5 -- --dumpAgencyOnError true
-#dump single size=medium -- --dumpAgencyOnError true
-#dump cluster suffix=_vpack size=medium parallelity=5 -- --dumpAgencyOnError true --dumpVPack true
-#dump single suffix=_vpack size=medium -- --dumpAgencyOnError true --dumpVPack true
-## BTS-1852 enable after fix:
-## dump size=medium enterprise cluster name=dump_singleshard_cluster -- --forceOneShard true --cluster true --dumpAgencyOnError true
-#dump_authentication size=medium -- --dumpAgencyOnError true
-#dump_jwt size=medium -- --dumpAgencyOnError true
-#dump_multiple single size=medium -- --dumpAgencyOnError true
-#dump_multiple cluster size=medium parallelity=5 -- --dumpAgencyOnError true
-#dump_non_parallel size=medium -- --dumpAgencyOnError true
-#dump_maskings  enterprise size=medium -- --dumpAgencyOnError true
-#dump_encrypted enterprise size=medium -- --dumpAgencyOnError true
-#dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
-#dump_mixed_single_cluster size=large -- --dumpAgencyOnError true
-#dump_mixed_cluster_single suffix=vpack size=medium -- --dumpAgencyOnError true --dumpVPack true
-#dump_mixed_single_cluster suffix=vpack size=large -- --dumpAgencyOnError true --dumpVPack true
-## takes long, needs to go first. However, doesn't utilize the SUT hard.
-#dump_with_crashes single size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
-#dump_with_crashes full cluster size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
-#dump_with_crashes_non_parallel size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true 
+
+# frequent restarts impose more threats to the SUT, increase parallelity.
+server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 buckets=10 size=large cluster -- --dumpAgencyOnError true
+server_permissions priority=1000 parallelity=5 size=small buckets=2 -- --dumpAgencyOnError true
+server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
+
+# Dump Tests
+dump cluster size=medium parallelity=5 -- --dumpAgencyOnError true
+dump single size=medium -- --dumpAgencyOnError true
+dump cluster suffix=_vpack size=medium parallelity=5 -- --dumpAgencyOnError true --dumpVPack true
+dump single suffix=_vpack size=medium -- --dumpAgencyOnError true --dumpVPack true
+# BTS-1852 enable after fix:
+# dump size=medium enterprise cluster name=dump_singleshard_cluster -- --forceOneShard true --cluster true --dumpAgencyOnError true
+dump_authentication size=medium -- --dumpAgencyOnError true
+dump_jwt size=medium -- --dumpAgencyOnError true
+dump_multiple single size=medium -- --dumpAgencyOnError true
+dump_multiple cluster size=medium parallelity=5 -- --dumpAgencyOnError true
+dump_non_parallel size=medium -- --dumpAgencyOnError true
+dump_maskings  enterprise size=medium -- --dumpAgencyOnError true
+dump_encrypted enterprise size=medium -- --dumpAgencyOnError true
+dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
+dump_mixed_single_cluster size=large -- --dumpAgencyOnError true
+dump_mixed_cluster_single suffix=vpack size=medium -- --dumpAgencyOnError true --dumpVPack true
+dump_mixed_single_cluster suffix=vpack size=large -- --dumpAgencyOnError true --dumpVPack true
+# takes long, needs to go first. However, doesn't utilize the SUT hard.
+dump_with_crashes single size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
+dump_with_crashes full cluster size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
+dump_with_crashes_non_parallel size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true 
 #
 ## Audit Tests
 #audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
