@@ -132,34 +132,34 @@ dump_mixed_single_cluster suffix=vpack size=large -- --dumpAgencyOnError true --
 dump_with_crashes single size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
 dump_with_crashes full cluster size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
 dump_with_crashes_non_parallel size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true 
-#
-## Audit Tests
-#audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
-#
-## Full Tests Single Server
-#shell_fuzzer full cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
-#shell_fuzzer full single priority=500 -- --dumpAgencyOnError true
-#authentication_parameters single full priority=1000
-#config single full priority=1000
-#foxx_manager single full priority=500
-#queryCacheAuthorization single full priority=500
-#readOnly single full priority=500
-#replication_aql priority=1000 single full
-#replication_random priority=1000 single full
-#
-## Full Cluster Tests
-#authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
-#chaos !coverage full cluster priority=9600 size=large -- --dumpAgencyOnError true --skipNightly false
-#chaos_subq  !coverage full cluster priority=1000 size=medium+ --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
-#resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
-#resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true
-#resilience_transactions full cluster priority=500 -- --dumpAgencyOnError true
-#wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
-#
-## Common Full Tests
-#communication full priority=1000 parallelity=2 single
-#communication_ssl full priority=1000 parallelity=2 single
-#
-#communication full priority=1000 size=large parallelity=6 cluster
-#communication_ssl full priority=1000 size=large parallelity=6 cluster
-#
+
+# Audit Tests
+audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
+
+# Full Tests Single Server
+shell_fuzzer full cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
+shell_fuzzer full single priority=500 -- --dumpAgencyOnError true
+authentication_parameters single full priority=1000
+config single full priority=1000
+foxx_manager single full priority=500
+queryCacheAuthorization single full priority=500
+readOnly single full priority=500
+replication_aql priority=1000 single full
+replication_random priority=1000 single full
+
+# Full Cluster Tests
+authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
+chaos !coverage full cluster priority=9600 size=large -- --dumpAgencyOnError true --skipNightly false
+chaos_subq  !coverage full cluster priority=1000 size=medium+ --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
+resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
+resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true
+resilience_transactions full cluster priority=500 -- --dumpAgencyOnError true
+wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
+
+# Common Full Tests
+communication full priority=1000 parallelity=2 single
+communication_ssl full priority=1000 parallelity=2 single
+
+communication full priority=1000 size=large parallelity=6 cluster
+communication_ssl full priority=1000 size=large parallelity=6 cluster
+
