@@ -324,10 +324,9 @@ jobs:
             fi
 
             if [ -n "<< pipeline.parameters.sanitizer >>" ]; then
-              arch="<<parameters.arch>>"
               # This is only when we have a static build, otherwise let cmake find the packages
               # The issue is with openmp, cmake will not find the static library
-
+              arch="<<parameters.arch>>"
               if test "$arch" == "x64"; then
                 LAPACK_LIB_PATH="/usr/lib/x86_64-linux-gnu/lapack/liblapack.a"
                 BLAS_LIB_PATH="/usr/lib/x86_64-linux-gnu/blas/libblas.a"
@@ -359,7 +358,7 @@ jobs:
                 -DOPENSSL_ROOT_DIR=/opt \
                 -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
                 -DCMAKE_INSTALL_PREFIX=/
-            endif
+            fi
       - run:
           name: Build
           command: |
