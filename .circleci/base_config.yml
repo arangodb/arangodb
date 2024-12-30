@@ -323,7 +323,19 @@ jobs:
               MINIMAL_DEBUGINFO="ON"
             fi
 
+            # It is not static build if any sanitizer is used
             if [ -n "<< pipeline.parameters.sanitizer >>" ]; then
+              cmake --preset << parameters.preset >> \
+                -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
+                -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
+                -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld -fopenmp=libomp -L/opt/omp" \
+                -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
+                -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+                -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+                -DOPENSSL_ROOT_DIR=/opt \
+                -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
+                -DCMAKE_INSTALL_PREFIX=/
+            else
               # This is only when we have a static build, otherwise let cmake find the packages
               # The issue is with openmp, cmake will not find the static library
               arch="<<parameters.arch>>"
@@ -347,17 +359,6 @@ jobs:
                 -DCMAKE_INSTALL_PREFIX=/ \
                 -DLAPACK_LIBRARIES="$LAPACK_LIB_PATH" \
                 -DBLAS_LIBRARIES="$BLAS_LIB_PATH"
-            else
-              cmake --preset << parameters.preset >> \
-                -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
-                -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
-                -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
-                -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
-                -DCMAKE_C_COMPILER_LAUNCHER=sccache \
-                -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
-                -DOPENSSL_ROOT_DIR=/opt \
-                -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
-                -DCMAKE_INSTALL_PREFIX=/
             fi
       - run:
           name: Build
