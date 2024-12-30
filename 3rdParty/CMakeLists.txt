@@ -322,6 +322,14 @@ add_subdirectory(json-schema-validation)
 
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
+# Variables for LAPACK and BLAS
+if (NOT STATIC_EXECUTABLES)
+  set(BLA_STATIC Off)
+  set(BLA_VENDOR OpenBLAS)
+  find_package(OpenMP)
+  find_package(LAPACK)
+  find_package(BLAS)
+endif()
 
 set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
 set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
