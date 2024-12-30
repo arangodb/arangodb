@@ -322,13 +322,24 @@ add_subdirectory(json-schema-validation)
 
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
-# Variables for LAPACK and BLAS
-if (NOT STATIC_EXECUTABLES)
+
+if (STATIC_EXECUTABLES)
+  # These variables are used when linking BIN_ARANGOD
+  if (ARCH_AMD64)
+      set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a")
+      set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/blas/libblas.a")
+  else (ARCH_AMD64)
+      set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a")
+      set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/blas/libblas.a")
+  endif (ARCH_AMD64)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp=libomp -L/opt/omp -llapack -lgfortran")
+else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)
   find_package(OpenMP)
   find_package(LAPACK)
   find_package(BLAS)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp=libomp -L/opt/omp")
 endif()
 
 set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
