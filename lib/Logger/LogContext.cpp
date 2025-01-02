@@ -46,6 +46,15 @@ LogContext::ScopedContext::ScopedContext(LogContext ctx) noexcept {
   }
 }
 
+LogContext::ScopedContext::ScopedContext(
+    LogContext ctx, LogContext::ScopedContext::DontRestoreOldContext) noexcept {
+  auto& local = LogContext::controlBlock();
+  if (ctx._tail != local._logContext._tail) {
+    local._logContext.clear(local._entryCache);
+    local._logContext = std::move(ctx);
+  }
+}
+
 LogContext::ScopedContext::~ScopedContext() {
   if (_oldContext) {
     auto& local = LogContext::controlBlock();

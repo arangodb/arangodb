@@ -624,6 +624,8 @@ struct LogContext::Accessor::ScopedValue {
 /// current scope; restores the previous LogContext upon destruction.
 struct LogContext::ScopedContext {
   explicit ScopedContext(LogContext ctx) noexcept;
+  struct DontRestoreOldContext {};
+  ScopedContext(LogContext ctx, DontRestoreOldContext) noexcept;
   ~ScopedContext();
 
  private:
