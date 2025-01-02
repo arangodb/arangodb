@@ -1,6 +1,9 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* Updated ArangoDB Starter to v0.18.12-preview-1 and arangosync to
+  v2.19.11-preview-2.
+
 * Introduce expiry time for idle TCP/IP connections in the ConnectionCache
   (for `SimpleHttpClient`) with a default of 120s. This is to prevent
   errors in replication caused by cloud environments terminating
@@ -20,8 +23,6 @@ v3.11.13 (XXXX-XX-XX)
   some cases the old leader fell subsequently out of sync.
 
 * Rebuilt included rclone v1.62.2 with go1.22.8 and non-vulnerable dependencies.
-
-* Updated ArangoDB Starter to v0.18.11 and arangosync to v2.19.10.
 
 * BTS-2017: fix CleanOutServer for satellite collections.
 
