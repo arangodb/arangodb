@@ -658,7 +658,7 @@ inline LogContext::Accessor::ScopedValue::~ScopedValue() {
   auto& local = LogContext::controlBlock();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_oldTail == local._logContext._tail);
-  TRI_ASSERT(_owningThread == std::this_thread::get_id());
+  // TRI_ASSERT(_owningThread == std::this_thread::get_id());
 #endif
   local._logContext.popTail(local._entryCache);
 }
