@@ -192,7 +192,8 @@ class Scheduler {
       schedulerJobMemoryAccounting(-static_cast<int64_t>(sizeof(*this)));
     }
     void invoke() override {
-      LogContext::ScopedContext ctxGuard(logContext);
+      LogContext::ScopedContext ctxGuard(
+          logContext, LogContext::ScopedContext::DontRestoreOldContext{});
       this->operator()();
     }
 
