@@ -465,14 +465,17 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
       NetworkFeature& nf = server.getFeature<NetworkFeature>();
       nf.sendRequest(
           *_pool, _options, _spec.endpoint, std::move(_tmp_req),
-          [self = shared_from_this()](
-              fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-              std::unique_ptr<fuerte::Response> res, bool isFromPool) {
-            self->_tmp_err = err;
-            self->_tmp_req = std::move(req);
-            self->_tmp_res = std::move(res);
-            self->handleResponse(isFromPool);
-          });
+          // TODO Maybe, instead of using withLogContext here, the
+          //      NetworkFeature should restore the LogContext instead.
+          withLogContext(
+              [self = shared_from_this()](
+                  fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+                  std::unique_ptr<fuerte::Response> res, bool isFromPool) {
+                self->_tmp_err = err;
+                self->_tmp_req = std::move(req);
+                self->_tmp_res = std::move(res);
+                self->handleResponse(isFromPool);
+              }));
     });
   }
 
