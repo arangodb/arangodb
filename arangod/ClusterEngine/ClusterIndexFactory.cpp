@@ -198,6 +198,7 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
       server, "mdi-prefixed", engine);
   static const IResearchInvertedIndexClusterFactory invertedIndexFactory(
       server, engine);
+  static const DefaultIndexFactory vectorIndexFactory(server, "vector", engine);
 
   factory.emplace(edgeIndexFactory._type, edgeIndexFactory);
   factory.emplace(fulltextIndexFactory._type, fulltextIndexFactory);
@@ -213,6 +214,7 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   factory.emplace(mdiIndexFactory._type, mdiIndexFactory);
   factory.emplace(mdiPrefixedIndexFactory._type, mdiPrefixedIndexFactory);
   factory.emplace(invertedIndexFactory._type, invertedIndexFactory);
+  factory.emplace(vectorIndexFactory._type, vectorIndexFactory);
 }
 
 ClusterIndexFactory::ClusterIndexFactory(ArangodServer& server,

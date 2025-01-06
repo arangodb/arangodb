@@ -82,7 +82,8 @@ class DatabaseTailingSyncer : public TailingSyncer {
                                TRI_voc_tick_t& until, bool& didTimeout,
                                std::string const& context);
 
-  Result inheritFromInitialSyncer(DatabaseInitialSyncer const& syncer);
+  Result inheritFromInitialSyncer(replutils::LeaderInfo const& leaderInfo,
+                                  TRI_voc_tick_t initialTick);
   Result registerOnLeader();
   void unregisterFromLeader(bool hardLocked);
 
