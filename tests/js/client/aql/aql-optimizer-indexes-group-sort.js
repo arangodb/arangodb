@@ -223,20 +223,20 @@ function optimizerIndexesGroupSortTestSuite() {
         [2, "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c DESC, doc.x DESC RETURN doc.b"],
       ];
       for (let [numberOfGroupedElements, query] of queries) {
-        plan = query_plan(query, collection.name());
+        let plan = query_plan(query, collection.name());
         assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
         assertTrue(sort_node_does_a_group_sort(plan, numberOfGroupedElements), plan.nodes);
         assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
       }
 
-      var queries = [
+      queries = [
         "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c ASC, doc.x ASC RETURN doc.b",
         "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c ASC, doc.x DESC RETURN doc.b",
         "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.c DESC, doc.x DESC RETURN doc.b",
         "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.c DESC, doc.x ASC RETURN doc.b",
       ];
       for (let query of queries) {
-        plan = query_plan(query, collection.name());
+        let plan = query_plan(query, collection.name());
         assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
         // uses full index, therefore full sort node is exchanged by index node
         assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
@@ -340,20 +340,20 @@ function optimizerIndexesGroupSortTestSuite() {
         [2, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.b ASC, doc.c DESC, doc.x DESC RETURN doc.b"],
       ];
       for (let [numberOfGroupedElements, query] of queries) {
-        plan = query_plan(query, collection.name());
+        let plan = query_plan(query, collection.name());
         assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
         assertTrue(sort_node_does_a_group_sort(plan, numberOfGroupedElements), plan.nodes);
         assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
       }
 
-      var queries = [
+      queries = [
         "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.b ASC, doc.c ASC, doc.x ASC RETURN doc.b",
         "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.b ASC, doc.c ASC, doc.x DESC RETURN doc.b",
         "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.b DESC, doc.c DESC, doc.x DESC RETURN doc.b",
         "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.b DESC, doc.c DESC, doc.x ASC RETURN doc.b",
       ];
       for (let query of queries) {
-        plan = query_plan(query, collection.name());
+        let plan = query_plan(query, collection.name());
         assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
         // uses full index, therefore full sort node is exchanged by index node
         assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
