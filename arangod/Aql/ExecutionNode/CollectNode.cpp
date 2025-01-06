@@ -446,6 +446,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::INDEX_COLLECT:
     case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
@@ -473,6 +474,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SINGLETON:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::COLLECT:
+    case ExecutionNode::INDEX_COLLECT:
       return true;
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
@@ -520,6 +522,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
   switch (node.getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
+    case ExecutionNode::INDEX_COLLECT:
     case ExecutionNode::JOIN:
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::TRAVERSAL:

@@ -88,6 +88,7 @@ frozen::unordered_map<int, std::string_view, 37> const kTypeNames{
      "EnumerateCollectionNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_LIST), "EnumerateListNode"},
     {static_cast<int>(ExecutionNode::INDEX), "IndexNode"},
+    {static_cast<int>(ExecutionNode::INDEX_COLLECT), "IndexCollectNode"},
     {static_cast<int>(ExecutionNode::LIMIT), "LimitNode"},
     {static_cast<int>(ExecutionNode::CALCULATION), "CalculationNode"},
     {static_cast<int>(ExecutionNode::SUBQUERY), "SubqueryNode"},
@@ -1558,6 +1559,7 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
   switch (type) {
     case ENUMERATE_COLLECTION:
     case INDEX:
+    case INDEX_COLLECT:
     case ENUMERATE_LIST:
     case COLLECT:
 
@@ -1598,6 +1600,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case UPSERT:
     case TRAVERSAL:
     case INDEX:
+    case INDEX_COLLECT:
     case JOIN:
     case ENUMERATE_NEAR_VECTORS:
     case SHORTEST_PATH:

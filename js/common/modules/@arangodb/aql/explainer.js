@@ -1836,6 +1836,8 @@ function processQuery(query, explain, planIndex) {
           (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable.variable); }).join(', ') : '') +
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
+      case 'IndexCollectNode':
+        return keyword('COLLECT INDEX') + ' ' + JSON.stringify(node);
       case 'SortNode':
         const groupedElements = node.numberOfTopGroupedElements > 0 ?
           '; ' + keyword('GROUPED BY') + ' '
