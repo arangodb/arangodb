@@ -3277,12 +3277,12 @@ struct SortToIndexNode final
       deleteSortNode(indexNode, sortCondition);
     } else if (index->type() ==
                Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
-      auto numberOfCoveredAttributes =
-          sortCondition.coveredAttributes(outVariable, fields);
+      auto [numberOfCoveredAttributes, sortIsAscending] =
+          sortCondition.coveredUnidirectionalAttributesWithDirection(
+              outVariable, fields);
       if (isOnlyAttributeAccess && isSorted && !isSparse &&
-          sortCondition.isUnidirectional() &&
-          sortCondition.isAscending() == indexNode->options().ascending &&
           numberOfCoveredAttributes > 0) {
+        indexNode->setAscending(sortIsAscending);
         auto sortNode = _plan->getNodeById(_sortNode->id());
         ((SortNode*)sortNode)->setGroupedElements(numberOfCoveredAttributes);
         _modified = true;

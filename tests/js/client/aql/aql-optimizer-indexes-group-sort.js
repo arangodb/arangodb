@@ -170,7 +170,7 @@ function optimizerIndexesGroupSortTestSuite() {
         return {
           a: i % 9,
           x: 100 - i - 1,
-          b: randomNumber()
+          b: Math.floor(randomNumber() * 100)
         };
       }));
       collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
@@ -191,24 +191,55 @@ function optimizerIndexesGroupSortTestSuite() {
     /// @brief test index usage
     ////////////////////////////////////////////////////////////////////////////////
 
-    test_sorting_in_different_direction: function () {
+    test_index_is_used_when_sort_directions_of_all_used_index_fields_is_the_same: function () {
+      let randomNumber = randomNumberGeneratorInt(seed);
       const collection = create_collection();
-      collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
+      collection.insert(Array.from({ length: 100 }, (_, index) => index).map(i => {
+        return {
+          a: i % 9,
+          x: 100 - i - 1,
+          b: Math.floor(randomNumber() * 100)
+        };
+      }));
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
       waitForEstimatorSync();
 
-      // all desc should work
-      let plan = query_plan("FOR doc IN @@collection SORT doc.a DESC, doc.x DESC RETURN doc", collection.name());
-      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
-      assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
+      var queries = [
+        [1, "FOR doc IN @@collection SORT doc.a DESC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a ASC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.x DESC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.x ASC RETURN doc.b"],
 
-      // TODO all sorted index fields desc should work (currently does not work)
-      plan = query_plan("FOR doc IN @@collection SORT doc.a DESC, doc.x ASC RETURN doc", collection.name());
-      assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules); // TODO should be true
-      // assertTrue(sort_node_does_a_group_sort(plan), plan.nodes); // TODO should work
+        [1, "FOR doc IN @@collection SORT doc.a DESC, doc.x ASC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a ASC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a ASC, doc.b DESC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a ASC, doc.b DESC, doc.x ASC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a DESC, doc.b ASC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a DESC, doc.b ASC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.c ASC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.c ASC, doc.x DESC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c DESC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c DESC, doc.x DESC RETURN doc.b"],
+      ];
+      for (let [numberOfGroupedElements, query] of queries) {
+        plan = query_plan(query, collection.name());
+        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+        assertTrue(sort_node_does_a_group_sort(plan, numberOfGroupedElements), plan.nodes);
+        assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+      }
 
-      // combined desc and asc in index fields should not work
-      plan = query_plan("FOR doc IN @@collection SORT doc.a ASC, doc.b DESC, doc.x DESC RETURN doc", collection.name());
-      assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
+      var queries = [
+        "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c ASC, doc.x ASC RETURN doc.b",
+        "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c ASC, doc.x DESC RETURN doc.b",
+        "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.c DESC, doc.x DESC RETURN doc.b",
+        "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.c DESC, doc.x ASC RETURN doc.b",
+      ];
+      for (let query of queries) {
+        plan = query_plan(query, collection.name());
+        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+        // uses full index, therefore full sort node is exchanged by index node
+        assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
+      }
     },
 
     ///////////////////////////////////////////////////////////////////////////////
