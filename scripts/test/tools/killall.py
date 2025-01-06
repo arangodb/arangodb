@@ -6,7 +6,6 @@ import sys
 import logging
 import psutil
 
-
 def list_all_processes():
     """list all processes for later reference"""
     pseaf = "PID  Process"
@@ -28,7 +27,6 @@ def list_all_processes():
         logging.info("PID: %s PPID: %s %s", process.pid, process.ppid(), cmdline)
     logging.info(pseaf)
     sys.stdout.flush()
-
 
 def kill_all_arango_processes():
     """list all processes for later reference"""
