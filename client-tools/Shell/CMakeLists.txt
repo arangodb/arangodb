@@ -4,7 +4,6 @@ add_library(arango_shell STATIC
 )
 
 target_link_libraries(arango_shell
-  #arango_lightweight
   arango_basic_utils
   ${SYSTEM_LIBRARIES}
   boost_system
