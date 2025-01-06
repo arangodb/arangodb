@@ -21,6 +21,8 @@ devel
   This helps to detect stale TCP/IP or TLS connections residing in the 
   ConnectionCache and thus prevents network failures due to delays.
 
+* [ES-2294] Fix computation of the arangodb_vocbase_shards_read_only_by_write_concern metric.
+
 * Enable passing `nProbe` as additional search parameter for APPROX_NEAR
   vector functions. `nProbe` defines how many neighboring lists to look into,
   it is a trade off between more correct results and time it takes to fetch

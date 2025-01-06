@@ -131,7 +131,7 @@ FollowerInfo::FollowerInfo(LogicalCollection* d)
           metrics::InstrumentedBool::Metrics{
               .false_counter =
                   d->vocbase().metrics().shards_read_only_by_write_concern},
-          _docColl->replicationFactor() <= 1) {
+          _followers->size() + 1 >= _docColl->writeConcern()) {
   // On replicationfactor 1 we do not have any failover servers to maintain.
   // This should also disable satellite tracking.
 }
@@ -565,6 +565,7 @@ bool FollowerInfo::updateFailoverCandidates() {
     TRI_ASSERT(!_canWrite);
   } else {
     _canWrite = true;
+    _writeConcernReached = _followers->size() + 1 >= _docColl->writeConcern();
   }
   return _canWrite;
 }
