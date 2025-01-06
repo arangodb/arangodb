@@ -3126,10 +3126,8 @@ struct SortToIndexNode final
     SortCondition sortCondition(_plan, _sorts, constAttributes,
                                 nonNullAttributes, _variableDefinitions);
 
-    if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
-        // TODO
-        sortCondition.isUnidirectional()) {
-      // we have found a sort condition, which is unidirectional
+    if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess()) {
+      // we have found a sort condition
       // now check if any of the collection's indexes covers it
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
@@ -3144,8 +3142,7 @@ struct SortToIndexNode final
 
       bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(
           *coll, &sortCondition, outVariable, numDocs,
-          enumerateCollectionNode->hint(), usedIndexes,
-          /* TODO */ coveredAttributes);
+          enumerateCollectionNode->hint(), usedIndexes, coveredAttributes);
       if (canBeUsed) {
         // If this bit is set, then usedIndexes has length exactly one
         // and contains the best index found.
@@ -3153,8 +3150,8 @@ struct SortToIndexNode final
         condition->normalize(_plan);
         TRI_ASSERT(usedIndexes.size() == 1);
         IndexIteratorOptions opts;
-        // TODO
-        opts.ascending = sortCondition.isAscending();
+        TRI_ASSERT(!sortCondition.isEmpty());
+        opts.ascending = sortCondition.sortFields()[0].asc;
         opts.useCache = false;
         auto indexNode = _plan->createNode<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
@@ -3170,18 +3167,10 @@ struct SortToIndexNode final
         _plan->replaceNode(enumerateCollectionNode, indexNode);
         _modified = true;
 
-        auto indexes = indexNode->getIndexes();
-
         if (coveredAttributes == sortCondition.numAttributes()) {
-          // if the index covers the complete sort condition, we can also remove
-          // the sort node
-          indexNode->needsGatherNodeSort(
-              makeIndexSortElements(sortCondition, outVariable));
-          auto sortNode = _plan->getNodeById(_sortNode->id());
-          _plan->unlinkNode(sortNode);
-
-        } else if (indexes.size() == 1 &&
-                   indexes[0]->type() ==
+          deleteSortNode(indexNode, sortCondition);
+        } else if (usedIndexes.size() == 1 &&
+                   usedIndexes[0]->type() ==
                        Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
           auto sortNode = _plan->getNodeById(_sortNode->id());
           ((SortNode*)sortNode)->setGroupedElements(coveredAttributes);
@@ -3194,8 +3183,8 @@ struct SortToIndexNode final
 
   void deleteSortNode(IndexNode* indexNode, SortCondition& sortCondition) {
     // sort condition is fully covered by index... now we can remove the
-    // sort node from the plan
-    _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+    auto sortNode = _plan->getNodeById(_sortNode->id());
+    _plan->unlinkNode(sortNode);
     // we need to have a sorted result later on, so we will need a sorted
     // GatherNode in the cluster
     indexNode->needsGatherNodeSort(
