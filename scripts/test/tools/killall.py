@@ -12,6 +12,8 @@ def list_all_processes():
     pseaf = "PID  Process"
     # pylint: disable=catching-non-exception
     for process in psutil.process_iter(["pid", "ppid", "name"]):
+        if  process.pid in [1, 2] or process.ppid() == 2:
+            continue
         cmdline = process.name
         try:
             cmdline = str(process.cmdline())
@@ -95,7 +97,7 @@ def get_all_processes_stats_json(load):
             name = ""
             try:
                 name = process.name()
-                if  process.ppid() != 2 and process.pid not in [1, 2]:
+                if  process.pid not in [1, 2] and process.ppid() != 2:
                     procstat = gather_process_thread_statistics(process)
                     if n:
                         process_full_list[f"p{process.pid}"] = procstat
