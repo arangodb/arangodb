@@ -178,17 +178,20 @@ function optimizerRuleTestSuite() {
       let query = "FOR doc IN " + colName + " COLLECT value = doc.value INTO g OPTIONS { method: 'sorted' } RETURN { value, g }";
       let plan = db._createStatement(query).explain().plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
-      assertEqual(1, nodes.length);
+      assertEqual(2, nodes.length);
       assertEqual([], nodes[0].aggregates);
+      assertEqual(1, nodes[1].aggregates.length);
+      assertEqual("MERGE_LISTS", nodes[1].aggregates[0].type);
       assertEqual("sorted", nodes[0].collectOptions.method);
-      
+      assertEqual("sorted", nodes[1].collectOptions.method);
+
       nodes = plan.nodes.filter(function(n) { return n.type === 'GatherNode'; });
       assertEqual(1, nodes.length);
       assertTrue(nodes[0].elements[0].ascending);
 
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-    
+      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+
       let results = db._query(query).toArray();
       assertEqual(2000, results.length);
       let last = null;
@@ -199,7 +202,7 @@ function optimizerRuleTestSuite() {
         assertEqual(doc.value, doc.g[0].doc.value);
       });
     },
-    
+
     testCollectIntoSortedKeepGatherNonUnique : function () {
       // add the same values again
       let docs = [];
@@ -210,16 +213,19 @@ function optimizerRuleTestSuite() {
       let query = "FOR doc IN " + colName + " COLLECT value = doc.value INTO g OPTIONS { method: 'sorted' } RETURN { value, g }";
       let plan = db._createStatement(query).explain().plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
-      assertEqual(1, nodes.length);
+      assertEqual(2, nodes.length);
       assertEqual([], nodes[0].aggregates);
+      assertEqual(1, nodes[1].aggregates.length);
+      assertEqual("MERGE_LISTS", nodes[1].aggregates[0].type);
       assertEqual("sorted", nodes[0].collectOptions.method);
-      
+      assertEqual("sorted", nodes[1].collectOptions.method);
+
       nodes = plan.nodes.filter(function(n) { return n.type === 'GatherNode'; });
       assertEqual(1, nodes.length);
       assertTrue(nodes[0].elements[0].ascending);
 
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
     
       let results = db._query(query).toArray();
       assertEqual(2000, results.length);

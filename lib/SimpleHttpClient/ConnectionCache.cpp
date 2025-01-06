@@ -103,28 +103,56 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
       auto& connectionsForEndpoint = (*it).second;
 
       for (auto it = connectionsForEndpoint.rbegin();
-           it != connectionsForEndpoint.rend(); ++it) {
+           it != connectionsForEndpoint.rend();
+           /* intentionally empty! */) {
         auto& candidate = (*it);
-        if (candidate->getEndpoint()->encryption() !=
+        if (candidate.connection->getEndpoint()->encryption() !=
                 Endpoint::EncryptionType::NONE &&
-            static_cast<SslClientConnection*>(candidate.get())->sslProtocol() !=
-                sslProtocol) {
+            static_cast<SslClientConnection*>(candidate.connection.get())
+                    ->sslProtocol() != sslProtocol) {
           // different SSL protocol
+          ++it;
           continue;
         }
 
-        TRI_ASSERT(candidate->getEndpoint()->specification() == endpoint);
+        TRI_ASSERT(candidate.connection->getEndpoint()->specification() ==
+                   endpoint);
 
-        // found a suitable candidate
-        connection = std::move(candidate);
-        TRI_ASSERT(connection != nullptr);
-
+        auto age = std::chrono::steady_clock::now() - candidate.lastUsed;
+        if (age < std::chrono::seconds(_options.idleConnectionTimeout)) {
+          // found a suitable candidate
+          connection = std::move(candidate.connection);
+          TRI_ASSERT(connection != nullptr);
+          // intentionally fall through here!
+        }
+        // If the connection is too old, we fell through here with
+        // `connection` still being a nullptr. In that case, we will
+        // remove the connection and move on:
         if (it != connectionsForEndpoint.rbegin()) {
           // fill the gap
           (*it) = std::move(connectionsForEndpoint.back());
+          connectionsForEndpoint.pop_back();
+          // Iterator still valid but pointing to a connection we have
+          // already looked at:
+          ++it;
+        } else {
+          connectionsForEndpoint.pop_back();
+          // `it` is now invalid, so we need to update it:
+          it = connectionsForEndpoint.rbegin();
+          // No need to ++it here, since this is the next one to look at
+          // (or indeed connectionsForEndpoint.rend()).
         }
-        connectionsForEndpoint.pop_back();
-        break;
+        if (connection != nullptr) {
+          // Try to test the connection:
+          if (age < std::chrono::seconds(3) ||
+              connection->test_idle_connection()) {
+            break;
+          }
+          LOG_TOPIC("17273", DEBUG, Logger::COMMUNICATION)
+              << "Connection for endpoint " << endpoint
+              << " failed test, closing it";
+          connection.reset();
+        }
       }
     }
 
@@ -189,7 +217,9 @@ void ConnectionCache::release(
     // this may create the vector at _connections[endpoint]
     auto& connectionsForEndpoint = _connections[endpoint];
     if (connectionsForEndpoint.size() < _options.maxConnectionsPerEndpoint) {
-      connectionsForEndpoint.emplace_back(std::move(connection));
+      connectionsForEndpoint.emplace_back(
+          ConnInfo{.connection = std::move(connection),
+                   .lastUsed = std::chrono::steady_clock::now()});
     }
   }
 } catch (...) {

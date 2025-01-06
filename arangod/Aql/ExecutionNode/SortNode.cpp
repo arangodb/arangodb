@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/ConstrainedSortExecutor.h"
+#include "Aql/Executor/GroupedSortExecutor.h"
 #include "Aql/Executor/SortExecutor.h"
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
@@ -38,6 +39,8 @@
 #include "Aql/SortRegister.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Inspection/JsonPrintInspector.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/TemporaryStorageFeature.h"
 
 using namespace arangodb::basics;
@@ -54,6 +57,8 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice base,
                    SortElementVector elements, bool stable)
     : ExecutionNode(plan, base),
       _elements(std::move(elements)),
+      _numberOfTopGroupedElements(
+          base.get("numberOfTopGroupedElements").getNumber<uint64_t>()),
       _stable(stable),
       _reinsertInCluster(true),
       _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
@@ -67,6 +72,8 @@ void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
       it.toVelocyPack(nodes);
     }
   }
+  nodes.add("numberOfTopGroupedElements",
+            VPackValue(_numberOfTopGroupedElements));
   nodes.add("stable", VPackValue(_stable));
   nodes.add("limit", VPackValue(_limit));
   nodes.add("strategy", VPackValue(sorterTypeName(sorterType())));
@@ -182,23 +189,51 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   }
 
   auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
-  auto executorInfos = SortExecutorInfos(
-      registerInfos.numberOfInputRegisters(),
-      registerInfos.numberOfOutputRegisters(), registerInfos.registersToClear(),
-      std::move(sortRegs), _limit, engine.itemBlockManager(), engine.getQuery(),
-      engine.getQuery()
-          .vocbase()
-          .server()
-          .getFeature<TemporaryStorageFeature>(),
-      &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
-      engine.getQuery().queryOptions().spillOverThresholdNumRows,
-      engine.getQuery().queryOptions().spillOverThresholdMemoryUsage, _stable);
-  if (sorterType() == SorterType::kStandard) {
-    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
-  } else {
-    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
+  switch (sorterType()) {
+    case SorterType::kStandard: {
+      return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
+          &engine, this, std::move(registerInfos),
+          SortExecutorInfos(
+              std::move(sortRegs), engine.itemBlockManager(), engine.getQuery(),
+              engine.getQuery()
+                  .vocbase()
+                  .server()
+                  .getFeature<TemporaryStorageFeature>(),
+              &engine.getQuery().vpackOptions(),
+              engine.getQuery().resourceMonitor(),
+              engine.getQuery().queryOptions().spillOverThresholdNumRows,
+              engine.getQuery().queryOptions().spillOverThresholdMemoryUsage,
+              _stable));
+    }
+    case SorterType::kGrouped: {
+      std::vector<RegisterId> groupedRegisters;
+      size_t count = 0;
+      for (auto const& element : _elements) {
+        if (count < _numberOfTopGroupedElements) {
+          auto it = getRegisterPlan()->varInfo.find(element.var->id);
+          TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+          RegisterId id = it->second.registerId;
+          groupedRegisters.emplace_back(id);
+        }
+        count++;
+      }
+      return std::make_unique<ExecutionBlockImpl<GroupedSortExecutor>>(
+          &engine, this, std::move(registerInfos),
+          GroupedSortExecutorInfos{std::move(sortRegs),
+                                   std::move(groupedRegisters), _stable,
+                                   &engine.getQuery().vpackOptions(),
+                                   engine.getQuery().resourceMonitor()});
+    }
+    case SorterType::kConstrainedHeap: {
+      return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(
+          &engine, this, std::move(registerInfos),
+          ConstraintSortExecutorInfos(
+              registerInfos.numberOfOutputRegisters(),
+              registerInfos.registersToClear(), std::move(sortRegs), _limit,
+              engine.itemBlockManager(), engine.getQuery(),
+              &engine.getQuery().vpackOptions(),
+              engine.getQuery().resourceMonitor()));
+    }
   }
 }
 
@@ -244,8 +279,13 @@ void SortNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 SortNode::SorterType SortNode::sorterType() const noexcept {
-  return (!isStable() && _limit > 0) ? SorterType::kConstrainedHeap
-                                     : SorterType::kStandard;
+  if (!isStable() && _limit > 0) {
+    return SorterType::kConstrainedHeap;
+  }
+  if (_numberOfTopGroupedElements > 0) {
+    return SorterType::kGrouped;
+  }
+  return SorterType::kStandard;
 }
 
 size_t SortNode::getMemoryUsedBytes() const { return sizeof(*this); }
@@ -255,7 +295,8 @@ std::string_view SortNode::sorterTypeName(SorterType type) noexcept {
     case SorterType::kConstrainedHeap:
       return "constrained-heap";
     case SorterType::kStandard:
-    default:
       return "standard";
+    case SorterType::kGrouped:
+      return "grouped";
   }
 }

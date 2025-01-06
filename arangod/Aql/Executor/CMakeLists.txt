@@ -8,8 +8,11 @@ target_sources(arango_aql PRIVATE
   EmptyExecutorInfos.h
   EnumerateCollectionExecutor.cpp
   EnumerateListExecutor.cpp
+  EnumerateNearVectorExecutor.cpp
   EnumeratePathsExecutor.cpp
   FilterExecutor.cpp
+  GroupedSortExecutor.cpp
+  GroupedSortExecutorBackend.cpp
   HashedCollectExecutor.cpp
   IdExecutor.cpp
   IndexExecutor.cpp
