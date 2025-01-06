@@ -278,7 +278,7 @@ function VectorIndexTestCreationWithVectors() {
                 });
                 fail();
             } catch (e) {
-                assertEqual(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code,
+                assertEqual(errors.ERROR_BAD_PARAMETER.code,
                     e.errorNum);
             }
         },
