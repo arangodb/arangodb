@@ -51,7 +51,7 @@ function optimizerIndexesGroupSortTestSuite() {
     return stmt.explain().plan;
   };
   const query_plan_uses_index_for_sorting = function (plan) {
-    return ["use-indexes", "use-index-for-sort"].every((rule) => plan.rules.indexOf(rule) >= 0);
+    return ["use-index-for-sort"].every((rule) => plan.rules.indexOf(rule) >= 0);
   };
   const sort_node_does_a_group_sort = function (plan, numberOfGroupedElements = 1) {
     const sort_nodes = plan.nodes.filter((node) => node.type === "SortNode");
@@ -193,7 +193,7 @@ function optimizerIndexesGroupSortTestSuite() {
 
     test_sorting_in_different_direction: function () {
       const collection = create_collection();
-      collection.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
       waitForEstimatorSync();
 
       // all desc should work
@@ -210,6 +210,50 @@ function optimizerIndexesGroupSortTestSuite() {
       plan = query_plan("FOR doc IN @@collection SORT doc.a ASC, doc.b DESC, doc.x DESC RETURN doc", collection.name());
       assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
     },
+
+    ///////////////////////////////////////////////////////////////////////////////
+    /// @brief test index usage
+    ////////////////////////////////////////////////////////////////////////////////
+
+    test_uses_sparse_index_when_sort_registers_start_with_index_fields_and_are_not_null: function () {
+      const collection = create_collection();
+      collection.ensureIndex({ type: "persistent", fields: ["a"], sparse: true });
+      waitForEstimatorSync();
+
+      let plan = query_plan("FOR doc IN @@collection SORT doc.a, doc.x RETURN doc", collection.name());
+      // cannot use index as a sort field can be null which is not included in the sparse index
+      assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
+
+      var queries = [
+        "FOR doc IN @@collection FILTER doc.a > null SORT doc.a, doc.x RETURN doc",
+        "FOR doc IN @@collection FILTER doc.a != null SORT doc.a, doc.x RETURN doc",
+        "FOR doc IN @@collection FILTER doc.a > 0 SORT doc.a, doc.x RETURN doc",
+        "FOR doc IN @@collection FILTER doc.a >= 'some_string' SORT doc.a, doc.x RETURN doc",
+      ];
+      for (let query of queries) {
+        let plan = query_plan(query, collection.name());
+        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+        assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
+      }
+
+      // TODO change handleEnumerateCollectionNode in SortToIndexNode for the following to work
+
+      // collection.ensureIndex({ type: "persistent", fields: ["c", "d"], sparse: true });
+      // waitForEstimatorSync();
+
+      // plan = "FOR doc IN @@collection FILTER doc.c > null AND doc.d > null SORT doc.c, doc.d, doc.x RETURN doc";
+      // assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+      // // uses full index, therefore no group sort necessary
+      // assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
+
+      // plan = "FOR doc IN @@collection FILTER doc.c > null AND doc.d > null SORT doc.c, doc.x RETURN doc";
+      // assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+      // assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
+
+      // plan = "FOR doc IN @@collection FILTER doc.c > null SORT doc.c, doc.x RETURN doc";
+      // // does not assure that doc.d != null, therefore cannot use index
+      // assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
+    }
 
   };
 }
