@@ -63,33 +63,32 @@ add_dependencies(arango_basic_errors exitcodefiles)
 
 
 add_library(arango_basic_utils STATIC
-
-  Basics/AttributeNameParser.cpp
-  Basics/CpuUsageSnapshot.cpp
-  Basics/DebugRaceController.cpp
-  Basics/EncodingUtils.cpp
-  Basics/FeatureFlags.cpp
-  Basics/FileDescriptors.cpp
-  Basics/FunctionUtils.cpp
-  Basics/GlobalResourceMonitor.cpp
-  Basics/GlobalSerialization.cpp
-  Basics/HybridLogicalClock.cpp
-  Basics/IndexIter.h
-  Basics/Nonce.cpp
-  Basics/NumberUtils.cpp
-  Basics/ReadWriteSpinLock.cpp
-  Basics/ResourceUsage.cpp
-  Basics/StringBufferAdvanced.cpp
-  Basics/Utf8Helper.cpp
-  Basics/VelocyPackHelper.cpp
-  Basics/csv.cpp
-  Basics/datetime.cpp
-  Basics/fasthash.cpp
-  Basics/files-advanced.cpp
-  Basics/hashes.cpp
-  Basics/socket-utils.cpp
-  Basics/terminal-utils.cpp
-  Basics/tri-zip.cpp
+        Basics/AttributeNameParser.cpp
+        Basics/CpuUsageSnapshot.cpp
+        Basics/DebugRaceController.cpp
+        Basics/EncodingUtils.cpp
+        Basics/FeatureFlags.cpp
+        Basics/FileDescriptors.cpp
+        Basics/FunctionUtils.cpp
+        Basics/GlobalResourceMonitor.cpp
+        Basics/GlobalSerialization.cpp
+        Basics/HybridLogicalClock.cpp
+        Basics/IndexIter.h
+        Basics/Nonce.cpp
+        Basics/NumberUtils.cpp
+        Basics/ReadWriteSpinLock.cpp
+        Basics/ResourceUsage.cpp
+        Basics/StringBufferAdvanced.cpp
+        Basics/Utf8Helper.cpp
+        Basics/VelocyPackHelper.cpp
+        Basics/csv.cpp
+        Basics/datetime.cpp
+        Basics/fasthash.cpp
+        Basics/files-advanced.cpp
+        Basics/hashes.cpp
+        Basics/socket-utils.cpp
+        Basics/terminal-utils.cpp
+        Basics/tri-zip.cpp
 
         Basics/ArangoGlobalContext.cpp
         Basics/CleanupFunctions.cpp
@@ -351,8 +350,8 @@ target_link_libraries(arango_lightweight
          absl::flat_hash_set
          absl::synchronization
          arango_async
-         fmt::fmt
   PRIVATE date_interface
+          fmt
           arango_assertions
           arango_static_strings
           arango_futures

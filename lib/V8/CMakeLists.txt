@@ -12,11 +12,27 @@ add_library(arango_v8 STATIC
   v8-vpack.cpp
   v8-environment.cpp)
 target_link_libraries(arango_v8
-  arango
+  arango_assertions
+  arango_static_strings
+  arango_futures
+  boost_boost
+  boost_system
+  arango_inspection
+  absl::flat_hash_set
+  absl::synchronization
+  arango_async
+  fmt::fmt
+
+  arango_basic_errors
+  arango_basic_utils
+  arango_basic_features
+  arango_basic_logger
   boost_system
   boost_boost
   v8_interface
-  velocypack)
+  velocypack
+  immer
+)
 target_include_directories(arango_v8
   PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
