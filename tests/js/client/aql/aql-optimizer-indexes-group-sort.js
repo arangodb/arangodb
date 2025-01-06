@@ -252,7 +252,7 @@ function optimizerIndexesGroupSortTestSuite() {
       waitForEstimatorSync();
 
       let plan = query_plan("FOR doc IN @@collection SORT doc.a, doc.x RETURN doc", collection.name());
-      // cannot use index as a sort field can be null which is not included in the sparse index
+      // cannot use index because a document with a==null is not included in the sparse index
       assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
 
       var queries = [
@@ -267,23 +267,21 @@ function optimizerIndexesGroupSortTestSuite() {
         assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
       }
 
-      // TODO change handleEnumerateCollectionNode in SortToIndexNode for the following to work
+      collection.ensureIndex({ type: "persistent", fields: ["c", "d"], sparse: true });
+      waitForEstimatorSync();
 
-      // collection.ensureIndex({ type: "persistent", fields: ["c", "d"], sparse: true });
-      // waitForEstimatorSync();
+      plan = query_plan("FOR doc IN @@collection FILTER doc.c > null AND doc.d > null SORT doc.c, doc.d, doc.x RETURN doc", collection.name());
+      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+      // uses full index, therefore no group sort necessary
+      assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
 
-      // plan = "FOR doc IN @@collection FILTER doc.c > null AND doc.d > null SORT doc.c, doc.d, doc.x RETURN doc";
-      // assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
-      // // uses full index, therefore no group sort necessary
-      // assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
+      plan = query_plan("FOR doc IN @@collection FILTER doc.c > null AND doc.d > null SORT doc.c, doc.x RETURN doc", collection.name());
+      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+      assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
 
-      // plan = "FOR doc IN @@collection FILTER doc.c > null AND doc.d > null SORT doc.c, doc.x RETURN doc";
-      // assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
-      // assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
-
-      // plan = "FOR doc IN @@collection FILTER doc.c > null SORT doc.c, doc.x RETURN doc";
-      // // does not assure that doc.d != null, therefore cannot use index
-      // assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
+      plan = query_plan("FOR doc IN @@collection FILTER doc.c > null SORT doc.c, doc.x RETURN doc", collection.name());
+      // does not assure that doc.d != null, therefore cannot use index
+      assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
     }
 
   };

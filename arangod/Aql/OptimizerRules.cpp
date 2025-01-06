@@ -3127,6 +3127,7 @@ struct SortToIndexNode final
                                 nonNullAttributes, _variableDefinitions);
 
     if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
+        // TODO
         sortCondition.isUnidirectional()) {
       // we have found a sort condition, which is unidirectional
       // now check if any of the collection's indexes covers it
@@ -3143,7 +3144,8 @@ struct SortToIndexNode final
 
       bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(
           *coll, &sortCondition, outVariable, numDocs,
-          enumerateCollectionNode->hint(), usedIndexes, coveredAttributes);
+          enumerateCollectionNode->hint(), usedIndexes,
+          /* TODO */ coveredAttributes);
       if (canBeUsed) {
         // If this bit is set, then usedIndexes has length exactly one
         // and contains the best index found.
@@ -3151,27 +3153,38 @@ struct SortToIndexNode final
         condition->normalize(_plan);
         TRI_ASSERT(usedIndexes.size() == 1);
         IndexIteratorOptions opts;
+        // TODO
         opts.ascending = sortCondition.isAscending();
         opts.useCache = false;
-        auto n = _plan->createNode<IndexNode>(
+        auto indexNode = _plan->createNode<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
             outVariable, usedIndexes,
             false,  // here we could always assume false as there is no lookup
                     // condition here
             std::move(condition), opts);
 
-        enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
-        enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan, *n);
+        enumerateCollectionNode->CollectionAccessingNode::cloneInto(*indexNode);
+        enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan,
+                                                                  *indexNode);
 
-        _plan->replaceNode(enumerateCollectionNode, n);
+        _plan->replaceNode(enumerateCollectionNode, indexNode);
         _modified = true;
+
+        auto indexes = indexNode->getIndexes();
 
         if (coveredAttributes == sortCondition.numAttributes()) {
           // if the index covers the complete sort condition, we can also remove
           // the sort node
-          n->needsGatherNodeSort(
+          indexNode->needsGatherNodeSort(
               makeIndexSortElements(sortCondition, outVariable));
-          _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+          auto sortNode = _plan->getNodeById(_sortNode->id());
+          _plan->unlinkNode(sortNode);
+
+        } else if (indexes.size() == 1 &&
+                   indexes[0]->type() ==
+                       Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+          auto sortNode = _plan->getNodeById(_sortNode->id());
+          ((SortNode*)sortNode)->setGroupedElements(coveredAttributes);
         }
       }
     }
