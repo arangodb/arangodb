@@ -22,4 +22,6 @@ target_include_directories(arango_indexes
 
 target_include_directories(arango_indexes PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
-  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
+  "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2"
+)
