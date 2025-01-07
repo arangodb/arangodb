@@ -86,7 +86,7 @@ class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
 class RocksDBSyncThread;
-class RocksDBVPackComparator;
+//class RocksDBVPackComparator;
 class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
 class RocksDBWalAccess;
 class TransactionCollection;
