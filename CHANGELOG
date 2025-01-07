@@ -18,6 +18,9 @@ devel
   The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
   obsoleted.
 
+* Fail queries that use `APPROX_NEAR` functions but do not apply the vector
+  index.
+
 * Rebuilt included rclone v1.65.5 with go1.22.10 and non-vulnerable
   dependencies.
 
@@ -40,17 +43,6 @@ devel
 * Test a collection before it is leased out from the ConnectionCache.
   This helps to detect stale TCP/IP or TLS connections residing in the 
   ConnectionCache and thus prevents network failures due to delays.
-
-* Enable passing `nProbe` as additional search parameter for APPROX_NEAR
-  vector functions. `nProbe` defines how many neighboring lists to look into,
-  it is a trade off between more correct results and time it takes to fetch
-  results. The syntax looks like this:
-  ```aql
-  FOR doc IN col
-  LET distance = APPROX_NEAR_L2(doc.vector, @qp, {nProbe: 20})
-  SORT distance LIMIT 5
-  RETURN {key: doc._key, distance}
-  ````
 
 * Add a vector index based on faiss implementation. The current vector index 
   implementation supports the L2 and cosine metrics. To create a vector index,
