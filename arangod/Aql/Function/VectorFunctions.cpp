@@ -27,21 +27,20 @@
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
 
-#include "Logger/LogMacros.h"
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
 
 namespace arangodb::aql::functions {
 
 AqlValue ApproxNearCosine(ExpressionContext* expressionContext,
                           AstNode const& node,
                           VPackFunctionParametersView parameters) {
-  LOG_TOPIC("1d8b9", WARN, Logger::AQL) << "vector index is not being used";
-  return CosineSimilarity(expressionContext, node, parameters);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED);
 }
 
 AqlValue ApproxNearL2(ExpressionContext* expressionContext, AstNode const& node,
                       VPackFunctionParametersView parameters) {
-  LOG_TOPIC("fe17d", WARN, Logger::AQL) << "vector index is not being used";
-  return L2Distance(expressionContext, node, parameters);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED);
 }
 
 }  // namespace arangodb::aql::functions
