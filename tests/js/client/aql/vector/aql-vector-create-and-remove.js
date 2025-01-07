@@ -35,7 +35,7 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 
-const dbName = "vectorDb";
+const dbName = "vectorDB";
 const collName = "coll";
 const indexName = "vectorIndex";
 
@@ -83,7 +83,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
                 params: {
                     metric: "l2",
                     dimension,
-                    nLists: 5
+                    nLists: 1
                 },
             });
         },
@@ -131,7 +131,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
         testInsertPointsChangesSearchResults: function() {
             const query = "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.nonVector, @qp) " +
+                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 10}) " +
                 "LIMIT 5 RETURN d";
 
             const bindVars = {
@@ -171,7 +171,7 @@ function VectorIndexCreateAndRemoveTestSuite() {
         testRemoveChangesSearchResults: function() {
             const query = "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.nonVector, @qp) " +
+                " SORT APPROX_NEAR_L2(d.vector, @qp) " +
                 "LIMIT 5 RETURN d";
 
             const bindVars = {
