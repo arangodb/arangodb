@@ -4034,7 +4034,9 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (gc) {
+    v8g->_inForcedCollect = true;
     TRI_RunGarbageCollectionV8(isolate, n);
+    v8g->_inForcedCollect = false;
   }
 
   // wait without gc
