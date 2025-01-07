@@ -25,12 +25,14 @@
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/CollectNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/Expression.h"
-#include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/IndexCollectNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
+#include "Aql/IndexDistrinctScan.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
+#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
@@ -44,45 +46,112 @@ namespace {
 
 bool isCollectNodeEligible(CollectNode const& cn) {
   if (cn.hasOutVariable()) {
-    LOG_DEVEL << "Collect " << cn.id()
-              << " not eligible - it has an out variable";
+    LOG_RULE << "Collect " << cn.id()
+             << " not eligible - it has an out variable";
     return false;
   }
 
   if (not cn.aggregateVariables().empty()) {
-    LOG_DEVEL << "Collect " << cn.id() << " not eligible - it has aggregations";
+    LOG_RULE << "Collect " << cn.id() << " not eligible - it has aggregations";
     return false;
   }
 
   return true;
 }
 
-bool isIndexNodeEligible(IndexNode const& idx) {
-  if (idx.hasFilter()) {
-    LOG_DEVEL << "IndexNode " << idx.id()
-              << " not eligible - it has a post filter";
+bool isIndexNodeEligible(IndexNode const& in) {
+  if (in.hasFilter()) {
+    LOG_RULE << "IndexNode " << in.id()
+             << " not eligible - it has a post filter";
     return false;
   }
-  if (idx.isLateMaterialized()) {
-    LOG_DEVEL << "IndexNode " << idx.id()
-              << " not eligible - it is in late materialize mode";
+  if (in.isLateMaterialized()) {
+    LOG_RULE << "IndexNode " << in.id()
+             << " not eligible - it is in late materialize mode";
     return false;
   }
-  if (not idx.isAllCoveredByOneIndex()) {
-    LOG_DEVEL << "IndexNode " << idx.id()
-              << " not eligible - it uses multiple indexes";
+  if (in.getIndexes().size() != 1) {
+    LOG_RULE << "IndexNode " << in.id()
+             << " not eligible - it uses multiple indexes";
     return false;
   }
-  if (not idx.projections().usesCoveringIndex()) {
-    LOG_DEVEL << "IndexNode " << idx.id()
-              << " not eligible - index does not cover everything";
+  auto index = in.getSingleIndex();
+  if (index->type() != arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+    LOG_RULE << "IndexNode " << in.id()
+             << " not eligible - only persistent index supported";
+    return false;
+  }
+  if (not in.projections().usesCoveringIndex()) {
+    LOG_RULE << "IndexNode " << in.id()
+             << " not eligible - index does not cover everything";
+    return false;
+  }
+  if (not in.condition()->isEmpty()) {
+    LOG_RULE << "IndexNode " << in.id()
+             << " not eligible - index with condition is not yet supported";
+    return false;
+  }
+  if (index->sparse()) {
+    LOG_RULE << "IndexNode " << in.id()
+             << " not eligible - sparse indexes not yet supported";
     return false;
   }
 
   return true;
 }
 
-bool isEligiblePair(CollectNode const& cn, IndexNode const& idx) {
+bool isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
+                    IndexNode const& idx, IndexDistinctScanOptions& scanOptions,
+                    std::vector<CalculationNode*>& calculationsToRemove,
+                    IndexCollectGroups& groups) {
+  auto const& coveredFields = idx.getSingleIndex()->coveredFields();
+
+  // every group variable has to be a field of the index
+  for (auto const& grp : cn.groupVariables()) {
+    // get the producing node for the in variable, it should be a calculation
+    auto producer = plan.getVarSetBy(grp.inVar->id);
+    if (producer->getType() != EN::CALCULATION) {
+      return false;
+    }
+
+    // check if it is just an attribute access for the out variable of the
+    // index node.
+    auto calculation = EN::castTo<CalculationNode*>(producer);
+    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
+        access;
+    bool const isAttributeAccess =
+        calculation->expression()->node()->isAttributeAccessForVariable(access);
+    if (not isAttributeAccess || access.first->id != idx.outVariable()->id) {
+      LOG_RULE
+          << "Calculation " << calculation->id()
+          << " not eligible - expression is not an attribute access on index ("
+          << idx.id() << ") out variable";
+      return false;
+    }
+
+    // check if this attribute is a covered field
+    auto iter =
+        std::find(coveredFields.begin(), coveredFields.end(), access.second);
+    if (iter == coveredFields.end()) {
+      LOG_RULE << "Calculation " << calculation->id()
+               << " not eligible - accessed attribute " << access.second
+               << " which is not covered by the index";
+      return false;
+    }
+
+    std::size_t fieldIndex = std::distance(coveredFields.begin(), iter);
+    scanOptions.distinctFields.push_back(fieldIndex);
+    calculationsToRemove.push_back(calculation);
+    groups.emplace_back(
+        IndexCollectGroup{.indexField = fieldIndex, .outVariable = grp.outVar});
+  }
+
+  scanOptions.sorted = cn.getOptions().method !=
+                       arangodb::aql::CollectOptions::CollectMethod::kHash;
+  LOG_DEVEL << scanOptions;
+
+  // TODO check if index supports the scan options
+
   return true;
 }
 
@@ -138,18 +207,33 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
     LOG_RULE << "Found collect " << collectNode->id() << " with index "
              << indexNode->id();
 
-    if (not isEligiblePair(*collectNode, *indexNode)) {
+    IndexCollectGroups groups;
+    IndexDistinctScanOptions scanOptions;
+    std::vector<CalculationNode*> calculationsToRemove;
+
+    if (not isEligiblePair(*plan, *collectNode, *indexNode, scanOptions,
+                           calculationsToRemove, groups)) {
       continue;
     }
 
     auto indexCollectNode = plan->createNode<IndexCollectNode>(
         plan.get(), plan->nextId(), indexNode->collection(),
-        indexNode->getSingleIndex());
+        indexNode->getSingleIndex(), indexNode->outVariable(),
+        std::move(groups));
 
     plan->replaceNode(collectNode, indexCollectNode);
     plan->unlinkNode(indexNode);
+    for (auto n : calculationsToRemove) {
+      plan->unlinkNode(n);
+    }
     modified = true;
   }
 
+  plan->show();
   opt->addPlan(std::move(plan), rule, modified);
+}
+
+std::ostream& arangodb::operator<<(std::ostream& os,
+                                   IndexDistinctScanOptions const& opts) {
+  return os << opts.distinctFields << (opts.sorted ? "sorted" : "unsorted");
 }

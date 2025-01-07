@@ -747,7 +747,10 @@ void CollectNode::aggregationMethod(
   _options.fixMethod(method);
 }
 
-CollectOptions& CollectNode::getOptions() { return _options; }
+CollectOptions& CollectNode::getOptions() noexcept { return _options; }
+CollectOptions const& CollectNode::getOptions() const noexcept {
+  return _options;
+}
 
 bool CollectNode::hasOutVariable() const { return _outVariable != nullptr; }
 

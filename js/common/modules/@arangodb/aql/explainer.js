@@ -1837,7 +1837,10 @@ function processQuery(query, explain, planIndex) {
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
       case 'IndexCollectNode':
-        return keyword('COLLECT INDEX') + ' ' + JSON.stringify(node);
+        iterateIndexes(node.index, 0, node, types, false);
+        return keyword('FOR ') + variableName(node.oldIndexVariable) + keyword(' IN ') + collection(node.collection) + keyword(' COLLECT ') + node.groups.map(function (grp) {
+          return variableName(grp.outVariable) + ' = ' + variableName(node.oldIndexVariable) + '.' + grp.attribute.map((p) => attribute(p)).join('.');
+        }).join(', ') + annotation(' /* distinct value index scan */');
       case 'SortNode':
         const groupedElements = node.numberOfTopGroupedElements > 0 ?
           '; ' + keyword('GROUPED BY') + ' '

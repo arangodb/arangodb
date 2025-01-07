@@ -29,7 +29,8 @@ using namespace arangodb::aql;
 
 ExecutionNode* IndexCollectNode::clone(ExecutionPlan* plan,
                                        bool withDependencies) const {
-  auto c = std::make_unique<IndexCollectNode>(plan, _id, collection(), _index);
+  auto c = std::make_unique<IndexCollectNode>(plan, _id, collection(), _index,
+                                              _oldIndexVariable, _groups);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
@@ -47,10 +48,14 @@ IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
 
 IndexCollectNode::IndexCollectNode(ExecutionPlan* plan, ExecutionNodeId id,
                                    const aql::Collection* collection,
-                                   std::shared_ptr<arangodb::Index> index)
+                                   std::shared_ptr<arangodb::Index> index,
+                                   Variable const* oldIndexVariable,
+                                   IndexCollectGroups groups)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
-      _index(std::move(index)) {}
+      _index(std::move(index)),
+      _groups(std::move(groups)),
+      _oldIndexVariable(oldIndexVariable) {}
 
 void IndexCollectNode::doToVelocyPack(velocypack::Builder& builder,
                                       unsigned int flags) const {
@@ -59,11 +64,31 @@ void IndexCollectNode::doToVelocyPack(velocypack::Builder& builder,
 
   builder.add(VPackValue("index"));
   _index->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Estimates));
+  builder.add(VPackValue("oldIndexVariable"));
+  _oldIndexVariable->toVelocyPack(builder);
+
+  {
+    VPackArrayBuilder ab(&builder, "groups");
+    for (auto const& grp : _groups) {
+      VPackObjectBuilder ob(&builder);
+      builder.add("indexField", grp.indexField);
+      builder.add(VPackValue("outVariable"));
+      grp.outVariable->toVelocyPack(builder);
+      {
+        VPackArrayBuilder ar(&builder, "attribute");
+        for (auto const& p : _index->coveredFields()[grp.indexField]) {
+          builder.add(VPackValue(p.name));
+        }
+      }
+    }
+  }
 }
+
 void IndexCollectNode::replaceVariables(
     const std::unordered_map<VariableId, const Variable*>& replacements) {
   ExecutionNode::replaceVariables(replacements);
 }
+
 void IndexCollectNode::replaceAttributeAccess(
     const ExecutionNode* self, const Variable* searchVariable,
     std::span<std::string_view> attribute, const Variable* replaceVariable,
@@ -76,7 +101,12 @@ void IndexCollectNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 std::vector<const Variable*> IndexCollectNode::getVariablesSetHere() const {
-  return ExecutionNode::getVariablesSetHere();
+  std::vector<const Variable*> result;
+  result.reserve(_groups.size());
+  for (auto const& grp : _groups) {
+    result.emplace_back(grp.outVariable);
+  }
+  return result;
 }
 
 CostEstimate IndexCollectNode::estimateCost() const {

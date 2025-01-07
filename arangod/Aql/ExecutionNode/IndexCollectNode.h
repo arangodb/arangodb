@@ -29,13 +29,21 @@ namespace arangodb {
 
 namespace aql {
 
+struct IndexCollectGroup {
+  std::size_t indexField;
+  Variable const* outVariable;
+};
+
+using IndexCollectGroups = std::vector<IndexCollectGroup>;
+
 struct IndexCollectNode : ExecutionNode, CollectionAccessingNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
 
   IndexCollectNode(ExecutionPlan* plan, ExecutionNodeId id,
                    aql::Collection const* collection,
-                   std::shared_ptr<arangodb::Index> index);
+                   std::shared_ptr<arangodb::Index> index,
+                   Variable const* oldIndexVariable, IndexCollectGroups groups);
 
   IndexCollectNode(ExecutionPlan* plan, arangodb::velocypack::Slice slice);
 
@@ -66,6 +74,8 @@ struct IndexCollectNode : ExecutionNode, CollectionAccessingNode {
 
  private:
   std::shared_ptr<arangodb::Index> _index;
+  IndexCollectGroups _groups;
+  Variable const* _oldIndexVariable;
 };
 
 }  // namespace aql
