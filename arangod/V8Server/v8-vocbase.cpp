@@ -797,7 +797,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }()
                .waitAndGet();
 
-  aql::QueryResult queryResult = query->executeSync();
+  auto queryResult = query->executeV8(isolate);
 
   if (queryResult.result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(),
@@ -806,11 +806,9 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  if (queryResult.data != nullptr) {
+  if (!queryResult.v8Data.IsEmpty()) {
     result
-        ->Set(context, TRI_V8_ASCII_STRING(isolate, "json"),
-              TRI_VPackToV8(isolate, queryResult.data->slice(),
-                            queryResult.context->getVPackOptions()))
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "json"), queryResult.v8Data)
         .FromMaybe(false);
   }
   if (queryResult.extra != nullptr) {

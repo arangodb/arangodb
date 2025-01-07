@@ -67,7 +67,7 @@ class V8Context final : public Context {
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override;
 
-  virtual bool isV8Context() override { return true; }
+  bool isV8Context() override { return true; }
 
   /// @brief return parent transaction state or none
   static std::shared_ptr<TransactionState> getParentState();

@@ -975,9 +975,11 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       }
     }
 
-    // will throw if it fails
     [&]() -> futures::Future<futures::Unit> {
-      co_return co_await prepareQuery();
+      if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
+                    // will throw if it fails
+        co_await prepareQuery();
+      }
     }()
                  .waitAndGet();
 
