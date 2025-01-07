@@ -159,6 +159,12 @@ target_link_libraries(arango_basic_utils
          snappy
 )
 
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(arango_basic_utils PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_basic_utils PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
 add_dependencies(arango_basic_utils snappy)
 target_include_directories(arango_basic_utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango_basic_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
@@ -225,31 +231,31 @@ target_link_libraries(arango_basic_logger
 target_include_directories(arango_basic_logger PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(arango_basic_http_client STATIC
-      Rest/CommonDefines.cpp
-      Rest/GeneralRequest.cpp
-      Rest/GeneralResponse.cpp
-      Rest/HttpRequest.cpp
-      Rest/HttpResponse.cpp
-      Rest/PathMatch.h
-      Rest/Version.cpp
-      SimpleHttpClient/ClientConnection.cpp
-      SimpleHttpClient/ConnectionCache.cpp
-      SimpleHttpClient/GeneralClientConnection.cpp
-      SimpleHttpClient/HttpResponseChecker.cpp
-      SimpleHttpClient/SimpleHttpClient.cpp
-      SimpleHttpClient/SimpleHttpResult.cpp
-      SimpleHttpClient/SslClientConnection.cpp
-      Ssl/SslFeature.cpp
-      Ssl/SslInterface.cpp
-      Ssl/ssl-helper.cpp
+        Rest/CommonDefines.cpp
+        Rest/GeneralRequest.cpp
+        Rest/GeneralResponse.cpp
+        Rest/HttpRequest.cpp
+        Rest/HttpResponse.cpp
+        Rest/PathMatch.h
+        Rest/Version.cpp
+        SimpleHttpClient/ClientConnection.cpp
+        SimpleHttpClient/ConnectionCache.cpp
+        SimpleHttpClient/GeneralClientConnection.cpp
+        SimpleHttpClient/HttpResponseChecker.cpp
+        SimpleHttpClient/SimpleHttpClient.cpp
+        SimpleHttpClient/SimpleHttpResult.cpp
+        SimpleHttpClient/SslClientConnection.cpp
+        Ssl/SslFeature.cpp
+        Ssl/SslInterface.cpp
+        Ssl/ssl-helper.cpp
 
-      Endpoint/Endpoint.cpp
-      Endpoint/EndpointIp.cpp
-      Endpoint/EndpointIpV4.cpp
-      Endpoint/EndpointIpV6.cpp
-      Endpoint/EndpointList.cpp
-      Endpoint/EndpointSrv.cpp
-      Endpoint/EndpointUnixDomain.cpp
+        Endpoint/Endpoint.cpp
+        Endpoint/EndpointIp.cpp
+        Endpoint/EndpointIpV4.cpp
+        Endpoint/EndpointIpV6.cpp
+        Endpoint/EndpointList.cpp
+        Endpoint/EndpointSrv.cpp
+        Endpoint/EndpointUnixDomain.cpp
 )
 target_link_libraries(arango_basic_http_client
   PUBLIC velocypack

@@ -334,7 +334,7 @@ if (STATIC_EXECUTABLES)
 
   find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
   if (LIBOMP)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fopenmp=libomp -L/opt/omp -llapack -lgfortran")
+    target_link_options(${BIN_ARANGOD} PRIVATE "-fopenmp=libomp -L/opt/omp -llapack -lgfortran" )
   else ()
     message(FATAL_ERROR "libomp.a must be present in /opt/omp for static build")
   endif ()

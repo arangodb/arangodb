@@ -15,20 +15,17 @@ target_link_libraries(arango_v8
   arango_assertions
   arango_static_strings
   arango_futures
-  boost_boost
-  boost_system
-  arango_inspection
-  absl::flat_hash_set
-  absl::synchronization
-  arango_async
-  fmt::fmt
-
   arango_basic_errors
   arango_basic_utils
   arango_basic_features
   arango_basic_logger
-  boost_system
+  arango_inspection
   boost_boost
+  boost_system
+  absl::flat_hash_set
+  absl::synchronization
+  arango_async
+  fmt::fmt
   v8_interface
   velocypack
   immer
