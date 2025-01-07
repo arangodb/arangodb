@@ -6,12 +6,13 @@ import sys
 import logging
 import psutil
 
-
 def list_all_processes():
     """list all processes for later reference"""
     pseaf = "PID  Process"
     # pylint: disable=catching-non-exception
     for process in psutil.process_iter(["pid", "ppid", "name"]):
+        if  process.pid in [1, 2] or process.ppid() == 2:
+            continue
         cmdline = process.name
         try:
             cmdline = str(process.cmdline())
@@ -27,10 +28,8 @@ def list_all_processes():
     logging.info(pseaf)
     sys.stdout.flush()
 
-
 def kill_all_arango_processes():
     """list all processes for later reference"""
-    pseaf = "PID  Process"
     # pylint: disable=catching-non-exception
     for process in psutil.process_iter(["pid", "name"]):
         if (
@@ -55,6 +54,8 @@ def gather_process_thread_statistics(p):
     ret['process'] = [{
         'time': time.ctime(),
         'pid': p.pid,
+        'ppid': p.ppid(),
+        'cmdline': p.cmdline(),
         'name': p.name(),
         'percent': p.cpu_percent(),
         'iocounters': p.io_counters(),
@@ -77,25 +78,27 @@ def add_delta(p1, p2):
             p1[tid]['d_sys'] = p2[tid]['sys'] - p1[tid]['sys']
     p1['process'].append(p2['process'][0])
 
-def get_all_processes_stats_json():
+def get_all_processes_stats_json(load):
     """ aggregate a structure of all processes and their threads plus delta """
+    # pylint: disable=broad-exception-caught
     process_full_list = {}
-    for n in [True, False]:
-        processes = psutil.process_iter()
-        for process in processes:
-            name = ""
-            try:
-                name = process.name()
-                if  process.ppid() != 2 and process.pid not in [1, 2]:
-                    procstat = gather_process_thread_statistics(process)
-                    if n:
-                        process_full_list[f"p{process.pid}"] = procstat
-                    else:
-                        add_delta(process_full_list[f"p{process.pid}"], procstat)
-            except psutil.AccessDenied:
-                pass
-            except Exception as ex:
-                print(f"while inspecting {name}: {ex} ")
-        if n:
-            time.sleep(1)
+    process_full_list['sys'] = {
+        'load': load,
+        'vmem': psutil.virtual_memory(),
+        'mem': psutil.swap_memory(),
+        'diskio': psutil.disk_io_counters(perdisk=True, nowrap=True),
+        'netio': psutil.net_io_counters(pernic=True, nowrap=True),
+    }
+    processes = psutil.process_iter()
+    for process in processes:
+        name = ""
+        try:
+            name = process.name()
+            if  process.pid not in [1, 2] and process.ppid() != 2:
+                procstat = gather_process_thread_statistics(process)
+                process_full_list[f"p{process.pid}"] = procstat
+        except psutil.AccessDenied:
+            pass
+        except Exception as ex:
+            print(f"while inspecting {name}: {ex} ")
     return json.dumps(process_full_list)
