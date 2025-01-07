@@ -1837,9 +1837,13 @@ function processQuery(query, explain, planIndex) {
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
       case 'SortNode':
-        return keyword('SORT') + ' ' + node.elements.map(function (node) {
-          return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-        }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
+        const groupedElements = node.numberOfTopGroupedElements > 0 ?
+          '; ' + keyword('GROUPED BY') + ' '
+          + node.elements.slice(0, node.numberOfTopGroupedElements).map((element) => variableName(element.inVariable)).join(', ') : '';
+        return keyword('SORT') + ' '
+          + node.elements.slice(node.numberOfTopGroupedElements, node.elements.length).map((node) => variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC')).join(', ')
+          + groupedElements
+          + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
       case 'LimitNode':
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':

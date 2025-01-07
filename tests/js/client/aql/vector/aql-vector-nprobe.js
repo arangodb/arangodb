@@ -77,6 +77,8 @@ function VectorIndexL2NprobeTestSuite() {
             }
             collection.insert(docs);
 
+            // big number of nLists causes that results are spread across
+            // multiple nLists and makes probability of returning all the results with 1 nProbe lower
             collection.ensureIndex({
                 name: "vector_l2",
                 type: "vector",
@@ -85,7 +87,7 @@ function VectorIndexL2NprobeTestSuite() {
                 params: {
                     metric: "l2",
                     dimension: dimension,
-                    nLists: 500,
+                    nLists: 300,
                     trainingIterations: 10,
                 },
             });
@@ -163,4 +165,3 @@ function VectorIndexL2NprobeTestSuite() {
 jsunity.run(VectorIndexL2NprobeTestSuite);
 
 return jsunity.done();
-
