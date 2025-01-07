@@ -586,6 +586,9 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // release inventory lock while we are filling the index
     inventoryLocker.unlock();
 
+    // prepare index for insertion, e.g. vector index needs to be trained
+    buildIdx->beforeCreate();
+
     // Step 4. fill index
     bool const inBackground = basics::VelocyPackHelper::getBooleanValue(
         info, StaticStrings::IndexInBackground, false);
@@ -1432,6 +1435,11 @@ void RocksDBCollection::figuresSpecific(
                 db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), snapshot,
                 true);
             break;
+          case Index::TRI_IDX_TYPE_VECTOR_INDEX:
+            count = rocksutils::countKeyRange(
+                db, RocksDBKeyBounds::VectorVPackIndex(rix->objectId()),
+                snapshot, true);
+            break;
           default:
             // we should not get here
             TRI_ASSERT(false);
@@ -1503,10 +1511,8 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   key->constructDocument(objectId(), documentId);
   TRI_ASSERT(key->containsLocalDocumentId(documentId));
 
-  if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // banish new document to avoid caching without committing first
-    invalidateCacheEntry(key.ref());
-  }
+  // banish new document to avoid caching without committing first
+  invalidateCacheEntry(key.ref());
 
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
@@ -1915,10 +1921,8 @@ Result RocksDBCollection::modifyDocument(
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
-  if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // banish new document to avoid caching without committing first
-    invalidateCacheEntry(key.ref());
-  }
+  // banish new document to avoid caching without committing first
+  invalidateCacheEntry(key.ref());
 
   trx->state()->trackShardUsage(
       *trx->resolver(), _logicalCollection.vocbase().name(),

@@ -25,14 +25,15 @@
 
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/Result.h"
 #include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <s2/base/integral_types.h>
+
+#include <cstddef>
+#include <cstdint>
 #include <iosfwd>
 #include <string_view>
 #include <vector>
@@ -44,6 +45,8 @@ struct IndexIteratorOptions;
 struct ResourceMonitor;
 struct AqlIndexStreamIterator;
 struct IndexStreamOptions;
+
+struct UserVectorIndexDefinition;
 
 namespace velocypack {
 class Builder;
@@ -106,7 +109,8 @@ class Index {
     TRI_IDX_TYPE_ZKD_INDEX,
     TRI_IDX_TYPE_MDI_INDEX,
     TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
-    TRI_IDX_TYPE_INVERTED_INDEX
+    TRI_IDX_TYPE_INVERTED_INDEX,
+    TRI_IDX_TYPE_VECTOR_INDEX,
   };
 
   /// @brief: helper struct returned by index methods that determine the costs
@@ -261,12 +265,12 @@ class Index {
   static IndexId generateId();
 
   /// @brief check if two index definitions share any identifiers (_id, name)
-  static bool CompareIdentifiers(velocypack::Slice const& lhs,
+  static bool compareIdentifiers(velocypack::Slice const& lhs,
                                  velocypack::Slice const& rhs);
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
+  static bool compare(StorageEngine&, velocypack::Slice const& lhs,
                       velocypack::Slice const& rhs, std::string const& dbname);
 
   static void normalizeFilterCosts(Index::FilterCosts& costs,
@@ -321,13 +325,19 @@ class Index {
     Internals = 8,
     /// @brief serialize for inventory
     Inventory = 16,
+    /// @brief serialize for maintenance work
+    /// This mode should be used to indicate which
+    /// data should be transferred in maintenance service
+    /// For now this is same as Internals mode except for
+    /// vector index where we ignore trainedData
+    Maintenance = 32,
   };
 
   /// @brief helper for building flags
   template<typename... Args>
   static inline constexpr std::underlying_type<Serialize>::type makeFlags(
       Serialize flag, Args... args) {
-    return static_cast<std::underlying_type<Serialize>::type>(flag) +
+    return static_cast<std::underlying_type<Serialize>::type>(flag) |
            makeFlags(args...);
   }
 
@@ -396,13 +406,39 @@ class Index {
       aql::AstNode const* op, aql::Variable const* reference,
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
 
-  virtual bool supportsStreamInterface(
+  struct StreamSupportResult {
+    bool hasSupport() const noexcept { return _isSupported; }
+
+    bool isUniqueStream() const noexcept {
+      TRI_ASSERT(_isSupported);
+      return _isUniqueStream;
+    }
+
+    static StreamSupportResult makeSupported(bool isUniqueStream) noexcept {
+      StreamSupportResult r;
+      r._isSupported = true;
+      r._isUniqueStream = isUniqueStream;
+      return r;
+    }
+
+    static StreamSupportResult makeUnsupported() noexcept { return {}; }
+
+    StreamSupportResult() = default;
+
+   private:
+    bool _isSupported = false;
+    bool _isUniqueStream = false;
+  };
+
+  virtual StreamSupportResult supportsStreamInterface(
       IndexStreamOptions const&) const noexcept {
-    return false;
+    return StreamSupportResult{};
   }
 
   virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
       transaction::Methods* trx, IndexStreamOptions const&);
+
+  virtual UserVectorIndexDefinition const& getVectorIndexDefinition();
 
   virtual bool canWarmup() const noexcept;
   virtual Result warmup();

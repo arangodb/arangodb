@@ -1,4 +1,4 @@
-import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { getCurrentDB } from "../../../../utils/arangoClient";
 import { encodeHelper } from "../../../../utils/encodeHelper";
 import { notifyError, notifySuccess } from "../../../../utils/notifications";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
@@ -30,34 +30,24 @@ export const useCreateIndex = <
         );
       },
       async () => {
-        let result;
+        let job;
         try {
-          result = await getApiRouteForCurrentDB().post(
-            `index`,
-            {
+          const db = getCurrentDB();
+          job = await db.createJob(() =>
+            db.collection(encodedCollectionName).ensureIndex({
               ...values,
               name: values.name ? String(values.name)?.normalize() : undefined
-            },
-            `collection=${encodedCollectionName}`,
-            {
-              "x-arango-async": "store"
-            }
+            } as any)
           );
-          const syncId = result.headers["x-arango-async-id"];
-          if (result.statusCode === 202 && syncId) {
-            window.arangoHelper.addAardvarkJob({
-              id: syncId,
-              type: "index",
-              desc: "Creating Index",
-              collection: collectionId
-            });
-            handleSuccess(onCloseForm);
-          }
-          if (result.body.code === 201) {
-            handleSuccess(onCloseForm);
-          }
+          window.arangoHelper.addAardvarkJob({
+            id: job.id,
+            type: "index",
+            desc: "Creating Index",
+            collection: collectionId
+          });
+          handleSuccess(onCloseForm);
         } catch (error: any) {
-          handleError(error.response.body);
+          handleError(error.response.parsedBody);
         }
       }
     );

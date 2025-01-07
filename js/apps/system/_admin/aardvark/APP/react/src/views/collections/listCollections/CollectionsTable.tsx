@@ -1,10 +1,8 @@
+import { ReactTable, TableControl, useSortableReactTable } from "@arangodb/ui";
 import { Flex, Link } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
 import { ListHeader } from "../../../components/table/ListHeader";
-import { ReactTable } from "../../../components/table/ReactTable";
-import { TableControl } from "../../../components/table/TableControl";
-import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { useCollectionsContext } from "../CollectionsContext";
 import { STATUS_TO_LABEL_MAP, TYPE_TO_LABEL_MAP } from "../CollectionsHelpers";
 import { LockableCollectionDescription } from "../useFetchCollections";
@@ -100,10 +98,7 @@ export const CollectionsTable = ({
     <Flex direction="column" gap="2">
       <Flex direction="column" gap="4">
         <CollectionTableHeader onAddCollectionClick={onAddCollectionClick} />
-        <TableControl<LockableCollectionDescription>
-          table={tableInstance}
-          columns={TABLE_COLUMNS}
-        />
+        <TableControl<LockableCollectionDescription> table={tableInstance} />
       </Flex>
       <ReactTable<LockableCollectionDescription>
         table={tableInstance}

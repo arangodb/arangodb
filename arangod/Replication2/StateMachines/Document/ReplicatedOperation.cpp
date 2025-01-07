@@ -22,10 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
-#include "Replication2/StateMachines/Document/ReplicatedOperationInspectors.h"
 
 #include "Assertions/AssertionLogger.h"
 #include "Assertions/ProdAssert.h"
+#include "Basics/StaticStrings.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperationInspectors.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -78,6 +79,9 @@ auto ReplicatedOperation::buildTruncateOperation(
 auto ReplicatedOperation::buildCreateShardOperation(
     ShardID shard, TRI_col_type_e collectionType,
     velocypack::SharedSlice properties) noexcept -> ReplicatedOperation {
+  // the None slice is used in the gtests
+  TRI_ASSERT(properties.isNone() ||
+             !properties.hasKey(StaticStrings::ObjectId));
   return ReplicatedOperation{
       std::in_place, CreateShard{shard, collectionType, std::move(properties)}};
 }

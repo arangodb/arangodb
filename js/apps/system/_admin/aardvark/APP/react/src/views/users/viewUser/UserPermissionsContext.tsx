@@ -1,3 +1,4 @@
+import { InfoTooltip, useSortableReactTable } from "@arangodb/ui";
 import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 import { Flex, Icon, Tag, Text } from "@chakra-ui/react";
 import {
@@ -6,10 +7,7 @@ import {
   getExpandedRowModel,
   Table
 } from "@tanstack/react-table";
-import React from "react";
-
-import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
+import React, { useMemo } from "react";
 import {
   CollectionType,
   DatabaseTableType
@@ -59,31 +57,39 @@ export const useUserPermissionsContext = () => {
 const usePermissionTableData = () => {
   const { databasePermissions, refetchDatabasePermissions } =
     useFetchDatabasePermissions();
-  if (!databasePermissions)
+
+  const databaseTable = useMemo(
+    () =>
+      databasePermissions
+        ? (Object.entries(databasePermissions)
+            .map(([databaseName, permissionObject]) => {
+              return {
+                databaseName,
+                permission: permissionObject.permission,
+                collections: Object.entries(permissionObject.collections || {})
+                  .map(([collectionName, collectionPermission]) => {
+                    // filter out built-in collections
+                    if (collectionName.startsWith("_")) {
+                      return null;
+                    }
+                    return {
+                      collectionName,
+                      permission: collectionPermission
+                    };
+                  })
+                  .filter(Boolean) as CollectionType[]
+              };
+            })
+            .filter(Boolean) as DatabaseTableType[])
+        : [],
+    [databasePermissions]
+  );
+
+  if (!databasePermissions) {
     return {
       databaseTable: []
     };
-  const databaseTable = Object.entries(databasePermissions)
-    .map(([databaseName, permissionObject]) => {
-      return {
-        databaseName,
-        permission: permissionObject.permission,
-        collections: Object.entries(permissionObject.collections || {})
-          .map(([collectionName, collectionPermission]) => {
-            
-            // filter out built-in collections
-            if (collectionName.startsWith("_")) {
-              return null;
-            }
-            return {
-              collectionName,
-              permission: collectionPermission
-            };
-          })
-          .filter(Boolean) as CollectionType[]
-      };
-    })
-    .filter(Boolean) as DatabaseTableType[];
+  }
   let serverLevelDefaultPermission;
   try {
     serverLevelDefaultPermission = databasePermissions["*"].permission;
@@ -91,7 +97,7 @@ const usePermissionTableData = () => {
     // just ignore, not part of the response
   }
   return {
-    databaseTable: [...databaseTable],
+    databaseTable: databaseTable,
     serverLevelDefaultPermission,
     refetchDatabasePermissions
   };
@@ -105,7 +111,12 @@ const permissionColumns = [
       return (
         <Flex alignItems="center">
           <Text>Administrate</Text>
-          <InfoTooltip label="Allows creating/dropping of collections and setting user permissions in the database." />
+          <InfoTooltip
+            boxProps={{
+              color: "gray.700"
+            }}
+            label="Allows creating/dropping of collections and setting user permissions in the database."
+          />
         </Flex>
       );
     },
@@ -125,7 +136,12 @@ const permissionColumns = [
       return (
         <Flex alignItems="center">
           <Text>Access</Text>
-          <InfoTooltip label="Allows access to the database. User cannot create or drop collections." />
+          <InfoTooltip
+            boxProps={{
+              color: "gray.700"
+            }}
+            label="Allows access to the database. User cannot create or drop collections."
+          />
         </Flex>
       );
     },
@@ -145,7 +161,12 @@ const permissionColumns = [
       return (
         <Flex alignItems="center">
           <Text>No Access</Text>
-          <InfoTooltip label="User has no access to the database." />
+          <InfoTooltip
+            boxProps={{
+              color: "gray.700"
+            }}
+            label="User has no access to the database."
+          />
         </Flex>
       );
     },
@@ -167,7 +188,12 @@ const permissionColumns = [
         return (
           <Flex alignItems="center">
             <Text>Use Default</Text>
-            <InfoTooltip label="Access level is unspecified. Database default (*) will be used." />
+            <InfoTooltip
+              boxProps={{
+                color: "gray.700"
+              }}
+              label="Access level is unspecified. Database default (*) will be used."
+            />
           </Flex>
         );
       },
@@ -225,7 +251,12 @@ export const TABLE_COLUMNS = [
         return (
           <Flex padding="2">
             <Tag>Default</Tag>
-            <InfoTooltip label="Default access level for databases, if authorization level is not specified." />
+            <InfoTooltip
+              boxProps={{
+                color: "gray.700"
+              }}
+              label="Default access level for databases, if authorization level is not specified."
+            />
           </Flex>
         );
       }
@@ -257,7 +288,6 @@ export const UserPermissionsContextProvider = ({
 }) => {
   const { databaseTable, refetchDatabasePermissions } =
     usePermissionTableData();
-  const { username } = useUsername();
   const {
     handleDatabaseCellClick,
     handleCollectionCellClick,
@@ -268,6 +298,10 @@ export const UserPermissionsContextProvider = ({
     refetchDatabasePermissions
   });
 
+  const { username } = useUsername();
+  const rawUsername = decodeURIComponent(username);
+  const isManagedUser = rawUsername.includes("|");
+  const isRootUser = rawUsername === "root";
   const tableInstance = useSortableReactTable<DatabaseTableType>({
     data: databaseTable || [],
     columns: TABLE_COLUMNS,
@@ -280,11 +314,11 @@ export const UserPermissionsContextProvider = ({
     defaultFilters: [],
     storageKey: "userPermissions",
     getExpandedRowModel: getExpandedRowModel(),
-    getRowCanExpand: () => true
-  });
-
-  React.useEffect(() => {
-    window.arangoHelper.buildUserSubNav(username, "Permissions");
+    getRowCanExpand: () => true,
+    meta: {
+      isManagedUser,
+      isRootUser
+    }
   });
 
   return (

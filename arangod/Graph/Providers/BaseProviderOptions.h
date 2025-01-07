@@ -25,26 +25,30 @@
 
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/InAndOutRowExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
-#include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
-#include "Aql/InAndOutRowExpressionContext.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Providers/SmartGraphRPCCommunicator.h"
 #endif
 
+#include <memory>
 #include <optional>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
 
 namespace aql {
 class QueryContext;
-}
+struct AstNode;
+class InputAqlItemRow;
+}  // namespace aql
 
 namespace graph {
 
@@ -84,7 +88,6 @@ struct SingleServerBaseProviderOptions {
   using WeightCallback = std::function<double(
       double originalWeight, arangodb::velocypack::Slice edge)>;
 
- public:
   SingleServerBaseProviderOptions(
       aql::Variable const* tmpVar,
       std::pair<std::vector<IndexAccessor>,
@@ -95,7 +98,8 @@ struct SingleServerBaseProviderOptions {
           filterConditionVariables,
       MonitoredCollectionToShardMap const& collectionToShardMap,
       aql::Projections const& vertexProjections,
-      aql::Projections const& edgeProjections, bool produceVertices);
+      aql::Projections const& edgeProjections, bool produceVertices,
+      bool useCache);
 
   SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) =
       delete;
@@ -117,6 +121,8 @@ struct SingleServerBaseProviderOptions {
 
   bool produceVertices() const noexcept;
 
+  bool useCache() const noexcept;
+
   double weightEdge(double prefixWeight,
                     arangodb::velocypack::Slice edge) const;
 
@@ -129,6 +135,7 @@ struct SingleServerBaseProviderOptions {
  private:
   // The temporary Variable used in the Indexes
   aql::Variable const* _temporaryVariable;
+
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
   std::pair<std::vector<IndexAccessor>,
@@ -162,6 +169,8 @@ struct SingleServerBaseProviderOptions {
   aql::Projections const& _edgeProjections;
 
   bool const _produceVertices;
+
+  bool const _useCache;
 };
 
 struct ClusterBaseProviderOptions {
@@ -212,6 +221,12 @@ struct ClusterBaseProviderOptions {
 
   bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
+  bool clearEdgeCacheOnClear() const noexcept { return _clearEdgeCacheOnClear; }
+
+  void setClearEdgeCacheOnClear(bool flag) noexcept {
+    _clearEdgeCacheOnClear = flag;
+  }
+
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;
 
@@ -241,6 +256,14 @@ struct ClusterBaseProviderOptions {
 #endif
 
   std::unordered_set<uint64_t> _availableDepthsSpecificConditions;
+
+  // Traditionally, this was `true`, since the data stored in the edge cache
+  // on the coordinator is only valid for a single computation, since it might
+  // have filtered certain edges and the filter conditions might have changed.
+  // For ShortestPath computations and consequently Yen computations, this is
+  // not true and hurts performance. Therefore, for these cases it is possible
+  // to set this flag to `false` to retain cached data across calls to `clear`.
+  bool _clearEdgeCacheOnClear = true;
 };
 
 }  // namespace graph

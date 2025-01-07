@@ -253,131 +253,146 @@ function kConstantWeightShortestPathTestSuite() {
     tearDownAll,
 
     testPathsExistsLimit: function () {
-      const query = `
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
-          LIMIT 6
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 6);
-      allPathsAreSorted(result);
-      for (let i = 0; i < 5; ++i) {
-        isPathValid(result[i], 4, 4);
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
+        const query = `
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" ${o}
+            LIMIT 6
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        allPathsDiffer(result);
+        assertEqual(result.length, 6);
+        allPathsAreSorted(result);
+        for (let i = 0; i < 5; ++i) {
+          isPathValid(result[i], 4, 4);
+        }
+        // The 6th path is the only longer one
+        isPathValid(result[5], 5, 5);
       }
-      // The 6th path is the only longer one
-      isPathValid(result[5], 5, 5);
-
 
     },
 
     testNoPathExistsLimit: function () {
-      const query = `
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${badTarget}" GRAPH "${graphName}"
-          LIMIT 6
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 0);
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
+        const query = `
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${badTarget}" GRAPH "${graphName}" ${o}
+            LIMIT 6
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        assertEqual(result.length, 0);
+      }
     },
 
     testFewerPathsThanLimit: function () {
-      const query = `
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
-          LIMIT 1000
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 9);
-      allPathsAreSorted(result);
-      for (let i = 0; i < 5; ++i) {
-        isPathValid(result[i], 4, 4);
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
+        const query = `
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" ${o}
+            LIMIT 1000
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        allPathsDiffer(result);
+        assertEqual(result.length, 9);
+        allPathsAreSorted(result);
+        for (let i = 0; i < 5; ++i) {
+          isPathValid(result[i], 4, 4);
+        }
+        for (let i = 5; i < 8; ++i) {
+          isPathValid(result[i], 5, 5);
+        }
+        isPathValid(result[8], 8, 8);
       }
-      for (let i = 5; i < 8; ++i) {
-        isPathValid(result[i], 5, 5);
-      }
-      isPathValid(result[8], 8, 8);
     },
 
     testPathsExistsNoLimit: function () {
-      const query = `
-        FOR source IN ${vName}
-          FILTER source._id == "${source}"
-          FOR target IN ${vName}
-            FILTER target._id == "${target}"
-            FOR path IN OUTBOUND K_SHORTEST_PATHS source TO target GRAPH "${graphName}"
-            RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 9);
-      allPathsAreSorted(result);
-      for (let i = 0; i < 5; ++i) {
-        isPathValid(result[i], 4, 4);
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
+        const query = `
+          FOR source IN ${vName}
+            FILTER source._id == "${source}"
+            FOR target IN ${vName}
+              FILTER target._id == "${target}"
+              FOR path IN OUTBOUND K_SHORTEST_PATHS source TO target GRAPH "${graphName}" ${o}
+              RETURN path
+        `;
+        const result = db._query(query).toArray();
+        allPathsDiffer(result);
+        assertEqual(result.length, 9);
+        allPathsAreSorted(result);
+        for (let i = 0; i < 5; ++i) {
+          isPathValid(result[i], 4, 4);
+        }
+        for (let i = 5; i < 8; ++i) {
+          isPathValid(result[i], 5, 5);
+        }
+        isPathValid(result[8], 8, 8);
       }
-      for (let i = 5; i < 8; ++i) {
-        isPathValid(result[i], 5, 5);
-      }
-      isPathValid(result[8], 8, 8);
     },
 
     testNoPathsExistsNoLimit: function () {
-      const query = `
-        FOR source IN ${vName}
-          FILTER source._id == "${source}"
-          FOR target IN ${vName}
-            FILTER target._id == "${badTarget}"
-            FOR path IN OUTBOUND K_SHORTEST_PATHS source TO target GRAPH "${graphName}"
-            RETURN path
-      `;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 0);
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
+        const query = `
+          FOR source IN ${vName}
+            FILTER source._id == "${source}"
+            FOR target IN ${vName}
+              FILTER target._id == "${badTarget}"
+              FOR path IN OUTBOUND K_SHORTEST_PATHS source TO target GRAPH "${graphName}" ${o}
+              RETURN path
+        `;
+        const result = db._query(query).toArray();
+        assertEqual(result.length, 0);
+      }
     },
 
     testPathsSkip: function () {
-      const query = `
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
-          LIMIT 3, 3
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 3);
-      allPathsAreSorted(result);
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
+        const query = `
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" ${o}
+            LIMIT 3, 3
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        allPathsDiffer(result);
+        assertEqual(result.length, 3);
+        allPathsAreSorted(result);
 
-      for (let i = 0; i < 2; ++i) {
-        isPathValid(result[i], 4, 4);
-      }
-      for (let i = 2; i < 3; ++i) {
-        isPathValid(result[i], 5, 5);
+        for (let i = 0; i < 2; ++i) {
+          isPathValid(result[i], 4, 4);
+        }
+        for (let i = 2; i < 3; ++i) {
+          isPathValid(result[i], 5, 5);
+        }
       }
     },
 
     testPathsSkipMoreThanExists: function () {
-      const query = `
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
-          LIMIT 1000, 2
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 0);
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
+        const query = `
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" ${o}
+            LIMIT 1000, 2
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        assertEqual(result.length, 0);
+      }
     },
 
     testMultiDirections: function () {
-      const query = `
-        WITH ${vName}
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" ${e1Name}, INBOUND ${e2Name}
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 4);
-      allPathsAreSorted(result);
-      for (let i = 0; i < 3; ++i) {
-        isPathValid(result[i], 3, 3, true);
+      for (let o of ['', 'OPTIONS { algorithm: "legacy" }']) {
+        const query = `
+          WITH ${vName}
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" ${e1Name}, INBOUND ${e2Name} ${o}
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        allPathsDiffer(result);
+        assertEqual(result.length, 4);
+        allPathsAreSorted(result);
+        for (let i = 0; i < 3; ++i) {
+          isPathValid(result[i], 3, 3, true);
+        }
+        isPathValid(result[3], 6, 6, true);
       }
-      isPathValid(result[3], 6, 6, true);
     }
 
   };
@@ -393,131 +408,205 @@ function kAttributeWeightShortestPathTestSuite() {
     tearDownAll,
 
     testWeightPathsExistsLimit: function () {
-      const query = `
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          LIMIT 6
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 6);
-      allPathsAreSorted(result);
-      isPathValid(result[0], 4, 4);
-      isPathValid(result[1], 4, 7);
-      isPathValid(result[2], 5, 17);
-      isPathValid(result[3], 5, 20);
-      isPathValid(result[4], 5, 25);
-      isPathValid(result[5], 4, 31);
+      for (let o of ['', ' ,algorithm: "legacy"']) {
+        const query = `
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+            LIMIT 6
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        allPathsDiffer(result);
+        assertEqual(result.length, 6);
+        allPathsAreSorted(result);
+        isPathValid(result[0], 4, 4);
+        isPathValid(result[1], 4, 7);
+        isPathValid(result[2], 5, 17);
+        isPathValid(result[3], 5, 20);
+        isPathValid(result[4], 5, 25);
+        isPathValid(result[5], 4, 31);
+      }
     },
 
     testWeightNoPathExistsLimit: function () {
-      const query = `
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${badTarget}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          LIMIT 6
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 0);
+      for (let o of ['', ' ,algorithm: "legacy"']) {
+        const query = `
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${badTarget}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+            LIMIT 6
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        assertEqual(result.length, 0);
+      }
     },
 
     testWeightFewerPathsThanLimit: function () {
-      const query = `
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          LIMIT 1000
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 9, JSON.stringify(result));
-      allPathsAreSorted(result);
-      isPathValid(result[0], 4, 4);
-      isPathValid(result[1], 4, 7);
-      isPathValid(result[2], 5, 17);
-      isPathValid(result[3], 5, 20);
-      isPathValid(result[4], 5, 25);
-      isPathValid(result[5], 4, 31);
-      isPathValid(result[6], 4, 36);
-      isPathValid(result[7], 4, 37);
-      isPathValid(result[8], 8, 47);
+      for (let o of ['', ' ,algorithm: "legacy"']) {
+        const query = `
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+            LIMIT 1000
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        allPathsDiffer(result);
+        assertEqual(result.length, 9, JSON.stringify(result));
+        allPathsAreSorted(result);
+        isPathValid(result[0], 4, 4);
+        isPathValid(result[1], 4, 7);
+        isPathValid(result[2], 5, 17);
+        isPathValid(result[3], 5, 20);
+        isPathValid(result[4], 5, 25);
+        isPathValid(result[5], 4, 31);
+        isPathValid(result[6], 4, 36);
+        isPathValid(result[7], 4, 37);
+        isPathValid(result[8], 8, 47);
+      }
     },
 
     testWeightPathsExistsNoLimit: function () {
-      const query = `
-        FOR source IN ${vName}
-          FILTER source._id == "${source}"
-          FOR target IN ${vName}
-            FILTER target._id == "${target}"
-            FOR path IN OUTBOUND K_SHORTEST_PATHS source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-            RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 9);
-      allPathsAreSorted(result);
-      isPathValid(result[0], 4, 4);
-      isPathValid(result[1], 4, 7);
-      isPathValid(result[2], 5, 17);
-      isPathValid(result[3], 5, 20);
-      isPathValid(result[4], 5, 25);
-      isPathValid(result[5], 4, 31);
-      isPathValid(result[6], 4, 36);
-      isPathValid(result[7], 4, 37);
-      isPathValid(result[8], 8, 47);
+      for (let o of ['', ' ,algorithm: "legacy"']) {
+        const query = `
+          FOR source IN ${vName}
+            FILTER source._id == "${source}"
+            FOR target IN ${vName}
+              FILTER target._id == "${target}"
+              FOR path IN OUTBOUND K_SHORTEST_PATHS source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+              RETURN path
+        `;
+        const result = db._query(query).toArray();
+        allPathsDiffer(result);
+        assertEqual(result.length, 9);
+        allPathsAreSorted(result);
+        isPathValid(result[0], 4, 4);
+        isPathValid(result[1], 4, 7);
+        isPathValid(result[2], 5, 17);
+        isPathValid(result[3], 5, 20);
+        isPathValid(result[4], 5, 25);
+        isPathValid(result[5], 4, 31);
+        isPathValid(result[6], 4, 36);
+        isPathValid(result[7], 4, 37);
+        isPathValid(result[8], 8, 47);
+      }
     },
 
     testWeightNoPathsExistsNoLimit: function () {
-      const query = `
-        FOR source IN ${vName}
-          FILTER source._id == "${source}"
-          FOR target IN ${vName}
-            FILTER target._id == "${badTarget}"
-            FOR path IN OUTBOUND K_SHORTEST_PATHS source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-            RETURN path
-      `;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 0);
+      for (let o of ['', ' ,algorithm: "legacy"']) {
+        const query = `
+          FOR source IN ${vName}
+            FILTER source._id == "${source}"
+            FOR target IN ${vName}
+              FILTER target._id == "${badTarget}"
+              FOR path IN OUTBOUND K_SHORTEST_PATHS source TO target GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+              RETURN path
+        `;
+        const result = db._query(query).toArray();
+        assertEqual(result.length, 0);
+      }
     },
 
     testWeightPathsSkip: function () {
-      const query = `
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          LIMIT 3, 3
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 3);
-      allPathsAreSorted(result);
-      isPathValid(result[0], 5, 20);
-      isPathValid(result[1], 5, 25);
-      isPathValid(result[2], 4, 31);
+      for (let o of ['', ' ,algorithm: "legacy"']) {
+        const query = `
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+            LIMIT 3, 3
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        allPathsDiffer(result);
+        assertEqual(result.length, 3);
+        allPathsAreSorted(result);
+        isPathValid(result[0], 5, 20);
+        isPathValid(result[1], 5, 25);
+        isPathValid(result[2], 4, 31);
+      }
     },
 
     testWeightPathsSkipMoreThanExists: function () {
-      const query = `
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
-          LIMIT 1000, 2
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      assertEqual(result.length, 0);
+      for (let o of ['', ' ,algorithm: "legacy"']) {
+        const query = `
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight" ${o}}
+            LIMIT 1000, 2
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        assertEqual(result.length, 0);
+      }
     },
 
     testWeightMultiDirections: function () {
-      const query = `
-        WITH ${vName}
-        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" ${e1Name}, INBOUND ${e2Name} OPTIONS {weightAttribute: "weight"}
-          RETURN path
-      `;
-      const result = db._query(query).toArray();
-      allPathsDiffer(result);
-      assertEqual(result.length, 4);
-      allPathsAreSorted(result);
-      isPathValid(result[0], 3, 51, true);
-      isPathValid(result[1], 3, 72, true);
-      isPathValid(result[2], 3, 99, true);
-      isPathValid(result[3], 6, 121, true);
+      for (let o of ['', ' ,algorithm: "legacy"']) {
+        const query = `
+          WITH ${vName}
+          FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" ${e1Name}, INBOUND ${e2Name} OPTIONS {weightAttribute: "weight" ${o}}
+            RETURN path
+        `;
+        const result = db._query(query).toArray();
+        allPathsDiffer(result);
+        assertEqual(result.length, 4);
+        allPathsAreSorted(result);
+        isPathValid(result[0], 3, 51, true);
+        isPathValid(result[1], 3, 72, true);
+        isPathValid(result[2], 3, 99, true);
+        isPathValid(result[3], 6, 121, true);
+      }
+    },
+  };
+}
+
+const createSmallGraphWithAwkwardEdge = () => {
+  gm._create(graphName, [ gm._relation(e1Name, vName, vName) ], [],
+    {
+      numberOfShards: 9
     }
+  );
+
+  const vertices = [];
+  const es = [];
+  vertices.push({_key:"S"});
+  vertices.push({_key:"V"});
+  vertices.push({_key:"W"});
+  vertices.push({_key:"Z"});
+  es.push({_from:`${vName}/S`,_to:`${vName}/W`,weight:9});
+  es.push({_from:`${vName}/S`,_to:`${vName}/V`,weight:10});
+  es.push({_from:`${vName}/W`,_to:`${vName}/Z`,weight:10});
+  es.push({_from:`${vName}/V`,_to:`${vName}/Z`,weight:9});
+  es.push({_from:`${vName}/V`,_to:`${vName}/W`,weight:1});
+
+  // S ------- 9 ------> W 
+  // |                 -/|
+  // |         /-------/||
+  // 10       1         10 
+  // |  -----/           |
+  // v /                 v
+  // V ------- 9 ------> Z
+
+  db[vName].save(vertices);
+  db[e1Name].save(es);
+};
+
+function kAttributeWeightShortestPathRegressionSuite() {
+  return {
+    setUpAll: function () {
+      tearDownAll();
+      createSmallGraphWithAwkwardEdge();
+    },
+    tearDownAll,
+
+    testWeightRegressionOverlookedPaths: function () {
+      let res = db._query(
+        `FOR p IN OUTBOUND K_SHORTEST_PATHS "${vName}/S" TO "${vName}/Z" 
+           GRAPH ${graphName}
+           OPTIONS { weightAttribute: "weight"}
+           RETURN p`).toArray();
+      assertEqual(res.length, 3);
+      assertEqual(res.map((x) => x.weight), [19, 19, 21], res);
+      res = db._query(
+        `FOR p IN OUTBOUND K_SHORTEST_PATHS "${vName}/S" TO "${vName}/Z" 
+           GRAPH ${graphName} 
+           OPTIONS { weightAttribute: "weight", algorithm: "legacy"}
+           RETURN p`).toArray();
+      assertEqual(res.length, 3);
+      assertEqual(res.map((x) => x.weight), [19, 19, 21], res);
+    },
   };
 
 }
@@ -531,7 +620,7 @@ function kShortestPathsSyntaxTestSuite() {
         db._query(query);
         fail();
       } catch (e) {
-        assertMatch(/K_SHORTEST_PATHS only has one return variable/, e.errorMessage);
+        assertMatch(/K_SHORTEST_PATHS should only have a single output variable/, e.errorMessage);
       }
     }
   };
@@ -634,6 +723,7 @@ jsunity.run(kShortestPathsSyntaxTestSuite);
 jsunity.run(kConstantWeightShortestPathTestSuite);
 jsunity.run(kAttributeWeightShortestPathTestSuite);
 jsunity.run(kShortestPathsErrorTestSuite);
+jsunity.run(kAttributeWeightShortestPathRegressionSuite);
 
 
 return jsunity.done();

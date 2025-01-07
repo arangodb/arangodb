@@ -26,7 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/IdExecutor.h"
@@ -34,7 +34,6 @@
 #include "Aql/Executor/ModificationExecutorInfos.h"
 #include "Aql/Executor/MultipleRemoteModificationExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Aql/SortRegister.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -57,6 +56,14 @@ MultipleRemoteModificationNode::MultipleRemoteModificationNode(
       _outVariableOld(OLD),
       _outVariableNew(NEW),
       _options(options) {}
+
+MultipleRemoteModificationNode::MultipleRemoteModificationNode(
+    ExecutionPlan* plan, velocypack::Slice base)
+    : ExecutionNode(plan, base), CollectionAccessingNode(plan, base) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "multiple remote operation node deserialization not implemented.");
+}
 
 /// @brief creates corresponding MultipleRemoteModificationNode
 std::unique_ptr<ExecutionBlock> MultipleRemoteModificationNode::createBlock(

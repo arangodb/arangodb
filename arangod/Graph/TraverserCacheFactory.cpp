@@ -34,11 +34,9 @@
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserDocumentCache.h"
+#include "VocBase/vocbase.h"
 
-using namespace arangodb;
-using namespace arangodb::graph;
-using namespace arangodb::traverser;
-using namespace arangodb::graph::CacheFactory;
+namespace arangodb::graph {
 
 TraverserCache* CacheFactory::CreateCache(
     arangodb::aql::QueryContext& query, bool activateDocumentCache,
@@ -62,3 +60,5 @@ TraverserCache* CacheFactory::CreateCache(
   }
   return new TraverserCache(query, opts);
 }
+
+}  // namespace arangodb::graph

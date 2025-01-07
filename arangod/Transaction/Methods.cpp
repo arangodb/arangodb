@@ -3781,7 +3781,8 @@ Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
 
   if (res.fail()) {  // do not commit locally
     LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
-        << "failed to commit on subordinates: '" << res.errorMessage() << "'";
+        << "failed to commit on subordinates for transaction " << _state->id()
+        << ": '" << res.errorMessage() << "'";
     co_return std::move(res);
   }
   res = co_await _state->commitTransaction(this);
@@ -3821,7 +3822,8 @@ Future<Result> Methods::abortInternal(MethodsApi api) noexcept try {
 
   if (res.fail()) {  // do not commit locally
     LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
-        << "failed to abort on subordinates: " << res.errorMessage();
+        << "failed to abort on subordinates for transaction " << _state->id()
+        << ": '" << res.errorMessage() << "'";
   }  // abort locally anyway
 
   res = _state->abortTransaction(this);

@@ -176,6 +176,13 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
   infoBuilder.add(StaticStrings::AttrCoordinatorId,
                   VPackValue(ServerState::instance()->getId()));
 
+  if (_query.queryOptions().optimizePlanForCaching) {
+    auto bindParametersAsBuilder = q->bindParametersAsBuilder();
+    if (bindParametersAsBuilder != nullptr) {
+      infoBuilder.add("bindParameters", q->bindParametersAsBuilder()->slice());
+    }
+  }
+
   addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
   TRI_ASSERT(infoBuilder.isOpenObject());
   auto shardMapping = _shardLocking.getShardMapping();
@@ -360,7 +367,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   });
 
   // remember which servers we add during our setup request
-  ::arangodb::containers::HashSet<std::string> serversAdded;
+  containers::HashSet<std::string> serversAdded;
 
   transaction::Methods& trx = _query.trxForOptimization();
   std::vector<arangodb::futures::Future<Result>> networkCalls{};

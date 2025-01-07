@@ -62,7 +62,7 @@ function authenticationClient (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return new trs.runInArangoshRunner(
+  return new trs.runLocalInArangoshRunner(
     options,
     'authentication',
     Object.assign({},

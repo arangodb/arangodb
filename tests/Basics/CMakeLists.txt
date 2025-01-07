@@ -34,5 +34,7 @@ target_sources(arangodbtests
   SpinLockTest.cpp
   StringBufferTest.cpp
   StringUtilsTest.cpp
+  TypeListTests.cpp
   UnshackledMutexTest.cpp
-  VelocyPackHelperTest.cpp)
+  VelocyPackHelperTest.cpp
+  VelocyPackHelperCompareRandomTest.cpp)

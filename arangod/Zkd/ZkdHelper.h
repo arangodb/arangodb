@@ -76,7 +76,10 @@ auto to_byte_string_fixed_length(T) -> zkd::byte_string;
 template<typename T>
 auto from_byte_string_fixed_length(byte_string_view) -> T;
 template<>
-byte_string to_byte_string_fixed_length<double>(double x);
+auto to_byte_string_fixed_length<double>(double x) -> zkd::byte_string;
+
+auto double_to_byte_string_fixed_length_fast(double x) -> zkd::byte_string;
+auto double_to_byte_string_fixed_length_slow(double x) -> zkd::byte_string;
 
 enum class Bit { ZERO = 0, ONE = 1 };
 
@@ -157,6 +160,10 @@ template<typename T>
 void into_bit_writer_fixed_length(BitWriter&, T);
 template<typename T>
 auto from_bit_reader_fixed_length(BitReader&) -> T;
+
+auto into_zero_leading_fixed_length_byte_string(double x) -> byte_string;
+auto into_zero_leading_fixed_length_byte_string_fast(double x) -> byte_string;
+auto into_zero_leading_fixed_length_byte_string_slow(double x) -> byte_string;
 
 struct floating_point {
   bool positive : 1;

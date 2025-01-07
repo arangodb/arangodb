@@ -29,10 +29,12 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
-const {debugCanUseFailAt, debugSetFailAt, debugClearFailAt, getDBServers} = require("@arangodb/test-helper");
+const {getDBServers} = require("@arangodb/test-helper");
 const cluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const internal = require("internal");
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 let graphs = require("@arangodb/general-graph");
 if (isEnterprise) {
@@ -46,22 +48,7 @@ const cn = "UnitTestsKeyGen";
 
 // in single server case, this is the single server.
 // in cluster case, this is the coordinator.
-let endpoints = [arango.getEndpoint()];
-if (cluster) {
-  endpoints = endpoints.concat(getDBServers().map((s) => s.endpoint));
-}
-
-let debugSetFailAtAll = (fp) => {
-  endpoints.forEach((ep) => {
-    debugSetFailAt(ep, fp);
-  });
-};
-
-let debugClearFailAtAll = () => {
-  endpoints.forEach((ep) => {
-    debugClearFailAt(ep);
-  });
-};
+const filter = cluster ? instanceRole.dbServer: instanceRole.single;
 
 const disableSingleDocRule = {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}};
 const disableRestrictToSingleShardRule = {optimizer: {rules: ["-restrict-to-single-shard"]}};
@@ -111,10 +98,10 @@ const runSmartEdgeInserts = (graphProperties) => {
   // Helper method to either insert edges into SmartGraphs or EnterpriseGraphs
   if (cluster) {
     // fail if we generate a key on a DB server
-    debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+    IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
   } else {
     // single server: we can actually get here with the SmartGraph simulator!
-    debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+    IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
   }
 
   graphs._create(gn, [graphs._relation(en, vn, vn)], null, graphProperties);
@@ -1147,7 +1134,7 @@ function KeyGenerationLocationSuite() {
     },
 
     tearDown: function () {
-      debugClearFailAtAll();
+      IM.debugClearFailAt();
       db._drop(cn);
     },
 
@@ -1158,7 +1145,7 @@ function KeyGenerationLocationSuite() {
 
       let c = db._create(cn, {keyOptions: {type: "traditional"}, numberOfShards: 1});
 
-      debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
       try {
         c.insert({});
       } catch (err) {
@@ -1173,7 +1160,7 @@ function KeyGenerationLocationSuite() {
 
       let c = db._create(cn, {keyOptions: {type: "traditional"}, numberOfShards: 2});
 
-      debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
       try {
         c.insert({});
       } catch (err) {
@@ -1187,7 +1174,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a coordinator
-      debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
 
       generators().forEach((generator) => {
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1});
@@ -1223,7 +1210,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a coordinator
-      debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
 
       generators().forEach((generator) => {
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1, shardKeys: ["id"]});
@@ -1260,7 +1247,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a coordinator
-      debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
 
       db._createDatabase(cn, {sharding: "single"});
       try {
@@ -1307,7 +1294,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a DB server
-      debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
 
       generators().forEach((generator) => {
         if (generator === "autoincrement") {
@@ -1346,7 +1333,7 @@ function KeyGenerationLocationSuite() {
       }
 
       // fail if we generate a key on a DB server
-      debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
 
       generators().forEach((generator) => {
         if (generator === "autoincrement") {
@@ -1412,7 +1399,7 @@ function KeyGenerationLocationSmartGraphSuite() {
     },
 
     tearDown: function () {
-      debugClearFailAtAll();
+      IM.debugClearFailAt();
       try {
         graphs._drop(gn, true);
       } catch (err) {
@@ -1422,10 +1409,10 @@ function KeyGenerationLocationSmartGraphSuite() {
     testSingleShardSmartVertexInserts: function () {
       if (cluster) {
         // fail if we generate a key on a coordinator
-        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
       } else {
         // single server: we can actually get here with the SmartGraph simulator!
-        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
       }
 
       // note: test can run in single server as well!
@@ -1439,7 +1426,7 @@ function KeyGenerationLocationSmartGraphSuite() {
     testSingleShardEnterpriseVertexInserts: function () {
       if (!cluster) {
         // single server: we can actually get here with the SmartGraph simulator!
-        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
       }
       // Note: To cluster tests and why we're not setting any failure point here:
       // We cannot declare a failure point here because both, that means:
@@ -1460,10 +1447,10 @@ function KeyGenerationLocationSmartGraphSuite() {
     testMultiShardSmartVertexInserts: function () {
       if (cluster) {
         // fail if we generate a key on a DB server
-        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+        IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
       } else {
         // single server: we can actually get here with the SmartGraph simulator!
-        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
       }
 
       // note: test can run in single server as well!
@@ -1477,10 +1464,10 @@ function KeyGenerationLocationSmartGraphSuite() {
     testMultiShardEnterpriseVertexInserts: function () {
       if (cluster) {
         // fail if we generate a key on a DB server
-        debugSetFailAtAll("KeyGenerator::generateOnSingleServer");
+        IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
       } else {
         // single server: we can actually get here with the SmartGraph simulator!
-        debugSetFailAtAll("KeyGenerator::generateOnCoordinator");
+        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
       }
 
       // note: test can run in single server as well!
@@ -1536,10 +1523,10 @@ jsunity.run(AutoIncrementSuite);
 jsunity.run(AllowUserKeysSuite);
 jsunity.run(PersistedLastValueSuite);
 
-if (debugCanUseFailAt(arango.getEndpoint())) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(KeyGenerationLocationSuite);
 }
-if (isEnterprise && debugCanUseFailAt(arango.getEndpoint())) {
+if (isEnterprise && IM.debugCanUseFailAt()) {
   jsunity.run(KeyGenerationLocationSmartGraphSuite);
 }
 

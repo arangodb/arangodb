@@ -29,7 +29,6 @@ const arangodb = require('@arangodb');
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
-const crypto = require('@arangodb/crypto');
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
 const store = require('@arangodb/foxx/store');
@@ -472,35 +471,6 @@ router.get('/fishbowl', function (req, res) {
   This function contacts the fishbowl and reports which services are available for install.
 `);
 
-router.post('/download/nonce', function (req, res) {
-  const nonce = crypto.createNonce();
-  res.status('created');
-  res.json({nonce});
-})
-.response('created', joi.object({nonce: joi.string().required()}).required(), 'The created nonce.')
-.summary('Creates a nonce for downloading the service')
-.description(dd`
-  Creates a cryptographic nonce that can be used to download the service without authentication.
-`);
-
-anonymousRouter.get('/download/zip', function (req, res) {
-  const nonce = decodeURIComponent(req.queryParams.nonce);
-  const checked = nonce && crypto.checkAndMarkNonce(nonce);
-  if (!checked) {
-    res.throw(403, 'Nonce missing or invalid');
-  }
-  const mount = decodeURIComponent(req.queryParams.mount);
-  const service = FoxxManager.lookupService(mount);
-  const dir = fs.join(fs.makeAbsolute(service.root), service.path);
-  const zipPath = fmu.zipDirectory(dir);
-  const name = mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
-  res.download(zipPath, `${name}_${service.manifest.version}.zip`);
-})
-.queryParam('nonce', joi.string().required(), 'Cryptographic nonce that authorizes the download.')
-.summary('Download a service as zip archive')
-.description(dd`
-  Download a Foxx service packed in a zip archive.
-`);
 
 anonymousRouter.use('/docs/standalone', module.context.createDocumentationRouter((req, res) => {
   if (req.suffix === 'swagger.json' && !req.authorized && internal.authenticationEnabled()) {

@@ -169,8 +169,12 @@ Result DBServerAgencySync::getLocalCollections(
 
         // generate a collection definition identical to that which would be
         // persisted in the case of SingleServer
-        collection->properties(collections,
-                               LogicalDataSource::Serialization::Persistence);
+        // except that we ignore trainedData from vector index
+        auto res = collection->properties(
+            collections, LogicalDataSource::Serialization::Maintenance);
+        if (res.fail()) {
+          return res;
+        }
 
         auto const& folls = collection->followers();
         std::string const theLeader = folls->getLeader();

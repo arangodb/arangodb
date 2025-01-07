@@ -83,6 +83,20 @@ bool extractRelevantAttributes(
           sub->getSubquery()->getSingleton(), &var, "", false, attributes);
     }
 
+    case arangodb::aql::ExecutionNode::INDEX: {
+      auto const* index = ExecutionNode::castTo<IndexNode*>(node);
+      bool notUsingFullDocument{true};
+      if (index->hasFilter()) {
+        notUsingFullDocument = Ast::getReferencedAttributesRecursive(
+            index->filter()->node(), &var, "", attributes,
+            node->plan()->getAst()->query().resourceMonitor());
+      }
+      return notUsingFullDocument &&
+             Ast::getReferencedAttributesRecursive(
+                 index->condition()->root(), &var, "", attributes,
+                 node->plan()->getAst()->query().resourceMonitor());
+    }
+
     default:
       return false;
   }
@@ -97,7 +111,7 @@ bool checkPossibleProjection(ExecutionPlan* plan,
   }
 
   containers::FlatHashSet<aql::AttributeNamePath> attributes;
-  bool notUsingFullDocument =
+  bool const notUsingFullDocument =
       extractRelevantAttributes(other, matNode->outVariable(), attributes);
   if (!notUsingFullDocument) {
     LOG_RULE << "CALCULATION USES FULL DOCUMENT";
@@ -114,7 +128,7 @@ bool checkPossibleProjection(ExecutionPlan* plan,
     LOG_RULE << "ATTEMPT TO ADD PROJECTIONS TO INDEX NODE";
     auto* indexNode = ExecutionNode::castTo<IndexNode*>(matOriginNode);
     TRI_ASSERT(indexNode->isLateMaterialized());
-    auto index = indexNode->getSingleIndex();
+    auto const index = indexNode->getSingleIndex();
     if (index == nullptr) {
       return false;
     }
@@ -124,15 +138,20 @@ bool checkPossibleProjection(ExecutionPlan* plan,
         << "projection output registers shouldn't be set at this point";
     proj.addPaths(attributes);
 
-    if (index->covers(proj)) {
-      LOG_RULE << "INDEX COVERS ATTRIBTUES";
-      indexNode->projections() = std::move(proj);
-      indexNode->projections().setCoveringContext(indexNode->collection()->id(),
-                                                  index);
-      TRI_ASSERT(indexNode->projections().usesCoveringIndex());
-      return true;
+    if (proj.size() <= indexNode->maxProjections()) {
+      if (index->covers(proj)) {
+        LOG_RULE << "INDEX COVERS ATTRIBTUES";
+        indexNode->projections() = std::move(proj);
+        indexNode->projections().setCoveringContext(
+            indexNode->collection()->id(), index);
+        TRI_ASSERT(indexNode->projections().usesCoveringIndex());
+        return true;
+      } else {
+        LOG_RULE << "INDEX DOES NOT COVER " << proj;
+      }
     } else {
-      LOG_RULE << "INDEX DOES NOT COVER " << proj;
+      LOG_RULE << "maxProjections for index reached (" << proj.size()
+               << " <= " << indexNode->maxProjections() << ")";
     }
   } else if (matOriginNode->getType() == EN::JOIN) {
     LOG_RULE << "ATTEMPT TO ADD PROJECTIONS TO JOIN NODE";
@@ -140,7 +159,7 @@ bool checkPossibleProjection(ExecutionPlan* plan,
     auto& indexes = joinNode->getIndexInfos();
 
     // find the index with the out variable of the materializer
-    auto idx =
+    auto const idx =
         std::find_if(indexes.begin(), indexes.end(), [&](auto const& idx) {
           return idx.outVariable->id == matNode->outVariable().id;
         });
@@ -168,6 +187,34 @@ bool checkPossibleProjection(ExecutionPlan* plan,
   return false;
 }
 
+bool checkIndexNode(ExecutionPlan* plan,
+                    materialize::MaterializeNode const* matNode,
+                    ExecutionNode* other) {
+  auto const* indexNode = ExecutionNode::castTo<IndexNode*>(other);
+
+  // TODO: We should also check the condition to make this rule more specific
+  // As we can have a unique index with multiple fields and we can only move
+  // past the index node if all the fields are considered
+
+  bool const eligibleForPushDownMaterialization = [&] {
+    if (indexNode->options().pushDownMaterialization) {
+      return true;
+    }
+    auto const index = indexNode->getSingleIndex();
+    if (index == nullptr || !(index->fields().size() == 1 && index->unique())) {
+      return false;
+    }
+    return true;
+  }();
+
+  if (!eligibleForPushDownMaterialization) {
+    return false;
+  }
+
+  LOG_RULE << "DETECTED UNIQUE INDEX";
+  return checkPossibleProjection(plan, matNode, other);
+}
+
 bool canMovePastNode(ExecutionPlan* plan,
                      materialize::MaterializeNode const* matNode,
                      ExecutionNode* other) {
@@ -181,6 +228,8 @@ bool canMovePastNode(ExecutionPlan* plan,
     case EN::CALCULATION:
     case EN::SUBQUERY:
       return checkPossibleProjection(plan, matNode, other);
+    case EN::INDEX:
+      return checkIndexNode(plan, matNode, other);
     default:
       break;
   }
@@ -194,35 +243,40 @@ void arangodb::aql::pushDownLateMaterializationRule(
     OptimizerRule const& rule) {
   bool modified = false;
 
-  containers::SmallVector<ExecutionNode*, 8> indexes;
-  plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
+  // this rule depends crucially on the optimize-projections rule
+  if (!plan->isDisabledRule(
+          static_cast<int>(OptimizerRule::optimizeProjectionsRule))) {
+    containers::SmallVector<ExecutionNode*, 8> indexes;
+    plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
 
-  for (auto node : indexes) {
-    TRI_ASSERT(node->getType() == EN::MATERIALIZE);
-    auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
-    if (matNode == nullptr) {
-      continue;  // search materialize requires more work
-    }
-
-    ExecutionNode* insertBefore = matNode->getFirstParent();
-
-    while (insertBefore != nullptr) {
-      LOG_RULE << "ATTEMPT MOVING PAST " << insertBefore->getTypeString() << "["
-               << insertBefore->id() << "]";
-      if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
-        LOG_RULE << "NODE " << matNode->id() << " can not move past "
-                 << insertBefore->id() << " " << insertBefore->getTypeString();
-        break;
+    for (auto node : indexes) {
+      TRI_ASSERT(node->getType() == EN::MATERIALIZE);
+      auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
+      if (matNode == nullptr) {
+        continue;  // search materialize requires more work
       }
-      insertBefore = insertBefore->getFirstParent();
-    }
 
-    if (insertBefore != matNode->getFirstParent()) {
-      plan->unlinkNode(matNode);
-      plan->insertBefore(insertBefore, matNode);
-    }
+      ExecutionNode* insertBefore = matNode->getFirstParent();
 
-    modified = true;
+      while (insertBefore != nullptr) {
+        LOG_RULE << "ATTEMPT MOVING PAST " << insertBefore->getTypeString()
+                 << "[" << insertBefore->id() << "]";
+        if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
+          LOG_RULE << "NODE " << matNode->id() << " can not move past "
+                   << insertBefore->id() << " "
+                   << insertBefore->getTypeString();
+          break;
+        }
+        insertBefore = insertBefore->getFirstParent();
+      }
+
+      if (insertBefore != matNode->getFirstParent()) {
+        plan->unlinkNode(matNode);
+        plan->insertBefore(insertBefore, matNode);
+      }
+
+      modified = true;
+    }
   }
 
   opt->addPlan(std::move(plan), rule, modified);
@@ -233,28 +287,34 @@ void arangodb::aql::materializeIntoSeparateVariable(
     OptimizerRule const& rule) {
   bool modified = false;
 
-  containers::SmallVector<ExecutionNode*, 8> indexes;
-  plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
+  // this rule depends crucially on the optimize-projections rule
+  if (!plan->isDisabledRule(
+          static_cast<int>(OptimizerRule::optimizeProjectionsRule))) {
+    containers::SmallVector<ExecutionNode*, 8> indexes;
+    plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
 
-  for (auto node : indexes) {
-    TRI_ASSERT(node->getType() == EN::MATERIALIZE);
-    auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
-    if (matNode == nullptr) {
-      continue;  // search materialize requires more work
+    for (auto node : indexes) {
+      TRI_ASSERT(node->getType() == EN::MATERIALIZE);
+      auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
+      if (matNode == nullptr) {
+        continue;  // search materialize requires more work
+      }
+
+      // create a new output variable for the materialized document.
+      // this happens after the join rule. Otherwise, joins are not detected.
+      // A separate variable comes in handy when optimizing projections, because
+      // it allows to distinguish where the projections belongs to (Index or
+      // Mat).
+      auto newOutVariable =
+          plan->getAst()->variables()->createTemporaryVariable();
+      matNode->setDocOutVariable(*newOutVariable);
+
+      // replace every occurrence with this new variable
+      replaceVariableDownwards(
+          matNode->getFirstParent(),
+          {{matNode->oldDocVariable().id, newOutVariable}});
+      modified = true;
     }
-
-    // create a new output variable for the materialized document.
-    // this happens after the join rule. Otherwise, joins are not detected.
-    // A separate variable comes in handy when optimizing projections, because
-    // it allows to distinguish where the projections belongs to (Index or Mat).
-    auto newOutVariable =
-        plan->getAst()->variables()->createTemporaryVariable();
-    matNode->setDocOutVariable(*newOutVariable);
-
-    // replace every occurrence with this new variable
-    replaceVariableDownwards(matNode->getFirstParent(),
-                             {{matNode->oldDocVariable().id, newOutVariable}});
-    modified = true;
   }
 
   opt->addPlan(std::move(plan), rule, modified);

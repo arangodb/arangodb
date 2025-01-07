@@ -11,49 +11,5 @@
 /etc/ @arangodb/team-qa
 /tests/test-definitions.txt @arangodb/team-qa
 
-# `team-cinfra` ownership
-/arangod/Replication2/ @arangodb/team-cinfra
-/tests/Replication2/ @arangodb/team-cinfra
-
-# `team-reed` ownership
-/arangod/IResearch/ @arangodb/team-reed
-/3rdParty/iresearch/ @arangodb/team-reed
-
-# `team-gordo` ownership
-/arangod/Graph/  @arangodb/team-gordo
-/arangod/Pregel/ @arangodb/team-gordo
-
-# `team-clifton` ownership
-/arangod/Cluster/ @arangodb/team-clifton
-/arangod/ClusterEngine/ @arangodb/team-clifton
-/arangod/Sharding/ @arangodb/team-clifton
-/arangod/Actions/ @arangodb/team-clifton
-/arangod/Agency/ @arangodb/team-clifton
-
-# `team-orco` ownership
-/3rdParty/velocypack @arangodb/team-orco
-/arangod/Aql/grammar.y @arangodb/team-orco
-/arangod/Aql/tokens.ll @arangodb/team-orco
-/arangod/Aql/ @arangodb/team-orco
-/arangod/Cache/ @arangodb/team-orco
-/arangod/Indexes/ @arangodb/team-orco
-/arangod/RestHandler/ @arangodb/team-orco
-/arangod/RestServer/ @arangodb/team-orco
-/arangod/RocksDBEngine/ @arangodb/team-orco
-/arangod/Statistics/ @arangodb/team-orco 
-/arangod/StorageEngine/ @arangodb/team-orco 
-/arangod/Transaction/ @arangodb/team-orco
-/arangod/Utils/ @arangodb/team-orco
-/client-tools/ @arangodb/team-orco
-/lib/Basics/ReadWriteLock.h @arangodb/team-orco @mpoeter 
-/lib/Basics/ReadWriteLock.cpp @arangodb/team-orco @mpoeter 
-/lib/Basics/ReadWriteSpinLock.h @arangodb/team-orco @mpoeter 
-/lib/Basics/ReadWriteSpinLock.cpp @arangodb/team-orco @mpoeter 
-/lib/Logger/ @arangodb/team-orco
-/lib/Utilities/ @arangodb/team-orco
-
 # `team-frontend` ownership
 /js/apps/system/_admin/aardvark/APP/ @arangodb/team-frontend
-
-# ownership by individuals
-/lib/Inspection/ @mpoeter

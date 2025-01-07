@@ -31,6 +31,7 @@ const errors = internal.errors;
 const db = require("@arangodb").db;
 const helper = require("@arangodb/aql-helper");
 const assertQueryError = helper.assertQueryError;
+const isCluster = require("internal").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -42,7 +43,7 @@ function optimizerKeepTestSuite () {
   return {
     setUpAll : function () {
       db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection");
+      c = db._create("UnitTestsCollection", {numberOfShards: 2});
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
@@ -207,42 +208,107 @@ function optimizerKeepTestSuite () {
     },
 
     testAutomaticKeeping1 : function () {
-      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g[*].doc1.y }"; 
-      let collect = db._createStatement(query).explain().plan.nodes.filter(function(node) { return node.type === 'CollectNode'; })[0];
+      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g[*].doc1.y }";
+      let collectNodes = db._createStatement(query).explain().plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
 
-      assertEqual("x", collect.groups[0].outVariable.name);
-      assertEqual("g", collect.outVariable.name);
-      assertEqual("doc1", collect.keepVariables[0].variable.name);
+      if (isCluster) {
+        assertEqual(collectNodes.length, 2);
+        const [dbCollect, collect] = collectNodes;
+
+        assertEqual("x", collect.groups[0].outVariable.name);
+        assertEqual(dbCollect.groups[0].outVariable.id, collect.groups[0].inVariable.id);
+
+        assertEqual("g", collect.aggregates[0].outVariable.name);
+        assertEqual("MERGE_LISTS", collect.aggregates[0].type);
+        assertEqual("doc1", dbCollect.keepVariables[0].variable.name);
+      } else {
+        assertEqual(collectNodes.length, 1);
+        const [collect] = collectNodes;
+
+        assertEqual("x", collect.groups[0].outVariable.name);
+        assertEqual("g", collect.outVariable.name);
+        assertEqual("doc1", collect.keepVariables[0].variable.name);
+      }
     },
     
     testAutomaticKeeping2 : function () {
-      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g[*].doc1 }"; 
-      let collect = db._createStatement(query).explain().plan.nodes.filter(function(node) { return node.type === 'CollectNode'; })[0];
+      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g[*].doc1 }";
+      let collectNodes = db._createStatement(query).explain().plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
 
-      assertEqual("x", collect.groups[0].outVariable.name);
-      assertEqual("g", collect.outVariable.name);
-      assertEqual("doc1", collect.keepVariables[0].variable.name);
+      if (isCluster) {
+        assertEqual(collectNodes.length, 2);
+        const [dbCollect, collect] = collectNodes;
+
+        assertEqual("x", collect.groups[0].outVariable.name);
+        assertEqual(dbCollect.groups[0].outVariable.id, collect.groups[0].inVariable.id);
+
+        assertEqual("g", collect.aggregates[0].outVariable.name);
+        assertEqual("MERGE_LISTS", collect.aggregates[0].type);
+        assertEqual("doc1", dbCollect.keepVariables[0].variable.name);
+      } else {
+        assertEqual(collectNodes.length, 1);
+        const [collect] = collectNodes;
+
+        assertEqual("x", collect.groups[0].outVariable.name);
+        assertEqual("g", collect.outVariable.name);
+        assertEqual("doc1", collect.keepVariables[0].variable.name);
+      }
     },
     
     testAutomaticKeeping3 : function () {
-      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g[*].doc1, z: g[*].doc2 }"; 
-      let collect = db._createStatement(query).explain().plan.nodes.filter(function(node) { return node.type === 'CollectNode'; })[0];
+      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g[*].doc1, z: g[*].doc2 }";
+      let collectNodes = db._createStatement(query).explain().plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
 
-      assertEqual("x", collect.groups[0].outVariable.name);
-      assertEqual("g", collect.outVariable.name);
-      let vars = [ collect.keepVariables[0].variable.name, collect.keepVariables[1].variable.name ];
-      assertNotEqual(-1, vars.indexOf("doc1"));
-      assertNotEqual(-1, vars.indexOf("doc2"));
+      if (isCluster) {
+        assertEqual(collectNodes.length, 2);
+        const [dbCollect, collect] = collectNodes;
+
+        assertEqual("x", collect.groups[0].outVariable.name);
+        assertEqual(dbCollect.groups[0].outVariable.id, collect.groups[0].inVariable.id);
+
+        assertEqual("g", collect.aggregates[0].outVariable.name);
+        assertEqual("MERGE_LISTS", collect.aggregates[0].type);
+
+        let vars = [ dbCollect.keepVariables[0].variable.name, dbCollect.keepVariables[1].variable.name ];
+        assertNotEqual(-1, vars.indexOf("doc1"));
+        assertNotEqual(-1, vars.indexOf("doc2"));
+      } else {
+        assertEqual(collectNodes.length, 1);
+        const [collect] = collectNodes;
+
+        assertEqual("x", collect.groups[0].outVariable.name);
+        assertEqual("g", collect.outVariable.name);
+        let vars = [ collect.keepVariables[0].variable.name, collect.keepVariables[1].variable.name ];
+        assertNotEqual(-1, vars.indexOf("doc1"));
+        assertNotEqual(-1, vars.indexOf("doc2"));
+      }
     },
     
     testAutomaticKeeping4 : function () {
-      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g }"; 
-      let collect = db._createStatement(query).explain().plan.nodes.filter(function(node) { return node.type === 'CollectNode'; })[0];
+      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g }";
+      let collectNodes = db._createStatement(query).explain().plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
 
-      assertEqual("x", collect.groups[0].outVariable.name);
-      assertEqual("g", collect.outVariable.name);
-      assertTrue(collect.hasOwnProperty("keepVariables"));
-      assertEqual(["doc1", "doc2"], collect.keepVariables.map(v => v.variable.name).sort());
+      if (isCluster) {
+        assertEqual(collectNodes.length, 2);
+        const [dbCollect, collect] = collectNodes;
+
+        assertEqual("x", collect.groups[0].outVariable.name);
+        assertEqual(dbCollect.groups[0].outVariable.id, collect.groups[0].inVariable.id);
+
+        assertEqual("g", collect.aggregates[0].outVariable.name);
+        assertEqual("MERGE_LISTS", collect.aggregates[0].type);
+
+        assertTrue(dbCollect.hasOwnProperty("keepVariables"));
+        assertEqual(["doc1", "doc2"], dbCollect.keepVariables.map(v => v.variable.name).sort());
+      } else {
+        assertEqual(collectNodes.length, 1);
+        const [collect] = collectNodes;
+
+        assertEqual("x", collect.groups[0].outVariable.name);
+        assertEqual("g", collect.outVariable.name);
+        assertTrue(collect.hasOwnProperty("keepVariables"));
+        assertEqual(["doc1", "doc2"], collect.keepVariables.map(v => v.variable.name).sort());
+      }
     }
 
   };

@@ -104,17 +104,20 @@ class QueryContext {
   /// warnings access is thread safe
   QueryWarnings& warnings();
 
+  /// warnings access is thread safe
+  QueryWarnings const& warnings() const;
+
   /// @brief look up a graph in the _graphs collection
   ResultT<graph::Graph const*> lookupGraphByName(std::string const& name);
 
   /// @brief note that the query uses the DataSource
-  void addDataSource(std::shared_ptr<arangodb::LogicalDataSource> const& ds);
+  void addDataSource(LogicalDataSource const& ds);
 
   QueryExecutionState::ValueType state() const noexcept { return _execState; }
 
   TRI_voc_tick_t id() const noexcept { return _queryId; }
 
-  aql::Ast* ast();
+  aql::Ast* ast() const;
 
   /// @brief Acquire a lock_guard on the mutex to serialize concurrent snippet
   /// execution

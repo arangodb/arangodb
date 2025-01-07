@@ -81,6 +81,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         []<typename T>(auto& server, TypeTag<T>) {
           return std::make_unique<T>(server);
         },
+        [](auto& server, TypeTag<async_registry::Feature>) {
+          return std::make_unique<async_registry::Feature>(server);
+        },
 #ifdef TRI_HAVE_GETRLIMIT
         [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
           return std::make_unique<BumpFileDescriptorsFeature>(
@@ -139,6 +142,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<ReplicationMetricsFeature>(
               server,
               server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
+        [](auto& server, TypeTag<VectorIndexFeature>) {
+          return std::make_unique<VectorIndexFeature>(server);
         },
         [](auto& server, TypeTag<RocksDBEngine>) {
           return std::make_unique<RocksDBEngine>(

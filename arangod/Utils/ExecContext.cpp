@@ -29,8 +29,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "VocBase/vocbase.h"
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 
 thread_local std::shared_ptr<ExecContext const> ExecContext::CURRENT = nullptr;
@@ -157,10 +155,12 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
         coll == StaticStrings::UsersCollection) {
       // _users (only present in _system database)
       return auth::Level::NONE;
-    } else if (coll == StaticStrings::QueuesCollection) {
+    }
+    if (coll == StaticStrings::QueuesCollection) {
       // _queues
       return auth::Level::RO;
-    } else if (coll == StaticStrings::FrontendCollection) {
+    }
+    if (coll == StaticStrings::FrontendCollection) {
       // _frontend
       return auth::Level::RW;
     }  // intentional fall through

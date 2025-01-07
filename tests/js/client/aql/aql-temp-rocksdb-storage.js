@@ -31,6 +31,7 @@ const jsunity = require('jsunity');
 const internal = require('internal');
 const db = require('internal').db;
 const fs = require('fs');
+let IM = global.instanceManager;
 
 function StorageForQueryWithCollectionSortSuite() {
   const cn = 'UnitTestCollection';
@@ -234,7 +235,7 @@ function StorageForQueryCleanUpWhenFailureSuite() {
     },
     
     testQueryFailureBecauseCapacityReached: function() {
-      internal.debugSetFailAt("lowTempStorageCapacity");
+      IM.debugSetFailAt("lowTempStorageCapacity");
       try {
         const query = `FOR i IN 1..5000000 SORT i ASC RETURN i`;
         db._query(query, null, {spillOverThresholdNumRows: 5000});
@@ -243,12 +244,12 @@ function StorageForQueryCleanUpWhenFailureSuite() {
         assertEqual(internal.errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
         assertRangeCleanUp("");
       } finally {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
     },
 
     testQueryFailureIngestAll1NoExtraSst: function() {
-      internal.debugSetFailAt("failOnIngestAll1");
+      IM.debugSetFailAt("failOnIngestAll1");
       try {
         db._query(query, null, {spillOverThresholdNumRows: 5000});
         fail();
@@ -256,7 +257,7 @@ function StorageForQueryCleanUpWhenFailureSuite() {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         assertRangeCleanUp("");
       } finally {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
     },
 
@@ -267,7 +268,7 @@ function StorageForQueryCleanUpWhenFailureSuite() {
       const tempFileName = "999999999999.sst";
       const tempFileNameData = "123456789123456789123456789";
       fs.writeFileSync(fs.join(tempDir, tempFileName), tempFileNameData);
-      internal.debugSetFailAt("failOnIngestAll1");
+      IM.debugSetFailAt("failOnIngestAll1");
       try {
         db._query(query, null, {spillOverThresholdNumRows: 5000});
         fail();
@@ -275,12 +276,12 @@ function StorageForQueryCleanUpWhenFailureSuite() {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         assertRangeCleanUp(tempFileName, tempFileNameData);
       } finally {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
     },
 
     testQueryFailureIngestAll2NoExtraSst: function() {
-      internal.debugSetFailAt("failOnIngestAll2");
+      IM.debugSetFailAt("failOnIngestAll2");
       try {
         db._query(query, null, {spillOverThresholdNumRows: 5000});
         fail();
@@ -288,7 +289,7 @@ function StorageForQueryCleanUpWhenFailureSuite() {
         assertEqual(err.errorNum, 1100); //this failure point doesn't throw exception, so it has rocksdb corruption code
         assertRangeCleanUp("");
       } finally {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
     },
 
@@ -299,7 +300,7 @@ function StorageForQueryCleanUpWhenFailureSuite() {
       const tempFileName = "999999999999.sst";
       const tempFileNameData = "123456789123456789123456789";
       fs.writeFileSync(fs.join(tempDir, tempFileName), tempFileNameData);
-      internal.debugSetFailAt("failOnIngestAll2");
+      IM.debugSetFailAt("failOnIngestAll2");
       try {
         db._query(query, null, {spillOverThresholdNumRows: 5000});
         fail();
@@ -307,7 +308,7 @@ function StorageForQueryCleanUpWhenFailureSuite() {
         assertEqual(err.errorNum, 1100); //this failure point doesn't throw exception, so it has rocksdb corruption code
         assertRangeCleanUp(tempFileName, tempFileNameData);
       } finally {
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
 
       }
     },
@@ -317,7 +318,7 @@ function StorageForQueryCleanUpWhenFailureSuite() {
 
 jsunity.run(StorageForQueryWithCollectionSortSuite);
 jsunity.run(StorageForQueryWithoutCollectionSortSuite);
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(StorageForQueryCleanUpWhenFailureSuite);
 }
 return jsunity.done();

@@ -27,7 +27,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionBlockImpl.tpp"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
@@ -39,17 +39,15 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/AttributeNameParser.h"
-#include "Basics/StringUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
+#include <cstdint>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -65,7 +63,6 @@ IndexNode::IndexNode(
       CollectionAccessingNode(collection),
       _indexes(indexes),
       _condition(std::move(condition)),
-      _needsGatherNodeSort(false),
       _allCoveredByOneIndex(allCoveredByOneIndex),
       _options(opts),
       _outNonMaterializedDocId(nullptr) {
@@ -81,8 +78,6 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       DocumentProducingNode(plan, base),
       CollectionAccessingNode(plan, base),
       _indexes(),
-      _needsGatherNodeSort(basics::VelocyPackHelper::getBooleanValue(
-          base, "needsGatherNodeSort", false)),
       _options(),
       _outNonMaterializedDocId(aql::Variable::varFromVPack(
           plan->getAst(), base, "outNmDocId", true)) {
@@ -222,7 +217,17 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // "strategy" is not read back by the C++ code, but it is exposed for
   // convenience and testing
   builder.add("strategy", VPackValue(strategyName(strategy())));
-  builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
+  builder.add("needsGatherNodeSort", VPackValue(needsGatherNodeSort()));
+  // "sortElements" is never read back by C++ code, but it is exposed for
+  // testing only.
+  if (needsGatherNodeSort()) {
+    {
+      VPackArrayBuilder guard(&builder, "sortElements");
+      for (auto const& it : _sortElements) {
+        it.toVelocyPack(builder);
+      }
+    }
+  }
 
   // this attribute is never read back by arangod, but it is used a lot
   // in tests, so it can't be removed easily
@@ -482,7 +487,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan,
                                        _indexes, _allCoveredByOneIndex,
                                        _condition->clone(), _options);
 
-  c->needsGatherNodeSort(_needsGatherNodeSort);
+  c->needsGatherNodeSort(getSortElements());
   c->_outNonMaterializedDocId = _outNonMaterializedDocId;
   CollectionAccessingNode::cloneInto(*c);
   DocumentProducingNode::cloneInto(plan, *c);
@@ -534,6 +539,9 @@ CostEstimate IndexNode::estimateCost() const {
 
   auto root = _condition->root();
   TRI_ASSERT(!_allCoveredByOneIndex || _indexes.size() == 1);
+  // TODO Add estimation for push-limit-into-index rule since
+  // this rule can drastically reduce the number of documents produced
+  // and therefore the cost
   for (size_t i = 0; i < _indexes.size(); ++i) {
     Index::FilterCosts costs =
         Index::FilterCosts::defaultCosts(itemsInCollection);
@@ -623,10 +631,14 @@ IndexIteratorOptions IndexNode::options() const { return _options; }
 
 void IndexNode::setAscending(bool value) { _options.ascending = value; }
 
-bool IndexNode::needsGatherNodeSort() const { return _needsGatherNodeSort; }
+void IndexNode::setLimit(uint64_t value) noexcept { _options.limit = value; }
 
-void IndexNode::needsGatherNodeSort(bool value) {
-  _needsGatherNodeSort = value;
+bool IndexNode::hasLimit() const noexcept { return _options.limit != 0; }
+
+bool IndexNode::needsGatherNodeSort() const { return !_sortElements.empty(); }
+
+void IndexNode::needsGatherNodeSort(SortElementVector value) {
+  _sortElements = std::move(value);
 }
 
 std::vector<Variable const*> IndexNode::getVariablesSetHere() const {

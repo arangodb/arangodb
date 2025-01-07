@@ -546,7 +546,10 @@ class RDBCoveringIterator final : public IndexIterator {
         limit);
   }
 
-  void resetImpl() final { _covering.reset(); }
+  void resetImpl() final {
+    _covering.reset();
+    _gotIntervals = false;
+  }
 
  private:
   void performScan() {

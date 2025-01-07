@@ -4,6 +4,8 @@ target_sources(arango_aql PRIVATE
   OptimizerRuleBatchMaterializeDocuments.cpp
   OptimizerRulePropagateConstantAttributes.cpp
   OptimizerRulePushDownLateMaterialization.cpp
+  OptimizerRulePushLimitIntoIndex.cpp
+  OptimizerRuleReplaceEntriesWithObjectIteration.cpp
   OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRulesCluster.cpp
   OptimizerRulesGraph.cpp
@@ -12,4 +14,5 @@ target_sources(arango_aql PRIVATE
   OptimizerRulesJoin.cpp
   OptimizerRulesLateMaterializedCommon.cpp
   OptimizerRulesReplaceFunctions.cpp
+  OptimizerRuleVectorIndex.cpp
 )

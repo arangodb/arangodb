@@ -1,0 +1,97 @@
+/* jshint globalstrict:false, strict:false, maxlen: 200 */
+/* global fail, assertEqual, assertNotEqual, assertTrue, arango */
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// //////////////////////////////////////////////////////////////////////////////
+
+let jsunity = require('jsunity');
+let internal = require('internal');
+let arangodb = require('@arangodb');
+let db = arangodb.db;
+let errors = arangodb.errors;
+let { getEndpointById,
+      getCoordinators,
+      getDBServers,
+      getServersByType,
+      reconnectRetry
+    } = require('@arangodb/test-helper');
+const primaryEndpoint = arango.getEndpoint();
+let { instanceRole } = require('@arangodb/testutils/instance');
+
+function waitUntil(coordinator, targetStatus, id, timeout) {
+  let tries = 0;
+  try {
+    while (++tries < timeout * 2) {
+      reconnectRetry(coordinator, "_system", "root", "");
+      let res = arango.GET_RAW('/_admin/cluster/health');
+      let health = res.parsedBody.Health;
+      let servers = Object.keys(health);
+      let ourServer = health[id];
+      if (ourServer.Status === targetStatus) {
+        return ourServer;
+      }
+      internal.sleep(0.5);
+    }
+    return {};
+  } finally {
+    reconnectRetry(primaryEndpoint, "_system", "root", "");
+  }
+}
+
+function storageEngineErrorSuite() {
+  'use strict';
+
+  return {
+    testStorageEngineError: function () {
+      let coordinators = getCoordinators();
+      let dbservers = getDBServers();
+      assertTrue(dbservers.length > 0);
+
+      let res = arango.GET_RAW('/_admin/cluster/health');
+     
+      let health = res.parsedBody.Health;
+      let servers = Object.keys(health);
+      dbservers.forEach((s) => {
+        assertNotEqual(-1, servers.indexOf(s.id));
+      });
+      servers.forEach((s) => {
+        assertEqual("GOOD", health[s].Status);
+      });
+    
+      // set failure point that triggers a storage engine error
+      global.instanceManager.debugSetFailAt("RocksDBEngine::healthCheck", '', dbservers[0].shortName);
+      try {
+        // wait until the DB server went into status BAD
+        let result = waitUntil(coordinators[0], "BAD", dbservers[0].id, 20);
+        assertEqual("BAD", result.Status);
+      } finally {
+        // remove failure point
+        global.instanceManager.debugClearFailAt('', instanceRole.dbServer);
+        // wait until it is good again
+        waitUntil(coordinators[0], "GOOD", dbservers[0].id, 30);
+      }
+    },
+  };
+}
+
+jsunity.run(storageEngineErrorSuite);
+return jsunity.done();

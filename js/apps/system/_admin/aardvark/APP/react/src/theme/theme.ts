@@ -79,7 +79,7 @@ export const theme = extendTheme({
               }
             };
           }
-          return defaultTheme.components.Tabs.variants.line;
+          return defaultTheme.components.Tabs.variants?.line;
         }
       }
     },
@@ -136,7 +136,26 @@ export const theme = extendTheme({
               }
             };
           }
-          return defaultTheme.components.Button.variants.solid(props);
+          if (props.colorScheme === "gray" || !props.colorScheme) {
+            return {
+              color: "gray.950"
+            };
+          }
+          return defaultTheme.components.Button.variants?.solid(props);
+        },
+        outline: (props: StyleFunctionProps) => {
+          if (props.colorScheme === "gray" || !props.colorScheme) {
+            return {
+              color: "gray.950"
+            };
+          }
+        },
+        ghost: (props: StyleFunctionProps) => {
+          if (props.colorScheme === "gray" || !props.colorScheme) {
+            return {
+              color: "gray.950"
+            };
+          }
         }
       }
     },

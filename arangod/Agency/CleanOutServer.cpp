@@ -465,7 +465,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                       _jobId, database.first, collptr.first,
-                      ShardID{shard.first}, _server, toServer, isLeader, false)
+                      ShardID{shard.first}, _server, toServer, isLeader, true)
                 .withParent(_jobId)
                 .create(trx);
 

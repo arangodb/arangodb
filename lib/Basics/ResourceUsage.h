@@ -205,91 +205,6 @@ class ResourceUsageAllocatorBase : public Allocator {
   ResourceMonitor* _resourceMonitor;
 };
 
-namespace detail {
-template<typename T>
-struct uses_allocator_construction_args_t;
-
-template<typename T>
-inline constexpr auto uses_allocator_construction_args =
-    uses_allocator_construction_args_t<T>{};
-
-template<typename T>
-struct uses_allocator_construction_args_t {
-  template<typename Alloc, typename... Args>
-  auto operator()(Alloc const& alloc, Args&&... args) const {
-    if constexpr (!std::uses_allocator<T, Alloc>::value) {
-      return std::forward_as_tuple(std::forward<Args>(args)...);
-    } else if constexpr (std::is_constructible_v<T, std::allocator_arg_t, Alloc,
-                                                 Args...>) {
-      return std::tuple<std::allocator_arg_t, Alloc const&, Args&&...>(
-          std::allocator_arg, alloc, std::forward<Args>(args)...);
-    } else {
-      return std::tuple<Args&&..., Alloc const&>(std::forward<Args>(args)...,
-                                                 alloc);
-    }
-  }
-};
-
-template<typename U, typename V>
-struct uses_allocator_construction_args_t<std::pair<U, V>> {
-  using T = std::pair<U, V>;
-  template<typename Alloc, typename Tuple1, typename Tuple2>
-  auto operator()(Alloc const& alloc, std::piecewise_construct_t, Tuple1&& t1,
-                  Tuple2&& t2) const {
-    return std::make_tuple(
-        std::piecewise_construct,
-        std::apply(
-            [&alloc](auto&&... args1) {
-              return uses_allocator_construction_args<U>(
-                  alloc, std::forward<decltype(args1)>(args1)...);
-            },
-            std::forward<Tuple1>(t1)),
-        std::apply(
-            [&alloc](auto&&... args2) {
-              return uses_allocator_construction_args<V>(
-                  alloc, std::forward<decltype(args2)>(args2)...);
-            },
-            std::forward<Tuple2>(t2)));
-  }
-  template<typename Alloc>
-  auto operator()(Alloc const& alloc) const {
-    return uses_allocator_construction_args<T>(alloc, std::piecewise_construct,
-                                               std::tuple<>{}, std::tuple<>{});
-  }
-
-  template<typename Alloc, typename A, typename B>
-  auto operator()(Alloc const& alloc, A&& a, B&& b) const {
-    return uses_allocator_construction_args<T>(
-        alloc, std::piecewise_construct,
-        std::forward_as_tuple(std::forward<A>(a)),
-        std::forward_as_tuple(std::forward<B>(b)));
-  }
-
-  template<typename Alloc, typename A, typename B>
-  auto operator()(Alloc const& alloc, std::pair<A, B>& pr) const {
-    return uses_allocator_construction_args<T>(
-        alloc, std::piecewise_construct, std::forward_as_tuple(pr.first),
-        std::forward_as_tuple(pr.second));
-  }
-
-  template<typename Alloc, typename A, typename B>
-  auto operator()(Alloc const& alloc, std::pair<A, B> const& pr) const {
-    return uses_allocator_construction_args<T>(
-        alloc, std::piecewise_construct, std::forward_as_tuple(pr.first),
-        std::forward_as_tuple(pr.second));
-  }
-
-  template<typename Alloc, typename A, typename B>
-  auto operator()(Alloc const& alloc, std::pair<A, B>&& pr) const {
-    return uses_allocator_construction_args<T>(
-        alloc, std::piecewise_construct,
-        std::forward_as_tuple(std::move(pr.first)),
-        std::forward_as_tuple(std::move(pr.second)));
-  }
-};
-
-}  // namespace detail
-
 template<typename T, typename ResourceMonitor>
 struct ResourceUsageAllocator
     : ResourceUsageAllocatorBase<std::allocator<T>, ResourceMonitor> {
@@ -303,16 +218,67 @@ struct ResourceUsageAllocator
 
   template<typename X, typename... Args>
   void construct(X* ptr, Args&&... args) {
-    // Sadly libc++ on mac does not support this function. Thus we do it by hand
-    // std::uninitialized_construct_using_allocator(ptr, *this,
-    //                                              std::forward<Args>(args)...)
-    std::apply(
-        [&](auto&&... xs) {
-          return std::construct_at(ptr, std::forward<decltype(xs)>(xs)...);
-        },
-        detail::uses_allocator_construction_args<X>(
-            *this, std::forward<Args>(args)...));
+    std::uninitialized_construct_using_allocator(ptr, *this,
+                                                 std::forward<Args>(args)...);
   }
 };
 
 }  // namespace arangodb
+
+template<typename T, typename R>
+struct std::allocator_traits<arangodb::ResourceUsageAllocator<T, R>> {
+  using allocator_type = arangodb::ResourceUsageAllocator<T, R>;
+  using value_type = T;
+  using pointer = T*;
+  using const_pointer = const T*;
+  using void_pointer = void*;
+  using const_void_pointer = const void*;
+  using difference_type = std::ptrdiff_t;
+  using size_type = std::size_t;
+
+  using propagate_on_container_copy_assignment = false_type;
+  using propagate_on_container_move_assignment = false_type;
+  using propagate_on_container_swap = false_type;
+
+  static allocator_type select_on_container_copy_construction(
+      const allocator_type& other) noexcept {
+    return other;
+  }
+
+  using is_always_equal = false_type;
+
+  template<typename U>
+  using rebind_alloc = arangodb::ResourceUsageAllocator<U, R>;
+
+  template<typename U>
+  using rebind_traits =
+      allocator_traits<arangodb::ResourceUsageAllocator<U, R>>;
+
+  [[nodiscard]] static pointer allocate(allocator_type& a, size_type n) {
+    return a.allocate(n);
+  }
+
+  [[nodiscard]] static pointer allocate(allocator_type& a, size_type n,
+                                        const_void_pointer) {
+    return a.allocate(n);
+  }
+
+  static void deallocate(allocator_type& a, pointer p, size_type n) {
+    a.deallocate(p, n);
+  }
+
+  template<typename U, typename... Args>
+  static void construct(allocator_type& a, U* p, Args&&... args) {
+    a.construct(p, std::forward<Args>(args)...);
+  }
+
+  template<typename U>
+  static constexpr void destroy(allocator_type&, U* p) noexcept(
+      is_nothrow_destructible<U>::value) {
+    p->~U();
+  }
+
+  static constexpr size_type max_size(const allocator_type&) noexcept {
+    return std::numeric_limits<size_type>::max() / sizeof(value_type);
+  }
+};

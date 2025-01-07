@@ -57,6 +57,11 @@ class AqlFeature;
 class AgencyFeature;
 class ActionFeature;
 class AuthenticationFeature;
+namespace async_registry {
+
+class Feature;
+
+}
 class BootstrapFeature;
 class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
@@ -126,7 +131,6 @@ class ViewTypesFeature;
 class ClusterEngine;
 class DaemonFeature;
 class SupervisorFeature;
-class WindowsServiceFeature;
 class AuditFeature;
 class LicenseFeature;
 class RCloneFeature;
@@ -137,6 +141,7 @@ class RocksDBEngine;
 class RocksDBIndexCacheRefillFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
+class VectorIndexFeature;
 
 namespace transaction {
 
@@ -147,6 +152,7 @@ namespace aql {
 
 class AqlFunctionFeature;
 class OptimizerRulesFeature;
+class QueryInfoLoggerFeature;
 
 }  // namespace aql
 namespace iresearch {
@@ -197,6 +203,7 @@ using ArangodFeaturesList = TypeList<
     ActionFeature,
     AgencyFeature,
     AqlFeature,
+    async_registry::Feature,
     AuthenticationFeature,
     BootstrapFeature,
 #ifdef TRI_HAVE_GETRLIMIT
@@ -247,6 +254,7 @@ using ArangodFeaturesList = TypeList<
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
     SchedulerFeature,
+    VectorIndexFeature,
 #ifdef USE_V8
     ScriptFeature,
 #endif
@@ -275,6 +283,7 @@ using ArangodFeaturesList = TypeList<
     ViewTypesFeature,
     aql::AqlFunctionFeature,
     aql::OptimizerRulesFeature,
+    aql::QueryInfoLoggerFeature,
     RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,

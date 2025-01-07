@@ -57,11 +57,11 @@ function recoverySuite () {
     testIndexEstimators: function () {
       let c = db._collection('UnitTestsRecovery');
 
-      assertEqual(3, c.getIndexes().length);
-      let idx = c.getIndexes()[0];
+      assertEqual(3, c.indexes().length);
+      let idx = c.indexes()[0];
       assertEqual('primary', idx.type);
 
-      idx = c.getIndexes()[1];
+      idx = c.indexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value1' ], idx.fields);
@@ -70,7 +70,7 @@ function recoverySuite () {
       // so leave some leeway.
       assertTrue(idx.selectivityEstimate >= 0.90, idx); 
       
-      idx = c.getIndexes()[2];
+      idx = c.indexes()[2];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value2' ], idx.fields);

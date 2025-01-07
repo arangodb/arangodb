@@ -100,6 +100,11 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
         let paramsSecondRun = executeScript(content, true, te);
         let rootDir = fs.join(fs.getTempPath(), count.toString());
         let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
+        if (paramsSecondRun.hasOwnProperty('opts')) {
+          _.defaults(paramsSecondRun.opts, clonedOpts);
+          clonedOpts = _.clone(paramsSecondRun.opts);
+          delete paramsSecondRun.opts;
+        }
         clonedOpts['startupMaxCount'] = 600; // Slow startups may occur on slower machines.
         if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
           clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
@@ -138,6 +143,8 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
             if (!executeScript(content, true, te)) {
               this.options.cleanup = false;
               throw new Error("setup of test failed");
+            } else {
+              print("Setup test data OK.");
             }
           } catch (ex) {
             this.options.cleanup = false;
@@ -179,7 +186,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
               }
               this.results[te] = {
                 message: "Aborting testrun; failed to launch instance: " +
-                  ex.message + " - " +
+                  ex.message + " - " + ex.stack +
                   JSON.stringify(this.instanceManager.getStructure()),
                 status: false,
                 shutdown: false
@@ -290,7 +297,6 @@ function server_parameters(options) {
 }
 
 function server_secrets(options) {
-
   let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
   fs.makeDirectory(secretsDir);
   let secretFiles = [

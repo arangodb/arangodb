@@ -32,3 +32,6 @@
 [submodule "3rdParty/nghttp2"]
 	path = 3rdParty/nghttp2-lib
 	url = https://github.com/arangodb/nghttp2.git
+[submodule "3rdParty/faiss"]
+	path = 3rdParty/faiss
+	url = https://github.com/arangodb/faiss.git

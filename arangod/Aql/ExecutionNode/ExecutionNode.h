@@ -56,7 +56,6 @@
 
 #include <memory>
 #include <span>
-#include <string>
 #include <string_view>
 #include <vector>
 #include <unordered_map>
@@ -146,7 +145,7 @@ class ExecutionNode {
     INDEX = 23,
     SHORTEST_PATH = 24,
     ENUMERATE_PATHS = 25,
-    REMOTESINGLE = 26,
+    REMOTE_SINGLE = 26,
     ENUMERATE_IRESEARCH_VIEW = 27,
     DISTRIBUTE_CONSUMER = 28,
     SUBQUERY_START = 29,
@@ -158,6 +157,7 @@ class ExecutionNode {
     OFFSET_INFO_MATERIALIZE = 35,
     REMOTE_MULTIPLE = 36,
     JOIN = 37,
+    ENUMERATE_NEAR_VECTORS = 38,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -500,10 +500,9 @@ class ExecutionNode {
   /// coming out of the node
   virtual CostEstimate estimateCost() const = 0;
 
-  /// @brief factory for sort elements
+  /// @brief factory for sort elements, used by SortNode and GatherNode
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
-                              arangodb::velocypack::Slice slice,
-                              char const* which);
+                              velocypack::Slice slice, std::string_view which);
 
   RegisterId variableToRegisterId(Variable const*) const;
 

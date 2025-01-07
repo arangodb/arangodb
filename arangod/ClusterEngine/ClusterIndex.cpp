@@ -28,14 +28,17 @@
 #include "Cluster/ClusterFeature.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterIndex.h"
+#include "Indexes/Index.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
+#include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -98,6 +101,9 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           _prefixFields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
+    } else if (_indexType == TRI_IDX_TYPE_VECTOR_INDEX) {
+      velocypack::deserialize(info.get("params"), _vectorIndexDefinition);
+      TRI_ASSERT(_vectorIndexDefinition != nullptr);
     }
 
     // check for "estimates" attribute
@@ -170,6 +176,7 @@ void ClusterIndex::toVelocyPack(
         !pair.key.isEqualString(StaticStrings::IndexName) &&
         !pair.key.isEqualString(StaticStrings::IndexType) &&
         !pair.key.isEqualString(StaticStrings::IndexFields) &&
+        !pair.key.isEqualString(StaticStrings::IndexPrefixFields) &&
         !pair.key.isEqualString("selectivityEstimate") &&
         !pair.key.isEqualString("figures") &&
         !pair.key.isEqualString(StaticStrings::IndexUnique) &&
@@ -270,7 +277,7 @@ void ClusterIndex::updateProperties(velocypack::Slice slice) {
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
   auto& engine = _collection.vocbase().engine();
-  return Index::Compare(engine, _info.slice(), info,
+  return Index::compare(engine, _info.slice(), info,
                         _collection.vocbase().name());
 }
 
@@ -322,18 +329,17 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_INVERTED_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-    case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX:
+    case TRI_IDX_TYPE_VECTOR_INDEX: {
       // should not be called for these indexes
       return Index::supportsFilterCondition(trx, allIndexes, node, reference,
                                             itemsInIndex);
     }
-
     case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::supportsFilterCondition(this, allIndexes, node, reference,
                                           itemsInIndex);
-
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }
@@ -379,6 +385,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
     case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+    case TRI_IDX_TYPE_VECTOR_INDEX:
       // Sorting not supported
       return Index::SortCosts{};
 
@@ -436,7 +443,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::specializeCondition(this, node, reference);
-
+    case TRI_IDX_TYPE_VECTOR_INDEX:
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }
@@ -474,13 +481,13 @@ ClusterIndex::coveredFields() const {
   }
 }
 
-bool ClusterIndex::supportsStreamInterface(
+Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
     IndexStreamOptions const& opts) const noexcept {
   switch (_indexType) {
     case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return RocksDBVPackIndex::checkSupportsStreamInterface(_coveredFields,
-                                                               opts);
+        return RocksDBVPackIndex::checkSupportsStreamInterface(
+            _coveredFields, _fields, _unique, opts);
       }
       [[fallthrough]];
     }
@@ -496,5 +503,15 @@ bool ClusterIndex::supportsStreamInterface(
     default:
       break;
   }
-  return false;
+  return Index::StreamSupportResult::makeUnsupported();
+}
+
+UserVectorIndexDefinition const& ClusterIndex::getVectorIndexDefinition() {
+  TRI_ASSERT(_vectorIndexDefinition != nullptr);
+  if (!_vectorIndexDefinition) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "Requesting vector index definition on a non-vector index");
+  }
+  return *_vectorIndexDefinition;
 }

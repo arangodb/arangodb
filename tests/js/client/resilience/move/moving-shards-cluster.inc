@@ -41,16 +41,16 @@ const helper = require("@arangodb/testutils/replicated-logs-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const {
   agency,
-  debugSetFailAt, 
   arangoClusterInfoGetCollectionInfo,
   arangoClusterInfoGetCollectionInfoCurrent,
-  debugClearFailAt, 
   arangoClusterInfoFlush,
   getDBServers,
   getAgents,
   getEndpointById,
   getCoordinators
 } = require('@arangodb/test-helper');
+const { instanceRole } = require("@arangodb/testutils/instance");
+let IM = global.instanceManager;
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
@@ -1157,7 +1157,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromFollowerRepl3_failoverCands: function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         console.log("Skipping test for failoverCandidates because failure points are not compiled in!");
         return;
       }
@@ -1176,7 +1176,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       // below will leave the old server in Current/servers and
       // Current/failoverCandidates.
       try {
-        debugSetFailAt(leaderUrl, "Maintenance::doNotRemoveUnPlannedFollowers");
+        IM.debugSetFailAt("Maintenance::doNotRemoveUnPlannedFollowers", instanceRole.dbServer, leaderUrl);
 
         var toServer = findServerNotOnList(servers);
         var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -1190,14 +1190,14 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         // failoverCandidates (and indeed in Current/servers). Let's now
         // try to move the shard back, this ought to be denied:
         assertTrue(moveShard(dbn, c[1]._id, shard, toServer, fromServer, false, "Failed"));
-        debugClearFailAt(leaderUrl);
+        IM.debugClearFailAt();
         // Now we should go back to only 3 servers in Current.
         assertTrue(waitForSynchronousReplication(dbn));
         assertTrue(testServerEmpty(fromServer, false, 1, 1));
         assertTrue(waitForSupervision());
         checkCollectionContents();
       } catch (err) {
-        debugClearFailAt(leaderUrl);
+        IM.debugClearFailAt();
         throw err;
       }
     },
@@ -1263,6 +1263,50 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         }
         assertTrue(cancelAgencyJob(id));
         while (queryAgencyJob(result.json.id).status === "Pending") { // wait for job to be killed
+          wait(0.1);
+        }
+        var job = queryAgencyJob(result.json.id);
+        assertEqual(job.status, "Failed");
+        assertEqual(job.abort);
+        assertTrue(waitForSupervision());
+        checkCollectionContents(otherNumDocuments);
+      }
+    },
+
+    testCancelPendingMoveShardDropCollection: function () {
+      if (replVersion === "2") {
+        console.log("Skipping cancel test for replication 2, because move shards are not cancellable.");
+        return;
+      }
+      if (useData) {
+        for (var i = 0; i < c.length; ++i) {
+          c[i].drop();
+        }
+        c = [];
+        let otherNumDocuments = 100000;
+        createSomeCollections(1, 1, 3, useData, otherNumDocuments);
+        assertTrue(waitForSynchronousReplication(dbn));
+        var servers = findCollectionServers(dbn, c[0].name());
+        var fromServer = servers[0];
+        var toServer = findServerNotOnList(servers);
+        var cinfo = arangoClusterInfoGetCollectionInfo(
+            dbn, c[0].name());
+        var shard = Object.keys(cinfo.shards)[0];
+        let result = moveShard(dbn, c[0]._id, shard, fromServer, toServer, true, "Finished");
+        assertEqual(result.statusCode, 202);
+        let id = JSON.parse(result.body).id;
+        while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
+          wait(0.1);
+        }
+        assertTrue(maintenanceMode("on"));
+        assertEqual(queryAgencyJob(result.json.id).status, "Pending");
+        assertTrue(cancelAgencyJob(id));
+        for (var j = 0; j < c.length; ++j) {
+          c[j].drop();
+        }
+        c = [];
+        assertTrue(maintenanceMode("off"));
+        while (queryAgencyJob(result.json.id).status === "Finish") { // wait for job to finish
           wait(0.1);
         }
         var job = queryAgencyJob(result.json.id);

@@ -1,3 +1,4 @@
+import { Box } from "@chakra-ui/react";
 import React from "react";
 import { HashRouter, Route, Switch } from "react-router-dom";
 import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
@@ -11,19 +12,21 @@ export const ViewsListWrap = () => {
   useDisableNavBar();
   useGlobalStyleReset();
   return (
-    <ChakraCustomProvider overrideNonReact>
-      <SearchViewsCustomStyleReset>
-        <HashRouter basename="/" hashType={"noslash"}>
-          <Switch>
-            <Route path="/views" exact>
-              <ViewsList />
-            </Route>
-            <Route path="/view/:viewName">
-              <SingleViewView />
-            </Route>
-          </Switch>
-        </HashRouter>
-      </SearchViewsCustomStyleReset>
-    </ChakraCustomProvider>
+    <Box width="100%">
+      <ChakraCustomProvider overrideNonReact>
+        <SearchViewsCustomStyleReset>
+          <HashRouter basename="/" hashType={"noslash"}>
+            <Switch>
+              <Route path="/views" exact>
+                <ViewsList />
+              </Route>
+              <Route path="/view/:viewName">
+                <SingleViewView />
+              </Route>
+            </Switch>
+          </HashRouter>
+        </SearchViewsCustomStyleReset>
+      </ChakraCustomProvider>
+    </Box>
   );
 };

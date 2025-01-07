@@ -2605,7 +2605,7 @@ function optimizerIndexesModifyTestSuite () {
 
     testIndexAndHashIndexedNonIndexed : function () {
       // drop the skiplist index
-      c.dropIndex(c.getIndexes()[1]);
+      c.dropIndex(c.indexes()[1]);
       c.ensureIndex({ type: "hash", fields: ["value"] });
       // value2 is not indexed
       db._query("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
@@ -2681,7 +2681,7 @@ function optimizerIndexesModifyTestSuite () {
 
     testIndexAndSkiplistPartialIndexedNonIndexed : function () {
       // drop the skiplist index
-      c.dropIndex(c.getIndexes()[1]);
+      c.dropIndex(c.indexes()[1]);
 
       // create an alternative index
       c.ensureIndex({ type: "skiplist", fields: ["value", "value3"] });

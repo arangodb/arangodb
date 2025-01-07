@@ -32,6 +32,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -97,6 +98,7 @@ EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() = default;
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   TRI_ASSERT(node->getType() != ExecutionNode::INDEX &&
              node->getType() != ExecutionNode::ENUMERATE_COLLECTION &&
+             node->getType() != ExecutionNode::ENUMERATE_NEAR_VECTORS &&
              node->getType() != ExecutionNode::JOIN);
 
   TRI_ASSERT(!_engines.empty());

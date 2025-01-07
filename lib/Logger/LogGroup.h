@@ -26,6 +26,8 @@
 #include <atomic>
 #include <cstddef>
 
+#include "Assertions/Assert.h"
+
 namespace arangodb {
 
 class LogGroup {
@@ -36,13 +38,13 @@ class LogGroup {
   // - 1: audit log group: audit logging
   static constexpr std::size_t Count = 2;
 
-  LogGroup() : _maxLogEntryLength(256U * 1048576U) {}
-
-  virtual ~LogGroup() = default;
+  LogGroup(std::size_t id) : _maxLogEntryLength(256U * 1048576U), _id(id) {
+    TRI_ASSERT(id < Count);
+  }
 
   /// @brief Must return a UNIQUE identifier amongst all LogGroup derivatives
   /// and must be less than Count
-  virtual std::size_t id() const = 0;
+  std::size_t id() const noexcept { return _id; }
 
   /// @brief max length of log entries in this group
   std::size_t maxLogEntryLength() const noexcept {
@@ -51,11 +53,14 @@ class LogGroup {
 
   /// @brief set the max length of log entries in this group.
   /// should not be called during the setup of the Logger, and not at runtime
-  void maxLogEntryLength(std::size_t value) { _maxLogEntryLength.store(value); }
+  void maxLogEntryLength(std::size_t value) noexcept {
+    _maxLogEntryLength.store(value);
+  }
 
  protected:
   /// @brief maximum length of log entries in this LogGroup
   std::atomic<std::size_t> _maxLogEntryLength;
+  std::size_t const _id;
 };
 
 }  // namespace arangodb

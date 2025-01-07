@@ -1,5 +1,5 @@
 import React, { ReactNode, useEffect, useState } from 'react';
-import styled from 'styled-components';
+import styled from '@emotion/styled';
 import { uniqueId } from 'lodash';
 import PlainLabel from "./PlainLabel";
 
@@ -8,10 +8,7 @@ type StyledTextboxProps = {
   [key: string]: any;
 };
 
-const StyledTextbox = styled.input.attrs(({ type, ...rest }: StyledTextboxProps) => ({
-  type,
-  ...rest
-}))`
+const StyledTextbox = styled.input`
   &&& {
     width: 90%;
     height: auto;
