@@ -142,7 +142,6 @@ function VectorIndexCreateAndRemoveTestSuite() {
             }));
             assertEqual(5, closesDocKeysPreInsert.length);
 
-            print(collection.count());
             let docs = [];
             for (let i = 0; i < 10; ++i) {
                 docs.push({
@@ -150,7 +149,6 @@ function VectorIndexCreateAndRemoveTestSuite() {
                 });
             }
             collection.insert(docs);
-            print(collection.count());
 
             const closesDocKeysPostInsert = db._query(query, bindVars).toArray().map(item => ({
                 _key: item._key
