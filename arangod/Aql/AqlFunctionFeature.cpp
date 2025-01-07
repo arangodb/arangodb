@@ -597,12 +597,12 @@ void AqlFunctionFeature::addMiscFunctions() {
        &functions::MakeDistributeGraphInput});
 
   if (server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
-    add({"APPROX_NEAR_COSINE", ".,.",
+    add({"APPROX_NEAR_COSINE", ".,.|.",
          Function::makeFlags(FF::Deterministic, FF::Cacheable,
                              FF::CanRunOnDBServerCluster,
                              FF::CanRunOnDBServerOneShard),
          &functions::ApproxNearCosine});
-    add({"APPROX_NEAR_L2", ".,.",
+    add({"APPROX_NEAR_L2", ".,.|.",
          Function::makeFlags(FF::Deterministic, FF::Cacheable,
                              FF::CanRunOnDBServerCluster,
                              FF::CanRunOnDBServerOneShard),

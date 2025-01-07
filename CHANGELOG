@@ -1,6 +1,17 @@
 devel
 -----
 
+* Enable passing `nProbe` as additional search parameter for APPROX_NEAR
+  vector functions. `nProbe` defines how many neighboring lists to look into,
+  it is a trade off between more correct results and time it takes to fetch
+  results. The syntax looks like this:
+  ```aql
+  FOR doc IN col
+  LET distance = APPROX_NEAR_L2(doc.vector, @qp, {nProbe: 20})
+  SORT distance LIMIT 5
+  RETURN {key: doc._key, distance}
+  ````
+
 * Add a vector index based on faiss implementation. The current vector index 
   implementation supports the L2 and cosine metrics. To create a vector index,
   the vector field(s) in the collection must already be populated with data. Here is an
@@ -80,6 +91,10 @@ devel
 * Fix delivery of planCacheKey attribute for batched and streaming cursors.
 
 * Fix view usage in cached query plans.
+
+* Optimized COLLECT queries by pushing collection of INTO values onto database
+  servers and aggregate on the coordinator. This can be disabled by setting
+  the option `aggregateIntoExpressionOnDBServers` to false.
 
 * Make it an error if usePlanCache is set to true but the query is not 
   eligible for query plan caching. This is better for debugging.
