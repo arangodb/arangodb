@@ -51,11 +51,6 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-template<size_t... vs>
-const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
-const SplitType splitStep = SplitType{step};
-
 struct WindowInput {
   WindowBounds bounds;
   RegisterId rangeReg;

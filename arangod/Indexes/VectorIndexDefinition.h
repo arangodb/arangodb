@@ -65,14 +65,10 @@ inline auto inspect(Inspector& f, SimilarityMetric& x) {
 
 struct TrainedData {
   std::vector<std::uint8_t> codeData;
-  std::int64_t numberOfCentroids;
-  std::size_t codeSize;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, TrainedData& x) {
-    return f.object(x).fields(f.field("codeData", x.codeData),
-                              f.field("numberOfCentroids", x.numberOfCentroids),
-                              f.field("codeSize", x.codeSize));
+    return f.object(x).fields(f.field("codeData", x.codeData));
   }
 };
 
@@ -82,6 +78,8 @@ struct UserVectorIndexDefinition {
   std::int64_t nLists;
   std::uint64_t trainingIterations;
   std::uint64_t defaultNProbe;
+
+  std::optional<std::string> factory;
 
   bool operator==(UserVectorIndexDefinition const&) const noexcept = default;
 
@@ -96,7 +94,7 @@ struct UserVectorIndexDefinition {
               return inspection::Status::Success{};
             }),
         f.field("metric", x.metric), f.field("nLists", x.nLists),
-        f.field("nLists", x.nLists),
+        f.field("nLists", x.nLists), f.field("factory", x.factory),
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)
