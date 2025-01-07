@@ -1,5 +1,7 @@
 devel
 -----
+* Introduce new level of index serialization `Maintenance` that excludes
+  trainedData in vector index.
 
 * Enable passing `nProbe` as additional search parameter for APPROX_NEAR
   vector functions. `nProbe` defines how many neighboring lists to look into,
