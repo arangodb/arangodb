@@ -3,10 +3,6 @@ from pathlib import Path
 import sys
 
 from tools.process_examine import (
-    LOADS,
-    MEMORY,
-    TREE_TEXTS,
-    PARSED_LINES,
     load_file,
     load_testing_js_mappings,
     build_process_tree,

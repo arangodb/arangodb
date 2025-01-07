@@ -171,10 +171,7 @@ def update_line_chart(relayoutData):
                 pd.to_datetime(relayoutData['xaxis.range[1]']),
             ]
         fig_gantt = px.timeline(df_jobs[
-            (df_jobs["Start"] <= date_range[0]) & (df_jobs["Finish"] >= date_range[1]) |
-            (df_jobs["Start"] >= date_range[1]) & (df_jobs["Finish"] <  date_range[1]) |
-            (df_jobs["Start"] >  date_range[0]) & (df_jobs["Finish"] <= date_range[0]) |
-            (df_jobs["Start"] >  date_range[0]) & (df_jobs["Finish"] <  date_range[1])]
+            (df_jobs["Start"] <= date_range[1]) & (df_jobs["Finish"] >= date_range[0])]
         , x_start="Start", x_end="Finish", y="Task")
     else:
         fig_gantt = px.timeline(df_jobs, x_start="Start", x_end="Finish", y="Task")
