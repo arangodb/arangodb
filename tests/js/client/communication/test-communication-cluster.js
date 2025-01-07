@@ -453,7 +453,7 @@ function GenericAqlSetupPathSuite(type) {
   const NON_EXCLUSIVE = 2;
   const NO_SHARD_SYNC = 3;
 
-  const testCases = [
+  let testCases = [
     ["Exclusive", exclusiveQuery, true, USE_EXCLUSIVE],
     ["Write", writeQuery, true, NON_EXCLUSIVE],
     ["Read", readQuery, false, NON_EXCLUSIVE],
