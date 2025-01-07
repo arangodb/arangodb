@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+"""Async Registry Pretty Printer
+
+This script allows a user to print the async stacktraces from server_url/_admin/async-registry as a list of trees.
+
+Usage: curl -s server_url/_admin/async-registry <root-user>:<password> | ./pretty_printer.py
+
+"""
+
 import sys
 import json
 from typing import List
