@@ -21,7 +21,9 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/IndexDistinctScanExecutor.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ExecutionEngine.h"
@@ -132,5 +134,19 @@ std::vector<const Variable*> IndexCollectNode::getVariablesSetHere() const {
 }
 
 CostEstimate IndexCollectNode::estimateCost() const {
-  return CostEstimate(1, 1);
+  transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
+  if (trx.status() != transaction::Status::RUNNING) {
+    return CostEstimate::empty();
+  }
+
+  TRI_ASSERT(!_dependencies.empty());
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  auto documentsInCollection =
+      collection()->count(&trx, transaction::CountType::kTryCache);
+
+  double selectivity = _index->selectivityEstimate();
+
+  estimate.estimatedNrItems = selectivity * double(documentsInCollection);
+  estimate.estimatedCost += selectivity * log(double(documentsInCollection));
+  return estimate;
 }
