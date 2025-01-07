@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fail queries using `APPROX_NEAR` functions but not applying vector
+* Fail queries that use `APPROX_NEAR` functions but do not apply the vector
   index.
 
 * Rebuilt included rclone v1.65.5 with go1.22.10 and non-vulnerable
