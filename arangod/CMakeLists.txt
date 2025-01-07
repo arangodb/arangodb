@@ -57,6 +57,31 @@ if (USE_JEMALLOC)
 endif ()
 add_dependencies(${BIN_ARANGOD} man)
 
+# This is necessary for faiss library properly link laplack and blas dependencies
+if (STATIC_EXECUTABLES)
+  set(BLA_STATIC On)
+  if (ARCH_AMD64)
+      set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a")
+      set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/blas/libblas.a")
+  else (ARCH_AMD64)
+      set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a")
+      set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/blas/libblas.a")
+  endif (ARCH_AMD64)
+
+  find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
+  if (LIBOMP)
+    target_link_options(${BIN_ARANGOD} PRIVATE "-fopenmp=libomp -L/opt/omp -llapack -lgfortran" )
+  else ()
+    message(FATAL_ERROR "libomp.a must be present in /opt/omp for static build")
+  endif ()
+else()
+  set(BLA_STATIC Off)
+  set(BLA_VENDOR OpenBLAS)
+  find_package(OpenMP)
+  find_package(LAPACK)
+  find_package(BLAS)
+endif()
+
 target_include_directories(${BIN_ARANGOD} PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
