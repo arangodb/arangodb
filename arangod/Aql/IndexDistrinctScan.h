@@ -44,8 +44,7 @@ std::ostream& operator<<(std::ostream&, IndexDistinctScanOptions const&);
 struct AqlIndexDistinctScanIterator {
   using SliceType = velocypack::Slice;
   virtual ~AqlIndexDistinctScanIterator() = default;
-
-  virtual bool next(std::span<SliceType> key) = 0;
+  virtual bool next(std::span<SliceType> values) = 0;
 };
 
 }  // namespace arangodb

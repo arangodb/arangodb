@@ -208,6 +208,12 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
       continue;
     }
 
+    auto singleton = indexNode->getFirstDependency();
+    if (singleton->getType() != EN ::SINGLETON) {
+      LOG_RULE << "Index node is not the first node after a singleton.";
+      continue;
+    }
+
     LOG_RULE << "Found collect " << collectNode->id() << " with index "
              << indexNode->id();
 

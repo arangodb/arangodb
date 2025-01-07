@@ -1,0 +1,91 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
+////////////////////////////////////////////////////////////////////////////////
+
+#include "IndexDistinctScanExecutor.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
+
+namespace arangodb::aql {
+
+auto IndexDistinctScanExecutor::skipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  std::size_t skipped = 0;
+  while (inputRange.hasDataRow() && clientCall.needSkipMore()) {
+    bool hasMore = _iterator->next(_groupValues);
+    if (not hasMore) {
+      inputRange.advanceDataRow();
+      continue;
+    }
+
+    clientCall.didSkip(1);
+    skipped += 1;
+  }
+
+  return std::make_tuple(inputRange.upstreamState(), NoStats{}, skipped,
+                         AqlCall{});
+}
+
+auto IndexDistinctScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                            OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    bool hasMore = _iterator->next(_groupValues);
+    if (not hasMore) {
+      inputRange.advanceDataRow();
+      continue;
+    }
+
+    for (size_t k = 0; k < _infos.groups.size(); k++) {
+      output.moveValueInto(_infos.groups[k].outRegister,
+                           inputRange.peekDataRow().second, _groupValues[k]);
+    }
+    output.advanceRow();
+  }
+
+  return std::make_tuple(inputRange.upstreamState(), NoStats{}, AqlCall{});
+}
+
+IndexDistinctScanExecutor::IndexDistinctScanExecutor(Fetcher& fetcher,
+                                                     Infos& infos)
+    : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
+  constructIterator();
+  _groupValues.resize(_infos.groups.size());
+}
+
+void IndexDistinctScanExecutor::constructIterator() {
+  IndexDistinctScanOptions options;
+  options.distinctFields.reserve(_infos.groups.size());
+  for (auto const& grp : _infos.groups) {
+    options.distinctFields.push_back(grp.fieldIndex);
+  }
+  // TODO move the options into the node, there we have all information
+  options.sorted = false;
+
+  _iterator = _infos.index->distinctScanFor(&_trx, options);
+  ADB_PROD_ASSERT(_iterator != nullptr);
+}
+
+template class ExecutionBlockImpl<IndexDistinctScanExecutor>;
+
+}  // namespace arangodb::aql

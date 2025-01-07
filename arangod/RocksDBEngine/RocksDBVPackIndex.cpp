@@ -3230,4 +3230,92 @@ bool RocksDBVPackIndex::supportsDistinctScan(
   return checkSupportScanDistinct(scanOptions, _fields);
 }
 
+template<bool isUnique>
+struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
+  explicit RocksDBVPackIndexDistinctScanIterator(
+      RocksDBVPackIndex* index, transaction::Methods* trx,
+      std::vector<std::size_t> inverseFieldMapping)
+      : index(index),
+        trx(trx),
+        inverseFieldMapping(std::move(inverseFieldMapping)),
+        bounds(
+            isUnique
+                ? RocksDBKeyBounds::UniqueVPackIndex(index->objectId(), false)
+                : RocksDBKeyBounds::VPackIndex(index->objectId(), false)) {
+    end = bounds.end();
+    LOG_DEVEL << "IFM " << this->inverseFieldMapping;
+  }
+
+  bool next(std::span<SliceType> values) override {
+    TRI_ASSERT(values.size() == inverseFieldMapping.size())
+        << inverseFieldMapping << " " << values.size();
+    if (iterator) {
+      RocksDBKey key;
+      key.constructVPackIndexValue(index->objectId(), builder.slice(),
+                                   LocalDocumentId{0});
+      iterator->Seek(key.string());
+
+      LOG_DEVEL << "SEEKING TO " << builder.toJson();
+    } else {
+      RocksDBTransactionMethods* mthds =
+          RocksDBTransactionState::toMethods(trx, index->collection().id());
+      iterator = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+        TRI_ASSERT(opts.prefix_same_as_start);
+        opts.iterate_upper_bound = &end;
+      });
+      iterator->Seek(bounds.start());
+      LOG_DEVEL << "CONSTRUCTING NEW ITERATOR";
+    }
+
+    if (not iterator->Valid()) {
+      return false;
+    }
+
+    // extract values from key
+    VPackSlice keySlice = RocksDBKey::indexedVPack(iterator->key());
+    LOG_DEVEL << "FOUND VALUES " << keySlice.toJson();
+    size_t k = 0;
+    builder.clear();
+    {
+      VPackArrayBuilder ar{&builder, true};
+      for (auto s : VPackArrayIterator(keySlice)) {
+        builder.add(s);
+        values[inverseFieldMapping[k++]] = s;
+      }
+      builder.add(VPackSlice::maxKeySlice());
+    }
+    return true;
+  }
+
+  RocksDBVPackIndex* index;
+  transaction::Methods* trx;
+  std::vector<std::size_t> inverseFieldMapping;
+
+  std::unique_ptr<rocksdb::Iterator> iterator;
+  RocksDBKeyBounds bounds;
+  rocksdb::Slice end;
+  velocypack::Builder builder;
+};
+
+std::unique_ptr<AqlIndexDistinctScanIterator>
+RocksDBVPackIndex::distinctScanFor(
+    transaction::Methods* trx, const IndexDistinctScanOptions& scanOptions) {
+  TRI_ASSERT(supportsDistinctScan(scanOptions));
+
+  std::vector<std::size_t> inverseFieldMapping;
+  inverseFieldMapping.resize(scanOptions.distinctFields.size());
+  for (size_t k = 0; k < scanOptions.distinctFields.size(); k++) {
+    LOG_DEVEL << "MAPPING " << scanOptions.distinctFields[k] << " TO " << k;
+    inverseFieldMapping[scanOptions.distinctFields[k]] = k;
+  }
+
+  if (unique()) {
+    return std::make_unique<RocksDBVPackIndexDistinctScanIterator<true>>(
+        this, trx, std::move(inverseFieldMapping));
+  } else {
+    return std::make_unique<RocksDBVPackIndexDistinctScanIterator<false>>(
+        this, trx, std::move(inverseFieldMapping));
+  }
+}
+
 }  // namespace arangodb

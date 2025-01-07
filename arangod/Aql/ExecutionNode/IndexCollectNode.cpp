@@ -21,6 +21,10 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/Executor/IndexDistinctScanExecutor.h"
+#include "Aql/RegisterPlan.h"
+#include "Aql/ExecutionEngine.h"
 #include "IndexCollectNode.h"
 #include "Indexes/Index.h"
 
@@ -37,7 +41,24 @@ ExecutionNode* IndexCollectNode::clone(ExecutionPlan* plan,
 
 std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlock(
     ExecutionEngine& engine) const {
-  TRI_ASSERT(false);
+  IndexDistinctScanInfos infos;
+  infos.groups.reserve(_groups.size());
+  infos.index = _index;
+  infos.collection = CollectionAccessingNode::collection();
+  infos.query = &engine.getQuery();
+
+  RegIdSet writableOutputRegisters;
+  for (auto const& group : _groups) {
+    IndexDistinctScanInfos::Group& execGroup = infos.groups.emplace_back();
+    execGroup.fieldIndex = group.indexField;
+    execGroup.outRegister =
+        getRegisterPlan()->variableToRegisterId(group.outVariable);
+    writableOutputRegisters.emplace(execGroup.outRegister);
+  }
+
+  auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
+  return std::make_unique<ExecutionBlockImpl<IndexDistinctScanExecutor>>(
+      &engine, this, registerInfos, std::move(infos));
 }
 
 IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
@@ -96,6 +117,7 @@ void IndexCollectNode::replaceAttributeAccess(
   ExecutionNode::replaceAttributeAccess(self, searchVariable, attribute,
                                         replaceVariable, index);
 }
+
 void IndexCollectNode::getVariablesUsedHere(VarSet& vars) const {
   ExecutionNode::getVariablesUsedHere(vars);
 }
