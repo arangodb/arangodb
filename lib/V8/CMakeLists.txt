@@ -41,6 +41,12 @@ target_include_directories(arango_v8
   ${OPENSSL_INCLUDE_DIR}
   ${ICU64_INCLUDE_DIR})
 
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(arango_v8 PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arango_v8 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
 add_library(arango_v8_no_deadline STATIC
   v8-no-deadline.cpp)
 target_link_libraries(arango_v8_no_deadline
