@@ -456,13 +456,13 @@ function GenericAqlSetupPathSuite(type) {
   let testCases = [
     ["Exclusive", exclusiveQuery, true, USE_EXCLUSIVE],
     ["Write", writeQuery, true, NON_EXCLUSIVE],
-    ["Read", readQuery, false, NON_EXCLUSIVE],
+    ["Read", readQuery, false, NON_EXCLUSIVE]
   ];
   if (!versionHas('coverage')) {
     testCases += [
       ["JSExclusive", jsExclusive, true, USE_EXCLUSIVE],
       ["JSWrite", jsWrite, true, NON_EXCLUSIVE],
-      ["JSRead", jsRead, false, NON_EXCLUSIVE],
+      ["JSRead", jsRead, false, NON_EXCLUSIVE]
     ];
   }
   testCases += [
@@ -470,7 +470,7 @@ function GenericAqlSetupPathSuite(type) {
     ["APIWrite", apiWrite, true, NON_EXCLUSIVE],
     ["APIRead", apiRead, false, NON_EXCLUSIVE],
     ["DocumentWrite", documentWrite, true, NO_SHARD_SYNC]
-  }
+  ];
   const addTestCase = (suite, first, second) => {
     const [fName, fCode, fWrites, fExclusive] = first;
     const [sName, sCode, sWrites, sExclusive] = second;
