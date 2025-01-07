@@ -36,6 +36,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Transaction/Methods.h"
+#include "Aql/ExecutionNode/EnumerateListNode.h"
 
 #include <memory>
 #include <utility>
@@ -56,9 +57,11 @@ class SingleRowFetcher;
 class EnumerateListExecutorInfos {
  public:
   EnumerateListExecutorInfos(
-      RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
-      Expression* filter, VariableId outputVariableId,
-      std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs);
+      RegisterId inputRegister, const std::vector<RegisterId>&& outputRegisters,
+      QueryContext& query, Expression* filter,
+      std::vector<const Variable*>&& outputVariables,
+      std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs,
+      EnumerateListNode::Mode mode = EnumerateListNode::Mode::kEnumerateArray);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos&&) = default;
@@ -67,12 +70,14 @@ class EnumerateListExecutorInfos {
 
   QueryContext& getQuery() const noexcept;
   RegisterId getInputRegister() const noexcept;
-  RegisterId getOutputRegister() const noexcept;
-  VariableId getOutputVariableId() const noexcept;
+  const std::vector<RegisterId>& getOutputRegister() const noexcept;
+  std::vector<const Variable*> const& getOutputVariables() const noexcept;
   bool hasFilter() const noexcept;
   Expression* getFilter() const noexcept;
   std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegs()
       const noexcept;
+
+  EnumerateListNode::Mode getMode() const noexcept;
 
  private:
   QueryContext& _query;
@@ -80,11 +85,12 @@ class EnumerateListExecutorInfos {
   // ExecutorInfo::_inRegs and ExecutorInfo::_outRegs, respectively
   // getInputRegisters() and getOutputRegisters().
   RegisterId const _inputRegister;
-  RegisterId const _outputRegister;
-  VariableId const _outputVariableId;
+  std::vector<RegisterId> const _outputRegisters;
+  std::vector<const Variable*> _outputVariables;
   Expression* _filter;
   // Input variable and register pairs required for the filter
   std::vector<std::pair<VariableId, RegisterId>> _varsToRegs;
+  EnumerateListNode::Mode _mode;
 };
 
 /**
@@ -153,6 +159,77 @@ class EnumerateListExecutor {
   ExecutorState _currentRowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
+  std::unique_ptr<EnumerateListExpressionContext> _expressionContext;
+
+  // note: it is fine if this counter overflows
+  uint_fast16_t _killCheckCounter = 0;
+};
+
+class EnumerateListObjectExecutor {
+ public:
+  struct Properties {
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
+  using Infos = EnumerateListExecutorInfos;
+  using Stats = FilterStats;
+
+  EnumerateListObjectExecutor(Fetcher&, EnumerateListExecutorInfos&);
+  ~EnumerateListObjectExecutor();
+
+  /**
+   * @brief Will fetch a new InputRow if necessary and store their local state
+   *
+   * @return bool done in case we do not have any input and upstreamState is
+   * done
+   */
+  void initializeNewRow(AqlItemBlockInputRange& inputRange);
+
+  /**
+   * @brief Will process a found array element
+   */
+  bool processElement(OutputAqlItemRow& output);
+
+  /**
+   * @brief Will skip a maximum of n-elements inside the current array
+   */
+  size_t skipElement(size_t skip);
+
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
+
+ private:
+  AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos,
+                       bool& mustDestroy);
+
+  bool checkFilter(AqlValue const& currentK, AqlValue const& currentV);
+
+  std::tuple<AqlValue, AqlValue> keyValueExtractor(
+      velocypack::ObjectIteratorPair innerValue);
+
+  EnumerateListExecutorInfos& _infos;
+  transaction::Methods _trx;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
+  InputAqlItemRow _currentRow;
+  ExecutorState _currentRowState;
+  VPackObjectIterator _objIterator;
   std::unique_ptr<EnumerateListExpressionContext> _expressionContext;
 
   // note: it is fine if this counter overflows

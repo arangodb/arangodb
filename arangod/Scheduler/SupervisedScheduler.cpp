@@ -460,6 +460,9 @@ void SupervisedScheduler::runWorker() {
   _conditionSupervisor.notify_one();
 
   _numAwake.fetch_add(1, std::memory_order_relaxed);
+
+  constexpr uint64_t GC_INTERVAL = 10;  // every 10 iterations
+  std::size_t work_counter = 0;
   while (true) {
     try {
       std::unique_ptr<WorkItemBase> work = getWork(state);
@@ -490,6 +493,11 @@ void SupervisedScheduler::runWorker() {
     }
 
     _jobsDone.fetch_add(1, std::memory_order_release);
+
+    work_counter = (work_counter + 1) % GC_INTERVAL;
+    if (work_counter == 0) {
+      async_registry::get_thread_registry().garbage_collect();
+    }
   }
   _numAwake.fetch_sub(1, std::memory_order_relaxed);
 }

@@ -24,6 +24,7 @@
 #include "HeartbeatThread.h"
 
 #include "Agency/AsyncAgencyComm.h"
+#include "ApplicationFeatures/ShutdownFeature.h"
 #include "Auth/UserManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -210,7 +211,8 @@ DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, HeartbeatScale,
 HeartbeatThread::HeartbeatThread(Server& server,
                                  AgencyCallbackRegistry* agencyCallbackRegistry,
                                  std::chrono::microseconds interval,
-                                 uint64_t maxFailsBeforeWarning)
+                                 uint64_t maxFailsBeforeWarning,
+                                 double noHeartbeatDelayBeforeShutdown)
     : arangodb::ServerThread<Server>(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<std::mutex>()),
@@ -220,6 +222,8 @@ HeartbeatThread::HeartbeatThread(Server& server,
       _interval(interval),
       _maxFailsBeforeWarning(maxFailsBeforeWarning),
       _numFails(0),
+      _doneHeartbeatShutdown(false),
+      _noHeartbeatDelayBeforeShutdown(noHeartbeatDelayBeforeShutdown),
       _lastSuccessfulVersion(0),
       _currentPlanVersion(0),
       _ready(false),
@@ -800,6 +804,27 @@ void HeartbeatThread::runCoordinator() {
         break;
       }
 
+      if (_noHeartbeatDelayBeforeShutdown >= 1.0) {
+        std::lock_guard<std::mutex> guard(_lastSuccessfulHeartbeatSentMutex);
+        if (_lastSuccessfulHeartbeatSent.has_value()) {
+          auto diff = std::chrono::steady_clock::now() -
+                      _lastSuccessfulHeartbeatSent.value();
+          if (diff > std::chrono::seconds(static_cast<uint64_t>(
+                         _noHeartbeatDelayBeforeShutdown)) &&
+              !_doneHeartbeatShutdown) {
+            LOG_TOPIC("ffffa", FATAL, Logger::HEARTBEAT)
+                << "Could not send heartbeat for too long, shutting down!";
+            _server.beginShutdown();
+            _doneHeartbeatShutdown = true;
+          } else if (diff > std::chrono::seconds(static_cast<uint64_t>(
+                                _noHeartbeatDelayBeforeShutdown / 2))) {
+            LOG_TOPIC("ffffb", ERR, Logger::HEARTBEAT)
+                << "Could not send heartbeat for a while, consider checking "
+                   "the network connection";
+          }
+        }
+      }
+
       if (getNewsRunning->load(std::memory_order_seq_cst) == 0) {
         // Schedule a getNewsFromAgency call in the Scheduler:
         auto self = shared_from_this();
@@ -820,7 +845,6 @@ void HeartbeatThread::runCoordinator() {
             locker,
             std::chrono::duration_cast<std::chrono::microseconds>(remain));
       }
-
     } catch (std::exception const& e) {
       LOG_TOPIC("27a96", ERR, Logger::HEARTBEAT)
           << "Got an exception in coordinator heartbeat: " << e.what();
@@ -846,9 +870,9 @@ bool HeartbeatThread::init() {
     // the maintenanceThread is only required by DB server instances, but we
     // deliberately initialize it here instead of in runDBServer because the
     // ClusterInfo::SyncerThread uses HeartbeatThread::notify to notify this
-    // thread, but that SyncerThread is started before runDBServer is called. So
-    // in order to prevent a data race we should initialize _maintenanceThread
-    // before that SyncerThread is started.
+    // thread, but that SyncerThread is started before runDBServer is called.
+    // So in order to prevent a data race we should initialize
+    // _maintenanceThread before that SyncerThread is started.
     _maintenanceThread =
         std::make_unique<HeartbeatBackgroundJobThread>(_server, this);
   }
@@ -870,7 +894,11 @@ void HeartbeatThread::beginShutdown() {
         LOG_TOPIC("d8a5c", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the maintenance "
                "thread";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        FATAL_ERROR_ABORT();
+#else
         FATAL_ERROR_EXIT();
+#endif
       }
       if (++counter % 50 == 0) {
         LOG_TOPIC("acaaa", WARN, arangodb::Logger::CLUSTER)
@@ -1034,8 +1062,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 /// @brief handles a plan version change, DBServer case
 /// this is triggered if the heartbeat thread finds a new plan version number,
 /// and every few heartbeats if the Current/Version has changed. Note that the
-/// latter happens not in the heartbeat thread itself but in a scheduler thread.
-/// Therefore we need to do proper locking.
+/// latter happens not in the heartbeat thread itself but in a scheduler
+/// thread. Therefore we need to do proper locking.
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::notify() {
@@ -1144,7 +1172,8 @@ void HeartbeatThread::sendServerStateAsync() {
   std::move(f).thenFinal(
       [self = shared_from_this(),
        start](futures::Try<AsyncAgencyCommResult> const& tryResult) noexcept {
-        auto timeDiff = std::chrono::steady_clock::now() - start;
+        auto now = std::chrono::steady_clock::now();
+        auto timeDiff = now - start;
         self->_heartbeat_send_time_ms.count(
             std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff)
                 .count());
@@ -1171,6 +1200,9 @@ void HeartbeatThread::sendServerStateAsync() {
             }
           } else {
             self->_numFails = 0;
+            std::lock_guard<std::mutex> guard(
+                self->_lastSuccessfulHeartbeatSentMutex);
+            self->_lastSuccessfulHeartbeatSent = now;
           }
         } catch (std::exception const& e) {
           LOG_TOPIC("cfd83", WARN, Logger::HEARTBEAT)

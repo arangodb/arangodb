@@ -498,6 +498,9 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               AqlValueGuard guard{v, false};
               output.moveValueInto(idx.docIdOutputRegister, _currentRow,
                                    &guard);
+              // account for later document lookups here, because the
+              // MaterializeExecutor has NoStats.
+              stats.incrDocumentLookups(1);
             }
 
             if (idx.filter && idx.filter->projections.usesCoveringIndex()) {
@@ -690,7 +693,7 @@ void JoinExecutor::constructStrategy() {
     options.constantFields = idx.constantFields;
 
     auto& desc = indexDescription.emplace_back();
-    desc.isUnique = idx.index->unique();
+    desc.isUniqueStream = idx.isUniqueStream;
     desc.numProjections = 0;
     desc.numConstants = idx.constantFields.size();
     desc.numKeyComponents = idx.usedKeyFields.size();

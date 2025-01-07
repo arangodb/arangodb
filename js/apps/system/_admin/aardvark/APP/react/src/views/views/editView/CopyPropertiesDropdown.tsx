@@ -1,22 +1,20 @@
+import { OptionType, SingleSelect } from "@arangodb/ui";
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import { Box, Button, Spinner, Stack, Text } from "@chakra-ui/react";
 import { omit } from "lodash";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 import useSWRImmutable from "swr/immutable";
-import { OptionType } from "../../../components/select/SelectBase";
-import SingleSelect from "../../../components/select/SingleSelect";
-import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { getCurrentDB } from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { useEditViewContext } from "../editView/EditViewContext";
 import { SearchAliasViewPropertiesType, ViewDescription } from "../View.types";
 
 export const CopyPropertiesDropdown = () => {
-  const { data, isLoading: isLoadingList } = useSWR("/view", path =>
-    getApiRouteForCurrentDB().get(path)
+  const { data: views, isLoading: isLoadingList } = useSWR("/view", () =>
+    getCurrentDB().listViews()
   );
 
-  const views = data?.body.result as ViewDescription[] | undefined;
   if (!views) {
     return null;
   }
@@ -36,10 +34,10 @@ const CopyPropertiesInner = ({ views }: { views: ViewDescription[] }) => {
   const { encoded } = encodeHelper(selectedViewName || "");
   const { data: fullViewData, isLoading } = useSWRImmutable(
     `/view/${encoded}/properties`,
-    path => getApiRouteForCurrentDB().get(path)
+    () => getCurrentDB().view(encoded).properties()
   );
   const selectedView = omit(
-    fullViewData?.body,
+    fullViewData,
     "error",
     "code"
   ) as SearchAliasViewPropertiesType;

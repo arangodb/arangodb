@@ -65,7 +65,7 @@ function getTestCode(file, options, instanceManager) {
   }
   let ret = '';
   if (instanceManager != null) {
-    ret = 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n';
+    ret = `global.instanceManager = ${JSON.stringify(instanceManager.getStructure())};require('@arangodb/test-helper').pimpInstanceManager();\n`;
   }
   return ret + runTest + 'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
@@ -281,7 +281,7 @@ class runLocalInArangoshRunner extends testRunnerBase {
           timeout: true,
           forceTerminate: true,
           status: false,
-          message: `test aborted due to ${require('internal').getDeadlineReasonString()}. Original test status: ${JSON.stringify(result)}`,
+          message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(result)}`,
         };
       }
       if (result === undefined) {
@@ -367,3 +367,4 @@ exports.runLocalInArangoshRunner = runLocalInArangoshRunner;
 exports.shellv8Runner = shellv8Runner;
 exports.readTestResult = readTestResult;
 exports.writeTestResult = writeTestResult;
+exports.getTestCode = getTestCode;

@@ -78,7 +78,6 @@ add_library(arangoserver STATIC
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
-  RestHandler/RestBatchHandler.cpp
   RestHandler/RestCompactHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
@@ -99,6 +98,7 @@ add_library(arangoserver STATIC
   RestHandler/RestOptionsHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestQueryPlanCacheHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
@@ -150,6 +150,7 @@ add_library(arangoserver STATIC
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
+  RestServer/VectorIndexFeature.cpp
   Scheduler/LockfreeThreadPool.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp

@@ -64,6 +64,8 @@ class RocksDBValue {
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId);
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId,
                                             VPackSlice data);
+  static RocksDBValue VectorIndexValue(char const* codeData,
+                                       std::size_t codeSize);
   static RocksDBValue View(VPackSlice data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);
@@ -168,6 +170,7 @@ class RocksDBValue {
   RocksDBValue(RocksDBEntryType type, std::string_view data);
   RocksDBValue(RocksDBEntryType type, replication2::LogEntry const&);
   explicit RocksDBValue(S2Point const&);
+  explicit RocksDBValue(char const* codeData, std::size_t codeSize);
 
   static RocksDBEntryType type(char const* data, size_t size);
   static LocalDocumentId documentId(char const* data, uint64_t size);

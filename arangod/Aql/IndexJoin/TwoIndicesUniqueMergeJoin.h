@@ -60,14 +60,15 @@ struct TwoIndicesUniqueMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
     std::span<SliceType> _position;
     std::span<SliceType> _projections;
     DocIdType& _docId;
+    size_t _constantSize{0};
     bool exhausted{false};
 
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
                     std::span<SliceType> position,
                     std::span<SliceType> projections, DocIdType& docId,
-                    std::span<SliceType> constants);
+                    size_t constantSize);
     bool next();
-    void reset();
+    void reset(std::span<SliceType>);
   };
 
   struct IndexStreamCompare {
@@ -94,9 +95,9 @@ template<typename SliceType, typename DocIdType, typename KeyCompare>
 void TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::reset(
     std::span<SliceType> constants) {
   TRI_ASSERT(leftIndex != nullptr);
-  leftIndex->reset();
+  leftIndex->reset(constants.subspan(0, leftIndex->_constantSize));
   TRI_ASSERT(rightIndex != nullptr);
-  rightIndex->reset();
+  rightIndex->reset(constants.subspan(leftIndex->_constantSize));
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
@@ -127,20 +128,21 @@ TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
                     std::span<SliceType> position,
                     std::span<SliceType> projections, DocIdType& docId,
-                    std::span<SliceType> constants)
+                    size_t constantSize)
     : _iter(std::move(iter)),
       _position(position),
       _projections(projections),
-      _docId(docId) {
+      _docId(docId),
+      _constantSize(constantSize) {
   exhausted = !_iter->position(_position);
   LOG_INDEX_UNIQUE_MERGER << "iterator pointing to " << _position[0] << " ("
                           << this << ")";
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void TwoIndicesUniqueMergeJoin<SliceType, DocIdType,
-                               KeyCompare>::IndexStreamData::reset() {
-  exhausted = !_iter->reset(_position, {});
+void TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
+    IndexStreamData::reset(std::span<SliceType> constants) {
+  exhausted = !_iter->reset(_position, constants);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
@@ -178,13 +180,13 @@ TwoIndicesUniqueMergeJoin<SliceType, DocIdType, KeyCompare>::
       leftIndex = std::make_unique<IndexStreamData>(
           std::move(desc.iter), std::span<SliceType>{keyBuffer, keySliceIter},
           std::span<SliceType>{projections, projectionsIter}, *(docIdIter++),
-          std::span<SliceType>{});
+          desc.numConstants);
       LOG_INDEX_UNIQUE_MERGER << "Set left iterator";
     } else {
       rightIndex = std::make_unique<IndexStreamData>(
           std::move(desc.iter), std::span<SliceType>{keyBuffer, keySliceIter},
           std::span<SliceType>{projections, projectionsIter}, *(docIdIter++),
-          std::span<SliceType>{});
+          desc.numConstants);
       LOG_INDEX_UNIQUE_MERGER << "Set right iterator";
     }
   }

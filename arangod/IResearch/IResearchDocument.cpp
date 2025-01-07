@@ -93,8 +93,8 @@ irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
     BoolStreamPool(DEFAULT_POOL_SIZE);
 irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
     NumericStreamPool(DEFAULT_POOL_SIZE);
-std::initializer_list<irs::type_info::type_id> NumericStreamFeatures{
-    irs::type<irs::granularity_prefix>::id()};
+static constexpr std::initializer_list<irs::type_info::type_id>
+    NumericStreamFeatures{irs::type<irs::granularity_prefix>::id()};
 
 bool canHandleValue(std::string const& key, VPackSlice const& value,
                     arangodb::iresearch::FieldMeta const& context) noexcept {

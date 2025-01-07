@@ -126,6 +126,9 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
   // if we filter, we don't care about the other filters below:
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
     whichFilter.filter = 'testcase';
+    if (typeof options.test === 'number') {
+      options.test = `${options.test}`;
+    }
     if (typeof options.test === 'string') {
       return testname.search(options.test) >= 0;
     } else {
@@ -176,11 +179,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf('-nonmac') !== -1 && platform.substr(0, 6) === 'darwin') {
-    whichFilter.filter = 'non-mac';
-    return false;
-  }
-
 // *.<ext>_DISABLED should be used instead
 //  if (testname.indexOf('-disabled') !== -1) {
 //    whichFilter.filter = 'disabled';
@@ -209,6 +207,16 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if ((testname.indexOf('-noinstr_or_noncluster') !== -1) && (options.isInstrumented && options.cluster)) {
     whichFilter.filter = 'skip when built with an instrumented build and running in cluster mode';
+    return false;
+  }
+
+  if ((testname.indexOf('-fp') !== -1) && (!options.haveFailAt)) {
+    whichFilter.filter = 'skip when built without failurepoints';
+    return false;
+  }
+
+  if ((testname.indexOf('-r2') !== -1) && (options.replicationVersion !== 2)) {
+    whichFilter.filter = 'skip when running without replication 2';
     return false;
   }
 

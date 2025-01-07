@@ -105,6 +105,9 @@ struct OptimizerRule {
 
     replaceLikeWithRange,
 
+    // replace iteration over an ENTRIES array with an object iteration
+    replaceEntriesWithObjectIteration,
+
     /// simplify some conditions in CalculationNodes
     simplifyConditionsRule,
 
@@ -202,6 +205,9 @@ struct OptimizerRule {
     removeFiltersCoveredByIndexRule,
 
     removeUnnecessaryFiltersRule2,
+
+    // try to use vector index if possible
+    useVectorIndexForSort,
 
     // try to find sort blocks which are superseeded by indexes
     useIndexForSortRule,

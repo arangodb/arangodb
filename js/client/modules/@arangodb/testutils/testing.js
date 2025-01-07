@@ -59,6 +59,7 @@ let optionsDocumentation = [
   '   - `setInterruptable`: register special break handler',
   '',
   '   - `forceJson`: don\'t use vpack - for better debugability',
+  '   - `forceNoCompress`: don\'t zip encoding - for better debugability',
   '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
   '   - `vst`: attempt to connect to the SUT via vst',
   '   - `http2`: attempt to connect to the SUT via http2',
@@ -73,6 +74,7 @@ let optionsDocumentation = [
   '   - `failed`: if set to true, re-runs only those tests that failed in the',
   '     previous test run. The information which tests previously failed is taken',
   '     from the "UNITTEST_RESULT.json" (if available).',
+  '   - `suffix` append to the representation name',
   '   - `optionsJson`: all of the above, as json list for mutliple suite launches',
   ''
 ];
@@ -84,6 +86,7 @@ const optionsDefaults = {
   'extremeVerbosity': false,
   'force': true,
   'forceJson': false,
+  'forceNoCompress': false,
   'password': '',
   'protocol': 'tcp',
   'replication': false,
@@ -95,6 +98,7 @@ const optionsDefaults = {
   'vst': false,
   'http2': false,
   'failed': false,
+  'suffix': '',
   'optionsJson': null,
 };
 
@@ -346,6 +350,17 @@ function translateTestList(cases, options) {
       if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
+        if (which.startsWith('./')) {
+          // strip relative ./
+          which = which.slice(2);
+        } else if (which.startsWith('/')) {
+          // Strip absolute path
+          let p = fs.makeAbsolute('.');
+          p = p.substring(0, p.length - 1);
+          if (which.startsWith(p)) {
+            which = which.slice(p.length);
+          }
+        }
         if (fs.exists(which)) {
           options.test = which;
           return translateTestList(['auto'], options);
@@ -413,6 +428,10 @@ function iterateTests(cases, options) {
       localOptions = _.defaults(optionsList[n], localOptions);
     }
     let printTestName = currentTest;
+    let resultTestName = currentTest;
+    if (localOptions.suffix && localOptions.suffix !== "") {
+      resultTestName += "-" + localOptions.suffix;
+    }
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
     }
@@ -438,6 +457,11 @@ function iterateTests(cases, options) {
       delete result.shutdown;
     }
 
+    if (currentTest === "auto") {
+      Object.keys(result).forEach(key => {
+        results[key] = result[key];
+      });
+    }
     status = rp.gatherStatus(result) && shutdownSuccess;
     let failed = rp.gatherFailed(result);
     if (!status) {
@@ -445,7 +469,9 @@ function iterateTests(cases, options) {
     }
     result.failed = failed;
     result.status = status;
-    results[currentTest] = result;
+    if (currentTest !== "auto") {
+      results[resultTestName] = result;
+    }
   }
 
   results.status = globalStatus;
@@ -504,7 +530,9 @@ function unitTest (cases, options) {
   }
 
   arango.forceJson(options.forceJson);
-
+  if (options.forceNoCompress) {
+    arango.compressTransfer(false);
+  }
   if ((cases.length === 1) && cases[0] === 'auto') {
     return autoTest(options);
   } else {

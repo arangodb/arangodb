@@ -29,6 +29,7 @@
 #include "Containers/HashSet.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
+#include "Graph/Types/ForbiddenVertices.h"
 #include "Containers/FlatHashMap.h"
 
 #include <limits>
@@ -36,6 +37,10 @@
 #include <deque>
 
 namespace arangodb {
+
+using VertexRef = arangodb::velocypack::HashedStringRef;
+using VertexSet = arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                                std::equal_to<VertexRef>>;
 
 namespace aql {
 class TraversalStats;
@@ -54,6 +59,53 @@ struct TwoSidedEnumeratorOptions;
 template<class ProviderType, class Step>
 class PathResult;
 
+// This class `WeightedTwoSidedEnumerator` is used for legacy k-shortest-path
+// searches, whenever the length is measured by an edge weight.
+// It works by doing a Dijkstra-like graph traversal from both sides and
+// then matching findings. As work queue it uses a priority queue, always
+// processing the next unprocessed step according to the queue.
+// This class is used in very different situations (single server, cluster,
+// various different types of smart and not so smart graphs, with tracing
+// and without, etc.). Therefore we need many template parameters. Let me
+// here give an overview over what they do:
+//  - QueueType: This is the queue being used to track which steps to visit
+//    next. It is always `WeightedQueue`, but it needs to be a template
+//    argument since there is a wrapper template for tracing `QueueTracer`,
+//    so it is sometimes QueueTracer<WeightedQueue>.
+//  - PathStoreType: This is a class to store paths. Its type depends on
+//    the type ProviderType::Step (see below) and on the presence of a
+//    tracing wrapper type.
+//  - ProviderType: This is a class which delivers the actual graph data,
+//    essentially to answer the question as to what the neighbours of a
+//    vertex are. This can be `SingleServerProvider` or `ClusterProvider`.
+//    Again, there is a tracing wrapper.
+//  - PathValidatorType: Finally, this is a class which is used to validate
+//    if paths are valid. Various filtering conditions can be handed in,
+//    but the most important one is to specify the uniqueness conditions
+//    on edges and vertices. Again, there is a tracing wrapper.
+// A few words on uniqueness conditions are in order, since they are
+// specified in the PathValidator, but have very strong interferences with
+// the actual algorithm. For edges, there is either "no uniqueness"
+// or "path uniqueness" (which means no edge may appear more than once
+// on a single path), or "global uniqueness" (which means no edge may
+// appear more than once in the whole traversal. For vertices, there is
+// either "no uniqueness" or "path uniqueness" (no vertex may appear
+// more than once on a single path), or "global uniqueness", which says
+// that no vertex may occur more than once in the whole traversal.
+// The great variety is only used for normal graph traversals, and so in
+// particular not here in the `WeightedTwoSidedEnumerator`. Here, only one
+// combination is in use:
+//   vertex path uniqueness / edge path uniqueness
+// It is for finding all possible loopless paths and edge uniqueness
+// follows from vertex uniqueness. This is used for k-shortest-paths
+// which do not use Yen's algorithm.
+// Please note the following subtle issue: When enumerating paths (first
+// combination above), the item on the queue is a "Step" (which encodes
+// the path so far plus one more edge). In particular, there can and will
+// be multiple Steps on the queue, which have arrived at the same vertex
+// (with different edges or indeed different paths). This is necessary,
+// since we have to enumerate all possible paths.
+
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidatorType>
 class WeightedTwoSidedEnumerator {
@@ -67,6 +119,10 @@ class WeightedTwoSidedEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
   using VertexRef = arangodb::velocypack::HashedStringRef;
+
+  using Edge = ProviderType::Step::EdgeType;
+  using EdgeSet =
+      arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>;
 
   using Shell = std::multiset<Step>;
   using ResultList = std::deque<CalculatedCandidate>;
@@ -173,6 +229,7 @@ class WeightedTwoSidedEnumerator {
     [[nodiscard]] auto peekQueue() const -> Step const&;
     [[nodiscard]] auto isQueueEmpty() const -> bool;
     [[nodiscard]] auto doneWithDepth() const -> bool;
+    [[nodiscard]] auto queueSize() const -> size_t { return _queue.size(); }
 
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
@@ -198,6 +255,22 @@ class WeightedTwoSidedEnumerator {
 
     auto getDiameter() const noexcept -> double { return _diameter; }
 
+    auto haveSeenOtherSide() const noexcept -> bool {
+      return _haveSeenOtherSide;
+    }
+
+    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
+        -> void requires HasForbidden<PathValidatorType> {
+      _validator.setForbiddenVertices(std::move(forbidden));
+    };
+
+    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
+        -> void requires HasForbidden<PathValidatorType> {
+      _validator.setForbiddenEdges(std::move(forbidden));
+    };
+
+    auto getCenter() const noexcept -> VertexRef { return _center; }
+
    private:
     auto clearProvider() -> void;
 
@@ -207,6 +280,9 @@ class WeightedTwoSidedEnumerator {
 
     // This stores all paths processed by this ball
     PathStoreType _interior;
+
+    // Center:
+    VertexRef _center;
 
     // The next elements to process
     QueueType _queue;
@@ -219,6 +295,7 @@ class WeightedTwoSidedEnumerator {
     Direction _direction;
     GraphOptions _graphOptions;
     double _diameter = -std::numeric_limits<double>::infinity();
+    bool _haveSeenOtherSide;
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
@@ -297,6 +374,14 @@ class WeightedTwoSidedEnumerator {
    */
   bool getNextPath(arangodb::velocypack::Builder& result);
 
+  // The reference returned by the following call is only valid until
+  // getNextPath is called again or until the WeightedTwoSidedEnumerator
+  // is destroyed or otherwise modified!
+  PathResult<ProviderType, typename ProviderType::Step> const&
+  getLastPathResult() const {
+    return _resultPath;
+  }
+
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
    *
@@ -313,9 +398,19 @@ class WeightedTwoSidedEnumerator {
    */
   auto stealStats() -> aql::TraversalStats;
 
- private:
-  [[nodiscard]] auto searchDone() const -> bool;
+  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
+      -> void requires HasForbidden<PathValidatorType> {
+    _left.setForbiddenVertices(forbidden);
+    _right.setForbiddenVertices(std::move(forbidden));
+  };
 
+  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
+      -> void requires HasForbidden<PathValidatorType> {
+    _left.setForbiddenEdges(forbidden);
+    _right.setForbiddenEdges(std::move(forbidden));
+  };
+
+ private : [[nodiscard]] auto searchDone() const -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
   // we will not be able to generate the resulting path
   auto fetchResults() -> void;

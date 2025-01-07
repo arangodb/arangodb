@@ -182,6 +182,13 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::replaceLikeWithRange, OptimizerRule::makeFlags(),
                R"(Replace LIKE() function with range scans where possible.)");
 
+  registerRule(
+      "replace-entries-with-object-iteration",
+      replaceEntriesWithObjectIteration,
+      OptimizerRule::replaceEntriesWithObjectIteration,
+      OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+      R"(Replace FOR ... ENTRIES(obj) enumeration with proper object iteration.)");
+
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule,
                OptimizerRule::inlineSubqueriesRule,
@@ -830,6 +837,11 @@ involved attributes are covered by inverted indexes.)");
                R"(Get the search highlighting offsets as late as possible to
 avoid unnecessary reads.)");
 #endif
+
+  registerRule("use-vector-index", useVectorIndexRule,
+               OptimizerRule::useVectorIndexForSort,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Apply vector index.)");
 
   registerRule(
       "immutable-search-condition", iresearch::immutableSearchCondition,

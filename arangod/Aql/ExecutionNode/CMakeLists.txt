@@ -9,6 +9,7 @@ target_sources(arango_aql PRIVATE
   DocumentProducingNode.cpp  
   EnumerateCollectionNode.cpp
   EnumerateListNode.cpp
+  EnumerateNearVectorNode.cpp
   EnumeratePathsNode.cpp
   ExecutionNode.cpp
   FilterNode.cpp
@@ -16,31 +17,31 @@ target_sources(arango_aql PRIVATE
   GraphNode.cpp
   IResearchViewNode.cpp
   IndexNode.cpp
+  InsertNode.cpp
   JoinNode.cpp
   LimitNode.cpp
   MaterializeNode.cpp
   MaterializeRocksDBNode.cpp
   MaterializeSearchNode.cpp
-  InsertNode.cpp
   ModificationNode.cpp
-  RemoveNode.cpp
-  ReplaceNode.cpp
-  UpdateNode.cpp
-  UpdateReplaceNode.cpp
-  UpsertNode.cpp
   MultipleRemoteModificationNode.cpp  
   MutexNode.cpp
   NoResultsNode.cpp
   RemoteNode.cpp
+  RemoveNode.cpp
+  ReplaceNode.cpp
   ReturnNode.cpp
   ScatterNode.cpp
   ShortestPathNode.cpp
-  SingleRemoteOperationNode.cpp  
-  SingletonNode.cpp 
+  SingleRemoteOperationNode.cpp
+  SingletonNode.cpp
   SortNode.cpp
   SubqueryEndExecutionNode.cpp
   SubqueryNode.cpp
   SubqueryStartExecutionNode.cpp
   TraversalNode.cpp
+  UpdateNode.cpp
+  UpdateReplaceNode.cpp
+  UpsertNode.cpp
   WindowNode.cpp
 )

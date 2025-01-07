@@ -5,7 +5,7 @@ export const useFetchInitialValues = () => {
   const { data, error } = useSWR(`/databaseDefaults`, async () => {
     const route = getAdminRouteForCurrentDB();
     const res = await route.get(`server/databaseDefaults`);
-    const { replicationFactor, sharding, writeConcern } = res.body;
+    const { replicationFactor, sharding, writeConcern } = res.parsedBody;
     return {
       name: "",
       users: [],

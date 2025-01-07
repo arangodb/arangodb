@@ -30,6 +30,7 @@
 #include "Agency/TransactionBuilder.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/QueryPlanCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -396,19 +397,26 @@ class ClusterInfo::SyncerThread final
   void run() override;
   bool start();
   void sendNews() noexcept;
-  void waitForNews() noexcept;
 
  private:
   auto call() noexcept -> std::optional<consensus::index_t>;
   futures::Future<futures::Unit> fetchUpdates();
+  class Synchronization {
+   public:
+    void sendNews() noexcept;
+    void waitForNews() noexcept;
 
-  std::mutex _m;
-  std::condition_variable _cv;
-  bool _news;
+   private:
+    std::mutex _m;
+    std::condition_variable _cv;
+    bool _news;
+  };
 
   std::string _section;
   std::function<consensus::index_t()> _f;
   AgencyCache& _agencyCache;
+  std::shared_ptr<Synchronization> _synchronization =
+      std::make_shared<Synchronization>();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -930,26 +938,23 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     if (changeSet.rest != nullptr) {  // Rest
       newPlan[std::string_view{}] = changeSet.rest;
     }
-  }
 
-  // For ArangoSearch views we need to get access to immediately created views
-  // in order to allow links to be created correctly.
-  // For the scenario above, we track such views in '_newPlannedViews' member
-  // which is supposed to be empty before and after 'ClusterInfo::loadPlan()'
-  // execution. In addition, we do the following "trick" to provide access to
-  // '_newPlannedViews' from outside 'ClusterInfo': in case if
-  // 'ClusterInfo::getView' has been called from within 'ClusterInfo::loadPlan',
-  // we redirect caller to search view in
-  // '_newPlannedViews' member instead of '_plannedViews'
+    // For ArangoSearch views we need to get access to immediately created views
+    // in order to allow links to be created correctly.
+    // For the scenario above, we track such views in '_newPlannedViews' member
+    // which is supposed to be empty before and after 'ClusterInfo::loadPlan()'
+    // execution. In addition, we do the following "trick" to provide access to
+    // '_newPlannedViews' from outside 'ClusterInfo': in case if
+    // 'ClusterInfo::getView' has been called from within
+    // 'ClusterInfo::loadPlan', we redirect caller to search view in
+    // '_newPlannedViews' member instead of '_plannedViews'
 
-  // set plan loader
-  {
-    READ_LOCKER(guard, _planProt.lock);
     // Create a copy, since we might not visit all databases
     _newPlannedViews = _plannedViews;
     _newPlannedCollections = _plannedCollections;
-    _planLoader = std::this_thread::get_id();
     _currentCleanups.clear();
+    // set plan loader
+    _planLoader = std::this_thread::get_id();
   }
 
   // ensure we'll eventually reset plan loader
@@ -1044,8 +1049,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
             AgencyCommHelper::path(), "Plan", "Collections", name};
         if (plan->slice()[0].hasKey(colPath)) {
           for (auto col : VPackObjectIterator(plan->slice()[0].get(colPath))) {
-            if (col.value.hasKey("shards")) {
-              for (auto shard : VPackObjectIterator(col.value.get("shards"))) {
+            if (auto shards = col.value.get("shards"); shards.isObject()) {
+              for (auto shard : VPackObjectIterator(shards)) {
                 auto const& shardName = shard.key.copyString();
                 ShardID shardID{shardName};
                 newShards.erase(shardName);
@@ -1187,9 +1192,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         continue;
       }
 
-      for (auto const& viewPairSlice :
-           velocypack::ObjectIterator(viewsSlice, true)) {
-        auto const& viewSlice = viewPairSlice.value;
+      for (auto viewPairSlice : velocypack::ObjectIterator(viewsSlice, true)) {
+        auto viewSlice = viewPairSlice.value;
 
         if (!viewSlice.isObject()) {
           LOG_TOPIC("2487b", INFO, Logger::AGENCY)
@@ -1297,7 +1301,6 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
       // cannot find vocbase for defined analyzers (allow empty analyzers for
       // missing vocbase)
       planValid &= !analyzerSlice.length();
-
       continue;
     }
 
@@ -1497,6 +1500,11 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
       continue;
     }
 
+    if (ServerState::instance()->isCoordinator()) {
+      // invalidate query plan caches for every changed database.
+      vocbase->queryPlanCache().invalidateAll();
+    }
+
     auto databaseCollections = allocateShared<DatabaseCollections>();
 
     // an iterator to all collections in the current database (from the previous
@@ -1516,6 +1524,18 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
       if (auto np = newPlan.find(databaseName); np != newPlan.end()) {
         auto nps = np->second->slice()[0];
         for (auto const& ec : *(stillExistingCollections->second)) {
+          auto leaderShards = [&] {
+            auto groupLeaderName = ec.second.collection->distributeShardsLike();
+
+            if (!groupLeaderName.empty()) {
+              if (auto it = newShards.find(groupLeaderName);
+                  it != newShards.end()) {
+                return it->second;
+              }
+            }
+            return std::shared_ptr<std::vector<ShardID> const>{};
+          }();
+
           auto const& cid = ec.first;
           if (!std::isdigit(cid.front())) {
             continue;
@@ -1525,6 +1545,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
             collectionsPath.emplace_back("shards");
             READ_LOCKER(guard, _planProt.lock);
             TRI_ASSERT(_plan.contains(databaseName));
+            unsigned idx = 0;
             for (auto sh : VPackObjectIterator(_plan.find(databaseName)
                                                    ->second->slice()[0]
                                                    .get(collectionsPath))) {
@@ -1538,6 +1559,16 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
               // not in there, should it be a shard group leader!
               newShardToShardGroupLeader.erase(sId);
               newShardGroups.erase(sId);
+              if (leaderShards != nullptr) {
+                TRI_ASSERT(idx < leaderShards->size());
+                if (auto it =
+                        newShardGroups.find(leaderShards->operator[](idx));
+                    it != newShardGroups.end()) {
+                  // Remove from the collection leaders shard group list
+                  std::erase(*it->second, sId);
+                  idx += 1;
+                }
+              }
             }
             collectionsPath.pop_back();
           }
@@ -4637,6 +4668,38 @@ ClusterInfo::getResponsibleServer(ShardID shardID) {
   return std::make_shared<ManagedVector<pmr::ServerID>>(_resourceMonitor);
 }
 
+// The "NoDelay" variant is guaranteed to not produce a noticeable delay,    ///
+// however, it may return an empty result, if currently there is no known
+// responsible server. This is often good enough. Note that this can happen
+// during the transition of leadership from one server to another.
+//
+std::shared_ptr<ClusterInfo::ManagedVector<ClusterInfo::pmr::ServerID> const>
+ClusterInfo::getResponsibleServerNoDelay(ShardID shardID) {
+  // This can only produce a delay right at server start, which is OK,
+  // despite the name of the function.
+  if (!_currentProt.isValid) {
+    Result r = waitForCurrent(1).waitAndGet();
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION(r);
+    }
+  }
+
+  READ_LOCKER(readLocker, _currentProt.lock);
+  // _shardsToCurrentServers is a map-type <ShardId,
+  // std::shared_ptr<std::vector<ServerId>>>
+  if (auto it = _shardsToCurrentServers.find(shardID);
+      it != _shardsToCurrentServers.end()) {
+    auto serverList = it->second;
+    if (serverList == nullptr || serverList->empty() ||
+        !(*serverList)[0].starts_with('_')) {
+      return serverList;
+    }
+  }
+
+  // If we get here, we simply do not know:
+  return std::make_shared<ManagedVector<pmr::ServerID>>(_resourceMonitor);
+}
+
 futures::Future<ResultT<ServerID>> ClusterInfo::getLeaderForShard(
     ShardID shardID) {
   ServerID resultBuffer;
@@ -5713,6 +5776,12 @@ void ClusterInfo::beginShutdown() {
 }
 
 void ClusterInfo::waitForSyncersToStop() {
+  if (_planSyncer) {
+    _planSyncer->sendNews();
+  }
+  if (_curSyncer) {
+    _curSyncer->sendNews();
+  }
   drainSyncers();
 
   auto start = std::chrono::steady_clock::now();
@@ -5723,7 +5792,11 @@ void ClusterInfo::waitForSyncersToStop() {
       LOG_TOPIC("b8a5d", FATAL, Logger::CLUSTER)
           << "exiting prematurely as we failed to end syncer threads in "
              "ClusterInfo";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      FATAL_ERROR_ABORT();
+#else
       FATAL_ERROR_EXIT();
+#endif
     }
   }
 
@@ -5776,6 +5849,10 @@ auto ClusterInfo::SyncerThread::call() noexcept
 }
 
 void ClusterInfo::SyncerThread::sendNews() noexcept {
+  _synchronization->sendNews();
+}
+
+void ClusterInfo::SyncerThread::Synchronization::sendNews() noexcept {
   {
     std::lock_guard lk(_m);
     _news = true;
@@ -5783,7 +5860,7 @@ void ClusterInfo::SyncerThread::sendNews() noexcept {
   _cv.notify_one();
 }
 
-void ClusterInfo::SyncerThread::waitForNews() noexcept {
+void ClusterInfo::SyncerThread::Synchronization::waitForNews() noexcept {
   {
     std::unique_lock lk(_m);
     _cv.wait(lk, [&] { return _news; });
@@ -5792,13 +5869,15 @@ void ClusterInfo::SyncerThread::waitForNews() noexcept {
 }
 
 void ClusterInfo::SyncerThread::run() {
-  auto const sendNewsCb = [this](auto&&) noexcept { sendNews(); };
+  auto const sendNewsCb = [sync = _synchronization](auto&&) noexcept {
+    sync->sendNews();
+  };
 
   for (auto nextIndex = consensus::index_t{1}; !isStopping(); ++nextIndex) {
     _agencyCache.waitFor(nextIndex, AgencyCache::Executor::Direct)
         .thenFinal(sendNewsCb);
 
-    waitForNews();
+    _synchronization->waitForNews();
 
     // We update on every change; our _f (loadPlan/loadCurrent) decide for
     // themselves whether they need to do a real update. This way they can at
@@ -5904,8 +5983,8 @@ futures::Future<Result> ClusterInfo::waitForPlanVersion(uint64_t planVersion) {
 futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
     network::Timeout timeout) const {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
-  return cluster::fetchPlanVersion(timeout).thenValue(
-      [&clusterFeature = _clusterFeature](auto maybePlanVersion) {
+  return cluster::fetchPlanVersion(timeout, false)
+      .thenValue([&clusterFeature = _clusterFeature](auto maybePlanVersion) {
         if (maybePlanVersion.ok()) {
           auto planVersion = maybePlanVersion.get();
           auto& clusterInfo = clusterFeature.clusterInfo();
@@ -5919,8 +5998,9 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForPlanVersion(
 futures::Future<Result> ClusterInfo::fetchAndWaitForCurrentVersion(
     network::Timeout timeout) const {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
-  return cluster::fetchCurrentVersion(timeout).thenValue(
-      [&clusterInfo = _clusterFeature.clusterInfo()](auto maybeCurrentVersion) {
+  return cluster::fetchCurrentVersion(timeout, false)
+      .thenValue([&clusterInfo =
+                      _clusterFeature.clusterInfo()](auto maybeCurrentVersion) {
         if (maybeCurrentVersion.ok()) {
           auto currentVersion = maybeCurrentVersion.get();
           return clusterInfo.waitForCurrentVersion(currentVersion);
@@ -6200,8 +6280,8 @@ void AnalyzerModificationTransaction::revertCounter() {
 namespace {
 template<typename T>
 futures::Future<ResultT<T>> fetchNumberFromAgency(
-    std::shared_ptr<cluster::paths::Path const> path,
-    network::Timeout timeout) {
+    std::shared_ptr<cluster::paths::Path const> path, network::Timeout timeout,
+    bool skipScheduler) {
   VPackBuffer<uint8_t> trx;
   {
     VPackBuilder builder(trx);
@@ -6212,8 +6292,9 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(
         .done();
   }
 
-  auto fAacResult =
-      AsyncAgencyComm().sendReadTransaction(timeout, std::move(trx));
+  auto fAacResult = AsyncAgencyComm()
+                        .withSkipScheduler(skipScheduler)
+                        .sendReadTransaction(timeout, std::move(trx));
 
   auto fResult =
       std::move(fAacResult).thenValue([path = std::move(path)](auto&& result) {
@@ -6230,18 +6311,18 @@ futures::Future<ResultT<T>> fetchNumberFromAgency(
 }  // namespace
 
 futures::Future<ResultT<uint64_t>> cluster::fetchPlanVersion(
-    network::Timeout timeout) {
+    network::Timeout timeout, bool skipScheduler) {
   using namespace std::chrono_literals;
 
   auto planVersionPath = cluster::paths::root()->arango()->plan()->version();
 
   return fetchNumberFromAgency<uint64_t>(
       std::static_pointer_cast<paths::Path const>(std::move(planVersionPath)),
-      timeout);
+      timeout, skipScheduler);
 }
 
 futures::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(
-    network::Timeout timeout) {
+    network::Timeout timeout, bool skipScheduler) {
   using namespace std::chrono_literals;
 
   auto currentVersionPath =
@@ -6250,5 +6331,5 @@ futures::Future<ResultT<uint64_t>> cluster::fetchCurrentVersion(
   return fetchNumberFromAgency<uint64_t>(
       std::static_pointer_cast<paths::Path const>(
           std::move(currentVersionPath)),
-      timeout);
+      timeout, skipScheduler);
 }

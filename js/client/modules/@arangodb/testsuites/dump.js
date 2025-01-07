@@ -42,6 +42,10 @@ const functionsDocumentation = {
   'hot_backup': 'hotbackup tests'
 };
 
+const optionsDocumentation = [
+  '   - `dumpVPack`: if set to true to enable vpack dumping',
+];
+
 const pu = require('@arangodb/testutils/process-utils');
 const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
@@ -187,6 +191,9 @@ class DumpRestoreHelper extends trs.runInArangoshRunner {
       if (this.dumpOptions.allDatabases) {
         this.dumpConfig.setAllDatabases();
       }
+    }
+    if (this.dumpOptions.dumpVPack) {
+      this.dumpConfig.activateVPack();
     }
     if (this.dumpOptions.encrypted) {
       this.dumpConfig.activateEncryption();
@@ -908,6 +915,7 @@ function dumpMixedSingleCluster (options) {
 
 function dumpMultiple (options) {
   let dumpOptions = {
+    dumpVPack: options.dumpVPack,
     dbServers: 3,
     allDatabases: true,
     deactivateCompression: true,
@@ -930,6 +938,7 @@ function dumpMultiple (options) {
 
 function dumpWithCrashes (options) {
   let dumpOptions = {
+    dumpVPack: options.dumpVPack,
     dbServers: 3,
     allDatabases: true,
     deactivateCompression: true,
@@ -954,6 +963,7 @@ function dumpWithCrashes (options) {
 
 function dumpWithCrashesNonParallel (options) {
   let dumpOptions = {
+    dumpVPack: options.dumpVPack,
     dbServers: 3,
     allDatabases: true,
     deactivateCompression: true,
@@ -1247,7 +1257,8 @@ function hotBackup (options) {
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-
+  opts['dumpVPack'] = false;
+  
   testFns['dump'] = dump;
   testFns['dump_mixed_cluster_single'] = dumpMixedClusterSingle;
   testFns['dump_mixed_single_cluster'] = dumpMixedSingleCluster;
@@ -1261,5 +1272,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['dump_non_parallel'] = dumpNonParallel;
   testFns['hot_backup'] = hotBackup;
 
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

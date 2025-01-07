@@ -57,6 +57,11 @@ class AqlFeature;
 class AgencyFeature;
 class ActionFeature;
 class AuthenticationFeature;
+namespace async_registry {
+
+class Feature;
+
+}
 class BootstrapFeature;
 class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
@@ -136,6 +141,7 @@ class RocksDBEngine;
 class RocksDBIndexCacheRefillFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
+class VectorIndexFeature;
 
 namespace transaction {
 
@@ -197,6 +203,7 @@ using ArangodFeaturesList = TypeList<
     ActionFeature,
     AgencyFeature,
     AqlFeature,
+    async_registry::Feature,
     AuthenticationFeature,
     BootstrapFeature,
 #ifdef TRI_HAVE_GETRLIMIT
@@ -247,6 +254,7 @@ using ArangodFeaturesList = TypeList<
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
     SchedulerFeature,
+    VectorIndexFeature,
 #ifdef USE_V8
     ScriptFeature,
 #endif

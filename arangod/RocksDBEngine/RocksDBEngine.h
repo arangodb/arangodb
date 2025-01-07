@@ -547,6 +547,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   [[noreturn]] void verifySstFiles(rocksdb::Options const& options) const;
 
+  [[nodiscard]] bool isVectorIndexEnabled() const;
+
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
@@ -578,11 +580,15 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   Result writeSortingFile(
       arangodb::basics::VelocyPackHelper::SortingMethod sortingMethod);
 
- private:
   // The following method returns what is detected for the sorting method.
   // If no SORTING file is detected, a new one with "LEGACY" will be created.
   arangodb::basics::VelocyPackHelper::SortingMethod readSortingFile();
+  arangodb::basics::VelocyPackHelper::SortingMethod currentSortingMethod()
+      const {
+    return _sortingMethod;
+  }
 
+ private:
   RocksDBOptionsProvider const& _optionsProvider;
 
   metrics::MetricsFeature& _metrics;

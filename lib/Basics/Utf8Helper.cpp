@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
+#include "Basics/files.h"
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Basics/tri-strings.h"
@@ -58,13 +59,9 @@
 using namespace arangodb::basics;
 using namespace icu_64_64;
 
-Utf8Helper Utf8Helper::DefaultUtf8Helper;
+Utf8Helper Utf8Helper::DefaultUtf8Helper(0);
 
-Utf8Helper::Utf8Helper(std::string const& lang) {
-  setCollatorLanguage(lang, LanguageType::DEFAULT);
-}
-
-Utf8Helper::Utf8Helper() : Utf8Helper("") {}
+Utf8Helper::Utf8Helper(int) {}
 
 Utf8Helper::~Utf8Helper() {
   if (_coll) {
@@ -130,6 +127,18 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   }
 
   std::unique_ptr<icu_64_64::Collator> coll;
+  if (lang == "") {
+    // This sorts out an incompatibility between 3.11 and 3.12. Despite the fact
+    // that we are using exactly the same libicu version and all seems to be the
+    // same, 3.12 detects an empty locale to mean `en_US_POSIX`, which is
+    // different from `en_US`. 3.11 did this differently. So, provided nobody
+    // sets a locale, we force to `en_US` here:
+    std::string l;
+    if (!TRI_GETENV("LC_ALL", l) && !TRI_GETENV("LANG", l) &&
+        !TRI_GETENV("LANGUAGE", l) && !TRI_GETENV("LC_COLLATE", l)) {
+      lang = "en_US";
+    }
+  }
   if (lang == "") {
     // get default locale for empty language
     coll.reset(icu_64_64::Collator::createInstance(status));

@@ -666,7 +666,7 @@ function BaseTestConfig () {
         function (state) {
           let col = db._collection(cn);
           assertNotNull(col, 'collection does not exist');
-          let idx = col.getIndexes();
+          let idx = col.indexes();
           assertEqual(2, idx.length);
           assertEqual('primary', idx[0].type);
           assertEqual('persistent', idx[1].type);
@@ -699,7 +699,7 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          let idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).indexes();
           assertEqual(1, idx.length);
           assertEqual('primary', idx[0].type);
         }
@@ -1300,7 +1300,7 @@ function BaseTestConfig () {
         function () { // followerFuncOngoing
         }, // followerFuncOngoing
         function (state) { // followerFuncFinal
-          let idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).indexes();
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
@@ -1390,7 +1390,7 @@ function BaseTestConfig () {
         function (state) { // followerFuncFinal
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-          let idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).indexes();
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
@@ -1459,7 +1459,7 @@ function BaseTestConfig () {
         function (state) { // followerFuncFinal
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-          let idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).indexes();
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');

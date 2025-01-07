@@ -1,5 +1,8 @@
 import { mutate } from "swr";
-import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import {
+  getApiRouteForCurrentDB,
+  getCurrentDB
+} from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { ViewPropertiesType } from "../View.types";
 
@@ -53,18 +56,18 @@ const putRenameView = async ({
   name: string;
 }) => {
   let isError = false;
-  const route = getApiRouteForCurrentDB();
   // normalize again here because
   // this can change from the JSON form too
   const normalizedViewName = name.normalize();
   const encodedInitialViewName = encodeHelper(initialName).encoded;
-  const result = await route.put(`/view/${encodedInitialViewName}/rename`, {
-    name: normalizedViewName
-  });
-  if (result.body.error) {
+  try {
+    await getCurrentDB()
+      .view(encodedInitialViewName)
+      .rename(normalizedViewName);
+  } catch (e: any) {
     window.arangoHelper.arangoError(
       "Failure",
-      `Got unexpected server response: ${result.body.errorMessage}`
+      `Got unexpected server response: ${e.response.parsedBody.errorMessage}`
     );
     isError = true;
   }
@@ -93,10 +96,10 @@ async function patchViewProperties({
       getProperties,
       initialView
     });
-    if (result.body.error) {
+    if (result.parsedBody.error) {
       window.arangoHelper.arangoError(
         "Failure",
-        `Got unexpected server response: ${result.body.errorMessage}`
+        `Got unexpected server response: ${result.parsedBody.errorMessage}`
       );
     } else {
       window.sessionStorage.removeItem(`${initialView.name}-changed`);
@@ -152,7 +155,7 @@ async function patchProperties({
       "x-arango-async": "store"
     }
   );
-  const asyncId = result.headers["x-arango-async-id"];
+  const asyncId = result.headers.get("x-arango-async-id");
   window.arangoHelper.addAardvarkJob({
     id: asyncId,
     type: "view",

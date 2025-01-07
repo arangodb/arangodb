@@ -75,6 +75,8 @@ class PathValidator {
                     PathValidator<Provider, PathStore, vertexUniqueness,
                                   edgeUniqueness> const& otherValidator)
       -> ValidationResult;
+  auto validatePathWithoutGlobalVertexUniqueness(typename PathStore::Step&)
+      -> ValidationResult;
 
   void reset();
 

@@ -12,6 +12,14 @@ R"=(
                 "follower2"
               ]
             }
+          },
+          "sat_collection": {
+            "s1338": {
+              "servers": [
+                "leader",
+                "free"
+              ]
+            }
           }
         }
       }
@@ -26,6 +34,17 @@ R"=(
                 "leader",
                 "follower1",
                 "follower2"
+              ]
+            }
+          },
+          "sat_collection": {
+            "replicationFactor": "satellite",
+            "shards": {
+              "s1338": [
+                "leader",
+                "follower1",
+                "follower2",
+                "free"
               ]
             }
           }

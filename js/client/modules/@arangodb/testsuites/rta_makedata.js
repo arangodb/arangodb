@@ -43,6 +43,7 @@ const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
+const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadlineTo;
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
@@ -80,11 +81,34 @@ function makeDataWrapper (options) {
       if (isEnterprise()) {
         this.serverOptions["arangosearch.columns-cache-limit"] = "5000";
       }
+      this.continueTesting = true;
     }
     filter(te, filtered) {
       return true;
     }
+    
+    checkSutCleannessBefore(te) {
+      if (this.continueTesting) {
+        return super.checkSutCleannessBefore(te);
+      }
+      return false;
+    }
+    checkSutCleannessAfter(te) {
+      if (this.continueTesting) {
+        return super.checkSutCleannessAfter(te);
+      }
+      return false;
+    }
     runOneTest(file) {
+      if (!this.continueTesting) {
+        return {
+          'forceTerminate': true,
+          'message': `skipped due to previous failure`,
+          'failed': 1,
+          'status': false,
+          'duration': 0.0
+        };
+      }
       let res = {'total':0, 'duration':0.0, 'status':true, message: '', 'failed': 0};
       let messages = [
         "initially create the test data",
@@ -104,9 +128,31 @@ function makeDataWrapper (options) {
         count += 1;
         if (this.options.cluster) {
           if (count === 2) {
-            ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
+            let rc = ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
+            if (rc.status) {
+              this.continueTesting = false;
+              return {
+                'forceTerminate': true,
+                'message': `shards would not get in sync ${rc}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+            }
           }
-
+          if (count === 2) {
+            try {
+              this.instanceManager.upgradeCycleInstance();
+            } catch(e) {
+              return {
+                'forceTerminate': true,
+                'message': `upgradeCycle failed by: ${e.message}\n${e.stack}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+            }
+          }
           if (count === 3) {
             this.instanceManager.arangods.forEach(function (oneInstance, i) {
               if (oneInstance.isRole(inst.instanceRole.dbServer)) {
@@ -115,6 +161,18 @@ function makeDataWrapper (options) {
             });
             print('stopping dbserver ' + stoppedDbServerInstance.name +
                   ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
+            try {
+              this.instanceManager.resignLeaderShip(stoppedDbServerInstance);
+            } catch(e) {
+              this.continueTesting = false;
+              return {
+                'forceTerminate': true,
+                'message': `resigning leadership failed by: ${e.message}\n${e.stack}`,
+                'failed': 1,
+                'status': false,
+                'duration': 0.0
+              };
+            }
             stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
             stoppedDbServerInstance.waitForExit();
             moreargv = [ '--disabledDbserverUUID', stoppedDbServerInstance.id];
@@ -127,6 +185,7 @@ function makeDataWrapper (options) {
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
         let rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
         if (!rc.status) {
+          this.continueTesting = false;
           let rx = new RegExp(/\\n/g);
           res.message += file + ':\n' + fs.read(logFile).replace(rx, '\n');
           res.status = false;
@@ -139,7 +198,6 @@ function makeDataWrapper (options) {
         if ((this.options.cluster) && (count === 3)) {
           print('relaunching dbserver');
           stoppedDbServerInstance.restartOneInstance({});
-          
         }
       });
       return res;
@@ -150,7 +208,17 @@ function makeDataWrapper (options) {
     localOptions.dbServers = 3;
   }
 
+  SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout * 1000);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
+  let timeout = SetGlobalExecutionDeadlineTo(0.0);
+  if (timeout) {
+    return {
+      timeout: true,
+      forceTerminate: true,
+      status: false,
+      message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(rc)}`,
+    };
+  }
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }

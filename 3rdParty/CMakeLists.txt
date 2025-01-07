@@ -110,6 +110,8 @@ set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 add_subdirectory(icu-legacy)
 set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)
 set(ICU64_INCLUDE_DIR "${ICU64_INCLUDE_DIR}" PARENT_SCOPE)
+set(ICU_DT_LEGACY "${ICU_DT_LEGACY}" PARENT_SCOPE)
+set(ICU_DT_LEGACY_DEST "${ICU_DT_LEGACY_DEST}" PARENT_SCOPE)
 
 ################################################################################
 ## Google Abseil
@@ -313,6 +315,18 @@ set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build taocpp::json test programs"
 set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build taocpp::json example programs" FORCE)
 add_subdirectory(taocpp-json)
 add_subdirectory(json-schema-validation)
+
+################################################################################
+## faiss
+################################################################################
+
+find_package(Threads REQUIRED)
+find_package(ZLIB REQUIRED)
+
+set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
+set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
+set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
+add_subdirectory(faiss)
 
 ################################################################################
 ## tzdata

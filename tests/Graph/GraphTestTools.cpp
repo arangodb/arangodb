@@ -35,6 +35,7 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/VectorIndexFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -89,6 +90,8 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   features.emplace_back(
       server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
   features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
+                        true);  // required for IResearchAnalyzerFeature
+  features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
                         true);  // required for IResearchAnalyzerFeature
 
   for (auto& f : features) {

@@ -53,11 +53,11 @@ function vertexCentricIndexSuite() {
     },
 
     testCreateDefault : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       let idx = collection.ensureVertexCentricIndex("label", {direction: "outbound"});
 
       // creation
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
       assertEqual("hash", idx.type);
@@ -70,16 +70,16 @@ function vertexCentricIndexSuite() {
       let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
-      let after2 = collection.getIndexes();
+      let after2 = collection.indexes();
       assertEqual(after.length, after2.length);
     },
 
     testCreateHash : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       let idx = collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"});
 
       // creation
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
       assertEqual("hash", idx.type);
@@ -92,16 +92,16 @@ function vertexCentricIndexSuite() {
       let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
-      let after2 = collection.getIndexes();
+      let after2 = collection.indexes();
       assertEqual(after.length, after2.length);
     },
 
     testCreateSkiplist : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       let idx = collection.ensureVertexCentricIndex("label", {type: "skiplist", direction: "outbound"});
 
       // creation
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
       assertEqual("skiplist", idx.type);
@@ -114,16 +114,16 @@ function vertexCentricIndexSuite() {
       let idx2 = collection.ensureIndex({ type: "skiplist", fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
-      let after2 = collection.getIndexes();
+      let after2 = collection.indexes();
       assertEqual(after.length, after2.length);
     },
 
     testCreatePersistent : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       let idx = collection.ensureVertexCentricIndex("label", {type: "persistent", direction: "outbound"});
 
       // creation
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
       assertEqual("persistent", idx.type);
@@ -136,16 +136,16 @@ function vertexCentricIndexSuite() {
       let idx2 = collection.ensureIndex({type: "persistent", fields:["_from", "label"]});
       assertFalse(idx2.isNewlyCreated);
 
-      let after2 = collection.getIndexes();
+      let after2 = collection.indexes();
       assertEqual(after.length, after2.length);
     },
 
     testCreateMultiFields : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       let idx = collection.ensureVertexCentricIndex("label", "type", {direction: "outbound"});
 
       // creation
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
       assertEqual("hash", idx.type);
@@ -158,16 +158,16 @@ function vertexCentricIndexSuite() {
       let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label", "type"] });
       assertFalse(idx2.isNewlyCreated);
 
-      let after2 = collection.getIndexes();
+      let after2 = collection.indexes();
       assertEqual(after.length, after2.length);
     },
 
     testCreateOnlyOptions : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       let idx = collection.ensureVertexCentricIndex({fields: ["label", "type"], direction: "outbound"});
 
       // creation
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
       assertEqual("hash", idx.type);
@@ -180,16 +180,16 @@ function vertexCentricIndexSuite() {
       let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label", "type"] });
       assertFalse(idx2.isNewlyCreated);
 
-      let after2 = collection.getIndexes();
+      let after2 = collection.indexes();
       assertEqual(after.length, after2.length);
     },
 
     testCreateInbound : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       let idx = collection.ensureVertexCentricIndex("label", {direction: "inbound"});
 
       // creation
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
       assertEqual("hash", idx.type);
@@ -202,16 +202,16 @@ function vertexCentricIndexSuite() {
       let idx2 = collection.ensureIndex({ type: "hash", fields: ["_to", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
-      let after2 = collection.getIndexes();
+      let after2 = collection.indexes();
       assertEqual(after.length, after2.length);
     },
 
     testCreateWrongTyping : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       let idx = collection.ensureVertexCentricIndex("label", {direction: "oUtBoUnD"});
 
       // creation
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length + 1, after.length);
 
       assertEqual("hash", idx.type);
@@ -224,12 +224,12 @@ function vertexCentricIndexSuite() {
       let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
-      let after2 = collection.getIndexes();
+      let after2 = collection.indexes();
       assertEqual(after.length, after2.length);
     },
  
     testErrorDirection : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       try {
         let idx = collection.ensureVertexCentricIndex("label", {direction: "any"});
         fail();
@@ -237,12 +237,12 @@ function vertexCentricIndexSuite() {
         assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
       }
       // Nothing happend
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length, after.length);
     },
 
     testErrorType : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       try {
         let idx = collection.ensureVertexCentricIndex("label", {direction: "outbound", type: "circus"});
         fail();
@@ -250,12 +250,12 @@ function vertexCentricIndexSuite() {
         assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
       }
       // Nothing happend
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length, after.length);
     },
  
     testErrorFields : () => {
-      let before = collection.getIndexes();
+      let before = collection.indexes();
       try {
         let idx = collection.ensureVertexCentricIndex({direction: "outbound"});
         fail();
@@ -263,7 +263,7 @@ function vertexCentricIndexSuite() {
         assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
       }
       // Nothing happend
-      let after = collection.getIndexes();
+      let after = collection.indexes();
       assertEqual(before.length, after.length);
     }
   };

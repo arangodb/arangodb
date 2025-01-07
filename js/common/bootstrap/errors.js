@@ -223,6 +223,7 @@
     "ERROR_QUERY_FUNCTION_INVALID_CODE" : { "code" : 1581, "message" : "invalid user function code" },
     "ERROR_QUERY_FUNCTION_NOT_FOUND" : { "code" : 1582, "message" : "user function '%s()' not found" },
     "ERROR_QUERY_FUNCTION_RUNTIME_ERROR" : { "code" : 1583, "message" : "user function runtime error: %s" },
+    "ERROR_QUERY_NOT_ELIGIBLE_FOR_PLAN_CACHING" : { "code" : 1584, "message" : "query is not eligible for plan caching" },
     "ERROR_QUERY_BAD_JSON_PLAN"    : { "code" : 1590, "message" : "bad execution plan JSON" },
     "ERROR_QUERY_NOT_FOUND"        : { "code" : 1591, "message" : "query ID not found" },
     "ERROR_QUERY_USER_ASSERT"      : { "code" : 1593, "message" : "%s" },

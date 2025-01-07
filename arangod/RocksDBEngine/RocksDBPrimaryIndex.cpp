@@ -775,12 +775,9 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   // we do not need to perform any additional checks here since the document key
   // is already locked at the beginning of the insert operation
 
-  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // invalidate new index cache entry to avoid caching without committing
-    // first
-    invalidateCacheEntry(key->string().data(),
-                         static_cast<uint32_t>(key->string().size()));
-  }
+  // invalidate new index cache entry to avoid caching without committing first
+  invalidateCacheEntry(key->string().data(),
+                       static_cast<uint32_t>(key->string().size()));
 
   TRI_ASSERT(revision.isSet());
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
@@ -1426,7 +1423,7 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
 
 std::unique_ptr<AqlIndexStreamIterator> RocksDBPrimaryIndex::streamForCondition(
     transaction::Methods* trx, IndexStreamOptions const& opts) {
-  if (!supportsStreamInterface(opts)) {
+  if (!supportsStreamInterface(opts).hasSupport()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "RocksDBPrimaryIndex streamForCondition was "
                                    "called with unsupported options.");
@@ -1440,7 +1437,7 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBPrimaryIndex::streamForCondition(
   return stream;
 }
 
-bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
+Index::StreamSupportResult RocksDBPrimaryIndex::checkSupportsStreamInterface(
     std::vector<std::vector<basics::AttributeName>> const& coveredFields,
     IndexStreamOptions const& streamOpts) noexcept {
   // we can only project values that are in range
@@ -1449,28 +1446,28 @@ bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
              coveredFields[1][0].name == StaticStrings::IdString);
 
   if (!streamOpts.constantFields.empty()) {
-    return false;
+    return StreamSupportResult::makeUnsupported();
   }
 
   for (auto idx : streamOpts.projectedFields) {
     if (idx != 0) {
-      return false;
+      return StreamSupportResult::makeUnsupported();
     }
   }
 
   // For the primary index, there is only one property set, which is "_key".
   if (streamOpts.usedKeyFields.size() != 1) {
-    return false;
+    return StreamSupportResult::makeUnsupported();
   }
 
   if (streamOpts.usedKeyFields[0] != 0) {
-    return false;
+    return StreamSupportResult::makeUnsupported();
   }
 
-  return true;
+  return StreamSupportResult::makeSupported(true);
 }
 
-bool RocksDBPrimaryIndex::supportsStreamInterface(
+Index::StreamSupportResult RocksDBPrimaryIndex::supportsStreamInterface(
     IndexStreamOptions const& streamOpts) const noexcept {
   return checkSupportsStreamInterface(_coveredFields, streamOpts);
 }

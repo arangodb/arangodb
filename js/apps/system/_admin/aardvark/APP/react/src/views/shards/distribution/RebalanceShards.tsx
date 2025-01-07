@@ -1,8 +1,8 @@
+import { SwitchControl } from "@arangodb/ui";
 import { Button, FormLabel, Grid, Text } from "@chakra-ui/react";
 import { Global } from "@emotion/react";
 import { Form, Formik } from "formik";
 import React from "react";
-import { SwitchControl } from "../../../components/form/SwitchControl";
 import { getAdminRouteForCurrentDB } from "../../../utils/arangoClient";
 
 async function rebalanceShards(opts: {
@@ -20,7 +20,7 @@ async function rebalanceShards(opts: {
       version: 1,
       ...opts
     });
-    const result = res.body.result;
+    const result = res.parsedBody.result;
     if (result.moves.length === 0) {
       window.arangoHelper.arangoNotification(
         "No move shard operations were performed."

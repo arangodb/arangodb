@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryPlanCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
@@ -724,8 +725,11 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                       Serialization ctx, bool) const {
   TRI_ASSERT(_sharding != nullptr);
-  bool const forPersistence = (ctx == Serialization::Persistence ||
-                               ctx == Serialization::PersistenceWithInProgress);
+  bool const forMaintance = ctx == Serialization::Maintenance;
+  bool const forPersistence =
+      (ctx == Serialization::Persistence ||
+       ctx == Serialization::PersistenceWithInProgress || forMaintance);
+
   bool const showInProgress = (ctx == Serialization::PersistenceWithInProgress);
   // We write into an open object
   TRI_ASSERT(build.isOpenObject());
@@ -772,6 +776,11 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   if (forPersistence) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
+  if (forMaintance) {
+    indexFlags = Index::makeFlags(Index::Serialize::Internals,
+                                  Index::Serialize::Maintenance);
+  }
+
   auto filter = [indexFlags, forPersistence, showInProgress](
                     Index const* idx, decltype(Index::makeFlags())& flags) {
     if ((forPersistence || !idx->isHidden()) &&
@@ -1112,6 +1121,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     }
   }
 
+  vocbase().queryPlanCache().invalidate(guid());
+
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
     return ClusterCollectionMethods::updateCollectionProperties(vocbase(),
@@ -1155,6 +1166,8 @@ futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
   if (idx) {
     vocbase().versionTracker().track("create index");
   }
+  vocbase().queryPlanCache().invalidate(guid());
+
   co_return idx;
 }
 
@@ -1162,12 +1175,14 @@ futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
 Result LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
+  vocbase().queryPlanCache().invalidate(guid());
   aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
   Result res = _physical->dropIndex(iid);
 
   if (res.ok()) {
     vocbase().versionTracker().track("drop index");
+    vocbase().queryPlanCache().invalidate(guid());
   }
 
   return res;

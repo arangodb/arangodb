@@ -1579,6 +1579,21 @@ TEST_F(VPackLoadInspectorTest, load_string_enum) {
   EXPECT_EQ(MyStringEnum::kValue2, enums[1]);
 }
 
+TEST_F(VPackLoadInspectorTest, load_transformed_string_enum) {
+  builder.openArray();
+  builder.add(VPackValue("Value1"));
+  builder.add(VPackValue("value2"));
+  builder.close();
+  arangodb::inspection::VPackLoadInspector<> inspector{builder};
+
+  std::vector<MyTransformedStringEnum> enums;
+  auto result = inspector.apply(enums);
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(2u, enums.size());
+  EXPECT_EQ(MyTransformedStringEnum::kValue1, enums[0]);
+  EXPECT_EQ(MyTransformedStringEnum::kValue2, enums[1]);
+}
+
 TEST_F(VPackLoadInspectorTest, load_int_enum) {
   builder.openArray();
   builder.add(VPackValue(1));

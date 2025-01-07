@@ -113,6 +113,9 @@ class CountCollectExecutor;
 class DistinctCollectExecutor;
 class EnumerateCollectionExecutor;
 class EnumerateListExecutor;
+class EnumerateListObjectExecutor;
+class GroupedSortExecutor;
+class EnumerateNearVectorsExecutor;
 }  // namespace aql
 
 namespace graph {
@@ -148,6 +151,37 @@ using KShortestPaths = arangodb::graph::KShortestPathsEnumerator<
 using KShortestPathsTracer = arangodb::graph::TracedKShortestPathsEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
+using YenPaths = arangodb::graph::YenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using YenPathsTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using YenPathsCluster = arangodb::graph::YenEnumeratorWithProvider<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using YenPathsClusterTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedYenPaths = arangodb::graph::WeightedYenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using WeightedYenPathsTracer =
+    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
+
+using WeightedYenPathsCluster =
+    arangodb::graph::WeightedYenEnumeratorWithProvider<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedYenPathsClusterTracer =
+    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
 using WeightedKShortestPaths =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
@@ -163,11 +197,12 @@ using ShortestPathTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using WeightedShortestPath = arangodb::graph::WeightedShortestPathEnumerator<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
+using WeightedShortestPath =
+    arangodb::graph::WeightedShortestPathEnumeratorAlias<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
 using WeightedShortestPathTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumerator<
+    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
 
@@ -205,10 +240,10 @@ using ShortestPathClusterTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedShortestPathCluster =
-    arangodb::graph::WeightedShortestPathEnumerator<
+    arangodb::graph::WeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 using WeightedShortestPathClusterTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumerator<
+    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 namespace arangodb::aql {
@@ -774,12 +809,21 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   EnumeratePathsExecutor<WeightedKShortestPathsTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
                   EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
+                  EnumeratePathsExecutor<YenPaths>,
+                  EnumeratePathsExecutor<YenPathsTracer>,
+                  EnumeratePathsExecutor<YenPathsCluster>,
+                  EnumeratePathsExecutor<YenPathsClusterTracer>,
+                  EnumeratePathsExecutor<WeightedYenPaths>,
+                  EnumeratePathsExecutor<WeightedYenPathsTracer>,
+                  EnumeratePathsExecutor<WeightedYenPathsCluster>,
+                  EnumeratePathsExecutor<WeightedYenPathsClusterTracer>,
                   ParallelUnsortedGatherExecutor, JoinExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
                   AccuWindowExecutor, WindowExecutor, IndexExecutor,
                   EnumerateCollectionExecutor, DistinctCollectExecutor,
                   ConstrainedSortExecutor, CountCollectExecutor,
+                  GroupedSortExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                   TestLambdaSkipExecutor,
 #endif
@@ -795,7 +839,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   ModificationExecutor<
                       SingleRowFetcher<BlockPassthrough::Disable>,
                       UpsertModifier>,
-                  TraversalExecutor, EnumerateListExecutor,
+                  TraversalExecutor, EnumerateListObjectExecutor,
                   SubqueryStartExecutor, SubqueryEndExecutor,
                   SortedCollectExecutor, LimitExecutor, UnsortedGatherExecutor,
                   SortingGatherExecutor, SortExecutor, TraversalExecutor,
@@ -808,6 +852,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   SingleRemoteModificationExecutor<Replace>,
                   SingleRemoteModificationExecutor<Upsert>,
                   MultipleRemoteModificationExecutor, SortExecutor,
+                  EnumerateNearVectorsExecutor,
                   // only available in Enterprise
                   arangodb::iresearch::OffsetMaterializeExecutor,
                   MaterializeSearchExecutor>) ||
@@ -939,11 +984,29 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
           // some other thread is currently executing our prefetch task
           // -> wait till it has finished.
           _prefetchTask->waitFor();
-          return _prefetchTask->stealResult();
+          auto result = _prefetchTask->stealResult();
+          if (std::get<ExecutionState>(result) == ExecutionState::WAITING) {
+            // if we got WAITING, we have to immediately call the fetcher again,
+            // because it is possible that we already got a wakeup that got
+            // swallowed. If the wakeup has already occurred, this call will
+            // return actual data, otherwise we will get another WAITING, but we
+            // won't have wasted a lot of CPU cycles.
+            return fetcher().execute(ctx.stack);
+          }
+
+          if (_profileLevel >= ProfileLevel::TraceOne) {
+            auto const queryId = this->_engine->getQuery().id();
+            LOG_TOPIC("14d20", INFO, Logger::QUERIES)
+                << "[query#" << queryId << "] "
+                << "returning prefetched result type="
+                << getPlanNode()->getTypeString() << " this=" << (uintptr_t)this
+                << " id=" << getPlanNode()->id();
+          }
+          return result;
         }
 
-        // we have claimed the task, but we are executing the fetcher
-        // ourselves. so let's reset the task's internals properly.
+        // we have claimed the task and are executing the fetcher ourselves, so
+        // let's reset the task's internals properly.
         _prefetchTask->discard(/*isFinished*/ false);
       }
       return fetcher().execute(ctx.stack);
@@ -1002,6 +1065,12 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
         if (!queued) {
           // clear prefetch task
           _prefetchTask.reset();
+        } else if (_profileLevel >= ProfileLevel::TraceOne) {
+          auto const queryId = this->_engine->getQuery().id();
+          LOG_TOPIC("cbf44", INFO, Logger::QUERIES)
+              << "[query#" << queryId << "] "
+              << "queued prefetch task type=" << getPlanNode()->getTypeString()
+              << " this=" << (uintptr_t)this << " id=" << getPlanNode()->id();
         }
       }
     }

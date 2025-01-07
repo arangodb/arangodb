@@ -41,7 +41,6 @@
 #include "Aql/Expression.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/QueryContext.h"
-#include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"

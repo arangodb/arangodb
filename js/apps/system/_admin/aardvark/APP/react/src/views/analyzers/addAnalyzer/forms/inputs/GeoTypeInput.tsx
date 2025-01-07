@@ -1,5 +1,5 @@
+import { SingleSelectControl } from "@arangodb/ui";
 import React from "react";
-import { SelectControl } from "../../../../../components/form/SelectControl";
 import { useAnalyzersContext } from "../../../AnalyzersContext";
 
 export const GeoTypeInput = ({
@@ -9,7 +9,7 @@ export const GeoTypeInput = ({
 }) => {
   const { isFormDisabled: isDisabled } = useAnalyzersContext();
   return (
-    <SelectControl
+    <SingleSelectControl
       isDisabled={isDisabled}
       name={`${basePropertiesPath}.type`}
       label="Type"

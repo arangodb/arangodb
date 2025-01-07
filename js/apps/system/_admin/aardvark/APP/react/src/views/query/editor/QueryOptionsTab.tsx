@@ -1,3 +1,4 @@
+import { MultiSelect, OptionType } from "@arangodb/ui";
 import {
   Accordion,
   AccordionButton,
@@ -14,8 +15,6 @@ import { ValidationError } from "jsoneditor-react";
 import React from "react";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
-import MultiSelect from "../../../components/select/MultiSelect";
-import { OptionType } from "../../../components/select/SelectBase";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useQueryContext } from "../QueryContextProvider";
 
@@ -39,6 +38,11 @@ const BASIC_QUERY_OPTIONS = {
 };
 
 const ADVANCED_QUERY_OPTIONS = {
+  usePlanCache: {
+    type: "boolean",
+    label: "Use Plan Cache",
+    name: "usePlanCache"
+  },
   fillBlockCache: {
     type: "boolean",
     label: "Fill Block Cache",
@@ -205,7 +209,7 @@ const QueryOptionRow = ({
   if (option.type === "boolean") {
     return (
       <>
-        <FormLabel>{option.label}</FormLabel>
+        <FormLabel lineHeight="20px">{option.label}</FormLabel>
         <Switch
           size="sm"
           isChecked={value}
@@ -221,7 +225,7 @@ const QueryOptionRow = ({
   }
   return (
     <>
-      <FormLabel>{option.label}</FormLabel>
+      <FormLabel lineHeight="20px">{option.label}</FormLabel>
       <Input
         size="xs"
         value={value}
@@ -265,7 +269,7 @@ const useFetchQueryOptimizerRuleOptions = () => {
           method: "GET",
           path: "/_api/query/rules"
         },
-        res => res.body
+        res => res.parsedBody
       );
       const ruleOptions = response
         .filter((rule: OptimizerRule) => {
@@ -302,7 +306,7 @@ const OptimizerRules = () => {
   const { setDisabledRules, disabledRules } = useQueryContext();
   return (
     <Grid templateColumns="repeat(2, 1fr)" gap="2" alignItems="center">
-      <FormLabel>Disabled Rules</FormLabel>
+      <FormLabel lineHeight="20px">Disabled Rules</FormLabel>
       <MultiSelect
         options={ruleOptions}
         value={ruleOptions.filter(option => {

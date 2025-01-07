@@ -1,0 +1,15 @@
+name: arangodb_vocbase_transactions_lost_subordinates_total
+introducedIn: "3.12.4"
+help: |
+  Counts the number of lost subordinate transactions on database servers.
+unit: number
+type: counter
+category: Transactions
+complexity: advanced
+exposedBy:
+  - coordinator
+description: |
+  Counts the number of lost subordinate transactions on database servers, i.e. transactions that are only partially
+  committed or aborted. Transactions will eventually be cleaned up.
+troubleshoot: |
+  If this value has increased recently, acquiring an exclusive lock on a collection might run into timeouts.
