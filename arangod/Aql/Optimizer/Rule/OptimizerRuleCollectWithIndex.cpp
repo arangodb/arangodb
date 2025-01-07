@@ -40,7 +40,7 @@ using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_RULE LOG_DEVEL_IF(true)
+#define LOG_RULE LOG_DEVEL_IF(false)
 
 namespace {
 
@@ -239,7 +239,6 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
     modified = true;
   }
 
-  plan->show();
   opt->addPlan(std::move(plan), rule, modified);
 }
 

@@ -3243,7 +3243,6 @@ struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
                 ? RocksDBKeyBounds::UniqueVPackIndex(index->objectId(), false)
                 : RocksDBKeyBounds::VPackIndex(index->objectId(), false)) {
     end = bounds.end();
-    LOG_DEVEL << "IFM " << this->inverseFieldMapping;
   }
 
   bool next(std::span<SliceType> values) override {
@@ -3255,7 +3254,6 @@ struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
                                    LocalDocumentId{0});
       iterator->Seek(key.string());
 
-      LOG_DEVEL << "SEEKING TO " << builder.toJson();
     } else {
       RocksDBTransactionMethods* mthds =
           RocksDBTransactionState::toMethods(trx, index->collection().id());
@@ -3264,7 +3262,6 @@ struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
         opts.iterate_upper_bound = &end;
       });
       iterator->Seek(bounds.start());
-      LOG_DEVEL << "CONSTRUCTING NEW ITERATOR";
     }
 
     if (not iterator->Valid()) {
@@ -3273,7 +3270,6 @@ struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
 
     // extract values from key
     VPackSlice keySlice = RocksDBKey::indexedVPack(iterator->key());
-    LOG_DEVEL << "FOUND VALUES " << keySlice.toJson();
     size_t k = 0;
     builder.clear();
     {
@@ -3305,7 +3301,6 @@ RocksDBVPackIndex::distinctScanFor(
   std::vector<std::size_t> inverseFieldMapping;
   inverseFieldMapping.resize(scanOptions.distinctFields.size());
   for (size_t k = 0; k < scanOptions.distinctFields.size(); k++) {
-    LOG_DEVEL << "MAPPING " << scanOptions.distinctFields[k] << " TO " << k;
     inverseFieldMapping[scanOptions.distinctFields[k]] = k;
   }
 
