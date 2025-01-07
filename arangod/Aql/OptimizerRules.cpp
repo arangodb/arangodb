@@ -7242,7 +7242,7 @@ static bool optimizeSortNode(ExecutionPlan* plan, SortNode* sort,
       // the whole collection out of the geo index, on the grounds that
       // the SORT node wants to sort the results, which is very bad for
       // performance.
-      sort->dontReinsertInCluster();
+      sort->_reinsertInCluster = false;
     }
     return true;
   }
