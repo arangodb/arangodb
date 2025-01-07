@@ -1,8 +1,11 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
-* Updated ArangoDB Starter to v0.18.12-preview-1 and arangosync to
-  v2.19.11-preview-2.
+* Rebuilt included rclone v1.62.2 with go1.22.10 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.18.12 and arangosync to
+  v2.19.12.
 
 * Introduce expiry time for idle TCP/IP connections in the ConnectionCache
   (for `SimpleHttpClient`) with a default of 120s. This is to prevent
@@ -21,8 +24,6 @@ v3.11.13 (XXXX-XX-XX)
 * Fix shard synchronisation race where after a shard move the new
   leader informs followers before it updates Current in the Agency. In
   some cases the old leader fell subsequently out of sync.
-
-* Rebuilt included rclone v1.62.2 with go1.22.8 and non-vulnerable dependencies.
 
 * BTS-2017: fix CleanOutServer for satellite collections.
 
