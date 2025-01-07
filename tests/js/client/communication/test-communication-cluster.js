@@ -453,19 +453,13 @@ function GenericAqlSetupPathSuite(type) {
   const NON_EXCLUSIVE = 2;
   const NO_SHARD_SYNC = 3;
 
-  let testCases = [
+  const testCases = [
     ["Exclusive", exclusiveQuery, true, USE_EXCLUSIVE],
     ["Write", writeQuery, true, NON_EXCLUSIVE],
-    ["Read", readQuery, false, NON_EXCLUSIVE]
-  ];
-  if (!versionHas('coverage')) {
-    testCases += [
-      ["JSExclusive", jsExclusive, true, USE_EXCLUSIVE],
-      ["JSWrite", jsWrite, true, NON_EXCLUSIVE],
-      ["JSRead", jsRead, false, NON_EXCLUSIVE]
-    ];
-  }
-  testCases += [
+    ["Read", readQuery, false, NON_EXCLUSIVE],
+    ["JSExclusive", jsExclusive, true, USE_EXCLUSIVE],
+    ["JSWrite", jsWrite, true, NON_EXCLUSIVE],
+    ["JSRead", jsRead, false, NON_EXCLUSIVE],
     ["APIExclusive", apiExclusive, true, USE_EXCLUSIVE],
     ["APIWrite", apiWrite, true, NON_EXCLUSIVE],
     ["APIRead", apiRead, false, NON_EXCLUSIVE],
