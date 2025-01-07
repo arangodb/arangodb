@@ -394,16 +394,13 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
 
   RocksDBKey rocksdbKey;
   rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
-  auto status = methods->Delete(_cf, rocksdbKey);
-
   std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[_faissIndex->code_size]);
-
   _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
 
-  auto const value = RocksDBValue::VectorIndexValue(
-      reinterpret_cast<const char*>(flat_codes.get()), _faissIndex->code_size);
+  auto const value = RocksDBValue::VectorIndexValue(reinterpret_cast<const char*>(flat_codes.get()), _faissIndex->code_size);
+  auto const status = methods->Put(_cf, rocksdbKey, value.string(), false);
 
-  return {};
+  return rocksutils::convertStatus(status);
 }
 
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
