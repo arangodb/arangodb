@@ -397,7 +397,8 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
   std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[_faissIndex->code_size]);
   _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
 
-  auto const value = RocksDBValue::VectorIndexValue(reinterpret_cast<const char*>(flat_codes.get()), _faissIndex->code_size);
+  auto const value = RocksDBValue::VectorIndexValue(
+      reinterpret_cast<const char*>(flat_codes.get()), _faissIndex->code_size);
   auto const status = methods->Put(_cf, rocksdbKey, value.string(), false);
 
   return rocksutils::convertStatus(status);
