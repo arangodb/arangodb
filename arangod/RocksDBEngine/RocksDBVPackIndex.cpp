@@ -26,6 +26,7 @@
 #include "RocksDBVPackIndex.h"
 
 #include "Aql/AstNode.h"
+#include "Aql/IndexDistrinctScan.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/SortCondition.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -3203,6 +3204,30 @@ Index::StreamSupportResult RocksDBVPackIndex::supportsStreamInterface(
     IndexStreamOptions const& streamOpts) const noexcept {
   return checkSupportsStreamInterface(_coveredFields, _fields, _unique,
                                       streamOpts);
+}
+
+bool RocksDBVPackIndex::checkSupportScanDistinct(
+    IndexDistinctScanOptions const& options,
+    std::vector<std::vector<basics::AttributeName>> const& fields) noexcept {
+  auto distinctFields = options.distinctFields;
+  if (not options.sorted) {
+    // if no sorted output is required, we can change the order of fields
+    std::sort(distinctFields.begin(), distinctFields.end());
+  }
+
+  // we only support distinct scans for a prefix of the fields
+  for (size_t k = 0; k < distinctFields.size(); k++) {
+    if (k != distinctFields[k]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool RocksDBVPackIndex::supportsDistinctScan(
+    IndexDistinctScanOptions const& scanOptions) const noexcept {
+  return checkSupportScanDistinct(scanOptions, _fields);
 }
 
 }  // namespace arangodb

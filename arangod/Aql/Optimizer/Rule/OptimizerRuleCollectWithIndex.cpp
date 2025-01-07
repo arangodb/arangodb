@@ -148,9 +148,13 @@ bool isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
 
   scanOptions.sorted = cn.getOptions().method !=
                        arangodb::aql::CollectOptions::CollectMethod::kHash;
-  LOG_DEVEL << scanOptions;
 
-  // TODO check if index supports the scan options
+  if (not idx.getSingleIndex()->supportsDistinctScan(scanOptions)) {
+    LOG_RULE << "Index " << idx.id()
+             << " not eligible - index does not support required distinct scan "
+             << scanOptions;
+    return false;
+  }
 
   return true;
 }

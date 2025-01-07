@@ -1226,6 +1226,11 @@ std::unique_ptr<AqlIndexStreamIterator> Index::streamForCondition(
           typeName());
 }
 
+bool Index::supportsDistinctScan(
+    IndexDistinctScanOptions const&) const noexcept {
+  return false;
+}
+
 }  // namespace arangodb
 
 /// @brief append the index description to an output stream

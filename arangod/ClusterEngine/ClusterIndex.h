@@ -105,6 +105,9 @@ class ClusterIndex : public Index {
 
   void updateProperties(velocypack::Slice slice);
 
+  bool supportsDistinctScan(
+      IndexDistinctScanOptions const& scanOptions) const noexcept override;
+
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override;
 
