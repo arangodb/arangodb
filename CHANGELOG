@@ -1,6 +1,24 @@
 devel
 -----
 
+* Add optional `factory` property to `params` in vector index definition. The
+  index factory define how to compose multiple variants of vector index via
+  factory string. More details on how to compose them can be found on FAISS
+  documentation https://github.com/facebookresearch/faiss/wiki/The-index-factory.
+  When defining the index string the number of nLists from string must match the
+  `nLists` parameter. Here is an example of using this parameter:
+  ```
+    db.<collection>.ensureIndex({
+      type: "vector",
+      fields: ["value1"],
+      params: {
+        "metric": "l2",
+        "dimension": 300,
+        "nLists": 3800,
+        "factory": "IVF3800_HNSW32,PQ480x8"
+      }
+    });
+
 * Fail queries that use `APPROX_NEAR` functions but do not apply the vector
   index.
 
