@@ -96,12 +96,16 @@ bool isIndexNodeEligible(IndexNode const& in) {
              << " not eligible - sparse indexes not yet supported";
     return false;
   }
+  if (index->unique()) {
+    LOG_RULE << "IndexNode " << in.id()
+             << " not eligible - optimization not feasible for unique indexes";
+    return false;
+  }
 
   // assume there are n documents in the collection and we have
   // k distinct features. A linear search is in O(n) while a distinct scan
   // requires O(k log n). So checking for k log n < n, it follows
   // k / n < 1 / log n, where k / n is precisely the selectivity estimate.
-
   double selectivity = index->selectivityEstimate();
   auto numberOfItems = in.estimateCost().estimatedNrItems;
 
@@ -223,6 +227,16 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
     }
 
     auto singleton = indexNode->getFirstDependency();
+    // This is required because this rule runs after distribute in cluster
+    // rules, and we might be in a subquery of a query that starts with a
+    // coordinator part. the remote node usually ends up between the index and
+    // the subquery singleton node.
+    while (singleton->getType() == EN::SCATTER ||
+           singleton->getType() == EN::GATHER ||
+           singleton->getType() == EN::REMOTE ||
+           singleton->getType() == EN::DISTRIBUTE) {
+      singleton = singleton->getFirstDependency();
+    }
     if (singleton->getType() != EN ::SINGLETON) {
       LOG_RULE << "Index node is not the first node after a singleton.";
       continue;
