@@ -164,8 +164,7 @@ bool isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
         IndexCollectGroup{.indexField = fieldIndex, .outVariable = grp.outVar});
   }
 
-  scanOptions.sorted = cn.getOptions().method !=
-                       arangodb::aql::CollectOptions::CollectMethod::kHash;
+  scanOptions.sorted = cn.getOptions().requiresSortedInput();
 
   if (not idx.getSingleIndex()->supportsDistinctScan(scanOptions)) {
     LOG_RULE << "Index " << idx.id()
@@ -257,7 +256,7 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
     auto indexCollectNode = plan->createNode<IndexCollectNode>(
         plan.get(), plan->nextId(), indexNode->collection(),
         indexNode->getSingleIndex(), indexNode->outVariable(),
-        std::move(groups));
+        std::move(groups), collectNode->getOptions());
 
     plan->replaceNode(collectNode, indexCollectNode);
     plan->unlinkNode(indexNode);

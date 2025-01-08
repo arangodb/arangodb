@@ -37,7 +37,8 @@ using namespace arangodb::aql;
 ExecutionNode* IndexCollectNode::clone(ExecutionPlan* plan,
                                        bool withDependencies) const {
   auto c = std::make_unique<IndexCollectNode>(plan, _id, collection(), _index,
-                                              _oldIndexVariable, _groups);
+                                              _oldIndexVariable, _groups,
+                                              _collectOptions);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
@@ -59,7 +60,7 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlock(
     writableOutputRegisters.emplace(reg);
   }
 
-  infos.scanOptions.sorted = false;
+  infos.scanOptions.sorted = _collectOptions.requiresSortedInput();
 
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
   return std::make_unique<ExecutionBlockImpl<IndexDistinctScanExecutor>>(
@@ -68,7 +69,9 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlock(
 
 IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice slice)
-    : ExecutionNode(plan, slice), CollectionAccessingNode(plan, slice) {
+    : ExecutionNode(plan, slice),
+      CollectionAccessingNode(plan, slice),
+      _collectOptions(slice.get("collectOptions")) {
   std::string iid = slice.get("index").get("id").copyString();
   _index = CollectionAccessingNode::collection()->indexByIdentifier(iid);
   _oldIndexVariable =
@@ -85,12 +88,14 @@ IndexCollectNode::IndexCollectNode(ExecutionPlan* plan, ExecutionNodeId id,
                                    const aql::Collection* collection,
                                    std::shared_ptr<arangodb::Index> index,
                                    Variable const* oldIndexVariable,
-                                   IndexCollectGroups groups)
+                                   IndexCollectGroups groups,
+                                   CollectOptions collectOptions)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
       _index(std::move(index)),
       _groups(std::move(groups)),
-      _oldIndexVariable(oldIndexVariable) {}
+      _oldIndexVariable(oldIndexVariable),
+      _collectOptions(collectOptions) {}
 
 void IndexCollectNode::doToVelocyPack(velocypack::Builder& builder,
                                       unsigned int flags) const {
@@ -117,6 +122,9 @@ void IndexCollectNode::doToVelocyPack(velocypack::Builder& builder,
       }
     }
   }
+
+  builder.add(VPackValue("collectOptions"));
+  _collectOptions.toVelocyPack(builder);
 }
 
 void IndexCollectNode::replaceVariables(

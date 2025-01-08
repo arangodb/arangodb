@@ -67,7 +67,7 @@ CollectNode::CollectNode(
     std::vector<GroupVarInfo> const& groupVariables,
     std::vector<AggregateVarInfo> const& aggregateVariables)
     : ExecutionNode(plan, base),
-      _options(base),
+      _options(base.get("collectOptions")),
       _groupVariables(groupVariables),
       _aggregateVariables(aggregateVariables),
       _expressionVariable(expressionVariable),

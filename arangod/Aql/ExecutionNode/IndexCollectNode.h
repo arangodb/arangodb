@@ -43,7 +43,8 @@ struct IndexCollectNode : ExecutionNode, CollectionAccessingNode {
   IndexCollectNode(ExecutionPlan* plan, ExecutionNodeId id,
                    aql::Collection const* collection,
                    std::shared_ptr<arangodb::Index> index,
-                   Variable const* oldIndexVariable, IndexCollectGroups groups);
+                   Variable const* oldIndexVariable, IndexCollectGroups groups,
+                   CollectOptions collectOptions);
 
   IndexCollectNode(ExecutionPlan* plan, arangodb::velocypack::Slice slice);
 
@@ -76,6 +77,7 @@ struct IndexCollectNode : ExecutionNode, CollectionAccessingNode {
   std::shared_ptr<arangodb::Index> _index;
   IndexCollectGroups _groups;
   Variable const* _oldIndexVariable;
+  CollectOptions _collectOptions;
 };
 
 }  // namespace aql
