@@ -190,6 +190,7 @@ function ahuacatlSubqueryChaos() {
       for (let i = 0; i < numberOfQueriesGenerated; i++) {
         if (i %10 === 0) {
           print(`${Date()} : ${i}`);
+          require("internal").wait(0, true);
         }
         ct.testQueryWithSeed({
           numberSubqueries: randomDepth(),
@@ -205,6 +206,7 @@ function ahuacatlSubqueryChaos() {
       for (let i = 0; i < numberOfQueriesGenerated; i++) {
         if (i %10 === 0) {
           print(`${Date()} : ${i}`);
+          require("internal").wait(0, true);
         }
         ct.testModifyingQueryWithSeed({
           numberSubqueries: randomModificationDepth(),
