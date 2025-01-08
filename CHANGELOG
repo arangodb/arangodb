@@ -21,6 +21,10 @@ devel
       }
     });
 
+* Improve geo index performance in the cluster with multiple shards. This
+  fixes BTS-2046. An unnecessary and bad SORT node is removed from the
+  query plan in the case that a geo index is used.
+
 * Fail queries that use `APPROX_NEAR` functions but do not apply the vector
   index.
 
