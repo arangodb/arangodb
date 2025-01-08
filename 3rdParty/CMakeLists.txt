@@ -329,10 +329,11 @@ if (STATIC_EXECUTABLES)
   if (ARCH_AMD64)
       set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a")
       set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/blas/libblas.a")
-  else (ARCH_AMD64)
+  else ()
       set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a")
       set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/blas/libblas.a")
-  endif (ARCH_AMD64)
+  endif ()
+  message(INFO Set lapack libraries to ${LAPACK_LIBRARIES} and blas to ${BLAS_LIBRARIES})
 
   find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
 
