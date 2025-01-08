@@ -334,7 +334,14 @@ if (STATIC_EXECUTABLES)
       set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/blas/libblas.a")
   endif (ARCH_AMD64)
 
-  find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH REQUIRED)
+  find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
+
+  if (LIBOMP)
+      # TODO can we somehow avoid this and just set flags at arangod?
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fopenmp=libomp -L/opt/omp -llapack -lgfortran")
+  else ()
+    message(FATAL_ERROR "libomp.a not found in /opt/omp")
+  endif ()
 else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)
