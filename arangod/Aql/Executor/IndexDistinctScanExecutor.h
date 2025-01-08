@@ -51,6 +51,21 @@ struct IndexDistinctScanInfos {
   QueryContext* query;
 };
 
+struct IndexDistinctScanStats {
+  uint64_t seeks = 0;
+
+  void operator+=(IndexDistinctScanStats const& stats) noexcept {
+    seeks += stats.seeks;
+  }
+};
+
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    IndexDistinctScanStats const& stats) noexcept {
+  executionStats.seeks += stats.seeks;
+  return executionStats;
+}
+
 struct IndexDistinctScanExecutor {
   struct Properties {
     static constexpr bool preservesOrder = false;
@@ -58,7 +73,7 @@ struct IndexDistinctScanExecutor {
         BlockPassthrough::Disable;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Stats = NoStats;
+  using Stats = IndexDistinctScanStats;
   using Infos = IndexDistinctScanInfos;
 
   IndexDistinctScanExecutor() = delete;

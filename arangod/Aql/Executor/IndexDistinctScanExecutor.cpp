@@ -42,14 +42,16 @@ auto IndexDistinctScanExecutor::skipRowsRange(
     skipped += 1;
   }
 
-  return std::make_tuple(inputRange.upstreamState(), NoStats{}, skipped,
-                         AqlCall{});
+  return std::make_tuple(inputRange.upstreamState(),
+                         IndexDistinctScanStats{skipped}, skipped, AqlCall{});
 }
 
 auto IndexDistinctScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                             OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  uint64_t seeks = 0;
   while (inputRange.hasDataRow() && !output.isFull()) {
+    seeks += 1;
     bool hasMore = _iterator->next(_groupValues);
     if (not hasMore) {
       inputRange.advanceDataRow();
@@ -63,7 +65,8 @@ auto IndexDistinctScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     output.advanceRow();
   }
 
-  return std::make_tuple(inputRange.upstreamState(), NoStats{}, AqlCall{});
+  return std::make_tuple(inputRange.upstreamState(),
+                         IndexDistinctScanStats{seeks}, AqlCall{});
 }
 
 IndexDistinctScanExecutor::IndexDistinctScanExecutor(Fetcher& fetcher,
