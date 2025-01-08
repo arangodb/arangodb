@@ -36,6 +36,7 @@
 #include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/IndexCollectNode.h"
 #include "Aql/ExecutionNode/InsertNode.h"
 #include "Aql/ExecutionNode/JoinNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
@@ -375,6 +376,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new NoResultsNode(plan, slice);
     case INDEX:
       return new IndexNode(plan, slice);
+    case INDEX_COLLECT:
+      return new IndexCollectNode(plan, slice);
     case JOIN:
       return new JoinNode(plan, slice);
     case REMOTE:
