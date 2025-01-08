@@ -67,7 +67,6 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlock(
 IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice slice)
     : ExecutionNode(plan, slice), CollectionAccessingNode(plan, slice) {
-  LOG_DEVEL << slice.toJson();
   std::string iid = slice.get("index").get("id").copyString();
   _index = CollectionAccessingNode::collection()->indexByIdentifier(iid);
   _oldIndexVariable =
