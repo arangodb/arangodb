@@ -178,7 +178,7 @@ bool isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
 void arangodb::aql::useIndexForCollect(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
-  bool modified = true;
+  bool modified = false;
 
   containers::SmallVector<ExecutionNode*, 8> collectNodes;
   plan->findNodesOfType(collectNodes, EN::COLLECT, /* enterSubqueries */ true);

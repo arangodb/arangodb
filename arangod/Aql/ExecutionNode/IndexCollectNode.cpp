@@ -28,6 +28,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/ExecutionEngine.h"
 #include "IndexCollectNode.h"
+#include <velocypack/Iterator.h>
 #include "Indexes/Index.h"
 
 using namespace arangodb;
@@ -66,7 +67,17 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlock(
 IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice slice)
     : ExecutionNode(plan, slice), CollectionAccessingNode(plan, slice) {
-  TRI_ASSERT(false);
+  LOG_DEVEL << slice.toJson();
+  std::string iid = slice.get("index").get("id").copyString();
+  _index = CollectionAccessingNode::collection()->indexByIdentifier(iid);
+  _oldIndexVariable =
+      Variable::varFromVPack(plan->getAst(), slice, "oldIndexVariable");
+  auto groups = slice.get("groups");
+  for (auto gs : VPackArrayIterator(groups)) {
+    auto& g = _groups.emplace_back();
+    g.outVariable = Variable::varFromVPack(plan->getAst(), gs, "outVariable");
+    g.indexField = gs.get("indexField").getNumericValue<std::size_t>();
+  }
 }
 
 IndexCollectNode::IndexCollectNode(ExecutionPlan* plan, ExecutionNodeId id,
