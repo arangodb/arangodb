@@ -171,6 +171,7 @@ function ahuacatlSubqueryChaos() {
     testSpecificQueries: function () {
       for (const [key, value] of Object.entries(specificQueries)) {
         print(`${Date()} : ${key} => ${JSON.stringify(value)}`);
+        require("internal").wait(0, true);
         if (value.hasOwnProperty("queryString")) {
           const opts = value.testOptions || {};
           ct.testQuery(value, opts);
