@@ -60,7 +60,12 @@ add_dependencies(${BIN_ARANGOD} man)
 # This is necessary for faiss library properly link laplack and blas dependencies
 if (STATIC_EXECUTABLES)
   if (LIBOMP)
-    target_link_options(${BIN_ARANGOD} PRIVATE "-fopenmp=libomp -L/opt/omp -llapack -lgfortran" )
+    target_link_options(${BIN_ARANGOD} PRIVATE
+      "-fopenmp=libomp"
+      "-L/opt/omp"
+      "-llapack"
+      "-lgfortran"
+    )
   else ()
     message(FATAL_ERROR "libomp.a must be present in /opt/omp for static build")
   endif ()
