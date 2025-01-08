@@ -1,5 +1,38 @@
 devel
 -----
+
+* Add optional `factory` property to `params` in vector index definition. The
+  index factory enables to create composite vector indexes supported by FAISS.
+  The factory string defines the index structure, including preprocessing,
+  inverted files, and encoding components.
+  More details on how to compose them can be found on FAISS documentation
+  https://github.com/facebookresearch/faiss/wiki/The-index-factory.
+  When defining the index string the number of nLists from string must match the
+  `nLists` parameter. Here is an example of using this parameter:
+  ```
+    db.<collection>.ensureIndex({
+      type: "vector",
+      fields: ["value1"],
+      params: {
+        "metric": "l2",
+        "dimension": 300,
+        "nLists": 3800,
+        "factory": "IVF3800_HNSW32,PQ480x8"
+      }
+    });
+
+* Improve geo index performance in the cluster with multiple shards. This
+  fixes BTS-2046. An unnecessary and bad SORT node is removed from the
+  query plan in the case that a geo index is used.
+
+* Fail queries that use `APPROX_NEAR` functions but do not apply the vector
+  index.
+
+* Rebuilt included rclone v1.65.5 with go1.22.10 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.8.
+
 * Introduce new level of index serialization `Maintenance` that excludes
   trainedData in vector index.
 
@@ -17,17 +50,6 @@ devel
 * Test a collection before it is leased out from the ConnectionCache.
   This helps to detect stale TCP/IP or TLS connections residing in the 
   ConnectionCache and thus prevents network failures due to delays.
-
-* Enable passing `nProbe` as additional search parameter for APPROX_NEAR
-  vector functions. `nProbe` defines how many neighboring lists to look into,
-  it is a trade off between more correct results and time it takes to fetch
-  results. The syntax looks like this:
-  ```aql
-  FOR doc IN col
-  LET distance = APPROX_NEAR_L2(doc.vector, @qp, {nProbe: 20})
-  SORT distance LIMIT 5
-  RETURN {key: doc._key, distance}
-  ````
 
 * Add a vector index based on faiss implementation. The current vector index 
   implementation supports the L2 and cosine metrics. To create a vector index,
@@ -123,10 +145,6 @@ devel
   eligible for query plan caching. This is better for debugging.
 
 * Upgraded OpenSSL to 3.4.0.
-
-* Rebuilt included rclone v1.65.2 with go1.22.8 and non-vulnerable dependencies.
-
-* Updated ArangoDB Starter to v0.19.7.
 
 * BTS-2018: enable count cache for virtual smart edge collections.
 
