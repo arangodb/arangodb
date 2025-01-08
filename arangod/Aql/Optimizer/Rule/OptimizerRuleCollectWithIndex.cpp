@@ -56,6 +56,12 @@ bool isCollectNodeEligible(CollectNode const& cn) {
     return false;
   }
 
+  if (cn.getOptions().disableIndexUsage) {
+    LOG_RULE << "Collect " << cn.id()
+             << " not eligible - index usage explicitly disabled";
+    return false;
+  }
+
   return true;
 }
 

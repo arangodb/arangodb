@@ -82,6 +82,10 @@ struct CollectOptions final {
   /// @brief whether aggregation of collects output should be moved to
   /// dbservers.
   bool aggregateIntoExpressionOnDBServers{true};
+
+  /// @brief if set to true, no attempt is made to use an index to optimize
+  /// this collect statement.
+  bool disableIndexUsage{false};
 };
 
 struct GroupVarInfo final {
