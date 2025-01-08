@@ -253,10 +253,10 @@ function optimizerIndexesGroupSortTestSuite() {
       const collection = create_collection();
       collection.insert(Array.from({ length: 100 }, (_, index) => index).map(i => {
         return {
-          a: i % 9,
+          a: i % 9 === 0 ? null : i % 9,
           x: 100 - i - 1,
           b: Math.floor(randomNumber() * 100),
-          c: i
+          c: i % 2 === 0 ? null : i
         };
       }));
       collection.ensureIndex({ type: "persistent", fields: ["a"], sparse: true });
@@ -313,10 +313,10 @@ function optimizerIndexesGroupSortTestSuite() {
       const collection = create_collection();
       collection.insert(Array.from({ length: 100 }, (_, index) => index).map(i => {
         return {
-          a: i % 9,
+          a: i % 9 === 0 ? null : i % 9,
           x: 100 - i - 1,
           b: Math.floor(randomNumber() * 100),
-          c: i
+          c: i % 2 === 0 ? null : i
         };
       }));
       collection.ensureIndex({ type: "persistent", fields: ["a", "b", "c"], sparse: true });
