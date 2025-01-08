@@ -115,9 +115,12 @@ bool isIndexNodeEligible(IndexNode const& in) {
   double selectivity = index->selectivityEstimate();
   auto numberOfItems = in.estimateCost().estimatedNrItems;
 
-  if (selectivity > 1. / log(numberOfItems)) {
+  double const requiredSelectivity = 1. / log(numberOfItems);
+
+  if (selectivity > requiredSelectivity) {
     LOG_RULE << "IndexNode " << in.id()
-             << " not eligible - selectivity is too high";
+             << " not eligible - selectivity is too high, actual = "
+             << selectivity << " max allowed = " << requiredSelectivity;
     return false;
   }
 
