@@ -322,6 +322,7 @@ jobs:
             if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
               MINIMAL_DEBUGINFO="ON"
             fi
+
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \

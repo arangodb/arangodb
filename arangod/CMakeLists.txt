@@ -59,16 +59,6 @@ add_dependencies(${BIN_ARANGOD} man)
 
 # This is necessary for faiss library properly link laplack and blas dependencies
 if (STATIC_EXECUTABLES)
-  set(BLA_STATIC On)
-  if (ARCH_AMD64)
-      set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a")
-      set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/blas/libblas.a")
-  else (ARCH_AMD64)
-      set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a")
-      set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/blas/libblas.a")
-  endif (ARCH_AMD64)
-
-  find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
   if (LIBOMP)
     target_link_options(${BIN_ARANGOD} PRIVATE "-fopenmp=libomp -L/opt/omp -llapack -lgfortran" )
   else ()
