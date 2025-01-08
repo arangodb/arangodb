@@ -45,19 +45,21 @@ ExecutionNode* IndexCollectNode::clone(ExecutionPlan* plan,
 std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlock(
     ExecutionEngine& engine) const {
   IndexDistinctScanInfos infos;
-  infos.groups.reserve(_groups.size());
+  infos.groupRegisters.reserve(_groups.size());
+  infos.scanOptions.distinctFields.reserve(_groups.size());
   infos.index = _index;
   infos.collection = CollectionAccessingNode::collection();
   infos.query = &engine.getQuery();
 
   RegIdSet writableOutputRegisters;
   for (auto const& group : _groups) {
-    IndexDistinctScanInfos::Group& execGroup = infos.groups.emplace_back();
-    execGroup.fieldIndex = group.indexField;
-    execGroup.outRegister =
-        getRegisterPlan()->variableToRegisterId(group.outVariable);
-    writableOutputRegisters.emplace(execGroup.outRegister);
+    auto reg = infos.groupRegisters.emplace_back(
+        getRegisterPlan()->variableToRegisterId(group.outVariable));
+    infos.scanOptions.distinctFields.emplace_back(group.indexField);
+    writableOutputRegisters.emplace(reg);
   }
+
+  infos.scanOptions.sorted = false;
 
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
   return std::make_unique<ExecutionBlockImpl<IndexDistinctScanExecutor>>(

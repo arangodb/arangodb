@@ -58,8 +58,8 @@ auto IndexDistinctScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       continue;
     }
 
-    for (size_t k = 0; k < _infos.groups.size(); k++) {
-      output.moveValueInto(_infos.groups[k].outRegister,
+    for (size_t k = 0; k < _infos.groupRegisters.size(); k++) {
+      output.moveValueInto(_infos.groupRegisters[k],
                            inputRange.peekDataRow().second, _groupValues[k]);
     }
     output.advanceRow();
@@ -73,19 +73,11 @@ IndexDistinctScanExecutor::IndexDistinctScanExecutor(Fetcher& fetcher,
                                                      Infos& infos)
     : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
   constructIterator();
-  _groupValues.resize(_infos.groups.size());
+  _groupValues.resize(_infos.groupRegisters.size());
 }
 
 void IndexDistinctScanExecutor::constructIterator() {
-  IndexDistinctScanOptions options;
-  options.distinctFields.reserve(_infos.groups.size());
-  for (auto const& grp : _infos.groups) {
-    options.distinctFields.push_back(grp.fieldIndex);
-  }
-  // TODO move the options into the node, there we have all information
-  options.sorted = false;
-
-  _iterator = _infos.index->distinctScanFor(&_trx, options);
+  _iterator = _infos.index->distinctScanFor(&_trx, _infos.scanOptions);
   ADB_PROD_ASSERT(_iterator != nullptr);
 }
 

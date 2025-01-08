@@ -40,13 +40,10 @@ struct IndexDistinctScanInfos {
   // Index handle
   transaction::Methods::IndexHandle index;
 
-  struct Group {
-    RegisterId outRegister;
-    std::size_t fieldIndex;
-  };
-
   // Groups used for distinct scan
-  std::vector<Group> groups;
+  std::vector<RegisterId> groupRegisters;
+
+  IndexDistinctScanOptions scanOptions;
 
   QueryContext* query;
 };
