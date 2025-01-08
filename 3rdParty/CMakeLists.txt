@@ -327,11 +327,11 @@ if (STATIC_EXECUTABLES)
   # and are specific for how we build our docker build
   # containers
   if (ARCH_AMD64)
-    set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a" CACHE)
-    set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/blas/libblas.a" CACHE)
+    set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a")
+    set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/blas/libblas.a")
   else ()
-    set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a" CACHE)
-    set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/blas/libblas.a" CACHE)
+    set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a")
+    set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/blas/libblas.a")
   endif ()
   message("LAPACK: ${LAPACK_LIBRARIES} and BLAS: to ${BLAS_LIBRARIES}")
 
