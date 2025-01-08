@@ -2,9 +2,11 @@ devel
 -----
 
 * Add optional `factory` property to `params` in vector index definition. The
-  index factory define how to compose multiple variants of vector index via
-  factory string. More details on how to compose them can be found on FAISS
-  documentation https://github.com/facebookresearch/faiss/wiki/The-index-factory.
+  index factory enables to create composite vector indexes supported by FAISS.
+  The factory string defines the index structure, including preprocessing,
+  inverted files, and encoding components.
+  More details on how to compose them can be found on FAISS documentation
+  https://github.com/facebookresearch/faiss/wiki/The-index-factory.
   When defining the index string the number of nLists from string must match the
   `nLists` parameter. Here is an example of using this parameter:
   ```
