@@ -3277,6 +3277,9 @@ struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
       for (auto s : VPackArrayIterator(keySlice)) {
         builder.add(s);
         values[inverseFieldMapping[k++]] = s;
+        if (k >= values.size()) {
+          break;
+        }
       }
       builder.add(VPackSlice::maxKeySlice());
     }
