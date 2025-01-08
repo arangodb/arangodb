@@ -3172,8 +3172,7 @@ struct SortToIndexNode final
         } else if (usedIndexes.size() == 1 &&
                    usedIndexes[0]->type() ==
                        Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
-          auto sortNode = _plan->getNodeById(_sortNode->id());
-          ((SortNode*)sortNode)->setGroupedElements(coveredAttributes);
+          _sortNode->setGroupedElements(coveredAttributes);
         }
       }
     }
@@ -3261,13 +3260,13 @@ struct SortToIndexNode final
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
     // FIXME: why not just call index->supportsSortCondition here always?
-    bool indexCoversSortCondition = false;
+    bool indexFullyCoversSortCondition = false;
     if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
-      indexCoversSortCondition =
+      indexFullyCoversSortCondition =
           index->supportsSortCondition(&sortCondition, outVariable, 1)
               .supportsCondition;
     } else {
-      indexCoversSortCondition =
+      indexFullyCoversSortCondition =
           isOnlyAttributeAccess && isSorted && !isSparse &&
           sortCondition.isUnidirectional() &&
           sortCondition.isAscending() == indexNode->options().ascending &&
@@ -3275,7 +3274,7 @@ struct SortToIndexNode final
               sortCondition.numAttributes();
     }
 
-    if (indexCoversSortCondition) {
+    if (indexFullyCoversSortCondition) {
       deleteSortNode(indexNode, sortCondition);
     } else if (index->type() ==
                Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
@@ -3285,8 +3284,7 @@ struct SortToIndexNode final
       if (isOnlyAttributeAccess && isSorted && !isSparse &&
           numberOfCoveredAttributes > 0) {
         indexNode->setAscending(sortIsAscending);
-        auto sortNode = _plan->getNodeById(_sortNode->id());
-        ((SortNode*)sortNode)->setGroupedElements(numberOfCoveredAttributes);
+        _sortNode->setGroupedElements(numberOfCoveredAttributes);
         _modified = true;
       }
     } else {
