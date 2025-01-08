@@ -63,6 +63,7 @@ function IndexCollectOptimizerTestSuite() {
         [`FOR doc IN ${collection} COLLECT b = doc.b RETURN b`, false],
         [`FOR doc IN ${collection} COLLECT k = doc.k RETURN k`, false], // because of bad selectivity
         [`FOR doc IN ${collection} COLLECT a = doc.a.c RETURN a`, false],
+        [`FOR doc IN ${collection} SORT doc.a DESC COLLECT a = doc.a RETURN [a]`, false], // desc not possible
         [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b RETURN [a, b]`, true],
         [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b, d = doc.d RETURN [a, b, d]`, true],
         [`FOR doc IN ${collection} COLLECT a = doc.a, d = doc.d RETURN [a, d]`, false],
@@ -77,7 +78,6 @@ function IndexCollectOptimizerTestSuite() {
       ];
 
       for (const [query, optimized] of queries) {
-        db._explain(query);
         const explain = db._createStatement(query).explain();
         assertEqual(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, optimized, query);
         if (optimized) {
@@ -149,6 +149,7 @@ function IndexCollectExecutionTestSuite() {
 
       const queries = [
         [`FOR doc IN ${collection} COLLECT a = doc.a RETURN [a]`],
+        [`FOR doc IN ${collection} SORT doc.a DESC COLLECT a = doc.a RETURN [a]`],
         [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b RETURN [a, b]`],
         [`FOR doc IN ${collection} COLLECT m = doc.m, a = doc.a RETURN [m, a]`],
         [`FOR doc IN ${collection} COLLECT m = doc.m RETURN [m]`],
