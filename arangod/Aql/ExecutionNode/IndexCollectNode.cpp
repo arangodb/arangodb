@@ -85,7 +85,7 @@ IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
 }
 
 IndexCollectNode::IndexCollectNode(ExecutionPlan* plan, ExecutionNodeId id,
-                                   const aql::Collection* collection,
+                                   aql::Collection const* collection,
                                    std::shared_ptr<arangodb::Index> index,
                                    Variable const* oldIndexVariable,
                                    IndexCollectGroups groups,
@@ -128,13 +128,13 @@ void IndexCollectNode::doToVelocyPack(velocypack::Builder& builder,
 }
 
 void IndexCollectNode::replaceVariables(
-    const std::unordered_map<VariableId, const Variable*>& replacements) {
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
   ExecutionNode::replaceVariables(replacements);
 }
 
 void IndexCollectNode::replaceAttributeAccess(
-    const ExecutionNode* self, const Variable* searchVariable,
-    std::span<std::string_view> attribute, const Variable* replaceVariable,
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
     size_t index) {
   ExecutionNode::replaceAttributeAccess(self, searchVariable, attribute,
                                         replaceVariable, index);
@@ -144,8 +144,8 @@ void IndexCollectNode::getVariablesUsedHere(VarSet& vars) const {
   ExecutionNode::getVariablesUsedHere(vars);
 }
 
-std::vector<const Variable*> IndexCollectNode::getVariablesSetHere() const {
-  std::vector<const Variable*> result;
+std::vector<Variable const*> IndexCollectNode::getVariablesSetHere() const {
+  std::vector<Variable const*> result;
   result.reserve(_groups.size());
   for (auto const& grp : _groups) {
     result.emplace_back(grp.outVariable);

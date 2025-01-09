@@ -48,17 +48,17 @@ struct IndexCollectNode : ExecutionNode, CollectionAccessingNode {
 
   IndexCollectNode(ExecutionPlan* plan, arangodb::velocypack::Slice slice);
 
-  void replaceVariables(const std::unordered_map<VariableId, const Variable*>&
-                            replacements) override;
+  void replaceVariables(
+      std::unordered_map<VariableId, Variable const*> const&) override;
 
-  void replaceAttributeAccess(const ExecutionNode* self,
-                              const Variable* searchVariable,
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
                               std::span<std::string_view> attribute,
-                              const Variable* replaceVariable,
+                              Variable const* replaceVariable,
                               size_t index) override;
 
   void getVariablesUsedHere(VarSet& vars) const override;
-  std::vector<const Variable*> getVariablesSetHere() const override;
+  std::vector<Variable const*> getVariablesSetHere() const override;
 
   NodeType getType() const override { return INDEX_COLLECT; }
   size_t getMemoryUsedBytes() const override { return 0; }

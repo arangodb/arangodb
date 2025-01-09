@@ -46,6 +46,9 @@ CollectOptions::CollectOptions(velocypack::Slice slice)
         v.isBoolean()) {
       aggregateIntoExpressionOnDBServers = v.isTrue();
     }
+    if (VPackSlice v = slice.get("disableIndexUsage"); v.isBoolean()) {
+      disableIndexUsage = v.isTrue();
+    }
   }
   TRI_ASSERT(method != CollectMethod::kUndefined || !fixed);
 }
@@ -80,6 +83,7 @@ void CollectOptions::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("method", VPackValue(methodToString(method)));
   builder.add("fixed", VPackValue(fixed));
+  builder.add("disableIndexUsage", VPackValue(disableIndexUsage));
   builder.add("aggregateIntoExpressionOnDBServers",
               VPackValue(aggregateIntoExpressionOnDBServers));
 }
