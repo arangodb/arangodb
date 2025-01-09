@@ -1,6 +1,8 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* Update iresearch module for clang 19 build
+
 * Rebuilt included rclone v1.62.2 with go1.22.10 and non-vulnerable
   dependencies.
 
