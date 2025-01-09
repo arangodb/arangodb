@@ -154,11 +154,10 @@ function IndexCollectExecutionTestSuite() {
         [`FOR doc IN ${collection} COLLECT m = doc.m, a = doc.a RETURN [m, a]`],
         [`FOR doc IN ${collection} COLLECT m = doc.m RETURN [m]`],
         [`FOR doc IN ${collection} COLLECT k = doc.k RETURN [k]`],
-        [`FOR doc IN ${collection} COLLECT k = doc.k RETURN [k]`],
-        [`FOR doc IN ${collection} COLLECT m = doc.m, k = doc.k, a = doc.a RETURN [k]`],
+        [`FOR doc IN ${collection} COLLECT m = doc.m, k = doc.k, a = doc.a RETURN [k, m, a]`],
 
         [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a RETURN [a, b]`],
-        [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a RETURN [a, b]`],
+        [`FOR doc IN ${collection} COLLECT a = doc.a, m = doc.m RETURN [a, m]`],
       ];
 
       for (const [query] of queries) {

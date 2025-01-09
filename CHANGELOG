@@ -38,7 +38,7 @@ devel
   can now employ a persistent index on `["x", "y"]` to drastically speed up
   the query. The new optimizer rule is called `use-index-for-collect`. If the
   rule is applied depends on the selectivity of the index. If the selectivity
-  is too high, i.e. there are a lot of unique values, the rules is not applied
+  is too high, i.e. there are a lot of distinct values, the rules is not applied
   since scanning for distinct values in such a case would not be beneficial.
 
   This optimization can be disabled for specific collect statements, using the
