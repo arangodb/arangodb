@@ -167,6 +167,7 @@ CostEstimate IndexCollectNode::estimateCost() const {
   double selectivity = _index->selectivityEstimate();
 
   estimate.estimatedNrItems = selectivity * double(documentsInCollection);
-  estimate.estimatedCost += selectivity * log(double(documentsInCollection));
+  estimate.estimatedCost +=
+      estimate.estimatedNrItems * log(double(documentsInCollection));
   return estimate;
 }
