@@ -138,7 +138,6 @@ function IndexCollectExecutionTestSuite() {
       c.ensureIndex({type: "persistent", fields: ["b"]});
       c.ensureIndex({type: "persistent", fields: ["c"]});
       c.ensureIndex({type: "persistent", fields: ["m", "a"]});
-      c.ensureIndex({type: "persistent", fields: ["m", "k", "a"]});
     },
     tearDownAll: function () {
       db._useDatabase("_system");
@@ -149,20 +148,22 @@ function IndexCollectExecutionTestSuite() {
 
       const queries = [
         [`FOR doc IN ${collection} COLLECT a = doc.a RETURN [a]`],
-        [`FOR doc IN ${collection} SORT doc.a DESC COLLECT a = doc.a RETURN [a]`],
         [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b RETURN [a, b]`],
         [`FOR doc IN ${collection} COLLECT m = doc.m, a = doc.a RETURN [m, a]`],
         [`FOR doc IN ${collection} COLLECT m = doc.m RETURN [m]`],
-        [`FOR doc IN ${collection} COLLECT k = doc.k RETURN [k]`],
-        [`FOR doc IN ${collection} COLLECT m = doc.m, k = doc.k, a = doc.a RETURN [k, m, a]`],
 
         [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a RETURN [a, b]`],
         [`FOR doc IN ${collection} COLLECT a = doc.a, m = doc.m RETURN [a, m]`],
+        [`LET as = (FOR doc IN ${collection} COLLECT a = doc.a RETURN a) LET bs = (FOR doc IN ${collection}
+            COLLECT b = doc.b RETURN b) RETURN [as, bs]`],
       ];
 
       for (const [query] of queries) {
+        const explain = db._createStatement(query).explain();
+        assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, query);
+
         const expectedResult = db._query(query, {}, {optimizer: {rules: [`-${indexCollectOptimizerRule}`]}}).toArray();
-        const actualResult = db._query(query, {}, {optimizer: {rules: [`-${indexCollectOptimizerRule}`]}}).toArray();
+        const actualResult = db._query(query).toArray();
         assertEqual(expectedResult, actualResult);
       }
     }
