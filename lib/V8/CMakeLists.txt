@@ -40,7 +40,6 @@ target_include_directories(arango_v8
 
 # Enterprise
 if (USE_ENTERPRISE)
-  target_compile_definitions(arango_v8 PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_v8 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 

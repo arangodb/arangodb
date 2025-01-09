@@ -161,7 +161,6 @@ target_link_libraries(arango_basic_utils
 
 # Enterprise
 if (USE_ENTERPRISE)
-  target_compile_definitions(arango_basic_utils PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_basic_utils PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
@@ -204,6 +203,9 @@ target_link_libraries(arango_basic_features
          s2
 )
 target_include_directories(arango_basic_features PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if (USE_ENTERPRISE)
+  target_include_directories(arango_basic_utils PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
 
 add_library(arango_basic_logger STATIC
         Logger/Appenders.cpp
@@ -229,6 +231,9 @@ target_link_libraries(arango_basic_logger
          boost_boost
 )
 target_include_directories(arango_basic_logger PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if (USE_ENTERPRISE)
+  target_include_directories(arango_basic_logger PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
 
 add_library(arango_basic_http_client STATIC
         Rest/CommonDefines.cpp
@@ -268,7 +273,9 @@ target_link_libraries(arango_basic_http_client
          rocksdb_interface
 )
 target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-
+if (USE_ENTERPRISE)
+  target_include_directories(arango_basic_http_client PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
 
 add_library(arango_lightweight STATIC
         ApplicationFeatures/ApplicationFeature.cpp
@@ -366,9 +373,7 @@ target_link_libraries(arango_lightweight
           boost_system
 )
 
-# Enterprise
 if (USE_ENTERPRISE)
-  target_compile_definitions(arango_lightweight PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_lightweight PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
@@ -527,7 +532,6 @@ add_dependencies(arango exitcodefiles)
 
 # Enterprise
 if (USE_ENTERPRISE)
-  target_compile_definitions(arango PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
