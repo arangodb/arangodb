@@ -1,6 +1,8 @@
 devel
 -----
 
+* update iresearch for clang-19 build
+
 * Add optional `factory` property to `params` in vector index definition. The
   index factory enables to create composite vector indexes supported by FAISS.
   The factory string defines the index structure, including preprocessing,
