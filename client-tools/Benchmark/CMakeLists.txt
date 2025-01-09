@@ -8,7 +8,11 @@ add_executable(${BIN_ARANGOBENCH}
 target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOBENCH}
-  arango
+  arango_static_strings
+  arango_basic_utils
+  arango_basic_logger
+  arango_basic_features
+  arango_basic_http_client 
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
