@@ -83,7 +83,7 @@ using namespace arangodb::basics;
 namespace {
 
 /// @brief NodeType to string mapping
-frozen::unordered_map<int, std::string_view, 37> const kTypeNames{
+frozen::unordered_map<int, std::string_view, 38> const kTypeNames{
     {static_cast<int>(ExecutionNode::SINGLETON), "SingletonNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_COLLECTION),
      "EnumerateCollectionNode"},
