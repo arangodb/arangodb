@@ -63,6 +63,7 @@ add_dependencies(arango_basic_errors exitcodefiles)
 
 
 add_library(arango_basic_utils STATIC
+        # arango
         Basics/AttributeNameParser.cpp
         Basics/CpuUsageSnapshot.cpp
         Basics/DebugRaceController.cpp
@@ -90,6 +91,7 @@ add_library(arango_basic_utils STATIC
         Basics/terminal-utils.cpp
         Basics/tri-zip.cpp
 
+        # arango_lightweight
         Basics/ArangoGlobalContext.cpp
         Basics/CleanupFunctions.cpp
         Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
@@ -110,7 +112,6 @@ add_library(arango_basic_utils STATIC
         Basics/StringUtils.cpp
         Basics/Thread.cpp
         Basics/UnshackledMutex.cpp
-        Basics/application-exit.cpp
         Basics/conversions.cpp
         Basics/debugging.cpp
         Basics/files.cpp
@@ -151,6 +152,7 @@ target_link_libraries(arango_basic_utils
   PUBLIC velocypack
          arango_inspection
          arango_futures
+         arango_basic_errors
          absl::flat_hash_set
          fuerte
          s2
@@ -282,58 +284,7 @@ add_library(arango_lightweight STATIC
         ApplicationFeatures/ApplicationServer.cpp
         ApplicationFeatures/LazyApplicationFeatureReference.h
         ApplicationFeatures/ShellColorsFeature.cpp
-        Basics/ArangoGlobalContext.cpp
-        Basics/CleanupFunctions.cpp
-        Basics/ErrorCode.cpp
-        Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
-        Basics/FileResult.cpp
-        Basics/FileUtils.cpp
-        Basics/Guarded.h
-        Basics/Identifier.cpp
-        Basics/InputProcessors.cpp
-        Basics/NumberOfCores.cpp
-        Basics/PageSize.cpp
-        Basics/PhysicalMemory.cpp
-        Basics/ReadWriteLock.cpp
-        Basics/RebootId.cpp Basics/RebootId.h
-        Basics/Result.cpp
-        Basics/ResultError.cpp Basics/ResultError.tpp Basics/ResultError.h
-        Basics/StringBuffer.cpp
-        Basics/StringHeap.cpp
-        Basics/StringUtils.cpp
-        Basics/Thread.cpp
-        Basics/UnshackledMutex.cpp
-        Basics/application-exit.cpp
-        Basics/conversions.cpp
-        Basics/debugging.cpp
-        Basics/error.cpp
-        Basics/files.cpp
-        Basics/fpconv.cpp
-        Basics/levenshtein.cpp
-        Basics/memory.cpp
-        Basics/process-utils.cpp
-        Basics/signals.cpp
-        Basics/SourceLocation.cpp
-        Basics/system-functions.cpp
-        Basics/terminal-utils-posix.cpp
-        Basics/threads-posix.cpp
-        Basics/tri-strings.cpp
         Containers/ImmerMemoryPolicy.h
-        Logger/Appenders.cpp
-        Logger/Escaper.cpp
-        Logger/LogAppender.cpp
-        Logger/LogAppenderFile.cpp
-        Logger/LogAppenderStdStream.cpp
-        Logger/LogAppenderStream.cpp
-        Logger/LogAppenderSyslog.cpp
-        Logger/LogContext.cpp
-        Logger/LogLevel.cpp
-        Logger/LogThread.cpp
-        Logger/LogTopic.cpp
-        Logger/Logger.cpp
-        Logger/LoggerFeature.cpp
-        Logger/LoggerStream.cpp
-        Logger/LogTimeFormat.cpp
         ProgramOptions/IniFileParser.cpp
         ProgramOptions/Option.cpp
         ProgramOptions/Parameters.cpp
@@ -369,6 +320,8 @@ target_link_libraries(arango_lightweight
           arango_static_strings
           arango_futures
           arango_utils
+          arango_basic_utils
+          arango_basic_logger
           boost_boost
           boost_system
 )
@@ -392,43 +345,10 @@ add_library(arango STATIC
   ApplicationFeatures/VersionFeature.cpp
   Assertions/AssertionConditionalLogger.cpp
   Assertions/AssertionLogger.cpp
-  Basics/AttributeNameParser.cpp
-  Basics/CpuUsageSnapshot.cpp
-  Basics/DebugRaceController.cpp
-  Basics/EncodingUtils.cpp
-  Basics/FeatureFlags.cpp
-  Basics/FileDescriptors.cpp
-  Basics/FunctionUtils.cpp
-  Basics/GlobalResourceMonitor.cpp
-  Basics/GlobalSerialization.cpp
-  Basics/HybridLogicalClock.cpp
-  Basics/IndexIter.h
-  Basics/Nonce.cpp
-  Basics/NumberUtils.cpp
-  Basics/ReadWriteSpinLock.cpp
-  Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
-  Basics/StringBufferAdvanced.cpp
-  Basics/Utf8Helper.cpp
-  Basics/VelocyPackHelper.cpp
-  Basics/csv.cpp
-  Basics/datetime.cpp
-  Basics/fasthash.cpp
-  Basics/files-advanced.cpp
-  Basics/hashes.cpp
-  Basics/socket-utils.cpp
-  Basics/terminal-utils.cpp
-  Basics/tri-zip.cpp
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
-  Endpoint/Endpoint.cpp
-  Endpoint/EndpointIp.cpp
-  Endpoint/EndpointIpV4.cpp
-  Endpoint/EndpointIpV6.cpp
-  Endpoint/EndpointList.cpp
-  Endpoint/EndpointSrv.cpp
-  Endpoint/EndpointUnixDomain.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
   Maskings/MaskingFunction.cpp
@@ -436,33 +356,6 @@ add_library(arango STATIC
   Maskings/Path.cpp
   Maskings/RandomMask.cpp
   Maskings/RandomStringMask.cpp
-  Random/RandomFeature.cpp
-  Random/UniformCharacter.cpp
-  Rest/CommonDefines.cpp
-  Rest/GeneralRequest.cpp
-  Rest/GeneralResponse.cpp
-  Rest/HttpRequest.cpp
-  Rest/HttpResponse.cpp
-  Rest/PathMatch.h
-  Rest/Version.cpp
-  SimpleHttpClient/ClientConnection.cpp
-  SimpleHttpClient/ConnectionCache.cpp
-  SimpleHttpClient/GeneralClientConnection.cpp
-  SimpleHttpClient/HttpResponseChecker.cpp
-  SimpleHttpClient/SimpleHttpClient.cpp
-  SimpleHttpClient/SimpleHttpResult.cpp
-  SimpleHttpClient/SslClientConnection.cpp
-  Ssl/SslFeature.cpp
-  Ssl/SslInterface.cpp
-  Ssl/ssl-helper.cpp
-  Utilities/LinenoiseShell.cpp
-  Utilities/LineEditor.cpp
-  Utilities/NameValidator.cpp
-  Utilities/ScriptLoader.cpp
-  Utilities/ShellBase.cpp
-  Zip/ioapi.cpp
-  Zip/unzip.cpp
-  Zip/zip.cpp
 )
 
 target_link_libraries(arango
@@ -473,6 +366,7 @@ target_link_libraries(arango
          arango_futures
          arango_static_strings
          arango_crashhandler
+         arango_basic_http_client
          velocypack
          fuerte
          linenoise-ng
