@@ -119,7 +119,8 @@ class instance {
     for (const [key, value] of Object.entries(addArgs)) {
       if (key.search('extraArgs') >= 0) {
         let splitkey = key.split('.');
-        if (splitkey.length > 2) {
+        if (splitkey.length >= 2 &&
+            instanceRole.find(role => { splitkey[1] === role}) !== undefined) {
           if (splitkey[1] === this.instanceRole) {
             this.args[splitkey.slice(2).join('.')] = value;
           }
@@ -370,7 +371,8 @@ class instance {
     }
     for (const [key, value] of Object.entries(this.options.extraArgs)) {
       let splitkey = key.split('.');
-      if (splitkey.length > 2) {
+      if (splitkey.length >= 2 &&
+          instanceRole.find(role => { splitkey[0] === role}) !== undefined) {
         if (splitkey[0] === this.instanceRole) {
           this.args[splitkey.slice(1).join('.')] = value;
         }
