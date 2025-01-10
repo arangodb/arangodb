@@ -115,7 +115,7 @@ export const QueryOptionsTab = ({ mode }: { mode: "json" | "table" }) => {
           };
           if (!errors.length) {
             setQueryOptions(updatedOptions || {});
-            setDisabledRules(updatedValue.optimizer?.rules);
+            setDisabledRules(updatedValue.optimizer?.rules || []);
           }
         }}
         htmlElementProps={{
@@ -310,7 +310,7 @@ const OptimizerRules = () => {
       <MultiSelect
         options={ruleOptions}
         value={ruleOptions.filter(option => {
-          return disabledRules.includes(option.value);
+          return disabledRules?.includes(option.value);
         })}
         onChange={value => {
           const disabledRuleNames = value.map((v: any) => v.value);
