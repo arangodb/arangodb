@@ -119,7 +119,7 @@ class instance {
     for (const [key, value] of Object.entries(addArgs)) {
       if (key.search('extraArgs') >= 0) {
         let splitkey = key.split('.');
-        if (splitkey.length !== 2) {
+        if (splitkey.length > 2) {
           if (splitkey[1] === this.instanceRole) {
             this.args[splitkey.slice(2).join('.')] = value;
           }
@@ -368,10 +368,9 @@ class instance {
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;
     }
-
     for (const [key, value] of Object.entries(this.options.extraArgs)) {
       let splitkey = key.split('.');
-      if (splitkey.length !== 2) {
+      if (splitkey.length > 2) {
         if (splitkey[0] === this.instanceRole) {
           this.args[splitkey.slice(1).join('.')] = value;
         }
@@ -379,7 +378,6 @@ class instance {
         this.args[key] = value;
       }
     }
-
     let output = this.args.hasOwnProperty('log.output') ? this.args['log.output'] : [];
     if (typeof output === 'string') {
       output = [output];
