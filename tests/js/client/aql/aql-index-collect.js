@@ -75,7 +75,6 @@ function IndexCollectOptimizerTestSuite() {
         [`FOR doc IN ${collection} COLLECT a = doc.a INTO d RETURN [a, d]`, false],
         [`FOR doc IN ${collection} COLLECT a = doc.a INTO d = doc.d RETURN [a, d]`, false],
         [`FOR doc IN ${collection} COLLECT a = doc.a WITH COUNT INTO c RETURN [a, c]`, false],
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE c = SUM(doc.b) RETURN [a, c]`, false],
       ];
 
       for (const [query, optimized] of queries) {
@@ -84,6 +83,32 @@ function IndexCollectOptimizerTestSuite() {
         if (optimized) {
           const nodes = explain.plan.nodes.filter(x => x.type === "IndexCollectNode");
           assertEqual(nodes.length, 1, query);
+          const indexCollect = nodes[0];
+          assertEqual(indexCollect.aggregations.length, 0);
+        }
+      }
+    },
+
+    testSimpleAggregationScan: function () {
+      db[collection].ensureIndex({type: "persistent", fields: ["a", "b", "d"], storedValues: ["e", "f"]});
+      db[collection].ensureIndex({type: "persistent", fields: ["k"]});
+
+      const queries = [
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b) RETURN [a, b]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.c) RETURN [a, b]`, false],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.e) RETURN [a, b]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.d) RETURN [a, b]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.d), c = PUSH(doc.f) RETURN [a, b, c]`, true],
+      ];
+
+      for (const [query, optimized] of queries) {
+        const explain = db._createStatement(query).explain();
+        assertEqual(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, optimized, query);
+        if (optimized) {
+          const nodes = explain.plan.nodes.filter(x => x.type === "IndexCollectNode");
+          assertEqual(nodes.length, 1, query);
+          const indexCollect = nodes[0];
+          assertTrue(indexCollect.aggregations.length > 0);
         }
       }
     },

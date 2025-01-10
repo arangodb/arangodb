@@ -200,6 +200,9 @@ std::vector<Variable const*> IndexCollectNode::getVariablesSetHere() const {
   for (auto const& grp : _groups) {
     result.emplace_back(grp.outVariable);
   }
+  for (auto const& agg : _aggregations) {
+    result.emplace_back(agg.outVariable);
+  }
   return result;
 }
 
