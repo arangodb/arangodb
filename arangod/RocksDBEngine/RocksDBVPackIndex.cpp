@@ -3217,6 +3217,9 @@ bool RocksDBVPackIndex::checkSupportScanDistinct(
 
   // we only support distinct scans for a prefix of the fields
   for (size_t k = 0; k < distinctFields.size(); k++) {
+    if (k >= fields.size()) {
+      return false;
+    }
     if (k != distinctFields[k]) {
       return false;
     }
@@ -3298,7 +3301,7 @@ struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
 
 std::unique_ptr<AqlIndexDistinctScanIterator>
 RocksDBVPackIndex::distinctScanFor(
-    transaction::Methods* trx, const IndexDistinctScanOptions& scanOptions) {
+    transaction::Methods* trx, IndexDistinctScanOptions const& scanOptions) {
   TRI_ASSERT(supportsDistinctScan(scanOptions));
 
   std::vector<std::size_t> inverseFieldMapping;

@@ -136,11 +136,11 @@ class RocksDBVPackIndex : public RocksDBIndex {
       bool isUnique, IndexStreamOptions const&) noexcept;
 
   bool supportsDistinctScan(
-      const IndexDistinctScanOptions& scanOptions) const noexcept override;
+      IndexDistinctScanOptions const& scanOptions) const noexcept override;
 
   std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
       transaction::Methods* trx,
-      const IndexDistinctScanOptions& scanOptions) override;
+      IndexDistinctScanOptions const& scanOptions) override;
 
   static bool checkSupportScanDistinct(
       IndexDistinctScanOptions const&,

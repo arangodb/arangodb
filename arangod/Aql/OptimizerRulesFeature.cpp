@@ -399,7 +399,7 @@ from the query plan.)");
   registerRule("use-index-for-collect", useIndexForCollect,
                OptimizerRule::useIndexForCollectRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(Use indexes for a collect statements if appropriate.)");
+               R"(Use indexes for a collect statement if appropriate.)");
 
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
