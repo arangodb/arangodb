@@ -47,6 +47,22 @@ devel
   Currently this only works if there is no `INTO` or `AGGREGATE` clause.
   Filtering is also not yet supported.
 
+* For collect a new PUSH aggregator was added. It aggregates all values into
+  an array. For example
+  ```
+    FOR doc IN col
+        COLLECT x = doc.x AGGREGATE y = PUSH(doc.y)
+        RETURN [x, y]
+  ```
+  is equivalent to
+  ```
+    FOR doc IN col
+        COLLECT x = doc.x INTO y = doc.y
+        RETURN [x, y]
+  ```
+  This unifies `INTO` with `AGGREGATE` and allows collecting into different
+  arrays.
+
 * Rebuilt included rclone v1.65.5 with go1.22.10 and non-vulnerable
   dependencies.
 
