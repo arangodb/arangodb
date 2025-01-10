@@ -360,7 +360,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
                   communicationGuard.mutex() == &_communicationMutex)
       << "communicationGuard does not hold the lock for the correct mutex";
   NetworkFeature const& nf =
-      _engine->getQuery().vocbase().server().getFeature<NetworkFeature>();
+      _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (!pool) {
     // nullptr only happens on controlled shutdown

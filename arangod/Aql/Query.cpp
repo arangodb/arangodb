@@ -688,6 +688,37 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 /// @brief execute an AQL query
 auto Query::execute(QueryResult& queryResult)
     -> futures::Future<futures::Unit> {
+  // _executeCallerWaiting = ExecuteCallerWaiting::Asynchronously;
+
+  auto suspensionSemaphore = SuspensionSemaphore{};
+  // TODO Get an awaitable from the SharedState instead: Having it execute
+  //      a callback on a new scheduler thread that possibly just
+  //      increases a counter is unnecessarily convoluted.
+  sharedState()->setWakeupHandler(
+      withLogContext([&] { return suspensionSemaphore.notify(); }));
+  auto guard = arangodb::scopeGuard(
+      [&]() noexcept { sharedState()->resetWakeupHandler(); });
+
+  auto state = ExecutionState::WAITING;
+  auto block = SharedAqlItemBlockPtr{};
+  // Skip the first await.
+  suspensionSemaphore.notify();
+  while (state == ExecutionState::WAITING) {
+    // Get the number of wakeups. We execute the query up to that many
+    // times before suspending again.
+    auto n = co_await suspensionSemaphore.await();
+    for (auto i = 0; i < n && state == ExecutionState::WAITING; ++i) {
+      auto skipped = SkipResult{};
+      state = executeInternal(queryResult);
+      // The default call asks for no skips.
+      TRI_ASSERT(skipped.nothingSkipped());
+    }
+  }
+
+  co_return;
+}
+
+auto Query::executeInternal(QueryResult& queryResult) -> ExecutionState {
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
@@ -718,20 +749,40 @@ auto Query::execute(QueryResult& queryResult)
               // Note: cached queries were never done with dirty reads,
               // so we can always hand out the result here without extra
               // HTTP header.
-              co_return;
+              return ExecutionState::DONE;
             }
             // if no permissions, fall through to regular querying
           }
         }
 
-        if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-                      // will throw if it fails
-          co_await prepareQuery();
-        }
+        TRI_ASSERT(!_prepareResult.valid());
+        // will throw if it fails
+        auto prepare = [this]() -> futures::Future<futures::Unit> {
+          if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
+            co_return co_await prepareQuery();
+          }
+          co_return;
+        }();
         _executionPhase = ExecutionPhase::PREPARE;
+        if (!prepare.isReady()) {
+          std::move(prepare).thenFinal(
+              [this, sqs = sharedState()](auto&& tryResult) {
+                sqs->executeAndWakeup([this, tryResult = std::move(tryResult)] {
+                  _prepareResult = std::move(tryResult);
+                  TRI_ASSERT(_prepareResult.valid());
+                  return true;
+                });
+              });
+          return ExecutionState::WAITING;
+        } else {
+          _prepareResult = std::move(prepare).result();
+          TRI_ASSERT(_prepareResult.valid());
+        }
       }
         [[fallthrough]];
       case ExecutionPhase::PREPARE: {
+        TRI_ASSERT(_prepareResult.valid());
+        _prepareResult.throwIfFailed();
         logAtStart();
         if (_planCacheKey.has_value()) {
           queryResult.planCacheKey = _planCacheKey->hash();
@@ -763,33 +814,15 @@ auto Query::execute(QueryResult& queryResult)
         // this is the RegisterId our results can be found in
         RegisterId const resultRegister = engine->resultRegister();
 
-        auto suspensionSemaphore = SuspensionSemaphore{};
-        // TODO Get an awaitable from the SharedState instead: Having it execute
-        //      a callback on a new scheduler thread that possibly just
-        //      increases a counter is unnecessarily complicated.
-        sharedState()->setWakeupHandler(
-            withLogContext([&] { return suspensionSemaphore.notify(); }));
-        auto guard = arangodb::scopeGuard(
-            [&]() noexcept { sharedState()->resetWakeupHandler(); });
-
         // We loop as long as we are having ExecState::DONE returned
         // In case of WAITING we return, this function is repeatable!
         // In case of HASMORE we loop
         while (true) {
-          auto state = ExecutionState::WAITING;
-          auto block = SharedAqlItemBlockPtr{};
-          // Skip the first await.
-          suspensionSemaphore.notify();
-          while (state == ExecutionState::WAITING) {
-            // Get the number of wakeups. We execute the query up to that many
-            // times before suspending again.
-            auto n = co_await suspensionSemaphore.await();
-            for (auto i = 0; i < n && state == ExecutionState::WAITING; ++i) {
-              auto skipped = SkipResult{};
-              std::tie(state, skipped, block) = engine->execute(::defaultStack);
-              // The default call asks for no skips.
-              TRI_ASSERT(skipped.nothingSkipped());
-            }
+          auto const& [state, skipped, block] = engine->execute(::defaultStack);
+          // The default call asks for No skips.
+          TRI_ASSERT(skipped.nothingSkipped());
+          if (state == ExecutionState::WAITING) {
+            return state;
           }
 
           // block == nullptr => state == DONE
@@ -869,22 +902,8 @@ auto Query::execute(QueryResult& queryResult)
           queryResult.extra = std::make_shared<VPackBuilder>();
         }
 
-        auto suspensionSemaphore = SuspensionSemaphore{};
-        // TODO get an awaitable from the sharedstate instead, if possible
-        sharedState()->setWakeupHandler(
-            withLogContext([&] { return suspensionSemaphore.notify(); }));
-        auto guard = arangodb::scopeGuard(
-            [&]() noexcept { sharedState()->resetWakeupHandler(); });
-
         // will set warnings, stats, profile and cleanup plan and engine
-        auto state = ExecutionState::HASMORE;
-        while (state != ExecutionState::DONE) {
-          state = finalize(*queryResult.extra);
-          TRI_ASSERT(state != ExecutionState::HASMORE);
-          if (state == ExecutionState::WAITING) {
-            co_await suspensionSemaphore.await();
-          }
-        }
+        auto state = finalize(*queryResult.extra);
         bool isCachingAllowed = !_transactionContext->isStreaming() ||
                                 _trx->state()->isReadOnlyTransaction();
         if (state == ExecutionState::DONE && _cacheEntry != nullptr &&
@@ -893,7 +912,7 @@ auto Query::execute(QueryResult& queryResult)
           QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
         }
 
-        co_return;
+        return state;
       }
     }
     // We should not be able to get here
@@ -919,7 +938,7 @@ auto Query::execute(QueryResult& queryResult)
     queryResult.reset(result());
   }
 
-  co_return;
+  return ExecutionState::DONE;
 }
 
 /**
@@ -933,9 +952,23 @@ auto Query::execute(QueryResult& queryResult)
  */
 QueryResult Query::executeSync() {
   _executeCallerWaiting = ExecuteCallerWaiting::Synchronously;
+  std::shared_ptr<SharedQueryState> ss;
+
   QueryResult queryResult;
-  execute(queryResult).waitAndGet();
-  return queryResult;
+  do {
+    auto state = executeInternal(queryResult);
+    if (state != ExecutionState::WAITING) {
+      TRI_ASSERT(state == ExecutionState::DONE);
+      return queryResult;
+    }
+
+    if (!ss) {
+      ss = sharedState();
+    }
+
+    TRI_ASSERT(ss != nullptr);
+    ss->waitForAsyncWakeup();
+  } while (true);
 }
 
 #ifdef USE_V8
