@@ -373,7 +373,7 @@ class instance {
     for (const [key, value] of Object.entries(this.options.extraArgs)) {
       let splitkey = key.split('.');
       if (splitkey.length >= 2 &&
-          instanceRole.find(role => { splitkey[0] === role; }) !== undefined) {
+          instanceRole.hasOwnProperty(splitkey[0])) {
         if (splitkey[0] === this.instanceRole) {
           this.args[splitkey.slice(1).join('.')] = value;
         }
