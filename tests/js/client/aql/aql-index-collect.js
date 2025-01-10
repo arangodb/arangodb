@@ -64,6 +64,7 @@ function IndexCollectOptimizerTestSuite() {
         [`FOR doc IN ${collection} COLLECT k = doc.k RETURN k`, false], // because of bad selectivity
         [`FOR doc IN ${collection} COLLECT a = doc.a.c RETURN a`, false],
         [`FOR doc IN ${collection} SORT doc.a DESC COLLECT a = doc.a RETURN [a]`, false], // desc not possible
+        [`FOR doc IN ${collection} SORT doc.a ASC COLLECT a = doc.a RETURN [a]`, true],
         [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b RETURN [a, b]`, true],
         [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b, d = doc.d RETURN [a, b, d]`, true],
         [`FOR doc IN ${collection} COLLECT a = doc.a, d = doc.d RETURN [a, d]`, false],

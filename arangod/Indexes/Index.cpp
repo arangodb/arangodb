@@ -1237,7 +1237,7 @@ std::unique_ptr<AqlIndexDistinctScanIterator> Index::distinctScanFor(
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       std::string(
-          "no default implementation for distinctScanFor. index type: ") +
+          "no default implementation for distinctScanFor. index-type = ") +
           typeName());
 }
 

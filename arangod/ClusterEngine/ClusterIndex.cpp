@@ -519,8 +519,8 @@ bool ClusterIndex::supportsDistinctScan(
   switch (_indexType) {
     case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return RocksDBVPackIndex::checkSupportScanDistinct(scanOptions,
-                                                           _fields);
+        return RocksDBVPackIndex::supportsScanDistinctForFields(scanOptions,
+                                                                _fields);
       }
     } break;
 

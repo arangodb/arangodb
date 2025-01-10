@@ -142,7 +142,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
       transaction::Methods* trx,
       IndexDistinctScanOptions const& scanOptions) override;
 
-  static bool checkSupportScanDistinct(
+  static bool supportsScanDistinctForFields(
       IndexDistinctScanOptions const&,
       std::vector<std::vector<basics::AttributeName>> const& fields) noexcept;
 

@@ -133,10 +133,13 @@ bool isIndexNodeEligible(IndexNode const& in) {
   return true;
 }
 
-bool isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
-                    IndexNode const& idx, IndexDistinctScanOptions& scanOptions,
-                    std::vector<CalculationNode*>& calculationsToRemove,
-                    IndexCollectGroups& groups) {
+std::optional<std::tuple<IndexDistinctScanOptions,
+                         std::vector<CalculationNode*>, IndexCollectGroups>>
+isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
+               IndexNode const& idx) {
+  IndexDistinctScanOptions scanOptions;
+  std::vector<CalculationNode*> calculationsToRemove;
+  IndexCollectGroups groups;
   auto const& coveredFields = idx.getSingleIndex()->coveredFields();
 
   // every group variable has to be a field of the index
@@ -144,7 +147,7 @@ bool isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
     // get the producing node for the in variable, it should be a calculation
     auto producer = plan.getVarSetBy(grp.inVar->id);
     if (producer->getType() != EN::CALCULATION) {
-      return false;
+      return std::nullopt;
     }
 
     // check if it is just an attribute access for the out variable of the
@@ -159,7 +162,7 @@ bool isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
           << "Calculation " << calculation->id()
           << " not eligible - expression is not an attribute access on index ("
           << idx.id() << ") out variable";
-      return false;
+      return std::nullopt;
     }
 
     // check if this attribute is a covered field
@@ -169,7 +172,7 @@ bool isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
       LOG_RULE << "Calculation " << calculation->id()
                << " not eligible - accessed attribute " << access.second
                << " which is not covered by the index";
-      return false;
+      return std::nullopt;
     }
 
     std::size_t fieldIndex = std::distance(coveredFields.begin(), iter);
@@ -185,10 +188,11 @@ bool isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
     LOG_RULE << "Index " << idx.id()
              << " not eligible - index does not support required distinct scan "
              << scanOptions;
-    return false;
+    return std::nullopt;
   }
 
-  return true;
+  return std::make_tuple(std::move(scanOptions),
+                         std::move(calculationsToRemove), std::move(groups));
 }
 
 }  // namespace
@@ -259,14 +263,12 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
     LOG_RULE << "Found collect " << collectNode->id() << " with index "
              << indexNode->id();
 
-    IndexCollectGroups groups;
-    IndexDistinctScanOptions scanOptions;
-    std::vector<CalculationNode*> calculationsToRemove;
-
-    if (not isEligiblePair(*plan, *collectNode, *indexNode, scanOptions,
-                           calculationsToRemove, groups)) {
+    auto isEligibleResult = isEligiblePair(*plan, *collectNode, *indexNode);
+    if (not isEligibleResult) {
       continue;
     }
+
+    auto& [scanOptions, calculationsToRemove, groups] = *isEligibleResult;
 
     auto indexCollectNode = plan->createNode<IndexCollectNode>(
         plan.get(), plan->nextId(), indexNode->collection(),

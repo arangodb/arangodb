@@ -3206,7 +3206,7 @@ Index::StreamSupportResult RocksDBVPackIndex::supportsStreamInterface(
                                       streamOpts);
 }
 
-bool RocksDBVPackIndex::checkSupportScanDistinct(
+bool RocksDBVPackIndex::supportsScanDistinctForFields(
     IndexDistinctScanOptions const& options,
     std::vector<std::vector<basics::AttributeName>> const& fields) noexcept {
   auto distinctFields = options.distinctFields;
@@ -3230,7 +3230,7 @@ bool RocksDBVPackIndex::checkSupportScanDistinct(
 
 bool RocksDBVPackIndex::supportsDistinctScan(
     IndexDistinctScanOptions const& scanOptions) const noexcept {
-  return checkSupportScanDistinct(scanOptions, _fields);
+  return supportsScanDistinctForFields(scanOptions, _fields);
 }
 
 template<bool isUnique>
@@ -3253,7 +3253,7 @@ struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
         << inverseFieldMapping << " " << values.size();
     if (iterator) {
       RocksDBKey key;
-      key.constructVPackIndexValue(index->objectId(), builder.slice(),
+      key.constructVPackIndexValue(index->objectId(), nextSeekTarget.slice(),
                                    LocalDocumentId{0});
       iterator->Seek(key.string());
 
@@ -3274,17 +3274,17 @@ struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
     // extract values from key
     VPackSlice keySlice = RocksDBKey::indexedVPack(iterator->key());
     size_t k = 0;
-    builder.clear();
+    nextSeekTarget.clear();
     {
-      VPackArrayBuilder ar{&builder, true};
+      VPackArrayBuilder ar{&nextSeekTarget, true};
       for (auto s : VPackArrayIterator(keySlice)) {
-        builder.add(s);
+        nextSeekTarget.add(s);
         values[inverseFieldMapping[k++]] = s;
         if (k >= values.size()) {
           break;
         }
       }
-      builder.add(VPackSlice::maxKeySlice());
+      nextSeekTarget.add(VPackSlice::maxKeySlice());
     }
     return true;
   }
@@ -3296,7 +3296,7 @@ struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
   std::unique_ptr<rocksdb::Iterator> iterator;
   RocksDBKeyBounds bounds;
   rocksdb::Slice end;
-  velocypack::Builder builder;
+  velocypack::Builder nextSeekTarget;
 };
 
 std::unique_ptr<AqlIndexDistinctScanIterator>
