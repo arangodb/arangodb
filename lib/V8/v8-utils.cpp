@@ -4033,12 +4033,14 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
     gc = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
+  TRI_GET_GLOBALS();
   if (gc) {
+    v8g->_inForcedCollect = true;
     TRI_RunGarbageCollectionV8(isolate, n);
+    v8g->_inForcedCollect = false;
   }
 
   // wait without gc
-  TRI_GET_GLOBALS();
   Result res = ::doSleep(n, v8g->_server);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
