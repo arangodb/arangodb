@@ -36,14 +36,21 @@ using namespace arangodb::aql;
 
 ExecutionNode* IndexCollectNode::clone(ExecutionPlan* plan,
                                        bool withDependencies) const {
-  auto c = std::make_unique<IndexCollectNode>(plan, _id, collection(), _index,
-                                              _oldIndexVariable, _groups,
-                                              _collectOptions);
+  IndexCollectAggregations aggregations;
+  aggregations.reserve(_aggregations.size());
+  for (auto const& agg : _aggregations) {
+    aggregations.emplace_back(IndexCollectAggregation{
+        agg.type, agg.outVariable, agg.expression->clone(plan->getAst())});
+  }
+
+  auto c = std::make_unique<IndexCollectNode>(
+      plan, _id, collection(), _index, _oldIndexVariable, _groups,
+      std::move(aggregations), _collectOptions);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
 
-std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlock(
+std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockDistinctScan(
     ExecutionEngine& engine) const {
   IndexDistinctScanInfos infos;
   infos.groupRegisters.reserve(_groups.size());
@@ -67,6 +74,19 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlock(
       &engine, this, registerInfos, std::move(infos));
 }
 
+std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
+    ExecutionEngine& engine) const {
+  abort();
+}
+
+std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlock(
+    ExecutionEngine& engine) const {
+  if (_aggregations.empty()) {
+    return createBlockDistinctScan(engine);
+  }
+  return createBlockAggregationScan(engine);
+}
+
 IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice slice)
     : ExecutionNode(plan, slice),
@@ -82,6 +102,14 @@ IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
     g.outVariable = Variable::varFromVPack(plan->getAst(), gs, "outVariable");
     g.indexField = gs.get("indexField").getNumericValue<std::size_t>();
   }
+  auto aggregations = slice.get("aggregations");
+  for (auto as : VPackArrayIterator(aggregations)) {
+    auto& agg = _aggregations.emplace_back();
+    agg.outVariable = Variable::varFromVPack(plan->getAst(), as, "outVariable");
+    agg.type = as.get("type").copyString();
+    agg.expression = std::make_unique<Expression>(
+        plan->getAst(), plan->getAst()->createNode(as.get("expression")));
+  }
 }
 
 IndexCollectNode::IndexCollectNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -89,13 +117,24 @@ IndexCollectNode::IndexCollectNode(ExecutionPlan* plan, ExecutionNodeId id,
                                    std::shared_ptr<arangodb::Index> index,
                                    Variable const* oldIndexVariable,
                                    IndexCollectGroups groups,
+                                   IndexCollectAggregations aggregations,
                                    CollectOptions collectOptions)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
       _index(std::move(index)),
       _groups(std::move(groups)),
+      _aggregations(std::move(aggregations)),
       _oldIndexVariable(oldIndexVariable),
-      _collectOptions(collectOptions) {}
+      _collectOptions(collectOptions) {
+#if ARANGODB_ENABLE_MAINTAINER_MODE
+  for (auto const& agg : _aggregations) {
+    VarSet usedVariables;
+    agg.expression->variables(usedVariables);
+    TRI_ASSERT(usedVariables.size() == 1);
+    TRI_ASSERT(usedVariables.contains(_oldIndexVariable));
+  }
+#endif
+}
 
 void IndexCollectNode::doToVelocyPack(velocypack::Builder& builder,
                                       unsigned int flags) const {
@@ -120,6 +159,17 @@ void IndexCollectNode::doToVelocyPack(velocypack::Builder& builder,
           builder.add(VPackValue(p.name));
         }
       }
+    }
+  }
+  {
+    VPackArrayBuilder ab(&builder, "aggregations");
+    for (auto const& agg : _aggregations) {
+      VPackObjectBuilder ob(&builder);
+      builder.add("type", agg.type);
+      builder.add(VPackValue("outVariable"));
+      agg.outVariable->toVelocyPack(builder);
+      builder.add(VPackValue("expression"));
+      agg.expression->toVelocyPack(builder, false);
     }
   }
 

@@ -273,7 +273,8 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
     auto indexCollectNode = plan->createNode<IndexCollectNode>(
         plan.get(), plan->nextId(), indexNode->collection(),
         indexNode->getSingleIndex(), indexNode->outVariable(),
-        std::move(groups), collectNode->getOptions());
+        std::move(groups), IndexCollectAggregations{},
+        collectNode->getOptions());
 
     plan->replaceNode(collectNode, indexCollectNode);
     plan->unlinkNode(indexNode);
