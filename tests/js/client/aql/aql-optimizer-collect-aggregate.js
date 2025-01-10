@@ -1804,6 +1804,20 @@ function optimizerAggregateTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test push
+////////////////////////////////////////////////////////////////////////////////
+
+    testPush : function () {
+      const values = [ 1, 2, 3, 4, 5, 6, null, "Hello", false ];
+      const query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = PUSH(i) RETURN m";
+
+      let results = db._query(query).toArray();
+      assertEqual(1, results.length);
+      let collected = results[0].sort();
+      assertTrue(values, collected);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test bit_and
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2428,7 +2442,7 @@ function optimizerAggregateCollectionTestSuite () {
 
 function optimizerAggregateResultsSuite () {
   const opt = { optimizer: { rules: ["-collect-in-cluster"] } };
-  let compare = function(query) {
+  let compare = function(query, sortResult = false) {
     let expected = db._query(query, null, opt).toArray()[0];
     if (typeof expected === 'number') {
       expected = expected.toFixed(6);
@@ -2442,6 +2456,10 @@ function optimizerAggregateResultsSuite () {
     let actual   = db._query(query).toArray()[0];
     if (typeof actual === 'number') {
       actual = actual.toFixed(6);
+    }
+    if (sortResult) {
+      actual.sort();
+      expected.sort();
     }
    
     assertEqual(expected, actual, query);
@@ -2556,9 +2574,13 @@ function optimizerAggregateResultsSuite () {
     testBitXOr1 : function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_XOR(doc.value1) RETURN v");
     },
-    
+
     testBitXOr2 : function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_XOR(doc.value2) RETURN v");
+    },
+
+    testPushAggregator : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = PUSH(doc.value2) RETURN v", true);
     },
 
   };
@@ -2572,4 +2594,3 @@ if (isCluster) {
 }
 
 return jsunity.done();
-
