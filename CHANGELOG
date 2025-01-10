@@ -1,6 +1,19 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* Rebuilt included rclone v1.62.2 with go1.22.10 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.18.12 and arangosync to
+  v2.19.12.
+
+* Introduce expiry time for idle TCP/IP connections in the ConnectionCache
+  (for `SimpleHttpClient`) with a default of 120s. This is to prevent
+  errors in replication caused by cloud environments terminating
+  connections. Also add retries in a few places. Also increase the
+  timeout in initial sync to transfer up to 5000 documents from 25s to
+  900s. This addresses BTS-2011, BTS-2042 and BTS-2035.
+
 * Don't cleanup failed agency jobs if they are subjobs of pending jobs.
   This avoids a bug in CleanOutServer jobs, where such a job could complete
   seemingly successfully despite the fact that some MoveShard jobs had 
@@ -11,10 +24,6 @@ v3.11.13 (XXXX-XX-XX)
 * Fix shard synchronisation race where after a shard move the new
   leader informs followers before it updates Current in the Agency. In
   some cases the old leader fell subsequently out of sync.
-
-* Rebuilt included rclone v1.62.2 with go1.22.8 and non-vulnerable dependencies.
-
-* Updated ArangoDB Starter to v0.18.11 and arangosync to v2.19.10.
 
 * BTS-2017: fix CleanOutServer for satellite collections.
 
