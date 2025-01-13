@@ -460,8 +460,7 @@ futures::Future<futures::Unit> RestImportHandler::createFromJson(
     VPackSlice documents = parseVPackBody(success);
 
     if (!success) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "cannot parse JSON body");
+      // JSON parsing error will be handed on!
       co_return;
     }
     if (!documents.isArray()) {
@@ -588,8 +587,7 @@ futures::Future<futures::Unit> RestImportHandler::createFromVPack(
   VPackSlice documents = parseVPackBody(success);
 
   if (!success) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "cannot parse JSON body");
+    // JSON parsing error will be handed on!
     co_return;
   }
   if (!documents.isArray()) {
