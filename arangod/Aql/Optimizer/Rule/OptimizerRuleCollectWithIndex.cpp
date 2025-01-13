@@ -133,6 +133,27 @@ bool isIndexNodeEligible(IndexNode const& in) {
   return true;
 }
 
+bool checkSelectivityFitsAlgorithm(IndexNode const& in) {
+  auto index = in.getSingleIndex();
+  // assume there are n documents in the collection and we have
+  // k distinct features. A linear search is in O(n) while a distinct scan
+  // requires O(k log n). So checking for k log n < n, it follows
+  // k / n < 1 / log n, where k / n is precisely the selectivity estimate.
+  double selectivity = index->selectivityEstimate();
+  auto numberOfItems = in.estimateCost().estimatedNrItems;
+
+  double const requiredSelectivity = 1. / log(numberOfItems);
+
+  if (selectivity > requiredSelectivity) {
+    LOG_RULE << "IndexNode " << in.id()
+             << " not eligible - selectivity is too high, actual = "
+             << selectivity << " max allowed = " << requiredSelectivity;
+    return false;
+  }
+
+  return true;
+}
+
 std::optional<std::tuple<IndexDistinctScanOptions,
                          std::vector<CalculationNode*>, IndexCollectGroups>>
 isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
@@ -241,6 +262,10 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
     LOG_RULE << "Found candidate index node " << indexNode->id();
 
     if (not isIndexNodeEligible(*indexNode)) {
+      continue;
+    }
+
+    if (not checkSelectivityFitsAlgorithm(*indexNode)) {
       continue;
     }
 
