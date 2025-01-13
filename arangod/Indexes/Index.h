@@ -44,7 +44,9 @@ class LogicalCollection;
 struct IndexIteratorOptions;
 struct ResourceMonitor;
 struct AqlIndexStreamIterator;
+struct AqlIndexDistinctScanIterator;
 struct IndexStreamOptions;
+struct IndexDistinctScanOptions;
 
 struct UserVectorIndexDefinition;
 
@@ -437,6 +439,11 @@ class Index {
 
   virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
       transaction::Methods* trx, IndexStreamOptions const&);
+
+  virtual bool supportsDistinctScan(
+      IndexDistinctScanOptions const&) const noexcept;
+  virtual std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
+      transaction::Methods* trx, IndexDistinctScanOptions const&);
 
   virtual UserVectorIndexDefinition const& getVectorIndexDefinition();
 

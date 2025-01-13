@@ -489,16 +489,14 @@ Index::StreamSupportResult ClusterIndex::supportsStreamInterface(
         return RocksDBVPackIndex::checkSupportsStreamInterface(
             _coveredFields, _fields, _unique, opts);
       }
-      [[fallthrough]];
-    }
+    } break;
 
     case Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return RocksDBPrimaryIndex::checkSupportsStreamInterface(_coveredFields,
                                                                  opts);
       }
-      [[fallthrough]];
-    }
+    } break;
 
     default:
       break;
@@ -514,4 +512,20 @@ UserVectorIndexDefinition const& ClusterIndex::getVectorIndexDefinition() {
         "Requesting vector index definition on a non-vector index");
   }
   return *_vectorIndexDefinition;
+}
+
+bool ClusterIndex::supportsDistinctScan(
+    IndexDistinctScanOptions const& scanOptions) const noexcept {
+  switch (_indexType) {
+    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
+        return RocksDBVPackIndex::supportsScanDistinctForFields(scanOptions,
+                                                                _fields);
+      }
+    } break;
+
+    default:
+      break;
+  }
+  return false;
 }
