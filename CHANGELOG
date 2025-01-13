@@ -1,6 +1,18 @@
 devel
 -----
 
+* Make `RestImportHandler` asynchronous. This is to avoid some blockages
+  observed in the context of BTS-2047.
+
+* Make `arangoimport` more stable. The default batch size is lowered to 4MB
+  (from 8MB) and the default maximal streaming transaction size is increased
+  from 128MB to 512MB. In examples we have seen that the overhead from input
+  data size to the memory usage in the actual RocksDB transaction can be up
+  to 80x, therefore `arangoimport` could run into resource limits with the
+  normal batch size. This is particularly acute for smart edge collections,
+  where `arangoimport` has to use streaming transactions and where small
+  edges have to be indexed multiple times. Fixes BTS-2047.
+
 * Add optional `factory` property to `params` in vector index definition. The
   index factory enables to create composite vector indexes supported by FAISS.
   The factory string defines the index structure, including preprocessing,
