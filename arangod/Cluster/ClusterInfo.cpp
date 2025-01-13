@@ -7326,6 +7326,10 @@ void ClusterInfo::waitForSyncersToStop() {
       FATAL_ERROR_EXIT();
     }
   }
+
+  // make sure syncers threads must be gone
+  _planSyncer.reset();
+  _curSyncer.reset();
 }
 
 VPackSlice PlanCollectionReader::indexes() {
