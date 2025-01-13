@@ -25,6 +25,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/IndexDistinctScanExecutor.h"
+#include "Aql/Executor/IndexAggregateScanExecutor.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/ExecutionEngine.h"
 #include "IndexCollectNode.h"
@@ -74,9 +75,92 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockDistinctScan(
       &engine, this, registerInfos, std::move(infos));
 }
 
+namespace {
+bool attributeMatches(aql::AttributeNamePath const& path,
+                      std::vector<basics::AttributeName> const& field) {
+  if (path.size() != field.size()) {
+    return false;
+  }
+
+  for (size_t k = 0; k < path.size(); k++) {
+    if (field[k].shouldExpand) {
+      return false;
+    }
+
+    if (path[k] != field[k].name) {
+      return false;
+    }
+  }
+  return true;
+}
+}  // namespace
+
 std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
     ExecutionEngine& engine) const {
-  abort();
+  IndexAggregateScanInfos infos;
+  infos.groups.reserve(_groups.size());
+  infos.index = _index;
+  infos.collection = CollectionAccessingNode::collection();
+  infos.query = &engine.getQuery();
+
+  RegIdSet writableOutputRegisters;
+  for (auto const& group : _groups) {
+    auto& g = infos.groups.emplace_back();
+    g.outputRegister =
+        getRegisterPlan()->variableToRegisterId(group.outVariable);
+    g.indexField = group.indexField;
+    writableOutputRegisters.emplace(g.outputRegister);
+  }
+
+  containers::FlatHashMap<size_t, Variable const*> indexFieldsToVariables;
+
+  auto const& coveredFields = _index->coveredFields();
+
+  std::vector<std::string_view> attribView;
+
+  for (auto const& agg : _aggregations) {
+    auto& a = infos.aggregations.emplace_back();
+    a.type = agg.type;
+    a.outputRegister = getRegisterPlan()->variableToRegisterId(agg.outVariable);
+    a.expression = agg.expression->clone(infos.query->ast());
+    writableOutputRegisters.emplace(a.outputRegister);
+
+    containers::FlatHashSet<aql::AttributeNamePath> attributes;
+    Ast::getReferencedAttributesRecursive(a.expression->node(),
+                                          _oldIndexVariable, "", attributes,
+                                          infos.query->resourceMonitor());
+    for (auto const& attr : attributes) {
+      auto iter = std::find_if(
+          coveredFields.begin(), coveredFields.end(),
+          [&](auto const& field) { return attributeMatches(attr, field); });
+      ADB_PROD_ASSERT(iter != coveredFields.end());
+      std::size_t fieldIndex = std::distance(coveredFields.begin(), iter);
+      auto it = indexFieldsToVariables.find(fieldIndex);
+      if (it == indexFieldsToVariables.end()) {
+        it = indexFieldsToVariables
+                 .emplace(
+                     fieldIndex,
+                     infos.query->ast()->variables()->createTemporaryVariable())
+                 .first;
+      }
+
+      attribView.clear();
+      attribView.reserve(attr.size());
+      std::copy(attr.get().begin(), attr.get().end(),
+                std::back_inserter(attribView));
+
+      a.expression->replaceAttributeAccess(_oldIndexVariable, attribView,
+                                           it->second);
+    }
+  }
+
+  for (auto [field, var] : indexFieldsToVariables) {
+    infos._expressionVariables.emplace(var->id, field);
+  }
+
+  auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
+  return std::make_unique<ExecutionBlockImpl<IndexAggregateScanExecutor>>(
+      &engine, this, registerInfos, std::move(infos));
 }
 
 std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlock(

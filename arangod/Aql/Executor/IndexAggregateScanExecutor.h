@@ -52,7 +52,7 @@ struct IndexAggregateScanInfos {
   struct Aggregation {
     std::string type;
     RegisterId outputRegister;
-    Expression expression;
+    std::unique_ptr<Expression> expression;
   };
 
   std::vector<Aggregation> aggregations;
@@ -106,6 +106,7 @@ struct IndexAggregateScanExecutor {
   std::vector<VPackSlice> _projectionSlices;
   InputAqlItemRow _inputRow{CreateInvalidInputRowHint{}};
   aql::AqlFunctionsInternalCache _functionsCache;
+  containers::FlatHashMap<VariableId, size_t> _variablesToProjectionsRelative;
 };
 
 }  // namespace aql

@@ -28,6 +28,8 @@
 #include "Aql/Aggregator.h"
 #include "Basics/VelocyPackHelper.h"
 
+#define LOG_AGG_SCAN LOG_DEVEL_IF(false)
+
 namespace arangodb::aql {
 
 namespace {
@@ -86,26 +88,34 @@ auto IndexAggregateScanExecutor::skipRowsRange(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+struct DumpVpackSpan {
+  std::span<VPackSlice> _slices;
+
+  friend std::ostream& operator<<(std::ostream& os, DumpVpackSpan const& vs) {
+    for (size_t k = 0; k < vs._slices.size(); k++) {
+      if (k > 0) {
+        os << ", ";
+      }
+      os << vs._slices[k].toJson();
+    }
+    return os;
+  }
+};
+
 auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                              OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   LocalDocumentId docId;
-  bool hasMore;
+  bool hasMore = true;
   while (inputRange.hasDataRow() && !output.isFull()) {
     // read one group
     if (not _inputRow.isInitialized()) {
-      ExecutorState state;
-      std::tie(state, _inputRow) = inputRange.nextDataRow();
-      if (state == ExecutorState::DONE) {
-        break;
-      }
-
-      hasMore = _iterator->next(_keySlices, docId, _projectionSlices);
-      if (not hasMore) {
-        break;
-      }
+      LOG_AGG_SCAN << "NEXT INPUT ROW";
+      _inputRow = inputRange.peekDataRow().second;
 
       _iterator->cacheCurrentKey(_currentGroupKeySlices);
+      LOG_AGG_SCAN << "[SCAN] Group keys "
+                   << DumpVpackSpan{_currentGroupKeySlices};
     }
 
     SliceSpanExpressionContext context{
@@ -114,23 +124,35 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         _functionsCache,
         {/* no external variables supported yet */},
         _inputRow,
-        _infos._expressionVariables};
+        _variablesToProjectionsRelative};
     while (hasMore) {
       // evaluate aggregator expression
       context._sliceSpan = _projectionSlices;
+
+      LOG_AGG_SCAN << "[SCAN] Found Projections "
+                   << DumpVpackSpan{_projectionSlices};
       for (size_t k = 0; k < _infos.aggregations.size(); k++) {
+        std::string expr;
+        _infos.aggregations[k].expression->stringify(expr);
+        LOG_AGG_SCAN << "evaluate expression " << _infos._expressionVariables
+                     << " expr = " << expr;
         bool mustDestroy;
         AqlValue result =
-            _infos.aggregations[k].expression.execute(&context, mustDestroy);
+            _infos.aggregations[k].expression->execute(&context, mustDestroy);
         AqlValueGuard guard(result, mustDestroy);
+        LOG_AGG_SCAN << "[SCAN] Agg " << k << " reduce with value ";
         _aggregatorInstances[k]->reduce(result);
       }
 
       // advance iterator
       hasMore = _iterator->next(_keySlices, docId, _projectionSlices);
+
+      LOG_AGG_SCAN << "[SCAN] Next has more " << hasMore;
       if (not hasMore) {
         break;
       }
+
+      LOG_AGG_SCAN << "[SCAN] Found keys " << DumpVpackSpan{_keySlices};
 
       // check if the keys still match
       for (size_t k = 0; k < _keySlices.size(); k++) {
@@ -143,22 +165,28 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   endOfGroup:
 
+    LOG_AGG_SCAN << "[SCAN] End of group";
     // fill output
     for (size_t k = 0; k < _infos.groups.size(); k++) {
-      output.moveValueInto(_infos.groups[k].outputRegister,
-                           inputRange.peekDataRow().second,
+      output.moveValueInto(_infos.groups[k].outputRegister, _inputRow,
                            _currentGroupKeySlices[k]);
     }
     for (size_t k = 0; k < _infos.aggregations.size(); k++) {
-      output.moveValueInto(_infos.aggregations[k].outputRegister,
-                           inputRange.peekDataRow().second,
-                           _aggregatorInstances[k]->stealValue());
-      _aggregatorInstances[k].reset();
+      AqlValue r = _aggregatorInstances[k]->stealValue();
+      AqlValueGuard guard{r, true};
+      LOG_AGG_SCAN << "Agg " << k << " final value = " << r.toDouble();
+      output.moveValueInto(_infos.aggregations[k].outputRegister, _inputRow,
+                           &guard);
     }
     output.advanceRow();
 
     if (hasMore) {
       _iterator->cacheCurrentKey(_currentGroupKeySlices);
+      LOG_AGG_SCAN << "[SCAN] New group keys "
+                   << DumpVpackSpan{_currentGroupKeySlices};
+    } else {
+      _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      inputRange.advanceDataRow();
     }
   }
 
@@ -170,7 +198,6 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
     : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
   _currentGroupKeySlices.resize(_infos.groups.size());
   _keySlices.resize(_infos.groups.size());
-  _projectionSlices.resize(_infos.aggregations.size());
 
   IndexStreamOptions streamOptions;
 
@@ -179,7 +206,22 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
                  std::back_inserter(streamOptions.usedKeyFields),
                  [](auto const& i) { return i.indexField; });
 
+  size_t offset = 0;
+  for (auto const& [var, key] : _infos._expressionVariables) {
+    streamOptions.projectedFields.emplace_back(key);
+    _variablesToProjectionsRelative.emplace(var, offset++);
+  }
+
+  _projectionSlices.resize(streamOptions.projectedFields.size());
+  LOG_AGG_SCAN << "[SCAN] constructing stream with options " << streamOptions;
   _iterator = _infos.index->streamForCondition(&_trx, streamOptions);
+  bool hasMore = _iterator->reset(_currentGroupKeySlices, {});
+  LOG_AGG_SCAN << "[SCAN] after reset at "
+               << DumpVpackSpan{_currentGroupKeySlices}
+               << " hasMore= " << hasMore;
+  _iterator->load(_projectionSlices);
+  LOG_AGG_SCAN << "[SCAN] projections are  "
+               << DumpVpackSpan{_projectionSlices};
 
   _aggregatorInstances.reserve(_infos.aggregations.size());
   for (auto const& agg : _infos.aggregations) {

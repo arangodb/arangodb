@@ -160,7 +160,7 @@ function IndexCollectExecutionTestSuite() {
       }
       c.save(docs);
       c.ensureIndex({type: "persistent", fields: ["k"]});
-      c.ensureIndex({type: "persistent", fields: ["a", "b"]});
+      c.ensureIndex({type: "persistent", fields: ["a", "b"], storedValues: ["c"]});
       c.ensureIndex({type: "persistent", fields: ["b"]});
       c.ensureIndex({type: "persistent", fields: ["c"]});
       c.ensureIndex({type: "persistent", fields: ["m", "a"]});
@@ -184,6 +184,10 @@ function IndexCollectExecutionTestSuite() {
             COLLECT b = doc.b RETURN b) RETURN [as, bs]`],
 
         [`FOR doc IN ${collection} COLLECT m = doc.m AGGREGATE a = SUM(doc.a) RETURN [m, a]`],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = SUM(doc.b) RETURN [a, b]`],
+        [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b AGGREGATE c = SUM(doc.c) RETURN [a, b, c]`],
+        [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b
+            AGGREGATE c = BIT_XOR(doc.c), d = BIT_OR(doc.c), e = BIT_AND(doc.c) RETURN [a, b, c, d, e]`],
       ];
 
       for (const [query] of queries) {

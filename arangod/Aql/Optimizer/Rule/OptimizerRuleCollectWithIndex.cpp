@@ -252,7 +252,7 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
                  << " which is not covered by the index";
         return std::nullopt;
       }
-      std::size_t fieldIndex = std::distance(keyFields.begin(), iter);
+      std::size_t fieldIndex = std::distance(coveredFields.begin(), iter);
       aggregationFields.emplace_back(fieldIndex);
     }
 
@@ -278,7 +278,7 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
     streamOptions.projectedFields = aggregationFields;
     if (auto support =
             idx.getSingleIndex()->supportsStreamInterface(streamOptions);
-        support.hasSupport()) {
+        !support.hasSupport()) {
       LOG_RULE
           << "Index " << idx.id()
           << " not eligible - index does not support required stream operation "
