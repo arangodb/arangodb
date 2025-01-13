@@ -182,6 +182,8 @@ function IndexCollectExecutionTestSuite() {
         [`FOR doc IN ${collection} COLLECT a = doc.a, m = doc.m RETURN [a, m]`],
         [`LET as = (FOR doc IN ${collection} COLLECT a = doc.a RETURN a) LET bs = (FOR doc IN ${collection}
             COLLECT b = doc.b RETURN b) RETURN [as, bs]`],
+
+        [`FOR doc IN ${collection} COLLECT m = doc.m AGGREGATE a = SUM(doc.a) RETURN [m, a]`],
       ];
 
       for (const [query] of queries) {
