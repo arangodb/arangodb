@@ -2580,7 +2580,7 @@ function optimizerAggregateResultsSuite () {
     },
 
     testPushAggregator : function () {
-      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = PUSH(doc.value2) RETURN v");
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = PUSH(doc.value2) RETURN v", true);
     },
 
   };
