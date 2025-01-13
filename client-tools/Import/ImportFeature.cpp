@@ -60,7 +60,7 @@ ImportFeature::ImportFeature(Server& server, int* result)
       _useBackslash(false),
       _convert(true),
       _autoChunkSize(false),
-      _chunkSize(1024 * 1024 * 8),
+      _chunkSize(1024 * 1024 * 4),
       _threadCount(2),
       _overwriteCollectionPrefix(false),
       _createCollection(false),
