@@ -122,6 +122,11 @@ bool isIndexNodeEligible(IndexNode const& in) {
     return false;
   }
 
+  return true;
+}
+
+bool checkSelectivityFitsAlgorithm(IndexNode const& in) {
+  auto index = in.getSingleIndex();
   // assume there are n documents in the collection and we have
   // k distinct features. A linear search is in O(n) while a distinct scan
   // requires O(k log n). So checking for k log n < n, it follows
@@ -332,6 +337,10 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
     LOG_RULE << "Found candidate index node " << indexNode->id();
 
     if (not isIndexNodeEligible(*indexNode)) {
+      continue;
+    }
+
+    if (not checkSelectivityFitsAlgorithm(*indexNode)) {
       continue;
     }
 
