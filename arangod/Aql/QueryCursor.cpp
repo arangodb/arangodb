@@ -253,6 +253,38 @@ uint64_t QueryStreamCursor::memoryUsage() const noexcept {
 
 auto QueryStreamCursor::dump(VPackBuilder& builder)
     -> async<std::pair<ExecutionState, Result>> {
+  _query->setExecuteCallerWaiting(Query::ExecuteCallerWaiting::Asynchronously);
+
+  auto suspensionSemaphore = SuspensionSemaphore{};
+  // TODO Get an awaitable from the SharedState instead: Having it execute
+  //      a callback on a new scheduler thread that possibly just
+  //      increases a counter is unnecessarily convoluted.
+  setWakeupHandler(
+      withLogContext([&] { return suspensionSemaphore.notify(); }));
+  auto guardWakeupHandler =
+      arangodb::scopeGuard([&]() noexcept { resetWakeupHandler(); });
+
+  auto state = ExecutionState::WAITING;
+  auto result = Result{};
+  // Skip the first await.
+  suspensionSemaphore.notify();
+  while (state == ExecutionState::WAITING) {
+    // Get the number of wakeups. We execute the query up to that many
+    // times before suspending again.
+    auto n = co_await suspensionSemaphore.await();
+    for (auto i = 0; i < n && state == ExecutionState::WAITING; ++i) {
+      auto skipped = SkipResult{};
+      std::tie(state, result) = dumpInternal(builder);
+      // The default call asks for no skips.
+      TRI_ASSERT(skipped.nothingSkipped());
+    }
+  }
+
+  co_return {state, result};
+}
+
+auto QueryStreamCursor::dumpInternal(VPackBuilder& builder)
+    -> std::pair<ExecutionState, Result> {
   TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumped") {
     debugKillQuery();
   }
@@ -270,7 +302,7 @@ auto QueryStreamCursor::dump(VPackBuilder& builder)
       << "executing query " << _id << ": '"
       << _query->queryString().extract(1024) << "'";
 
-  auto const guardV8Executor = scopeGuard([&]() noexcept {
+  auto guard = scopeGuard([&]() noexcept {
     try {
       if (_query) {
         _query->exitV8Executor();
@@ -280,62 +312,48 @@ auto QueryStreamCursor::dump(VPackBuilder& builder)
           << "Failed to exit V8 context: " << ex.what();
     }
   });
-  auto suspensionSemaphore = SuspensionSemaphore{};
-  // TODO Get an awaitable from the SharedState instead: Having it execute a
-  //      callback on a new scheduler thread that possibly just increases a
-  //      counter is unnecessarily complicated.
-  setWakeupHandler(
-      withLogContext([&] { return suspensionSemaphore.notify(); }));
-  auto const guardWakeupHandler =
-      arangodb::scopeGuard([&]() noexcept { resetWakeupHandler(); });
 
   try {
-    auto state = ExecutionState::WAITING;
-    // Skip the first await.
-    suspensionSemaphore.notify();
-    while (state == ExecutionState::WAITING) {
-      // Get the number of wakeups. We execute the query up to that many times
-      // before suspending again.
-      auto n = co_await suspensionSemaphore.await();
-      for (auto i = 0; i < n && state == ExecutionState::WAITING; ++i) {
-        state = prepareDump();
-      }
+    ExecutionState state = prepareDump();
+    if (state == ExecutionState::WAITING) {
+      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
     }
 
     // writeResult will perform async finalize
-    co_return {writeResult(builder), TRI_ERROR_NO_ERROR};
+    return {writeResult(builder), TRI_ERROR_NO_ERROR};
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
-    co_return {
+    return {
         ExecutionState::DONE,
         Result(ex.code(), absl::StrCat("AQL: ", ex.message(),
                                        QueryExecutionState::toStringWithPrefix(
                                            _query->state())))};
   } catch (std::bad_alloc const&) {
     this->setDeleted();
-    co_return {ExecutionState::DONE,
-               Result(TRI_ERROR_OUT_OF_MEMORY,
-                      absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                                   QueryExecutionState::toStringWithPrefix(
-                                       _query->state())))};
+    return {ExecutionState::DONE,
+            Result(TRI_ERROR_OUT_OF_MEMORY,
+                   absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                                QueryExecutionState::toStringWithPrefix(
+                                    _query->state())))};
   } catch (std::exception const& ex) {
     this->setDeleted();
-    co_return {
+    return {
         ExecutionState::DONE,
         Result(TRI_ERROR_INTERNAL,
                absl::StrCat(ex.what(), QueryExecutionState::toStringWithPrefix(
                                            _query->state())))};
   } catch (...) {
     this->setDeleted();
-    co_return {ExecutionState::DONE,
-               Result(TRI_ERROR_INTERNAL,
-                      absl::StrCat(TRI_errno_string(TRI_ERROR_INTERNAL),
-                                   QueryExecutionState::toStringWithPrefix(
-                                       _query->state())))};
+    return {ExecutionState::DONE,
+            Result(TRI_ERROR_INTERNAL,
+                   absl::StrCat(TRI_errno_string(TRI_ERROR_INTERNAL),
+                                QueryExecutionState::toStringWithPrefix(
+                                    _query->state())))};
   }
 }
 
 Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
+  _query->setExecuteCallerWaiting(Query::ExecuteCallerWaiting::Synchronously);
   TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced") {
     debugKillQuery();
   }

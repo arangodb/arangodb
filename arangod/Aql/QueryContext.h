@@ -175,7 +175,11 @@ class QueryContext {
     Synchronously,
   };
 
-  ExecuteCallerWaiting executeCallerWaiting() const noexcept;
+  auto executeCallerWaiting() const noexcept -> ExecuteCallerWaiting;
+
+  friend class QueryStreamCursor;
+  void setExecuteCallerWaiting(
+      ExecuteCallerWaiting executeCallerWaiting) noexcept;
 
  protected:
   /// @brief current resources and limits used by query

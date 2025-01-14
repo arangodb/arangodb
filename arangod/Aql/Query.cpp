@@ -688,7 +688,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 /// @brief execute an AQL query
 auto Query::execute(QueryResult& queryResult)
     -> futures::Future<futures::Unit> {
-  // _executeCallerWaiting = ExecuteCallerWaiting::Asynchronously;
+  setExecuteCallerWaiting(ExecuteCallerWaiting::Asynchronously);
 
   auto suspensionSemaphore = SuspensionSemaphore{};
   // TODO Get an awaitable from the SharedState instead: Having it execute
@@ -951,7 +951,7 @@ auto Query::executeInternal(QueryResult& queryResult) -> ExecutionState {
  * @return The result of this query. The result is always complete
  */
 QueryResult Query::executeSync() {
-  _executeCallerWaiting = ExecuteCallerWaiting::Synchronously;
+  setExecuteCallerWaiting(ExecuteCallerWaiting::Synchronously);
   std::shared_ptr<SharedQueryState> ss;
 
   QueryResult queryResult;
@@ -974,7 +974,7 @@ QueryResult Query::executeSync() {
 #ifdef USE_V8
 // execute an AQL query: may only be called with an active V8 handle scope
 QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
-  _executeCallerWaiting = ExecuteCallerWaiting::Synchronously;
+  setExecuteCallerWaiting(ExecuteCallerWaiting::Synchronously);
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;

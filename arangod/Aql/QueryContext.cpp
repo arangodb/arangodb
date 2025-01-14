@@ -143,7 +143,12 @@ void QueryContext::enterV8Executor() {
                                  "V8 support not implemented");
 }
 
-QueryContext::ExecuteCallerWaiting QueryContext::executeCallerWaiting()
-    const noexcept {
+auto QueryContext::executeCallerWaiting() const noexcept
+    -> ExecuteCallerWaiting {
   return _executeCallerWaiting;
+}
+
+void QueryContext::setExecuteCallerWaiting(
+    QueryContext::ExecuteCallerWaiting executeCallerWaiting) noexcept {
+  _executeCallerWaiting = executeCallerWaiting;
 }

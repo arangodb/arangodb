@@ -124,6 +124,11 @@ class QueryStreamCursor final : public Cursor {
 
   size_t count() const override final { return 0; }
 
+ private:
+  auto dumpInternal(velocypack::Builder& result)
+      -> std::pair<ExecutionState, Result>;
+
+ public:
   // must not return WAITING
   // TODO change the type of ExecutionState
   auto dump(velocypack::Builder& result)
