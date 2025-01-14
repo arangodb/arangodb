@@ -3,6 +3,18 @@ devel
 
 * update iresearch for clang-19 build
 
+* Make `RestImportHandler` asynchronous. This is to avoid some blockages
+  observed in the context of BTS-2047.
+
+* Make `arangoimport` more stable. The default batch size is lowered to 4MB
+  (from 8MB) and the default maximal streaming transaction size is increased
+  from 128MB to 512MB. In examples we have seen that the overhead from input
+  data size to the memory usage in the actual RocksDB transaction can be up
+  to 80x, therefore `arangoimport` could run into resource limits with the
+  normal batch size. This is particularly acute for smart edge collections,
+  where `arangoimport` has to use streaming transactions and where small
+  edges have to be indexed multiple times. Fixes BTS-2047.
+
 * Add optional `factory` property to `params` in vector index definition. The
   index factory enables to create composite vector indexes supported by FAISS.
   The factory string defines the index structure, including preprocessing,
@@ -30,6 +42,41 @@ devel
 * Fail queries that use `APPROX_NEAR` functions but do not apply the vector
   index.
 
+* Improve scanning for distinct values using COLLECT if a usable index is
+  present. A query like this
+  ```
+    FOR doc IN col
+        COLLECT x = doc.x, y = doc.y
+        RETURN [x, y]
+  ```
+  can now employ a persistent index on `["x", "y"]` to drastically speed up
+  the query. The new optimizer rule is called `use-index-for-collect`. Whether the
+  rule is applied depends on the selectivity of the index. If the selectivity
+  is too high, i.e. there are a lot of distinct values, the rule is not applied
+  since scanning for distinct values in such a case would not be beneficial.
+
+  This optimization can be disabled for specific collect statements, using the
+  `disableIndexUsage` option.
+
+  Currently this only works if there is no `INTO` or `AGGREGATE` clause.
+  Filtering is also not yet supported.
+
+* For collect a new PUSH aggregator was added. It aggregates all values into
+  an array. For example
+  ```
+    FOR doc IN col
+        COLLECT x = doc.x AGGREGATE y = PUSH(doc.y)
+        RETURN [x, y]
+  ```
+  is equivalent to
+  ```
+    FOR doc IN col
+        COLLECT x = doc.x INTO y = doc.y
+        RETURN [x, y]
+  ```
+  This unifies `INTO` with `AGGREGATE` and allows collecting into different
+  arrays.
+
 * Rebuilt included rclone v1.65.5 with go1.22.10 and non-vulnerable
   dependencies.
 
@@ -52,6 +99,19 @@ devel
 * Test a collection before it is leased out from the ConnectionCache.
   This helps to detect stale TCP/IP or TLS connections residing in the 
   ConnectionCache and thus prevents network failures due to delays.
+
+* [ES-2294] Fix computation of the arangodb_vocbase_shards_read_only_by_write_concern metric.
+
+* Enable passing `nProbe` as additional search parameter for APPROX_NEAR
+  vector functions. `nProbe` defines how many neighboring lists to look into,
+  it is a trade off between more correct results and time it takes to fetch
+  results. The syntax looks like this:
+  ```aql
+  FOR doc IN col
+  LET distance = APPROX_NEAR_L2(doc.vector, @qp, {nProbe: 20})
+  SORT distance LIMIT 5
+  RETURN {key: doc._key, distance}
+  ````
 
 * Add a vector index based on faiss implementation. The current vector index 
   implementation supports the L2 and cosine metrics. To create a vector index,

@@ -112,7 +112,9 @@ void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
         << "reached heap-size limit of context #" << v8g->_id
         << " interrupting V8 execution ("
         << "heap size limit " << heapSizeLimit << ", used " << usedHeapSize
-        << ") during " << whereFreed;
+        << ") during " << whereFreed << "stillFree " << stillFree
+        << " LIMIT_ABS " << LIMIT_ABS << " freed " << freed << " minFreed "
+        << minFreed;
 
     isolate->TerminateExecution();
     V8PlatformFeature::setOutOfMemory(isolate);

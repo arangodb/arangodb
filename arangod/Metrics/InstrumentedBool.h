@@ -72,9 +72,9 @@ struct InstrumentedBool {
   static void addToGauge(Gauge<uint64_t>* gauge, int64_t v) {
     if (gauge) {
       if (v > 0) {
-        gauge->fetch_add(1);
+        gauge->fetch_add(v);
       } else {
-        gauge->fetch_sub(1);
+        gauge->fetch_sub(-v);
       }
     }
   }

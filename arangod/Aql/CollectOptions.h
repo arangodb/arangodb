@@ -70,6 +70,9 @@ struct CollectOptions final {
   /// @brief stringify the aggregation method
   static std::string_view methodToString(CollectOptions::CollectMethod method);
 
+  /// @brief returns true if the selected method requires the input to be sorted
+  bool requiresSortedInput() const noexcept;
+
   /// @brief type of COLLECT, e.g. sorted, hash, distinct, count...
   CollectMethod method;
   /// @brief if true, then the CollectMethod must not be changed after
@@ -79,6 +82,10 @@ struct CollectOptions final {
   /// @brief whether aggregation of collects output should be moved to
   /// dbservers.
   bool aggregateIntoExpressionOnDBServers{true};
+
+  /// @brief if set to true, no attempt is made to use an index to optimize
+  /// this collect statement.
+  bool disableIndexUsage{false};
 };
 
 struct GroupVarInfo final {

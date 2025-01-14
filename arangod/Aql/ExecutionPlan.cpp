@@ -1240,6 +1240,12 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
             options.aggregateIntoExpressionOnDBServers = value->getBoolValue();
             handled = true;
           }
+        } else if (name == "disableIndexUsage") {
+          auto value = member->getMember(0);
+          if (value->isBoolValue()) {
+            options.disableIndexUsage = value->getBoolValue();
+            handled = true;
+          }
         }
         if (!handled) {
           invalidOptionAttribute(_ast->query(), "unknown", "COLLECT", name);

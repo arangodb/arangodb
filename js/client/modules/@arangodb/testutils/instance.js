@@ -98,6 +98,7 @@ const instanceRole = {
   single: 'single',
   agent: 'agent',
   dbServer: 'dbserver',
+  dbserver: 'dbserver',
   coordinator: 'coordinator',
 };
 
@@ -105,12 +106,12 @@ class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
+  constructor(options, myInstanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
     this.id = null;
     this.shortName = null;
     this.pm = pm.getPortManager(options);
     this.options = options;
-    this.instanceRole = instanceRole;
+    this.instanceRole = myInstanceRole;
     this.rootDir = rootDir;
     this.protocol = protocol;
 
@@ -119,7 +120,8 @@ class instance {
     for (const [key, value] of Object.entries(addArgs)) {
       if (key.search('extraArgs') >= 0) {
         let splitkey = key.split('.');
-        if (splitkey.length !== 2) {
+        if (splitkey.length > 3 &&
+            instanceRole.hasOwnProperty(splitkey[1])) {
           if (splitkey[1] === this.instanceRole) {
             this.args[splitkey.slice(2).join('.')] = value;
           }
@@ -165,7 +167,7 @@ class instance {
 
     this._makeArgsArangod();
 
-    this.name = instanceRole + ' - ' + this.port;
+    this.name = this.instanceRole + ' - ' + this.port;
     this.exitStatus = null;
     this.serverCrashedLocal = false;
     this.netstat = {'in':{}, 'out': {}};
@@ -368,10 +370,10 @@ class instance {
     if (this.options.hasOwnProperty("replicationVersion")) {
       this.args['database.default-replication-version'] = this.options.replicationVersion;
     }
-
     for (const [key, value] of Object.entries(this.options.extraArgs)) {
       let splitkey = key.split('.');
-      if (splitkey.length !== 2) {
+      if (splitkey.length >= 2 &&
+          instanceRole.hasOwnProperty(splitkey[0])) {
         if (splitkey[0] === this.instanceRole) {
           this.args[splitkey.slice(1).join('.')] = value;
         }
@@ -379,7 +381,6 @@ class instance {
         this.args[key] = value;
       }
     }
-
     let output = this.args.hasOwnProperty('log.output') ? this.args['log.output'] : [];
     if (typeof output === 'string') {
       output = [output];

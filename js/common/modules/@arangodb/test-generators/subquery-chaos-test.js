@@ -300,9 +300,15 @@ function runQuery(query, queryOptions, testOptions) {
   /* Create a simple hash value from the query results, so that we don't have to
    * load the entire result set into memory and work with it */
   let hash = "";
+  let count = 0;
   while (result.hasNext()) {
     let row = JSON.stringify(result.next());
-    hash = md5(hash + row); 
+    hash = md5(hash + row);
+    // invoke cleanup
+    count += 1;
+    if (count % 5 === 0) {
+      require("internal").wait(0, true);
+    }
   }
 
   /* Cleanup */
