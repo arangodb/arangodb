@@ -57,8 +57,10 @@ struct SliceSpanExpressionContext : DocumentProducingExpressionContext {
     {
       auto it = _varsToIndex.find(searchId);
       if (it != _varsToIndex.end()) {
-        mustDestroy = true;
-        return AqlValue(_sliceSpan[it->second]);
+        if (doCopy) {
+          return AqlValue(_sliceSpan[it->second]);
+        }
+        return AqlValue(AqlValueHintSliceNoCopy{_sliceSpan[it->second]});
       }
     }
     {
@@ -107,6 +109,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   LocalDocumentId docId;
   bool hasMore = true;
+  auto vpackOptions = &_infos.query->vpackOptions();
   while (inputRange.hasDataRow() && !output.isFull()) {
     // read one group
     if (not _inputRow.isInitialized()) {
@@ -132,10 +135,6 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       LOG_AGG_SCAN << "[SCAN] Found Projections "
                    << DumpVpackSpan{_projectionSlices};
       for (size_t k = 0; k < _infos.aggregations.size(); k++) {
-        std::string expr;
-        _infos.aggregations[k].expression->stringify(expr);
-        LOG_AGG_SCAN << "evaluate expression " << _infos._expressionVariables
-                     << " expr = " << expr;
         bool mustDestroy;
         AqlValue result =
             _infos.aggregations[k].expression->execute(&context, mustDestroy);
@@ -157,8 +156,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       // check if the keys still match
       for (size_t k = 0; k < _keySlices.size(); k++) {
         if (not basics::VelocyPackHelper::equal(
-                _keySlices[k], _currentGroupKeySlices[k], true,
-                &_infos.query->vpackOptions())) {
+                _keySlices[k], _currentGroupKeySlices[k], true, vpackOptions)) {
           goto endOfGroup;
         }
       }
