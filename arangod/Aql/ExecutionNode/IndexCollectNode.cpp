@@ -253,7 +253,7 @@ void IndexCollectNode::doToVelocyPack(velocypack::Builder& builder,
       builder.add(VPackValue("outVariable"));
       agg.outVariable->toVelocyPack(builder);
       builder.add(VPackValue("expression"));
-      agg.expression->toVelocyPack(builder, false);
+      agg.expression->toVelocyPack(builder, true);
     }
   }
 

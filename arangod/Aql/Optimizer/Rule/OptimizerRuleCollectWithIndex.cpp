@@ -48,6 +48,9 @@ namespace {
 
 bool isCollectNodeEligible(CollectNode const& cn) {
   if (cn.hasOutVariable()) {
+    // TODO instead of using the out variable one could translate this
+    //  into a PUSH aggregation. This only works if an expression is used
+    //  and no KEEP statement is present.
     LOG_RULE << "Collect " << cn.id()
              << " not eligible - it has an out variable";
     return false;
