@@ -91,15 +91,15 @@ struct GeoFilterOptions : GeoFilterOptionsBase {
   geo::ShapeContainer shape;
 };
 
-class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
+class GeoFilter final : public irs::filter {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::GeoFilter";
   }
 
-  using filter::prepare;
+  using irs::filter::prepare;
 
-  prepared::ptr prepare(irs::IndexReader const& rdr, irs::Scorers const& ord,
+  virtual prepared::ptr prepare(irs::IndexReader const& rdr, irs::Scorers const& ord,
                         irs::score_t boost,
                         irs::attribute_provider const* /*ctx*/) const final;
 };
