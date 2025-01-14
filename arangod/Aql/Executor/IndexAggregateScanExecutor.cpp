@@ -82,14 +82,6 @@ struct SliceSpanExpressionContext : DocumentProducingExpressionContext {
   std::span<VPackSlice> _sliceSpan;
 };
 
-}  // namespace
-
-auto IndexAggregateScanExecutor::skipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
-    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 struct DumpVpackSpan {
   std::span<VPackSlice> _slices;
 
@@ -103,6 +95,65 @@ struct DumpVpackSpan {
     return os;
   }
 };
+}  // namespace
+
+auto IndexAggregateScanExecutor::skipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  LocalDocumentId docId;
+  bool hasMore = true;
+  size_t skipped = 0;
+  auto vpackOptions = &_infos.query->vpackOptions();
+  while (inputRange.hasDataRow() && clientCall.needSkipMore()) {
+    // read one group
+    if (not _inputRow.isInitialized()) {
+      LOG_AGG_SCAN << "NEXT INPUT ROW";
+      _inputRow = inputRange.peekDataRow().second;
+
+      _iterator->cacheCurrentKey(_currentGroupKeySlices);
+      LOG_AGG_SCAN << "[SCAN] Group keys "
+                   << DumpVpackSpan{_currentGroupKeySlices};
+    }
+
+    while (hasMore) {
+      // advance iterator
+      // TODO one can improve this maybe by seeking forward
+      hasMore = _iterator->next(_keySlices, docId, _projectionSlices);
+
+      LOG_AGG_SCAN << "[SCAN] Next has more " << hasMore;
+      if (not hasMore) {
+        break;
+      }
+
+      LOG_AGG_SCAN << "[SCAN] Found keys " << DumpVpackSpan{_keySlices};
+
+      // check if the keys still match
+      for (size_t k = 0; k < _keySlices.size(); k++) {
+        if (not basics::VelocyPackHelper::equal(
+                _keySlices[k], _currentGroupKeySlices[k], true, vpackOptions)) {
+          goto endOfGroup;
+        }
+      }
+    }
+  endOfGroup:
+
+    LOG_AGG_SCAN << "[SCAN] End of group";
+    clientCall.didSkip(1);
+    skipped += 1;
+
+    if (hasMore) {
+      _iterator->cacheCurrentKey(_currentGroupKeySlices);
+      LOG_AGG_SCAN << "[SCAN] New group keys "
+                   << DumpVpackSpan{_currentGroupKeySlices};
+    } else {
+      _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      inputRange.advanceDataRow();
+    }
+  }
+
+  return std::make_tuple(inputRange.upstreamState(), Stats{}, skipped,
+                         AqlCall{});
+}
 
 auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                              OutputAqlItemRow& output)
