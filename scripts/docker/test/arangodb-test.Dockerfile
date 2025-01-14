@@ -6,7 +6,7 @@ ARG arch
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 \
     7zip gdb tzdata curl jq binutils gcc \
-    llvm libatomic1 net-tools \
+    llvm-16 libatomic1 net-tools \
     libc6 libstdc++6 \
     libomp-16-dev liblapack-dev libopenblas-dev gfortran wget \
     python3 python3-pip && \
