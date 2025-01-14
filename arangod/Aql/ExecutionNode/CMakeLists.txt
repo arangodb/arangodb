@@ -16,6 +16,7 @@ target_sources(arango_aql PRIVATE
   GatherNode.cpp
   GraphNode.cpp
   IResearchViewNode.cpp
+  IndexCollectNode.cpp
   IndexNode.cpp
   InsertNode.cpp
   JoinNode.cpp

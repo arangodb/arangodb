@@ -5031,6 +5031,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::ENUMERATE_LIST:
         case EN::ENUMERATE_NEAR_VECTORS:
         case EN::COLLECT:
+        case EN::INDEX_COLLECT:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
@@ -7646,6 +7647,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::INDEX_COLLECT:
     case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
