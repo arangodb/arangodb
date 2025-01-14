@@ -146,7 +146,7 @@ function restoreIntegrationSuite() {
     args.push('--input-directory');
     args.push(path);
     addConnectionArgs(args);
-		const actualRc = executeExternalAndWaitWithSanitizer(arangorestore, args, 'shell-restore-integration');
+    const actualRc = executeExternalAndWaitWithSanitizer(arangorestore, args, 'shell-restore-integration');
     assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
     assertEqual(rc, actualRc.exit, actualRc);
   };

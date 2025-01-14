@@ -67,7 +67,7 @@ function arangoSecureInstallationSuite () {
       // set no password for the database
       try {
         // invoke arango-secure-installation without password. this will fail
-        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, [path], 'shell-arango-secure-installation-noncluster-1');
+        let actualRc = executeExternalAndWaitWithSanitizer(arangoSecureInstallation, [path], 'shell-arango-secure-installation-noncluster-1');
         assertTrue(actualRc.hasOwnProperty("exit"));
         assertEqual(1, actualRc.exit);
       } finally {
@@ -93,7 +93,7 @@ function arangoSecureInstallationSuite () {
       try {
         let args = [path];
         // invoke arango-secure-installation with password. this must succeed
-        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, [path], 'shell-arango-secure-installation-noncluster-2');
+        let actualRc = executeExternalAndWaitWithSanitizer(arangoSecureInstallation, [path], 'shell-arango-secure-installation-noncluster-2');
         assertTrue(actualRc.hasOwnProperty("exit"));
         assertEqual(0, actualRc.exit);
       } finally {

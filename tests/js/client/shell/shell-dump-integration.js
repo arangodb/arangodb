@@ -89,7 +89,7 @@ function dumpIntegrationSuite() {
     args.push(path);
     addConnectionArgs(args);
 
-    let actualRc = internal.executeExternalAndWaitWithSanitizer(arangodump, args, 'shell-dump-integration');
+    let actualRc = executeExternalAndWaitWithSanitizer(arangodump, args, 'shell-dump-integration');
     assertTrue(actualRc.hasOwnProperty("exit"));
     assertEqual(expectRc, actualRc.exit);
     return fs.listTree(path);

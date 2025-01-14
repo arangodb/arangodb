@@ -94,7 +94,7 @@ function verifySstSuite() {
         ];
 
         // call ArangoDB with `--rocksdb.verify-sst true` and check exit code
-				const actualRc = executeExternalAndWaitWithSanitizer(arangod, args, 'shell-verify-sst-noncluster');
+        const actualRc = executeExternalAndWaitWithSanitizer(arangod, args, 'shell-verify-sst-noncluster');
         assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
         assertEqual(0, actualRc.exit, actualRc);
       };
