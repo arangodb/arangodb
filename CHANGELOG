@@ -54,7 +54,7 @@ devel
   since scanning for distinct values in such a case would not be beneficial.
 
   This optimization can be disabled for specific collect statements, using the
-  `disableIndexUsage` option.
+  `disableIndex` option.
 
   Currently this only works if there is no `INTO` or `AGGREGATE` clause.
   Filtering is also not yet supported.
