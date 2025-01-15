@@ -94,7 +94,7 @@ struct UserVectorIndexDefinition {
               return inspection::Status::Success{};
             }),
         f.field("metric", x.metric), f.field("nLists", x.nLists),
-        f.field("nLists", x.nLists), f.field("factory", x.factory),
+        f.field("factory", x.factory),
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)
