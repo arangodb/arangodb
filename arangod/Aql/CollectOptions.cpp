@@ -47,7 +47,8 @@ CollectOptions::CollectOptions(velocypack::Slice slice)
         v.isBoolean()) {
       aggregateIntoExpressionOnDBServers = v.isTrue();
     }
-    if (VPackSlice v = slice.get(StaticStrings::IndexHintDisableIndex); v.isBoolean()) {
+    if (VPackSlice v = slice.get(StaticStrings::IndexHintDisableIndex);
+        v.isBoolean()) {
       disableIndex = v.isTrue();
     }
   }
