@@ -47,6 +47,6 @@ export const QueryKeyboardShortcutProvider = ({
       hotkeys.unbind();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onExecute, queryValue, queryOptions, areParamsEqual]);
+  }, [onExecute, queryValue, queryOptions, queryBindParams, disabledRules, areParamsEqual]);
   return <>{children}</>;
 };
