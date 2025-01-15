@@ -393,6 +393,8 @@ struct OptimizerRule {
     // for it.
     joinIndexNodesRule,
 
+    useIndexForCollectRule,
+
     pushDownLateMaterialization,
 
     // introduce a new out variable for late materialization blocks

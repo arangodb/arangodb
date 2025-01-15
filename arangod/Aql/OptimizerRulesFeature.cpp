@@ -395,6 +395,12 @@ evaluate to `true`.)");
                R"(Use indexes to avoid `SORT` operations, removing `SortNode`
 from the query plan.)");
 
+  // try to merge an index scan and a collect statement
+  registerRule("use-index-for-collect", useIndexForCollect,
+               OptimizerRule::useIndexForCollectRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Use indexes for a collect statement if appropriate.)");
+
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
   registerRule("sort-in-values", sortInValuesRule,
