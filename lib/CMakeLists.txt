@@ -38,14 +38,62 @@ add_library(arango_static_strings STATIC
 set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
 set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2")
 
-add_library(arango_lightweight STATIC
-        ApplicationFeatures/ApplicationFeature.cpp
-        ApplicationFeatures/ApplicationServer.cpp
-        ApplicationFeatures/LazyApplicationFeatureReference.h
+add_library(arango_basic_errors STATIC
         ApplicationFeatures/ShellColorsFeature.cpp
+        Basics/ErrorCode.cpp
+        Basics/application-exit.cpp
+        Basics/error.cpp
+)
+
+target_include_directories(arango_basic_errors PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+# some auto-generated headers live here, like "Basics/build.h"
+target_include_directories(arango_basic_errors PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(arango_basic_errors PUBLIC
+        ${FROZEN_INCLUDE_DIR}
+)
+
+target_link_libraries(arango_basic_errors
+  PUBLIC velocypack
+         arango_inspection
+         absl::flat_hash_set
+)
+
+add_dependencies(arango_basic_errors errorfiles)
+add_dependencies(arango_basic_errors exitcodefiles)
+
+
+add_library(arango_basic_utils STATIC
+        # arango
+        Basics/AttributeNameParser.cpp
+        Basics/CpuUsageSnapshot.cpp
+        Basics/DebugRaceController.cpp
+        Basics/EncodingUtils.cpp
+        Basics/FeatureFlags.cpp
+        Basics/FileDescriptors.cpp
+        Basics/FunctionUtils.cpp
+        Basics/GlobalResourceMonitor.cpp
+        Basics/GlobalSerialization.cpp
+        Basics/HybridLogicalClock.cpp
+        Basics/IndexIter.h
+        Basics/Nonce.cpp
+        Basics/NumberUtils.cpp
+        Basics/ReadWriteSpinLock.cpp
+        Basics/ResourceUsage.cpp
+        Basics/StringBufferAdvanced.cpp
+        Basics/Utf8Helper.cpp
+        Basics/VelocyPackHelper.cpp
+        Basics/csv.cpp
+        Basics/datetime.cpp
+        Basics/fasthash.cpp
+        Basics/files-advanced.cpp
+        Basics/hashes.cpp
+        Basics/socket-utils.cpp
+        Basics/terminal-utils.cpp
+        Basics/tri-zip.cpp
+
+        # arango_lightweight
         Basics/ArangoGlobalContext.cpp
         Basics/CleanupFunctions.cpp
-        Basics/ErrorCode.cpp
         Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
         Basics/FileResult.cpp
         Basics/FileUtils.cpp
@@ -64,10 +112,8 @@ add_library(arango_lightweight STATIC
         Basics/StringUtils.cpp
         Basics/Thread.cpp
         Basics/UnshackledMutex.cpp
-        Basics/application-exit.cpp
         Basics/conversions.cpp
         Basics/debugging.cpp
-        Basics/error.cpp
         Basics/files.cpp
         Basics/fpconv.cpp
         Basics/levenshtein.cpp
@@ -79,7 +125,91 @@ add_library(arango_lightweight STATIC
         Basics/terminal-utils-posix.cpp
         Basics/threads-posix.cpp
         Basics/tri-strings.cpp
-        Containers/ImmerMemoryPolicy.h
+
+        Utilities/LinenoiseShell.cpp
+        Utilities/LineEditor.cpp
+        Utilities/NameValidator.cpp
+        Utilities/ScriptLoader.cpp
+        Utilities/ShellBase.cpp
+
+        ProgramOptions/IniFileParser.cpp
+        ProgramOptions/Option.cpp
+        ProgramOptions/Parameters.cpp
+        ProgramOptions/ProgramOptions.cpp
+        ProgramOptions/Section.cpp
+        ProgramOptions/Translator.cpp
+        ProgramOptions/UnitsHelper.cpp
+
+        Random/RandomGenerator.cpp
+        Random/RandomFeature.cpp
+        Random/UniformCharacter.cpp
+
+        Zip/ioapi.cpp
+        Zip/unzip.cpp
+        Zip/zip.cpp
+)
+target_link_libraries(arango_basic_utils
+  PUBLIC velocypack
+         arango_inspection
+         arango_futures
+         arango_basic_errors
+         absl::flat_hash_set
+         fuerte
+         s2
+         linenoise-ng
+         zlib_interface
+         snappy
+)
+
+# Enterprise
+if (USE_ENTERPRISE)
+  target_include_directories(arango_basic_utils PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
+add_dependencies(arango_basic_utils snappy)
+target_include_directories(arango_basic_utils PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(arango_basic_utils PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(arango_basic_utils PUBLIC
+        ${FUNCTION2_INCLUDE_DIR}
+        ${FROZEN_INCLUDE_DIR}
+)
+
+target_include_directories(arango_basic_utils PUBLIC ${BUILD_DIR})
+target_include_directories(arango_basic_utils SYSTEM PUBLIC ${Lz4_INCLUDE_DIR})
+
+add_library(arango_basic_features STATIC
+        ApplicationFeatures/ApplicationFeature.cpp
+        ApplicationFeatures/ApplicationServer.cpp
+        ApplicationFeatures/LazyApplicationFeatureReference.h
+        ApplicationFeatures/ShellColorsFeature.cpp
+        ApplicationFeatures/ApplicationFeaturePhase.cpp
+        ApplicationFeatures/BumpFileDescriptorsFeature.cpp
+        ApplicationFeatures/CommunicationFeaturePhase.cpp
+        ApplicationFeatures/ConfigFeature.cpp
+        ApplicationFeatures/FileSystemFeature.cpp
+        ApplicationFeatures/GreetingsFeature.cpp
+        ApplicationFeatures/LanguageFeature.cpp
+        ApplicationFeatures/OptionsCheckFeature.cpp
+        ApplicationFeatures/ShutdownFeature.cpp
+        ApplicationFeatures/TempFeature.cpp
+        ApplicationFeatures/VersionFeature.cpp
+
+)
+target_link_libraries(arango_basic_features
+  PUBLIC velocypack
+         arango_inspection
+         arango_basic_errors
+         arango_futures
+         absl::flat_hash_set
+         fuerte
+         s2
+)
+target_include_directories(arango_basic_features PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if (USE_ENTERPRISE)
+  target_include_directories(arango_basic_utils PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
+add_library(arango_basic_logger STATIC
         Logger/Appenders.cpp
         Logger/Escaper.cpp
         Logger/LogAppender.cpp
@@ -95,6 +225,66 @@ add_library(arango_lightweight STATIC
         Logger/LoggerFeature.cpp
         Logger/LoggerStream.cpp
         Logger/LogTimeFormat.cpp
+)
+target_link_libraries(arango_basic_logger
+  PUBLIC velocypack
+         arango_inspection
+         arango_basic_errors
+         boost_boost
+)
+target_include_directories(arango_basic_logger PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if (USE_ENTERPRISE)
+  target_include_directories(arango_basic_logger PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
+add_library(arango_basic_http_client STATIC
+        Rest/CommonDefines.cpp
+        Rest/GeneralRequest.cpp
+        Rest/GeneralResponse.cpp
+        Rest/HttpRequest.cpp
+        Rest/HttpResponse.cpp
+        Rest/PathMatch.h
+        Rest/Version.cpp
+        SimpleHttpClient/ClientConnection.cpp
+        SimpleHttpClient/ConnectionCache.cpp
+        SimpleHttpClient/GeneralClientConnection.cpp
+        SimpleHttpClient/HttpResponseChecker.cpp
+        SimpleHttpClient/SimpleHttpClient.cpp
+        SimpleHttpClient/SimpleHttpResult.cpp
+        SimpleHttpClient/SslClientConnection.cpp
+        Ssl/SslFeature.cpp
+        Ssl/SslInterface.cpp
+        Ssl/ssl-helper.cpp
+
+        Endpoint/Endpoint.cpp
+        Endpoint/EndpointIp.cpp
+        Endpoint/EndpointIpV4.cpp
+        Endpoint/EndpointIpV6.cpp
+        Endpoint/EndpointList.cpp
+        Endpoint/EndpointSrv.cpp
+        Endpoint/EndpointUnixDomain.cpp
+)
+target_link_libraries(arango_basic_http_client
+  PUBLIC velocypack
+         arango_inspection
+         arango_basic_errors
+         arango_build_id
+         boost_boost
+         fuerte
+         rocksdb
+         rocksdb_interface
+)
+target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if (USE_ENTERPRISE)
+  target_include_directories(arango_basic_http_client PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
+add_library(arango_lightweight STATIC
+        ApplicationFeatures/ApplicationFeature.cpp
+        ApplicationFeatures/ApplicationServer.cpp
+        ApplicationFeatures/LazyApplicationFeatureReference.h
+        ApplicationFeatures/ShellColorsFeature.cpp
+        Containers/ImmerMemoryPolicy.h
         ProgramOptions/IniFileParser.cpp
         ProgramOptions/Option.cpp
         ProgramOptions/Parameters.cpp
@@ -129,12 +319,14 @@ target_link_libraries(arango_lightweight
           arango_assertions
           arango_static_strings
           arango_futures
+          arango_utils
+          arango_basic_utils
+          arango_basic_logger
           boost_boost
-          boost_system)
+          boost_system
+)
 
-# Enterprise
 if (USE_ENTERPRISE)
-  target_compile_definitions(arango_lightweight PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango_lightweight PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
@@ -153,43 +345,10 @@ add_library(arango STATIC
   ApplicationFeatures/VersionFeature.cpp
   Assertions/AssertionConditionalLogger.cpp
   Assertions/AssertionLogger.cpp
-  Basics/AttributeNameParser.cpp
-  Basics/CpuUsageSnapshot.cpp
-  Basics/DebugRaceController.cpp
-  Basics/EncodingUtils.cpp
-  Basics/FeatureFlags.cpp
-  Basics/FileDescriptors.cpp
-  Basics/FunctionUtils.cpp
-  Basics/GlobalResourceMonitor.cpp
-  Basics/GlobalSerialization.cpp
-  Basics/HybridLogicalClock.cpp
-  Basics/IndexIter.h
-  Basics/Nonce.cpp
-  Basics/NumberUtils.cpp
-  Basics/ReadWriteSpinLock.cpp
-  Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
-  Basics/StringBufferAdvanced.cpp
-  Basics/Utf8Helper.cpp
-  Basics/VelocyPackHelper.cpp
-  Basics/csv.cpp
-  Basics/datetime.cpp
-  Basics/fasthash.cpp
-  Basics/files-advanced.cpp
-  Basics/hashes.cpp
-  Basics/socket-utils.cpp
-  Basics/terminal-utils.cpp
-  Basics/tri-zip.cpp
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
-  Endpoint/Endpoint.cpp
-  Endpoint/EndpointIp.cpp
-  Endpoint/EndpointIpV4.cpp
-  Endpoint/EndpointIpV6.cpp
-  Endpoint/EndpointList.cpp
-  Endpoint/EndpointSrv.cpp
-  Endpoint/EndpointUnixDomain.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
   Maskings/MaskingFunction.cpp
@@ -197,33 +356,6 @@ add_library(arango STATIC
   Maskings/Path.cpp
   Maskings/RandomMask.cpp
   Maskings/RandomStringMask.cpp
-  Random/RandomFeature.cpp
-  Random/UniformCharacter.cpp
-  Rest/CommonDefines.cpp
-  Rest/GeneralRequest.cpp
-  Rest/GeneralResponse.cpp
-  Rest/HttpRequest.cpp
-  Rest/HttpResponse.cpp
-  Rest/PathMatch.h
-  Rest/Version.cpp
-  SimpleHttpClient/ClientConnection.cpp
-  SimpleHttpClient/ConnectionCache.cpp
-  SimpleHttpClient/GeneralClientConnection.cpp
-  SimpleHttpClient/HttpResponseChecker.cpp
-  SimpleHttpClient/SimpleHttpClient.cpp
-  SimpleHttpClient/SimpleHttpResult.cpp
-  SimpleHttpClient/SslClientConnection.cpp
-  Ssl/SslFeature.cpp
-  Ssl/SslInterface.cpp
-  Ssl/ssl-helper.cpp
-  Utilities/LinenoiseShell.cpp
-  Utilities/LineEditor.cpp
-  Utilities/NameValidator.cpp
-  Utilities/ScriptLoader.cpp
-  Utilities/ShellBase.cpp
-  Zip/ioapi.cpp
-  Zip/unzip.cpp
-  Zip/zip.cpp
 )
 
 target_link_libraries(arango
@@ -234,6 +366,7 @@ target_link_libraries(arango
          arango_futures
          arango_static_strings
          arango_crashhandler
+         arango_basic_http_client
          velocypack
          fuerte
          linenoise-ng
@@ -293,7 +426,6 @@ add_dependencies(arango exitcodefiles)
 
 # Enterprise
 if (USE_ENTERPRISE)
-  target_compile_definitions(arango PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
