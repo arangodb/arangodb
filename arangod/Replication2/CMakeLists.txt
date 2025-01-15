@@ -11,7 +11,7 @@ add_library(arango_replication2 STATIC
 
 
 target_link_libraries(arango_replication2
-        arango # -> V8
+        arango_basic_utils
         arango_network # NetworkWorkAttachedFollower
         arangoserver # RestHandler, arango_rocksdb
         arango_futures

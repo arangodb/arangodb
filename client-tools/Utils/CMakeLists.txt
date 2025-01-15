@@ -4,8 +4,10 @@ add_library(clienttools_utils STATIC
 )
 
 target_link_libraries(clienttools_utils
-  arango
   ${SYSTEM_LIBRARIES}
+  arango_basic_errors
+  arango_basic_utils
+  arango_scheduler
   boost_system
   boost_boost
   fuerte
