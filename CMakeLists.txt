@@ -157,6 +157,11 @@ if (STATIC_EXECUTABLES)
   set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 endif()
 
+# If enterprise add USE_ENTERPRISE flag to all targets
+if (USE_ENTERPRISE)
+  add_definitions("-DUSE_ENTERPRISE=1")
+endif()
+
 # enable V8/JavaScript in executables. 
 # note that V8 will always be built, regardless of the value of this option.
 # this is required because the V8 build step also builds ICU, which is needed

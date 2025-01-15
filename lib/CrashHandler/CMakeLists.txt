@@ -6,6 +6,10 @@ target_include_directories(arango_crashhandler
     ${PROJECT_SOURCE_DIR}/lib
     ${PROJECT_BINARY_DIR}/lib)
 
+if (USE_ENTERPRISE)
+  target_include_directories(arango_crashhandler PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
 target_link_libraries(arango_crashhandler
   # TODO: The dependency on arango can be removed
   #       once we can reliably access functions to
@@ -14,8 +18,8 @@ target_link_libraries(arango_crashhandler
   #       the function that accesses the environment
   #       through files.h
   PRIVATE
+    arango_basic_errors
     arango_build_id
-    arango_lightweight
     boost_system
     velocypack)
 
