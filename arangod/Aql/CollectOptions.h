@@ -85,7 +85,7 @@ struct CollectOptions final {
 
   /// @brief if set to true, no attempt is made to use an index to optimize
   /// this collect statement.
-  bool disableIndexUsage{false};
+  bool disableIndex{false};
 };
 
 struct GroupVarInfo final {
