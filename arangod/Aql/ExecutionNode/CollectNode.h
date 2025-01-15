@@ -82,7 +82,8 @@ class CollectNode : public ExecutionNode {
   void aggregationMethod(CollectOptions::CollectMethod method) noexcept;
 
   /// @brief getOptions
-  CollectOptions& getOptions();
+  CollectOptions& getOptions() noexcept;
+  CollectOptions const& getOptions() const noexcept;
 
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,

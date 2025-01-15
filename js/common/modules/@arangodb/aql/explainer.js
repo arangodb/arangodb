@@ -1836,6 +1836,11 @@ function processQuery(query, explain, planIndex) {
           (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable.variable); }).join(', ') : '') +
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
+      case 'IndexCollectNode':
+        iterateIndexes(node.index, 0, node, types, false);
+        return keyword('FOR ') + variableName(node.oldIndexVariable) + keyword(' IN ') + collection(node.collection) + keyword(' COLLECT ') + node.groups.map(function (grp) {
+          return variableName(grp.outVariable) + ' = ' + variableName(node.oldIndexVariable) + '.' + grp.attribute.map((p) => attribute(p)).join('.');
+        }).join(', ') + annotation(' /* distinct value index scan */');
       case 'SortNode':
         const groupedElements = node.numberOfTopGroupedElements > 0 ?
           '; ' + keyword('GROUPED BY') + ' '

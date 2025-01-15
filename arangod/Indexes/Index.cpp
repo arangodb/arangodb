@@ -1226,6 +1226,21 @@ std::unique_ptr<AqlIndexStreamIterator> Index::streamForCondition(
           typeName());
 }
 
+bool Index::supportsDistinctScan(
+    IndexDistinctScanOptions const&) const noexcept {
+  return false;
+}
+
+std::unique_ptr<AqlIndexDistinctScanIterator> Index::distinctScanFor(
+    transaction::Methods* trx, IndexDistinctScanOptions const&) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string(
+          "no default implementation for distinctScanFor. index-type = ") +
+          typeName());
+}
+
 }  // namespace arangodb
 
 /// @brief append the index description to an output stream
