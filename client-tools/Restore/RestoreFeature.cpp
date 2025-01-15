@@ -1335,8 +1335,9 @@ RestoreFeature::RestoreMainJob::RestoreMainJob(
 
 Result RestoreFeature::RestoreMainJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
-  // restore indexes first
-  arangodb::Result res = restoreIndexes(client);
+  // restore indexes first, but skip vector indexes, since
+  // they cannot be created without data:
+  arangodb::Result res = restoreIndexes(client, false);
   if (res.ok() && options.importData) {
     res = restoreData(client, useVPack);
 
@@ -1354,6 +1355,9 @@ Result RestoreFeature::RestoreMainJob::run(
             << collectionName << "'";
       }
     }
+  }
+  if (res.ok()) {
+    res = restoreIndexes(client, true);
   }
 
   return res;
@@ -1787,11 +1791,25 @@ Result RestoreFeature::RestoreMainJob::restoreData(
 
 /// @brief Restore a collection's indexes given its description
 arangodb::Result RestoreFeature::RestoreMainJob::restoreIndexes(
-    arangodb::httpclient::SimpleHttpClient& client) {
+    arangodb::httpclient::SimpleHttpClient& client, bool doVectorIndexes) {
   using arangodb::Logger;
 
   arangodb::Result result;
-  VPackSlice const indexes = parameters.get("indexes");
+  VPackSlice indexes = parameters.get("indexes");
+  VPackBuilder newIndexes;
+  {
+    VPackArrayBuilder guard(&newIndexes);
+    for (auto const& ind : VPackArrayIterator(indexes)) {
+      VPackSlice type = ind.get("type");
+      if ((type.isString() &&
+           type.stringView() == StaticStrings::IndexNameVector) ==
+          doVectorIndexes) {
+        newIndexes.add(ind);
+      }
+    }
+  }
+  indexes = newIndexes.slice();
+
   // re-create indexes
   if (indexes.length() > 0) {
     // we actually have indexes
