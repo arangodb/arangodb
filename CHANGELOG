@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-489: fix undefined check at Query Editor UI > Options tab > disabled rules
+
 * Make `RestImportHandler` asynchronous. This is to avoid some blockages
   observed in the context of BTS-2047.
 
