@@ -97,9 +97,10 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
     }
     update_source_location(loc);
 
-    return awaitable{
-        this, get_awaitable_object(std::forward<U>(co_awaited_expression)),
-        ExecContext::currentAsShared()};
+    return awaitable{.outer_promise = this,
+                     .inner_awaitable = get_awaitable_object(
+                         std::forward<U>(co_awaited_expression)),
+                     ._myExecContext = ExecContext::currentAsShared()};
   }
   void unhandled_exception() {
     _value.set_exception(std::current_exception());
