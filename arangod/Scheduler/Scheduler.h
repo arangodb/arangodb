@@ -232,10 +232,11 @@ class Scheduler {
     futures::Promise<bool> p;
     futures::Future<bool> f = p.getFuture();
 
-    auto item = queueDelayed(name, RequestLane::DELAYED_FUTURE, d,
-                             [pr = std::move(p)](bool cancelled) mutable {
-                               pr.setValue(cancelled);
-                             });
+    auto item = queueDelayed(
+        name, RequestLane::DELAYED_FUTURE, d,
+        withLogContext([pr = std::move(p)](bool cancelled) mutable {
+          pr.setValue(cancelled);
+        }));
 
     if (item == nullptr) {
       return futures::makeFuture();
