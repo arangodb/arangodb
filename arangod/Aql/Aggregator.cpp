@@ -983,8 +983,13 @@ struct AggregatorList : public Aggregator {
     if (!builder.isOpenArray()) {
       builder.openArray();
     }
-    builder.close();
-    return AqlValue(builder.slice());
+
+    // be aware of the Window Executor: it calls reduce and get multiple times
+    // if preceding is `unbounded`. But closing the array here breaks the
+    // velocypack slice.
+    auto builderCopy = builder;
+    builderCopy.close();
+    return AqlValue(std::move(*builderCopy.steal()));
   }
 
   mutable arangodb::velocypack::Builder builder;

@@ -1240,10 +1240,10 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
             options.aggregateIntoExpressionOnDBServers = value->getBoolValue();
             handled = true;
           }
-        } else if (name == "disableIndexUsage") {
+        } else if (name == StaticStrings::IndexHintDisableIndex) {
           auto value = member->getMember(0);
           if (value->isBoolValue()) {
-            options.disableIndexUsage = value->getBoolValue();
+            options.disableIndex = value->getBoolValue();
             handled = true;
           }
         }
