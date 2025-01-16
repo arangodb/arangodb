@@ -1,6 +1,8 @@
 devel
 -----
 
+* update iresearch 3rd party for clang-19 build
+
 * Let `arangorestore` restore vector indexes **after** data import. This
   is necessary, since a vector index can only be created if enough data
   for learning is available.

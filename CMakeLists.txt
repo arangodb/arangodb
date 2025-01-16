@@ -797,6 +797,10 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # clang 11 and higher supports -Wsuggest-override. older versions don't
     set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
   endif ()
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "19.0")
+  # broken warnings in clang-19
+    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=missing-designated-field-initializers")
+  endif ()
 else ()
   # unknown compiler
   message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
