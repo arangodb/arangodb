@@ -226,7 +226,8 @@ class RestoreFeature final : public ArangoRestoreFeature {
                        bool useVPack);
 
     /// @brief Restore a collection's indexes given its description
-    Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& client);
+    Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& client,
+                          bool doVectorIndexes);
 
     /// @brief Send command to restore a collection's indexes
     Result sendRestoreIndexes(arangodb::httpclient::SimpleHttpClient& client,

@@ -1,7 +1,13 @@
 devel
 -----
 
-* FE-489: fix undefined check at Query Editor UI > Options tab > disabled rules
+* FE-489: fix undefined check at Query Editor UI > Options tab > disabled rules and improve type safety.
+
+* update iresearch 3rd party for clang-19 build
+
+* Let `arangorestore` restore vector indexes **after** data import. This
+  is necessary, since a vector index can only be created if enough data
+  for learning is available.
 
 * Make `RestImportHandler` asynchronous. This is to avoid some blockages
   observed in the context of BTS-2047.
@@ -56,7 +62,7 @@ devel
   since scanning for distinct values in such a case would not be beneficial.
 
   This optimization can be disabled for specific collect statements, using the
-  `disableIndexUsage` option.
+  `disableIndex` option.
 
   Currently this only works if there is no `INTO` or `AGGREGATE` clause.
   Filtering is also not yet supported.
