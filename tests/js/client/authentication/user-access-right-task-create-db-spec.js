@@ -91,6 +91,7 @@ const executeJS = (code) => {
 
 helper.removeAllUsers();
 helper.generateAllUsers();
+let taskId;
 
 describe('User Rights Management', () => {
   it('should test rights for', () => {
@@ -152,7 +153,7 @@ describe('User Rights Management', () => {
 
             it('create database', () => {
               setKey(keySpaceId, name);
-              const taskId = 'task_db_create' + name;
+              taskId = 'task_db_create' + name;
               const task = {
                 id: taskId,
                 name: taskId,
@@ -191,6 +192,9 @@ describe('User Rights Management', () => {
 
 after(() => {
   arango.connectHandle(connectionHandle);
+  try {
+    tasks.unregister(taskId);
+  } catch (e){}
   db._drop('UnitTestCollection');
   db._useDatabase('_system');
 });
