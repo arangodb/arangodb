@@ -23,6 +23,7 @@
 
 #include "CollectOptions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -46,8 +47,9 @@ CollectOptions::CollectOptions(velocypack::Slice slice)
         v.isBoolean()) {
       aggregateIntoExpressionOnDBServers = v.isTrue();
     }
-    if (VPackSlice v = slice.get("disableIndexUsage"); v.isBoolean()) {
-      disableIndexUsage = v.isTrue();
+    if (VPackSlice v = slice.get(StaticStrings::IndexHintDisableIndex);
+        v.isBoolean()) {
+      disableIndex = v.isTrue();
     }
   }
   TRI_ASSERT(method != CollectMethod::kUndefined || !fixed);
@@ -83,7 +85,7 @@ void CollectOptions::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("method", VPackValue(methodToString(method)));
   builder.add("fixed", VPackValue(fixed));
-  builder.add("disableIndexUsage", VPackValue(disableIndexUsage));
+  builder.add(StaticStrings::IndexHintDisableIndex, VPackValue(disableIndex));
   builder.add("aggregateIntoExpressionOnDBServers",
               VPackValue(aggregateIntoExpressionOnDBServers));
 }

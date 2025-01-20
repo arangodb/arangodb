@@ -157,6 +157,7 @@ class StaticStrings {
   static std::string const IndexNameEdgeFrom;
   static std::string const IndexNameEdgeTo;
   static std::string const IndexNamePrimary;
+  static std::string const IndexNameVector;
 
   // index hint strings
   static std::string const IndexHintDisableIndex;
