@@ -37,8 +37,8 @@ export const useQueryEditorHandlers = () => {
         return acc;
       }, {} as { [key: string]: string });
 
-      const needsUpdate = isEqual(parsedBindParamsMap, prevQueryBindParams);
-      if (needsUpdate) {
+      const areParamsEqual = isEqual(parsedBindParamsMap, prevQueryBindParams);
+      if (areParamsEqual) {
         return prevQueryBindParams;
       }
 
