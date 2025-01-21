@@ -226,8 +226,7 @@ function VectorIndexL2TestSuite() {
 
             assertQueryError(
                 errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
-                query.query,
-                query.bindVars,
+                query
             );
         },
 
