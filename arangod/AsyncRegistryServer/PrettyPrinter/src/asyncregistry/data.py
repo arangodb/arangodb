@@ -13,7 +13,10 @@ class State:
         return self.name == "arangodb::async_registry::State::Deleted"
 
     def __str__(self):
-        return self.name
+        if len(self.name) > len("arangodb::async_registry::State::"):
+            return self.name[len("arangodb::async_registry::State::"):]
+        else:
+            return self.name
     
 class Thread:
     def __init__(self, posix_id, lwpid):
@@ -26,26 +29,7 @@ class Thread:
         return cls(value['posix_id'], value['kernel_id'])
 
     def __str__(self):
-        return "thread LWPID: " + str(self.lwpid) + " & posix_id: " + str(self.posix_id)
-
-class Requester:
-    def __init__(self, alternative, content: Thread | PromiseId):
-        self.alternative = alternative
-        self.content = content
-
-    @classmethod
-    def from_gdb(cls, value: gdb.Value):
-       alternative = value['_M_index']
-       if alternative == 0:
-           content = Thread.from_gdb(value['_M_u']['_M_first']['_M_storage'])
-       elif alternative == 1:
-           content = PromiseId(value['_M_u']['_M_rest']['_M_first']['_M_storage'])
-       else:
-           return "wrong input"
-       return cls(alternative, content)
-
-    def __str__(self):
-        return str(self.content)
+        return "thread " + str(self.lwpid)
 
 class SourceLocation:
     def __init__(self, file_name, function_name, line):
@@ -58,24 +42,44 @@ class SourceLocation:
         return cls(value['file_name'], value['function_name'], value['line']['_M_i'])
 
     def __str__(self):
-        return str(self.file_name) + ":" + str(self.line) + " " + str(self.function_name)
+        return str(self.function_name) + " (" +  str(self.file_name) + ":" + str(self.line) + ")"
+
+class Requester:
+    def __init__(self, content: Thread | PromiseId):
+        self.content = content
+
+    @classmethod
+    def from_gdb(cls, value: gdb.Value):
+       alternative = value['_M_index']
+       if alternative == 0:
+           content = Thread.from_gdb(value['_M_u']['_M_first']['_M_storage'])
+       elif alternative == 1:
+           content = PromiseId(value['_M_u']['_M_rest']['_M_first']['_M_storage'])
+       else:
+           return "wrong input"
+       return cls(content)
+
+    def __str__(self):
+        return str(self.content)
 
 class PromiseId:
     def __init__(self, id):
         self.id = id
 
+    def __equ__(self, other: PromiseId) -> bool:
+       return self.id == other.id 
+
     def __str__(self):
         return str(self.id)
 
 class Promise:
-    # raw print in gdb: print /r *(registry.registries[0]._M_ptr).promise_head._M_b._M_p
-    
     def __init__(self, id: PromiseId, thread: Thread, source_location: SourceLocation, requester: Requester, state: State):
         self.id = id
         self.thread = thread
         self.source_location = source_location
         self.requester = requester
         self.state = state
+
 
     @classmethod
     def from_gdb(cls, value_ptr: gdb.Value):
@@ -92,7 +96,7 @@ class Promise:
         return not self.state.is_deleted()
 
     def __str__(self):
-        return str(self.id) + ": waiter " + str(self.requester) + " " + str(self.source_location) + ", " + str(self.thread) + ", " + str(self.state) 
+        return str(self.source_location) + ", " + str(self.thread) + ", " + str(self.state)
 
 class GdbAtomicList:
     def __init__(self, begin):
@@ -114,10 +118,6 @@ class ThreadRegistry:
     def from_gdb(cls, value: gdb.Value):
         return cls(Promise.from_gdb(promise) for promise in GdbAtomicList(value["promise_head"]["_M_b"]["_M_p"]))
 
-    def __str__(self):
-        return "\n".join(str(promise) for promise in filter(lambda x: x.is_valid(), self.promises))
-    
-# special gdb vector
 class GdbVector:
     def __init__(self, value):
         self._begin = value["_M_start"]
@@ -138,7 +138,7 @@ class AsyncRegistry:
     def from_gdb(cls, value: gdb.Value):
         return cls(ThreadRegistry.from_gdb(registry) for registry in GdbVector(value['registries']['_M_impl']))
 
-    def promises(self) -> Iterable[MyTest]:
+    def promises(self) -> Iterable[Promise]:
         for registry in self.thread_registries:
             for promise in registry.promises:
                 yield promise

@@ -12,6 +12,7 @@ import sys
 import json
 from typing import List
 from typing import Optional
+from asyncregistry.stacktrace import Stacktrace
 
 class Thread(object):
     def __init__(self, name: str, id: int):
@@ -75,46 +76,20 @@ class Promise(object):
         self.hierarchy = hierarchy
         self.data = data
     
-def branching_symbol(hierarchy:int, previous_hierarchy: Optional[int]) -> str:
-    if hierarchy == previous_hierarchy:
-        return "├"
-    else:
-        return "┌"
-    
-def branch_ascii(hierarchy: int, continuations: list) -> str:
-    ascii = [" " for x in range(2*hierarchy+2)] + [branching_symbol(hierarchy, continuations[-1] if len(continuations) > 0 else None)] + [" "]
-    for continuation in continuations:
-        if continuation < hierarchy:
-            ascii[2*continuation] = "│"
-    return ''.join(ascii)
-                
-    
-class Stacktrace(object):
-    def __init__(self, promises: List[dict]):
-        self.promises = promises
-    def __str__(self):
-        lines = []
-        stack = []
-        for promise in self.promises:
-            hierarchy = promise["hierarchy"]
-            # pop finished hierarchy
-            if len(stack) > 0 and hierarchy < stack[-1]:
-                stack.pop()
-
-            ascii = branch_ascii(hierarchy, stack)
-
-            # push current but not if already on stack
-            if len(stack) == 0 or hierarchy != stack[0]:
-                stack.append(hierarchy)
-
-            lines.append(ascii + str(Data.from_json(promise["data"])))
-        return "\n".join(lines)
-    
 def main():
     string = sys.stdin.read()
     data = json.loads(string)["promise_stacktraces"]
-    print("\n\n".join(str(Stacktrace(**{"promises": x})) for x in data))
-    
+    first = True
+    for promise_list in data:
+        current_stacktrace = Stacktrace()
+        for promise_entry in promise_list:
+            stacktrace = current_stacktrace.append(promise_entry["hierarchy"], promise_entry["data"])
+            if stacktrace != None:
+                if not first:
+                    print("\n")
+                print("\n".join(ascii + str(Data.from_json(promise)) for (ascii, promise) in stacktrace))
+                first = False
+                current_stacktrace = Stacktrace()
 
 if __name__ == '__main__':
     main()
