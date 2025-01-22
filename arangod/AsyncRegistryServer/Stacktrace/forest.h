@@ -39,11 +39,11 @@ struct IndexedForest;
  */
 template<typename Node>
 struct Forest {
-  auto insert(Id id, Id waiter, Node node) {
+  auto insert(Id id, Id parent, Node node) {
     size_t position = _parent.size();
     auto [_iter, was_inserted] = _position.emplace(id, position);
     if (was_inserted) {
-      _parent.push_back(waiter);
+      _parent.push_back(parent);
       _node.push_back(node);
     }
   }
