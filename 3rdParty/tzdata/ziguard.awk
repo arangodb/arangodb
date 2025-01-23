@@ -5,14 +5,10 @@
 # This is not a general-purpose converter; it is designed for current tzdata.
 # It just converts from current source to main, vanguard, and rearguard forms.
 # Although it might be nice for it to be idempotent, or to be useful
-# for converting back and forth between vanguard and rearguard formats,
+# for converting back and forth between formats,
 # it does not do these nonessential tasks now.
 #
-# Although main and vanguard forms are currently equivalent,
-# this need not always be the case.  When the two forms differ,
-# this script can convert either from main to vanguard form (needed then),
-# or from vanguard to main form (this conversion would be needed later,
-# after main became rearguard and vanguard became main).
+# This script can convert from main to vanguard form and vice versa.
 # There is no need to convert rearguard to other forms.
 #
 # When converting to vanguard form, the output can use the line
@@ -145,12 +141,12 @@ DATAFORM != "main" {
   }
 
   # If this line should differ due to Portugal benefiting from %z if supported,
-  # uncomment the desired version and comment out the undesired one.
-  if ($0 ~ /^#?[\t ]+-[12]:00[\t ]+Port[\t ]+[%+-]/) {
-    if (($0 ~ /%z/) == (DATAFORM == "vanguard")) {
-      uncomment = in_comment
-    } else {
+  # comment out the undesired version and uncomment the desired one.
+  if ($0 ~ /^#?[\t ]+-[12]:00[\t ]+((Port|W-Eur)[\t ]+[%+-]|-[\t ]+(%z|-01)[\t ]+1982 Mar 28)/) {
+    if (($0 ~ /%z/) == (DATAFORM == "rearguard")) {
       comment_out = !in_comment
+    } else {
+      uncomment = in_comment
     }
   }
 
@@ -172,13 +168,8 @@ DATAFORM != "main" {
     sub(/^/, "#")
   }
 
-  # Prefer %z in vanguard form, explicit abbreviations otherwise.
-  if (DATAFORM == "vanguard") {
-    sub(/^(Zone[\t ]+[^\t ]+)?[\t ]+[^\t ]+[\t ]+[^\t ]+[\t ]+[-+][^\t ]+/, \
-	"&CHANGE-TO-%z")
-    sub(/-00CHANGE-TO-%z/, "-00")
-    sub(/[-+][^\t ]+CHANGE-TO-/, "")
-  } else {
+  # Prefer explicit abbreviations in rearguard form, %z otherwise.
+  if (DATAFORM == "rearguard") {
     if ($0 ~ /^[^#]*%z/) {
       stdoff_column = 2 * ($0 ~ /^Zone/) + 1
       rules_column = stdoff_column + 1
@@ -216,6 +207,11 @@ DATAFORM != "main" {
       }
       sub(/%z/, abbr)
     }
+  } else {
+    sub(/^(Zone[\t ]+[^\t ]+)?[\t ]+[^\t ]+[\t ]+[^\t ]+[\t ]+[-+][^\t ]+/, \
+	"&CHANGE-TO-%z")
+    sub(/-00CHANGE-TO-%z/, "-00")
+    sub(/[-+][^\t ]+CHANGE-TO-/, "")
   }
 
   # Normally, prefer whole seconds.  However, prefer subseconds
