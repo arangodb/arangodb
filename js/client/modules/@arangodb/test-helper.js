@@ -943,9 +943,9 @@ exports.insertManyDocumentsIntoCollection
   }
 };
 
-exports.executeExternalAndWaitWithSanitizer = function (executable, args, tmpFileName) {
-  let sanHnd = new sanHandler(executable, global.instanceManager.options);
-  let tmpMgr = new tmpDirMngr(fs.join(tmpFileName), global.instanceManager.options);
+exports.executeExternalAndWaitWithSanitizer = function (executable, args, tmpFileName, options = global.instanceManager.options) {
+  let sanHnd = new sanHandler(executable, options);
+  let tmpMgr = new tmpDirMngr(fs.join(tmpFileName), options);
   sanHnd.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
   let actualRc = internal.executeExternalAndWait(executable, args, false, 0, sanHnd.getSanOptions());
   sanHnd.fetchSanFileAfterExit(actualRc.pid);
