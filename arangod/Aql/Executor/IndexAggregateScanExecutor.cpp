@@ -165,6 +165,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     // read one group
     if (not _inputRow.isInitialized()) {
       LOG_AGG_SCAN << "NEXT INPUT ROW";
+      LOG_DEVEL << "NEXT INPUT ROW";
       _inputRow = inputRange.peekDataRow().second;
 
       _iterator->cacheCurrentKey(_currentGroupKeySlices);
@@ -172,6 +173,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                    << DumpVpackSpan{_currentGroupKeySlices};
     }
 
+    // aggregate everything in one group
     SliceSpanExpressionContext context{
         _trx,
         *_infos.query,
@@ -182,7 +184,6 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     while (hasMore) {
       // evaluate aggregator expression
       context._sliceSpan = _projectionSlices;
-
       LOG_AGG_SCAN << "[SCAN] Found Projections "
                    << DumpVpackSpan{_projectionSlices};
       for (size_t k = 0; k < _infos.aggregations.size(); k++) {
@@ -196,15 +197,14 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
       // advance iterator
       hasMore = _iterator->next(_keySlices, docId, _projectionSlices);
-
+      // inputRange.advanceDataRow();
       LOG_AGG_SCAN << "[SCAN] Next has more " << hasMore;
       if (not hasMore) {
         break;
       }
 
-      LOG_AGG_SCAN << "[SCAN] Found keys " << DumpVpackSpan{_keySlices};
-
       // check if the keys still match
+      LOG_AGG_SCAN << "[SCAN] Found keys " << DumpVpackSpan{_keySlices};
       for (size_t k = 0; k < _keySlices.size(); k++) {
         if (not basics::VelocyPackHelper::equal(
                 _keySlices[k], _currentGroupKeySlices[k], true, vpackOptions)) {
@@ -215,6 +215,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   endOfGroup:
 
     LOG_AGG_SCAN << "[SCAN] End of group";
+
     // fill output
     for (size_t k = 0; k < _infos.groups.size(); k++) {
       output.moveValueInto(_infos.groups[k].outputRegister, _inputRow,
@@ -229,13 +230,14 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
     output.advanceRow();
 
-    if (hasMore) {
+    if (hasMore) {  // happens if iterator has more but keys of next don't match
       _iterator->cacheCurrentKey(_currentGroupKeySlices);
       LOG_AGG_SCAN << "[SCAN] New group keys "
                    << DumpVpackSpan{_currentGroupKeySlices};
-    } else {
+    } else {  // TODO if iterator is done, we should just stop
       _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-      inputRange.advanceDataRow();
+      inputRange.advanceDataRow();  // TODO why just here? why not for every
+                                    // iterator->next ?
     }
   }
 
