@@ -36,7 +36,10 @@ const ct = require('@arangodb/testutils/client-tools');
 const internal = require('internal');
 const toArgv = internal.toArgv;
 const statusExternal = internal.statusExternal;
+const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
+const tmpDirMngr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -257,7 +260,10 @@ function arangosh (options) {
   args['javascript.execute-string'] = "print(require('internal').pollStdin())";
 
   const startTime = time();
-  let res = executeExternalAndWaitWithSanitizer(pu.ARANGOSH_BIN, toArgv(args), 'arangosh_tests_pipe', options);
+  let tmpMgr = new tmpDirMngr('arangosh_tests_pipe', options);
+  let sh = new sanHandler(pu.ARANGOSH_BIN, options);
+  sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
+  let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0, sh.getSanOptions());
   const deltaTime = time() - startTime;
 
   fs.writePipe(res.pid, "bla\n");
@@ -268,6 +274,7 @@ function arangosh (options) {
   let success = output === searchstring;
 
   let rc = statusExternal(res.pid, true);
+  sh.fetchSanFileAfterExit(res.pid);
   let failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
   failSuccess = failSuccess && success;
   if (options.extremeVerbosity) {
