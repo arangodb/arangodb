@@ -100,7 +100,6 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
   IndexAggregateScanInfos infos;
   infos.groups.reserve(_groups.size());
   infos.index = _index;
-  infos.collection = CollectionAccessingNode::collection();
   infos.query = &engine.getQuery();
 
   RegIdSet writableOutputRegisters;
@@ -191,8 +190,7 @@ IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
     auto& agg = _aggregations.emplace_back();
     agg.outVariable = Variable::varFromVPack(plan->getAst(), as, "outVariable");
     agg.type = as.get("type").copyString();
-    agg.expression = std::make_unique<Expression>(
-        plan->getAst(), plan->getAst()->createNode(as.get("expression")));
+    agg.expression = std::make_unique<Expression>(plan->getAst(), as);
   }
 }
 

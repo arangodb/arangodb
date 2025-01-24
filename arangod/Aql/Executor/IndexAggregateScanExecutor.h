@@ -38,9 +38,6 @@ struct Aggregator;
 class OutputAqlItemRow;
 
 struct IndexAggregateScanInfos {
-  // Associated document collection for this index
-  Collection const* collection;
-  // Index handle
   transaction::Methods::IndexHandle index;
 
   struct Group {
@@ -97,6 +94,7 @@ struct IndexAggregateScanExecutor {
   Fetcher& _fetcher;
   Infos& _infos;
   transaction::Methods _trx;
+  // iterator on index that includes all infos that are needed for the groups
   std::unique_ptr<AqlIndexStreamIterator> _iterator;
 
   std::vector<std::unique_ptr<Aggregator>> _aggregatorInstances;
