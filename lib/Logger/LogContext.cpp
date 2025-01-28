@@ -56,9 +56,9 @@ LogContext::ScopedContext::ScopedContext(
 }
 
 LogContext::ScopedContext::~ScopedContext() {
+  auto& local = LogContext::controlBlock();
+  local._logContext.clear(local._entryCache);
   if (_oldContext) {
-    auto& local = LogContext::controlBlock();
-    local._logContext.clear(local._entryCache);
     local._logContext = std::move(_oldContext).value();
   }
 }
