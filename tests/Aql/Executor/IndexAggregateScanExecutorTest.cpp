@@ -21,13 +21,19 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/SharedSlice.h>
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/Executor/AqlExecutorTestCase.h"
 #include "Aql/Executor/IndexAggregateScanExecutor.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RowFetcherHelper.h"
+#include "Inspection/VPack.h"
+#include "Inspection/VPackWithErrorT.h"
+#include "Logger/LogMacros.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "Mocks/StorageEngineMock.h"
 #include "IResearch/RestHandlerMock.h"
@@ -46,87 +52,122 @@
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 #include "gtest/gtest.h"
+#include <utility>
 #include <vector>
 #include <memory>
+#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-class IndexAggregateScanExecutorTest
+using MyKeyValue = velocypack::Slice;
+using MyDocumentId = LocalDocumentId;
 
+struct MyVectorIterator : public AqlIndexStreamIterator {
+  bool position(std::span<MyKeyValue> sp) const override {
+    if (current != end) {
+      auto& [id, keys] = *current;
+      sp = keys;
+      return true;
+    }
+    return false;
+  }
+
+  bool seek(std::span<MyKeyValue> key) override {
+    // not needed
+    return false;
+  }
+
+  MyDocumentId load(std::span<MyKeyValue> projections) const override {
+    auto& [id, keys] = *current;
+    return id;
+  }
+
+  void cacheCurrentKey(std::span<MyKeyValue> cache) override {
+    auto& [id, keys] = *current;
+    cache = keys;
+  }
+
+  bool reset(std::span<MyKeyValue> span,
+             std::span<MyKeyValue> constants) override {
+    current = begin;
+    if (current != end) {
+      auto& [id, keys] = *current;
+      span = keys;
+    }
+    return current != end;
+  }
+
+  bool next(std::span<MyKeyValue> key, MyDocumentId& doc,
+            std::span<MyKeyValue> projections) override {
+    current = current + 1;
+    if (current == end) {
+      return false;
+    }
+
+    auto& [id, keys] = *current;
+    key = keys;
+    doc = id;
+    return true;
+  }
+
+  using Value = std::tuple<
+      MyDocumentId,
+      std::vector<MyKeyValue> /* index entries */ /* , projections */>;
+
+  std::vector<Value> values;
+  typename std::vector<Value>::iterator begin;
+  typename std::vector<Value>::iterator current;
+  typename std::vector<Value>::iterator end;
+
+  MyVectorIterator(std::vector<Value> c)
+      : values{c}, begin(c.begin()), current(begin), end(c.end()) {}
+};
+
+class MockIndex : public Index {
+ public:
+  MockIndex(LogicalCollection& collection,
+            std::vector<MyVectorIterator::Value> values)
+      : Index(IndexId{}, collection, "collection", {}, false, false),
+        _values{std::move(values)} {
+    // we need to create Index with a logical collection here because other
+    // constructors are deleted
+  }
+  ~MockIndex() = default;
+  std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
+      transaction::Methods* trx, IndexStreamOptions const&) override {
+    return std::make_unique<MyVectorIterator>(_values);
+  }
+  char const* typeName() const override { return "mock index"; }
+  IndexType type() const override {
+    return Index::IndexType::TRI_IDX_TYPE_UNKNOWN;
+  }
+  bool canBeDropped() const override { return false; }
+  bool isSorted() const override { return false; }
+  bool isHidden() const override { return false; }
+  bool hasSelectivityEstimate() const override { return false; }
+  size_t memory() const override { return 0; }
+  void load() override { return; }
+  void unload() override { return; }
+
+  std::vector<MyVectorIterator::Value> _values;
+};
+
+class IndexAggregateScanExecutorTest
     : public AqlExecutorTestCaseWithParam<SplitType> {
  public:
   IndexAggregateScanExecutorTest()
-
-      : server(nullptr, nullptr),
-
-        engine(server) {
-    // collectionParameters{VPackParser::fromJson(
-
-    //     R"({"avoidServers":[],"cacheEnabled":false,"computedValues":null,"id":"103","internalValidatorType":0,"isDisjoint":false,"isSmart":false,"isSmartChild":false,"isSystem":false,"keyOptions":{"type":"traditional","allowUserKeys":true,"lastValue":0},"minReplicationFactor":1,"name":"my_collection","numberOfShards":3,"replicationFactor":1,"schema":null,"shardKeys":["_key"],"shardingStrategy":"hash","syncByRevision":true,"type":2,"usesRevisionsAsDocumentIds":true,"waitForSync":false,"writeConcern":1,"objectId":"104"})")},
-    // collection{std::make_shared<LogicalCollection>(
-    //     vocbase, collectionParameters->slice(), false)},
-    // collectionParameters{VPackParser::fromJson(R"({"name": "test"})")},
-    //  collection{vocbase.createCollection(collectionParameters->slice())},
-    // collection{"UnitTestCollection", &vocbase, AccessMode::Type::READ,
-    //            Collection::Hint::Collection},
-    // indexParameters{VPackParser::fromJson(
-    //     R"({"name":"idx_1822028972208160768","type":"persistent","objectId":"294","estimates":true,"fields":["x"],"sparse":true,"unique":false,"deduplicate":true,"inBackground":false,"cacheEnabled":false})")},
-    // index{std::make_shared<RocksDBPersistentIndex>(
-    //     IndexId{}, *collection.get(), indexParameters->slice())} {}
-    // indexCreated{false},
-    // index{collection.getCollection()
-    //           ->createIndex(indexParameters->slice(), indexCreated)
-    //           .waitAndGet()} {}
-
-    // setup required application features
-    features.emplace_back(
-        server.addFeature<
-            arangodb::AuthenticationFeature>());  // required for VocbaseContext
-    features.emplace_back(server.addFeature<DatabaseFeature>());
-    auto& selector = server.addFeature<EngineSelectorFeature>();
-    features.emplace_back(selector);
-    selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<metrics::MetricsFeature>(
-        LazyApplicationFeatureReference<QueryRegistryFeature>(server),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
-        LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
-            nullptr),
-        LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
-    features.emplace_back(server.addFeature<QueryRegistryFeature>(
-        server.template getFeature<
-            metrics::MetricsFeature>()));  // required for TRI_vocbase_t
-
-    for (auto& f : features) {
-      f.get().prepare();
-    }
-
-    TRI_vocbase_t vocbase(testDBInfo(server));
-    // auto param =
-    //     arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
-    // collection = vocbase.createCollection(param->slice());
-
-    // param = VPackParser::fromJson(
-    //     R"({"name":"idx_1822028972208160768","type":"persistent","objectId":"294","estimates":true,"fields":["x"],"sparse":true,"unique":false,"deduplicate":true,"inBackground":false,"cacheEnabled":false})");
-    // bool indexCreated;
-    // index = collection->createIndex(indexParameters->slice(), indexCreated)
-    // .waitAndGet();
-  }
-  ~IndexAggregateScanExecutorTest() {
-    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
-
-    for (auto& f : features) {
-      f.get().unprepare();
-    }
-  }
-
+      : vocbase{_server->getSystemDatabase()},
+        collection{LogicalCollection{
+            vocbase, velocypack::Slice::emptyObjectSlice(), true}} {}
   auto registerInfos(RegIdSet registers) -> RegisterInfos {
-    return RegisterInfos{{},         // readable input registers
-                         registers,  // writable output registers
-                         static_cast<uint16_t>(registers.size()),  // n in
-                         static_cast<uint16_t>(registers.size()),  // n out
-                         {},                         // regs to clear
-                         RegIdSetStack{registers}};  // regs to keep
+    return RegisterInfos{
+        {},         // readable input registers
+        registers,  // writable output registers
+        0,          // static_cast<uint16_t>(registers.size()),  // n in
+        3,          // static_cast<uint16_t>(registers.size()),  // n out
+        {},         // regs to clear
+        RegIdSetStack{RegIdSet{}}};  // regs to keep
   }
   // auto getSortRegisters(std::vector<RegisterId> registers)
   //     -> std::vector<SortRegister> {
@@ -140,36 +181,53 @@ class IndexAggregateScanExecutorTest
   auto indexAggregateScanInfos() {
     // std::vector<IndexAggregateScanInfos::Group>&& groups,
     // std::vector<IndexAggregateScanInfos::Aggregation>&& aggregations) {
+    LOG_DEVEL << "start creating infos";
+
+    auto indexHandle = std::make_shared<MockIndex>(
+        collection, std::vector<MyVectorIterator::Value>{
+                        {MyDocumentId{},
+                         {inspection::serializeWithErrorT(4).get().slice()}}});
+
+    // TODO should group output register be same as aggregate output register?
     std::vector<IndexAggregateScanInfos::Group> groups = {
         IndexAggregateScanInfos::Group{.outputRegister = 0, .indexField = 0}};
+
     auto ast = Ast{*fakedQuery.get()};
-    auto expression_parameters = VPackParser::fromJson(
-        R"({"expression":{"type":"attribute access","typeID":35,"name":"a","subNodes":[{"type":"reference","typeID":45,"name":"doc","id":0,"subqueryReference":false}]}})");
+    auto newVariable = ast.variables()->createTemporaryVariable();
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add(VPackValue("expression"));
+    builder.openObject();
+    builder.add("type", VPackValue("reference"));
+    builder.add("typeID", VPackValue(45));
+    builder.add("name", VPackValue(6));
+    builder.add("id", VPackValue(newVariable->id));
+    builder.add("subqueryReference", VPackValue(false));
+    builder.close();
+    builder.close();
+
+    LOG_DEVEL << "after creating ast";
+
+    // auto expression_parameters = VPackParser::fromJson(expression_string);
     std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
     aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
         .type = "MAX",
-        .outputRegister = 0,
-        .expression = std::make_unique<Expression>(
-            &ast, expression_parameters->slice())});
-    return IndexAggregateScanInfos{index,
+        .outputRegister = 1,
+        .expression = std::make_unique<Expression>(&ast, builder.slice())});
+
+    LOG_DEVEL << "end creating infos";
+
+    return IndexAggregateScanInfos{indexHandle,
                                    std::move(groups),
                                    std::move(aggregations),
-                                   {},
+                                   {{6, 0}},  // var 6 -> index field 0
                                    fakedQuery.get()};
   }
 
  protected:
-  arangodb::ArangodServer server;
-  StorageEngineMock engine;
-  std::vector<std::reference_wrapper<
-      arangodb::application_features::ApplicationFeature>>
-      features;
-
-  std::shared_ptr<VPackBuilder> collectionParameters;
-  // Collection collection;
-  std::shared_ptr<LogicalCollection> collection;
-  std::shared_ptr<VPackBuilder> indexParameters;
-  std::shared_ptr<Index> index;
+  TRI_vocbase_t& vocbase;
+  LogicalCollection collection;
+  // logicalCollection{vocbase, slice, true)
 };
 
 INSTANTIATE_TEST_CASE_P(IndexAggregateScanExecutorTest,
@@ -179,32 +237,33 @@ INSTANTIATE_TEST_CASE_P(IndexAggregateScanExecutorTest,
                                           splitStep<2>));
 
 TEST_P(IndexAggregateScanExecutorTest, sorts_normally_when_nothing_is_grouped) {
-  // auto groupRegisterId = 0;`
-  // auto aggregationRegisterId = 1;
+  // auto groupRegisterId = 0;
+  auto aggregationRegisterId = 1;
   // group.outputRegister // writableOutputRegisters has all these registers
   // as well group.index // location in persistent index array
   // aggregations.type // aggr type, e.g. MAX aggregations.outputRegister
-  // aggregations.expression makeExecutorTestHelper<2, 1>()
-  //     .addConsumer<IndexAggregateScanExecutor>(
-  //         registerInfos(RegIdSet{0, aggregationRegisterId}),
-  //         indexAggregateScanInfos(),
-  //         // {IndexAggregateScanInfos::Group{.outputRegister =
-  //         groupRegisterId,
-  //         //                                 .indexField = 0}},
-  //         // {IndexAggregateScanInfos::Aggregation{
-  //         //     .type = "MAX",
-  //         //     .outputRegister = aggregationRegisterId,
-  //         //     .expression = std::make_unique<Expression>(
-  //         //         &ast, expression_parameters->slice())}}),
-  //         ExecutionNode::INDEX_COLLECT)
-  //     .setInputSplitType(GetParam())
-  //     .setInputValue(
-  //         {{1, 3}, {5, 8}, {1, 1009}, {6, 832}, {1, -1}, {5, 1}, {2, 0}})
-  //     .expectOutput({aggregationRegisterId}, {{1009}, {0}, {8}, {832}})
-  //     .setCall(AqlCall{})
-  //     .expectSkipped(0)
-  //     .expectedState(ExecutionState::DONE)
-  //     .run();
+  // aggregations.expression
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{aggregationRegisterId}),
+          indexAggregateScanInfos(),
+          //         // {IndexAggregateScanInfos::Group{.outputRegister =
+          //         groupRegisterId,
+          //         //                                 .indexField = 0}},
+          //         // {IndexAggregateScanInfos::Aggregation{
+          //         //     .type = "MAX",
+          //         //     .outputRegister = aggregationRegisterId,
+          //         //     .expression = std::make_unique<Expression>(
+          //         //         &ast, expression_parameters->slice())}}),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputSplitType(GetParam())
+      .setInputValue({{}})
+      //         {{1, 3}, {5, 8}, {1, 1009}, {6, 832}, {1, -1}, {5, 1}, {2, 0}})
+      .expectOutput({aggregationRegisterId}, {{4}})
+      .setCall(AqlCall{})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
 // TEST_P(IndexAggregateScanExecutorTest,

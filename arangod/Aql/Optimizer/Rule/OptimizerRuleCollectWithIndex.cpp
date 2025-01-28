@@ -226,11 +226,10 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
     if (producer->getType() != EN::CALCULATION) {
       return std::nullopt;
     }
+    auto calculation = EN::castTo<CalculationNode*>(producer);
 
     // check if it is just an attribute access for the out variable of the
     // index node.
-    auto calculation = EN::castTo<CalculationNode*>(producer);
-
     VarSet variablesUsed;
     calculation->expression()->variables(variablesUsed);
     if (variablesUsed != VarSet{idx.outVariable()}) {
@@ -240,12 +239,11 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
       return std::nullopt;
     }
 
+    // check if all attributes in aggregate expression are covered fields
     containers::FlatHashSet<aql::AttributeNamePath> attributes;
     Ast::getReferencedAttributesRecursive(
         calculation->expression()->node(), idx.outVariable(), "", attributes,
         plan.getAst()->query().resourceMonitor());
-
-    // check if all attributes are covered fields
     for (auto const& attr : attributes) {
       auto iter = std::find_if(
           coveredFields.begin(), coveredFields.end(),
@@ -260,6 +258,7 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
       aggregationFields.emplace_back(fieldIndex);
     }
 
+    // put the calculation expression inside the aggregation
     aggregations.emplace_back(IndexCollectAggregation{
         .type = agg.type,
         .outVariable = agg.outVar,

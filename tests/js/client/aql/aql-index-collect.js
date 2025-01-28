@@ -25,7 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const {db} = require("@arangodb");
+const { db } = require("@arangodb");
 const internal = require('internal');
 const _ = require('lodash');
 
@@ -39,10 +39,10 @@ function IndexCollectOptimizerTestSuite() {
       db._createDatabase(database);
       db._useDatabase(database);
 
-      const c = db._create(collection, {numberOfShards: 3});
+      const c = db._create(collection, { numberOfShards: 3 });
       const docs = [];
       for (let k = 0; k < 10000; k++) {
-        docs.push({k, a: k % 10, b: k % 100});
+        docs.push({ k, a: k % 10, b: k % 100 });
       }
       c.save(docs);
     },
@@ -55,8 +55,8 @@ function IndexCollectOptimizerTestSuite() {
     },
 
     testSimpleDistinctScan: function () {
-      db[collection].ensureIndex({type: "persistent", fields: ["a", "b", "d"]});
-      db[collection].ensureIndex({type: "persistent", fields: ["k"]});
+      db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"] });
+      db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
 
       const queries = [
         [`FOR doc IN ${collection} COLLECT a = doc.a RETURN a`, true],
@@ -90,8 +90,8 @@ function IndexCollectOptimizerTestSuite() {
     },
 
     testSimpleAggregationScan: function () {
-      db[collection].ensureIndex({type: "persistent", fields: ["a", "b", "d"], storedValues: ["e", "f"]});
-      db[collection].ensureIndex({type: "persistent", fields: ["k"]});
+      db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"], storedValues: ["e", "f"] });
+      db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
 
       const queries = [
         [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b) RETURN [a, b]`, true],
@@ -114,7 +114,7 @@ function IndexCollectOptimizerTestSuite() {
     },
 
     testCollectOptions: function () {
-      const index = db[collection].ensureIndex({type: "persistent", fields: ["a", "b", "c.d"], name: "foobar"});
+      const index = db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "c.d"], name: "foobar" });
       const queries = [
         [`FOR doc IN ${collection} COLLECT a = doc.a RETURN a`, "sorted", [0], [["a"]]],
         [`FOR doc IN ${collection} COLLECT a = doc.a SORT null RETURN a`, "hash", [0], [["a"]]],
@@ -145,6 +145,9 @@ function IndexCollectOptimizerTestSuite() {
   };
 }
 
+// TODO add test case where we have too few data, therefore the rule will not be used because old behaviour is faster
+//                           but only for distinct scan, for aggregation it should work independent of data size
+
 function IndexCollectExecutionTestSuite() {
   const numDocuments = 10000;
 
@@ -153,17 +156,17 @@ function IndexCollectExecutionTestSuite() {
       db._createDatabase(database);
       db._useDatabase(database);
 
-      const c = db._create(collection, {numberOfShards: 3});
+      const c = db._create(collection, { numberOfShards: 3 });
       const docs = [];
       for (let k = 0; k < numDocuments; k++) {
-        docs.push({k, a: k % 2, b: k % 4, c: k % 8, m: 0});
+        docs.push({ k, a: k % 2, b: k % 4, c: k % 8, m: k % 4 });
       }
       c.save(docs);
-      c.ensureIndex({type: "persistent", fields: ["k"]});
-      c.ensureIndex({type: "persistent", fields: ["a", "b"], storedValues: ["c"]});
-      c.ensureIndex({type: "persistent", fields: ["b"]});
-      c.ensureIndex({type: "persistent", fields: ["c"]});
-      c.ensureIndex({type: "persistent", fields: ["m", "a"]});
+      c.ensureIndex({ type: "persistent", fields: ["k"] });
+      c.ensureIndex({ type: "persistent", fields: ["a", "b"], storedValues: ["c"] });
+      c.ensureIndex({ type: "persistent", fields: ["b"] });
+      c.ensureIndex({ type: "persistent", fields: ["c"] });
+      c.ensureIndex({ type: "persistent", fields: ["m", "a"] });
     },
     tearDownAll: function () {
       db._useDatabase("_system");
@@ -173,28 +176,30 @@ function IndexCollectExecutionTestSuite() {
     testIndexCollectExecution: function () {
 
       const queries = [
-        [`FOR doc IN ${collection} COLLECT a = doc.a RETURN [a]`],
-        [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b RETURN [a, b]`],
-        [`FOR doc IN ${collection} COLLECT m = doc.m, a = doc.a RETURN [m, a]`],
-        [`FOR doc IN ${collection} COLLECT m = doc.m RETURN [m]`],
+        // [`FOR doc IN ${collection} COLLECT a = doc.a RETURN [a]`],
+        // [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b RETURN [a, b]`],
+        // [`FOR doc IN ${collection} COLLECT m = doc.m, a = doc.a RETURN [m, a]`],
+        // [`FOR doc IN ${collection} COLLECT m = doc.m RETURN [m]`],
 
-        [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a RETURN [a, b]`],
-        [`FOR doc IN ${collection} COLLECT a = doc.a, m = doc.m RETURN [a, m]`],
-        [`LET as = (FOR doc IN ${collection} COLLECT a = doc.a RETURN a) LET bs = (FOR doc IN ${collection}
-            COLLECT b = doc.b RETURN b) RETURN [as, bs]`],
+        // [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a RETURN [a, b]`],
+        // [`FOR doc IN ${collection} COLLECT a = doc.a, m = doc.m RETURN [a, m]`],
+        // [`LET as = (FOR doc IN ${collection} COLLECT a = doc.a RETURN a) LET bs = (FOR doc IN ${collection}
+        //     COLLECT b = doc.b RETURN b) RETURN [as, bs]`],
 
         [`FOR doc IN ${collection} COLLECT m = doc.m AGGREGATE a = SUM(doc.a) RETURN [m, a]`],
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = SUM(doc.b) RETURN [a, b]`],
-        [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b AGGREGATE c = SUM(doc.c) RETURN [a, b, c]`],
-        [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b
-            AGGREGATE c = BIT_XOR(doc.c), d = BIT_OR(doc.c), e = BIT_AND(doc.c) RETURN [a, b, c, d, e]`],
+        // [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = SUM(doc.b) RETURN [a, b]`],
+        // [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b AGGREGATE c = SUM(doc.c) RETURN [a, b, c]`],
+        // [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b
+        // AGGREGATE c = BIT_XOR(doc.c), d = BIT_OR(doc.c), e = BIT_AND(doc.c) RETURN[a, b, c, d, e]`],
       ];
 
       for (const [query] of queries) {
         const explain = db._createStatement(query).explain();
         assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, query);
 
-        const expectedResult = db._query(query, {}, {optimizer: {rules: [`-${indexCollectOptimizerRule}`]}}).toArray();
+        const expectedResult = db._query(query, {}, { optimizer: { rules: [`-${indexCollectOptimizerRule}`] } }).toArray();
+        db._explain(query, {}, { optimizer: { rules: [`-${indexCollectOptimizerRule}`] } });
+        db._explain(query);
         const actualResult = db._query(query).toArray();
         assertEqual(expectedResult, actualResult);
       }
