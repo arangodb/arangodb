@@ -65,7 +65,7 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
       _state(HandlerState::PREPARE),
       _trackedAsOngoingLowPrio(false),
       _lane(RequestLane::UNDEFINED),
-      _logContextScopeValues(
+      _logContextValues(
           LogContext::makeValue()
               .with<structuredParams::UrlName>(_request->fullUrl())
               .with<structuredParams::UserName>(_request->user())
@@ -417,14 +417,28 @@ void RestHandler::runHandlerStateMachine() {
   // _executionMutex has to be locked here
   TRI_ASSERT(_sendResponseCallback);
 
+  // TODO This is a costly workaround until this function has been refactored
+  //      into a coroutine.
+  std::optional<LogContext::Accessor::ScopedValue> logContextScopeGuard;
+  if (!_logContextScopeValues.empty()) {
+    logContextScopeGuard.emplace(
+        decltype(_logContextScopeValues)(_logContextScopeValues));
+  }
+
   while (true) {
     switch (_state) {
-      case HandlerState::PREPARE:
-        // TODO
-        std::ignore = prepareEngine();
+      case HandlerState::PREPARE: {
+        TRI_ASSERT(_logContextScopeValues.empty());
+        _logContextScopeValues = prepareEngine();
+        TRI_ASSERT(!_logContextScopeValues.empty());
+        TRI_ASSERT(!logContextScopeGuard.has_value());
+        logContextScopeGuard.emplace(
+            decltype(_logContextScopeValues)(_logContextScopeValues));
         break;
+      }
 
       case HandlerState::EXECUTE: {
+        TRI_ASSERT(logContextScopeGuard.has_value());
         executeEngine(/*isContinue*/ false);
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(false);
@@ -436,6 +450,7 @@ void RestHandler::runHandlerStateMachine() {
       }
 
       case HandlerState::CONTINUED: {
+        TRI_ASSERT(logContextScopeGuard.has_value());
         executeEngine(/*isContinue*/ true);
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(/*isFinalized*/ false);
@@ -517,7 +532,7 @@ auto RestHandler::prepareEngine()
 
 auto RestHandler::prepareExecute(bool isContinue)
     -> std::vector<std::shared_ptr<LogContext::Values>> {
-  return {_logContextScopeValues};
+  return {_logContextValues};
 }
 
 void RestHandler::shutdownExecute(bool isFinalized) noexcept {}

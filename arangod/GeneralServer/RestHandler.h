@@ -231,7 +231,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RequestLane _lane;
 
-  std::shared_ptr<LogContext::Values> _logContextScopeValues;
+  std::shared_ptr<LogContext::Values> _logContextValues;
+  std::vector<std::shared_ptr<LogContext::Values>> _logContextScopeValues;
 
  protected:
   metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;
