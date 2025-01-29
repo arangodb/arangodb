@@ -459,7 +459,7 @@ function iterateTests(cases, options) {
       }
     } catch (err) {
       result = {
-        currentTest: {
+        [currentTest]: {
           status: false,
           failed: true,
           message: `caught exception in testsuite: ${err.message}\n${err.stack}`
