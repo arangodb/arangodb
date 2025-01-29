@@ -109,7 +109,7 @@ function arangosh (options) {
     }
 
     const startTime = time();
-    let rc = executeExternalAndWaitWithSanitizer(pu.ARANGOSH_BIN, toArgv(args), 'arangosh_tests_weird_names');
+    let rc = executeExternalAndWaitWithSanitizer(pu.ARANGOSH_BIN, toArgv(args), 'arangosh_tests_weird_names', options);
     const deltaTime = time() - startTime;
     const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === expectedReturnCode);
 
@@ -156,7 +156,7 @@ function arangosh (options) {
 
     const startTime2 = time();
 
-    let rc2 = executeExternalAndWaitWithSanitizer(pu.ARANGOSH_BIN, toArgv(args2),  'arangosh_tests_weird_names');
+    let rc2 = executeExternalAndWaitWithSanitizer(pu.ARANGOSH_BIN, toArgv(args2),  'arangosh_tests_weird_names', options);
     const deltaTime2 = time() - startTime2;
     const failSuccess2 = (rc2.hasOwnProperty('exit') && rc2.exit === expectedReturnCode);
 
@@ -321,7 +321,7 @@ function arangosh (options) {
     executeExternalAndWait('sh', ['-c', 'chmod a+x ' + execFile]);
 
     const startTime2 = time();
-    let rc = executeExternalAndWaitWithSanitizer('sh', ['-c', execFile], 'arangosh_tests_echo');
+    let rc = executeExternalAndWaitWithSanitizer('sh', ['-c', execFile], 'arangosh_tests_echo', options);
     deltaTime2 = time() - startTime2;
 
     echoSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
@@ -365,7 +365,7 @@ function arangosh (options) {
     executeExternalAndWait('sh', ['-c', 'chmod a+x ' + shebangFile]);
 
     const startTime3 = time();
-    rc = executeExternalAndWaitWithSanitizer('sh', ['-c', shebangFile], 'arangosh_tests_shebang');
+    rc = executeExternalAndWaitWithSanitizer('sh', ['-c', shebangFile], 'arangosh_tests_shebang', options);
     deltaTime3 = time() - startTime3;
 
     if (options.verbose) {
