@@ -162,8 +162,7 @@ class MockIndex : public Index {
   std::vector<VPackBuilder> _values;
 };
 
-class IndexAggregateScanExecutorTest
-    : public AqlExecutorTestCaseWithParam<SplitType> {
+class IndexAggregateScanExecutorTest : public AqlExecutorTestCase<> {
  public:
   IndexAggregateScanExecutorTest()
       : vocbase{_server->getSystemDatabase()},
@@ -178,136 +177,67 @@ class IndexAggregateScanExecutorTest
         {},         // regs to clear
         RegIdSetStack{RegIdSet{}}};  // regs to keep
   }
-  // auto indexAggregateScanInfos(std::shared_ptr<Index> indexHandle) {
-  //   // std::vector<IndexAggregateScanInfos::Group>&& groups,
-  //   // std::vector<IndexAggregateScanInfos::Aggregation>&& aggregations) {
-  //   LOG_DEVEL << "start creating infos";
+  auto randomExpressionWithVar(VariableId var) -> VPackBuilder {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add(VPackValue("expression"));
+    builder.openObject();
+    builder.add("type", VPackValue("reference"));
+    builder.add("typeID", VPackValue(45));
+    builder.add("name", VPackValue(6));
+    builder.add("id", VPackValue(var));
+    builder.add("subqueryReference", VPackValue(false));
+    builder.close();
+    builder.close();
+    return builder;
+  }
+  auto indexAggregateScanInfos(
+      std::vector<VPackBuilder> indexValues,
+      std::vector<IndexAggregateScanInfos::Group>&& groups,
+      std::vector<IndexAggregateScanInfos::Aggregation>&& aggregations,
+      containers::FlatHashMap<VariableId, size_t>
+          expressionVariablesToIndexField) {
+    auto indexHandle =
+        std::make_shared<MockIndex>(collection, std::move(indexValues));
 
-  //   std::vector<IndexAggregateScanInfos::Group> groups = {
-  //       IndexAggregateScanInfos::Group{.outputRegister = 0, .indexField =
-  //       0}};
-
-  //   auto ast = Ast{*fakedQuery.get()};
-  //   auto newVariable = ast.variables()->createTemporaryVariable();
-  //   VPackBuilder builder;
-  //   builder.openObject();
-  //   builder.add(VPackValue("expression"));
-  //   builder.openObject();
-  //   builder.add("type", VPackValue("reference"));
-  //   builder.add("typeID", VPackValue(45));
-  //   builder.add("name", VPackValue(6));
-  //   builder.add("id", VPackValue(newVariable->id));
-  //   builder.add("subqueryReference", VPackValue(false));
-  //   builder.close();
-  //   builder.close();
-
-  //   LOG_DEVEL << "after creating ast";
-
-  //   // auto expression_parameters = VPackParser::fromJson(expression_string);
-  //   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
-  //   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-  //       .type = "MAX",
-  //       .outputRegister = 1,
-  //       .expression = std::make_unique<Expression>(&ast, builder.slice())});
-
-  //   LOG_DEVEL << "end creating infos";
-
-  //   return IndexAggregateScanInfos{indexHandle,
-  //                                  std::move(groups),
-  //                                  std::move(aggregations),
-  //                                  {{6, 0}},  // var 6 -> index field 0
-  //                                  fakedQuery.get()};
-  // }
+    return IndexAggregateScanInfos{std::move(indexHandle),
+                                   // defines length of keys
+                                   std::move(groups), std::move(aggregations),
+                                   // defines length of projections
+                                   expressionVariablesToIndexField,
+                                   fakedQuery.get()};
+  }
 
  protected:
   TRI_vocbase_t& vocbase;
   LogicalCollection collection;
-  // logicalCollection{vocbase, slice, true)
 };
 
-INSTANTIATE_TEST_CASE_P(IndexAggregateScanExecutorTest,
-                        IndexAggregateScanExecutorTest,
-                        ::testing::Values(splitIntoBlocks<2, 3>,
-                                          splitIntoBlocks<3, 4>, splitStep<1>,
-                                          splitStep<2>));
-
-TEST_P(IndexAggregateScanExecutorTest, sorts_normally_when_nothing_is_grouped) {
-  // VPackBuilder vb;
-  // vb.openArray();
-  // vb.add(VPackValue(4));
-  // vb.add(VPackValue(1));
-  // vb.close();
-  // auto iter = std::make_unique<MyVectorIterator>(vb);
-  // std::vector<VPackSlice> keys;
-  // keys.resize(2);
-  // iter->reset(keys, {});
-  // LOG_DEVEL << "my keys: " << inspection::json(keys);
-
-  // auto groupRegisterId = 0;
+TEST_F(IndexAggregateScanExecutorTest, sorts_normally_when_nothing_is_grouped) {
+  auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
-
-  VPackBuilder valueBuilder;
-  valueBuilder.openArray();
-  valueBuilder.add(VPackValue(4));
-  valueBuilder.add(VPackValue(1));
-  valueBuilder.close();
-  auto indexHandle = std::make_shared<MockIndex>(
-      collection, std::vector<VPackBuilder>{std::move(valueBuilder)});
-
-  std::vector<IndexAggregateScanInfos::Group> groups = {
-      IndexAggregateScanInfos::Group{.outputRegister = 0, .indexField = 0}};
 
   auto ast = Ast{*fakedQuery.get()};
   auto newVariable = ast.variables()->createTemporaryVariable();
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(VPackValue("expression"));
-  builder.openObject();
-  builder.add("type", VPackValue("reference"));
-  builder.add("typeID", VPackValue(45));
-  builder.add("name", VPackValue(6));
-  builder.add("id", VPackValue(newVariable->id));
-  builder.add("subqueryReference", VPackValue(false));
-  builder.close();
-  builder.close();
+  auto expression = randomExpressionWithVar(newVariable->id);
 
-  // auto expression_parameters = VPackParser::fromJson(expression_string);
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
       .type = "MAX",
-      .outputRegister = 1,
-      .expression = std::make_unique<Expression>(&ast, builder.slice())});
+      .outputRegister = aggregationRegisterId,
+      .expression = std::make_unique<Expression>(&ast, expression.slice())});
 
-  // group.outputRegister // writableOutputRegisters has all these
-  // registers
-  // as well group.index // location in persistent index array
-  // aggregations.type // aggr type, e.g. MAX aggregations.outputRegister
-  // aggregations.expression
+  size_t indexField = 0;
   makeExecutorTestHelper<0, 1>()
       .addConsumer<IndexAggregateScanExecutor>(
-          registerInfos(RegIdSet{0, aggregationRegisterId}),
-          IndexAggregateScanInfos{
-              indexHandle,
-              // defines length of keys
-              std::move(groups),
-              std::move(aggregations),
-              // defines length of projections
-              // {{6, 0}},  // var id 6 -> index field 0 in projections
-              {{0, 0}},
-              fakedQuery.get()},
-          //         // {IndexAggregateScanInfos::Group{.outputRegister =
-          //         groupRegisterId,
-          //         //                                 .indexField = 0}},
-          //         // {IndexAggregateScanInfos::Aggregation{
-          //         //     .type = "MAX",
-          //         //     .outputRegister = aggregationRegisterId,
-          //         //     .expression = std::make_unique<Expression>(
-          //         //         &ast, expression_parameters->slice())}}),
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
+          indexAggregateScanInfos(
+              std::vector<VPackBuilder>{*VPackParser::fromJson(R"([4, 1])")},
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = indexField}},
+              std::move(aggregations), {{newVariable->id, indexField}}),
           ExecutionNode::INDEX_COLLECT)
-      .setInputSplitType(GetParam())
       .setInputValue({{}})
-      //         {{1, 3}, {5, 8}, {1, 1009}, {6, 832}, {1, -1}, {5, 1}, {2,
-      // 0}})
       .expectOutput({aggregationRegisterId}, {{4}})
       .setCall(AqlCall{})
       .expectSkipped(0)
