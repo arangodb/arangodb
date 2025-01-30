@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <velocypack/SharedSlice.h>
+#include <velocypack/Slice.h>
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/Executor/AqlExecutorTestCase.h"
@@ -60,76 +61,84 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-using MyKeyValue = velocypack::Slice;
 using MyDocumentId = LocalDocumentId;
 
 struct MyVectorIterator : public AqlIndexStreamIterator {
-  bool position(std::span<MyKeyValue> sp) const override {
-    if (current != end) {
-      auto& [id, keys] = *current;
-      sp = keys;
+  bool position(std::span<velocypack::Slice> sp) const override {
+    if (_current != _values.end()) {
+      std::copy_n(_current->begin(), _current->size(), sp.begin());
       return true;
     }
     return false;
   }
 
-  bool seek(std::span<MyKeyValue> key) override {
+  bool seek(std::span<velocypack::Slice> key) override {
     // not needed
     return false;
   }
 
-  MyDocumentId load(std::span<MyKeyValue> projections) const override {
-    auto& [id, keys] = *current;
-    return id;
+  LocalDocumentId load(
+      std::span<velocypack::Slice> projections) const override {
+    std::copy_n(_current->begin(), _current->size(), projections.begin());
+    return LocalDocumentId{};
   }
 
-  void cacheCurrentKey(std::span<MyKeyValue> cache) override {
-    auto& [id, keys] = *current;
-    cache = keys;
+  void cacheCurrentKey(std::span<velocypack::Slice> cache) override {
+    cache = *_current;
   }
 
-  bool reset(std::span<MyKeyValue> span,
-             std::span<MyKeyValue> constants) override {
-    current = begin;
-    if (current != end) {
-      auto& [id, keys] = *current;
-      span = keys;
+  bool reset(std::span<velocypack::Slice> span,
+             std::span<velocypack::Slice> constants) override {
+    _current = _values.begin();
+    if (_current != _values.end()) {
+      std::copy_n(_current->begin(), _current->size(), span.begin());
+      LOG_DEVEL << "keys " << inspection::json(*_current);
     }
-    return current != end;
+    return _current != _values.end();
   }
 
-  bool next(std::span<MyKeyValue> key, MyDocumentId& doc,
-            std::span<MyKeyValue> projections) override {
-    current = current + 1;
-    if (current == end) {
+  bool next(std::span<velocypack::Slice> key, LocalDocumentId& doc,
+            std::span<velocypack::Slice> projections) override {
+    _current = _current + 1;
+    if (_current == _values.end()) {
       return false;
     }
 
-    auto& [id, keys] = *current;
-    key = keys;
-    doc = id;
+    std::copy_n(_current->begin(), _current->size(), key.begin());
+    std::copy_n(_current->begin(), _current->size(), projections.begin());
+    doc = LocalDocumentId{};
     return true;
   }
 
-  using Value = std::tuple<
-      MyDocumentId,
-      std::vector<MyKeyValue> /* index entries */ /* , projections */>;
+  void test() override {
+    LOG_DEVEL << "test " << inspection::json(_originalValues) << ", "
+              << inspection::json(_values);
+  }
 
-  std::vector<Value> values;
-  typename std::vector<Value>::iterator begin;
-  typename std::vector<Value>::iterator current;
-  typename std::vector<Value>::iterator end;
+  using Value = std::vector<VPackSlice>;
 
-  MyVectorIterator(std::vector<Value> c)
-      : values{c}, begin(c.begin()), current(begin), end(c.end()) {}
+  std::vector<VPackBuilder>
+      _originalValues;  // this builder is an array of ints
+  std::vector<Value> _values;
+  typename std::vector<Value>::iterator _current;
+
+  MyVectorIterator(std::vector<VPackBuilder> c) : _originalValues{c} {
+    for (auto const& row : _originalValues) {
+      std::vector<VPackSlice> vec;
+      for (auto const& entry : VPackArrayIterator(row.slice())) {
+        vec.emplace_back(entry);
+      }
+      _values.emplace_back(std::move(vec));
+      _current = _values.begin();
+    }
+  }
 };
 
 class MockIndex : public Index {
  public:
-  MockIndex(LogicalCollection& collection,
-            std::vector<MyVectorIterator::Value> values)
+  MockIndex(LogicalCollection& collection, std::vector<VPackBuilder> values)
       : Index(IndexId{}, collection, "collection", {}, false, false),
-        _values{std::move(values)} {
+        _values{values} {
     // we need to create Index with a logical collection here because other
     // constructors are deleted
   }
@@ -150,7 +159,7 @@ class MockIndex : public Index {
   void load() override { return; }
   void unload() override { return; }
 
-  std::vector<MyVectorIterator::Value> _values;
+  std::vector<VPackBuilder> _values;
 };
 
 class IndexAggregateScanExecutorTest
@@ -169,60 +178,46 @@ class IndexAggregateScanExecutorTest
         {},         // regs to clear
         RegIdSetStack{RegIdSet{}}};  // regs to keep
   }
-  // auto getSortRegisters(std::vector<RegisterId> registers)
-  //     -> std::vector<SortRegister> {
-  //   std::vector<SortRegister> sortRegisters;
-  //   for (auto const& id : registers) {
-  //     sortRegisters.emplace_back(
-  //         SortRegister{id, SortElement::create(&sortVar, true)});
-  //   }
-  //   return sortRegisters;
+  // auto indexAggregateScanInfos(std::shared_ptr<Index> indexHandle) {
+  //   // std::vector<IndexAggregateScanInfos::Group>&& groups,
+  //   // std::vector<IndexAggregateScanInfos::Aggregation>&& aggregations) {
+  //   LOG_DEVEL << "start creating infos";
+
+  //   std::vector<IndexAggregateScanInfos::Group> groups = {
+  //       IndexAggregateScanInfos::Group{.outputRegister = 0, .indexField =
+  //       0}};
+
+  //   auto ast = Ast{*fakedQuery.get()};
+  //   auto newVariable = ast.variables()->createTemporaryVariable();
+  //   VPackBuilder builder;
+  //   builder.openObject();
+  //   builder.add(VPackValue("expression"));
+  //   builder.openObject();
+  //   builder.add("type", VPackValue("reference"));
+  //   builder.add("typeID", VPackValue(45));
+  //   builder.add("name", VPackValue(6));
+  //   builder.add("id", VPackValue(newVariable->id));
+  //   builder.add("subqueryReference", VPackValue(false));
+  //   builder.close();
+  //   builder.close();
+
+  //   LOG_DEVEL << "after creating ast";
+
+  //   // auto expression_parameters = VPackParser::fromJson(expression_string);
+  //   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  //   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+  //       .type = "MAX",
+  //       .outputRegister = 1,
+  //       .expression = std::make_unique<Expression>(&ast, builder.slice())});
+
+  //   LOG_DEVEL << "end creating infos";
+
+  //   return IndexAggregateScanInfos{indexHandle,
+  //                                  std::move(groups),
+  //                                  std::move(aggregations),
+  //                                  {{6, 0}},  // var 6 -> index field 0
+  //                                  fakedQuery.get()};
   // }
-  auto indexAggregateScanInfos() {
-    // std::vector<IndexAggregateScanInfos::Group>&& groups,
-    // std::vector<IndexAggregateScanInfos::Aggregation>&& aggregations) {
-    LOG_DEVEL << "start creating infos";
-
-    auto indexHandle = std::make_shared<MockIndex>(
-        collection, std::vector<MyVectorIterator::Value>{
-                        {MyDocumentId{},
-                         {inspection::serializeWithErrorT(4).get().slice()}}});
-
-    // TODO should group output register be same as aggregate output register?
-    std::vector<IndexAggregateScanInfos::Group> groups = {
-        IndexAggregateScanInfos::Group{.outputRegister = 0, .indexField = 0}};
-
-    auto ast = Ast{*fakedQuery.get()};
-    auto newVariable = ast.variables()->createTemporaryVariable();
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add(VPackValue("expression"));
-    builder.openObject();
-    builder.add("type", VPackValue("reference"));
-    builder.add("typeID", VPackValue(45));
-    builder.add("name", VPackValue(6));
-    builder.add("id", VPackValue(newVariable->id));
-    builder.add("subqueryReference", VPackValue(false));
-    builder.close();
-    builder.close();
-
-    LOG_DEVEL << "after creating ast";
-
-    // auto expression_parameters = VPackParser::fromJson(expression_string);
-    std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
-    aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-        .type = "MAX",
-        .outputRegister = 1,
-        .expression = std::make_unique<Expression>(&ast, builder.slice())});
-
-    LOG_DEVEL << "end creating infos";
-
-    return IndexAggregateScanInfos{indexHandle,
-                                   std::move(groups),
-                                   std::move(aggregations),
-                                   {{6, 0}},  // var 6 -> index field 0
-                                   fakedQuery.get()};
-  }
 
  protected:
   TRI_vocbase_t& vocbase;
@@ -237,16 +232,69 @@ INSTANTIATE_TEST_CASE_P(IndexAggregateScanExecutorTest,
                                           splitStep<2>));
 
 TEST_P(IndexAggregateScanExecutorTest, sorts_normally_when_nothing_is_grouped) {
+  // VPackBuilder vb;
+  // vb.openArray();
+  // vb.add(VPackValue(4));
+  // vb.add(VPackValue(1));
+  // vb.close();
+  // auto iter = std::make_unique<MyVectorIterator>(vb);
+  // std::vector<VPackSlice> keys;
+  // keys.resize(2);
+  // iter->reset(keys, {});
+  // LOG_DEVEL << "my keys: " << inspection::json(keys);
+
   // auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
-  // group.outputRegister // writableOutputRegisters has all these registers
+
+  VPackBuilder valueBuilder;
+  valueBuilder.openArray();
+  valueBuilder.add(VPackValue(4));
+  valueBuilder.add(VPackValue(1));
+  valueBuilder.close();
+  auto indexHandle = std::make_shared<MockIndex>(
+      collection, std::vector<VPackBuilder>{std::move(valueBuilder)});
+
+  std::vector<IndexAggregateScanInfos::Group> groups = {
+      IndexAggregateScanInfos::Group{.outputRegister = 0, .indexField = 0}};
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto newVariable = ast.variables()->createTemporaryVariable();
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(VPackValue("expression"));
+  builder.openObject();
+  builder.add("type", VPackValue("reference"));
+  builder.add("typeID", VPackValue(45));
+  builder.add("name", VPackValue(6));
+  builder.add("id", VPackValue(newVariable->id));
+  builder.add("subqueryReference", VPackValue(false));
+  builder.close();
+  builder.close();
+
+  // auto expression_parameters = VPackParser::fromJson(expression_string);
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "MAX",
+      .outputRegister = 1,
+      .expression = std::make_unique<Expression>(&ast, builder.slice())});
+
+  // group.outputRegister // writableOutputRegisters has all these
+  // registers
   // as well group.index // location in persistent index array
   // aggregations.type // aggr type, e.g. MAX aggregations.outputRegister
   // aggregations.expression
-  makeExecutorTestHelper<1, 1>()
+  makeExecutorTestHelper<0, 1>()
       .addConsumer<IndexAggregateScanExecutor>(
-          registerInfos(RegIdSet{aggregationRegisterId}),
-          indexAggregateScanInfos(),
+          registerInfos(RegIdSet{0, aggregationRegisterId}),
+          IndexAggregateScanInfos{
+              indexHandle,
+              // defines length of keys
+              std::move(groups),
+              std::move(aggregations),
+              // defines length of projections
+              // {{6, 0}},  // var id 6 -> index field 0 in projections
+              {{0, 0}},
+              fakedQuery.get()},
           //         // {IndexAggregateScanInfos::Group{.outputRegister =
           //         groupRegisterId,
           //         //                                 .indexField = 0}},
@@ -258,7 +306,8 @@ TEST_P(IndexAggregateScanExecutorTest, sorts_normally_when_nothing_is_grouped) {
           ExecutionNode::INDEX_COLLECT)
       .setInputSplitType(GetParam())
       .setInputValue({{}})
-      //         {{1, 3}, {5, 8}, {1, 1009}, {6, 832}, {1, -1}, {5, 1}, {2, 0}})
+      //         {{1, 3}, {5, 8}, {1, 1009}, {6, 832}, {1, -1}, {5, 1}, {2,
+      // 0}})
       .expectOutput({aggregationRegisterId}, {{4}})
       .setCall(AqlCall{})
       .expectSkipped(0)

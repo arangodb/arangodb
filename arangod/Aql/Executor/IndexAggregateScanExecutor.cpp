@@ -53,6 +53,7 @@ struct SliceSpanExpressionContext : DocumentProducingExpressionContext {
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override {
+    LOG_DEVEL << "get variable value " << variable->id;
     mustDestroy = doCopy;
     auto const searchId = variable->id;
     {
@@ -64,16 +65,16 @@ struct SliceSpanExpressionContext : DocumentProducingExpressionContext {
         return AqlValue(AqlValueHintSliceNoCopy{_sliceSpan[it->second]});
       }
     }
-    {
-      auto it = _varsToRegister.find(searchId);
-      if (it != _varsToRegister.end()) {
-        TRI_ASSERT(_inputRow.isInitialized());
-        if (doCopy) {
-          return _inputRow.getValue(it->second).clone();
-        }
-        return _inputRow.getValue(it->second);
-      }
-    }
+    // {
+    //   auto it = _varsToRegister.find(searchId);
+    //   if (it != _varsToRegister.end()) {
+    //     TRI_ASSERT(_inputRow.isInitialized());
+    //     if (doCopy) {
+    //       return _inputRow.getValue(it->second).clone();
+    //     }
+    //     return _inputRow.getValue(it->second);
+    //   }
+    // }
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, absl::StrCat("variable not found '", variable->name,
                                          "' in SliceSpanExpressionContext"));
@@ -191,8 +192,10 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                    << inspection::json(_projectionSlices);
       for (size_t k = 0; k < _infos.aggregations.size(); k++) {
         bool mustDestroy;
+        // LOG_DEVEL << "before expression exectuion";
         AqlValue result =
             _infos.aggregations[k].expression->execute(&context, mustDestroy);
+        // LOG_DEVEL << "after expression execution";
         AqlValueGuard guard(result, mustDestroy);
         LOG_AGG_SCAN << "[SCAN] Agg " << k << " reduce with value ";
         _aggregatorInstances[k]->reduce(result);
@@ -221,7 +224,6 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   endOfGroup:  // due to either change of group values or iterator exhausted
 
     LOG_AGG_SCAN << "[SCAN] End of group";
-    LOG_DEVEL << "End of group";
 
     // fill output
     for (size_t k = 0; k < _infos.groups.size(); k++) {
@@ -271,6 +273,7 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
   }
   LOG_AGG_SCAN << "[SCAN] constructing stream with options " << streamOptions;
   _iterator = _infos.index->streamForCondition(&_trx, streamOptions);
+  _iterator->test();
 
   // fill projection slices
   _projectionSlices.resize(streamOptions.projectedFields.size());
@@ -278,12 +281,12 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
   LOG_AGG_SCAN << "[SCAN] after reset at "
                << inspection::json(_currentGroupKeySlices)
                << " hasMore= " << hasMore;
-  LOG_DEVEL << "[SCAN] after reset at "
-            << inspection::json(_currentGroupKeySlices)
-            << " hasMore= " << hasMore;
   _iterator->load(_projectionSlices);
   LOG_AGG_SCAN << "[SCAN] projections are  "
                << inspection::json(_projectionSlices);
+  LOG_DEVEL << "[SCAN] after reset at "
+            << inspection::json(_currentGroupKeySlices) << " with projections "
+            << inspection::json(_projectionSlices);
 
   // set aggregators
   _aggregatorInstances.reserve(_infos.aggregations.size());

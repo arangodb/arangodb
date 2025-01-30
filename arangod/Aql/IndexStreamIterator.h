@@ -71,6 +71,8 @@ struct IndexStreamIterator {
   // Constants remain valid until the next reset call.
   virtual bool reset(std::span<SliceType> span,
                      std::span<SliceType> constants) = 0;
+
+  virtual void test() {}
 };
 
 struct AqlIndexStreamIterator
