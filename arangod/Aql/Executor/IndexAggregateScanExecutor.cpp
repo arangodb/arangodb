@@ -53,7 +53,6 @@ struct SliceSpanExpressionContext : DocumentProducingExpressionContext {
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override {
-    LOG_DEVEL << "get variable value " << variable->id;
     mustDestroy = doCopy;
     auto const searchId = variable->id;
     {
@@ -65,16 +64,16 @@ struct SliceSpanExpressionContext : DocumentProducingExpressionContext {
         return AqlValue(AqlValueHintSliceNoCopy{_sliceSpan[it->second]});
       }
     }
-    // {
-    //   auto it = _varsToRegister.find(searchId);
-    //   if (it != _varsToRegister.end()) {
-    //     TRI_ASSERT(_inputRow.isInitialized());
-    //     if (doCopy) {
-    //       return _inputRow.getValue(it->second).clone();
-    //     }
-    //     return _inputRow.getValue(it->second);
-    //   }
-    // }
+    {
+      auto it = _varsToRegister.find(searchId);
+      if (it != _varsToRegister.end()) {
+        TRI_ASSERT(_inputRow.isInitialized());
+        if (doCopy) {
+          return _inputRow.getValue(it->second).clone();
+        }
+        return _inputRow.getValue(it->second);
+      }
+    }
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, absl::StrCat("variable not found '", variable->name,
                                          "' in SliceSpanExpressionContext"));

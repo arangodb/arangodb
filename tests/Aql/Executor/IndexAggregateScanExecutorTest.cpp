@@ -21,6 +21,7 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Builder.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 #include "Aql/Ast.h"
@@ -84,7 +85,7 @@ struct MyVectorIterator : public AqlIndexStreamIterator {
   }
 
   void cacheCurrentKey(std::span<velocypack::Slice> cache) override {
-    cache = *_current;
+    std::copy_n(_current->begin(), _current->size(), cache.begin());
   }
 
   bool reset(std::span<velocypack::Slice> span,
@@ -123,7 +124,7 @@ struct MyVectorIterator : public AqlIndexStreamIterator {
   typename std::vector<Value>::iterator _current;
 
   MyVectorIterator(std::vector<VPackBuilder> c) : _originalValues{c} {
-    for (auto const& row : _originalValues) {
+    for (auto const& row : std::move(_originalValues)) {
       std::vector<VPackSlice> vec;
       for (auto const& entry : VPackArrayIterator(row.slice())) {
         vec.emplace_back(entry);
@@ -138,7 +139,7 @@ class MockIndex : public Index {
  public:
   MockIndex(LogicalCollection& collection, std::vector<VPackBuilder> values)
       : Index(IndexId{}, collection, "collection", {}, false, false),
-        _values{values} {
+        _values{std::move(values)} {
     // we need to create Index with a logical collection here because other
     // constructors are deleted
   }
@@ -169,13 +170,12 @@ class IndexAggregateScanExecutorTest : public AqlExecutorTestCase<> {
         collection{LogicalCollection{
             vocbase, velocypack::Slice::emptyObjectSlice(), true}} {}
   auto registerInfos(RegIdSet registers) -> RegisterInfos {
-    return RegisterInfos{
-        {},         // readable input registers
-        registers,  // writable output registers
-        0,          // static_cast<uint16_t>(registers.size()),  // n in
-        3,          // static_cast<uint16_t>(registers.size()),  // n out
-        {},         // regs to clear
-        RegIdSetStack{RegIdSet{}}};  // regs to keep
+    return RegisterInfos{{},         // readable input registers
+                         registers,  // writable output registers
+                         0,          // n in
+                         static_cast<uint16_t>(registers.size()),  // n out
+                         {},                          // regs to clear
+                         RegIdSetStack{RegIdSet{}}};  // regs to keep
   }
   auto randomExpressionWithVar(VariableId var) -> VPackBuilder {
     VPackBuilder builder;
@@ -204,7 +204,7 @@ class IndexAggregateScanExecutorTest : public AqlExecutorTestCase<> {
                                    // defines length of keys
                                    std::move(groups), std::move(aggregations),
                                    // defines length of projections
-                                   expressionVariablesToIndexField,
+                                   std::move(expressionVariablesToIndexField),
                                    fakedQuery.get()};
   }
 
@@ -212,8 +212,23 @@ class IndexAggregateScanExecutorTest : public AqlExecutorTestCase<> {
   TRI_vocbase_t& vocbase;
   LogicalCollection collection;
 };
+auto indexValues(std::vector<std::vector<int>> values)
+    -> std::vector<VPackBuilder> {
+  std::vector<VPackBuilder> result;
+  for (auto const& row : values) {
+    VPackBuilder builder;
+    builder.openArray();
+    for (auto const& entry : row) {
+      builder.add(VPackValue(entry));
+    }
+    builder.close();
+    result.emplace_back(builder);
+  }
+  return result;
+}
 
-TEST_F(IndexAggregateScanExecutorTest, sorts_normally_when_nothing_is_grouped) {
+TEST_F(IndexAggregateScanExecutorTest,
+       aggregates_values_in_consecutive_index_rows) {
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
@@ -223,7 +238,7 @@ TEST_F(IndexAggregateScanExecutorTest, sorts_normally_when_nothing_is_grouped) {
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
-      .type = "MAX",
+      .type = "SUM",
       .outputRegister = aggregationRegisterId,
       .expression = std::make_unique<Expression>(&ast, expression.slice())});
 
@@ -232,13 +247,13 @@ TEST_F(IndexAggregateScanExecutorTest, sorts_normally_when_nothing_is_grouped) {
       .addConsumer<IndexAggregateScanExecutor>(
           registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
           indexAggregateScanInfos(
-              std::vector<VPackBuilder>{*VPackParser::fromJson(R"([4, 1])")},
+              indexValues({{4}, {6}, {6}, {5}, {6}, {5}, {1}, {1}, {1}}),
               {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
                                               .indexField = indexField}},
               std::move(aggregations), {{newVariable->id, indexField}}),
           ExecutionNode::INDEX_COLLECT)
       .setInputValue({{}})
-      .expectOutput({aggregationRegisterId}, {{4}})
+      .expectOutput({aggregationRegisterId}, {{4}, {12}, {5}, {6}, {5}, {3}})
       .setCall(AqlCall{})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
