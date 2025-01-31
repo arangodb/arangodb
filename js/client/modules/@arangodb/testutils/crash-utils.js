@@ -172,7 +172,7 @@ function readGdbFileFiltered(gdbOutputFile, options) {
       }
     }
     if (countPrinted === 0) {
-      GDB_OUTPUT += "All stacks filtered\n"
+      GDB_OUTPUT += "All stacks filtered\n";
     }
   } catch (ex) {
     let err="failed to read " + gdbOutputFile + " -> " + ex + '\n' + ex.stack;
