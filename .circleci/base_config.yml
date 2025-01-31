@@ -529,7 +529,8 @@ jobs:
             elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
               # Needed to ignore TSAN errors from OpenMP
               find /usr -iname libarcher.so
-              export OMP_TOOL_LIBRARIES=/usr/lib/llvm-16/lib/libarcher.so
+              export OMP_TOOL_LIBRARIES=/usr/lib/llvm-19/lib/libarcher.so
+              export ARCHER_OPTIONS="verbose=1"
               if ! [ -f ${OMP_TOOL_LIBRARIES} ]; then
                 echo "File ${OMP_TOOL_LIBRARIES} does not exist."
                 exit 1
