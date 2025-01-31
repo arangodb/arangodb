@@ -1,6 +1,10 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* Swagger UI: Remove fragment identifiers from request URLs. They are merely
+  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of
+  the HTTP API documentation.
+
 * Update tzdata as of 23.01.2025.
 
 * Rebuilt included rclone v1.62.2 with go1.22.10 and non-vulnerable
@@ -136,10 +140,6 @@ v3.11.10 (2024-06-28)
 * Rebuilt included rclone v1.62.2 with go1.22.4.
 
 * Sort out a thread blockage on AQL upsert waiting for replication.
-
-* Swagger UI: Remove fragment identifiers from request URLs. They are merely
-  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of
-  the HTTP API documentation.
 
 * BTS-1909, MDS-1232: Fixed a bug where COLLECT ... AGGREGATE x = UNIQUE(y)
   could miss some results when multiple shards were aggregated in a cluster.
