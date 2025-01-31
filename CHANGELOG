@@ -1,6 +1,10 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* Swagger UI: Remove fragment identifiers from request URLs. They are merely
+  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of
+  the HTTP API documentation.
+
 * Update tzdata as of 23.01.2025.
 
 * Rebuilt included rclone v1.62.2 with go1.22.10 and non-vulnerable
