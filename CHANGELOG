@@ -1,15 +1,24 @@
 devel
 -----
 
-* FE-488: fix stale variables in execution hook (Keyboard Shortcut > useEffect deps)
 
-* FE-489: fix undefined check at Query Editor UI > Options tab > disabled rules and improve type safety.
 
-* update iresearch 3rd party for clang-19 build
+3.12.4 (2025-01-23)
+-------------------
 
-* Let `arangorestore` restore vector indexes **after** data import. This
-  is necessary, since a vector index can only be created if enough data
-  for learning is available.
+* Update tzdata as of 23.01.2025.
+
+* FE-488: fix stale variables in execution hook (Keyboard Shortcut > useEffect
+  deps).
+
+* FE-489: fix undefined check at Query Editor UI > Options tab > disabled rules
+  and improve type safety.
+
+* Update iresearch 3rd party for clang-19 build.
+
+* Let `arangorestore` restore vector indexes **after** data import. This is
+  necessary, since a vector index can only be created if enough data for
+  learning is available.
 
 * Make `RestImportHandler` asynchronous. This is to avoid some blockages
   observed in the context of BTS-2047.
@@ -17,11 +26,11 @@ devel
 * Make `arangoimport` more stable. The default batch size is lowered to 4MB
   (from 8MB) and the default maximal streaming transaction size is increased
   from 128MB to 512MB. In examples we have seen that the overhead from input
-  data size to the memory usage in the actual RocksDB transaction can be up
-  to 80x, therefore `arangoimport` could run into resource limits with the
-  normal batch size. This is particularly acute for smart edge collections,
-  where `arangoimport` has to use streaming transactions and where small
-  edges have to be indexed multiple times. Fixes BTS-2047.
+  data size to the memory usage in the actual RocksDB transaction can be up to
+  80x, therefore `arangoimport` could run into resource limits with the normal
+  batch size. This is particularly acute for smart edge collections, where
+  `arangoimport` has to use streaming transactions and where small edges have to
+  be indexed multiple times. Fixes BTS-2047.
 
 * Add optional `factory` property to `params` in vector index definition. The
   index factory enables to create composite vector indexes supported by FAISS.
@@ -42,10 +51,11 @@ devel
         "factory": "IVF3800_HNSW32,PQ480x8"
       }
     });
+  ```
 
-* Improve geo index performance in the cluster with multiple shards. This
-  fixes BTS-2046. An unnecessary and bad SORT node is removed from the
-  query plan in the case that a geo index is used.
+* Improve geo index performance in the cluster with multiple shards. This fixes
+  BTS-2046. An unnecessary and bad SORT node is removed from the query plan in
+  the case that a geo index is used.
 
 * Fail queries that use `APPROX_NEAR` functions but do not apply the vector
   index.
@@ -57,10 +67,10 @@ devel
         COLLECT x = doc.x, y = doc.y
         RETURN [x, y]
   ```
-  can now employ a persistent index on `["x", "y"]` to drastically speed up
-  the query. The new optimizer rule is called `use-index-for-collect`. Whether the
-  rule is applied depends on the selectivity of the index. If the selectivity
-  is too high, i.e. there are a lot of distinct values, the rule is not applied
+  can now employ a persistent index on `["x", "y"]` to drastically speed up the
+  query. The new optimizer rule is called `use-index-for-collect`. Whether the
+  rule is applied depends on the selectivity of the index. If the selectivity is
+  too high, i.e. there are a lot of distinct values, the rule is not applied
   since scanning for distinct values in such a case would not be beneficial.
 
   This optimization can be disabled for specific collect statements, using the
@@ -69,8 +79,8 @@ devel
   Currently this only works if there is no `INTO` or `AGGREGATE` clause.
   Filtering is also not yet supported.
 
-* For collect a new PUSH aggregator was added. It aggregates all values into
-  an array. For example
+* For collect a new PUSH aggregator was added. It aggregates all values into an
+  array. For example:
   ```
     FOR doc IN col
         COLLECT x = doc.x AGGREGATE y = PUSH(doc.y)
@@ -93,38 +103,39 @@ devel
 * Introduce new level of index serialization `Maintenance` that excludes
   trainedData in vector index.
 
-* Enable passing `nProbe` as additional search parameter for APPROX_NEAR
-  vector functions. `nProbe` defines how many neighboring lists to look into,
-  it is a trade off between more correct results and time it takes to fetch
-  results. The syntax looks like this:
-  ```aql
+* Enable passing `nProbe` as additional search parameter for APPROX_NEAR vector
+  functions. `nProbe` defines how many neighboring lists to look into, it is a
+  trade off between more correct results and time it takes to fetch results. The
+  syntax looks like this:
+  ```
   FOR doc IN col
   LET distance = APPROX_NEAR_L2(doc.vector, @qp, {nProbe: 20})
   SORT distance LIMIT 5
   RETURN {key: doc._key, distance}
-  ````
+  ```
 
-* Test a collection before it is leased out from the ConnectionCache.
-  This helps to detect stale TCP/IP or TLS connections residing in the 
-  ConnectionCache and thus prevents network failures due to delays.
+* Test a collection before it is leased out from the ConnectionCache. This helps
+  to detect stale TCP/IP or TLS connections residing in the ConnectionCache and
+  thus prevents network failures due to delays.
 
-* [ES-2294] Fix computation of the arangodb_vocbase_shards_read_only_by_write_concern metric.
+* [ES-2294] Fix computation of the
+  arangodb_vocbase_shards_read_only_by_write_concern metric.
 
-* Enable passing `nProbe` as additional search parameter for APPROX_NEAR
-  vector functions. `nProbe` defines how many neighboring lists to look into,
-  it is a trade off between more correct results and time it takes to fetch
-  results. The syntax looks like this:
-  ```aql
+* Enable passing `nProbe` as additional search parameter for APPROX_NEAR vector
+  functions. `nProbe` defines how many neighboring lists to look into, it is a
+  trade off between more correct results and time it takes to fetch results. The
+  syntax looks like this:
+  ```
   FOR doc IN col
   LET distance = APPROX_NEAR_L2(doc.vector, @qp, {nProbe: 20})
   SORT distance LIMIT 5
   RETURN {key: doc._key, distance}
-  ````
+  ```
 
-* Add a vector index based on faiss implementation. The current vector index 
+* Add a vector index based on faiss implementation. The current vector index
   implementation supports the L2 and cosine metrics. To create a vector index,
-  the vector field(s) in the collection must already be populated with data. Here is an
-  example of a vector index creation:
+  the vector field(s) in the collection must already be populated with data.
+  Here is an example of a vector index creation:
   ```
     db.<collection>.ensureIndex({
       type: "vector",
@@ -135,65 +146,65 @@ devel
         "nLists": 100
       }
     });
-  ````
+  ```
   Where the parameters are:
-  - `metric`: defines how similarity/distance is calculated, can be
-    l2 or cosine,
+  - `metric`: defines how similarity/distance is calculated, can be l2 or
+    cosine,
   - `nLists`: number of lists to create,
-  - `dimension`: vector dimensions, ArangoDB will also check that all the vectors
-    have the correct number of components,
-  - `trainingIterations`: how many training iterations will be used, 
-  The current limitation is that a vector index can be created only on a single field.
-  The vector index creation has two phases, training in which the centroids are being determined
-  from the subset of data, and insertion phase in which the lists are being populated.
-  To trigger the vector index an appropriate `APPROX_NEAR` function must be used
-  along with `SORT` and `LIMIT` clauses e.g.:
+  - `dimension`: vector dimensions, ArangoDB will also check that all the
+    vectors have the correct number of components,
+  - `trainingIterations`: how many training iterations will be used,
+
+  The current limitation is that a vector index can be created only on a single
+  field. The vector index creation has two phases, training in which the
+  centroids are being determined from the subset of data, and insertion phase in
+  which the lists are being populated. To trigger the vector index an
+  appropriate `APPROX_NEAR` function must be used along with `SORT` and `LIMIT`
+  clauses e.g.:
   ```
     FOR d IN docs
     LET distance = APPROX_NEAR_L2(d.vector, @queryVector)
     SORT distance
     LIMIT 10
     RETURN {d, distance}
-  ````
+  ```
   This returns the top 10 nearest neighbors to `@queryVector`.
 
-* Introduce expiry time for idle TCP/IP connections in the ConnectionCache
-  (for `SimpleHttpClient`) with a default of 120s. This is to prevent
-  errors in replication caused by cloud environments terminating
-  connections. Also add retries in a few places. Also increase the
-  timeout in initial sync to transfer up to 5000 documents from 25s to
-  900s. This addresses BTS-2011, BTS-2035 and BTS-2042.
+* Introduce expiry time for idle TCP/IP connections in the ConnectionCache (for
+  `SimpleHttpClient`) with a default of 120s. This is to prevent errors in
+  replication caused by cloud environments terminating connections. Also add
+  retries in a few places. Also increase the timeout in initial sync to transfer
+  up to 5000 documents from 25s to 900s. This addresses BTS-2011, BTS-2035 and
+  BTS-2042.
 
-* Improve the use-index-for-sort optimizer rule: If there is a persistent
-  index which starts with the same fields as the sort fields, the index
-  can be used for sorting these first fields that are covered by the index.
-  Subsequent rows with the same value in these fields are then sorted by
-  the rest of the sorting fields using a new grouped sort executor.
+* Improve the use-index-for-sort optimizer rule: If there is a persistent index
+  which starts with the same fields as the sort fields, the index can be used
+  for sorting these first fields that are covered by the index.
+  Subsequent rows with the same value in these fields are then sorted by the
+  rest of the sorting fields using a new grouped sort executor.
 
 * If a coordinator cannot send a heartbeat to the agency, it will shut down
   itself after 30 mins (configurable by the startup option
   `--cluster.no-heartbeat-delay-before-shutdown` whose default is 1800.
-  This is to ensure that servers which are automatically cleaned up,
-  because they are away for too long cannot disturb hotbackups by running
-  transactions.
+  This is to ensure that servers which are automatically cleaned up, because
+  they are away for too long cannot disturb hotbackups by running transactions.
 
-* Reduce the time until an expired server is removed from the agency to 1h 
-  (from 24h). This helps with BTS-2039 and thus helps hotbackups to go
-  through in more cases when coordinators have crashed. The time is
-  configurable with the `--agency.supervision-expired-servers-grace-time`
-  command line option.
+* Reduce the time until an expired server is removed from the agency to 1h (from
+  24h). This helps with BTS-2039 and thus helps hotbackups to go through in more
+  cases when coordinators have crashed. The time is configurable with the
+  `--agency.supervision-expired-servers-grace-time` command line option.
 
-* Changed the priority of WebUI request to prevent endless loading if the
-  server is under load
+* Changed the priority of WebUI request to prevent endless loading if the server
+  is under load
 
-* Truncate error messages by rclone for TransferJobs to avoid excessive
-  memory use in the agency. Keep only 10 finished TransferJobs in agency.
-  This fixes BTS-2041.
+* Truncate error messages by rclone for TransferJobs to avoid excessive memory
+  use in the agency. Keep only 10 finished TransferJobs in agency. This fixes
+  BTS-2041.
 
 * Don't cleanup failed agency jobs if they are subjobs of pending jobs.
   This avoids a bug in CleanOutServer jobs, where such a job could complete
-  seemingly successfully despite the fact that some MoveShard jobs had 
-  actually failed. This fixes BTS-2022.
+  seemingly successfully despite the fact that some MoveShard jobs had actually
+  failed. This fixes BTS-2022.
 
 * Disallow the KEEP keyword in conjunction with INTO var = expr when doing
   COLLECT in an AQL query. The KEEP clause had no effect.
@@ -208,11 +219,11 @@ devel
 * Fix view usage in cached query plans.
 
 * Optimized COLLECT queries by pushing collection of INTO values onto database
-  servers and aggregate on the coordinator. This can be disabled by setting
-  the option `aggregateIntoExpressionOnDBServers` to false.
+  servers and aggregate on the coordinator. This can be disabled by setting the
+  option `aggregateIntoExpressionOnDBServers` to false.
 
-* Make it an error if usePlanCache is set to true but the query is not 
-  eligible for query plan caching. This is better for debugging.
+* Make it an error if usePlanCache is set to true but the query is not eligible
+  for query plan caching. This is better for debugging.
 
 * Upgraded OpenSSL to 3.4.0.
 
@@ -220,18 +231,18 @@ devel
 
 * BTS-2017: fix CleanOutServer for satellite collections.
 
-* Add metric that counts the total number of lost transaction subordinate
-  states on the database servers.
+* Add metric that counts the total number of lost transaction subordinate states
+  on the database servers.
 
 * FE-483: add support for usePlanCache in query editor UI.
 
 * ArangoDB now has an optional AQL query execution plan cache that can be used
-  to skip query planning and optimization when running the same queries 
+  to skip query planning and optimization when running the same queries
   repeatedly. This feature is currently experimental.
 
   The plan cache is fully optional and is only considered for AQL queries that
-  have the option `usePlanCache` set to `true`. If the option is not
-  set to `true`, the plan cache is bypassed. This is also the default.
+  have the option `usePlanCache` set to `true`. If the option is not set to
+  `true`, the plan cache is bypassed. This is also the default.
 
   If the option is set to `true`, the query's eligibility for being cached is
   checked first. Any queries that have any of the following query options set
@@ -242,33 +253,32 @@ devel
   - `optimizer.rules`
   - `shardIds`
 
-  Additionally, a query is not eligible for plan caching if it uses attribute 
+  Additionally, a query is not eligible for plan caching if it uses attribute
   name bind parameters, e.g. `FILTER doc.@attributeName == ...`.
   Furthermore, queries will not be eligible for plan caching when using value
   bind parameters in any of the following places:
-  - specifying the depths for traversals or path queries (e.g. 
+  - specifying the depths for traversals or path queries (e.g.
     `FOR v, e IN @min..@max OUTBOUND ...`)
   - referring to a named graph (e.g. `GRAPH @graphName`)
-  - referring to edge collections used in traversals or path queries 
-    (e.g. `FOR v, e IN 1..2 OUTBOUND 'v/0' @ec...`)
+  - referring to edge collections used in traversals or path queries (e.g.
+    `FOR v, e IN 1..2 OUTBOUND 'v/0' @ec...`)
   - specifying the lookup value for UPSERT operations, e.g. `UPSERT @value...`)
-  If a query produces any warnings during parsing or query plan optimization, 
-  it is also not eligible for plan caching.
+  If a query produces any warnings during parsing or query plan optimization, it
+  is also not eligible for plan caching.
   Query plans are also not eligible for caching if they contain one of the
   following execution node types:
   - SingleRemoteOperationNode (cluster only)
   - MultipleRemoteModificationNode (cluster only)
-  - UpsertNode, i.e. the AQL UPSERT functionality.
+  - UpsertNode, i.e. the AQL UPSERT functionality
 
   If a query is eligible for plan caching, the plan cache will be checked using
   the exact same query string and set of collection bind parameter values.
   A cached plan entry is only considered identical to the current query if the
-  query strings are bytewise identical and the set of collection bind 
-  parameters is exactly the same (bind parameter names and bind parameter 
-  values).
-  If no plan entry can be found in the plan cache, the query is planned and 
+  query strings are bytewise identical and the set of collection bind parameters
+  is exactly the same (bind parameter names and bind parameter values).
+  If no plan entry can be found in the plan cache, the query is planned and
   optimized as usual, and the cached plan will be inserted into the plan cache.
-  Repeated executions of the same query (same query string and using the same 
+  Repeated executions of the same query (same query string and using the same
   set of collection bind parameters) will then make use of the cached plan
   entry, potentially with different value bind parameters.
 
@@ -277,11 +287,11 @@ devel
   - `maxDNFConditionMembers`
   - `maxNodesPerCallstack`
 
-  Whenever a query uses a cached plan from the plan cache, the query
-  result will include an attribute `planCacheKey` on the top level when
-  executing, explaining or profiling a query. The explain and profiling
-  output will also display a "plan cache key: ..." indicator to show
-  that a cached query plan was used.
+  Whenever a query uses a cached plan from the plan cache, the query result will
+  include an attribute `planCacheKey` on the top level when executing,
+  explaining or profiling a query. The explain and profiling output will also
+  display a "plan cache key: ..." indicator to show that a cached query plan was
+  used.
 
   The query plan cache is organized per database. It gets invalidated at the
   following events:
@@ -298,81 +308,79 @@ devel
     cache in each database. The default value is 128.
   - `--query.plan-cache-max-memory-usage`: maximum total memory usage for the
     query plan cache in each database. The default value is 8MB.
-  - `--query.plan-cache-max-entry-size`: maximum size of an individual entry
-    in the query plan cache in each database. The default value is 2MB.
+  - `--query.plan-cache-max-entry-size`: maximum size of an individual entry in
+    the query plan cache in each database. The default value is 2MB.
   Note that each database has its own query plan cache, and that these options
   are used for each individual plan cache. Also note that in a cluster, each
   coordinator will have its own query plan cache.
 
   There are also new APIs to clear the contents of the query plan cache and to
   retrieve the current plan cache entries. The following HTTP REST APIs exist:
-  - HTTP DELETE `/_api/query-plan-cache` to delete all entries in the query
-    plan cache for the current database. This requires write privileges for the
+  - HTTP DELETE `/_api/query-plan-cache` to delete all entries in the query plan
+    cache for the current database. This requires write privileges for the
     current database.
-  - HTTP GET `/_api/query-plan-cache` to retrieve all entries in the query
-    plan cache for the current database. This requires read privileges for the
+  - HTTP GET `/_api/query-plan-cache` to retrieve all entries in the query plan
+    cache for the current database. This requires read privileges for the
     current database. In addition, only those query plans will be returned for
-    which the current user has at least read permissions on all collections
-    and views included in the query.
-  In a cluster, these APIs are specific to the coordinator that they are run 
-  on.
+    which the current user has at least read permissions on all collections and
+    views included in the query.
+  In a cluster, these APIs are specific to the coordinator that they are run on.
 
   There is also a JavaScript module `@arangodb/query/plan-cache` that exposes
   the same functionality:
-  - `require("@arangodb/aql/plan-cache`).clear()` to delete all entries in
-    the plan cache for the current database. This requires write privileges for
-    the current database.
-  - `require("@arangodb/aql/plan-cache`).toArray()` to retrieve all entries
-    in the plan cache for the current database. This requires read privileges
-    for the current database. In addition, only those query plans will be 
-    returned for which the current user has at least read permissions on all
-    collections and views included in the query.
-  In a cluster, these APIs are specific to the coordinator that they are run 
-  on.
+  - `require("@arangodb/aql/plan-cache`).clear()` to delete all entries in the
+    plan cache for the current database. This requires write privileges for the
+    current database.
+  - `require("@arangodb/aql/plan-cache`).toArray()` to retrieve all entries in
+    the plan cache for the current database. This requires read privileges for
+    the current database. In addition, only those query plans will be returned
+    for which the current user has at least read permissions on all collections
+    and views included in the query.
+  In a cluster, these APIs are specific to the coordinator that they are run on.
 
   The following metrics are exposed on a single server and each coordinator to
   provide insights into how many query plans were served from the query plan
   cache:
-  - `arangodb_aql_query_plan_cache_hits_total`: total number of plans looked
-    up and found in the query plan cache, across all database-specific plan
-    caches on the instance.
+  - `arangodb_aql_query_plan_cache_hits_total`: total number of plans looked up
+    and found in the query plan cache, across all database-specific plan caches
+    on the instance.
   - `arangodb_aql_query_plan_cache_misses_total`: total number of plans looked
     up and not found in the query plan cache, across all database-specific plan
     caches on the instance.
-  - `arangodb_aql_query_plan_cache_memory_usage`: total current memory usage
-    of all query plan caches across all databases on this instance in bytes.
+  - `arangodb_aql_query_plan_cache_memory_usage`: total current memory usage of
+    all query plan caches across all databases on this instance in bytes.
 
-* In replication use vpack as transport format throughout, so that even
-  large and strangely encoded numbers are transported faithfully.
+* In replication use vpack as transport format throughout, so that even large
+  and strangely encoded numbers are transported faithfully.
 
 * BTS-2014: Fix delay if write hits early after a hotbackup restore.
 
-* Fix leader resignation race in coordinator, which lead to forgotten
-  collection read locks on dbservers, which in turn could lead to deadlocks
-  in the cluster.
+* Fix leader resignation race in coordinator, which lead to forgotten collection
+  read locks on dbservers, which in turn could lead to deadlocks in the cluster.
 
-* Fix shard synchronisation race where after a shard move the new
-  leader informs followers before it updates Current in the Agency. In
-  some cases the old leader fell subsequently out of sync.
+* Fix shard synchronisation race where after a shard move the new leader informs
+  followers before it updates Current in the Agency. In some cases the old
+  leader fell subsequently out of sync.
 
-* Fix a crash with async prefetch and user defined functions in AQL. This
-  fixes BTS-2003.
+* Fix a crash with async prefetch and user defined functions in AQL. This fixes
+  BTS-2003.
 
 * FE-466: use @arangodb/ui library.
 
-* Update tzdata as of 31.10.2024.
+* Bring unicode collation back to the exact 3.11 behaviour by shipping the
+  original 3.11 tables in a icudtl_legacy.dat file. This fixes corruption bugs
+  which could happen on upgrade to 3.12 because funny international strings are
+  indexed in VPack indexes.
 
-* Bring unicode collation back to the exact 3.11 behaviour by shipping the 
-  original 3.11 tables in a icudtl_legacy.dat file. This fixes corruption
-  bugs which could happen on upgrade to 3.12 because funny international
-  strings are indexed in VPack indexes.
-
-* Implements a faster encoding of doubles to a memcmp format. Makes it a cmake option.
-  Makes sure that it does not produce different values as the old/slower implementation.
-  Removes unneeded db._explain in a test
+* Implements a faster encoding of doubles to a memcmp format. Makes it a cmake
+  option.
+  Makes sure that it does not produce different values as the old/slower
+  implementation.
+  Removes unneeded db._explain in a test.
 
 * Improve the observability of asynchronous operations by saving all ongoing
-  asynchronous operations (associated with async<T> and Future<T>) in a registry.
+  asynchronous operations (associated with async<T> and Future<T>) in a
+  registry.
   A REST call gives information about all these operations via a list of all
   ongoing stacktraces.
 
