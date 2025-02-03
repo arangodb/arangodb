@@ -40,19 +40,15 @@ void LogContext::clear(EntryCache& cache) {
 
 LogContext::ScopedContext::ScopedContext(LogContext ctx) noexcept {
   auto& local = LogContext::controlBlock();
-  if (ctx._tail != local._logContext._tail) {
-    _oldContext = std::move(local._logContext);
-    local._logContext = std::move(ctx);
-  }
+  _oldContext = std::move(local._logContext);
+  local._logContext = std::move(ctx);
 }
 
 LogContext::ScopedContext::ScopedContext(
     LogContext ctx, LogContext::ScopedContext::DontRestoreOldContext) noexcept {
   auto& local = LogContext::controlBlock();
-  if (ctx._tail != local._logContext._tail) {
-    local._logContext.clear(local._entryCache);
-    local._logContext = std::move(ctx);
-  }
+  local._logContext.clear(local._entryCache);
+  local._logContext = std::move(ctx);
 }
 
 LogContext::ScopedContext::~ScopedContext() {
