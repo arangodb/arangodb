@@ -1,9 +1,11 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* Updated OpenLDAP to 2.6.9.
+
 * Swagger UI: Remove fragment identifiers from request URLs. They are merely
-  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of
-  the HTTP API documentation.
+  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of the
+  HTTP API documentation.
 
 * Update tzdata as of 23.01.2025.
 
