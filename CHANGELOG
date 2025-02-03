@@ -1,6 +1,9 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* BTS-2074: fix installing Foxx service from zip file upload using the web UI
+  with multi-coordinator load balancing.
+
 * Updated OpenLDAP to 2.6.9.
 
 * Swagger UI: Remove fragment identifiers from request URLs. They are merely
