@@ -315,12 +315,6 @@ function makeArgsArangosh (options) {
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
 
-  if (isCov) {
-    args['server.request-timeout'] = 1200 * 4; // quadruple the default
-  }
-  if (isSan) {
-    args['server.request-timeout'] = 1200 * 2; // double the default
-  }
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
   }
@@ -354,13 +348,9 @@ function launchInShellBG  (file) {
   let IM = global.instanceManager;
   let args = makeArgsArangosh(IM.options);
   const logFile = `file://${file}.log`;
-  let timeout = 30;
-  if (isCov || isSan) {
-    timeout *= 6; // quadruple the timeout
-  }
   let moreArgs = {
     'server.database': arango.getDatabaseName(),
-    'server.request-timeout': timeout,
+    'server.request-timeout': IM.options.serverRequestTimeout,
     'log.foreground-tty': 'false',
     //'log.level': ['info', 'httpclient=debug', 'V8=debug'],
     'log.output': logFile,
@@ -696,7 +686,6 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
-    // 'server.request-timeout': 1200 // default now.
     'server.connection-timeout': 10 // 5s default
   };
 
@@ -735,11 +724,13 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
     'makedataArgs': undefined,
     'rtaNegFilter': '',
-    'makedataDB': "_system"
+    'makedataDB': "_system",
+    'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 30
   });
 
   tu.CopyIntoList(optionsDocumentation, [
     ' Client tools options:',
+    '   - `serverRequestTimeout` The http timeout to arangods of any client tool',
     '   - `makedataDB`: Database to run makedata with, defaults to _system',
     '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
     '   - `rtaNegFilter`: inverse logic to --test.',
