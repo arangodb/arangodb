@@ -1,6 +1,8 @@
 3.12.4.1 (XXXX-XX-XX)
 ---------------------
 
+* Updated compiler to clang-19.
+
 * The agency supervision is clearing "finished" jobs too quickly from
   Target/Finished. They will be forthwith be kept for at least 5m.
 
