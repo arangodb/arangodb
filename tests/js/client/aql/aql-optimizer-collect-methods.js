@@ -253,7 +253,7 @@ function optimizerCollectMethodsTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query.query).explain().plan;
+        let plan = db._createStatement({query: query.query, options: {optimizer: {rules: ["-use-index-for-collect"]}}}).explain().plan;
         let aggregateNodes = 0;
         let sortNodes = 0;
         plan.nodes.map(function(node) {
@@ -269,7 +269,7 @@ function optimizerCollectMethodsTestSuite () {
         assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(query.sortNodes, sortNodes);
 
-        let results = db._query(query.query);
+        let results = db._query(query.query, {}, {optimizer: {rules: ["-use-index-for-collect"]}});
         let res = results.toArray();
         assertEqual(query.results, res.length);
       });
@@ -365,7 +365,7 @@ function optimizerCollectMethodsTestSuite () {
         }
       });
         
-      assertEqual(1, aggregateNodes);
+      assertEqual(isCluster ? 2 : 1, aggregateNodes);
       assertEqual(1, sortNodes);
 
       let result = db._query(query).toArray();
@@ -408,7 +408,7 @@ function optimizerCollectMethodsTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan = db._createStatement(query[0]).explain().plan;
+        let plan = db._createStatement({query: query[0], options: {optimizer: {rules: ["-use-index-for-collect"]}}}).explain().plan;
         let aggregateNodes = 0;
         let sortNodes = 0;
         let hasInto = false;
@@ -425,7 +425,7 @@ function optimizerCollectMethodsTestSuite () {
           }
         });
        
-        assertEqual((isCluster && !hasInto) ? 2 : 1, aggregateNodes);
+        assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(query[1] === 'hash' ? 1 : 0, sortNodes);
       });
     },
@@ -463,7 +463,7 @@ function optimizerCollectMethodsTestSuite () {
           }
         });
         
-        assertEqual((isCluster && !hasInto) ? 2 : 1, aggregateNodes);
+        assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(1, sortNodes);
       });
     },

@@ -150,15 +150,7 @@ add_library(arangoserver STATIC
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
-  Scheduler/LockfreeThreadPool.cpp
-  Scheduler/Scheduler.cpp
-  Scheduler/SchedulerFeature.cpp
-  Scheduler/SchedulerMetrics.cpp
-  Scheduler/SimpleThreadPool.cpp
-  Scheduler/SupervisedScheduler.cpp
-  Scheduler/ThreadPoolScheduler.cpp
-  Scheduler/ThreadPoolScheduler.cpp
-  Scheduler/WorkStealingThreadPool.cpp
+  RestServer/VectorIndexFeature.cpp
   Sharding/ShardDistributionReporter.cpp
   Sharding/ShardingFeature.cpp
   Sharding/ShardingInfo.cpp
@@ -223,6 +215,7 @@ target_link_libraries(arangoserver
   arango_storage_engine
   arango_utils
   arango_vocbase
+  arango_scheduler
   boost_boost
   ${MSVC_LIBS})
 if (MSVC)

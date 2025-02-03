@@ -28,7 +28,7 @@ def overload_thread(sitecfg, _):
             load = psutil.getloadavg()
             if (load[0] > sitecfg.max_load) or (load[1] > sitecfg.max_load1) or (load[0] > sitecfg.overload):
                 #print(f"{str(load)} <= {sitecfg.overload} Load to high - Disk I/O: " + str(psutil.swap_memory()))
-                jsonl_file.write(f'["{datetime.now ()}", {get_all_processes_stats_json()}]\n')
+                jsonl_file.write(f'["{datetime.now ()}", {get_all_processes_stats_json(load)}]\n')
             time.sleep(1)
             with END_THREAD_LOCK:
                 continue_running = not END_THREAD

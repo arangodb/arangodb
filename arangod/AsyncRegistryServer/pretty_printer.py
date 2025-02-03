@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+"""Async Registry Pretty Printer
+
+This script allows a user to print the async stacktraces from server_url/_admin/async-registry as a list of trees.
+
+Usage: curl -s server_url/_admin/async-registry <root-user>:<password> | ./pretty_printer.py
+
+"""
+
 import sys
 import json
 from typing import List
@@ -41,7 +49,10 @@ class Requester(object):
             return cls(False, blob["promise"])
     def __str__(self):
         if self.is_sync:
-            return "\n" + str(Thread.from_json(self.item))
+            # a sync requester is always at the bottom of a tree,
+            # but has no entry on its own,
+            # therefore just add it here in a new line
+            return "\n" + "─ " + str(Thread.from_json(self.item))
         else:
             return ""
 
@@ -65,15 +76,13 @@ class Promise(object):
         self.data = data
     
 def branching_symbol(hierarchy:int, previous_hierarchy: Optional[int]) -> str:
-    if hierarchy == 0:
-        return "─"
-    elif hierarchy == previous_hierarchy:
+    if hierarchy == previous_hierarchy:
         return "├"
     else:
         return "┌"
     
 def branch_ascii(hierarchy: int, continuations: list) -> str:
-    ascii = [" " for x in range(2*hierarchy)] + [branching_symbol(hierarchy, continuations[-1] if len(continuations) > 0 else None)] + [" "]
+    ascii = [" " for x in range(2*hierarchy+2)] + [branching_symbol(hierarchy, continuations[-1] if len(continuations) > 0 else None)] + [" "]
     for continuation in continuations:
         if continuation < hierarchy:
             ascii[2*continuation] = "│"

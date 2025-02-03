@@ -180,9 +180,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
 }
 
 Result DatabaseTailingSyncer::inheritFromInitialSyncer(
-    DatabaseInitialSyncer const& syncer) {
-  replutils::LeaderInfo const& leaderInfo = syncer.leaderInfo();
-
+    replutils::LeaderInfo const& leaderInfo, TRI_voc_tick_t lastLogTick) {
   TRI_ASSERT(!leaderInfo.endpoint.empty());
   TRI_ASSERT(leaderInfo.endpoint == _state.leader.endpoint);
   TRI_ASSERT(leaderInfo.serverId.isSet());
@@ -194,7 +192,7 @@ Result DatabaseTailingSyncer::inheritFromInitialSyncer(
   _state.leader.majorVersion = leaderInfo.majorVersion;
   _state.leader.minorVersion = leaderInfo.minorVersion;
 
-  _initialTick = syncer.getLastLogTick();
+  _initialTick = lastLogTick;
 
   return registerOnLeader();
 }

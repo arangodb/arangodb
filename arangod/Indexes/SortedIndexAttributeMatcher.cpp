@@ -446,10 +446,9 @@ Index::SortCosts SortedIndexAttributeMatcher::supportsSortCondition(
     // non-sparse indexes can be used for sorting, but sparse indexes can only
     // be used if we can prove that we only need to return non-null index
     // attribute values
-    if (!idx->hasExpansion() && sortCondition->isUnidirectional() &&
-        sortCondition->isOnlyAttributeAccess()) {
-      costs.coveredAttributes =
-          sortCondition->coveredAttributes(reference, idx->fields());
+    if (!idx->hasExpansion() && sortCondition->isOnlyAttributeAccess()) {
+      costs.coveredAttributes = sortCondition->coveredUnidirectionalAttributes(
+          reference, idx->fields());
 
       if (costs.coveredAttributes >= sortCondition->numAttributes()) {
         // sort is fully covered by index. no additional sort costs!

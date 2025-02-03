@@ -1432,6 +1432,14 @@ function processQuery(query, explain, planIndex) {
           return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
         }
         break;
+      case 'EnumerateNearVectorNode': {
+        let searchParameters = '';
+        if (node.hasOwnProperty("searchParameters") && JSON.stringify(node.searchParameters) !== "{}") {
+          searchParameters = keyword(' WITH SEARCH PARAMETERS ') + JSON.stringify(node.searchParameters);
+        }
+
+        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters;
+      }
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
@@ -1828,10 +1836,19 @@ function processQuery(query, explain, planIndex) {
           (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable.variable); }).join(', ') : '') +
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
+      case 'IndexCollectNode':
+        iterateIndexes(node.index, 0, node, types, false);
+        return keyword('FOR ') + variableName(node.oldIndexVariable) + keyword(' IN ') + collection(node.collection) + keyword(' COLLECT ') + node.groups.map(function (grp) {
+          return variableName(grp.outVariable) + ' = ' + variableName(node.oldIndexVariable) + '.' + grp.attribute.map((p) => attribute(p)).join('.');
+        }).join(', ') + annotation(' /* distinct value index scan */');
       case 'SortNode':
-        return keyword('SORT') + ' ' + node.elements.map(function (node) {
-          return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-        }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
+        const groupedElements = node.numberOfTopGroupedElements > 0 ?
+          '; ' + keyword('GROUPED BY') + ' '
+          + node.elements.slice(0, node.numberOfTopGroupedElements).map((element) => variableName(element.inVariable)).join(', ') : '';
+        return keyword('SORT') + ' '
+          + node.elements.slice(node.numberOfTopGroupedElements, node.elements.length).map((node) => variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC')).join(', ')
+          + groupedElements
+          + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
       case 'LimitNode':
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':

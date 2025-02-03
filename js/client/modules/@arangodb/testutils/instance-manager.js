@@ -100,6 +100,10 @@ class instanceManager {
     this.dbName = "_System";
     this.userName = "root";
     this.memlayout = {};
+    // be more sluggish with memory when running instrumented binaries
+    if (this.options.isInstrumented) {
+      this.options.memory *= 1.1;
+    }
     this.cleanup = options.cleanup && options.server === undefined;
     if (!options.hasOwnProperty('startupMaxCount')) {
       this.startupMaxCount = 300;
