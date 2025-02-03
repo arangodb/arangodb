@@ -50,12 +50,12 @@ shell_client_traffic,shell_client_traffic,shell_client_traffic,shell_client_traf
 shell_client_aql buckets=19 priority=250  single
 
 # C++ unit tests are executed in single env
-gtest_iresearch priority=1000 parallelity=3 size=medium single
-gtest_arangodb priority=1000 parallelity=3 size=large single
+gtest_iresearch !coverage priority=1000 parallelity=3 size=medium single
+gtest_arangodb !coverage priority=1000 parallelity=3 size=large single
 
 # Fuerte tests are executed in single env
-fuerte priority=500 single suffix=http
-fuerte priority=500 single suffix=ssl-http -- --protocol ssl
+fuerte !coverage priority=500 single suffix=http
+fuerte !coverage priority=500 single suffix=ssl-http -- --protocol ssl
 
 rta_makedata single
 
@@ -64,7 +64,7 @@ rta_makedata single
 
 arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
 chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
-chaos_subq !coverage full priority=1000 size=medium+ --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
+chaos_subq !coverage full priority=1000 size=medium+ --javascript.v8-max-heap=32768 --javascript.gc-interval=25 -- --dumpAgencyOnError true
 deadlock cluster !coverage -- --dumpAgencyOnError true
 restart priority=1000 size=medium cluster -- --dumpAgencyOnError true --forceJson true
 
@@ -73,6 +73,7 @@ load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
 
 #replication2_client size=small cluster
 #replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
+# see also DISABLED restart tests when re-enabling!
 
 resilience_analyzers priority=500 size=medium cluster -- --dumpAgencyOnError true
 resilience_failover priority=1200 size=medium buckets=4 cluster -- --dumpAgencyOnError true
@@ -96,6 +97,9 @@ shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5
 
 rta_makedata cluster parallelity=6
 rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 --  --forceOneShard true
+
+# shell aql vector index tests
+shell_client_aql_vector priority=1000 size=medium+ cluster buckets=1 -- --dumpAgencyOnError true
 
 # Common Tests
 
@@ -162,3 +166,4 @@ communication_ssl full priority=1000 parallelity=2 single
 
 communication full priority=1000 size=large parallelity=6 cluster
 communication_ssl full priority=1000 size=large parallelity=6 cluster
+

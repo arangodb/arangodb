@@ -303,7 +303,11 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
           .param("batchId", std::to_string(config.batch.id))
           .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
       reqOptions.database = config.vocbase.name();
-      reqOptions.timeout = network::Timeout(25.0);
+      // We take a relatively generous timeout here, because we have seen
+      // cases in which the leader was under heavy load or RocksDB had
+      // a compaction debt or the user has relatively large documents,
+      // in which case a batch of 5000 can be relatively large.
+      reqOptions.timeout = network::Timeout(900.0);
       auto buffer = requestBuilder.steal();
       auto f = network::sendRequestRetry(
           pool, config.leader.endpoint, fuerte::RestVerb::Put, path,
@@ -458,7 +462,11 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
             .param("serverId", state.localServerIdString)
             .param("batchId", std::to_string(config.batch.id))
             .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
-        reqOptions.timeout = network::Timeout(25.0);
+        // We take a relatively generous timeout here, because we have seen
+        // cases in which the leader was under heavy load or RocksDB had
+        // a compaction debt or the user has relatively large documents,
+        // in which case a batch of 5000 can be relatively large.
+        reqOptions.timeout = network::Timeout(900.0);
         reqOptions.database = config.vocbase.name();
         auto buffer = requestBuilder.steal();
         auto f = network::sendRequestRetry(

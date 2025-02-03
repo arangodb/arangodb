@@ -171,6 +171,7 @@ function ahuacatlSubqueryChaos() {
     testSpecificQueries: function () {
       for (const [key, value] of Object.entries(specificQueries)) {
         print(`${Date()} : ${key} => ${JSON.stringify(value)}`);
+        require("internal").wait(0, true);
         if (value.hasOwnProperty("queryString")) {
           const opts = value.testOptions || {};
           ct.testQuery(value, opts);
@@ -190,6 +191,7 @@ function ahuacatlSubqueryChaos() {
       for (let i = 0; i < numberOfQueriesGenerated; i++) {
         if (i %10 === 0) {
           print(`${Date()} : ${i}`);
+          require("internal").wait(0, true);
         }
         ct.testQueryWithSeed({
           numberSubqueries: randomDepth(),
@@ -205,6 +207,7 @@ function ahuacatlSubqueryChaos() {
       for (let i = 0; i < numberOfQueriesGenerated; i++) {
         if (i %10 === 0) {
           print(`${Date()} : ${i}`);
+          require("internal").wait(0, true);
         }
         ct.testModifyingQueryWithSeed({
           numberSubqueries: randomModificationDepth(),

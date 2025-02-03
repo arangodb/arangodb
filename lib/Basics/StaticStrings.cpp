@@ -158,6 +158,7 @@ std::string const StaticStrings::IndexNameEdge("edge");
 std::string const StaticStrings::IndexNameEdgeFrom("edge_from");
 std::string const StaticStrings::IndexNameEdgeTo("edge_to");
 std::string const StaticStrings::IndexNamePrimary("primary");
+std::string const StaticStrings::IndexNameVector("vector");
 
 // index hint strings
 std::string const StaticStrings::IndexHintDisableIndex("disableIndex");

@@ -19,7 +19,7 @@ parameters:
     default: "arangodb/ubuntubuildarangodb-devel:10"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-5b6113b7
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-f4631392
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
@@ -322,6 +322,7 @@ jobs:
             if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
               MINIMAL_DEBUGINFO="ON"
             fi
+
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
@@ -331,7 +332,7 @@ jobs:
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
               -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
-              -DCMAKE_INSTALL_PREFIX=/
+              -DCMAKE_INSTALL_PREFIX=/ 
       - run:
           name: Build
           command: |

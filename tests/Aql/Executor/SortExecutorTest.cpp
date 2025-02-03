@@ -95,9 +95,8 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
     return SortExecutorInfos(
-        1, 1, {}, std::move(sortRegisters),
-        /*limit (ignored for default sort)*/ 0, manager(), *fakedQuery,
-        *tempStorage, vpackOptions, monitor, /*spillOverThresholdNumRows*/ 1000,
+        std::move(sortRegisters), manager(), *fakedQuery, *tempStorage,
+        vpackOptions, monitor, /*spillOverThresholdNumRows*/ 1000,
         /*spillOverThresholdMemoryUsage*/ 1024 * 1024, false);
   }
 
@@ -146,11 +145,6 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
   velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
   Variable sortVar{"mySortVar", 0, false, resourceMonitor};
 };
-
-template<size_t... vs>
-const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
-const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SortExecutorTest, SortExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>,

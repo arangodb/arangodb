@@ -96,7 +96,7 @@
       internal.sleep(numSecs);
       numSecs *= 2;
     }
-    assertTrue(numSecs < numSecsLimit, "reached timeout waited for collection " + collName + " to get in sync");
+    assertTrue(numSecs < numSecsLimit, `reached timeout waited for collection ${collName} to get in sync - ${numSecs} < ${numSecsLimit}`);
   }
 
   const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";

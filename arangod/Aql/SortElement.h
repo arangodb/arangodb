@@ -30,6 +30,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include <iosfwd>
 
 namespace arangodb::velocypack {
 class Builder;
@@ -56,6 +57,8 @@ struct SortElement {
   /// @brief stringify a sort element. note: the output of this should match the
   /// stringification output of an AstNode for an attribute access
   /// (e.g. foo.bar => $0.bar)
+  std::string toVarAccessString() const;
+
   std::string toString() const;
 
   /// @brief resets variable to v, and clears the attributePath
@@ -71,6 +74,8 @@ struct SortElement {
   void toVelocyPack(velocypack::Builder& builder) const;
 
   static SortElement fromVelocyPack(Ast* ast, velocypack::Slice info);
+
+  friend std::ostream& operator<<(std::ostream&, SortElement const&) noexcept;
 
   // variable to sort by
   Variable const* var;
