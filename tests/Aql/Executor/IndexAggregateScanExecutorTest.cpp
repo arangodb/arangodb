@@ -65,11 +65,8 @@ using namespace arangodb::aql;
 using MyDocumentId = LocalDocumentId;
 
 struct MyVectorIterator : public AqlIndexStreamIterator {
-  bool position(std::span<velocypack::Slice> sp) const override {
-    if (_current != _values.end()) {
-      std::copy_n(_current->begin(), _current->size(), sp.begin());
-      return true;
-    }
+  bool position(std::span<velocypack::Slice> keys) const override {
+    // not needed
     return false;
   }
 
@@ -80,50 +77,69 @@ struct MyVectorIterator : public AqlIndexStreamIterator {
 
   LocalDocumentId load(
       std::span<velocypack::Slice> projections) const override {
-    std::copy_n(_current->begin(), _current->size(), projections.begin());
+    size_t count = 0;
+    for (auto const& projectionField : _projectedFields) {
+      projections[count] = (*_current)[projectionField];
+      count++;
+    }
     return LocalDocumentId{};
   }
 
-  void cacheCurrentKey(std::span<velocypack::Slice> cache) override {
-    std::copy_n(_current->begin(), _current->size(), cache.begin());
+  void cacheCurrentKey(std::span<velocypack::Slice> keys) override {
+    size_t count = 0;
+    for (auto const& keyField : _keyFields) {
+      keys[count] = (*_current)[keyField];
+      count++;
+    }
   }
 
-  bool reset(std::span<velocypack::Slice> span,
+  bool reset(std::span<velocypack::Slice> keys,
              std::span<velocypack::Slice> constants) override {
     _current = _values.begin();
-    if (_current != _values.end()) {
-      std::copy_n(_current->begin(), _current->size(), span.begin());
-      LOG_DEVEL << "keys " << inspection::json(*_current);
+    size_t count = 0;
+    for (auto const& keyField : _keyFields) {
+      keys[count] = (*_current)[keyField];
+      count++;
     }
     return _current != _values.end();
   }
 
-  bool next(std::span<velocypack::Slice> key, LocalDocumentId& doc,
+  bool next(std::span<velocypack::Slice> keys, LocalDocumentId& doc,
             std::span<velocypack::Slice> projections) override {
     _current = _current + 1;
     if (_current == _values.end()) {
       return false;
     }
 
-    std::copy_n(_current->begin(), _current->size(), key.begin());
-    std::copy_n(_current->begin(), _current->size(), projections.begin());
+    size_t count = 0;
+    for (auto const& keyField : _keyFields) {
+      keys[count] = (*_current)[keyField];
+      count++;
+    }
+    count = 0;
+    for (auto const& projectionField : _projectedFields) {
+      projections[count] = (*_current)[projectionField];
+      count++;
+    }
     doc = LocalDocumentId{};
     return true;
   }
 
-  void test() override {
-    LOG_DEVEL << "test " << inspection::json(_originalValues) << ", "
-              << inspection::json(_values);
-  }
-
   using Value = std::vector<VPackSlice>;
 
+  std::vector<size_t> _keyFields;
+  std::vector<size_t> _projectedFields;
   std::vector<VPackBuilder>
       _originalValues;  // this builder is an array of ints
   std::vector<Value> _values;
   typename std::vector<Value>::iterator _current;
 
-  MyVectorIterator(std::vector<VPackBuilder> c) : _originalValues{c} {
+  MyVectorIterator(std::vector<size_t> keyFields,
+                   std::vector<size_t> projectedFields,
+                   std::vector<VPackBuilder> c)
+      : _keyFields{std::move(keyFields)},
+        _projectedFields{std::move(projectedFields)},
+        _originalValues{c} {
     for (auto const& row : std::move(_originalValues)) {
       std::vector<VPackSlice> vec;
       for (auto const& entry : VPackArrayIterator(row.slice())) {
@@ -145,8 +161,11 @@ class MockIndex : public Index {
   }
   ~MockIndex() = default;
   std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
-      transaction::Methods* trx, IndexStreamOptions const&) override {
-    return std::make_unique<MyVectorIterator>(_values);
+      transaction::Methods* trx, IndexStreamOptions const& options) override {
+    auto keyFields = options.usedKeyFields;
+    auto projectedFields = options.projectedFields;
+    return std::make_unique<MyVectorIterator>(keyFields, projectedFields,
+                                              _values);
   }
   char const* typeName() const override { return "mock index"; }
   IndexType type() const override {
@@ -248,9 +267,15 @@ TEST_F(IndexAggregateScanExecutorTest,
           registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
           indexAggregateScanInfos(
               indexValues({{4}, {6}, {6}, {5}, {6}, {5}, {1}, {1}, {1}}),
-              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
-                                              .indexField = indexField}},
-              std::move(aggregations), {{newVariable->id, indexField}}),
+              {IndexAggregateScanInfos::Group{
+                  .outputRegister = groupRegisterId,
+                  .indexField =
+                      indexField}},  // for tests indexField does not matter
+              // all aggregated fields need to be projections in iterator
+              // only aggregated fields need to be in mapping var -> indexField
+              std::move(aggregations),
+              {{newVariable->id,
+                indexField}}),  // for tests indexField does not matter
           ExecutionNode::INDEX_COLLECT)
       .setInputValue({{}})
       .expectOutput({aggregationRegisterId}, {{4}, {12}, {5}, {6}, {5}, {3}})
@@ -260,373 +285,92 @@ TEST_F(IndexAggregateScanExecutorTest,
       .run();
 }
 
-// TEST_P(IndexAggregateScanExecutorTest,
-// does_nothing_when_no_sort_registry_is_given) {
-//   auto groupedRegisterId = 0;
-//   makeExecutorTestHelper<1, 1>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{groupedRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId}, {}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{3}, {8}, {1009}, {832}, {-1}, {1}, {0}})
-//       .expectOutput({groupedRegisterId},
-//                     {{3}, {8}, {1009}, {832}, {-1}, {1}, {0}})
-//       .setCall(AqlCall{})
-//       .expectSkipped(0)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
+TEST_F(IndexAggregateScanExecutorTest,
+       ignores_index_values_that_are_not_used_for_grouping_or_aggregation) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId = 1;
 
-// TEST_P(IndexAggregateScanExecutorTest, sorts_in_groups) {
-//   auto sortRegisterId = 1;
-//   auto groupedRegisterId = 0;
-//   makeExecutorTestHelper<2, 2>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{sortRegisterId, groupedRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 3},
-//                       {2, 1},
-//                       {199, 8},
-//                       {199, 2},
-//                       {199, 3},
-//                       {1, 1009},
-//                       {0, 832},
-//                       {0, 1},
-//                       {0, 10001}})
-//       .expectOutput({groupedRegisterId, sortRegisterId}, {{2, 1},
-//                                                           {2, 3},
-//                                                           {199, 2},
-//                                                           {199, 3},
-//                                                           {199, 8},
-//                                                           {1, 1009},
-//                                                           {0, 1},
-//                                                           {0, 832},
-//                                                           {0, 10001}})
-//       .setCall(AqlCall{})
-//       .expectSkipped(0)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
+  auto ast = Ast{*fakedQuery.get()};
+  auto indexVariable = ast.variables()->createTemporaryVariable();
 
-// TEST_P(IndexAggregateScanExecutorTest,
-//        does_not_group_itself_but_assumes_that_rows_are_already_grouped) {
-//   auto sortRegisterId = 1;
-//   auto groupedRegisterId = 0;
-//   makeExecutorTestHelper<2, 2>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{sortRegisterId, groupedRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 3},
-//                       {2, 1},
-//                       {199, 8},
-//                       {1, 1009},
-//                       {0, 832},
-//                       {199, 1},
-//                       {1, 1},
-//                       {199, 4}})
-//       .expectOutput({groupedRegisterId, sortRegisterId}, {{2, 1},
-//                                                           {2, 3},
-//                                                           {199, 8},
-//                                                           {1, 1009},
-//                                                           {0, 832},
-//                                                           {199, 1},
-//                                                           {1, 1},
-//                                                           {199, 4}})
-//       .setCall(AqlCall{})
-//       .expectSkipped(0)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
+  auto expression = randomExpressionWithVar(indexVariable->id);
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId,
+      .expression = std::make_unique<Expression>(&ast, expression.slice())});
 
-// TEST_P(IndexAggregateScanExecutorTest,
-//        sorts_values_when_group_registry_is_same_as_sort_registry) {
-//   auto sortRegisterId = 0;
-//   makeExecutorTestHelper<1, 1>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{sortRegisterId}),
-//           groupedSortExecutorInfos({}, {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{3}, {8}, {1009}, {832}, {-1}, {1}, {0}})
-//       .expectOutput({sortRegisterId}, {{-1}, {0}, {1}, {3}, {8}, {832},
-//       {1009}}) .setCall(AqlCall{}) .expectSkipped(0)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
-// TEST_P(IndexAggregateScanExecutorTest, ignores_non_sort_or_group_registry)
-// {
-//   auto groupedRegisterId = 0;
-//   auto otherRegisterId = 1;
-//   auto sortRegisterId = 2;
-//   makeExecutorTestHelper<3, 3>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(
-//               RegIdSet{groupedRegisterId, otherRegisterId,
-//               sortRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 5, 3},
-//                       {2, 6, 1},
-//                       {199, 3, 8},
-//                       {199, 4, 2},
-//                       {199, 5, 3},
-//                       {1, 9, 1009},
-//                       {0, 87, 832},
-//                       {0, 50, 1},
-//                       {0, 78, 10001}})
-//       .expectOutput({groupedRegisterId, otherRegisterId, sortRegisterId},
-//                     {{2, 6, 1},
-//                      {2, 5, 3},
-//                      {199, 4, 2},
-//                      {199, 5, 3},
-//                      {199, 3, 8},
-//                      {1, 9, 1009},
-//                      {0, 50, 1},
-//                      {0, 87, 832},
-//                      {0, 78, 10001}})
-//       .setCall(AqlCall{})
-//       .expectSkipped(0)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
+  size_t groupIndexField = 0;
+  size_t aggregateIndexField = groupIndexField;
+  makeExecutorTestHelper<0, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
+          indexAggregateScanInfos(
+              indexValues({{4, 2},
+                           {6, 2},
+                           {6, 1},
+                           {5, 9},
+                           {6, 0},
+                           {5, 2},
+                           {1, 1},
+                           {1, 1},
+                           {1, 2}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = groupIndexField}},
+              std::move(aggregations),
+              {
+                  {indexVariable->id, aggregateIndexField},
+              }),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId}, {{4}, {12}, {5}, {6}, {5}, {3}})
+      .setCall(AqlCall{})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
 
-// TEST_P(IndexAggregateScanExecutorTest,
-//        sorts_in_sort_register_for_several_group_registers) {
-//   auto groupedRegisterId_1 = 0;
-//   auto groupedRegisterId_2 = 1;
-//   auto sortRegisterId = 2;
-//   makeExecutorTestHelper<3, 3>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{groupedRegisterId_1, groupedRegisterId_2,
-//                                  sortRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId_1,
-//           groupedRegisterId_2},
-//                                    {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 5, 3},
-//                       {2, 5, 1},
-//                       {199, 5, 8},
-//                       {199, 4, 2},
-//                       {199, 5, 3},
-//                       {1, 50, 1009},
-//                       {0, 50, 832},
-//                       {0, 50, 1},
-//                       {0, 78, 10001}})
-//       .expectOutput({groupedRegisterId_1, groupedRegisterId_2,
-//       sortRegisterId},
-//                     {{2, 5, 1},
-//                      {2, 5, 3},
-//                      {199, 5, 8},
-//                      {199, 4, 2},
-//                      {199, 5, 3},
-//                      {1, 50, 1009},
-//                      {0, 50, 1},
-//                      {0, 50, 832},
-//                      {0, 78, 10001}})
-//       .setCall(AqlCall{})
-//       .expectSkipped(0)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
+TEST_F(IndexAggregateScanExecutorTest,
+       can_aggregate_on_different_index_field_than_group) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId = 1;
 
-// TEST_P(IndexAggregateScanExecutorTest, sorts_via_all_sort_registers) {
-//   auto groupedRegisterId = 0;
-//   auto sortRegisterId_1 = 1;
-//   auto sortRegisterId_2 = 2;
-//   makeExecutorTestHelper<3, 3>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(
-//               RegIdSet{groupedRegisterId, sortRegisterId_1,
-//               sortRegisterId_2}),
-//           groupedSortExecutorInfos({groupedRegisterId},
-//                                    {sortRegisterId_1, sortRegisterId_2}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 5, 3},
-//                       {2, 5, 1},
-//                       {199, 5, 8},
-//                       {199, 4, 2},
-//                       {199, 5, 3},
-//                       {1, 50, 1009},
-//                       {0, 50, 832},
-//                       {0, 50, 1},
-//                       {0, 78, 10001}})
-//       .expectOutput({groupedRegisterId, sortRegisterId_1,
-//       sortRegisterId_2},
-//                     {{2, 5, 1},
-//                      {2, 5, 3},
-//                      {199, 4, 2},
-//                      {199, 5, 3},
-//                      {199, 5, 8},
-//                      {1, 50, 1009},
-//                      {0, 50, 1},
-//                      {0, 50, 832},
-//                      {0, 78, 10001}})
-//       .setCall(AqlCall{})
-//       .expectSkipped(0)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
+  auto ast = Ast{*fakedQuery.get()};
+  auto indexVariable = ast.variables()->createTemporaryVariable();
 
-// TEST_P(GroupedSortExecutorTest, skip) {
-//   auto groupedRegisterId = 0;
-//   auto sortRegisterId = 1;
-//   makeExecutorTestHelper<2, 2>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{sortRegisterId, groupedRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 3},
-//                       {2, 1},
-//                       {199, 8},
-//                       {199, 2},
-//                       {199, 3},
-//                       {1, 1009},
-//                       {0, 832},
-//                       {0, 1},
-//                       {0, 10001}})
-//       .expectOutput({groupedRegisterId, sortRegisterId}, {{199, 2},
-//                                                           {199, 3},
-//                                                           {199, 8},
-//                                                           {1, 1009},
-//                                                           {0, 1},
-//                                                           {0, 832},
-//                                                           {0, 10001}})
-//       .setCall(AqlCall{2})
-//       .expectSkipped(2)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
+  auto expression = randomExpressionWithVar(indexVariable->id);
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId,
+      .expression = std::make_unique<Expression>(&ast, expression.slice())});
 
-// TEST_P(IndexAggregateScanExecutorTest, hard_limit) {
-//   auto groupedRegisterId = 0;
-//   auto sortRegisterId = 1;
-//   makeExecutorTestHelper<2, 2>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{sortRegisterId, groupedRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 3},
-//                       {2, 1},
-//                       {199, 8},
-//                       {199, 2},
-//                       {199, 3},
-//                       {1, 1009},
-//                       {0, 832},
-//                       {0, 1},
-//                       {0, 10001}})
-//       .expectOutput({groupedRegisterId, sortRegisterId}, {{2, 1}, {2, 3}})
-//       .setCall(AqlCall{0, false, 2, AqlCall::LimitType::HARD})
-//       .expectSkipped(0)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
-
-// TEST_P(IndexAggregateScanExecutorTest, soft_limit) {
-//   auto groupedRegisterId = 0;
-//   auto sortRegisterId = 1;
-//   makeExecutorTestHelper<2, 2>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{sortRegisterId, groupedRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 3},
-//                       {2, 1},
-//                       {199, 8},
-//                       {199, 2},
-//                       {199, 3},
-//                       {1, 1009},
-//                       {0, 832},
-//                       {0, 1},
-//                       {0, 10001}})
-//       .expectOutput({groupedRegisterId, sortRegisterId}, {{2, 1}, {2, 3}})
-//       .setCall(AqlCall{0, false, 2, AqlCall::LimitType::SOFT})
-//       .expectSkipped(0)
-//       .expectedState(ExecutionState::HASMORE)
-//       .run();
-// }
-
-// TEST_P(IndexAggregateScanExecutorTest, fullcount) {
-//   auto groupedRegisterId = 0;
-//   auto sortRegisterId = 1;
-//   makeExecutorTestHelper<2, 2>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{sortRegisterId, groupedRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 3},
-//                       {2, 1},
-//                       {199, 8},
-//                       {199, 2},
-//                       {199, 3},
-//                       {1, 1009},
-//                       {0, 832},
-//                       {0, 1},
-//                       {0, 10001}})
-//       .expectOutput({groupedRegisterId, sortRegisterId}, {{2, 1}, {2, 3}})
-//       .setCall(AqlCall{0, true, 2, AqlCall::LimitType::HARD})
-//       .expectSkipped(7)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
-
-// TEST_P(IndexAggregateScanExecutorTest, skip_produce_fullcount) {
-//   auto groupedRegisterId = 0;
-//   auto sortRegisterId = 1;
-//   makeExecutorTestHelper<2, 2>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{sortRegisterId, groupedRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 3},
-//                       {2, 1},
-//                       {199, 8},
-//                       {199, 2},
-//                       {199, 3},
-//                       {1, 1009},
-//                       {0, 832},
-//                       {0, 1},
-//                       {0, 10001}})
-//       .expectOutput({groupedRegisterId, sortRegisterId}, {{199, 2}, {199,
-//       3}}) .setCall(AqlCall{2, true, 2, AqlCall::LimitType::HARD})
-//       .expectSkipped(7)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
-
-// TEST_P(IndexAggregateScanExecutorTest, skip_too_much) {
-//   auto groupedRegisterId = 0;
-//   auto sortRegisterId = 1;
-//   makeExecutorTestHelper<2, 2>()
-//       .addConsumer<GroupedSortExecutor>(
-//           registerInfos(RegIdSet{sortRegisterId, groupedRegisterId}),
-//           groupedSortExecutorInfos({groupedRegisterId}, {sortRegisterId}),
-//           ExecutionNode::SORT)
-//       .setInputSplitType(GetParam())
-//       .setInputValue({{2, 3},
-//                       {2, 1},
-//                       {199, 8},
-//                       {199, 2},
-//                       {199, 3},
-//                       {1, 1009},
-//                       {0, 832},
-//                       {0, 1},
-//                       {0, 10001}})
-//       .expectOutput({groupedRegisterId, sortRegisterId}, {})
-//       .setCall(AqlCall{10, false})
-//       .expectSkipped(9)
-//       .expectedState(ExecutionState::DONE)
-//       .run();
-// }
+  size_t groupIndexField = 0;
+  size_t aggregateIndexField = 1;
+  makeExecutorTestHelper<0, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
+          indexAggregateScanInfos(
+              indexValues({{4, 2},
+                           {6, 2},
+                           {6, 1},
+                           {5, 9},
+                           {6, 0},
+                           {5, 2},
+                           {1, 1},
+                           {1, 1},
+                           {1, 2}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = groupIndexField}},
+              std::move(aggregations),
+              {
+                  {indexVariable->id, aggregateIndexField},
+              }),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId}, {{2}, {3}, {9}, {0}, {2}, {4}})
+      .setCall(AqlCall{})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
