@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-2074: fix installing Foxx service from zip file upload using the web UI
+  with multi-coordinator load balancing.
+
 * Update tzdata as of 23.01.2025.
 
 * FE-488: fix stale variables in execution hook (Keyboard Shortcut > useEffect deps)
