@@ -1225,5 +1225,44 @@
     "ThreadStarter", 
     "start_thread", 
     "clone3" 
+  ],
+  [ 
+    "__futex_abstimed_wait_cancelable64", 
+    "pthread_cond_wait", 
+    "v8::platform::DelayedTaskQueue::GetNext", 
+    "v8::platform::DefaultWorkerThreadsTaskRunner::WorkerThread::Run", 
+    "v8::base::ThreadEntry", 
+    "start_thread", 
+    "clone3" 
+  ],
+  [ 
+    "__futex_abstimed_wait_cancelable64", 
+    "pthread_cond_clockwait", 
+    "std::__condvar::wait_until", 
+    "std::cv_status std::condition_variable::__wait_until_impl", 
+    "std::cv_status std::condition_variable::wait_until", 
+    "std::cv_status std::condition_variable::wait_for", 
+    "collectGarbage", 
+    "(anonymous namespace)::V8GcThread::run", 
+    "arangodb::Thread::runMe", 
+    "arangodb::Thread::startThread", 
+    "ThreadStarter", 
+    "start_thread", 
+    "clone3" 
+  ],
+  [ 
+    "__futex_abstimed_wait_cancelable64", 
+    "pthread_cond_clockwait", 
+    "std::__condvar::wait_until", 
+    "std::cv_status std::condition_variable::__wait_until_impl", 
+    "std::cv_status std::condition_variable::wait_until", 
+    "std::cv_status std::condition_variable::wait_for", 
+    "arangodb::HeartbeatThread::runAgent", 
+    "run", 
+    "arangodb::Thread::runMe", 
+    "arangodb::Thread::startThread", 
+    "ThreadStarter", 
+    "start_thread", 
+    "clone3" 
   ]
 ]
