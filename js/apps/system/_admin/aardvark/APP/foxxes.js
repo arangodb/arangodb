@@ -84,8 +84,14 @@ foxxRouter.use(installer)
 `);
 
 installer.use(function (req, res, next) {
+  let coordinatorId = null;
+  try {
+    coordinatorId = JSON.parse(req.body).coordinatorId;
+  } catch (e) {
+    // noop
+  }
   const thisCoordinatorId = FoxxManager._getMyCoordinatorId();
-  if (thisCoordinatorId && req.body.coordinatorId && thisCoordinatorId !== req.body.coordinatorId) {
+  if (thisCoordinatorId && coordinatorId && thisCoordinatorId !== coordinatorId) {
     // In case our original received request does not match the provided
     // coordinatorId (if available), we don't want to upgrade/replace or install
     // the foxx application on this coordinator, as another coordinator will
@@ -98,7 +104,7 @@ installer.use(function (req, res, next) {
       coordinatorToEndpointMap[coordinatorId] = cluster.endpointToURL(endpoint);
     });
 
-    const endpointToUse = coordinatorToEndpointMap[req.body.coordinatorId];
+    const endpointToUse = coordinatorToEndpointMap[coordinatorId];
     if (!endpointToUse) {
       // if we could not map the supplied coordinatorId to a real coordinatorId, it must be invalid.
       throw new ArangoError({
@@ -111,7 +117,6 @@ installer.use(function (req, res, next) {
       url: `${endpointToUse}${req.originalUrl}`,
       headers: req.headers,
       body: req.body,
-      json: true,
     });
 
     res.status(response.statusCode);
