@@ -1,14 +1,27 @@
+ARG CLANG_VERSION=19
+
 FROM ubuntu:24.04
 MAINTAINER hackers@arangodb.com
 
 ARG arch
 
+RUN apt-get update --fix-missing && \
+    apt-get install -y software-properties-common net-tools gnupg2 wget && \
+    apt-get update && \
+    apt-get upgrade -y
+
+COPY ./llvm.sources ./
+
+RUN cat llvm.sources >> /etc/apt/sources.list.d/ubuntu.sources
+
+RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3 \
     7zip gdb tzdata curl jq binutils gcc \
-    llvm-16 libatomic1 net-tools \
+    llvm-${CLANG_VERSION} libatomic1 net-tools \
     libc6 libstdc++6 \
-    libomp-16-dev liblapack-dev libopenblas-dev gfortran wget \
+    libomp-${CLANG_VERSION}-dev liblapack-dev libopenblas-dev gfortran wget \
     python3 python3-pip && \
     apt-get autoremove -y --purge && \
     apt-get clean -y && \
