@@ -1,9 +1,8 @@
-ARG CLANG_VERSION=19
-
 FROM ubuntu:24.04
 MAINTAINER hackers@arangodb.com
 
 ARG arch
+ARG CLANG_VERSION=19
 
 RUN apt-get update --fix-missing && \
     apt-get install -y software-properties-common net-tools gnupg2 wget && \
