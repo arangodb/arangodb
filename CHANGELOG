@@ -5,6 +5,15 @@ v3.11.13 (XXXX-XX-XX)
   fixes BTS-2046. An unnecessary and bad SORT node is removed from the
   query plan in the case that a geo index is used.
 
+* BTS-2074: fix installing Foxx service from zip file upload using the web UI
+  with multi-coordinator load balancing.
+
+* Updated OpenLDAP to 2.6.9.
+
+* Swagger UI: Remove fragment identifiers from request URLs. They are merely
+  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of the
+  HTTP API documentation.
+
 * Update tzdata as of 23.01.2025.
 
 * Rebuilt included rclone v1.62.2 with go1.22.10 and non-vulnerable
