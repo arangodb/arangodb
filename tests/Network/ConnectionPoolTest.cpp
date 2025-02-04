@@ -327,7 +327,7 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
   tries = 0;
-  while (++tries < 1'000) {
+  while (++tries < 100) {
     std::cout << "numOpenConnections: " << pool.numOpenConnections()
               << std::endl;
     if (pool.numOpenConnections() == 0) {
