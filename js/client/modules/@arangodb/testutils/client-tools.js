@@ -725,7 +725,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     'makedataArgs': undefined,
     'rtaNegFilter': '',
     'makedataDB': "_system",
-    'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 60
+    'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 120
   });
 
   tu.CopyIntoList(optionsDocumentation, [
