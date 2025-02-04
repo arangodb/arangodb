@@ -36,6 +36,8 @@ const database = "cluster_rebalance_db";
 const suspendExternal = internal.suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const wait = require("internal").wait;
+let { versionHas } = require('@arangodb/test-helper');
+const isCov = versionHas('coverage');
 
 function resignServer(server) {
   let res = arango.POST_RAW("/_admin/cluster/resignLeadership", {server});
@@ -217,6 +219,7 @@ function clusterRebalanceOtherOptionsSuite() {
     testCalcRebalanceStopServer: function () {
       const dbServers = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
       assertNotEqual(dbServers.length, 0);
+      let timeout = (isCov) ? 600 : 300;
       for (let i = 0; i < dbServers.length; ++i) {
         const dbServer = dbServers[i];
         assertTrue(dbServer.suspend());
@@ -231,7 +234,7 @@ function clusterRebalanceOtherOptionsSuite() {
             serverHealth = result[dbServer.id].Status;
             assertNotNull(serverHealth);
             const timeElapsed = (Date.now() - startTime) / 1000;
-            assertTrue(timeElapsed < 300, "Server expected status not acquired");
+            assertTrue(timeElapsed < timeout, "Server expected status not acquired");
           } while (serverHealth !== "FAILED");
           const serverShortName = result[dbServer.id].ShortName;
           assertEqual(serverHealth, "FAILED");
@@ -257,7 +260,7 @@ function clusterRebalanceOtherOptionsSuite() {
                 break;
               }
               const timeElapsed = (Date.now() - startTime) / 1000;
-              assertTrue(timeElapsed < 300, "Moving shards from server in ill state not acquired");
+              assertTrue(timeElapsed < timeout, "Moving shards from server in ill state not acquired");
             }
           } while (serverUsed);
 
@@ -277,7 +280,7 @@ function clusterRebalanceOtherOptionsSuite() {
             serverHealth = result[dbServer.id].Status;
             assertNotNull(serverHealth);
             const timeElapsed = (Date.now() - startTime) / 1000;
-            assertTrue(timeElapsed < 300, "Unable to get server " + dbServer.id + " in good state");
+            assertTrue(timeElapsed < timeout, "Unable to get server " + dbServer.id + " in good state");
           } while (serverHealth !== "GOOD");
         }
       }
