@@ -328,7 +328,8 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
 
   tries = 0;
   while (++tries < 1'000) {
-    std::cout << "numOpenConnections: " << pool.numOpenConnections() << std::endl;
+    std::cout << "numOpenConnections: " << pool.numOpenConnections()
+              << std::endl;
     if (pool.numOpenConnections() == 0) {
       break;
     }
