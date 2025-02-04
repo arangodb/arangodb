@@ -32,24 +32,28 @@ const arangodb = require('@arangodb');
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const db = arangodb.db;
 const replication = require('@arangodb/replication');
-const leaderEndpoint = arango.getEndpoint();
-const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 const errors = require("internal").errors;
 const { deriveTestSuite, compareStringIds } = require('@arangodb/test-helper');
 const _ = require('lodash');
+let IM = global.instanceManager;
+const leaderEndpoint = IM.arangods[0].endpoint;
+const followerEndpoint = IM.arangods[1].endpoint;
 
 const cn = 'UnitTestsReplication';
 
-const connectToLeader = function () {
+const docCount = versionHas('tsan') ? 10000 : 100000;
+
+const connectToLeader = function() {
+
   reconnectRetry(leaderEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
-const connectToFollower = function () {
+const connectToFollower = function() {
   reconnectRetry(followerEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
-  
+
 const setFailurePoint = function(which) {
   let res = arango.PUT("/_admin/debug/failat/" + encodeURIComponent(which), {});
   if (res !== true) {
@@ -599,7 +603,7 @@ function BaseTestConfig () {
     testDowngradeManyRevisions: function () {
       let c = db._create(cn);
       let docs = [];
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+      for (let i = 0; i < 1 * 100 * docCount; ++i) {
         docs.push({ value: i });
         if (docs.length === 10000) {
           c.insert(docs, { silent: true });
@@ -630,14 +634,14 @@ function BaseTestConfig () {
       db._flushCache();
       c = db._collection(cn);
 
-      checkCountConsistency(cn, 100000);
+      checkCountConsistency(cn, 100 * docCount);
     },
     
     // create different state on follower
     testRewriteEntireFollowerSecondaryUniqueIndexes: function () {
       let c = db._create(cn);
       let docs = [];
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ value: i });
         if (docs.length === 10000) {
           c.insert(docs, { silent: true });
@@ -670,7 +674,7 @@ function BaseTestConfig () {
       db._flushCache();
       c = db._collection(cn);
 
-      checkCountConsistency(cn, 100000);
+      checkCountConsistency(cn, docCount);
     },
     
     testUniqueConstraints: function () {
