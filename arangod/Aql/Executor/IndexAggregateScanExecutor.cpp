@@ -159,7 +159,6 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
     // read first row
     if (not _inputRow.isInitialized()) {
-      LOG_DEVEL << "Initialize input row";
       LOG_AGG_SCAN << "NEXT INPUT ROW";
       _inputRow = inputRange.peekDataRow().second;
 
@@ -167,13 +166,6 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       LOG_AGG_SCAN << "[SCAN] Group keys "
                    << inspection::json(_currentGroupKeySlices);
     }
-
-    VPackBuilder builder;
-    builder.openObject();
-    _inputRow.toVelocyPack(nullptr, builder);
-    builder.close();
-    LOG_DEVEL << fmt::format("input range has data row: {}",
-                             inspection::json(builder.slice()));
 
     // aggregate everything in one group
     SliceSpanExpressionContext context{
@@ -272,7 +264,6 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
   }
   LOG_AGG_SCAN << "[SCAN] constructing stream with options " << streamOptions;
   _iterator = _infos.index->streamForCondition(&_trx, streamOptions);
-  _iterator->test();
 
   // fill projection slices
   _projectionSlices.resize(streamOptions.projectedFields.size());

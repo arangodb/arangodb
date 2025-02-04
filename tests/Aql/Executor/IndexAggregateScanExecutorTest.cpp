@@ -54,6 +54,7 @@
 #include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 #include "gtest/gtest.h"
+#include <string>
 #include <utility>
 #include <vector>
 #include <memory>
@@ -63,6 +64,42 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 using MyDocumentId = LocalDocumentId;
+
+namespace expression {
+struct VariableReference {
+  size_t id;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, VariableReference& x) {
+  return f.object(x).fields(
+      f.field("type", std::string{"reference"}), f.field("typeID", 45),
+      f.field("name", std::to_string(x.id)), f.field("id", x.id),
+      f.field("subqueryReference", false));
+}
+struct Operation {
+  const std::string type;
+  std::vector<VariableReference> variables;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, Operation& x) {
+  return f.object(x).fields(f.field("type", x.type), f.field("typeID", 20),
+                            f.field("subNodes", x.variables));
+}
+struct ExpressionContent : std::variant<VariableReference, Operation> {};
+template<typename Inspector>
+auto inspect(Inspector& f, ExpressionContent& x) {
+  return f.variant(x).unqualified().alternatives(
+      inspection::inlineType<VariableReference>(),
+      inspection::inlineType<Operation>());
+}
+struct Expression {
+  ExpressionContent expression;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, Expression& x) {
+  return f.object(x).fields(f.field("expression", x.expression));
+}
+}  // namespace expression
 
 struct MyVectorIterator : public AqlIndexStreamIterator {
   bool position(std::span<velocypack::Slice> keys) const override {
@@ -162,10 +199,8 @@ class MockIndex : public Index {
   ~MockIndex() = default;
   std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
       transaction::Methods* trx, IndexStreamOptions const& options) override {
-    auto keyFields = options.usedKeyFields;
-    auto projectedFields = options.projectedFields;
-    return std::make_unique<MyVectorIterator>(keyFields, projectedFields,
-                                              _values);
+    return std::make_unique<MyVectorIterator>(options.usedKeyFields,
+                                              options.projectedFields, _values);
   }
   char const* typeName() const override { return "mock index"; }
   IndexType type() const override {
@@ -197,17 +232,11 @@ class IndexAggregateScanExecutorTest : public AqlExecutorTestCase<> {
                          RegIdSetStack{RegIdSet{}}};  // regs to keep
   }
   auto randomExpressionWithVar(VariableId var) -> VPackBuilder {
+    auto expression =
+        expression::Expression{.expression = expression::ExpressionContent{
+                                   expression::VariableReference{.id = var}}};
     VPackBuilder builder;
-    builder.openObject();
-    builder.add(VPackValue("expression"));
-    builder.openObject();
-    builder.add("type", VPackValue("reference"));
-    builder.add("typeID", VPackValue(45));
-    builder.add("name", VPackValue(6));
-    builder.add("id", VPackValue(var));
-    builder.add("subqueryReference", VPackValue(false));
-    builder.close();
-    builder.close();
+    velocypack::serialize(builder, expression);
     return builder;
   }
   auto indexAggregateScanInfos(
@@ -252,14 +281,15 @@ TEST_F(IndexAggregateScanExecutorTest,
   auto aggregationRegisterId = 1;
 
   auto ast = Ast{*fakedQuery.get()};
-  auto newVariable = ast.variables()->createTemporaryVariable();
-  auto expression = randomExpressionWithVar(newVariable->id);
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
       .type = "SUM",
       .outputRegister = aggregationRegisterId,
-      .expression = std::make_unique<Expression>(&ast, expression.slice())});
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
 
   size_t indexField = 0;
   makeExecutorTestHelper<0, 1>()
@@ -274,7 +304,7 @@ TEST_F(IndexAggregateScanExecutorTest,
               // all aggregated fields need to be projections in iterator
               // only aggregated fields need to be in mapping var -> indexField
               std::move(aggregations),
-              {{newVariable->id,
+              {{aggregationVariable->id,
                 indexField}}),  // for tests indexField does not matter
           ExecutionNode::INDEX_COLLECT)
       .setInputValue({{}})
@@ -286,19 +316,20 @@ TEST_F(IndexAggregateScanExecutorTest,
 }
 
 TEST_F(IndexAggregateScanExecutorTest,
-       ignores_index_values_that_are_not_used_for_grouping_or_aggregation) {
+       ignores_index_fields_that_are_not_used_for_grouping_or_aggregation) {
   auto groupRegisterId = 0;
   auto aggregationRegisterId = 1;
 
   auto ast = Ast{*fakedQuery.get()};
-  auto indexVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
-  auto expression = randomExpressionWithVar(indexVariable->id);
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
       .type = "SUM",
       .outputRegister = aggregationRegisterId,
-      .expression = std::make_unique<Expression>(&ast, expression.slice())});
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
 
   size_t groupIndexField = 0;
   size_t aggregateIndexField = groupIndexField;
@@ -319,7 +350,7 @@ TEST_F(IndexAggregateScanExecutorTest,
                                               .indexField = groupIndexField}},
               std::move(aggregations),
               {
-                  {indexVariable->id, aggregateIndexField},
+                  {aggregationVariable->id, aggregateIndexField},
               }),
           ExecutionNode::INDEX_COLLECT)
       .setInputValue({{}})
@@ -336,14 +367,15 @@ TEST_F(IndexAggregateScanExecutorTest,
   auto aggregationRegisterId = 1;
 
   auto ast = Ast{*fakedQuery.get()};
-  auto indexVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
 
-  auto expression = randomExpressionWithVar(indexVariable->id);
   std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
   aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
       .type = "SUM",
       .outputRegister = aggregationRegisterId,
-      .expression = std::make_unique<Expression>(&ast, expression.slice())});
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
 
   size_t groupIndexField = 0;
   size_t aggregateIndexField = 1;
@@ -364,13 +396,436 @@ TEST_F(IndexAggregateScanExecutorTest,
                                               .indexField = groupIndexField}},
               std::move(aggregations),
               {
-                  {indexVariable->id, aggregateIndexField},
+                  {aggregationVariable->id, aggregateIndexField},
               }),
           ExecutionNode::INDEX_COLLECT)
       .setInputValue({{}})
       .expectOutput({aggregationRegisterId}, {{2}, {3}, {9}, {0}, {2}, {4}})
       .setCall(AqlCall{})
       .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_F(IndexAggregateScanExecutorTest, groups_by_several_index_fields) {
+  auto groupRegisterId_0 = 0;
+  auto groupRegisterId_1 = 2;
+  auto aggregationRegisterId = 1;
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
+
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+
+  size_t groupIndexField_0 = 0;
+  size_t groupIndexField_1 = 1;
+  size_t aggregateIndexField = 2;
+  makeExecutorTestHelper<0, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId_0, groupRegisterId_1,
+                                 aggregationRegisterId}),
+          indexAggregateScanInfos(
+              indexValues({{4, 2, 3},
+                           {6, 1, 2},
+                           {6, 1, 8},
+                           {5, 9, 2},
+                           {5, 9, 4},
+                           {5, 2, 1},
+                           {1, 1, 2},
+                           {1, 1, 3},
+                           {1, 2, 9}}),
+              {IndexAggregateScanInfos::Group{
+                   .outputRegister = groupRegisterId_0,
+                   .indexField = groupIndexField_0},
+               IndexAggregateScanInfos::Group{
+                   .outputRegister = groupRegisterId_1,
+                   .indexField = groupIndexField_1}},
+              std::move(aggregations),
+              {
+                  {aggregationVariable->id, aggregateIndexField},
+              }),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId}, {{3}, {10}, {6}, {1}, {5}, {9}})
+      .setCall(AqlCall{})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_F(IndexAggregateScanExecutorTest, aggregates_different_columns) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId_0 = 1;
+  auto aggregationRegisterId_1 = 2;
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto aggregationVariable_0 = ast.variables()->createTemporaryVariable();
+  auto aggregationVariable_1 = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression_0 =
+      randomExpressionWithVar(aggregationVariable_0->id);
+  auto aggregationExpression_1 =
+      randomExpressionWithVar(aggregationVariable_1->id);
+
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId_0,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression_0.slice())});
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId_1,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression_1.slice())});
+
+  size_t groupIndexField = 0;
+  size_t aggregateIndexField_0 = 1;
+  size_t aggregateIndexField_1 = 2;
+  makeExecutorTestHelper<0, 2>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId_0,
+                                 aggregationRegisterId_1}),
+          indexAggregateScanInfos(
+              indexValues({{4, 2, 3},
+                           {6, 1, 2},
+                           {6, 1, 8},
+                           {5, 9, 2},
+                           {5, 9, 4},
+                           {5, 2, 1},
+                           {1, 1, 2},
+                           {1, 1, 3},
+                           {1, 2, 9}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = groupIndexField}},
+              std::move(aggregations),
+              {
+                  {aggregationVariable_0->id, aggregateIndexField_0},
+                  {aggregationVariable_1->id, aggregateIndexField_1},
+              }),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId_0, aggregationRegisterId_1},
+                    {{2, 3}, {2, 10}, {20, 7}, {4, 14}})
+      .setCall(AqlCall{})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_F(IndexAggregateScanExecutorTest,
+       executes_different_aggregations_on_same_row) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId_0 = 1;
+  auto aggregationRegisterId_1 = 2;
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
+
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId_0,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "MAX",
+      .outputRegister = aggregationRegisterId_1,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+
+  size_t groupIndexField = 0;
+  size_t aggregateIndexField = 1;
+  makeExecutorTestHelper<0, 2>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId_0,
+                                 aggregationRegisterId_1}),
+          indexAggregateScanInfos(
+              indexValues({{4, 2},
+                           {6, 1},
+                           {6, 1},
+                           {5, 9},
+                           {5, 9},
+                           {5, 2},
+                           {1, 1},
+                           {1, 1},
+                           {1, 2}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = groupIndexField}},
+              std::move(aggregations),
+              {
+                  {aggregationVariable->id, aggregateIndexField},
+              }),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId_0, aggregationRegisterId_1},
+                    {{2, 2}, {2, 1}, {20, 9}, {4, 2}})
+      .setCall(AqlCall{})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+TEST_F(IndexAggregateScanExecutorTest,
+       evaluates_expression_in_aggregation_function) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId = 1;
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto aggregationVariable_0 = ast.variables()->createTemporaryVariable();
+  auto aggregationVariable_1 = ast.variables()->createTemporaryVariable();
+  // doc.a + doc.b
+  auto expression = expression::Expression{
+      .expression = expression::ExpressionContent{expression::Operation{
+          .type = "plus",
+          .variables = std::vector{
+              expression::VariableReference{.id = aggregationVariable_0->id},
+              expression::VariableReference{.id =
+                                                aggregationVariable_1->id}}}}};
+  VPackBuilder aggregationExpression;
+  velocypack::serialize(aggregationExpression, expression);
+
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+
+  size_t groupIndexField = 0;
+  size_t aggregateIndexField_0 = 1;
+  size_t aggregateIndexField_1 = groupIndexField;
+  makeExecutorTestHelper<0, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{
+              groupRegisterId,
+              aggregationRegisterId,
+          }),
+          indexAggregateScanInfos(
+              indexValues({{4, 2},
+                           {6, 1},
+                           {6, 1},
+                           {5, 9},
+                           {5, 9},
+                           {5, 2},
+                           {1, 1},
+                           {1, 1},
+                           {1, 2}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = groupIndexField}},
+              std::move(aggregations),
+              {
+                  {aggregationVariable_0->id, aggregateIndexField_0},
+                  {aggregationVariable_1->id, aggregateIndexField_1},
+              }),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId}, {{6}, {14}, {35}, {7}})
+      .setCall(AqlCall{})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_F(IndexAggregateScanExecutorTest, skip) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId = 1;
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
+
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+
+  size_t indexField = 0;
+  makeExecutorTestHelper<0, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
+          indexAggregateScanInfos(
+              indexValues({{4}, {6}, {6}, {5}, {6}, {5}, {1}, {1}, {1}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = indexField}},
+              std::move(aggregations), {{aggregationVariable->id, indexField}}),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId}, {{5}, {6}, {5}, {3}})
+      .setCall(AqlCall{2})
+      .expectSkipped(2)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_F(IndexAggregateScanExecutorTest, hard_limit) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId = 1;
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
+
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+
+  size_t indexField = 0;
+  makeExecutorTestHelper<0, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
+          indexAggregateScanInfos(
+              indexValues({{4}, {6}, {6}, {5}, {6}, {5}, {1}, {1}, {1}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = indexField}},
+              std::move(aggregations), {{aggregationVariable->id, indexField}}),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId}, {{4}, {12}})
+      .setCall(AqlCall{0, false, 2, AqlCall::LimitType::HARD})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_F(IndexAggregateScanExecutorTest, soft_limit) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId = 1;
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
+
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+
+  size_t indexField = 0;
+  makeExecutorTestHelper<0, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
+          indexAggregateScanInfos(
+              indexValues({{4}, {6}, {6}, {5}, {6}, {5}, {1}, {1}, {1}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = indexField}},
+              std::move(aggregations), {{aggregationVariable->id, indexField}}),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId}, {{4}, {12}})
+      .setCall(AqlCall{0, false, 2, AqlCall::LimitType::SOFT})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::HASMORE)
+      .run();
+}
+
+TEST_F(IndexAggregateScanExecutorTest, fullcount) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId = 1;
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
+
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+
+  size_t indexField = 0;
+  makeExecutorTestHelper<0, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
+          indexAggregateScanInfos(
+              indexValues({{4}, {6}, {6}, {5}, {6}, {5}, {1}, {1}, {1}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = indexField}},
+              std::move(aggregations), {{aggregationVariable->id, indexField}}),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId}, {{4}, {12}})
+      .setCall(AqlCall{0, true, 2, AqlCall::LimitType::HARD})
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_F(IndexAggregateScanExecutorTest, skip_produce_fullcount) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId = 1;
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
+
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+
+  size_t indexField = 0;
+  makeExecutorTestHelper<0, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
+          indexAggregateScanInfos(
+              indexValues({{4}, {6}, {6}, {5}, {6}, {5}, {1}, {1}, {1}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = indexField}},
+              std::move(aggregations), {{aggregationVariable->id, indexField}}),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId}, {{5}, {6}})
+      .setCall(AqlCall{2, true, 2, AqlCall::LimitType::HARD})
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_F(IndexAggregateScanExecutorTest, skip_too_much) {
+  auto groupRegisterId = 0;
+  auto aggregationRegisterId = 1;
+
+  auto ast = Ast{*fakedQuery.get()};
+  auto aggregationVariable = ast.variables()->createTemporaryVariable();
+  auto aggregationExpression = randomExpressionWithVar(aggregationVariable->id);
+
+  std::vector<IndexAggregateScanInfos::Aggregation> aggregations;
+  aggregations.emplace_back(IndexAggregateScanInfos::Aggregation{
+      .type = "SUM",
+      .outputRegister = aggregationRegisterId,
+      .expression =
+          std::make_unique<Expression>(&ast, aggregationExpression.slice())});
+
+  size_t indexField = 0;
+  makeExecutorTestHelper<0, 1>()
+      .addConsumer<IndexAggregateScanExecutor>(
+          registerInfos(RegIdSet{groupRegisterId, aggregationRegisterId}),
+          indexAggregateScanInfos(
+              indexValues({{4}, {6}, {6}, {5}, {6}, {5}, {1}, {1}, {1}}),
+              {IndexAggregateScanInfos::Group{.outputRegister = groupRegisterId,
+                                              .indexField = indexField}},
+              std::move(aggregations), {{aggregationVariable->id, indexField}}),
+          ExecutionNode::INDEX_COLLECT)
+      .setInputValue({{}})
+      .expectOutput({aggregationRegisterId}, {})
+      .setCall(AqlCall{10, false})
+      .expectSkipped(6)
       .expectedState(ExecutionState::DONE)
       .run();
 }
