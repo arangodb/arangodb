@@ -489,6 +489,7 @@ include(CheckCompilerVersion)
 CheckCompilerVersion(
   11.2 # GCC
   16.0 # Clang
+  19.1 # MSVC (via Clang)
 )
 
 if (CMAKE_COMPILER_IS_CLANG) 
