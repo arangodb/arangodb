@@ -197,6 +197,7 @@ const replicationOngoingFrompresent = (new _replicationOngoing('replication_ongo
 
 function replicationStatic (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_static, options);
+  testCases = tu.splitBuckets(options, testCases);
 
   return new replicationRunner(
     options,
