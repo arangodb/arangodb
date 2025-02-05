@@ -1,6 +1,8 @@
 devel
 -----
 
+* Make an unstable test stable again for the NetworkConnectionPool.
+
 * BTS-2074: fix installing Foxx service from zip file upload using the web UI
   with multi-coordinator load balancing.
 
