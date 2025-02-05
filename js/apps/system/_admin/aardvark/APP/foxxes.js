@@ -120,7 +120,7 @@ installer.use(function (req, res, next) {
 
     res.status(response.statusCode);
     res.set(response.headers);
-    res.send(response.body);
+    res.body = response.body;
     return;
   }
   
