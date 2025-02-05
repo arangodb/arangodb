@@ -116,6 +116,7 @@ installer.use(function (req, res, next) {
       url: `${endpointToUse}${req.originalUrl}`,
       headers: req.headers,
       body: req.body,
+      json: false,
     });
 
     res.status(response.statusCode);
