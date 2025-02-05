@@ -1637,9 +1637,9 @@ function ParallelIndexSuite() {
       // here because otherwise the server may be overwhelmed by too many
       // concurrent index creations being in progress.
       const maxThreads = 7;
-      // Relax condition for windows and macOS - TODO: fix this.
-      const noIndexes = (platform.substr(0, 3) === 'win' || platform === 'darwin') ? 40 : 80;
-
+      // Relax condition for windows - TODO: fix this.
+      const noIndexes = (platform.substr(0, 3) === 'win' || versionHas('coverage')) ? 40 : 80;
+      const timeout = versionHas('coverage') ? 360:180;
       let time = require("internal").time;
       let start = time();
       while (true) {
@@ -1653,9 +1653,9 @@ function ParallelIndexSuite() {
           let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + i + '"] });';
           tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
         }
-        if (time() - start > 180) {
+        if (time() - start > timeout) {
           // wait for 3 minutes maximum
-          fail("Timeout creating " + noIndexes + " indices after 3 minutes: " + JSON.stringify(indexes));
+          fail(`Timeout creating ${noIndexes} indices after ${timeout/60} minutes: ${JSON.stringify(indexes)}`);
         }
         require("internal").wait(0.5, false);
       }
@@ -1670,6 +1670,7 @@ function ParallelIndexSuite() {
       // concurrent index creations being in progress.
       const maxThreads = 7;
       const noIndexes = 100;
+      const timeout = versionHas('coverage') ? 360:180;
 
       let time = require("internal").time;
       let start = time();
@@ -1683,9 +1684,9 @@ function ParallelIndexSuite() {
           let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "persistent", fields: ["value' + (i % 4) + '"] });';
           tasks.register({name: "UnitTestsIndexCreate" + i, command: command});
         }
-        if (time() - start > 180) {
+        if (time() - start > timeout) {
           // wait for 3 minutes maximum
-          fail("Timeout creating indices after 3 minutes: " + JSON.stringify(indexes));
+          fail(`Timeout creating indices after ${timeout/60} minutes:${JSON.stringify(indexes)}`);
         }
         require("internal").wait(0.5, false);
       }

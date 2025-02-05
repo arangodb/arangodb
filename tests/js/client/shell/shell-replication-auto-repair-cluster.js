@@ -61,7 +61,7 @@ let getTree = (ep, batchId, shardId) => {
     method: "GET", 
     url: ep + "/_api/replication/revisions/tree?collection=" + encodeURIComponent(shardId) + "&verification=true&onlyPopulated=true&batchId=" + batchId 
   });
-  assertEqual(200, result.status);
+  assertEqual(200, result.status, JSON.stringify(result));
   return result.json;
 };
 
