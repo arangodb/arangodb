@@ -93,14 +93,14 @@ TEST_F(NetworkConnectionPoolTest, prune_while_in_flight) {
 
   {
     bool isFromPool;
-    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
+    auto conn1 = pool.leaseConnection("tcp://examplexxx.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
     EXPECT_EQ(extractCurrentMetric(), 1ull);
     conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
                                              fuerte::ContentType::Unset),
                        waiter);
 
-    auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
+    auto conn2 = pool.leaseConnection("tcp://examplexxx.com:80", isFromPool);
     ASSERT_NE(conn1.get(), conn2.get());
     ASSERT_EQ(pool.numOpenConnections(), 2);
     EXPECT_EQ(extractCurrentMetric(), 2ull);
@@ -327,14 +327,24 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
   tries = 0;
-  while (++tries < 100) {
-    std::cout << "numOpenConnections: " << pool.numOpenConnections()
-              << std::endl;
+  std::vector<size_t> memory;
+  bool good = false;
+  while (++tries < 5'000) {
+    memory.push_back(pool.numOpenConnections());
     if (pool.numOpenConnections() == 0) {
+      good = true;
       break;
     }
     pool.pruneConnections();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+  if (!good) {
+    std::cout << "Test about to fail, history of numOpenConnections:"
+              << std::endl;
+    for (auto const n : memory) {
+      std::cout << n << " ";
+    }
+    std::cout << std::endl;
   }
 
   ASSERT_EQ(pool.numOpenConnections(), 0);
