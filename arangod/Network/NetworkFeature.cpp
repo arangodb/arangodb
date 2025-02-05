@@ -667,9 +667,11 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
       std::move(req),
       [this, &pool, isFromPool,
        handleContentEncoding = options.handleContentEncoding || didCompress,
-       cb = std::move(cb), endpoint = std::move(endpoint)](
+       cb = std::move(cb), endpoint = std::move(endpoint),
+       logContext = LogContext::current()](
           fuerte::Error err, std::unique_ptr<fuerte::Request> req,
           std::unique_ptr<fuerte::Response> res) {
+        LogContext::ScopedContext guard(logContext);
         TRI_ASSERT(req != nullptr);
         if (req->timeQueued().time_since_epoch().count() != 0 &&
             req->timeAsyncWrite().time_since_epoch().count() != 0) {
