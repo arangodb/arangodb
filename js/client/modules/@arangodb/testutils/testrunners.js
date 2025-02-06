@@ -210,7 +210,6 @@ class runInArangoshRunner extends testRunnerBase {
     return this.instanceManager.findEndpoint();
   }
   runOneTest(file) {
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let args = ct.makeArgs.arangosh(this.options);
     args['server.endpoint'] = this.getEndpoint();
 
@@ -231,6 +230,7 @@ class runInArangoshRunner extends testRunnerBase {
     if (this.addArgs !== undefined) {
       args = Object.assign(args, this.addArgs);
     }
+    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
     return readTestResult(this.instanceManager.rootDir, rc, args['javascript.unit-tests']);
   }
