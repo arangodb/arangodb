@@ -218,6 +218,8 @@ class runInArangoshRunner extends testRunnerBase {
 
     args['javascript.unit-test-filter'] = this.options.testCase;
 
+    args['javascript.execution-deadline'] = this.options.oneTestTimeout;
+
     if (this.options.forceJson) {
       args['server.force-json'] = true;
     }
