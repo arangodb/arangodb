@@ -1,6 +1,10 @@
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
+* Disable cluster overwhelm protection on agents. This fixes a bug which 
+  happens if the number of dbservers and coordinators grows beyond 4x
+  the number of threads in the agency leader.
+
 * Improve geo index performance in the cluster with multiple shards. This
   fixes BTS-2046. An unnecessary and bad SORT node is removed from the
   query plan in the case that a geo index is used.
