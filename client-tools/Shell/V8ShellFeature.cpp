@@ -92,6 +92,7 @@ V8ShellFeature::V8ShellFeature(Server& server, std::string const& name)
       _copyInstallation(false),
       _removeCopyInstallation(false),
       _gcInterval(50),
+      _executionDeadline(0),
       _name(name),
       _isolate(nullptr) {
   setOptional(false);
