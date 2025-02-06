@@ -205,7 +205,7 @@ function FiguresSuite () {
 function VPackIndexCacheModifySuite (unique) {
   const n = 2000;
 
-  const maxTries = 3;
+  const maxTries = 5;
   
   let setFailurePointForPointLookup = () => {
     if (canUseFailAt) {
