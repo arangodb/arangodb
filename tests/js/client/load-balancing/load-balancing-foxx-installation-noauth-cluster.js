@@ -79,9 +79,14 @@ function sendRequest(method, endpoint, body, usePrimary) {
     console.error(`Exception processing ${method} ${endpoint}`, err.stack);
     return {};
   }
-  assertTrue(res.hasOwnProperty('json'), JSON.stringify(res));
-  assertTrue(res.json !== undefined, JSON.stringify(res));
-  return res.json;
+  assertTrue(res.hasOwnProperty('body'), JSON.stringify(res));
+  assertTrue(res.body !== undefined, JSON.stringify(res));
+  assertTrue(res.body !== "undefined", JSON.stringify(res));
+  let resultBody = res.body;
+  if (typeof resultBody === "string") {
+    resultBody = JSON.parse(resultBody);
+  }
+  return resultBody;
 }
 
 const uploadFoxxZipFile = (databaseName, usePrimary, encodedZip) => {
