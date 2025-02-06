@@ -142,6 +142,11 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.gc-interval",
       "Request-based garbage collection interval (each n-th command).",
       new UInt64Parameter(&_gcInterval));
+
+  options->addOption(
+      "--javascript.execution-deadline",
+      "deadline in seconds. Once reached, calls will throw. Http timeouts will be adjusted.",
+      new UInt64Parameter(&_executionDeadline));
 }
 
 void V8ShellFeature::validateOptions(
@@ -1116,7 +1121,7 @@ void V8ShellFeature::initGlobals() {
 
   TRI_InitV8Buffer(_isolate);
   TRI_InitV8Utils(_isolate, context, _startupDirectory, modules);
-  TRI_InitV8Deadline(_isolate);
+  TRI_InitV8Deadline(_isolate, _executionDeadline);
   TRI_InitV8Shell(_isolate);
 
   // pager functions (overwrite existing SYS_OUTPUT from InitV8Utils)

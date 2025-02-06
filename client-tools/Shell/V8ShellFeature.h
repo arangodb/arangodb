@@ -60,6 +60,7 @@ class V8ShellFeature final : public ArangoshFeature {
   bool _copyInstallation;
   bool _removeCopyInstallation;
   uint64_t _gcInterval;
+  uint64_t _executionDeadline;
 
  public:
   ErrorCode runShell(std::vector<std::string> const& positionals);
