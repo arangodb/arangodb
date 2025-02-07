@@ -311,6 +311,6 @@ void TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout) {
       JS_RegisterExecutionDeadlineInterruptHandler);
   if (timeout != 0) {
     std::lock_guard mutex{singletonDeadlineMutex};
-    executionDeadline = (TRI_microtime() + timeout * 1000) / 1000;
+    executionDeadline = (TRI_microtime() + timeout) / 1000;
   }
 }
