@@ -335,7 +335,7 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
       good = true;
       break;
     }
-    pool.pruneConnections();
+    pool.pruneConnections(true);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   if (!good) {

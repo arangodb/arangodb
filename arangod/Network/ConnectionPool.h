@@ -98,7 +98,7 @@ class ConnectionPool final {
   void shutdownConnections();
 
   /// @brief automatically prune connections
-  void pruneConnections();
+  void pruneConnections(bool debug = false);
 
   /// @brief cancel connections to this endpoint
   size_t cancelConnections(std::string const& endpoint);

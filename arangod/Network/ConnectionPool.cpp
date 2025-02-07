@@ -141,7 +141,7 @@ struct ConnectionPool::Impl {
   }
 
   /// remove unused and broken connections
-  void pruneConnections() {
+  void pruneConnections(bool debug) {
     const std::chrono::milliseconds ttl(_config.idleConnectionMilli);
 
     READ_LOCKER(guard, _lock);
@@ -161,6 +161,16 @@ struct ConnectionPool::Impl {
       while (it != buck.list.end()) {
         bool remove = false;
 
+        std::cout << "State of fuerte connection: "
+                  << (int)(*it)->fuerte->state()
+                  << " leases: " << (*it)->leases.load()
+                  << " requests left: " << (*it)->fuerte->requestsLeft()
+                  << " now: " << now.time_since_epoch().count()
+                  << " lastLeased: "
+                  << (*it)->lastLeased.time_since_epoch().count()
+                  << " ttl: " << ttl << " aliveCount: " << aliveCount
+                  << " _config.maxOpenConnections: "
+                  << _config.maxOpenConnections << std::endl;
         if ((*it)->fuerte->state() == fuerte::Connection::State::Closed) {
           // lets not keep around disconnected fuerte connection objects
           remove = true;
@@ -372,7 +382,9 @@ void ConnectionPool::drainConnections() { _impl->drainConnections(); }
 void ConnectionPool::shutdownConnections() { _impl->shutdownConnections(); }
 
 /// remove unused and broken connections
-void ConnectionPool::pruneConnections() { _impl->pruneConnections(); }
+void ConnectionPool::pruneConnections(bool debug) {
+  _impl->pruneConnections(debug);
+}
 
 /// @brief cancel connections to this endpoint
 size_t ConnectionPool::cancelConnections(std::string const& endpoint) {
