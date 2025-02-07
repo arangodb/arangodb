@@ -137,19 +137,21 @@ void ImportFeature::collectOptions(
                      "`--from-collection-prefix` / `--to-collection-prefix`.",
                      new BooleanParameter(&_overwriteCollectionPrefix));
 
-  options->addOption("--create-collection",
-                     "create collection if it does not yet exist",
-                     new BooleanParameter(&_createCollection));
+  options->addOption(
+      "--create-collection",
+      "Create the target collection if it does not already exist.",
+      new BooleanParameter(&_createCollection));
 
   options->addOption("--create-database",
                      "Create the target database if it does not exist.",
                      new BooleanParameter(&_createDatabase));
 
   options
-      ->addOption("--headers-file",
-                  "The file to read the CSV or TSV header from. If specified, "
-                  "no header is expected in the regular input file.",
-                  new StringParameter(&_headersFile))
+      ->addOption(
+          "--headers-file",
+          "The file to read the CSV or TSV column headers from. "
+          "If specified, no header is expected in the regular input file.",
+          new StringParameter(&_headersFile))
       .setIntroducedIn(30800);
 
   options->addOption(
@@ -164,10 +166,12 @@ void ImportFeature::collectOptions(
       "only.",
       new BooleanParameter(&_convert));
 
-  options->addOption("--translate",
-                     "Translate an attribute name using the syntax "
-                     "\"from=to\". For CSV and TSV only.",
-                     new VectorParameter<StringParameter>(&_translations));
+  options->addOption(
+      "--translate",
+      "Define a mapping for a column header to an attribute name "
+      "using the syntax \"from=to\". You can specify this "
+      "startup option multiple times. For CSV and TSV only.",
+      new VectorParameter<StringParameter>(&_translations));
 
   options
       ->addOption(
@@ -237,9 +241,9 @@ void ImportFeature::collectOptions(
 
   options
       ->addOption("--merge-attributes",
-                  "Merge attributes into new document attribute (e.g. "
-                  "\"mergedAttribute=[someAttribute]-[otherAttribute]\") "
-                  "(CSV and TSV only)",
+                  "Concatenate attributes into a new document attribute, like "
+                  "\"mergedAttribute=[someAttribute]-[otherAttribute]\" "
+                  "(CSV and TSV only).",
                   new VectorParameter<StringParameter>(&_mergeAttributes))
       .setIntroducedIn(30901);
 
