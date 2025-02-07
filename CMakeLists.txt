@@ -407,14 +407,18 @@ else ()
 endif ()
 
 # Guess whether we're using mold
-execute_process(
-  COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_EXE_LINKER_FLAGS} -Wl,--version
-  OUTPUT_VARIABLE LINKER_VERSION_OUT)
-if (LINKER_VERSION_OUT MATCHES ^mold)
-  SET(LINKER_IS_MOLD TRUE)
-else ()
-  SET(LINKER_IS_MOLD FALSE)
-endif ()
+if(NOT MSVC)
+  execute_process(
+    COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_EXE_LINKER_FLAGS} -Wl,--version
+    OUTPUT_VARIABLE LINKER_VERSION_OUT)
+  if (LINKER_VERSION_OUT MATCHES ^mold)
+    SET(LINKER_IS_MOLD TRUE)
+  else ()
+    SET(LINKER_IS_MOLD FALSE)
+  endif ()
+else()
+  MESSAGE(STATUS "No mold detection for MSVC build.")
+endif()
 
 # mold doesn't support the linker scripts currently used for the build id reader, and will result in the error
 #   mold: fatal: /home/tobias/Documents/ArangoDB/arangodb/arangodb/lib/BuildId/BuildId.ld:1: build_id_start = ADDR(.note.gnu.build-id);
@@ -793,6 +797,9 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # clang 11 and higher supports -Wsuggest-override. older versions don't
     set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
   endif ()
+elseif (MSVC)
+  message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
+  # FIXME: Should we be adding some flags?
 else ()
   # unknown compiler
   message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
@@ -926,6 +933,7 @@ unset (OPENSSL_VERSION CACHE)
 if (DEFINED OPENSSL_ROOT_DIR AND NOT "${OPENSSL_ROOT_DIR}" STREQUAL "")
   message ("Use OPENSSL_ROOT_DIR: ${OPENSSL_ROOT_DIR}")
 endif ()
+message(STATUS "MSVC: ${MSVC}, WIN32: ${WIN32}, CYGWIN: ${CYGWIN}")
 
 find_package(OpenSSL REQUIRED)
 
