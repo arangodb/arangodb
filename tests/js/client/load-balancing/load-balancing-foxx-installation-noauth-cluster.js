@@ -62,6 +62,7 @@ const getEncodedFoxxZipFile = () => {
 function sendRequest(method, endpoint, body, usePrimary) {
   let res;
   const i = usePrimary ? 0 : 1;
+  let timeout = (isCov)?420:66;
 
   try {
     const envelope = {
