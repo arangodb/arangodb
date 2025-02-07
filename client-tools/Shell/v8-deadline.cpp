@@ -61,7 +61,7 @@ static void JS_SetExecutionDeadlineTo(
 
   // extract arguments
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("SetGlobalExecutionDeadlineTo(<timeout>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("SetGlobalExecutionDeadlineTo(<timeout [s]>)");
   }
   std::lock_guard mutex{singletonDeadlineMutex};
   auto when = executionDeadline;
