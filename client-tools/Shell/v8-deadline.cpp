@@ -61,7 +61,7 @@ static void JS_SetExecutionDeadlineTo(
 
   // extract arguments
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("SetGlobalExecutionDeadlineTo(<timeout>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("SetGlobalExecutionDeadlineTo(<timeout [s]>)");
   }
   std::lock_guard mutex{singletonDeadlineMutex};
   auto when = executionDeadline;
@@ -71,7 +71,7 @@ static void JS_SetExecutionDeadlineTo(
   if (n == 0) {
     executionDeadline = 0.0;
   } else {
-    executionDeadline = TRI_microtime() + n / 1000;
+    executionDeadline = TRI_microtime() + n;
   }
 
   TRI_V8_RETURN_BOOL((when > 0.00001) && (now - when > 0.0));
@@ -284,6 +284,6 @@ void TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout) {
       JS_RegisterExecutionDeadlineInterruptHandler);
   if (timeout != 0) {
     std::lock_guard mutex{singletonDeadlineMutex};
-    executionDeadline = TRI_microtime() + (timeout * 1000) / 1000;
+    executionDeadline = TRI_microtime() + timeout;
   }
 }
