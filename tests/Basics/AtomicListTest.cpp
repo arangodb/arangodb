@@ -51,7 +51,7 @@ struct Entry {
   size_t memoryUsage() const { return sizeof(Entry); }
 };
 
-TEST(BoundedListTest, testBasicOperation) {
+TEST(BoundedListTests, testBasicOperation) {
   BoundedList<Entry> list(1024 * 1024, 3);
   list.prepend(Entry{1});
   list.prepend(Entry{2});
@@ -68,4 +68,168 @@ TEST(BoundedListTest, testBasicOperation) {
   ASSERT_EQ(p->_data.a, 1);
   p = p->next();
   ASSERT_TRUE(p == nullptr);
+}
+
+TEST(AtomicListTests, testConcurrentOperation) {
+  AtomicList<int> list;
+  std::atomic<bool> keep_running{true};
+  std::atomic<size_t> total_count{0};
+
+  std::atomic<int64_t> dummy{0};
+
+  // Create a thread that continuously takes snapshots
+  std::thread reader([&list, &keep_running, &dummy]() {
+    while (keep_running.load()) {
+      auto* snapshot = list.getSnapshot();
+      int64_t sum = 0;
+      while (snapshot != nullptr) {
+        // Just traverse the list and sum the entries
+        sum += snapshot->_data;
+        snapshot = snapshot->next();
+      }
+      dummy.fetch_add(sum);
+    }
+  });
+
+  // Create 10 writer threads
+  std::vector<std::thread> writers;
+  for (int t = 0; t < 10; ++t) {
+    writers.emplace_back(
+        [&list, &total_count](int thread_id) {
+          for (int i = 0; i < 100000; ++i) {
+            list.prepend(thread_id * 100000 + i);
+            total_count.fetch_add(1, std::memory_order_relaxed);
+          }
+        },
+        t);
+  }
+
+  // Wait for all writers to finish
+  for (auto& t : writers) {
+    t.join();
+  }
+
+  // Stop the reader thread
+  keep_running.store(false);
+  reader.join();
+
+  // Verify the total number of elements
+  size_t count = 0;
+  auto* p = list.getSnapshot();
+  while (p != nullptr) {
+    ++count;
+    p = p->next();
+  }
+
+  ASSERT_EQ(total_count.load(), 1000000);
+  ASSERT_EQ(count, 1000000);
+  ASSERT_NE(dummy, 0);
+}
+
+TEST(BoundedListTests, testConcurrentOperation) {
+  // Use a relatively small memory threshold to force rotations
+  const size_t memoryThreshold = 1024 * 100;  // 100KB
+  const size_t maxHistory = 3;
+  BoundedList<Entry> list(memoryThreshold, maxHistory);
+  std::atomic<bool> keep_running{true};
+  std::atomic<size_t> total_prepended{0};
+
+  std::atomic<int64_t> dummy{0};
+
+  // Create a thread that continuously takes snapshots
+  std::thread reader([&list, &keep_running, &dummy]() {
+    while (keep_running.load()) {
+      // Get both current and historical snapshots
+      auto snapshots = list.getHistoricalSnapshot();
+      int64_t sum = 0;
+      for (const auto& snapshot : snapshots) {
+        auto* node = snapshot->getSnapshot();
+        while (node != nullptr) {
+          sum += node->_data.a;
+          node = node->next();
+        }
+      }
+      dummy.fetch_add(sum);
+    }
+  });
+
+  // Create 10 writer threads
+  std::vector<std::thread> writers;
+  for (int t = 0; t < 10; ++t) {
+    writers.emplace_back(
+        [&list, &total_prepended](int thread_id) {
+          for (int i = 0; i < 100000; ++i) {
+            list.prepend(Entry{thread_id * 100000 + i});
+            total_prepended.fetch_add(1, std::memory_order_relaxed);
+          }
+        },
+        t);
+  }
+
+  // Wait for all writers to finish
+  for (auto& t : writers) {
+    t.join();
+  }
+
+  // Stop the reader thread
+  keep_running.store(false);
+  reader.join();
+
+  // Count total elements across all lists
+  size_t total_count = 0;
+  size_t current_memory = 0;
+  auto snapshots = list.getHistoricalSnapshot();
+  for (const auto& snapshot : snapshots) {
+    auto* node = snapshot->getSnapshot();
+    while (node != nullptr) {
+      ++total_count;
+      current_memory += node->_data.memoryUsage();
+      node = node->next();
+    }
+  }
+
+  // Verify that we have fewer elements than prepended due to the memory limit
+  ASSERT_LT(total_count, total_prepended.load());
+
+  // Verify memory usage is within expected bounds
+  // Maximum possible memory usage is maxHistory * memoryThreshold with some
+  // overhead
+  ASSERT_LE(current_memory,
+            memoryThreshold * maxHistory * 1.1);  // Allow 10% overhead
+
+  // Verify we have some elements and the reader did something
+  ASSERT_GT(total_count, 0);
+  ASSERT_NE(dummy, 0);
+}
+
+TEST(BoundedListTests, testOrderPreservation) {
+  // Calculate memory threshold needed for all entries
+  const size_t numEntries = 1000000;
+  const size_t entrySize = sizeof(Entry);
+  const size_t memoryThreshold = numEntries * entrySize / 2;
+
+  BoundedList<Entry> list(memoryThreshold, 3);
+
+  // Insert entries in ascending order
+  for (size_t i = 0; i < numEntries; ++i) {
+    list.prepend(Entry{static_cast<int>(i)});
+  }
+
+  // Get snapshot and verify reverse order
+  auto snapshot = list.getHistoricalSnapshot();
+  // First verify we have all elements
+  size_t count = 0;
+  size_t expected = numEntries - 1;  // Start with highest number
+  for (auto const& l : snapshot) {
+    auto* node = l->getSnapshot();
+    while (node != nullptr) {
+      ASSERT_EQ(node->_data.a, expected);
+      expected--;
+      count++;
+      node = node->next();
+    }
+  }
+
+  ASSERT_EQ(count, numEntries);
+  ASSERT_EQ(expected, size_t(-1));  // We should have counted down to -1
 }
