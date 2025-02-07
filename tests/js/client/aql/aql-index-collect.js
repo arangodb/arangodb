@@ -26,14 +26,13 @@
 
 const jsunity = require("jsunity");
 const { db } = require("@arangodb");
-const internal = require('internal');
-const _ = require('lodash');
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 const database = "IndexCollectDatabase";
 const collection = "c";
 const indexCollectOptimizerRule = "use-index-for-collect";
 
-function IndexCollectOptimizerTestSuite() {
+function IndexDistinctCollectOptimizerTestSuite() {
   return {
     setUpAll: function () {
       db._createDatabase(database);
@@ -54,7 +53,7 @@ function IndexCollectOptimizerTestSuite() {
       db[collection].indexes().filter(x => x.type !== "primary").map(x => db[collection].dropIndex(x));
     },
 
-    testSimpleDistinctScan: function () {
+    testOptimizerRule: function () {
       db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"] });
       db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
 
@@ -89,28 +88,37 @@ function IndexCollectOptimizerTestSuite() {
       }
     },
 
-    testSimpleAggregationScan: function () {
-      db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"], storedValues: ["e", "f"] });
-      db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
+    // the old behaviour is faster if the index selectivity is too large
+    testOptimizerRuleWithSelectivity: function () {
+      // create a new collection with no data in it
+      const c_new = db._create(collection + "1", { numberOfShards: 3 });
+      c_new.ensureIndex({ type: "persistent", fields: ["a"] });
+      const query = `FOR doc IN ${c_new.name()} COLLECT a = doc.a RETURN a`;
 
-      const queries = [
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b) RETURN [a, b]`, true],
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.c) RETURN [a, b]`, false],
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.e) RETURN [a, b]`, true],
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.d) RETURN [a, b]`, true],
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.d), c = PUSH(doc.f) RETURN [a, b, c]`, true],
-      ];
+      let explain = db._createStatement(query).explain();
+      // no documents exist yet, don't use rule
+      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) === -1);
 
-      for (const [query, optimized] of queries) {
-        const explain = db._createStatement(query).explain();
-        assertEqual(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, optimized, query);
-        if (optimized) {
-          const nodes = explain.plan.nodes.filter(x => x.type === "IndexCollectNode");
-          assertEqual(nodes.length, 1, query);
-          const indexCollect = nodes[0];
-          assertTrue(indexCollect.aggregations.length > 0);
-        }
+      let docs = [];
+      for (let l = 0; l < 1000; l++) { // number of documents n = 1000
+        docs.push({ a: l % 500 }); // distinct features k = 500
       }
+      c_new.save(docs);
+      waitForEstimatorSync();
+      explain = db._createStatement(query).explain();
+      // selectivity k/n = 0.5 is not smaller than 1/log n = 0.144, don't use rule
+      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) === -1);
+
+      docs = [];
+      for (let l = 0; l < 9500; l++) { // total number of documents n = 10000
+        docs.push({ a: l % 500 }); // distinct features k = 500
+      }
+      c_new.save(docs);
+      waitForEstimatorSync();
+
+      explain = db._createStatement(query).explain();
+      // selectivity k/n = 0.05 is smaller than 1/log n = 0.108, use rule
+      assertFalse(explain.plan.rules.indexOf(indexCollectOptimizerRule) === -1);
     },
 
     testCollectOptions: function () {
@@ -145,8 +153,50 @@ function IndexCollectOptimizerTestSuite() {
   };
 }
 
-// TODO add test case where we have too few data, therefore the rule will not be used because old behaviour is faster
-//                           but only for distinct scan, for aggregation it should work independent of data size
+function IndexAggregationCollectOptimizerTestSuite() {
+  return {
+    setUpAll: function () {
+      db._createDatabase(database);
+      db._useDatabase(database);
+
+      db._create(collection, { numberOfShards: 3 });
+    },
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(database);
+    },
+    tearDown: function () {
+      db[collection].indexes().filter(x => x.type !== "primary").map(x => db[collection].dropIndex(x));
+    },
+
+    testAggregateOptimizerRule: function () {
+      db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"], storedValues: ["e", "f"] });
+      db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
+
+      const queries = [
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b) RETURN [a, b]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.c) RETURN [a, b]`, false],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b), c = COUNT(1) RETURN [a, b, c]`, false], // does currently not support aggregation expressions with variables different than the document variable
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.e) RETURN [a, b]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.d) RETURN [a, b]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.d), c = PUSH(doc.f) RETURN [a, b, c]`, true],
+      ];
+
+      for (const [query, optimized] of queries) {
+        const explain = db._createStatement(query).explain();
+        assertEqual(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, optimized, query);
+        if (optimized) {
+          const nodes = explain.plan.nodes.filter(x => x.type === "IndexCollectNode");
+          assertEqual(nodes.length, 1, query);
+          const indexCollect = nodes[0];
+          assertTrue(indexCollect.aggregations.length > 0);
+        }
+      }
+    },
+
+  };
+}
+
 
 function IndexCollectExecutionTestSuite() {
   const numDocuments = 10000;
@@ -207,6 +257,7 @@ function IndexCollectExecutionTestSuite() {
   };
 }
 
-jsunity.run(IndexCollectOptimizerTestSuite);
+jsunity.run(IndexDistinctCollectOptimizerTestSuite);
+jsunity.run(IndexAggregationCollectOptimizerTestSuite);
 jsunity.run(IndexCollectExecutionTestSuite);
 return jsunity.done();
