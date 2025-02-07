@@ -146,7 +146,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--javascript.execution-deadline",
                      "deadline in seconds. Once reached, calls will throw. "
-                     "Http timeouts will be adjusted.",
+                     "HTTP timeouts will be adjusted.",
                      new UInt32Parameter(&_executionDeadline));
 }
 
