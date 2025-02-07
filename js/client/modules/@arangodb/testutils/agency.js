@@ -285,7 +285,7 @@ class agencyMgr {
       try {
         print(CYAN + Date() + ' attempting to dump agency in forceterminate!' + RESET);
         // set us a short deadline so we don't get stuck.
-        internal.SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 100);
+        internal.SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout / 10);
         this.dumpAgency();
       } catch(ex) {
         print(CYAN + Date() + ' aborted to dump agency in forceterminate! ' + ex + RESET);
