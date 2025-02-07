@@ -45,7 +45,7 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
 
 uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout) { return timeout; }
 
-void TRI_InitV8Deadline(v8::Isolate* isolate) {}
+void TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout) {}
 void triggerV8DeadlineNow(bool fromSignal) {}
 
 namespace arangodb {
