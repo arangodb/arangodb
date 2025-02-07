@@ -144,7 +144,7 @@ TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
   ConnectionPool pool(config);
 
   bool isFromPool;
-  auto conn = pool.leaseConnection("tcp://examplexxx.org:80", isFromPool);
+  auto conn = pool.leaseConnection("tcp://example.org:80", isFromPool);
   ASSERT_EQ(pool.numOpenConnections(), 1);
   EXPECT_EQ(extractCurrentMetric(), 1ull);
   auto req =
@@ -167,19 +167,19 @@ TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
   ConnectionPool pool(config);
 
   bool isFromPool;
-  auto conn1 = pool.leaseConnection("tcp://examplexxx.org:80", isFromPool);
+  auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
 
   conn1->sendRequest(
       fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset),
       doNothing);
 
-  auto conn2 = pool.leaseConnection("tcp://examplexxx.org:80", isFromPool);
+  auto conn2 = pool.leaseConnection("tcp://example.org:80", isFromPool);
 
   ASSERT_NE(conn1.get(), conn2.get());
   ASSERT_EQ(pool.numOpenConnections(), 2);
   EXPECT_EQ(extractCurrentMetric(), 2ull);
 
-  auto conn3 = pool.leaseConnection("tcp://examplexxx.com:80", isFromPool);
+  auto conn3 = pool.leaseConnection("tcp://example.com:80", isFromPool);
   ASSERT_NE(conn1.get(), conn3.get());
 
   ASSERT_EQ(pool.numOpenConnections(), 3);
