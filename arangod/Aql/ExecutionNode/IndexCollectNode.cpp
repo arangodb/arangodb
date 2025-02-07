@@ -99,7 +99,6 @@ bool attributeMatches(aql::AttributeNamePath const& path,
 
 std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
     ExecutionEngine& engine) const {
-  LOG_DEVEL << "create block aggregation scan";
   IndexAggregateScanInfos infos;
   infos.groups.reserve(_groups.size());
   infos.index = _index;
@@ -110,7 +109,6 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
     auto& g = infos.groups.emplace_back();
     g.outputRegister =
         getRegisterPlan()->variableToRegisterId(group.outVariable);
-    LOG_DEVEL << "group output register: " << g.outputRegister.value();
     g.indexField = group.indexField;
     writableOutputRegisters.emplace(g.outputRegister);
   }
@@ -122,11 +120,9 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
   std::vector<std::string_view> attribView;
 
   for (auto const& agg : _aggregations) {
-    LOG_DEVEL << "aggregation";
     auto& a = infos.aggregations.emplace_back();
     a.type = agg.type;
     a.outputRegister = getRegisterPlan()->variableToRegisterId(agg.outVariable);
-    LOG_DEVEL << "aggregate output register: " << a.outputRegister.value();
     a.expression = agg.expression->clone(infos.query->ast());
     writableOutputRegisters.emplace(a.outputRegister);
 
@@ -137,7 +133,6 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
                                           infos.query->resourceMonitor());
     // get what index fields cover these attributes
     for (auto const& attr : attributes) {
-      LOG_DEVEL << "attribute";
       auto iter = std::find_if(
           coveredFields.begin(), coveredFields.end(),
           [&](auto const& field) { return attributeMatches(attr, field); });
@@ -157,13 +152,11 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
                   std::back_inserter(attribView));
         VPackBuilder builder;
         a.expression->toVelocyPack(builder, true);
-        LOG_DEVEL << "old expression: " << inspection::json(builder.slice());
 
         a.expression->replaceAttributeAccess(_oldIndexVariable, attribView,
                                              it->second);
         VPackBuilder newbuilder;
         a.expression->toVelocyPack(newbuilder, true);
-        LOG_DEVEL << "new expression: " << inspection::json(newbuilder.slice());
       }
     }
   }
@@ -173,26 +166,6 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
   }
 
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
-
-  for (auto const& reg : registerInfos.getInputRegisters()) {
-    LOG_DEVEL << "readable input register: " << reg.value();
-  }
-  for (auto const& reg : registerInfos.getOutputRegisters()) {
-    LOG_DEVEL << "writable output register: " << reg.value();
-  }
-  LOG_DEVEL << "nrInRegs: " << registerInfos.numberOfInputRegisters();
-  LOG_DEVEL << "nrOutRegs: " << registerInfos.numberOfOutputRegisters();
-  auto count = 0;
-  for (auto const& reg : registerInfos.registersToKeep()) {
-    count++;
-    LOG_DEVEL << "regs to keep - " << count;
-    for (auto const& reg_inside : reg) {
-      LOG_DEVEL << "regs to keeps: " << reg_inside.value();
-    }
-  }
-  for (auto const& reg : registerInfos.registersToClear()) {
-    LOG_DEVEL << "regs to clear: " << reg.value();
-  }
 
   return std::make_unique<ExecutionBlockImpl<IndexAggregateScanExecutor>>(
       &engine, this, registerInfos, std::move(infos));

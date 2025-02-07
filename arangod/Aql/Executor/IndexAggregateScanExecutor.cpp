@@ -114,8 +114,6 @@ auto IndexAggregateScanExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   if (not inputRange.hasDataRow()) {
-    LOG_DEVEL << fmt::format("returning with state {}",
-                             inputRange.upstreamState());
     return std::make_tuple(inputRange.upstreamState(), Stats{}, 0, AqlCall{});
   }
   TRI_ASSERT(inputRange.countDataRows() == 1) << fmt::format(
@@ -171,8 +169,6 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                              OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   if (not inputRange.hasDataRow()) {
-    LOG_DEVEL << fmt::format("returning with state {}",
-                             inputRange.upstreamState());
     return std::make_tuple(inputRange.upstreamState(), Stats{}, AqlCall{});
   }
 
@@ -187,15 +183,15 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   bool hasMore = true;
   auto vpackOptions = &_infos.query->vpackOptions();
 
-  SliceSpanExpressionContext context{
-      _trx,
-      *_infos.query,
-      _functionsCache,
-      {/* no external variables supported yet */},
-      _inputRow,
-      _variablesToProjectionsRelative};
-
   while (!output.isFull() && hasMore) {
+    SliceSpanExpressionContext context{
+        _trx,
+        *_infos.query,
+        _functionsCache,
+        {/* no external variables supported yet */},
+        _inputRow,
+        _variablesToProjectionsRelative};
+
     _iterator->cacheCurrentKey(_currentGroupKeySlices);
     LOG_AGG_SCAN << "[SCAN] Group keys "
                  << inspection::json(_currentGroupKeySlices);
@@ -227,10 +223,10 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
     for (size_t k = 0; k < _infos.aggregations.size(); k++) {
       AqlValue r = _aggregatorInstances[k]->stealValue();
-      AqlValueGuard guard{r, true};
+      AqlValueGuard aggregatorGuard{r, true};
       LOG_AGG_SCAN << "Agg " << k << " final value = " << r.toDouble();
       output.moveValueInto(_infos.aggregations[k].outputRegister, _inputRow,
-                           &guard);
+                           &aggregatorGuard);
     }
     output.advanceRow();
 
@@ -257,6 +253,7 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
                  [](auto const& i) { return i.indexField; });
   size_t offset = 0;
   for (auto const& [var, index_field] : _infos._expressionVariables) {
+    LOG_DEVEL << fmt::format("var {}, index field {}", var, index_field);
     streamOptions.projectedFields.emplace_back(index_field);
     _variablesToProjectionsRelative.emplace(var, offset++);
   }
@@ -272,9 +269,6 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
   _iterator->load(_projectionSlices);
   LOG_AGG_SCAN << "[SCAN] projections are  "
                << inspection::json(_projectionSlices);
-  LOG_DEVEL << "[SCAN] after reset at "
-            << inspection::json(_currentGroupKeySlices) << " with projections "
-            << inspection::json(_projectionSlices);
 
   // set aggregators
   _aggregatorInstances.reserve(_infos.aggregations.size());

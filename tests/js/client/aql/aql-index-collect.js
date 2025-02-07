@@ -175,6 +175,7 @@ function IndexAggregationCollectOptimizerTestSuite() {
 
       const queries = [
         [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b) RETURN [a, b]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b), c = SUM(doc.b) RETURN [a, b, c]`, true],
         [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.c) RETURN [a, b]`, false],
         [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b), c = COUNT(1) RETURN [a, b, c]`, false], // does currently not support aggregation expressions with variables different than the document variable
         [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.e) RETURN [a, b]`, true],
@@ -209,7 +210,7 @@ function IndexCollectExecutionTestSuite() {
       const c = db._create(collection, { numberOfShards: 3 });
       const docs = [];
       for (let k = 0; k < numDocuments; k++) {
-        docs.push({ k, a: k % 2, b: k % 4, c: k % 8, m: k % 4 });
+        docs.push({ k, a: k % 2, b: k % 4, c: k % 7, m: k % 4 });
       }
       c.save(docs);
       c.ensureIndex({ type: "persistent", fields: ["k"] });
@@ -233,14 +234,15 @@ function IndexCollectExecutionTestSuite() {
 
         // [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a RETURN [a, b]`],
         // [`FOR doc IN ${collection} COLLECT a = doc.a, m = doc.m RETURN [a, m]`],
-        // [`LET as = (FOR doc IN ${collection} COLLECT a = doc.a RETURN a) LET bs = (FOR doc IN ${collection}
-        //     COLLECT b = doc.b RETURN b) RETURN [as, bs]`],
+        // [`LET as = (FOR doc IN ${collection} COLLECT a = doc.a RETURN a) LET bs = (FOR doc IN ${collection} COLLECT b = doc.b RETURN b) RETURN [as, bs]`],
 
-        [`FOR doc IN ${collection} COLLECT m = doc.m AGGREGATE a = SUM(doc.a) RETURN [m, a]`],
+        // [`FOR doc IN ${collection} COLLECT m = doc.m AGGREGATE a = SUM(doc.a + 1) RETURN [m, a]`],
+        // [`FOR doc IN ${collection} COLLECT m = doc.m AGGREGATE a = SUM(doc.a) RETURN [m, a]`],
+        [`FOR doc IN ${collection} COLLECT m = doc.m AGGREGATE a = SUM(doc.a), b = SUM(doc.a) RETURN [m, a, b]`],
         // [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = SUM(doc.b) RETURN [a, b]`],
         // [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b AGGREGATE c = SUM(doc.c) RETURN [a, b, c]`],
-        // [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b
-        // AGGREGATE c = BIT_XOR(doc.c), d = BIT_OR(doc.c), e = BIT_AND(doc.c) RETURN[a, b, c, d, e]`],
+        // [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b AGGREGATE c = BIT_XOR(doc.c), d = BIT_OR(doc.c), e = BIT_AND(doc.c) RETURN[a, b, c, d, e]`],
+        // [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b AGGREGATE c = BIT_XOR(doc.c), d = BIT_XOR(doc.c) RETURN[a, b, c, d]`],
       ];
 
       for (const [query] of queries) {
@@ -248,8 +250,6 @@ function IndexCollectExecutionTestSuite() {
         assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, query);
 
         const expectedResult = db._query(query, {}, { optimizer: { rules: [`-${indexCollectOptimizerRule}`] } }).toArray();
-        db._explain(query, {}, { optimizer: { rules: [`-${indexCollectOptimizerRule}`] } });
-        db._explain(query);
         const actualResult = db._query(query).toArray();
         assertEqual(expectedResult, actualResult);
       }
