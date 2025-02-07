@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexAggregateScanExecutor.h"
+#include <velocypack/Options.h>
 #include "Aql/DocumentProducingExpressionContext.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionBlockImpl.tpp"
@@ -83,60 +84,81 @@ struct SliceSpanExpressionContext : DocumentProducingExpressionContext {
   std::span<VPackSlice> _sliceSpan;
 };
 
+bool isEqual(std::vector<VPackSlice> const& a, std::vector<VPackSlice> const& b,
+             velocypack::Options const& options) {
+  for (size_t k = 0; k < a.size(); k++) {
+    if (not basics::VelocyPackHelper::equal(a[k], b[k], true, &options)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void aggregate(
+    std::vector<std::unique_ptr<Aggregator>>& aggregators,
+    std::vector<IndexAggregateScanInfos::Aggregation> const& aggregations,
+    SliceSpanExpressionContext& context) {
+  for (size_t k = 0; k < aggregations.size(); k++) {
+    bool mustDestroy;
+    AqlValue result =
+        aggregations[k].expression->execute(&context, mustDestroy);
+    AqlValueGuard guard(result, mustDestroy);
+    LOG_AGG_SCAN << "[SCAN] Agg " << k << " reduce with value ";
+    aggregators[k]->reduce(result);
+  }
+}
+
 }  // namespace
 
 auto IndexAggregateScanExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  LOG_DEVEL << "skip rows";
+  if (not inputRange.hasDataRow()) {
+    LOG_DEVEL << fmt::format("returning with state {}",
+                             inputRange.upstreamState());
+    return std::make_tuple(inputRange.upstreamState(), Stats{}, 0, AqlCall{});
+  }
+  TRI_ASSERT(inputRange.countDataRows() == 1) << fmt::format(
+      "IndexAggregateScanExecutor expects to be run just after a SingletonNode "
+      "with one input row, but input range has {} rows",
+      inputRange.countDataRows());
+
   LocalDocumentId docId;
   bool hasMore = true;
   size_t skipped = 0;
   auto vpackOptions = &_infos.query->vpackOptions();
-  while (inputRange.hasDataRow() && clientCall.needSkipMore()) {
-    // read one group
-    if (not _inputRow.isInitialized()) {
-      LOG_AGG_SCAN << "NEXT INPUT ROW";
-      _inputRow = inputRange.peekDataRow().second;
 
-      _iterator->cacheCurrentKey(_currentGroupKeySlices);
-      LOG_AGG_SCAN << "[SCAN] Group keys "
-                   << inspection::json(_currentGroupKeySlices);
-    }
+  while (clientCall.needSkipMore() && hasMore) {
+    _iterator->cacheCurrentKey(_currentGroupKeySlices);
+    LOG_AGG_SCAN << "[SCAN] Group keys "
+                 << inspection::json(_currentGroupKeySlices);
 
-    while (hasMore) {
-      // advance iterator
+    while (true) {
       // TODO one can improve this maybe by seeking forward
       hasMore = _iterator->next(_keySlices, docId, _projectionSlices);
+      LOG_AGG_SCAN << fmt::format("[SCAN] Found keys {} and projectsion {}",
+                                  inspection::json(_keySlices),
+                                  inspection::json(_projectionSlices));
 
       LOG_AGG_SCAN << "[SCAN] Next has more " << hasMore;
       if (not hasMore) {
         break;
       }
 
-      LOG_AGG_SCAN << "[SCAN] Found keys " << inspection::json(_keySlices);
-
-      // check if the keys still match
-      for (size_t k = 0; k < _keySlices.size(); k++) {
-        if (not basics::VelocyPackHelper::equal(
-                _keySlices[k], _currentGroupKeySlices[k], true, vpackOptions)) {
-          goto endOfGroup;
-        }
+      if (not isEqual(_keySlices, _currentGroupKeySlices, *vpackOptions)) {
+        break;
       }
     }
-  endOfGroup:
 
     LOG_AGG_SCAN << "[SCAN] End of group";
+
     clientCall.didSkip(1);
     skipped += 1;
 
-    if (hasMore) {
-      _iterator->cacheCurrentKey(_currentGroupKeySlices);
-      LOG_AGG_SCAN << "[SCAN] New group keys "
-                   << inspection::json(_currentGroupKeySlices);
-    } else {
-      _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    if (not hasMore) {
       inputRange.advanceDataRow();
+      return std::make_tuple(inputRange.upstreamState(), Stats{}, skipped,
+                             AqlCall{});
     }
   }
 
@@ -148,75 +170,57 @@ auto IndexAggregateScanExecutor::skipRowsRange(
 auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                              OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  if (not inputRange.hasDataRow()) {
+    LOG_DEVEL << fmt::format("returning with state {}",
+                             inputRange.upstreamState());
+    return std::make_tuple(inputRange.upstreamState(), Stats{}, AqlCall{});
+  }
+
+  TRI_ASSERT(inputRange.countDataRows() == 1) << fmt::format(
+      "IndexAggregateScanExecutor expects to be run just after a SingletonNode "
+      "with one input row, but input range has {} rows",
+      inputRange.countDataRows());
+
+  _inputRow = inputRange.peekDataRow().second;
+
   LocalDocumentId docId;
   bool hasMore = true;
   auto vpackOptions = &_infos.query->vpackOptions();
-  size_t produce_rows_count = 0;
-  size_t hasMoreCount = 0;
-  while (inputRange.hasDataRow() && !output.isFull()) {
-    // read one group
-    produce_rows_count++;
 
-    // read first row
-    if (not _inputRow.isInitialized()) {
-      LOG_AGG_SCAN << "NEXT INPUT ROW";
-      _inputRow = inputRange.peekDataRow().second;
+  SliceSpanExpressionContext context{
+      _trx,
+      *_infos.query,
+      _functionsCache,
+      {/* no external variables supported yet */},
+      _inputRow,
+      _variablesToProjectionsRelative};
 
-      _iterator->cacheCurrentKey(_currentGroupKeySlices);
-      LOG_AGG_SCAN << "[SCAN] Group keys "
-                   << inspection::json(_currentGroupKeySlices);
-    }
+  while (!output.isFull() && hasMore) {
+    _iterator->cacheCurrentKey(_currentGroupKeySlices);
+    LOG_AGG_SCAN << "[SCAN] Group keys "
+                 << inspection::json(_currentGroupKeySlices);
 
-    // aggregate everything in one group
-    SliceSpanExpressionContext context{
-        _trx,
-        *_infos.query,
-        _functionsCache,
-        {/* no external variables supported yet */},
-        _inputRow,
-        _variablesToProjectionsRelative};
-    while (hasMore) {
-      hasMoreCount++;
-      // evaluate aggregator expression
+    while (true) {
       context._sliceSpan = _projectionSlices;
-      LOG_AGG_SCAN << "[SCAN] Found Projections "
-                   << inspection::json(_projectionSlices);
-      for (size_t k = 0; k < _infos.aggregations.size(); k++) {
-        bool mustDestroy;
-        // LOG_DEVEL << "before expression exectuion";
-        AqlValue result =
-            _infos.aggregations[k].expression->execute(&context, mustDestroy);
-        // LOG_DEVEL << "after expression execution";
-        AqlValueGuard guard(result, mustDestroy);
-        LOG_AGG_SCAN << "[SCAN] Agg " << k << " reduce with value ";
-        _aggregatorInstances[k]->reduce(result);
-      }
+      aggregate(_aggregatorInstances, _infos.aggregations, context);
 
-      // advance iterator
       hasMore = _iterator->next(_keySlices, docId, _projectionSlices);
-      // LOG_DEVEL << inspection::json(_keySlices) << ", "
-      //           << inspection::json(docId) << ","
-      //           << inspection::json(_projectionSlices);
+      LOG_AGG_SCAN << fmt::format("[SCAN] Found keys {} and projectsion {}",
+                                  inspection::json(_keySlices),
+                                  inspection::json(_projectionSlices));
 
       LOG_AGG_SCAN << "[SCAN] Next has more " << hasMore;
       if (not hasMore) {
         break;
       }
 
-      // check if the keys still match
-      LOG_AGG_SCAN << "[SCAN] Found keys " << inspection::json(_keySlices);
-      for (size_t k = 0; k < _keySlices.size(); k++) {
-        if (not basics::VelocyPackHelper::equal(
-                _keySlices[k], _currentGroupKeySlices[k], true, vpackOptions)) {
-          goto endOfGroup;
-        }
+      if (not isEqual(_keySlices, _currentGroupKeySlices, *vpackOptions)) {
+        break;
       }
     }
-  endOfGroup:  // due to either change of group values or iterator exhausted
 
     LOG_AGG_SCAN << "[SCAN] End of group";
 
-    // fill output
     for (size_t k = 0; k < _infos.groups.size(); k++) {
       output.moveValueInto(_infos.groups[k].outputRegister, _inputRow,
                            _currentGroupKeySlices[k]);
@@ -230,18 +234,12 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
     output.advanceRow();
 
-    if (hasMore) {  // happens if iterator has more but keys of next don't match
-      _iterator->cacheCurrentKey(_currentGroupKeySlices);
-      LOG_AGG_SCAN << "[SCAN] New group keys "
-                   << inspection::json(_currentGroupKeySlices);
-    } else {
-      _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+    if (not hasMore) {
       inputRange.advanceDataRow();
       return std::make_tuple(inputRange.upstreamState(), Stats{}, AqlCall{});
     }
   }
 
-  LOG_DEVEL << produce_rows_count << ", " << hasMoreCount;
   return std::make_tuple(inputRange.upstreamState(), Stats{}, AqlCall{});
 }
 
