@@ -54,14 +54,18 @@ function unusedVariableSuite() {
       var i;
 
       var c = db._create(gn + 'v');
+      let docs = [];
       for (i = 0; i < 10000; ++i) {
-        c.insert({_key: 'test' + i});
+        docs.push({_key: 'test' + i});
       }
+      c.insert(docs);
 
       c = db._createEdgeCollection(gn + 'e');
+      docs = [];
       for (i = 0; i < 10000; ++i) {
-        c.insert({_from: gn + 'v/test' + i, _to: gn + 'v/test' + (i+1)});
+        docs.push({_from: gn + 'v/test' + i, _to: gn + 'v/test' + (i+1)});
       }
+      c.insert(docs);
     },
 
     tearDownAll: function () {

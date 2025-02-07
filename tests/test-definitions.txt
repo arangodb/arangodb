@@ -12,9 +12,12 @@ replication_ongoing !mac priority=500 parallelity=3 size=small single -- --extra
 replication_ongoing_frompresent parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_ongoing_global priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 replication_ongoing_global_spec parallelity=3 size=small single -- --extraArgs:log.level replication=trace
-replication_static priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+# one run for each test...
+replication_static priority=500 parallelity=3 size=small single buckets=2 -- --extraArgs:log.level replication=trace --extraArgs:experimental-vector-index true
 # TODO - we could actually use 4 buckets instead of 2, but ATM this causes issues with other tests on Jenkins
-replication_sync priority=8000 buckets=2 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
+# For CircleCI we have a special case in the generate_config script to override this. Once we can change the buckets
+# here, make sure to remove this special case!
+replication_sync priority=8000 buckets=9 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
 shell_replication parallelity=3 size=small single 
 http_replication priority=500 parallelity=3 size=small single
 
@@ -96,8 +99,8 @@ shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
-shell_server_aql priority=1000 size=medium+ cluster buckets=16 -- --dumpAgencyOnError true
-shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
+shell_server_aql priority=1000 size=medium+ cluster buckets=17 -- --dumpAgencyOnError true
+shell_client priority=500 cluster buckets=10 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
 

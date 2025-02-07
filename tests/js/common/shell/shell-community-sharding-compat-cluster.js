@@ -383,10 +383,11 @@ function EdgeShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
-      let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ _from: "v/test" + i, _to: "v/test" + i })._key);
+        docs.push({ _from: "v/test" + i, _to: "v/test" + i });
       }
+      let keys = c.insert(docs).map(d => d._key);
 
       assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c.count(true)).sort());
 
