@@ -59,11 +59,12 @@ const getEncodedFoxxZipFile = () => {
   return base64Encode(itzpapalotlZip);
 };
 
+const isCov = require("@arangodb/test-helper").versionHas('coverage');
+
 function sendRequest(method, endpoint, body, usePrimary) {
   let res;
   const i = usePrimary ? 0 : 1;
   let timeout = (isCov)?420:66;
-
   try {
     const envelope = {
       body,
