@@ -329,7 +329,7 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   tries = 0;
   std::vector<size_t> memory;
   bool good = false;
-  while (++tries < 5'000) {
+  while (++tries < 500) {
     memory.push_back(pool.numOpenConnections());
     if (pool.numOpenConnections() == 0) {
       good = true;
