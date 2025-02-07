@@ -217,6 +217,8 @@ class runInArangoshRunner extends testRunnerBase {
 
     args['javascript.unit-test-filter'] = this.options.testCase;
 
+    args['javascript.execution-deadline'] = this.options.oneTestTimeout;
+
     if (this.options.forceJson) {
       args['server.force-json'] = true;
     }
@@ -274,7 +276,7 @@ class runLocalInArangoshRunner extends testRunnerBase {
     }
 
     try {
-      SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 1000);
+      SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
       let result = testFunc();
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       if (timeout) {
