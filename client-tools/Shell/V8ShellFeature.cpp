@@ -145,11 +145,11 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new UInt64Parameter(&_gcInterval));
 
   options->addOption(
-     "--javascript.execution-deadline",
-     "deadline in seconds. Once reached, calls will throw. "
-     "HTTP timeouts will be adjusted.",
-     new UInt32Parameter(&_executionDeadline),
-     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+      "--javascript.execution-deadline",
+      "deadline in seconds. Once reached, calls will throw. "
+      "HTTP timeouts will be adjusted.",
+      new UInt32Parameter(&_executionDeadline),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void V8ShellFeature::validateOptions(
