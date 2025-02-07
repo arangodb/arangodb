@@ -71,7 +71,7 @@ static void JS_SetExecutionDeadlineTo(
   if (n == 0) {
     executionDeadline = 0.0;
   } else {
-    executionDeadline = TRI_microtime() + n / 1000;
+    executionDeadline = TRI_microtime() + n;
   }
 
   TRI_V8_RETURN_BOOL((when > 0.00001) && (now - when > 0.0));
@@ -293,7 +293,7 @@ static void JS_GetDeadlineString(
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8Deadline(v8::Isolate* isolate) {
+void TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout) {
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_ADD_TO_PID_MONITORING"),
       JS_AddPidToMonitor);
@@ -309,4 +309,8 @@ void TRI_InitV8Deadline(v8::Isolate* isolate) {
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_INTERRUPT_TO_DEADLINE"),
       JS_RegisterExecutionDeadlineInterruptHandler);
+  if (timeout != 0) {
+    std::lock_guard mutex{singletonDeadlineMutex};
+    executionDeadline = TRI_microtime() + timeout;
+  }
 }
