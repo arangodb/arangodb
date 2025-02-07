@@ -122,6 +122,25 @@ bool isIndexNodeEligible(IndexNode const& in) {
   return true;
 }
 
+bool isIndexNodeFirstNodeAfterSingleton(IndexNode const& indexNode) {
+  auto singleton = indexNode.getFirstDependency();
+  // This is required because this rule runs after distribute in cluster
+  // rules, and we might be in a subquery of a query that starts with a
+  // coordinator part. the remote node usually ends up between the index and
+  // the subquery singleton node.
+  while (singleton->getType() == EN::SCATTER ||
+         singleton->getType() == EN::GATHER ||
+         singleton->getType() == EN::REMOTE ||
+         singleton->getType() == EN::DISTRIBUTE) {
+    singleton = singleton->getFirstDependency();
+  }
+  if (singleton->getType() != EN ::SINGLETON) {
+    LOG_RULE << "Index node is not the first node after a singleton.";
+    return false;
+  }
+  return true;
+}
+
 bool selectivityIsLowEnough(IndexNode const& in) {
   auto index = in.getSingleIndex();
   // assume there are n documents in the collection and we have
@@ -162,16 +181,13 @@ bool attributeMatches(aql::AttributeNamePath const& path,
 }
 
 std::optional<std::tuple<std::vector<CalculationNode*>, IndexCollectGroups,
-                         IndexCollectAggregations>>
-isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
-               IndexNode const& idx) {
-  std::vector<std::size_t> distinctFields;
+                         std::vector<size_t>>>
+getEligibleGroups(ExecutionPlan const& plan, CollectNode const& cn,
+                  IndexNode const& idx) {
+  std::vector<std::size_t> groupFields;
   std::vector<CalculationNode*> calculationsToRemove;
   IndexCollectGroups groups;
-  IndexCollectAggregations aggregations;
-  std::vector<std::size_t> aggregationFields;
 
-  auto const& coveredFields = idx.getSingleIndex()->coveredFields();
   auto const& keyFields = idx.getSingleIndex()->fields();
 
   // every group variable has to be a field of the index
@@ -207,11 +223,37 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
     }
 
     std::size_t fieldIndex = std::distance(keyFields.begin(), iter);
-    distinctFields.push_back(fieldIndex);
+    groupFields.push_back(fieldIndex);
     calculationsToRemove.push_back(calculation);
     groups.emplace_back(
         IndexCollectGroup{.indexField = fieldIndex, .outVariable = grp.outVar});
   }
+
+  return std::make_tuple(std::move(calculationsToRemove), std::move(groups),
+                         std::move(groupFields));
+}
+
+bool isDistinctScanSupported(IndexNode const& idx,
+                             std::vector<size_t> groupFields,
+                             bool requiresSortedInput) {
+  IndexDistinctScanOptions scanOptions{.distinctFields = std::move(groupFields),
+                                       .sorted = requiresSortedInput};
+  if (idx.getSingleIndex()->supportsDistinctScan(scanOptions)) {
+    return true;
+  }
+  LOG_RULE << "Index " << idx.id()
+           << " not eligible - index does not support required distinct scan "
+           << scanOptions;
+  return false;
+}
+
+std::optional<std::tuple<IndexCollectAggregations, std::vector<std::size_t>>>
+getEligibleAggregates(ExecutionPlan const& plan, CollectNode const& cn,
+                      IndexNode const& idx) {
+  IndexCollectAggregations aggregations;
+  std::vector<std::size_t> aggregationFields;
+
+  auto const& coveredFields = idx.getSingleIndex()->coveredFields();
 
   for (auto const& agg : cn.aggregateVariables()) {
     // get the producing node for the in variable, it should be a calculation
@@ -258,37 +300,53 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
         .expression = calculation->expression()->clone(plan.getAst())});
   }
 
-  if (aggregations.empty()) {
-    if (not selectivityIsLowEnough(idx)) {
-      return std::nullopt;
-    }
-    IndexDistinctScanOptions scanOptions;
-    scanOptions.distinctFields = std::move(distinctFields);
-    scanOptions.sorted = cn.getOptions().requiresSortedInput();
-    if (not idx.getSingleIndex()->supportsDistinctScan(scanOptions)) {
-      LOG_RULE
-          << "Index " << idx.id()
-          << " not eligible - index does not support required distinct scan "
-          << scanOptions;
-      return std::nullopt;
-    }
-  } else {
-    IndexStreamOptions streamOptions;
-    streamOptions.usedKeyFields = std::move(distinctFields);
-    streamOptions.projectedFields = aggregationFields;
-    if (auto support =
-            idx.getSingleIndex()->supportsStreamInterface(streamOptions);
-        !support.hasSupport()) {
-      LOG_RULE
-          << "Index " << idx.id()
-          << " not eligible - index does not support required stream operation "
-          << streamOptions;
-      return std::nullopt;
+  return std::make_tuple(std::move(aggregations), std::move(aggregationFields));
+}
+
+bool isIndexStreamSupported(IndexNode const& idx,
+                            std::vector<size_t> groupFields,
+                            std::vector<size_t> aggregationFields) {
+  IndexStreamOptions streamOptions{.usedKeyFields = std::move(groupFields),
+                                   .projectedFields = aggregationFields};
+  if (auto support =
+          idx.getSingleIndex()->supportsStreamInterface(streamOptions);
+      support.hasSupport()) {
+    return true;
+  }
+  LOG_RULE
+      << "Index " << idx.id()
+      << " not eligible - index does not support required stream operation "
+      << streamOptions;
+  return false;
+}
+
+std::optional<IndexNode*> getDependentIndexNode(
+    CollectNode const& collectNode) {
+  auto dependency = collectNode.getFirstDependency();
+  while (dependency != nullptr) {
+    LOG_RULE << "DEPENDENCY " << dependency->id() << " "
+             << dependency->getTypeString();
+    if (dependency->getType() == EN::INDEX) {
+      break;
+    } else if (dependency->getType() == EN::CALCULATION) {
+      auto calculation = EN::castTo<CalculationNode*>(dependency);
+      LOG_RULE << "CALCULATION NODE " << calculation->id();
+      dependency = dependency->getFirstDependency();
+    } else {
+      // maybe skip some nodes?
+      dependency = nullptr;
     }
   }
 
-  return std::make_tuple(std::move(calculationsToRemove), std::move(groups),
-                         std::move(aggregations));
+  if (dependency == nullptr) {
+    LOG_RULE << "No suitable dependency found";
+    return std::nullopt;
+  }
+
+  TRI_ASSERT(dependency->getType() == EN::INDEX);
+  auto indexNode = ExecutionNode::castTo<IndexNode*>(dependency);
+  LOG_RULE << "Found candidate index node " << indexNode->id();
+  return indexNode;
 }
 
 }  // namespace
@@ -310,61 +368,52 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
       continue;
     }
 
-    // check is there is Index node as dependency
-    auto dependency = collectNode->getFirstDependency();
-    while (dependency != nullptr) {
-      LOG_RULE << "DEPENDENCY " << dependency->id() << " "
-               << dependency->getTypeString();
-      if (dependency->getType() == EN::INDEX) {
-        break;
-      } else if (dependency->getType() == EN::CALCULATION) {
-        auto calculation = EN::castTo<CalculationNode*>(dependency);
-        LOG_RULE << "CALCULATION NODE " << calculation->id();
-        dependency = dependency->getFirstDependency();
-      } else {
-        // maybe skip some nodes?
-        dependency = nullptr;
-      }
-    }
-
-    if (dependency == nullptr) {
-      LOG_RULE << "No suitable dependency found";
+    // check if there is Index node as dependency
+    auto optionalIndexNode = getDependentIndexNode(*collectNode);
+    if (not optionalIndexNode) {
       continue;
     }
-
-    TRI_ASSERT(dependency->getType() == EN::INDEX);
-    auto indexNode = ExecutionNode::castTo<IndexNode*>(dependency);
-    LOG_RULE << "Found candidate index node " << indexNode->id();
+    auto indexNode = *optionalIndexNode;
 
     if (not isIndexNodeEligible(*indexNode)) {
       continue;
     }
 
-    auto singleton = indexNode->getFirstDependency();
-    // This is required because this rule runs after distribute in cluster
-    // rules, and we might be in a subquery of a query that starts with a
-    // coordinator part. the remote node usually ends up between the index and
-    // the subquery singleton node.
-    while (singleton->getType() == EN::SCATTER ||
-           singleton->getType() == EN::GATHER ||
-           singleton->getType() == EN::REMOTE ||
-           singleton->getType() == EN::DISTRIBUTE) {
-      singleton = singleton->getFirstDependency();
-    }
-    if (singleton->getType() != EN ::SINGLETON) {
-      LOG_RULE << "Index node is not the first node after a singleton.";
+    if (not isIndexNodeFirstNodeAfterSingleton(*indexNode)) {
       continue;
     }
 
     LOG_RULE << "Found collect " << collectNode->id() << " with index "
              << indexNode->id();
 
-    auto isEligibleResult = isEligiblePair(*plan, *collectNode, *indexNode);
-    if (not isEligibleResult) {
+    auto hasEligibleGroups = getEligibleGroups(*plan, *collectNode, *indexNode);
+    if (not hasEligibleGroups) {
       continue;
     }
+    auto& [calculationsToRemove, groups, groupFields] = *hasEligibleGroups;
 
-    auto& [calculationsToRemove, groups, aggregations] = *isEligibleResult;
+    auto hasEligibleAggregates =
+        getEligibleAggregates(*plan, *collectNode, *indexNode);
+    if (not hasEligibleAggregates) {
+      continue;
+    }
+    auto& [aggregations, aggregationFields] = *hasEligibleAggregates;
+
+    if (aggregations.empty()) {
+      if (not selectivityIsLowEnough(*indexNode)) {
+        continue;
+      }
+      if (not isDistinctScanSupported(
+              *indexNode, std::move(groupFields),
+              collectNode->getOptions().requiresSortedInput())) {
+        continue;
+      }
+    } else {
+      if (not isIndexStreamSupported(*indexNode, std::move(groupFields),
+                                     std::move(aggregationFields))) {
+        continue;
+      }
+    }
 
     auto indexCollectNode = plan->createNode<IndexCollectNode>(
         plan.get(), plan->nextId(), indexNode->collection(),
