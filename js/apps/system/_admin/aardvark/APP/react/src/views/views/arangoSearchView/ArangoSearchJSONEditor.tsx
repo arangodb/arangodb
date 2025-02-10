@@ -20,7 +20,7 @@ export const ArangoSearchJSONEditor = () => {
   const { schema } = useArangoSearchJSONSchema({ view: initialView });
 
   return (
-    <Box height="100%" backgroundColor="white" position="relative" minWidth={0}>
+    <Box height="100%" backgroundColor="#ebebeb" position="relative" minWidth={0}>
       <ControlledJSONEditor
         value={values}
         onValidationError={errors => {
