@@ -199,11 +199,11 @@ const StoredValuesAccordionItem = () => {
           <Box padding="4">No fields set</Box>
         ) : (
           <FieldsGrid alignItems="start">
-            {storedValuesField.value?.map((item: any, index: number) => {
+            {storedValuesField.value?.map((item, index) => {
               return (
                 <React.Fragment key={index}>
                   <Stack direction="row" flexWrap="wrap">
-                    {item.fields.map((field: any) => {
+                    {item.fields?.map(field => {
                       return <Tag key={field}>{field}</Tag>;
                     })}
                   </Stack>
