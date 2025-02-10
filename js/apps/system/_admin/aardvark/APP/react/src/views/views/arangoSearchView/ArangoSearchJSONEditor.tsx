@@ -16,8 +16,9 @@ const ajv = new Ajv({
 
 export const ArangoSearchJSONEditor = () => {
   const { values, setValues } = useFormikContext();
-  const { initialView, setErrors, errors } = useEditViewContext();
+  const { initialView, setErrors, errors, setIsFormDisabled } = useEditViewContext();
   const { schema } = useArangoSearchJSONSchema({ view: initialView });
+
   return (
     <Box height="100%" backgroundColor="white" position="relative" minWidth={0}>
       <ControlledJSONEditor
@@ -29,19 +30,44 @@ export const ArangoSearchJSONEditor = () => {
         ajv={ajv}
         history
         schema={schema}
+        onChangeText={jsonString => {
+          try {
+            const json = JSON.parse(jsonString);
+            setIsFormDisabled(false);
+            if (JSON.stringify(json) !== JSON.stringify(values)) {
+              setValues(json);
+            }
+          } catch (e) {
+            setIsFormDisabled(true);
+          }
+        }}
         onChange={json => {
-          if (JSON.stringify(json) !== JSON.stringify(values)) {
-            setValues(json);
+          try {
+            const jsonString = JSON.stringify(json);
+            const jsonParsed = JSON.parse(jsonString);
+            setIsFormDisabled(false);
+            if (JSON.stringify(jsonParsed) !== JSON.stringify(values)) {
+              setValues(json);
+            }
+          } catch (e) {
+            setIsFormDisabled(true);
           }
         }}
         htmlElementProps={{
           style: {
-            height: "100%",
+            height: "calc(100% - 28px)",
             width: "100%"
           }
         }}
       />
-      <JSONErrors errors={errors} />
+      <JSONErrors
+        position="absolute"
+        bottom={0}
+        left={0}
+        right={0}
+        zIndex={10}
+        errors={errors}
+      />
     </Box>
   );
 };
