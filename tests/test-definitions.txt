@@ -19,7 +19,7 @@ replication_static priority=500 parallelity=3 size=small single buckets=2 -- --e
 # TODO - we could actually use 4 buckets instead of 2, but ATM this causes issues with other tests on Jenkins
 # For CircleCI we have a special case in the generate_config script to override this. Once we can change the buckets
 # here, make sure to remove this special case!
-replication_sync priority=8000 buckets=2 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
+replication_sync priority=8000 buckets=9 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
 shell_replication parallelity=3 size=small single 
 http_replication priority=500 parallelity=3 size=small single
 
