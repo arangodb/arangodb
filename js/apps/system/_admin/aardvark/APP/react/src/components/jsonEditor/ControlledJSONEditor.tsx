@@ -128,12 +128,16 @@ const useSetupValueUpdate = ({
 }) => {
   useEffect(() => {
     const editor = jsonEditorRef?.current?.jsonEditor;
-    if (
-      editor &&
-      value &&
-      JSON.stringify(value) !== JSON.stringify(editor.get())
-    ) {
-      editor.update(value);
+    if (editor && value) {
+      try {
+        const currentValue = editor.get();
+        if (JSON.stringify(value) !== JSON.stringify(currentValue)) {
+          editor.update(value);
+        }
+      } catch (error) {
+        // TODO: what we do when the editor throws an error? (editor.get() throws an error when the value is not a valid json)
+        console.error(error);
+      }
     }
   }, [jsonEditorRef, value]);
 };
