@@ -407,6 +407,11 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
 void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
                                       rocksdb::Slice upper,
                                       RocksDBMethods* methods) {
+  // In normal replication code this can be called multiple times
+  // so to stop retraining of vector index we ignore this part
+  if (_faissIndex->is_trained) {
+    return;
+  }
   std::int64_t counter{0};
   std::int64_t trainingDataSize =
       _faissIndex->cp.max_points_per_centroid * _definition.nLists;

@@ -1,8 +1,20 @@
 devel
 -----
 
+
 * During AQL setup, the Coordinator will no longer block threads while waiting
   for DBServers to finish the query instantiation.
+
+* Disable cluster overwhelm protection on agents. This fixes a bug which happens
+  if the number of dbservers and coordinators grows beyond 4x the number
+  of threads in the agency leader.
+
+* Make an unstable test stable again for the NetworkConnectionPool.
+
+* BTS-2074: fix installing Foxx service from zip file upload using the web UI
+  with multi-coordinator load balancing.
+
+* Updated compiler to clang-19.
 
 
 3.12.4 (2025-01-23)
