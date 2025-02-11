@@ -300,11 +300,15 @@ CostEstimate IndexCollectNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
   auto documentsInCollection =
       collection()->count(&trx, transaction::CountType::kTryCache);
-
   double selectivity = _index->selectivityEstimate();
-
   estimate.estimatedNrItems = selectivity * double(documentsInCollection);
-  estimate.estimatedCost +=
-      estimate.estimatedNrItems * log(double(documentsInCollection));
+
+  if (_aggregations.empty()) {
+    estimate.estimatedCost +=
+        estimate.estimatedNrItems * log(double(documentsInCollection));
+  } else {
+    estimate.estimatedCost += double(documentsInCollection);  // not 100% sure
+  }
+
   return estimate;
 }

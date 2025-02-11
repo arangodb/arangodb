@@ -113,12 +113,6 @@ bool isIndexNodeEligible(IndexNode const& in) {
              << " not eligible - sparse indexes not yet supported";
     return false;
   }
-  if (index->unique()) {
-    LOG_RULE << "IndexNode " << in.id()
-             << " not eligible - optimization not feasible for unique indexes";
-    return false;
-  }
-
   if (not in.options().ascending) {
     LOG_RULE << "IndexNode " << in.id()
              << " not eligible - descending mode not yet supported";
@@ -128,7 +122,7 @@ bool isIndexNodeEligible(IndexNode const& in) {
   return true;
 }
 
-bool checkSelectivityFitsAlgorithm(IndexNode const& in) {
+bool selectivityIsLowEnough(IndexNode const& in) {
   auto index = in.getSingleIndex();
   // assume there are n documents in the collection and we have
   // k distinct features. A linear search is in O(n) while a distinct scan
@@ -171,7 +165,7 @@ std::optional<std::tuple<std::vector<CalculationNode*>, IndexCollectGroups,
                          IndexCollectAggregations>>
 isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
                IndexNode const& idx) {
-  IndexDistinctScanOptions scanOptions;
+  std::vector<std::size_t> distinctFields;
   std::vector<CalculationNode*> calculationsToRemove;
   IndexCollectGroups groups;
   IndexCollectAggregations aggregations;
@@ -187,10 +181,10 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
     if (producer->getType() != EN::CALCULATION) {
       return std::nullopt;
     }
+    auto calculation = EN::castTo<CalculationNode*>(producer);
 
     // check if it is just an attribute access for the out variable of the
     // index node.
-    auto calculation = EN::castTo<CalculationNode*>(producer);
     std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
         access;
     bool const isAttributeAccess =
@@ -213,7 +207,7 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
     }
 
     std::size_t fieldIndex = std::distance(keyFields.begin(), iter);
-    scanOptions.distinctFields.push_back(fieldIndex);
+    distinctFields.push_back(fieldIndex);
     calculationsToRemove.push_back(calculation);
     groups.emplace_back(
         IndexCollectGroup{.indexField = fieldIndex, .outVariable = grp.outVar});
@@ -265,9 +259,13 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
         .expression = calculation->expression()->clone(plan.getAst())});
   }
 
-  scanOptions.sorted = cn.getOptions().requiresSortedInput();
-
   if (aggregations.empty()) {
+    if (not selectivityIsLowEnough(idx)) {
+      return std::nullopt;
+    }
+    IndexDistinctScanOptions scanOptions;
+    scanOptions.distinctFields = std::move(distinctFields);
+    scanOptions.sorted = cn.getOptions().requiresSortedInput();
     if (not idx.getSingleIndex()->supportsDistinctScan(scanOptions)) {
       LOG_RULE
           << "Index " << idx.id()
@@ -277,7 +275,7 @@ isEligiblePair(ExecutionPlan const& plan, CollectNode const& cn,
     }
   } else {
     IndexStreamOptions streamOptions;
-    streamOptions.usedKeyFields = scanOptions.distinctFields;
+    streamOptions.usedKeyFields = std::move(distinctFields);
     streamOptions.projectedFields = aggregationFields;
     if (auto support =
             idx.getSingleIndex()->supportsStreamInterface(streamOptions);
@@ -340,10 +338,6 @@ void arangodb::aql::useIndexForCollect(Optimizer* opt,
     LOG_RULE << "Found candidate index node " << indexNode->id();
 
     if (not isIndexNodeEligible(*indexNode)) {
-      continue;
-    }
-
-    if (not checkSelectivityFitsAlgorithm(*indexNode)) {
       continue;
     }
 
