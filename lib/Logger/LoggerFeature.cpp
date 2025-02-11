@@ -238,15 +238,16 @@ by a semicolon:
   for (auto const& level : levels) {
     topicsVector.emplace_back(level.first->name());
   }
+  std::sort(topicsVector.begin(), topicsVector.end());
   std::string topicsJoined = StringUtils::join(topicsVector, ", ");
 
   options
       ->addOption("--log.level,-l",
                   "Set the topic-specific log level, using `--log.level level` "
                   "for the general topic or `--log.level topic=level` for the "
-                  "specified topic (can be specified multiple times).\n"
+                  "specified topic (can be specified multiple times).\n\n"
                   "Available log levels: fatal, error, warning, info, debug, "
-                  "trace.\n"
+                  "trace.\n\n"
                   "Available log topics: all, " +
                       topicsJoined + ".",
                   new VectorParameter<StringParameter>(&_levels))
@@ -385,7 +386,7 @@ contains a single character with the server's role. The roles are:
 
   options->addOption(
       "--log.file-mode",
-      "mode to use for new log file, umask will be applied as well",
+      "The mode to use for a new log file. The umask is applied as well.",
       new StringParameter(&_fileMode));
 
   if (_threaded) {
@@ -443,10 +444,10 @@ The object attributes produced for each log message are:
 | `message`  | the actual log message payload)");
 
 #ifdef ARANGODB_HAVE_SETGID
-  options->addOption(
-      "--log.file-group",
-      "group to use for new log file, user must be a member of this group",
-      new StringParameter(&_fileGroup));
+  options->addOption("--log.file-group",
+                     "The group to use for a new log file. The user must be a "
+                     "member of this group.",
+                     new StringParameter(&_fileGroup));
 #endif
 
   options
@@ -459,7 +460,7 @@ The object attributes produced for each log message are:
 `2020-07-23T09:46:03Z --> [17493] INFO ...`)");
 
   options->addOption(
-      "--log.file", "shortcut for '--log.output file://<filename>'",
+      "--log.file", "Shortcut for `--log.output file://<filename>`",
       new StringParameter(&_file),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -472,7 +473,7 @@ The object attributes produced for each log message are:
 
   options->addOption(
       "--log.shorten-filenames",
-      "shorten filenames in log output (use with --log.line-number)",
+      "Shorten filenames in log output (use with `--log.line-number`).",
       new BooleanParameter(&_shortenFilenames),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 

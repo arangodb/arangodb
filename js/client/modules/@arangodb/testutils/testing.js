@@ -447,14 +447,24 @@ function iterateTests(cases, options) {
     let status = true;
     let shutdownSuccess = true;
 
-    result = testFuncs[currentTest](localOptions);
-    // grrr...normalize structure
-    delete result.status;
-    delete result.failed;
-    delete result.crashed;
-    if (result.hasOwnProperty('shutdown')) {
-      shutdownSuccess = result['shutdown'];
-      delete result.shutdown;
+    try {
+      result = testFuncs[currentTest](localOptions);
+      // grrr...normalize structure
+      delete result.status;
+      delete result.failed;
+      delete result.crashed;
+      if (result.hasOwnProperty('shutdown')) {
+        shutdownSuccess = result['shutdown'];
+        delete result.shutdown;
+      }
+    } catch (err) {
+      result = {
+        [currentTest]: {
+          status: false,
+          failed: true,
+          message: `caught exception in testsuite: ${err.message}\n${err.stack}`
+        }};
+      pu.serverCrashed = true;
     }
 
     if (currentTest === "auto") {

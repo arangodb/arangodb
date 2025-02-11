@@ -1192,6 +1192,12 @@ Debugging a storage engine:
     (gdb) r
     arangod> require("jsunity").runTest("tests/js/client/shell/shell-client.js");
 
+### Filtering GDB stacktraces 
+`scripts/filter_stacktraces.js [list of gdb output files] --extremeVerbosity true`
+- reads `js/client/modules/@arangodb/testutils/filter_gdb_stacks.json` 
+- applies it to all files with the output of gdb with stacktraces, filtering out threads in the json file.
+- `--extremeVerbosity` will print unfiltered stacks in order to ease adding them to `filter_gdb_stacks.json`.
+
 ### Forcing downgrade from VPack to JSON
 
 While velocypack is better for the machine to machine communication, JSON does a better job

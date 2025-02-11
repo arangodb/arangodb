@@ -70,7 +70,7 @@ function IndexDistinctCollectOptimizerTestSuite() {
         [`FOR doc IN ${collection} COLLECT a = doc.a, c = doc.c RETURN [a, c]`, false],
         [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a RETURN [a, b]`, true],
         [`FOR doc IN ${collection} COLLECT c = doc.c, a = doc.a RETURN [a, c]`, false],
-        [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a OPTIONS {disableIndexUsage: true} RETURN [a, b]`, false],
+        [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a OPTIONS {disableIndex: true} RETURN [a, b]`, false],
         [`FOR doc IN ${collection} COLLECT a = doc.a INTO d RETURN [a, d]`, false],
         [`FOR doc IN ${collection} COLLECT a = doc.a INTO d = doc.d RETURN [a, d]`, false],
         [`FOR doc IN ${collection} COLLECT a = doc.a WITH COUNT INTO c RETURN [a, c]`, false],

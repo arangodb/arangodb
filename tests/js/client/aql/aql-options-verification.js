@@ -276,6 +276,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
       const queries = [
         [prefix + "{ method: 'sorted' } RETURN x"],
         [prefix + "{ method: 'hash' } RETURN x"],
+        [prefix + "{ disableIndex: true } RETURN x"],
 
         [prefix + "{ method: 'foxx' } RETURN x", "method"],
         [prefix + "{ waitForSync: false } RETURN x", "waitForSync"],
@@ -285,7 +286,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ tititi: 'piff' } RETURN x", "tititi"],
         [prefix + "{ indexHint: 'primary' } RETURN x", "indexHint"],
         [prefix + "{ forceIndexHint: true } RETURN x", "forceIndexHint"],
-        [prefix + "{ disableIndex: true } RETURN x", "disableIndex"],
         [prefix + "{ maxProjections: 123 } RETURN x", "maxProjections"],
         [prefix + "{ useCache: true } RETURN x", "useCache"],
         [prefix + "{ lookahead: 0 } RETURN x", "lookahead"],

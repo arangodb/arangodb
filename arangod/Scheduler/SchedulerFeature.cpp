@@ -335,7 +335,8 @@ void SchedulerFeature::prepare() {
       // requests. this is because coordinators are the gatekeepers, and they
       // should perform all the throttling.
       uint64_t ongoingLowPriorityLimit =
-          ServerState::instance()->isDBServer()
+          ServerState::instance()->isDBServer() ||
+                  ServerState::instance()->isAgent()
               ? 0
               : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
                                       _nrMaximalThreads);

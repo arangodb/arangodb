@@ -14,7 +14,7 @@ BEGIN {
     if ($0 ~ /^TZ/) {
       record_zone(zone, data)
       zone = $0
-      sub(/.*\.dir\//, "", zone)
+      sub(/.*\.ckd\//, "", zone)
       sub(/\/\//, "/", zone)
       sub(/"/, "", zone)
       data = ""
@@ -44,8 +44,8 @@ BEGIN {
 END {
  for (zone in zone_data) {
     data = zone_data[zone]
-    if (!zonenow[data]) {
-      printf "zonenow.tab should have one of:%s\n", zones[data]
+    if (data && !zonenow[data]) {
+      printf "Zone table should have one of:%s\n", zones[data]
       zonenow[data] = zone # This suppresses duplicate diagnostics.
       status = 1
     }
