@@ -52,7 +52,7 @@ export const QueryResults = () => {
           ) {
             return (
               <QueryProfileResult
-                key={index}
+                key={queryResult.asyncJobId}
                 index={index}
                 queryResult={queryResult}
               />
