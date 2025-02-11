@@ -215,6 +215,39 @@ function VectorIndexTestCreationWithVectors() {
             db._dropDatabase(dbName);
         },
 
+        testCreateVectorIndexWithZeroNLists: function() {
+            let gen = randomNumberGeneratorFloat(seed);
+
+            let docs = [];
+            for (let i = 0; i < 10; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                vector[0] = 0;
+                docs.push({
+                    vector
+                });
+            }
+            collection.insert(docs);
+
+            try {
+                let result = collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 0,
+                        trainingIterations: 10,
+                    },
+                });
+            } catch (e) {
+                assertEqual(errors.ERROR_BAD_PARAMETER.code,
+                    e.errorNum);
+            }
+        },
 
         testCreateVectorIndexWithVectorsContainingIntegersAndDoubles: function() {
             let gen = randomNumberGeneratorFloat(seed);
