@@ -100,7 +100,6 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
   IndexAggregateScanInfos infos;
   infos.groups.reserve(_groups.size());
   infos.index = _index;
-  infos.collection = CollectionAccessingNode::collection();
   infos.query = &engine.getQuery();
 
   RegIdSet writableOutputRegisters;
@@ -125,10 +124,12 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
     a.expression = agg.expression->clone(infos.query->ast());
     writableOutputRegisters.emplace(a.outputRegister);
 
+    // find attributes used in expression
     containers::FlatHashSet<aql::AttributeNamePath> attributes;
     Ast::getReferencedAttributesRecursive(a.expression->node(),
                                           _oldIndexVariable, "", attributes,
                                           infos.query->resourceMonitor());
+    // get what index fields cover these attributes
     for (auto const& attr : attributes) {
       auto iter = std::find_if(
           coveredFields.begin(), coveredFields.end(),
@@ -191,8 +192,7 @@ IndexCollectNode::IndexCollectNode(ExecutionPlan* plan,
     auto& agg = _aggregations.emplace_back();
     agg.outVariable = Variable::varFromVPack(plan->getAst(), as, "outVariable");
     agg.type = as.get("type").copyString();
-    agg.expression = std::make_unique<Expression>(
-        plan->getAst(), plan->getAst()->createNode(as.get("expression")));
+    agg.expression = std::make_unique<Expression>(plan->getAst(), as);
   }
 }
 

@@ -38,15 +38,14 @@ struct Aggregator;
 class OutputAqlItemRow;
 
 struct IndexAggregateScanInfos {
-  // Associated document collection for this index
-  Collection const* collection;
-  // Index handle
   transaction::Methods::IndexHandle index;
 
   struct Group {
     RegisterId outputRegister;
-    size_t indexField;
+    size_t indexField;  // defines the field position of an index entry
   };
+  // defines the index fields that are used in the collect statement for
+  // grouping
   std::vector<Group> groups;
 
   struct Aggregation {
@@ -54,9 +53,11 @@ struct IndexAggregateScanInfos {
     RegisterId outputRegister;
     std::unique_ptr<Expression> expression;
   };
-
   std::vector<Aggregation> aggregations;
 
+  // includes all variables that are defined in any expression in aggregations
+  // in the collect statement, maps each variable to a field position of an
+  // index entry
   containers::FlatHashMap<VariableId, size_t> _expressionVariables;
 
   QueryContext* query;
@@ -72,6 +73,13 @@ inline ExecutionStats& operator+=(
   return executionStats;
 }
 
+/**
+   The IndexAggregateScanExecutor creates collect aggregate results by only
+   using data from an index.
+
+   It does not get any input rows but uses the AqlIndexStreamIterator to iterate
+   through the index data.
+*/
 struct IndexAggregateScanExecutor {
   struct Properties {
     static constexpr bool preservesOrder = false;
@@ -97,15 +105,22 @@ struct IndexAggregateScanExecutor {
   Fetcher& _fetcher;
   Infos& _infos;
   transaction::Methods _trx;
-  std::unique_ptr<AqlIndexStreamIterator> _iterator;
+
+  std::unique_ptr<AqlIndexStreamIterator> _iterator;  // index iteator
 
   std::vector<std::unique_ptr<Aggregator>> _aggregatorInstances;
 
+  // needed as output of the iterator
   std::vector<VPackSlice> _currentGroupKeySlices;
   std::vector<VPackSlice> _keySlices;
   std::vector<VPackSlice> _projectionSlices;
-  InputAqlItemRow _inputRow{CreateInvalidInputRowHint{}};
+
+  // needed to execute the aggregate expressions
+  InputAqlItemRow _inputRow{
+      CreateInvalidInputRowHint{}};  // first and only input row
   aql::AqlFunctionsInternalCache _functionsCache;
+  // map of aggregate variable to projection field location in the iterator's
+  // projectionFields
   containers::FlatHashMap<VariableId, size_t> _variablesToProjectionsRelative;
 };
 
