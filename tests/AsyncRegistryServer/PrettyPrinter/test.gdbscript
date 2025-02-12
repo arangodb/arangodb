@@ -1,6 +1,9 @@
 run
 select-frame function main
-continue
+print "Some printing"
+print testee
+print expected
 
+continue
 quit 0
 # quit 1 makes ctest fail

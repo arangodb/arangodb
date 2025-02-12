@@ -28,10 +28,10 @@ auto breakpoint() { raise(SIGINT); }
 
 int main() {
   // create a registry
-  // auto testee = 1;    // tuple of registries
-  // auto expected = 3;  // for one registry, get a string version of it
+  const auto testee = 1;    // tuple of registries
+  const auto expected = 3;  // for one registry, get a string version of it
   breakpoint();
-  std::cout << "Hello after breakpoint" << std::endl;
+  std::cout << "Hello after breakpoint" << testee + expected << std::endl;
   // run_test(testee, expected) which internally calls breakpoint again
   return 0;
 }
