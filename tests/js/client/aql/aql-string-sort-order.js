@@ -489,17 +489,19 @@ function OrderTestSuite () {
           "말씀": 62,               // Korean "speech" (honorific)
       };
       let c = db._create(cn);
+      let l = [];
       for (let k in testStrings) {
-        c.insert({s:k, i:testStrings[k]});
+        l.push({s:k, i:testStrings[k]});
       }
-      let l = db._query(`FOR d IN ${collName} SORT d.s ASC RETURN d.i`).toArray();
+      c.insert(l);
+      l = db._query(`FOR d IN ${cn} SORT d.s ASC RETURN d.i`).toArray();
       for (let i = 0; i < l.length; ++i) {
-        assertEq(l[i], i, l);
+        assertEqual(l[i], i, l);
       }
       c.ensureIndex({type:"persisted", fields:["s"], unique: false});
-      l = db._query(`FOR d IN ${collName} SORT d.s ASC RETURN d.i`).toArray();
+      l = db._query(`FOR d IN ${cn} SORT d.s ASC RETURN d.i`).toArray();
       for (let i = 0; i < l.length; ++i) {
-        assertEq(l[i], i, l);
+        assertEqual(l[i], i, l);
       }
     }
   };
