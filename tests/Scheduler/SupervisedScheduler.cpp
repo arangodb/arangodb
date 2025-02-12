@@ -60,7 +60,9 @@ struct NonSchedulerDetachingThread : Thread {
 // There was a race between starting a thread, which writes its own
 // Thread::_threadNumber, and another thread calling detachThread, which
 // iterates over all threads and compares their _threadNumber against its own.
-// This should now be handled
+// This should now be handled.
+// This test just makes it easy for TSan to catch this, it will not fail on its
+// own.
 TEST_F(SupervisedSchedulerTest, regression_test_bts_2078) {
   using namespace std::chrono_literals;
 
