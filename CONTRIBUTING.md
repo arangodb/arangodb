@@ -1,3 +1,4 @@
+# DO_NOT_MERGE: test(0)
 # Contributing
 
 We welcome bug fixes and patches from 3rd party contributors. Please
