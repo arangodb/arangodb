@@ -415,6 +415,93 @@ function OrderTestSuite () {
       }
     },
 
+    testStringComparisonOrderLegacy: function() {
+      const testStrings = {
+          // Basic punctuation
+          "-": 0,                    // Hyphen-minus
+          "—": 1,                    // Em dash
+          ".": 2,                    // Period
+          "。": 3,                   // Ideographic full stop
+
+          // Symbols and Emoji
+          "♥": 4,                    // Heart symbol
+          "❤️": 5,                   // Heart emoji
+          "👨": 6,                   // Man emoji
+          "👨‍👩‍👧": 7,              // Family emoji (multiple code points)
+
+          // Numbers and number-like characters
+          "1": 8,                    // ASCII digit one
+          "１": 9,                   // Fullwidth digit one
+          "1st": 10,                 // Ordinal number
+          "2nd": 11,                 // Ordinal number
+
+          // Latin letters with various combining marks and special cases
+          "a": 14,                   // Basic Latin a
+          "a\u200B": 15,            // 'a' + zero-width space
+          "a\uFEFF": 16,            // 'a' + byte order mark
+          "A": 17,                   // Basic Latin A
+          "a\u0308": 19,            // 'a' + combining diaeresis
+          "ä": 20,                  // Precomposed ä
+          "ae": 21,                 // German ae digraph
+          "café": 22,               // NFC form
+          "cafe\u0301": 23,         // NFD form (e + combining acute)
+          "e": 24,                  // Basic Latin e
+          "é": 25,                  // Precomposed é
+          "e\u0301": 26,            // 'e' + combining acute
+          "è": 27,                  // Precomposed è
+          "ē": 28,                  // Precomposed e with macron
+          "o\u0308": 30,            // 'o' + combining diaeresis
+          "ö": 31,                  // Precomposed ö
+          "oe": 32,                 // German oe digraph
+          "ss": 33,                 // German ss digraph
+          "ß": 34,                  // German sharp s
+          "ü": 35,                  // Precomposed ü
+          "ue": 36,                 // German ue digraph
+          "z": 37,                  // Basic Latin z
+          "Z": 38,                  // Basic Latin Z
+
+          // Non-Latin scripts
+          "α": 39,                  // Greek alpha
+          "а": 40,                  // Cyrillic a
+          "一": 41,                 // Chinese/Japanese one
+
+          // CJK (Chinese, Japanese, Korean) test cases
+          "三脈山麻桿": 42,           // Traditional Chinese variant
+          "三脉山麻杆": 43,           // Simplified Chinese variant
+          "畫": 44,                 // Traditional: "to draw"
+          "画": 45,                 // Simplified: "to draw"
+          "發": 46,                 // Traditional
+          "发": 47,                 // Simplified
+          "한글": 48,               // Hangul (Korean)
+          "항글": 49,               // Hangul with different final consonant
+          "ハングル": 50,            // Katakana (Japanese)
+          "はんぐる": 51,            // Hiragana (Japanese)
+          "カード": 52,              // Katakana "card"
+          "かーど": 53,              // Hiragana "card"
+          "ソフト": 54,              // Katakana "soft"
+          "そふと": 55,              // Hiragana "soft"
+          "まつだ": 56,              // Hiragana surname
+          "マツダ": 57,              // Katakana company name
+          "松田": 58,               // Kanji form of Matsuda
+          "말": 59,                 // Korean "speech"
+          "맑": 60,                 // Korean "clear"
+          "밝": 61,                 // Korean "bright"
+          "말씀": 62,               // Korean "speech" (honorific)
+      };
+      let c = db._create(cn);
+      for (let k in testStrings) {
+        c.insert({s:k, i:testStrings[k]});
+      }
+      let l = db._query(`FOR d IN ${collName} SORT d.s ASC RETURN d.i`).toArray();
+      for (let i = 0; i < l.length; ++i) {
+        assertEq(l[i], i, l);
+      }
+      c.ensureIndex({type:"persisted", fields:["s"], unique: false});
+      l = db._query(`FOR d IN ${collName} SORT d.s ASC RETURN d.i`).toArray();
+      for (let i = 0; i < l.length; ++i) {
+        assertEq(l[i], i, l);
+      }
+    }
   };
 }
 
