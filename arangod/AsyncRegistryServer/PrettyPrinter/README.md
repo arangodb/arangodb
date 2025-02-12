@@ -16,9 +16,18 @@ This ensures that the pretty-printer is loaded to gdb. You can check if it is lo
 
 ### Run tests
 
+#### Unit tests
+
 Inside src-folder run unittests via
 ```
 python3 -m unittest discover
+```
+
+#### Integration tests using gdb
+
+```
+cmake --build --preset my-edition --target gdb_pretty_printer
+ctest --build --preset my-edition -R test_registry_pretty_printer
 ```
 
 ## Pretty printing the REST call

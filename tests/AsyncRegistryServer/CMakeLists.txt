@@ -8,3 +8,5 @@ add_executable(arangodbtests_async_registry_server EXCLUDE_FROM_ALL)
 target_link_libraries(arangodbtests_async_registry_server
   arango_tests_async_registry_server
   gtest_main)
+
+add_subdirectory(PrettyPrinter)
