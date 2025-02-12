@@ -523,12 +523,18 @@ Result SupervisedScheduler::detachThread(uint64_t* detachedThreads,
   // Now we have access to the _workerStates and _detachedWorkerStates
   // Let's first find ourselves in the _workerStates:
   uint64_t myNumber = Thread::currentThreadNumber();
-  auto it = _workerStates.begin();
-  while (it != _workerStates.end()) {
+  auto it = decltype(_workerStates)::iterator{};
+  for (it = _workerStates.begin(); it != _workerStates.end(); ++it) {
+    auto state = (*it)->_thread->state().load(std::memory_order_acquire);
+    // We must not read the threadNumber of a thread that hasn't yet started -
+    // also, such a thread can't be the current one, which obviously has been
+    // started, so it's safe to ignore such threads.
+    if (state != Thread::ThreadState::STARTED) {
+      continue;
+    }
     if ((*it)->_thread->threadNumber() == myNumber) {
       break;
     }
-    ++it;
   }
   if (it == _workerStates.end()) {
     return Result(TRI_ERROR_INTERNAL,
