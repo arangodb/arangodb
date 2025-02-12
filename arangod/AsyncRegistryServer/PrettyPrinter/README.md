@@ -29,6 +29,7 @@ python3 -m unittest discover
 cmake --build --preset my-edition --target gdb_pretty_printer
 ctest --build --preset my-edition -R test_registry_pretty_printer
 ```
+use `-V` option on `ctest` to see gdb output, e.g. printing
 
 ## Pretty printing the REST call
 
