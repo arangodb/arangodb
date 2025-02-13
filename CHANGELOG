@@ -1,6 +1,8 @@
 devel
 -----
 
+* Disable creating a vector index with zero nLists.
+
 * FE-515: fix to ensure unique keys to prevent incorrect react reconciliation (Query Editor UI > Query results)
 
 * Disable cluster overwhelm protection on agents. This fixes a bug which happens
