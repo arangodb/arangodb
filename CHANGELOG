@@ -1,3 +1,9 @@
+3.12.4.1 (XXXX-XX-XX)
+---------------------
+
+* The agency supervision is clearing "finished" jobs too quickly from
+  Target/Finished. They will be forthwith be kept for at least 5m.
+
 3.12.4 (2025-01-23)
 -------------------
 
