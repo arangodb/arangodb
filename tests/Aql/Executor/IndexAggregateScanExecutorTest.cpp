@@ -105,6 +105,7 @@ auto inspect(Inspector& f, Expression& x) {
 }
 }  // namespace expression
 
+namespace {
 /**
    This Iterator iterates over a vector of index entries it owns.
 
@@ -221,8 +222,8 @@ class MockIndex : public Index {
   ~MockIndex() = default;
   std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
       transaction::Methods* trx, IndexStreamOptions const& options) override {
-    return std::make_unique<MyVectorIterator>(options.usedKeyFields,
-                                              options.projectedFields, _values);
+    return std::make_unique<MyVectorIterator>(
+        options.usedKeyFields, options.projectedFields, std::move(_values));
   }
   char const* typeName() const override { return "mock index"; }
   IndexType type() const override {
@@ -238,6 +239,7 @@ class MockIndex : public Index {
 
   std::vector<VPackBuilder> _values;
 };
+}  // namespace
 
 class IndexAggregateScanExecutorTest : public AqlExecutorTestCase<> {
  public:
