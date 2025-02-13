@@ -244,6 +244,7 @@ start() {
       --http.trusted-origin all
       --database.check-version false
       --database.upgrade-check false
+      --experimental-vector-index true
       $REPLICATION_VERSION_PARAM
 EOM
 
