@@ -135,7 +135,6 @@ const useSetupValueUpdate = ({
           editor.update(value);
         }
       } catch (error) {
-        // TODO: what we do when the editor throws an error? (editor.get() throws an error when the value is not a valid json)
         console.error(error);
       }
     }
