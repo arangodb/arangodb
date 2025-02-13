@@ -69,16 +69,27 @@ endif ()
 ################################################################################
 
 if (USE_JEMALLOC)
-  add_subdirectory(jemalloc)
+
+add_subdirectory(jemalloc)
+
+if(WIN32)
   include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
   set(JEMALLOC_HOME "${JEMALLOC_HOME}" PARENT_SCOPE)
   set(SYS_LIBS ${SYS_LIBS} jemalloc PARENT_SCOPE)
   set(JEMALLOC_LIB "${JEMALLOC_LIB}" PARENT_SCOPE)
-  if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
-    add_dependencies(jemalloc_build libunwind_build)
+
+else()
+    include_directories(SYSTEM "${JEMALLOC_HOME}/include")
+    link_directories("${JEMALLOC_HOME}/lib")
+    set(JEMALLOC_HOME "${JEMALLOC_HOME}" PARENT_SCOPE)
+    set(SYS_LIBS ${SYS_LIBS} jemalloc PARENT_SCOPE)
+    set(JEMALLOC_LIB "${JEMALLOC_LIB}" PARENT_SCOPE)
+    if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)
+      add_dependencies(jemalloc_build libunwind_build)
+    endif()
   endif()
-endif ()
+endif()
 
 ################################################################################
 ## V8 and ICU
