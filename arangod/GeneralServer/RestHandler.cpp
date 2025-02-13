@@ -25,9 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
-#include "Basics/RecursiveLocker.h"
-#include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
+#include "Basics/error.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -47,6 +46,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
 
+#include <Async/async.h>
 #include <absl/strings/str_cat.h>
 #include <fuerte/jwt.h>
 #include <velocypack/Exception.h>
@@ -412,77 +412,49 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   // can do here to signal this problem.
 }
 
-void RestHandler::runHandlerStateMachine() {
-  // _executionMutex has to be locked here
-  TRI_ASSERT(_sendResponseCallback);
+auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
+  auto fail = [&]() {
+    TRI_ASSERT(_state == HandlerState::FAILED);
+    _statistics.SET_REQUEST_END();
+    // Callback may stealStatistics!
+    _sendResponseCallback(this);
 
-  while (true) {
-    switch (_state) {
-      case HandlerState::PREPARE:
-        prepareEngine();
-        break;
+    shutdownExecute(false);
+  };
 
-      case HandlerState::EXECUTE: {
-        executeEngine(/*isContinue*/ false);
-        if (_state == HandlerState::PAUSED) {
-          shutdownExecute(false);
-          LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
-              << "Pausing rest handler execution " << this;
-          return;  // stop state machine
-        }
-        break;
-      }
-
-      case HandlerState::CONTINUED: {
-        executeEngine(/*isContinue*/ true);
-        if (_state == HandlerState::PAUSED) {
-          shutdownExecute(/*isFinalized*/ false);
-          LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
-              << "Pausing rest handler execution " << this;
-          return;  // stop state machine
-        }
-        break;
-      }
-
-      case HandlerState::PAUSED:
-        LOG_TOPIC("ae26f", DEBUG, Logger::COMMUNICATION)
-            << "Resuming rest handler execution " << this;
-        _state = HandlerState::CONTINUED;
-        break;
-
-      case HandlerState::FINALIZE:
-        _statistics.SET_REQUEST_END();
-
-        // shutdownExecute is noexcept
-        shutdownExecute(true);  // may not be moved down
-
-        _state = HandlerState::DONE;
-
-        // compress response if required
-        compressResponse();
-        // Callback may stealStatistics!
-        _sendResponseCallback(this);
-        break;
-
-      case HandlerState::FAILED:
-        _statistics.SET_REQUEST_END();
-        // Callback may stealStatistics!
-        _sendResponseCallback(this);
-
-        shutdownExecute(false);
-        return;
-
-      case HandlerState::DONE:
-        return;
-    }
+  TRI_ASSERT(_state == HandlerState::PREPARE);
+  auto logScope = prepareEngine();
+  // TODO put logScope into scopeGuard
+  std::vector<LogContext::Accessor::ScopedValue> scopeGuard;
+  if (_state == HandlerState::FAILED) {
+    co_return fail();
   }
+  TRI_ASSERT(_state == HandlerState::EXECUTE);
+  co_await executeEngine();
+  if (_state == HandlerState::FAILED) {
+    co_return fail();
+  }
+
+  TRI_ASSERT(_state == HandlerState::FINALIZE);
+  _statistics.SET_REQUEST_END();
+
+  // shutdownExecute is noexcept
+  shutdownExecute(true);  // may not be moved down
+
+  _state = HandlerState::DONE;
+
+  // compress response if required
+  compressResponse();
+  // Callback may stealStatistics!
+  _sendResponseCallback(this);
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-void RestHandler::prepareEngine() {
+auto RestHandler::prepareEngine()
+    -> std::vector<std::shared_ptr<LogContext::Values>> {
   // set end immediately so we do not get negative statistics
   _statistics.SET_REQUEST_START_END();
 
@@ -491,13 +463,13 @@ void RestHandler::prepareEngine() {
 
     Exception err(TRI_ERROR_REQUEST_CANCELED);
     handleError(err);
-    return;
+    return {};
   }
 
   try {
-    prepareExecute(false);
+    auto logScope = prepareExecute(false);
     _state = HandlerState::EXECUTE;
-    return;
+    return logScope;
   } catch (Exception const& ex) {
     handleError(ex);
   } catch (std::exception const& ex) {
@@ -509,47 +481,28 @@ void RestHandler::prepareEngine() {
   }
 
   _state = HandlerState::FAILED;
+  return {};
 }
 
-void RestHandler::prepareExecute(bool isContinue) {
-  _logContextEntry = LogContext::Current::pushValues(_logContextScopeValues);
+auto RestHandler::prepareExecute(bool isContinue)
+    -> std::vector<std::shared_ptr<LogContext::Values>> {
+  return {_logContextScopeValues};
 }
 
-void RestHandler::shutdownExecute(bool isFinalized) noexcept {
-  LogContext::Current::popEntry(_logContextEntry);
-}
+void RestHandler::shutdownExecute(bool isFinalized) noexcept {}
 
-/// Execute the rest handler state machine. Retry the wakeup,
-/// returns true if _state == PAUSED, false otherwise
-bool RestHandler::wakeupHandler() {
-  std::lock_guard lock{_executionMutex};
-  if (_state == HandlerState::PAUSED) {
-    runHandlerStateMachine();
-  }
-  return _state == HandlerState::PAUSED;
-}
+/// For older RestHandlers, that implement execute() and continueExecute() with
+/// WAITING instead of executeAsync(). Calling wakeupHandler() will continue the
+/// execution by calling continueExecute().
+bool RestHandler::wakeupHandler() { return _suspensionSemaphore.notify(); }
 
-void RestHandler::executeEngine(bool isContinue) {
+auto RestHandler::executeEngine() -> async<void> {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
   ExecContextScope scope(
       basics::downCast<ExecContext>(_request->requestContext()));
 
   try {
-    RestStatus result = RestStatus::DONE;
-    if (isContinue) {
-      // only need to run prepareExecute() again when we are continuing
-      // otherwise prepareExecute() was already run in the PREPARE phase
-      prepareExecute(true);
-      result = continueExecute();
-    } else {
-      result = execute();
-    }
-
-    if (result == RestStatus::WAITING) {
-      _state = HandlerState::PAUSED;  // wait for someone to continue the state
-                                      // machine
-      return;
-    }
+    co_await executeAsync();
 
     if (_response == nullptr) {
       Exception err(TRI_ERROR_INTERNAL, "no response received from handler");
@@ -557,7 +510,7 @@ void RestHandler::executeEngine(bool isContinue) {
     }
 
     _state = HandlerState::FINALIZE;
-    return;
+    co_return;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11928", WARN, arangodb::Logger::FIXME)
@@ -791,16 +744,33 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
   _response->reset(code);
 }
 
+// Fallback implementation for old RestHandlers that implement execute() and
+// continueExecute() instead of executeAsync().
 futures::Future<futures::Unit> RestHandler::executeAsync() {
+  auto state = execute();
+
+  while (state == RestStatus::WAITING) {
+    // Get the number of wakeups. We call continueExecute() up to that many
+    // times before suspending again.
+    auto n = co_await _suspensionSemaphore.await();
+    for (auto i = 0; i < n && state == RestStatus::WAITING; ++i) {
+      state = continueExecute();
+    }
+  }
+}
+
+RestStatus RestHandler::execute() {
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-RestStatus RestHandler::execute() { return waitForFuture(executeAsync()); }
-
 void RestHandler::runHandler(
     std::function<void(rest::RestHandler*)> responseCallback) {
-  TRI_ASSERT(_state == HandlerState::PREPARE);
   _sendResponseCallback = std::move(responseCallback);
-  std::lock_guard guard(_executionMutex);
-  runHandlerStateMachine();
+
+  runHandlerStateMachine().thenFinal(
+      [self = shared_from_this()](auto&& tryResult) noexcept {
+        // TODO handle exceptions
+        std::move(tryResult).throwIfFailed();
+      });
 }

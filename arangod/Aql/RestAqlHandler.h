@@ -52,7 +52,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final;
   RestStatus execute() override;
   RestStatus continueExecute() override;
-  void prepareExecute(bool isContinue) override;
+  [[nodiscard]] auto prepareExecute(bool isContinue)
+      -> std::vector<std::shared_ptr<LogContext::Values>> override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
   class Route {

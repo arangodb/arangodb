@@ -216,15 +216,11 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
   TRI_ASSERT(request->requestContext());
 }
 
-void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
-  RestHandler::prepareExecute(isContinue);
-  _logContextVocbaseEntry =
-      LogContext::Current::pushValues(_scopeVocbaseValues);
-}
-
-void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
-  LogContext::Current::popEntry(_logContextVocbaseEntry);
-  RestHandler::shutdownExecute(isFinalized);
+auto RestVocbaseBaseHandler::prepareExecute(bool isContinue)
+    -> std::vector<std::shared_ptr<LogContext::Values>> {
+  auto values = RestHandler::prepareExecute(isContinue);
+  values.emplace_back(_scopeVocbaseValues);
+  return values;
 }
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;

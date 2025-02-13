@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Async/SuspensionSemaphore.h"
 #include "Basics/ResultT.h"
 #include "Futures/Unit.h"
 #include "GeneralServer/RequestLane.h"
@@ -49,6 +50,9 @@ namespace futures {
 template<typename T>
 class Future;
 }  // namespace futures
+
+template<typename>
+struct async;
 
 class GeneralRequest;
 class RequestStatistics;
@@ -102,10 +106,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 
   /// Execute the rest handler state machine
-  void runHandler(std::function<void(rest::RestHandler*)> responseCallback);
+  virtual void runHandler(
+      std::function<void(rest::RestHandler*)> responseCallback);
 
-  /// Execute the rest handler state machine. Retry the wakeup,
-  /// returns true if _state == PAUSED, false otherwise
+  /// Continue execution of a suspended (via WAITING) rest handler state machine
   bool wakeupHandler();
 
   /// @brief forwards the request to the appropriate server
@@ -122,7 +126,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RequestLane determineRequestLane();
 
-  virtual void prepareExecute(bool isContinue);
+  [[nodiscard]] virtual auto prepareExecute(bool isContinue)
+      -> std::vector<std::shared_ptr<LogContext::Values>>;
   virtual RestStatus execute();
   virtual futures::Future<futures::Unit> executeAsync();
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
@@ -175,15 +180,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// handler state machine
   HandlerState state() const { return _state; }
 
- private:
-  void runHandlerStateMachine();
+  auto runHandlerStateMachine() -> futures::Future<futures::Unit>;
 
-  void prepareEngine();
+  [[nodiscard]] auto prepareEngine()
+      -> std::vector<std::shared_ptr<LogContext::Values>>;
   /// @brief Executes the RestHandler
-  ///        May set the state to PAUSED, FINALIZE or FAILED
-  ///        If isContinue == true it will call continueExecute()
-  ///        otherwise execute() will be called
-  void executeEngine(bool isContinue);
+  auto executeEngine() -> async<void>;
   void compressResponse();
 
  protected:
@@ -205,6 +207,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   mutable std::atomic_uint8_t _executionCounter{0};
   mutable RestStatus _followupRestStatus;
 
+  SuspensionSemaphore _suspensionSemaphore;
+
   std::function<void(rest::RestHandler*)> _sendResponseCallback;
 
   uint64_t _handlerId;
@@ -222,7 +226,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestLane _lane;
 
   std::shared_ptr<LogContext::Values> _logContextScopeValues;
-  LogContext::EntryPtr _logContextEntry;
 
  protected:
   metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;

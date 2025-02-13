@@ -68,11 +68,7 @@ RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
   TRI_ASSERT(_queryRegistry != nullptr);
 }
 
-RestAqlHandler::~RestAqlHandler() {
-  if (_logContextQueryIdEntry) {
-    LogContext::Current::popEntry(_logContextQueryIdEntry);
-  }
-}
+RestAqlHandler::~RestAqlHandler() {}
 
 // POST method for /_api/aql/setup (internal)
 // Only available on DBServers in the Cluster.
@@ -158,9 +154,6 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   _logContextQueryIdValue = LogContext::makeValue()
                                 .with<structuredParams::QueryId>(clusterQueryId)
                                 .share();
-  TRI_ASSERT(_logContextQueryIdEntry == nullptr);
-  _logContextQueryIdEntry =
-      LogContext::Current::pushValues(_logContextQueryIdValue);
 
   VPackSlice lockInfoSlice = querySlice.get("lockInfo");
 
@@ -417,9 +410,6 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
     _logContextQueryIdValue = LogContext::makeValue()
                                   .with<structuredParams::QueryId>(idString)
                                   .share();
-    TRI_ASSERT(_logContextQueryIdEntry == nullptr);
-    _logContextQueryIdEntry =
-        LogContext::Current::pushValues(_logContextQueryIdValue);
   }
 
   if (!_engine) {  // the PUT verb
@@ -474,14 +464,13 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 
   return RestStatus::DONE;
 }
-
-void RestAqlHandler::prepareExecute(bool isContinue) {
-  RestVocbaseBaseHandler::prepareExecute(isContinue);
+auto RestAqlHandler::prepareExecute(bool isContinue)
+    -> std::vector<std::shared_ptr<LogContext::Values>> {
+  auto vector = RestVocbaseBaseHandler::prepareExecute(isContinue);
   if (_logContextQueryIdValue != nullptr) {
-    TRI_ASSERT(_logContextQueryIdEntry == nullptr);
-    _logContextQueryIdEntry =
-        LogContext::Current::pushValues(_logContextQueryIdValue);
+    vector.emplace_back(_logContextQueryIdValue);
   }
+  return vector;
 }
 
 // executes the handler
@@ -607,9 +596,6 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
         << "Ignoring exception during rest handler shutdown: " << ex.what();
   }
 
-  if (_logContextQueryIdEntry) {
-    LogContext::Current::popEntry(_logContextQueryIdEntry);
-  }
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
