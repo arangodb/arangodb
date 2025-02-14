@@ -58,7 +58,7 @@ export const PrimarySortAccordionItem = () => {
             tooltip={
               window.frontendConfig.isEnterprise
                 ? undefined
-                : "Primary key column caching is available in Enterprise plans."
+                : "Primary key column caching is available in the Enterprise Edition."
             }
           />
         </Box>

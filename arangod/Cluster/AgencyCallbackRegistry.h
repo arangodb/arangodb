@@ -137,7 +137,9 @@ auto AgencyCallbackRegistry::waitFor(std::string path, F&& fn)
     -> futures::Future<V> {
   using Func = std::decay_t<F>;
   struct Context : Func {
-    explicit Context(Func&& fn) : Func(std::move(fn)) {}
+    explicit Context(Func&& fn)
+        : Func(std::move(fn)), logContext(LogContext::current()) {}
+    LogContext logContext;
     futures::Promise<V> promise;
   };
 
@@ -149,6 +151,7 @@ auto AgencyCallbackRegistry::waitFor(std::string path, F&& fn)
       [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
         auto pred = ctx->operator()(slice, index);
         if (pred) {
+          LogContext::ScopedContext guard(ctx->logContext);
           ctx->promise.setValue(std::move(pred.value()));
           return true;
         }

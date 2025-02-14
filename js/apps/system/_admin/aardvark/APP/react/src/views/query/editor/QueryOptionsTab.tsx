@@ -17,6 +17,7 @@ import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJ
 import { JSONErrors } from "../../../components/jsonEditor/JSONErrors";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useQueryContext } from "../QueryContextProvider";
+import type { QueryOptions } from "arangojs/database";
 
 const BASIC_QUERY_OPTIONS = {
   memoryLimit: {
@@ -38,6 +39,11 @@ const BASIC_QUERY_OPTIONS = {
 };
 
 const ADVANCED_QUERY_OPTIONS = {
+  usePlanCache: {
+    type: "boolean",
+    label: "Use Plan Cache",
+    name: "usePlanCache"
+  },
   fillBlockCache: {
     type: "boolean",
     label: "Fill Block Cache",
@@ -80,6 +86,13 @@ const ADVANCED_QUERY_OPTIONS = {
     label: "Intermediate Commit Count"
   }
 };
+
+type QueryOptionsType = QueryOptions & {
+  optimizer?: {
+    rules?: string[];
+  };
+};
+
 export const QueryOptionsTab = ({ mode }: { mode: "json" | "table" }) => {
   const {
     queryOptions,
@@ -94,7 +107,7 @@ export const QueryOptionsTab = ({ mode }: { mode: "json" | "table" }) => {
   }
   return (
     <Box position="relative" height="full">
-      <ControlledJSONEditor
+      <ControlledJSONEditor<QueryOptionsType>
         ref={bindVariablesJsonEditorRef}
         mode="code"
         defaultValue={{
@@ -110,7 +123,7 @@ export const QueryOptionsTab = ({ mode }: { mode: "json" | "table" }) => {
           };
           if (!errors.length) {
             setQueryOptions(updatedOptions || {});
-            setDisabledRules(updatedValue.optimizer?.rules);
+            setDisabledRules(updatedValue.optimizer?.rules || []);
           }
         }}
         htmlElementProps={{

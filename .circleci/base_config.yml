@@ -16,10 +16,10 @@ parameters:
     default: true
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:7"
+    default: "arangodb/ubuntubuildarangodb-devel:11"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-5b6113b7
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-5b5ffda4
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
@@ -28,6 +28,9 @@ parameters:
     type: boolean
     default: false
   create-docker-images:
+    type: boolean
+    default: false
+  rebuild-test-docker-images:
     type: boolean
     default: false
   nightly:
@@ -319,6 +322,7 @@ jobs:
             if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
               MINIMAL_DEBUGINFO="ON"
             fi
+
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
@@ -328,7 +332,7 @@ jobs:
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
               -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
-              -DCMAKE_INSTALL_PREFIX=/
+              -DCMAKE_INSTALL_PREFIX=/ 
       - run:
           name: Build
           command: |
@@ -523,7 +527,14 @@ jobs:
               export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
               export SAN_MODE=alubsan
             elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
-              export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
+              # Needed to ignore TSAN errors from OpenMP
+              export OMP_TOOL_LIBRARIES=/usr/lib/llvm-19/lib/libarcher.so
+              export ARCHER_OPTIONS="verbose=1"
+              if ! [ -f ${OMP_TOOL_LIBRARIES} ]; then
+                echo "File ${OMP_TOOL_LIBRARIES} does not exist."
+                exit 1
+              fi
+              export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py:ignore_noninstrumented_modules=1"
               export SAN_MODE=tsan
             fi
 

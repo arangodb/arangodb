@@ -1,0 +1,2 @@
+add_library(arango_async_interface INTERFACE)
+target_include_directories(arango_async_interface INTERFACE .)

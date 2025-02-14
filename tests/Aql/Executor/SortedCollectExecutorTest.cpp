@@ -1018,11 +1018,6 @@ TEST_P(SortedCollectExecutorTestSplit, split_3) {
       .run();
 }
 
-template<size_t... vs>
-const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
-const SplitType splitStep = SplitType{step};
-
 INSTANTIATE_TEST_CASE_P(SortedCollectExecutor, SortedCollectExecutorTestSplit,
                         ::testing::Values(splitIntoBlocks<2, 3>,
                                           splitIntoBlocks<3, 4>, splitStep<2>));

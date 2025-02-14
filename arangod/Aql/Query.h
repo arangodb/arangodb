@@ -205,10 +205,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// never call this on a DB server!
   void prepareFromVelocyPack(velocypack::Slice querySlice,
                              velocypack::Slice collections,
+                             velocypack::Slice views,
                              velocypack::Slice variables,
-                             velocypack::Slice snippets,
-                             bool simpleSnippetFormat,
-                             QueryAnalyzerRevisions const& analyzersRevision);
+                             velocypack::Slice snippets);
+
+  void instantiatePlan(velocypack::Slice snippets);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
@@ -302,6 +303,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// returns "<hidden>" regardless of maxLength
   std::string extractQueryString(size_t maxLength, bool show) const;
 
+  std::optional<QueryPlanCache::Key> planCacheKey() const noexcept {
+    return _planCacheKey;
+  }
+
  protected:
   /// @brief make sure that the query execution time is set.
   /// only the first call to this function will set the time.
@@ -366,6 +371,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   struct CollectionSerializationFlags {
     bool includeNumericIds = true;
     bool includeViews = true;
+    bool includeViewsSeparately = false;
   };
   std::function<void(velocypack::Builder&)> buildSerializeQueryDataCallback(
       CollectionSerializationFlags flags) const;
@@ -409,7 +415,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   std::vector<std::unique_ptr<ExecutionPlan>> _plans;
 
   /// plan serialized before instantiation, used for query profiling
-  std::shared_ptr<velocypack::UInt8Buffer> _planSliceCopy;
+  velocypack::SharedSlice _planSliceCopy;
 
   /// @brief the transaction object, in a distributed query every part of
   /// the query has its own transaction object. The transaction object is

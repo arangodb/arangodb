@@ -29,7 +29,7 @@ parameters:
     default: false
   build-docker-image:
     type: string
-    default: ""
+    default: "arangodb/ubuntubuildarangodb-devel:11"
   nightly:
     type: boolean
     default: false
@@ -38,10 +38,10 @@ parameters:
     default: false # We use replication1 as default.
   c-compiler:
     type: string
-    default: "gcc"
+    default: "clang"
   cxx-compiler:
     type: string
-    default: "g++"
+    default: "clang++"
   sanitizer:
     type: string
     default: "" # should be empty, "tsan" or "alubsan"

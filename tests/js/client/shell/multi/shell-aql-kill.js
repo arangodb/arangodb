@@ -40,7 +40,7 @@ const isCov = require("@arangodb/test-helper").versionHas('coverage');
 function aqlKillSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
-  const defaultStop = isCov ? 240:30;
+  const defaultStop = isCov ? 300:30;
   function tryForUntil({sleepFor = 0.001, stopAfter = defaultStop, until}) {
     // Remember that Date.now() returns ms, but internal.wait() takes s.
     // Units <3

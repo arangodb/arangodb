@@ -30,11 +30,13 @@
 #include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/IndexCollectNode.h"
 #include "Aql/ExecutionNode/InsertNode.h"
 #include "Aql/ExecutionNode/JoinNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
@@ -81,12 +83,13 @@ using namespace arangodb::basics;
 namespace {
 
 /// @brief NodeType to string mapping
-frozen::unordered_map<int, std::string_view, 36> const kTypeNames{
+frozen::unordered_map<int, std::string_view, 38> const kTypeNames{
     {static_cast<int>(ExecutionNode::SINGLETON), "SingletonNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_COLLECTION),
      "EnumerateCollectionNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_LIST), "EnumerateListNode"},
     {static_cast<int>(ExecutionNode::INDEX), "IndexNode"},
+    {static_cast<int>(ExecutionNode::INDEX_COLLECT), "IndexCollectNode"},
     {static_cast<int>(ExecutionNode::LIMIT), "LimitNode"},
     {static_cast<int>(ExecutionNode::CALCULATION), "CalculationNode"},
     {static_cast<int>(ExecutionNode::SUBQUERY), "SubqueryNode"},
@@ -124,6 +127,8 @@ frozen::unordered_map<int, std::string_view, 36> const kTypeNames{
     {static_cast<int>(ExecutionNode::OFFSET_INFO_MATERIALIZE),
      "OffsetMaterializeNode"},
     {static_cast<int>(ExecutionNode::JOIN), "JoinNode"},
+    {static_cast<int>(ExecutionNode::ENUMERATE_NEAR_VECTORS),
+     "EnumerateNearVectorNode"},
 };
 
 }  // namespace
@@ -371,6 +376,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new NoResultsNode(plan, slice);
     case INDEX:
       return new IndexNode(plan, slice);
+    case INDEX_COLLECT:
+      return new IndexCollectNode(plan, slice);
     case JOIN:
       return new JoinNode(plan, slice);
     case REMOTE:
@@ -441,10 +448,11 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       return new WindowNode(plan, slice, std::move(bounds), rangeVar,
                             aggregateVariables);
     }
-    default: {
-      // should not reach this point
+    case ENUMERATE_NEAR_VECTORS:
+      return new EnumerateNearVectorNode(plan, slice);
+    // should never reach this point
+    default:
       TRI_ASSERT(false);
-    }
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1554,6 +1562,7 @@ bool ExecutionNode::isIncreaseDepth(ExecutionNode::NodeType type) {
   switch (type) {
     case ENUMERATE_COLLECTION:
     case INDEX:
+    case INDEX_COLLECT:
     case ENUMERATE_LIST:
     case COLLECT:
 
@@ -1594,7 +1603,9 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case UPSERT:
     case TRAVERSAL:
     case INDEX:
+    case INDEX_COLLECT:
     case JOIN:
+    case ENUMERATE_NEAR_VECTORS:
     case SHORTEST_PATH:
     case ENUMERATE_PATHS:
     case REMOTE_SINGLE:

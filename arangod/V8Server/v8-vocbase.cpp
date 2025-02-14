@@ -785,17 +785,13 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
 
-  QueryAnalyzerRevisions analyzersRevision;
-  auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder.slice());
-  if (ADB_UNLIKELY(revisionRes.fail())) {
-    TRI_V8_THROW_EXCEPTION(revisionRes);
-  }
-
   TRI_ASSERT(!ServerState::instance()->isDBServer());
-  query->prepareFromVelocyPack(
-      /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
-      /*snippets*/ queryBuilder.slice().get("nodes"), /*simple*/ true,
-      analyzersRevision);
+  auto const snippets = queryBuilder.slice().get("nodes");
+  auto const querySlice = velocypack::Slice::emptyObjectSlice();
+  auto const viewsSlice = velocypack::Slice::noneSlice();
+  query->prepareFromVelocyPack(querySlice, collections, viewsSlice, variables,
+                               snippets);
+  query->instantiatePlan(snippets);
 
   aql::QueryResult queryResult = query->executeSync();
 
