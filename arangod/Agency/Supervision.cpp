@@ -1820,6 +1820,9 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
   // job), or else the larger job can no longer detect any failures!
   // Returns true if there is something to do, false otherwise.
 
+  using namespace std::chrono;
+  using namespace std::literals::string_literals;
+
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
 
@@ -1850,7 +1853,22 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
       }
       auto created = p.second->hasAsString("timeCreated");
       if (created) {
-        v.emplace_back(p.first, *created);
+        auto finished = p.second->hasAsString("timeFinished");
+        if (finished) {
+          try {
+            std::chrono::system_clock::time_point finishedTP;
+            std::stringstream {finished.value()}
+              >> std::chrono::parse("%FT%T"s, finishedTP);
+            if ((std::chrono::system_clock::now() - finishedTP) >
+                std::chrono::seconds{300}) {
+              v.emplace_back(p.first, *created);
+            }
+          } catch (...) {
+            v.emplace_back(p.first, *created);
+          }
+        } else {
+          v.emplace_back(p.first, *created);
+        }
       } else {
         v.emplace_back(p.first, "1970");  // will be sorted very early
       }

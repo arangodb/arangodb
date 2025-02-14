@@ -1,7 +1,14 @@
+v3.11.14 (XXXX-XX-XX)
+---------------------
+
+* The agency supervision is clearing "finished" jobs too quickly from
+  Target/Finished. They will be forthwith be kept for at least 5m.
+
+
 v3.11.13 (XXXX-XX-XX)
 ---------------------
 
-* Disable cluster overwhelm protection on agents. This fixes a bug which 
+* Disable cluster overwhelm protection on agents. This fixes a bug which
   happens if the number of dbservers and coordinators grows beyond 4x
   the number of threads in the agency leader.
 
