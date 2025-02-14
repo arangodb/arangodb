@@ -3,6 +3,7 @@ select-frame function main
 print "Some printing"
 print testee
 print expected
+print registry
 
 continue
 quit 0
