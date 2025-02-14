@@ -1791,6 +1791,7 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
   // Returns true if there is something to do, false otherwise.
 
   using namespace std::chrono;
+  using namespace std::literals::string_literals;
 
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
@@ -1823,8 +1824,8 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
         if (finished) {
           try {
             std::chrono::system_clock::time_point finishedTP;
-            std::stringstream t2{finished.value()};
-            t2 >> std::chrono::parse("%FT%T"s, finishedTP);
+            std::stringstream {finished.value()}
+              >> std::chrono::parse("%FT%T"s, finishedTP);
             if ((std::chrono::system_clock::now() - finishedTP) >
                 std::chrono::seconds{300}) {
               v.emplace_back(p.first, *created);
