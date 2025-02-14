@@ -19,6 +19,49 @@ def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
 
   return newstring + string
 
+def genTsFile(errors):
+  jslint = "/*jshint maxlen: 240 */\n\n"
+
+  out = jslint \
+      + prologue\
+
+  # print individual errors
+  i = 0
+  for e in errors:
+    name = "\"" + e[0] + "\""
+    msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
+    out = f"{out}export const {name.ljust(40)} = {e[1]};"
+
+    i = i + 1
+
+    if i < len(errors):
+      out = out + ",\n"
+    else:
+      out = out + "\n"
+
+  for e in errors:
+    name = "\"" + e[0] + "\""
+    msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
+    out = out\
+        + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }"
+
+    i = i + 1
+
+    if i < len(errors):
+      out = out + ",\n"
+    else:
+      out = out + "\n"
+
+
+  out = out\
+      + "  };\n"\
+      + "\n"\
+      + "  // For compatibility with <= 3.3\n"\
+      + "  internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;\n"\
+      + "}());\n"\
+      + "\n"
+
+  return out
 
 # generate javascript file from errors
 def genJsFile(errors):
@@ -168,6 +211,8 @@ filename = basename if extension != ".tmp" else os.path.splitext(basename)[0]
 
 if filename == "errors.js":
   out = genJsFile(errorsList)
+if filename == "errors.ts":
+  out = genTsFile(errorsList)
 elif filename == "voc-errors.h":
   out = genCHeaderFile(errorsList)
 elif filename == "error-registry.h":
