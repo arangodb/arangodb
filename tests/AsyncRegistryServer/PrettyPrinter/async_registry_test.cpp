@@ -21,17 +21,28 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Async/Registry/registry.h"
+
 #include <csignal>
 #include <iostream>
+
+using namespace arangodb::async_registry;
 
 auto breakpoint() { raise(SIGINT); }
 
 int main() {
   // create a registry
+  Registry registry;
+  auto thread_registry = registry.add_thread();
+  auto* promise = thread_registry->add_promise(Requester::current_thread(),
+                                               std::source_location::current());
   const auto testee = 1;    // tuple of registries
   const auto expected = 3;  // for one registry, get a string version of it
   breakpoint();
   std::cout << "Hello after breakpoint" << testee + expected << std::endl;
   // run_test(testee, expected) which internally calls breakpoint again
+
+  promise->mark_for_deletion();
+  thread_registry->garbage_collect();
   return 0;
 }
