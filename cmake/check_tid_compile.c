@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/syscall.h>   /* For SYS_gettid */
