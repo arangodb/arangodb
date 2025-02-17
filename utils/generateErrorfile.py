@@ -39,28 +39,34 @@ def genTsFile(errors):
     else:
       out = out + "\n"
 
+  out += "export const errors = {\n"
+  i=0
   for e in errors:
-    name = "\"" + e[0] + "\""
+    name = e[0]
     msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
-    out = out\
-        + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }"
+    out = f"""{out} {name.ljust(30)}: {{
+    "code" : {e[1]},
+    "message" : "{msg}"
+    }}"""
 
     i = i + 1
 
     if i < len(errors):
       out = out + ",\n"
     else:
-      out = out + "\n"
+      out = out + "\n};\n"
 
-
-  out = out\
-      + "  };\n"\
-      + "\n"\
-      + "  // For compatibility with <= 3.3\n"\
-      + "  internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;\n"\
-      + "}());\n"\
-      + "\n"
-
+  out += """
+export type ErrorType = keyof typeof errors;
+export function fromCode(code: number): ErrorType {
+  for (const [key, value] of Object.entries(errors)) {
+    if (value.code === code) {
+      return key as ErrorType;
+    }
+  }
+  return "ERROR_FAILED";
+}
+             """
   return out
 
 # generate javascript file from errors
