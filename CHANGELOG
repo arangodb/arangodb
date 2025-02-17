@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded OpenSSL to 3.4.1.
+
 * Disable creating a vector index with zero nLists.
 
 * FE-515: fix to ensure unique keys to prevent incorrect react reconciliation (Query Editor UI > Query results)
