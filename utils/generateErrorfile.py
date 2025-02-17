@@ -102,38 +102,14 @@ def genJsFile(errors):
 # generate javascript file from errors
 def genPyFile(errors):
 
-  out = jslint \
-      + prologue\
-      + "(function () {\n"\
-      + "  \"use strict\";\n"\
-      + "  var internal = require(\"internal\");\n"\
-      + "\n"\
-      + "  internal.errors = {\n"
+  out = ""
 
   # print individual errors
   i = 0
   for e in errors:
-    name = "\"" + e[0] + "\""
+    name = e[0][6:]
     msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
-    out = out\
-        + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }"
-
-    i = i + 1
-
-    if i < len(errors):
-      out = out + ",\n"
-    else:
-      out = out + "\n"
-
-
-  out = out\
-      + "  };\n"\
-      + "\n"\
-      + "  // For compatibility with <= 3.3\n"\
-      + "  internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;\n"\
-      + "}());\n"\
-      + "\n"
-
+    out = f"{out}\n\n# {e[2]}\n{name.ljust(70)} = {e[1]}"
   return out
 
 def quotedErrorMessage(error):
