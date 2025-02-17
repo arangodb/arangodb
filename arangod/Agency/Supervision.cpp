@@ -1790,7 +1790,6 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
   // job), or else the larger job can no longer detect any failures!
   // Returns true if there is something to do, false otherwise.
 
-  using namespace std::chrono;
   using namespace std::literals::string_literals;
 
   constexpr size_t maximalFinishedJobs = 500;
@@ -1824,10 +1823,10 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
         if (finished) {
           try {
             std::chrono::system_clock::time_point finishedTP;
-            std::stringstream t2{finished.value()};
-            t2 >> std::chrono::parse("%FT%T"s, finishedTP);
+            std::stringstream {finished.value()}
+              >> std::chrono::parse("%FT%T"s, finishedTP);
             if ((std::chrono::system_clock::now() - finishedTP) >
-                std::chrono::seconds{300}) {
+                std::chrono::seconds{3600}) {
               v.emplace_back(p.first, *created);
             }
           } catch (...) {
@@ -3926,3 +3925,4 @@ void Supervision::checkUndoLeaderChangeActions() {
     }
   }
 }
+
