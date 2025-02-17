@@ -1860,16 +1860,19 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
             std::stringstream {finished.value()}
               >> std::chrono::parse("%FT%T"s, finishedTP);
             if ((std::chrono::system_clock::now() - finishedTP) >
-                std::chrono::seconds{300}) {
+                std::chrono::seconds{3600}) { // older than an hour
               v.emplace_back(p.first, *created);
             }
-          } catch (...) {
+          } catch (...) { // unparseable timeFinished
+            TRI_ASSERT(false);
             v.emplace_back(p.first, *created);
           }
-        } else {
+        } else { // in finished and yet missing timeFinished
+          TRI_ASSERT(false);
           v.emplace_back(p.first, *created);
         }
-      } else {
+      } else { //  missing created
+        TRI_ASSERT(false);
         v.emplace_back(p.first, "1970");  // will be sorted very early
       }
     }
