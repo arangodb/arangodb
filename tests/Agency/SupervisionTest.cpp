@@ -1080,7 +1080,7 @@ TEST_F(SupervisionTestClass, not_cleanup_failed_sub_jobs) {
   EXPECT_FALSE(sthTodo);
 }
 
-TEST_F(SupervisionTestClass, only_cleanup_finished_job_after_one_hour) {
+ TEST_F(SupervisionTestClass, only_cleanup_finished_job_after_one_hour) {
   auto head = R"=(
 {
   "timeFinished": ")=";
@@ -1115,9 +1115,10 @@ TEST_F(SupervisionTestClass, only_cleanup_finished_job_after_one_hour) {
   bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
       _snapshot, envelope, true);
 
+  auto workItems = envelope->slice()[0];
   EXPECT_TRUE(sthTodo);
-  LOG_DEVEL << envelope->slice()[0].length();
-  EXPECT_TRUE(envelope->slice().length() < 500);
+  EXPECT_TRUE(workItems.length() < 500);
+  EXPECT_TRUE(workItems.length() > 450);
 }
 
 TEST_F(SupervisionTestClass, only_cleanup_failed_job_after_one_hour) {
@@ -1155,7 +1156,8 @@ TEST_F(SupervisionTestClass, only_cleanup_failed_job_after_one_hour) {
   bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
       _snapshot, envelope, false);
 
+  auto workItems = envelope->slice()[0];
   EXPECT_TRUE(sthTodo);
-  LOG_DEVEL << (envelope->slice())[0].length();
-  EXPECT_TRUE(envelope->slice().length() < 1000);
+  EXPECT_TRUE(workItems.length() < 1000);
+  EXPECT_TRUE(workItems.length() >  950);
 }
