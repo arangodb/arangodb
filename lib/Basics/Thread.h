@@ -74,8 +74,6 @@ class Thread {
 
   enum class ThreadState { CREATED, STARTING, STARTED, STOPPING, STOPPED };
 
-  std::string stringifyState() { return stringify(state()); }
-
   static std::string stringify(ThreadState);
 
   /// @brief returns the process id
@@ -144,8 +142,8 @@ class Thread {
   bool start(basics::ConditionVariable* _finishedCondition = nullptr);
 
   /// @brief return the threads current state
-  ThreadState state() const noexcept {
-    return _state.load(std::memory_order_relaxed);
+  [[nodiscard]] std::atomic<ThreadState> const& state() const noexcept {
+    return _state;
   }
 
   /// @brief MUST be called from the destructor of the MOST DERIVED class
