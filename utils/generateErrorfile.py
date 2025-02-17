@@ -20,6 +20,25 @@ def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
 
   return newstring + string
 
+def to_camel_case(snake_str):
+    return "".join(x.capitalize() for x in snake_str.lower().split("_"))
+
+# generate javascript file from errors
+def genGoFile(errors, version):
+
+  out = prologue\
+      + f"/// ArangoDB {version}\n"\
+      "package driver\nconst ("
+
+  # print individual errors
+  i = 0
+  for e in errors:
+    name = to_camel_case(e[0][6:])
+    msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
+    out = f"{out}\n        Err{name.ljust(70)} = {e[1]}"
+  out += "\n)\n"
+  return out
+
 def genTsFile(errors, version):
   out = f"/*jshint maxlen: 240 */\n\n{prologue}\n/// ArangoDB {version}"
   # print individual errors
@@ -226,6 +245,8 @@ elif filename == "errors.ts":
   out = genTsFile(errorsList, version)
 elif filename == "errno.py":
   out = genPyFile(errorsList, version)
+elif filename == "error.go":
+  out = genGoFile(errorsList, version)
 elif filename == "voc-errors.h":
   out = genCHeaderFile(errorsList)
 elif filename == "error-registry.h":
