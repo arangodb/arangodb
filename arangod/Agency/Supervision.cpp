@@ -1823,8 +1823,8 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
         if (finished) {
           try {
             std::chrono::system_clock::time_point finishedTP;
-            std::stringstream {finished.value()}
-              >> std::chrono::parse("%FT%T"s, finishedTP);
+            std::stringstream{finished.value()} >>
+                std::chrono::parse("%FT%T"s, finishedTP);
             if ((std::chrono::system_clock::now() - finishedTP) >
                 std::chrono::seconds{3600}) {
               v.emplace_back(p.first, *created);
