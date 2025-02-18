@@ -1795,6 +1795,7 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
 
+  std::tm tm = {};
   auto cleanup = [&](std::string const& prefix, size_t limit) -> bool {
     auto const* pendingJobs = snapshot.hasAsChildren(pendingPrefix);
     auto const& jobs = *snapshot.hasAsChildren(prefix);
@@ -1822,14 +1823,15 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
         auto finished = p.second->hasAsString("timeFinished");
         if (finished) {
           try {
-            std::chrono::system_clock::time_point finishedTP;
             std::stringstream{finished.value()} >>
-                std::chrono::parse("%FT%T"s, finishedTP);
-            if ((std::chrono::system_clock::now() - finishedTP) >
-                std::chrono::seconds{3600}) {
+              std::get_time(&tm, "%Y-$M-%dT%H:%M:%SZ");
+            if ((std::chrono::system_clock::now() -
+                  std::chrono::system_clock::from_time_t(std::mktime(&tm))) >
+                std::chrono::seconds{3600}) { // older than an hour
               v.emplace_back(p.first, *created);
             }
-          } catch (...) {
+          } catch (...) { // unparseable timeFinished
+            TRI_ASSERT(false);
             v.emplace_back(p.first, *created);
           }
         } else {
