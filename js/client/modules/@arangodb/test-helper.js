@@ -332,7 +332,7 @@ const buildCode = function(dbname, key, command, cn, duration) {
   fs.write(file, `
 (function() {
 // For chaos tests additional 10 secs might be not enough, so add 3 minutes buffer
-require('internal').SetGlobalExecutionDeadlineTo((${duration} + 180) * 1000);
+require('internal').SetGlobalExecutionDeadlineTo(${duration} + 180);
 let tries = 0;
 while (true) {
   ++tries;
