@@ -9,6 +9,9 @@ devel
 
 * FE-515: fix to ensure unique keys to prevent incorrect react reconciliation (Query Editor UI > Query results)
 
+* fixed some cmake warnings and output, added a gettid in case the library does not
+  define the function use the system call instead.
+
 * Disable cluster overwhelm protection on agents. This fixes a bug which happens
   if the number of dbservers and coordinators grows beyond 4x the number
   of threads in the agency leader.
