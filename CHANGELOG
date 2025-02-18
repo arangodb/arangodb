@@ -7,6 +7,8 @@ devel
   can potentially lead to spikes in CPU, memory and I/O usage once every
   24 hours, which might so far only have happened once per month!
 
+* FE-497: fix query options input parsing (Query Editor UI > Options tab)
+
 * Upgraded OpenSSL to 3.4.1.
 
 * Disable creating a vector index with zero nLists.
