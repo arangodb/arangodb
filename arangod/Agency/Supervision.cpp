@@ -1790,8 +1790,6 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
   // job), or else the larger job can no longer detect any failures!
   // Returns true if there is something to do, false otherwise.
 
-  using namespace std::literals::string_literals;
-
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
   constexpr size_t minimalKeepSeconds = 3600;
