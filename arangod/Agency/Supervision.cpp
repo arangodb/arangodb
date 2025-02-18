@@ -1829,7 +1829,7 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
           } catch (...) { // unparseable timeFinished
             TRI_ASSERT(false);
             LOG_TOPIC("98987", WARN, Logger::SUPERVISION)
-              << "Unparseable finished time."  << finished.value;
+              << "Unparseable finished time." << finished.value();
             v.emplace_back(p.first, *created);
           }
         } else { // in finished and yet missing timeFinished
