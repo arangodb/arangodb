@@ -1816,6 +1816,7 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
                      // keep it
         }
       }
+      auto created = p.second->hasAsString("timeCreated");
       if (created) {
         auto finished = p.second->hasAsString("timeFinished");
         if (finished) {
