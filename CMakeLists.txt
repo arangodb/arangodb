@@ -33,7 +33,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 option(SKIP_PACKAGING "" OFF)
 
 # enable frontend build
-option(USE_FRONTEND "build the browser-based frontend(requires yarn and nodejs)" ON)
+option(USE_FRONTEND "build the browser-based frontend (requires yarn and nodejs)" ON)
 
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
@@ -424,7 +424,8 @@ else()
   add_definitions(-DUSE_BUILD_ID_READER=false)
 endif()
 
-# Guess whether we're using mold
+# Guess whether we're using mold. Please note that we need to add "-Wl," in front of
+# the linker flags and ensure that we pass them as seperate arguments.
 set(mold_test_flags " --version ${CMAKE_EXE_LINKER_FLAGS}")
 string(REPLACE " " " -Wl," mold_test_flags "${mold_test_flags}")
 
