@@ -396,8 +396,7 @@ option(CHECK_GETTID "check for the existance of gettid" ON)
 if(CHECK_GETTID)
   message(STATUS "Checking for gettid, use '-DCHECK_GETTID=Off' if cross compiling")
   try_compile(GETTID_COMPILE_TEST
-          SOURCE_FROM_FILE "check_tid_compilex.c" ${CMAKE_SOURCE_DIR}/cmake/check_tid_compile.c
-          OUTPUT_VARIABLE GETTID_COMPILE_RESULT
+    SOURCE_FROM_FILE "check_tid_compilex.c" ${CMAKE_SOURCE_DIR}/cmake/check_tid_compile.c
   )
 
   if(GETTID_COMPILE_TEST)
