@@ -425,7 +425,8 @@ else()
 endif()
 
 # Guess whether we're using mold. Please note that we need to add "-Wl," in front of
-# the linker flags and ensure that we pass them as seperate arguments.
+# the linker flags and ensure that we pass them as seperate arguments, ie pass as one
+# string. Other CMAKE will group the arguments wrongly.
 set(mold_test_flags " --version ${CMAKE_EXE_LINKER_FLAGS}")
 string(REPLACE " " " -Wl," mold_test_flags "${mold_test_flags}")
 
@@ -434,8 +435,10 @@ execute_process(
   OUTPUT_VARIABLE LINKER_VERSION_OUT)
 if(LINKER_VERSION_OUT MATCHES ^mold)
   SET(LINKER_IS_MOLD TRUE)
+  message(STATUS "Using MOLD")
 else()
   SET(LINKER_IS_MOLD FALSE)
+  message(STATUS "Not using MOLD")
 endif()
 
 # mold doesn't support the linker scripts currently used for the build id reader, and will result in the error
