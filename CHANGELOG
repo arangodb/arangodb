@@ -3,10 +3,16 @@ devel
 
 * The agency supervision is clearing "finished" jobs too quickly from
   Target/Finished. They will be forthwith be kept for at least 5m.
+* FE-497: fix query options input parsing (Query Editor UI > Options tab)
+
+* Upgraded OpenSSL to 3.4.1.
 
 * Disable creating a vector index with zero nLists.
 
 * FE-515: fix to ensure unique keys to prevent incorrect react reconciliation (Query Editor UI > Query results)
+
+* fixed some cmake warnings and output, added a gettid in case the library does not
+  define the function use the system call instead.
 
 * Disable cluster overwhelm protection on agents. This fixes a bug which happens
   if the number of dbservers and coordinators grows beyond 4x the number
