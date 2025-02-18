@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-497: fix query options input parsing (Query Editor UI > Options tab)
+
 * Upgraded OpenSSL to 3.4.1.
 
 * Disable creating a vector index with zero nLists.
