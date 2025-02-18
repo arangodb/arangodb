@@ -1828,20 +1828,20 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
             }
           } catch (...) { // unparseable timeFinished
             TRI_ASSERT(false);
-            LOG_TOPIC("98987", WARNING, Logger::SUPERVISION)
+            LOG_TOPIC("98987", WARN, Logger::SUPERVISION)
               << "Unparseable finished time."  << finished.value;
             v.emplace_back(p.first, *created);
           }
         } else { // in finished and yet missing timeFinished
           TRI_ASSERT(false);
-          LOG_TOPIC("99788", WARNING, Logger::SUPERVISION)
-            << "Missing finished time in job."  << finished.value;
+          LOG_TOPIC("99788", WARN, Logger::SUPERVISION)
+            << "Missing finished time in job.";
           v.emplace_back(p.first, *created);
         }
       } else { //  missing created
         TRI_ASSERT(false);
-        LOG_TOPIC("99878", WARNING, Logger::SUPERVISION)
-          << "Missing created time in job."  << finished.value;
+        LOG_TOPIC("99878", WARN, Logger::SUPERVISION)
+          << "Missing created time in job.";
         v.emplace_back(p.first, "1970");  // will be sorted very early
       }
     }
