@@ -1822,7 +1822,8 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
         auto finished = p.second->hasAsString("timeFinished");
         if (finished) {
           try {
-            if (std::chrono::system_clock::now() - stringToTimepoint(finished.value()) >
+            if (std::chrono::system_clock::now() -
+                    stringToTimepoint(finished.value()) >
                 std::chrono::seconds{3600}) {
               v.emplace_back(p.first, *created);
             }
