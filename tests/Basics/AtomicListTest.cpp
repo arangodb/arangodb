@@ -48,8 +48,9 @@ TEST(AtomicListTests, testBasicOperation) {
 struct Entry {
   int a;
   Entry(int a) : a(a) {}
-  size_t memoryUsage() const { return sizeof(Entry); }
+  size_t memoryUsage() const noexcept { return sizeof(Entry); }
 };
+
 
 TEST(BoundedListTests, testBasicOperation) {
   BoundedList<Entry> list(1024 * 1024, 3);

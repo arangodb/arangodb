@@ -243,3 +243,4 @@ Result GeneralServer::reloadTLS() {
 }
 
 ArangodServer& GeneralServer::server() const { return _feature.server(); }
+

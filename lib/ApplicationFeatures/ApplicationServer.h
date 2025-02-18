@@ -32,16 +32,29 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <typeindex>
 #include <utility>
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
+#include "Containers/AtomicList.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+
+struct ApiCallRecord {
+  std::chrono::system_clock::time_point timeStamp;
+  std::string path;
+  std::string database;
+  std::shared_ptr<std::string> additionalInfo;  // filled in by RestHandler
+  ApiCallRecord(std::string_view path, std::string_view database)
+      : timeStamp(std::chrono::system_clock::now()),
+        path(path),
+        database(database) {}
+  size_t memoryUsage() const noexcept;
+};
+
 
 template<typename T>
 struct TypeTag;
@@ -287,6 +300,9 @@ class ApplicationServer {
   void reportServerProgress(State);
   void reportFeatureProgress(State, std::string_view);
 
+  std::shared_ptr<ApiCallRecord> recordAPICall(std::string_view path,
+                                               std::string_view database);
+
  private:
   // the current state
   std::atomic<State> _state;
@@ -335,6 +351,9 @@ class ApplicationServer {
 
   // whether or not to dump configuration options
   bool _dumpOptions = false;
+
+  /// record of recent api calls:
+  arangodb::BoundedList<std::shared_ptr<ApiCallRecord>> _apiCallRecord;
 };
 /**
 // ApplicationServerT is intended to provide statically checked access to

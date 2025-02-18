@@ -453,6 +453,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
+  /// TODO: Want to record the request here in a bounded list.
+  auto apiCallRecord = server.recordAPICall(request->requestPath, request->databaseName());
+
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase
     handler->setRequestStatistics(stealRequestStatistics(messageId));

@@ -76,6 +76,11 @@ auto nonEmptyFeatures(
 
 }  // namespace
 
+size_t arangodb::ApiCallRecord::memoryUsage() const noexcept {
+  return sizeof(timeStamp) + 3 * sizeof(std::string) + path.size() +
+         database.size() + additionalInfo.size();
+}
+
 std::atomic<bool> ApplicationServer::CTRL_C(false);
 
 ApplicationServer::ApplicationServer(
@@ -85,7 +90,8 @@ ApplicationServer::ApplicationServer(
       _options(options),
       _features{features},
       _fail{failCallback},  // register callback function for failures
-      _binaryPath{binaryPath} {
+      _binaryPath{binaryPath},
+      _apiCallRecord(100000, 256) {
   addReporter(ProgressHandler{
       [server = this](ApplicationServer::State state) {
         server->progressInfo(server->stringifyState(state), "");
@@ -885,3 +891,12 @@ std::string_view ApplicationServer::stringifyState(State state) {
   TRI_ASSERT(false);
   return "unknown";
 }
+
+std::shared_ptr<arangodb::ApiCallRecord> ApplicationServer::recordAPICall(
+    std::string_view path, std::string_view database) {
+  auto acr = std::make_shared<ApiCallRecord>(path, database);
+  auto acr_copy = acr;
+  _apiCallRecord.prepend(std::move(acr_copy));
+  return acr;
+}
+
