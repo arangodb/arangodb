@@ -1825,7 +1825,6 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
 
-  std::tm tm = {};
   auto cleanup = [&](std::string const& prefix, size_t limit) -> bool {
     auto pendingJobs = snapshot.hasAsChildren(pendingPrefix);
     auto const& jobs = snapshot.hasAsChildren(prefix).value().get();
@@ -1856,22 +1855,20 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
         auto finished = p.second->hasAsString("timeFinished");
         if (finished) {
           try {
-            std::stringstream{finished.value()} >>
-              std::get_time(&tm, "%Y-$M-%dT%H:%M:%SZ");
-            if ((std::chrono::system_clock::now() -
-                  std::chrono::system_clock::from_time_t(std::mktime(&tm))) >
-                std::chrono::seconds{3600}) { // older than an hour
+            if (std::chrono::system_clock::now() -
+                    stringToTimepoint(finished.value()) >
+                std::chrono::seconds{3600}) {
               v.emplace_back(p.first, *created);
             }
-          } catch (...) { // unparseable timeFinished
+          } catch (...) {  // unparseable timeFinished
             TRI_ASSERT(false);
             v.emplace_back(p.first, *created);
           }
-        } else { // in finished and yet missing timeFinished
+        } else {  // in finished and yet missing timeFinished
           TRI_ASSERT(false);
           v.emplace_back(p.first, *created);
         }
-      } else { //  missing created
+      } else {  //  missing created
         TRI_ASSERT(false);
         v.emplace_back(p.first, "1970");  // will be sorted very early
       }
