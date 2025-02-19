@@ -1080,7 +1080,7 @@ TEST_F(SupervisionTestClass, not_cleanup_failed_sub_jobs) {
   EXPECT_FALSE(sthTodo);
 }
 
- TEST_F(SupervisionTestClass, only_cleanup_finished_job_after_one_hour) {
+TEST_F(SupervisionTestClass, only_cleanup_finished_job_after_one_hour) {
   auto head = R"=(
 {
   "timeFinished": ")=";
@@ -1149,7 +1149,7 @@ TEST_F(SupervisionTestClass, only_cleanup_failed_job_after_one_hour) {
                                         i * std::chrono::minutes(2))) +
         foot;
     makeFailedMoveShardJob(_snapshot, 2024, std::to_string(i),
-                             finishedJobStr.c_str());
+                           finishedJobStr.c_str());
   };
 
   auto envelope = std::make_shared<VPackBuilder>();
@@ -1159,5 +1159,5 @@ TEST_F(SupervisionTestClass, only_cleanup_failed_job_after_one_hour) {
   auto workItems = envelope->slice()[0];
   EXPECT_TRUE(sthTodo);
   EXPECT_TRUE(workItems.length() < 1000);
-  EXPECT_TRUE(workItems.length() >  950);
+  EXPECT_TRUE(workItems.length() > 950);
 }
