@@ -123,7 +123,7 @@ function UpdateConsistencyArangoSearchView() {
         documents.push({_key: `doc${i}`, value: i});
       }
 
-      v = db._createView(view, "arangosearch", {})
+      let v = db._createView(view, "arangosearch", {});
       const insertedDocs = [];
       for (let i = 0; i < amountOfCollections; i++) {
         db._create(`testUpdate${i}`, collectionProperties);

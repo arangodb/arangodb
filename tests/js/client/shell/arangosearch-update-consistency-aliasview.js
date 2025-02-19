@@ -42,7 +42,7 @@ function UpdateConsistencySearchAliasView() {
       let c = db._create(collection, collectionProperties);
       c.save({_key: "279974", value: 345, flag: true});
       c.ensureIndex({name: "inverted_index", type: "inverted", fields: ["value"]});
-      v = db._createView(view, "search-alias", {});
+      let v = db._createView(view, "search-alias", {});
     },
 
     tearDownAll: function () {
@@ -52,7 +52,7 @@ function UpdateConsistencySearchAliasView() {
 
     testInvertedSingleUpdateLinkedField: function () {
       let c = db._collection(collection);
-      v = db._view(view);
+      let v = db._view(view);
       v.properties({indexes: [{collection: "testUpdate", index: "inverted_index"}]});
 
       // Run waitForSync query for view index initialization
@@ -83,10 +83,10 @@ function UpdateConsistencySearchAliasView() {
         documents.push({_key: `doc${i}`, value: i});
       }
 
-      v = db._view(view);
+      let v = db._view(view);
       const insertedDocs = [];
       for (let i = 0; i < amountOfCollections; i++) {
-        c = db._create(`testUpdate${i}`, collectionProperties);
+        let c = db._create(`testUpdate${i}`, collectionProperties);
         c.ensureIndex({name: "inverted_index", type: "inverted", fields: ["value"]});
         insertedDocs.push(db[`testUpdate${i}`].insert(documents));
         v.properties({indexes: [{collection: `testUpdate${i}`, index: "inverted_index"}]});
@@ -121,9 +121,8 @@ function UpdateConsistencySearchAliasView() {
     testInvertedSingleleUpdateUnlinkedField: function () {
       // we need to create our own view, since we can't modify it.
       db._dropView(view);
-      v = db._createView(view, "search-alias", {});
+      let v = db._createView(view, "search-alias", {});
       let c = db._collection(collection);
-      v = db._view(view);
       v.properties({indexes: [{collection: collection, index: "inverted_index"}]});
 
       // Run waitForSync query for view index initialization
