@@ -1,26 +1,30 @@
 devel
 -----
 
-* Change default for --rocksdb.periodic-compaction-ttl from 30 days to
-  24 hours. Note that certain deleted keys ranges in RocksDB might only be
-  compacted away through periodic background compactions. Note that this
-  can potentially lead to spikes in CPU, memory and I/O usage once every
-  24 hours, which might so far only have happened once per month!
+* The agency supervision is clearing "finished" jobs too quickly from
+  Target/Finished and Failed. They will be forthwith be kept for at least 1h.
 
-* FE-497: fix query options input parsing (Query Editor UI > Options tab)
+* Change default for --rocksdb.periodic-compaction-ttl from 30 days to 24 hours.
+  Note that certain deleted keys ranges in RocksDB might only be compacted away
+  through periodic background compactions. Note that this can potentially lead
+  to spikes in CPU, memory and I/O usage once every 24 hours, which might so far
+  only have happened once per month!
+
+* FE-497: fix query options input parsing (Query Editor UI > Options tab).
 
 * Upgraded OpenSSL to 3.4.1.
 
 * Disable creating a vector index with zero nLists.
 
-* FE-515: fix to ensure unique keys to prevent incorrect react reconciliation (Query Editor UI > Query results)
+* FE-515: fix to ensure unique keys to prevent incorrect react reconciliation
+  (Query Editor UI > Query results).
 
-* fixed some cmake warnings and output, added a gettid in case the library does not
-  define the function use the system call instead.
+* Fixed some cmake warnings and output, added a gettid in case the library does
+  not define the function use the system call instead.
 
 * Disable cluster overwhelm protection on agents. This fixes a bug which happens
-  if the number of dbservers and coordinators grows beyond 4x the number
-  of threads in the agency leader.
+  if the number of dbservers and coordinators grows beyond 4x the number of
+  threads in the agency leader.
 
 * Make an unstable test stable again for the NetworkConnectionPool.
 
